@@ -1,5 +1,9 @@
+![Bookx_github_description](https://user-images.githubusercontent.com/56764399/183672053-09a598fe-d6ef-4cf4-8f75-b898012e00fe.png)
+
 # Bookx
-A Modern, Open Source GTK4 application for ebook managment written in Rust. (WIP)
+An MVP in progress:
+- [ ] An ebook reader with .epub support
+- [ ] Ebook editor for .epub files
 
 <div align="center">
 
