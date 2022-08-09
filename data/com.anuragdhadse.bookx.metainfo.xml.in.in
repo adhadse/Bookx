@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Anurag Dhadse 2022 <hi@anuragdhadse.com> -->
+<component type="desktop-application">
+  <id>@app-id@</id>
+  <metadata_license>CC0</metadata_license>
+  <!-- Insert your license of choice here -->
+  <project_license>APACHE20</project_license>
+  <name>Bookx</name>
+  <summary>A Modern, Open Source GTK4 ebook manager</summary>
+  <description>
+    <p>A Modern, Open Source GTK4 application for ebook managment written in Rust.</p>
+  </description>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://github.com/adhadse/bookx/tree/master/data/resources/screenshots/screenshot1.png</image>
+      <caption>Main window</caption>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://github.com/adhadse/bookx</url>
+  <url type="bugtracker">https://github.com/adhadse/bookx/issues</url>
+  <content_rating type="oars-1.0" />
+  <releases>
+    <release version="0.1.0" date="2019-07-11" />
+  </releases>
+  <kudos>
+     <!--
+       GNOME Software kudos:
+       https://gitlab.gnome.org/GNOME/gnome-software/-/blob/main/doc/kudos.md
+     -->
+     <kudo>ModernToolkit</kudo>
+     <kudo>HiDpiIcon</kudo>
+  </kudos>
+  <developer_name>Anurag Dhadse</developer_name>
+  <update_contact>hi@anuragdhadse.com</update_contact>
+  <translation type="gettext">@gettext-package@</translation>
+  <launchable type="desktop-id">@app-id@.desktop</launchable>
+</component>
