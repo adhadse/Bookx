@@ -1,16 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <schemalist>
-  <schema path="/com/anuragdhadse/bookx/" id="@app-id@" gettext-domain="@gettext-package@">
+  <schema path="/com/anuragdhadse/Bookx/" id="@APP_ID@" gettext-domain="@PKGNAME@">
     <key name="window-width" type="i">
-      <default>600</default>
+      <default>950</default>
       <summary>Window width</summary>
     </key>
     <key name="window-height" type="i">
-      <default>400</default>
+      <default>650</default>
       <summary>Window height</summary>
     </key>
+    <key name="window-previous-width" type="i">
+      <default>950</default>
+    </key>
+    <key name="window-previous-height" type="i">
+      <default>650</default>
+    </key>
     <key name="is-maximized" type="b">
-      <default>false</default>
+      <default>true</default>
       <summary>Window maximized state</summary>
     </key>
   </schema>

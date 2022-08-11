@@ -3,17 +3,28 @@ project(
   'rust',
   version: '0.1.0',
   meson_version: '>= 0.59',
-  # license: 'MIT',
+  license: 'APACHE',
 )
 
 i18n = import('i18n')
 gnome = import('gnome')
 
-base_id = 'com.anuragdhadse.bookx'
+prefix = get_option('prefix')
+
+name = 'Bookx'
+base_id = 'com.anuragdhadse.Bookx'
+app_id = 'com.anuragdhadse.Bookx'
+pkgname = meson.project_name()
+datadir = prefix / get_option('datadir')
+iconsdir = datadir / 'icons'
+podir = meson.project_source_root() / 'po'
+bindir = prefix / get_option('bindir')
+localedir = prefix / get_option('localedir')
 
 dependency('glib-2.0', version: '>= 2.66')
 dependency('gio-2.0', version: '>= 2.66')
 dependency('gtk4', version: '>= 4.0.0')
+dependency('libadwaita-1')
 
 glib_compile_resources = find_program('glib-compile-resources', required: true)
 glib_compile_schemas = find_program('glib-compile-schemas', required: true)
@@ -22,16 +33,6 @@ appstream_util = find_program('appstream-util', required: false)
 cargo = find_program('cargo', required: true)
 
 version = meson.project_version()
-
-prefix = get_option('prefix')
-bindir = prefix / get_option('bindir')
-localedir = prefix / get_option('localedir')
-
-datadir = prefix / get_option('datadir')
-pkgdatadir = datadir / meson.project_name()
-iconsdir = datadir / 'icons'
-podir = meson.project_source_root() / 'po'
-gettext_package = meson.project_name()
 
 if get_option('profile') == 'development'
   profile = 'Devel'

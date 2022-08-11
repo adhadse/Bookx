@@ -7,7 +7,7 @@ An MVP in progress:
 
 <div align="center">
 
-![Main window](data/resources/screenshots/screenshot1.png)
+![Main window](data/screenshots/screenshot1.png)
 
 </div>
 

@@ -1,28 +1,38 @@
 mod application;
 #[rustfmt::skip]
 mod config;
-mod window;
+mod settings;
+mod ui;
 
-use gettextrs::{gettext, LocaleCategory};
+use application::BookxApplication;
+use gettextrs::*;
+
+mod deps {
+    pub use gtk::{gdk, gdk_pixbuf, gio, glib, graphene};
+}
 use gtk::{gio, glib};
-
-use self::application::ExampleApplication;
-use self::config::{GETTEXT_PACKAGE, LOCALEDIR, RESOURCES_FILE};
 
 fn main() {
     // Initialize logger
     pretty_env_logger::init();
 
     // Prepare i18n
-    gettextrs::setlocale(LocaleCategory::LcAll, "");
-    gettextrs::bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR).expect("Unable to bind the text domain");
-    gettextrs::textdomain(GETTEXT_PACKAGE).expect("Unable to switch to the text domain");
+    setlocale(LocaleCategory::LcAll, "");
+    bindtextdomain(config::PKGNAME, config::LOCALEDIR).expect("Unable to bind the text domain");
+    textdomain(config::PKGNAME).expect("Unable to switch to the text domain");
 
-    glib::set_application_name(&gettext("Bookx"));
-
-    let res = gio::Resource::load(RESOURCES_FILE).expect("Could not load gresource file");
+    // Load app resources
+    let path = &format!(
+        "{}/{}/{}.gresource",
+        config::DATADIR,
+        config::PKGNAME,
+        config::APP_ID
+    );
+    let res = gio::Resource::load(path).expect("Could not load resources");
     gio::resources_register(&res);
 
-    let app = ExampleApplication::new();
-    app.run();
+    glib::set_application_name(config::NAME);
+
+    let app = BookxApplication::new();
+    let _ret = app.run();
 }

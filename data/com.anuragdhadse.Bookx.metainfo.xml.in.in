@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Anurag Dhadse 2022 <hi@anuragdhadse.com> -->
 <component type="desktop-application">
-  <id>@app-id@</id>
+  <id>@APP_ID@</id>
   <metadata_license>CC0</metadata_license>
   <!-- Insert your license of choice here -->
   <project_license>APACHE20</project_license>
   <name>Bookx</name>
   <summary>A Modern, Open Source GTK4 ebook manager</summary>
   <description>
-    <p>A Modern, Open Source GTK4 application for ebook managment written in Rust.</p>
+    <p>A Modern, Open Source GTK4 application for ebook management powered by Rust.</p>
   </description>
   <screenshots>
     <screenshot type="default">
@@ -32,6 +32,6 @@
   </kudos>
   <developer_name>Anurag Dhadse</developer_name>
   <update_contact>hi@anuragdhadse.com</update_contact>
-  <translation type="gettext">@gettext-package@</translation>
-  <launchable type="desktop-id">@app-id@.desktop</launchable>
+  <translation type="gettext">@PKGNAME@</translation>
+  <launchable type="desktop-id">@APP_ID@.desktop</launchable>
 </component>
