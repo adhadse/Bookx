@@ -16,7 +16,7 @@
       <default>650</default>
     </key>
     <key name="is-maximized" type="b">
-      <default>true</default>
+      <default>false</default>
       <summary>Window maximized state</summary>
     </key>
   </schema>

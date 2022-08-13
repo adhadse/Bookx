@@ -4,6 +4,7 @@ use crate::settings::{settings_manager, Key};
 
 use adw::subclass::application_window::AdwApplicationWindowImpl;
 use adw::subclass::prelude::*;
+use glib::{ParamSpec, Sender};
 use gtk::prelude::*;
 use gtk::{
     subclass::prelude::{ApplicationWindowImpl, WindowImpl, WindowImplExt},
@@ -39,6 +40,10 @@ mod imp {
         // object type of the template child.
         #[template_child]
         pub headerbar: TemplateChild<adw::HeaderBar>,
+        #[template_child]
+        pub search_stack: TemplateChild<gtk::Stack>,
+        #[template_child]
+        pub search_entry: TemplateChild<gtk::SearchEntry>,
     }
 
     #[glib::object_subclass]

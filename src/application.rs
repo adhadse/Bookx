@@ -43,7 +43,7 @@ mod imp {
                 .set_color_scheme(adw::ColorScheme::PreferDark);
 
             // Set up the actions
-            obj.setup_actions();
+            obj.setup_gactions();
         }
     }
 
@@ -107,7 +107,7 @@ impl BookxApplication {
         self.imp().window.get().unwrap().upgrade().unwrap()
     }
 
-    fn setup_actions(&self) {
+    fn setup_gactions(&self) {
         // action! is a macro from gtk_macros
         // that creates a GSimpleAction with a callback.
         // clone! is a macro from glib-rs that allows
@@ -124,6 +124,14 @@ impl BookxApplication {
             "about",
             clone!(@weak self as app => move |_, _| {
                 app.show_about();
+            })
+        );
+
+        action!(
+            self,
+            "help",
+            clone!(@weak self as app => move |_, _| {
+                app.show_help();
             })
         );
 
@@ -178,6 +186,10 @@ impl BookxApplication {
         }
 
         about.show();
+    }
+
+    pub fn show_help(&self) {
+        gtk::show_uri(self.active_window().as_ref(), "help:bookx", 0);
     }
 
     pub fn run(&self) {
