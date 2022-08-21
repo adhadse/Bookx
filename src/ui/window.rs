@@ -1,10 +1,15 @@
+use crate::application::{Action, BookxApplication};
 use crate::config;
 use crate::deps::*;
 use crate::settings::{settings_manager, Key};
+use crate::ui::pages::BookxLibraryPage;
+
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use adw::subclass::application_window::AdwApplicationWindowImpl;
 use adw::subclass::prelude::*;
-use glib::{ParamSpec, Sender};
+use glib::{clone, subclass, Enum, ParamFlags, ParamSpec, ParamSpecEnum, Sender, ToValue};
 use gtk::prelude::*;
 use gtk::{
     subclass::prelude::{ApplicationWindowImpl, WindowImpl, WindowImplExt},
@@ -14,6 +19,33 @@ use gtk::{
     },
     CompositeTemplate,
 };
+use gtk_macros::*;
+use log::{debug, info};
+use once_cell::sync::Lazy;
+use once_cell::unsync::OnceCell;
+use strum_macros::*;
+// use crate::ui::BookxLibraryPage;
+
+#[derive(Display, Copy, Debug, Clone, EnumString, Eq, PartialEq, Enum)]
+#[repr(u32)]
+#[enum_type(name = "Bookxiew")]
+pub enum BookxView {
+    // managed by bookx_window_leaflet
+    Library,
+    Editor,
+}
+
+impl Default for BookxView {
+    fn default() -> Self {
+        BookxView::Library
+    }
+}
+
+pub enum WindowMode {
+    // managed by bookx_stack
+    InitialView, // when no folder is added
+    MainView,    // when folder is added/known
+}
 
 mod imp {
     use super::*;
@@ -39,11 +71,50 @@ mod imp {
         // TemplateChild<T> wrapper, where T is the
         // object type of the template child.
         #[template_child]
+        pub bookx_stack: TemplateChild<gtk::Stack>,
+        #[template_child]
+        pub bookx_toast_overlay: TemplateChild<adw::ToastOverlay>,
+
+        #[template_child]
+        pub initial_status_page: TemplateChild<adw::StatusPage>,
+        #[template_child]
+        pub add_folder_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub library_page: TemplateChild<BookxLibraryPage>,
+
+        #[template_child]
         pub headerbar: TemplateChild<adw::HeaderBar>,
         #[template_child]
         pub search_stack: TemplateChild<gtk::Stack>,
         #[template_child]
+        pub search_button: TemplateChild<gtk::ToggleButton>,
+        #[template_child]
+        pub search_bar: TemplateChild<gtk::SearchBar>,
+        #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
+
+        #[template_child]
+        pub back_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub book_read_button_revealer: TemplateChild<gtk::Revealer>,
+        #[template_child]
+        pub book_edit_button_revealer: TemplateChild<gtk::Revealer>,
+        #[template_child]
+        pub book_info_button_revealer: TemplateChild<gtk::Revealer>,
+
+        #[template_child]
+        pub appmenu_button: TemplateChild<gtk::MenuButton>,
+        #[template_child]
+        pub default_menu: TemplateChild<gio::MenuModel>,
+        #[template_child]
+        pub library_menu: TemplateChild<gio::MenuModel>,
+
+        #[template_child]
+        pub bookx_window_flap: TemplateChild<adw::Flap>,
+        #[template_child]
+        pub bookx_window_leaflet: TemplateChild<adw::Leaflet>,
+
+        pub view: RefCell<BookxView>,
     }
 
     #[glib::object_subclass]
@@ -68,73 +139,278 @@ mod imp {
     }
 
     impl ObjectImpl for BookxWindow {
-        fn constructed(&self, obj: &Self::Type) {
-            self.parent_constructed(obj);
+        fn properties() -> &'static [ParamSpec] {
+            static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
+                vec![ParamSpecEnum::new(
+                    "view",
+                    "View",
+                    "View",
+                    BookxView::static_type(),
+                    BookxView::default() as i32,
+                    ParamFlags::READWRITE,
+                )]
+            });
 
-            // Devel Profile
-            if config::PROFILE == "Devel" {
-                obj.add_css_class("devel");
+            PROPERTIES.as_ref()
+        }
+
+        fn property(&self, obj: &Self::Type, _id: usize, pspec: &ParamSpec) -> glib::Value {
+            match pspec.name() {
+                "view" => obj.view().to_value(),
+                _ => unimplemented!(),
             }
+        }
 
-            // Load latest window state
-            obj.load_window_size();
+        fn set_property(
+            &self,
+            obj: &Self::Type,
+            _id: usize,
+            value: &glib::Value,
+            pspec: &ParamSpec,
+        ) {
+            match pspec.name() {
+                "view" => obj.set_view(value.get().unwrap()),
+                _ => unimplemented!(),
+            }
         }
     }
 
+    // Implement Gtk.Widget for BookxWindow
     impl WidgetImpl for BookxWindow {}
-    impl WindowImpl for BookxWindow {
-        // Save window state on delete event
-        fn close_request(&self, window: &Self::Type) -> gtk::Inhibit {
-            if let Err(err) = window.save_window_size() {
-                log::warn!("Failed to save window state, {}", &err);
-            }
 
-            // Pass close request on to the parent
-            self.parent_close_request(window)
-        }
-    }
+    // Implement Gtk.Window for BookxWindow
+    impl WindowImpl for BookxWindow {}
 
+    // Implement Gtk.ApplicationWindow for BookxWindow
     impl ApplicationWindowImpl for BookxWindow {}
+
+    // Implement Adw.ApplicationWindow for BookxWindow
     impl AdwApplicationWindowImpl for BookxWindow {}
 }
 
+// Wrap imp::BookxWindow into a usable gtk-rs object
 glib::wrapper! {
     pub struct BookxWindow(ObjectSubclass<imp::BookxWindow>)
         @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow, adw::ApplicationWindow,
         @implements gio::ActionMap, gio::ActionGroup, gtk::Root;
 }
 
+// BookxWindow implementation itself
 #[gtk::template_callbacks]
 impl BookxWindow {
-    pub fn new<A: IsA<gtk::Application>>(app: &A) -> Self {
-        glib::Object::new(&[("application", app)]).expect("Failed to create BookxWindow")
+    pub fn new(sender: Sender<Action>, app: BookxApplication) -> Self {
+        // Create new GObject and downcast it into SwApplicationWindow
+        let window = glib::Object::new::<Self>(&[]).unwrap();
+        app.add_window(&window);
+
+        window.setup_widgets(sender.clone());
+        window.setup_signals(sender.clone());
+        // window.setup_gactions(sender);
+
+        // Library is the default page
+        window.set_view(BookxView::Library);
+
+        window
     }
 
-    fn save_window_size(&self) -> Result<(), glib::BoolError> {
-        let (width, height) = self.default_size();
+    pub fn setup_widgets(&self, sender: Sender<Action>) {
+        let imp = self.imp();
 
-        settings_manager::set_integer(Key::WindowWidth, width);
-        settings_manager::set_integer(Key::WindowHeight, height);
+        // Init pages
+        imp.library_page.init(sender.clone());
 
-        settings_manager::set_boolean(Key::IsMaximized, self.is_maximized());
+        // TODO: move these line of code to initial setup
+        self.imp()
+            .initial_status_page
+            .set_icon_name(Some(config::APP_ID));
+        self.switch_mode(WindowMode::InitialView);
 
-        Ok(())
-    }
+        // Add devel style class for development or beta builds
+        if config::PROFILE == "development" || config::PROFILE == "beta" {
+            self.add_css_class("devel");
+        }
 
-    fn load_window_size(&self) {
+        // Restore window geometry
         let width = settings_manager::integer(Key::WindowWidth);
         let height = settings_manager::integer(Key::WindowHeight);
-        let is_maximized = settings_manager::boolean(Key::IsMaximized);
 
         self.set_default_size(width, height);
+    }
 
-        if is_maximized {
-            self.maximize();
+    fn setup_signals(&self, _sender: Sender<Action>) {
+        let imp = self.imp();
+
+        // flap
+        imp.bookx_window_flap.get().connect_folded_notify(
+            clone!(@strong self as this => move |_| {
+                this.update_visible_view();
+            }),
+        );
+        imp.bookx_window_flap.get().connect_reveal_flap_notify(
+            clone!(@strong self as this => move |_| {
+                this.update_visible_view();
+            }),
+        );
+
+        // search_button
+        imp.search_button
+            .connect_toggled(clone!(@strong self as this => move |search_button| {
+                if search_button.is_active() {
+                    imp.search_stack.set_visible_child_name("search-bar");
+                    imp.search_bar.set_visible(true);
+                } else {
+                    imp.search_stack.set_visible_child_name("search-button");
+                    imp.search_bar.set_visible(false);
+                }
+            }));
+
+        // window gets closed
+        self.connect_close_request(move |window| {
+            debug!("Saving window geometry.");
+            let width = window.default_size().0;
+            let height = window.default_size().1;
+
+            settings_manager::set_integer(Key::WindowWidth, width);
+            settings_manager::set_integer(Key::WindowHeight, height);
+            glib::signal::Inhibit(false)
+        });
+    }
+
+    fn setup_gactions(&self, sender: Sender<Action>) {
+        let imp = self.imp();
+        let app = self.application().unwrap();
+
+        // win.go-back
+        action!(
+            self,
+            "go-back",
+            clone!(@weak self as this => move |_, _| {
+                this.go_back();
+            })
+        );
+
+        // win.add-folder
+        action!(
+            self,
+            "add-folder",
+            clone!(@weak self as this => move |_, _| {
+                this.set_view(BookxView::Library);
+            })
+        );
+
+        // win.add-file
+        action!(
+            self,
+            "add-file",
+            clone!(@weak self as this => move |_, _| {
+                this.set_view(BookxView::Library);
+            })
+        );
+
+        app.set_accels_for_action("win.add-folder", &["<primary><shift>f"]);
+        app.set_accels_for_action("win.add-folder", &["<primary>f"]);
+        app.set_accels_for_action("win.go-back", &["Escape"]);
+    }
+    pub fn view(&self) -> BookxView {
+        *self.imp().view.borrow()
+    }
+
+    pub fn set_view(&self, view: BookxView) {
+        *self.imp().view.borrow_mut() = view;
+
+        // Delay updating the view, otherwise it could invalidate widgets if it gets
+        // called during an allocation and cause glitches (eg. short flickering)
+        glib::idle_add_local(
+            clone!(@weak self as this => @default-return glib::Continue(false), move||{
+                this.update_view(); glib::Continue(false)
+            }),
+        );
+    }
+
+    fn update_view(&self) {
+        let imp = self.imp();
+        let view = *imp.view.borrow();
+        debug!("Set view to {:?}", view);
+
+        match view {
+            BookxView::Library => {
+                imp.bookx_window_leaflet
+                    .set_visible_child(&imp.library_page.get());
+                imp.appmenu_button
+                    .set_menu_model(Some(&imp.library_menu.get()));
+                imp.back_button.set_visible(false);
+                imp.search_stack.set_visible(true);
+                imp.book_read_button_revealer.set_reveal_child(false);
+                imp.book_edit_button_revealer.set_reveal_child(false);
+                imp.book_info_button_revealer.set_reveal_child(false);
+            }
+            BookxView::Editor => {
+                imp.bookx_window_leaflet
+                    .set_visible_child(&imp.library_page.get());
+                imp.appmenu_button
+                    .set_menu_model(Some(&imp.default_menu.get()));
+                imp.back_button.set_visible(true);
+                imp.search_stack.set_visible(true);
+                imp.book_read_button_revealer.set_reveal_child(false);
+                imp.book_edit_button_revealer.set_reveal_child(false);
+                imp.book_info_button_revealer.set_reveal_child(false);
+            }
         }
+    }
+
+    fn update_visible_view(&self) {
+        let imp = self.imp();
+
+        let leaflet_child = imp.bookx_window_leaflet.visible_child().unwrap();
+        let view = if leaflet_child == imp.library_page.get() {
+            BookxView::Library
+        } else {
+            panic!("Unknown leaflet child")
+        };
+
+        debug!("Update visible view to {:?}", view);
+        self.set_view(view);
+    }
+
+    pub fn switch_mode(&self, mode: WindowMode) {
+        let stack = self.imp().bookx_stack.get();
+        match mode {
+            WindowMode::InitialView => {
+                stack.set_visible_child_name("initial-view");
+                self.set_default_widget(Some(&self.imp().add_folder_button.get()));
+            }
+            WindowMode::MainView => {
+                stack.set_visible_child_name("main-view");
+            }
+        };
+    }
+
+    pub fn go_back(&self) {
+        debug!("Go back to previous view");
+        let imp = self.imp();
+        imp.bookx_window_leaflet
+            .navigate(adw::NavigationDirection::Back);
+
+        self.update_visible_view();
+    }
+
+    pub fn show_notification(&self, text: &str) {
+        let toast = adw::Toast::new(text);
+        self.imp().bookx_toast_overlay.add_toast(&toast);
     }
 
     #[template_callback]
     fn window_title(&self) -> String {
         config::NAME.to_string()
+    }
+}
+
+impl Default for BookxWindow {
+    fn default() -> Self {
+        BookxApplication::default()
+            .active_window()
+            .unwrap()
+            .downcast()
+            .unwrap()
     }
 }

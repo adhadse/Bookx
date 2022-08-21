@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="SubpageBookxMainPage" parent="AdwBin">
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="AdwHeaderBar" id="headerbar">
+            <!-- Back, Book Read, and Edit Button -->
+            <child>
+              <object class="GtkButton" id="back_button">
+                <property name="action_name">win.go-back</property>
+                <property name="icon_name">go-previous-symbolic</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkRevealer" id="book_read_button_revealer">
+                <property name="transition_type">crossfade</property>
+                <child>
+                  <object class="GtkToggleButton" id="book_read_button">
+                    <property name="icon_name">accessories-dictionary-symbolic</property>
+                    <property name="tooltip-text" translatable="yes">Read Book</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkRevealer" id="book_edit_button_revealer">
+                <property name="transition_type">crossfade</property>
+                <child>
+                  <object class="GtkToggleButton" id="book_edit_button">
+                    <property name="icon_name">document-edit-symbolic</property>
+                    <property name="tooltip-text" translatable="yes">Edit Book</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- Search bar, book info, and menu button -->
+            <!-- Application Menu Button -->
+            <child type="end">
+              <object class="GtkMenuButton" id="appmenu_button">
+                <property name="icon-name">open-menu-symbolic</property>
+                <property name="menu-model">default_menu</property>
+              </object>
+            </child>
+            <!-- Expandable Search bar -->
+            <child type="end">
+              <object class="GtkStack" id="search_stack">
+                <property name="transition_type">slide-right</property>
+                <property name="transition-duration">300</property>
+                <property name="visible-child-name">search-button</property> <!-- change this to search_bar-->
+                <property name="halign">start</property>
+                <child>
+                  <object class="GtkSearchBar" id="search_bar">
+                    <property name="name">search-bar</property>
+                    <property name="visible">false</property>           <!-- change this to true -->
+                    <property name="search_mode_enabled">true</property>
+                    <child>
+                      <object class="GtkSearchEntry" id="search_entry">
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkToggleButton" id="search_button">
+                    <property name="property">search-button</property>
+                    <property name="icon_name">edit-find-symbolic</property>
+                    <property name="halign">end</property>
+                    <property name="hexpand">false</property>
+                    <property name="tooltip-text" translatable="yes">Search</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <!-- Book Info reveal button -->
+            <child type="end">
+              <object class="GtkRevealer" id="book_info_button_revealer">
+                <property name="transition_type">crossfade</property>
+                <property name="reveal-child">true</property>
+                <child>
+                  <object class="GtkToggleButton" id="book_info_button">
+                    <property name="icon_name">info-symbolic</property>
+                    <property name="tooltip-text" translatable="yes">Book Info</property>
+                    <property name="active" bind-source="bookx_library_content_flap"
+                              bind-property="reveal-flap"
+                              bind-flags="bidirectional"/>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+
+        <!-- Main Page Begins -->
+        <child>
+          <object class="AdwFlap" id="bookx_window_flap">
+            <property name="reveal-flap">false</property>
+            <property name="flap-position">end</property>
+            <property name="swipe-to-open">false</property>
+            <property name="swipe-to-close">false</property>
+            <property name="transition-type">over</property>
+            <property name="vexpand">True</property>
+            <child>
+              <object class="AdwLeaflet" id="bookx_window_leaflet">
+                <property name="can_unfold">False</property>
+                <property name="hexpand">True</property>
+                  <!-- Library Page -->
+                <child>
+                  <object class="BookxLibraryPage" id="library_content_page"/>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>

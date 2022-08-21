@@ -33,6 +33,5 @@ fn main() {
 
     glib::set_application_name(config::NAME);
 
-    let app = BookxApplication::new();
-    let _ret = app.run();
+    BookxApplication::run();
 }

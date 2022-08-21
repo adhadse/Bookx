@@ -19,5 +19,8 @@
       <default>false</default>
       <summary>Window maximized state</summary>
     </key>
+    <key name="dark-mode" type="b">
+      <default>true</default>
+    </key>
   </schema>
 </schemalist>
