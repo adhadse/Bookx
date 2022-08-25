@@ -1,6 +1,23 @@
+// Bookx - window.rs
+// Copyright (C) 2022  Anurag Dhadse <hi@anuragdhadse.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 use crate::application::{Action, BookxApplication};
 use crate::config;
 use crate::deps::*;
+use crate::library::BookxLibraryStatus;
 use crate::settings::{settings_manager, Key};
 use crate::ui::pages::BookxLibraryPage;
 
@@ -10,21 +27,12 @@ use std::rc::Rc;
 use adw::subclass::application_window::AdwApplicationWindowImpl;
 use adw::subclass::prelude::*;
 use glib::{clone, subclass, Enum, ParamFlags, ParamSpec, ParamSpecEnum, Sender, ToValue};
-use gtk::prelude::*;
-use gtk::{
-    subclass::prelude::{ApplicationWindowImpl, WindowImpl, WindowImplExt},
-    subclass::widget::{
-        CompositeTemplate, CompositeTemplateCallbacks, TemplateChild, WidgetClassSubclassExt,
-        WidgetImpl,
-    },
-    CompositeTemplate,
-};
+use gtk::{gdk, gio, glib, prelude::*, subclass::prelude::*, CompositeTemplate};
 use gtk_macros::*;
 use log::{debug, info};
 use once_cell::sync::Lazy;
 use once_cell::unsync::OnceCell;
 use strum_macros::*;
-// use crate::ui::BookxLibraryPage;
 
 #[derive(Display, Copy, Debug, Clone, EnumString, Eq, PartialEq, Enum)]
 #[repr(u32)]
@@ -41,14 +49,21 @@ impl Default for BookxView {
     }
 }
 
-pub enum WindowMode {
-    // managed by bookx_stack
-    InitialView, // when no folder is added
-    MainView,    // when folder is added/known
-}
+// pub enum BookxMode {
+//     // managed by bookx_stack
+//     InitialView, // when no folder is added
+//     MainView,    // when folder is added/known
+// }
+//
+// impl Default for BookxMode {
+//     fn default() -> Self {
+//         BookxMode::InitialView
+//     }
+// }
 
 mod imp {
     use super::*;
+    use gtk::pango::Weight::Book;
 
     // To use composite templates, you need
     // to use derive macro. Derive macros generate
@@ -70,15 +85,15 @@ mod imp {
         // Template children are used with the
         // TemplateChild<T> wrapper, where T is the
         // object type of the template child.
-        #[template_child]
-        pub bookx_stack: TemplateChild<gtk::Stack>,
+        // #[template_child]
+        // pub bookx_stack: TemplateChild<gtk::Stack>,
         #[template_child]
         pub bookx_toast_overlay: TemplateChild<adw::ToastOverlay>,
 
-        #[template_child]
-        pub initial_status_page: TemplateChild<adw::StatusPage>,
-        #[template_child]
-        pub add_folder_button: TemplateChild<gtk::Button>,
+        // #[template_child]
+        // pub initial_status_page: TemplateChild<adw::StatusPage>,
+        // #[template_child]
+        // pub add_folder_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub library_page: TemplateChild<BookxLibraryPage>,
 
@@ -128,11 +143,9 @@ mod imp {
             // CompositeTemplate macro to bind all children at once.
             Self::bind_template(klass);
             Self::Type::bind_template_callbacks(klass);
-
-            // Set up actions here ...
         }
 
-        // You must call `Widget`'s `ini// Set up actionst_template()` within `instance_init()`.
+        // You must call `Widget`'s `init_template()` within `instance_init()`.
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
             obj.init_template();
         }
@@ -205,7 +218,7 @@ impl BookxWindow {
 
         window.setup_widgets(sender.clone());
         window.setup_signals(sender.clone());
-        // window.setup_gactions(sender);
+        window.setup_gactions(sender);
 
         // Library is the default page
         window.set_view(BookxView::Library);
@@ -214,16 +227,8 @@ impl BookxWindow {
     }
 
     pub fn setup_widgets(&self, sender: Sender<Action>) {
-        let imp = self.imp();
-
         // Init pages
-        imp.library_page.init(sender.clone());
-
-        // TODO: move these line of code to initial setup
-        self.imp()
-            .initial_status_page
-            .set_icon_name(Some(config::APP_ID));
-        self.switch_mode(WindowMode::InitialView);
+        self.imp().library_page.init(sender.clone());
 
         // Add devel style class for development or beta builds
         if config::PROFILE == "development" || config::PROFILE == "beta" {
@@ -264,6 +269,12 @@ impl BookxWindow {
                 }
             }));
 
+        // Update global headerbar according to the status of library
+        self.imp().library_page.imp().library.connect_notify_local(
+            Some("status"),
+            clone!(@weak self as this => move |_, _| this.update_headerbar_for_library()),
+        );
+
         // window gets closed
         self.connect_close_request(move |window| {
             debug!("Saving window geometry.");
@@ -294,7 +305,7 @@ impl BookxWindow {
             self,
             "add-folder",
             clone!(@weak self as this => move |_, _| {
-                this.set_view(BookxView::Library);
+                this.add_books_folder();
             })
         );
 
@@ -308,9 +319,10 @@ impl BookxWindow {
         );
 
         app.set_accels_for_action("win.add-folder", &["<primary><shift>f"]);
-        app.set_accels_for_action("win.add-folder", &["<primary>f"]);
+        app.set_accels_for_action("win.add-file", &["<primary>f"]);
         app.set_accels_for_action("win.go-back", &["Escape"]);
     }
+
     pub fn view(&self) -> BookxView {
         *self.imp().view.borrow()
     }
@@ -332,6 +344,11 @@ impl BookxWindow {
         let view = *imp.view.borrow();
         debug!("Set view to {:?}", view);
 
+        imp.search_stack.set_visible(true);
+        imp.book_read_button_revealer.set_reveal_child(false);
+        imp.book_edit_button_revealer.set_reveal_child(false);
+        imp.book_info_button_revealer.set_reveal_child(false);
+
         match view {
             BookxView::Library => {
                 imp.bookx_window_leaflet
@@ -339,10 +356,6 @@ impl BookxWindow {
                 imp.appmenu_button
                     .set_menu_model(Some(&imp.library_menu.get()));
                 imp.back_button.set_visible(false);
-                imp.search_stack.set_visible(true);
-                imp.book_read_button_revealer.set_reveal_child(false);
-                imp.book_edit_button_revealer.set_reveal_child(false);
-                imp.book_info_button_revealer.set_reveal_child(false);
             }
             BookxView::Editor => {
                 imp.bookx_window_leaflet
@@ -350,10 +363,37 @@ impl BookxWindow {
                 imp.appmenu_button
                     .set_menu_model(Some(&imp.default_menu.get()));
                 imp.back_button.set_visible(true);
+            }
+        }
+    }
+
+    fn update_headerbar_for_library(&self) {
+        let imp = self.imp();
+        debug!(
+            "Update headerbar for status {:?}",
+            imp.library_page.imp().library.status()
+        );
+
+        match imp.library_page.imp().library.status() {
+            BookxLibraryStatus::Loading => {
+                imp.headerbar.remove_css_class("flat");
+                imp.appmenu_button.set_visible(true);
                 imp.search_stack.set_visible(true);
-                imp.book_read_button_revealer.set_reveal_child(false);
-                imp.book_edit_button_revealer.set_reveal_child(false);
-                imp.book_info_button_revealer.set_reveal_child(false);
+            }
+            BookxLibraryStatus::Null => {
+                imp.headerbar.add_css_class("flat");
+                imp.appmenu_button.set_visible(false);
+                imp.search_stack.set_visible(false);
+            }
+            BookxLibraryStatus::Empty => {
+                imp.headerbar.add_css_class("flat");
+                imp.appmenu_button.set_visible(true);
+                imp.search_stack.set_visible(false);
+            }
+            BookxLibraryStatus::Content => {
+                imp.headerbar.remove_css_class("flat");
+                imp.appmenu_button.set_visible(true);
+                imp.search_stack.set_visible(true);
             }
         }
     }
@@ -372,18 +412,18 @@ impl BookxWindow {
         self.set_view(view);
     }
 
-    pub fn switch_mode(&self, mode: WindowMode) {
-        let stack = self.imp().bookx_stack.get();
-        match mode {
-            WindowMode::InitialView => {
-                stack.set_visible_child_name("initial-view");
-                self.set_default_widget(Some(&self.imp().add_folder_button.get()));
-            }
-            WindowMode::MainView => {
-                stack.set_visible_child_name("main-view");
-            }
-        };
-    }
+    // pub fn set_mode(&self, mode: BookxMode) {
+    //     let stack = self.imp().bookx_stack.get();
+    //     match mode {
+    //         BookxMode::InitialView => {
+    //             stack.set_visible_child_name("initial-view");
+    //             self.set_default_widget(Some(&self.imp().add_folder_button.get()));
+    //         }
+    //         BookxMode::MainView => {
+    //             stack.set_visible_child_name("main-view");
+    //         }
+    //     };
+    // }
 
     pub fn go_back(&self) {
         debug!("Go back to previous view");
@@ -397,6 +437,49 @@ impl BookxWindow {
     pub fn show_notification(&self, text: &str) {
         let toast = adw::Toast::new(text);
         self.imp().bookx_toast_overlay.add_toast(&toast);
+    }
+
+    // TODO: get_music_folder
+    pub fn add_books_folder(&self) {
+        let app = gio::Application::default()
+            .expect("Failed to retrieve application singleton")
+            .downcast::<gtk::Application>()
+            .unwrap();
+        let win = app
+            .active_window()
+            .unwrap()
+            .downcast::<gtk::Window>()
+            .unwrap();
+        let books_dir = self.get_books_folder();
+        let dialog = gtk::FileChooserNative::builder()
+            .accept_label("_Add Folder")
+            .cancel_label("_Cancel")
+            .modal(true)
+            .title("Open Folder")
+            .action(gtk::FileChooserAction::SelectFolder)
+            .select_multiple(false)
+            .transient_for(&win)
+            .build();
+
+        // TODO: add_books_folder
+        // consider only calling refresh_data() here and saving folder data
+        dialog.connect_response(
+            clone!(@strong dialog, @weak self as win => move |_, response| {
+                if response == gtk::ResponseType::Accept {
+                    let dir = dialog.current_folder();
+                    if dir != books_dir {
+                        settings_manager::set_string(Key::BooksDir,
+                            dialog.current_folder().unwrap().to_string());
+                    }
+                }
+            }),
+        );
+        dialog.show();
+    }
+
+    fn get_books_folder(&self) -> gio::File {
+        let books_dir_uri = settings_manager::string(Key::BooksDir);
+        return gio::File::for_uri(&books_dir_uri);
     }
 
     #[template_callback]

@@ -1,7 +1,22 @@
+// Bookx - application.rs
+// Copyright (C) 2022  Anurag Dhadse <hi@anuragdhadse.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 use crate::config;
 use crate::deps::*;
-// TODO: uncomment this
-// use crate::database::BookxLibrary;
+use crate::library::BookxLibrary;
 use crate::settings::{settings_manager, Key};
 use crate::ui::{BookxView, BookxWindow};
 
@@ -20,6 +35,9 @@ use adw::subclass::prelude::*;
 
 #[derive(Debug, Clone)]
 pub enum Action {
+    // BookxApplication.process_action() handles sending actions between
+    // different senders and receivers using send! macro
+    ShowNotification(&str),
     SettingsKeyChanged(Key),
 }
 
@@ -34,8 +52,7 @@ mod imp {
         pub receiver: RefCell<Option<Receiver<Action>>>,
 
         pub window: OnceCell<glib::WeakRef<BookxWindow>>,
-        // TODO: uncomment this
-        // pub library: BookxLibrary,
+        pub library: BookxLibrary,
         pub settings: gio::Settings,
     }
 
@@ -53,8 +70,7 @@ mod imp {
             let receiver = RefCell::new(Some(r));
 
             let window = OnceCell::new();
-            // TODO: uncomment this
-            // let library = BookxLibrary::new(sender.clone());
+            let library = BookxLibrary::new(sender.clone());
 
             let settings = settings_manager::settings();
 
@@ -62,7 +78,7 @@ mod imp {
                 sender,
                 receiver,
                 window,
-                // library,
+                library,
                 settings,
             }
         }
@@ -87,7 +103,7 @@ mod imp {
                     "library",
                     "Library",
                     "Library",
-                    // BookxLibrary::static_type(),
+                    BookxLibrary::static_type(),
                     glib::ParamFlags::READABLE,
                 )]
             });
@@ -108,6 +124,8 @@ mod imp {
         fn activate(&self, app: &Self::Type) {
             debug!("gio::Application -> activate()");
             let app = app.downcast_ref::<super::BookxApplication>().unwrap();
+            glib::set_application_name(config::NAME);
+            gtk::Window::set_default_icon_name(config::APP_ID);
 
             // If the window already exists,
             // present it instead creating a new one again
@@ -256,6 +274,7 @@ impl BookxApplication {
         let window = BookxWindow::default();
 
         match action {
+            Action::ShowNotification(&notification) => window.show_notification(&notification),
             Action::SettingsKeyChanged(key) => self.apply_settings_changes(key),
         }
         glib::Continue(true)
@@ -289,7 +308,7 @@ impl BookxApplication {
         // let about = adw::AboutWindow::builder()
         //     .application_icon("Bookx")
         //     .application_icon(config::APP_ID)
-        //     .license_type(gtk::License::Apache20)
+        //     .license_type(gtk::License::Gpl30)
         //     .website("https://bookx.anuragdhadse.com/")
         //     .issue_url("https://github.com/adhadse/Bookx/issues/")
         //     .version(config::VERSION)
@@ -311,7 +330,7 @@ impl BookxApplication {
             .authors(vec![String::from("Anurag Dhadse")])
             .artists(vec![String::from("Anurag Dhadse")])
             .copyright("© 2022 Anurag Dhadse")
-            .license_type(gtk::License::Apache20)
+            .license_type(gtk::License::Gpl30)
             .program_name("Bookx")
             .logo_icon_name(config::APP_ID)
             .version(config::VERSION)

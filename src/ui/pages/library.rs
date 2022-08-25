@@ -1,15 +1,32 @@
+// Bookx - library.rs
+// Copyright (C) 2022  Anurag Dhadse <hi@anuragdhadse.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 use crate::application::{Action, BookxApplication};
 use crate::config;
-// TODO: database section
+use crate::library::{BookxLibrary, BookxLibraryStatus};
 // TODO: BookxLibraryContentBox
-// use crate::database::{SwLibrary, SwLibraryStatus};
 // use crate::ui::BookxLibraryContentBox;
 
+// use crate::ui::preferences::
 use adw::subclass::prelude::*;
 use glib::{clone, subclass, Sender};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib, CompositeTemplate};
+use gtk_macros::*;
 use once_cell::unsync::OnceCell;
 
 mod imp {
@@ -19,14 +36,15 @@ mod imp {
     #[template(resource = "/com/anuragdhadse/Bookx/ui/library.ui")]
     pub struct BookxLibraryPage {
         #[template_child]
-        pub library_status_page: TemplateChild<adw::StatusPage>,
+        pub library_empty_status_page: TemplateChild<adw::StatusPage>,
+        #[template_child]
+        pub library_null_status_page: TemplateChild<adw::StatusPage>,
         #[template_child]
         pub library_stack: TemplateChild<gtk::Stack>,
         // TODO: uncomment this
         // #[template_child]
         // pub content_box: TemplateChild<BookxLibraryContentBox>,
-
-        // pub library: BookxLibrary,
+        pub library: BookxLibrary,
         pub sender: OnceCell<Sender<Action>>,
     }
 
@@ -37,7 +55,8 @@ mod imp {
         type Type = super::BookxLibraryPage;
 
         fn new() -> Self {
-            let library_status_page = TemplateChild::default();
+            let library_empty_status_page = TemplateChild::default();
+            let library_null_status_page = TemplateChild::default();
             let library_stack = TemplateChild::default();
             // TODO: uncomment this
             // let content_box = TemplateChild::default();
@@ -46,15 +65,16 @@ mod imp {
                 .unwrap()
                 .downcast::<BookxApplication>()
                 .unwrap();
-            // let library = app.library();
+            let library = app.library();
 
             let sender = OnceCell::default();
 
             Self {
-                library_status_page,
+                library_empty_status_page,
+                library_null_status_page,
                 library_stack,
                 // content_box,
-                // library,
+                library,
                 sender,
             }
         }
@@ -83,7 +103,7 @@ impl BookxLibraryPage {
         self.imp().sender.set(sender).unwrap();
 
         self.setup_widgets();
-        // self.setup_signals();
+        self.setup_signals();
     }
 
     // pub fn set_sorting(&self, sorting: BookxSorting, descending: bool) {
@@ -94,34 +114,33 @@ impl BookxLibraryPage {
         let imp = self.imp();
 
         // Setup empty status page
-        imp.library_status_page.set_icon_name(Some(config::APP_ID));
-
-        // TODO: this isn't supposed to be here
-        imp.library_stack.set_visible_child_name("empty");
+        imp.library_empty_status_page
+            .set_icon_name(Some(config::APP_ID));
+        imp.library_null_status_page
+            .set_icon_name(Some(config::APP_ID));
 
         // Library content box
         // imp.content_box.
         //     init(imp.library.model(), imp.sender.get().unwrap().clone());
 
-        // TODO: uncomment this
-        // self.update_stack_page();
+        self.update_stack_page();
     }
 
-    // fn setup_signal(&self) {
-    //     self.imp().library.connect_notify_local(
-    //         Some("status"),
-    //         clone!(@weak self as this => move |_, _|this.update_stack_page()),
-    //     )
-    // }
+    fn setup_signals(&self) {
+        self.imp().library.connect_notify_local(
+            Some("status"),
+            clone!(@weak self as this => move |_, _| this.update_stack_page()),
+        )
+    }
 
-    // fn update_stack_page(&self) {
-    //     let imp = self.imp();
-
-    //     match imp.library.status() {
-    //         BookxLibraryStatus::Loading => imp.library_stack.set_visible_child_nae("loading"),
-    //         BookxLibraryStatus::Empty => imp.library_stack.set_visible_child("empty"),
-    //         BookxLibraryStatus::Content => imp.library_stack.set_visible_child("content"),
-    //         _ => (),
-    //     }
-    // }
+    fn update_stack_page(&self) {
+        let imp = self.imp();
+        match imp.library.status() {
+            BookxLibraryStatus::Loading => imp.library_stack.set_visible_child("loading"),
+            BookxLibraryStatus::Empty => imp.library_stack.set_visible_child("empty"),
+            BookxLibraryStatus::Null => imp.library_stack.set_visible_child("null"),
+            BookxLibraryStatus::Content => imp.library_stack.set_visible_child("content"),
+            _ => (),
+        }
+    }
 }

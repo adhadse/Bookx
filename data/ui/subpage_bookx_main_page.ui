@@ -107,7 +107,7 @@
                 <property name="hexpand">True</property>
                   <!-- Library Page -->
                 <child>
-                  <object class="BookxLibraryPage" id="library_content_page"/>
+                  <object class="BookxLibraryPage" id="library_page"/>
                 </child>
               </object>
             </child>

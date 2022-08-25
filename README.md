@@ -1,8 +1,10 @@
-![Bookx_github_description](https://user-images.githubusercontent.com/56764399/183672053-09a598fe-d6ef-4cf4-8f75-b898012e00fe.png)
+![Bookx_github_description](data/screenshots/Bookx_github_description.png)
 
 # Bookx
 An MVP in progress:
 - [ ] An ebook reader with .epub support
+    - [ ] Context menu for each book (delete, rename book, info)
+    - [ ] On click switch the carousal to the book
 - [ ] Ebook editor for .epub files
 
 <div align="center">

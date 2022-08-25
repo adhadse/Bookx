@@ -22,5 +22,9 @@
     <key name="dark-mode" type="b">
       <default>true</default>
     </key>
+    <key name="books-dir" type="s">
+      <default>''</default>
+      <summary>Load books from folder</summary>
+    </key>
   </schema>
 </schemalist>

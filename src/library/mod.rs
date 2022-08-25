@@ -15,5 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod library;
+mod utils;
 
-pub use library::BookxLibraryPage;
+pub use library::{BookxLibrary, BookxLibraryStatus};

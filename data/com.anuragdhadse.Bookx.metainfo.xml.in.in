@@ -4,7 +4,7 @@
   <id>@APP_ID@</id>
   <metadata_license>CC0</metadata_license>
   <!-- Insert your license of choice here -->
-  <project_license>APACHE20</project_license>
+  <project_license>GPL30</project_license>
   <name>Bookx</name>
   <summary>A Modern, Open Source GTK4 ebook manager</summary>
   <description>

@@ -7,7 +7,6 @@
     <file compressed="true" preprocess="xml-stripblanks">ui/library.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/preferences.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/shortcuts.ui</file>
-    <file compressed="true" preprocess="xml-stripblanks">ui/subpage_bookx_initial_page.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/subpage_bookx_main_page.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/subpage_library_carousal_page.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/subpage_library_content_page.ui</file>
