@@ -61,7 +61,7 @@ fn load_files_from_folder_internal(
 
     // gio::FileEnumerator has no guaranteed order, so we should
     // rely on the basename being formatted in a way that gives us an
-    // implicit order; if anything, this will queue songs in the same
+    // implicit order; if anything, this will queue books in the same
     // order in which they appear in the directory when browsing its
     // contents
     files.sort_by(|a, b| cmp_two_files(Some(base), a, b));

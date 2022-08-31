@@ -19,14 +19,13 @@ use crate::config;
 use crate::library::{BookxLibrary, BookxLibraryStatus};
 // TODO: BookxLibraryContentBox
 // use crate::ui::BookxLibraryContentBox;
-
-// use crate::ui::preferences::
 use adw::subclass::prelude::*;
 use glib::{clone, subclass, Sender};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib, CompositeTemplate};
 use gtk_macros::*;
+use log::{debug, info};
 use once_cell::unsync::OnceCell;
 
 mod imp {
@@ -126,20 +125,25 @@ impl BookxLibraryPage {
         self.update_stack_page();
     }
 
+    // Update stack page whenever `status` get's updated
     fn setup_signals(&self) {
         self.imp().library.connect_notify_local(
             Some("status"),
             clone!(@weak self as this => move |_, _| this.update_stack_page()),
-        )
+        );
     }
 
     fn update_stack_page(&self) {
         let imp = self.imp();
+        info!(
+            "{}",
+            format!("Updating stack page to: {}", imp.library.status())
+        );
         match imp.library.status() {
-            BookxLibraryStatus::Loading => imp.library_stack.set_visible_child("loading"),
-            BookxLibraryStatus::Empty => imp.library_stack.set_visible_child("empty"),
-            BookxLibraryStatus::Null => imp.library_stack.set_visible_child("null"),
-            BookxLibraryStatus::Content => imp.library_stack.set_visible_child("content"),
+            BookxLibraryStatus::Loading => imp.library_stack.set_visible_child_name("loading"),
+            BookxLibraryStatus::Empty => imp.library_stack.set_visible_child_name("empty"),
+            BookxLibraryStatus::Null => imp.library_stack.set_visible_child_name("null"),
+            BookxLibraryStatus::Content => imp.library_stack.set_visible_child_name("content"),
             _ => (),
         }
     }

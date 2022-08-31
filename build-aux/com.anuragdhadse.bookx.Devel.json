@@ -9,6 +9,7 @@
     "command": "bookx",
     "finish-args": [
         "--socket=fallback-x11",
+        "--filesystem=xdg-run/gvfsd",
         "--socket=wayland",
         "--socket=session-bus",
         "--device=dri",

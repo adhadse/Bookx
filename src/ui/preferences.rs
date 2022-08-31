@@ -16,6 +16,7 @@
 
 use crate::settings::{settings_manager, Key};
 use adw::PreferencesWindow;
+use glib::clone;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk_macros::*;
@@ -29,12 +30,12 @@ pub struct BookxPreferencesWindow {
 impl BookxPreferencesWindow {
     pub fn new(window: &gtk::Window) -> Self {
         let builder = gtk::Builder::from_resource("/com/anuragdhadse/Bookx/ui/preferences.ui");
-        get_widget!(builder, PreferencesWindow, settings_window);
+        get_widget!(builder, PreferencesWindow, preferences_window);
 
-        settings_window.set_transient_for(Some(window));
+        preferences_window.set_transient_for(Some(window));
 
         let window = Self {
-            widget: settings_window,
+            widget: preferences_window,
             builder,
         };
 
@@ -52,12 +53,13 @@ impl BookxPreferencesWindow {
         get_widget!(self.builder, gtk::Widget, appearance_group);
         appearance_group.set_visible(!manager.system_supports_color_schemes());
 
-        get_widget!(self.builder, gtk::Widget, books_dir_btn);
-        books_dir_btn.connect_clicked(glib::clone!(
-            @strong books_dir_btn, @weak self as preferences => move |_, response| {
-
-            }
-        ))
+        // TODO: remove it if adding folder action works
+        // get_widget!(self.builder, gtk::Button, books_dir_btn);
+        // books_dir_btn.connect_clicked(
+        //     clone!(@strong books_dir_btn => move |_| {
+        //         win.add_books_folder();
+        //     })
+        // );
     }
 
     fn setup_signals(&self) {

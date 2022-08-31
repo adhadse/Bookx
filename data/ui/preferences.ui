@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <template class="BookxPreferencesPage" parent="AdwPreferencesWindow">
+  <object class="AdwPreferencesWindow" id="preferences_window">
     <property name="default-width">480</property>
     <property name="search-enabled">false</property>
     <property name="modal">true</property>
@@ -37,6 +37,7 @@
                 <property name="activatable_widget">books_dir_btn</property>
                 <child>
                   <object class="GtkButton" id="books_dir_btn">
+                    <property name="action-name">win.add-folder</property>
                     <property name="valign">center</property>
                   </object>
                 </child>
@@ -87,6 +88,6 @@
       </object>
 
     </child>
-  </template>
+  </object>
 </interface>
 

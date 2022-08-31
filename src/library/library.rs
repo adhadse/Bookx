@@ -16,7 +16,7 @@
 
 use crate::application::Action;
 use crate::library::utils;
-use crate::settings::settings_manager;
+use crate::settings::{settings_manager, Key};
 use crate::ui::BookxWindow;
 
 use std::cell::RefCell;
@@ -39,8 +39,8 @@ use strum_macros::*;
 pub enum BookxLibraryStatus {
     Loading,
     Content,
-    Empty,
-    Null,
+    Empty, // BooksDir is known, but no ebook found
+    Null,  // No BooksDir
 }
 
 impl Default for BookxLibraryStatus {
@@ -75,7 +75,7 @@ mod imp {
                     "Status",
                     "Status",
                     BookxLibraryStatus::static_type(),
-                    BookxLibraryStatus::default as i32,
+                    BookxLibraryStatus::default() as i32,
                     ParamFlags::READABLE,
                 )]
             });
@@ -97,10 +97,10 @@ glib::wrapper! {
 }
 
 impl BookxLibrary {
-    pub fn new(&self, sender: Sender<Action>) -> Self {
-        let library = glib::Object::new::<Self>[&[]].unwrap();
+    pub fn new(sender: Sender<Action>) -> Self {
+        let library = glib::Object::new::<Self>(&[]).unwrap();
         library.imp().sender.set(sender).unwrap();
-        self.refresh_data();
+
         library
     }
 
@@ -109,25 +109,41 @@ impl BookxLibrary {
     }
 
     fn set_status(&self, status: &BookxLibraryStatus) {
-        self.imp().status = status;
+        let imp = self.imp();
+        *imp.status.borrow_mut() = status.clone();
+        self.notify("status");
     }
 
-    // TODO: replace files with Key::BooksDir
     // previous signature: `files: &[gio::FIle]`
-    pub fn refresh_data(&self, files: &[gio::File]) {
-        if files.is_empty() {
+    pub fn refresh_data(&self) {
+        let books_dir = &settings_manager::string(Key::BooksDir);
+        debug!(
+            "{}",
+            format!("Books dir: {:?}", settings_manager::string(Key::BooksDir))
+        );
+
+        // if books_dir == ""
+        // TODO: uncomment this once we figure out
+        // BooksLibraryStatus::Empty
+        if books_dir.is_empty() {
+            self.set_status(&BookxLibraryStatus::Null);
+            return;
+        }
+
+        // check if folder itself contains any books
+        if books_dir.is_empty() {
             self.set_status(&BookxLibraryStatus::Empty);
-            send!(
-                self.sender,
-                Action::ShowNotification("Unable to access files")
-            );
+            let window = BookxWindow::default();
+            window.show_notification("Unable to access files");
             return;
         }
 
         self.set_status(&BookxLibraryStatus::Loading);
         let model = gio::ListStore::new(gio::File::static_type());
+        let files = [gio::File::for_uri(&books_dir)];
+        // gio::File::for_uri(&books_dir).
         for f in files {
-            model.append(f);
+            model.append(&f);
         }
 
         self.load_books(model.upcast_ref::<gio::ListModel>());
@@ -148,14 +164,14 @@ impl BookxLibrary {
                             if gio::content_type_is_mime_type(&content_type, "application/epub+zip")
                             {
                                 debug!("Adding file '{}' to the list", file.uri());
-                                self.imp().list.push(file);
+                                self.imp().list.to_owned().push(file);
                             }
                         }
                     }
                     gio::FileType::Directory => {
-                        debug!("Adding folder '{}' to the queue", file.uri());
+                        debug!("Adding folder '{}' to the list", file.uri());
                         let files = utils::load_files_from_folder(&file, true);
-                        self.imp().list.extend(files);
+                        self.imp().list.to_owned().extend(files);
                     }
                     _ => (),
                 }

@@ -18,7 +18,7 @@ use crate::config;
 use crate::deps::*;
 use crate::library::BookxLibrary;
 use crate::settings::{settings_manager, Key};
-use crate::ui::{BookxView, BookxWindow};
+use crate::ui::{BookxPreferencesWindow, BookxView, BookxWindow};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -37,7 +37,6 @@ use adw::subclass::prelude::*;
 pub enum Action {
     // BookxApplication.process_action() handles sending actions between
     // different senders and receivers using send! macro
-    ShowNotification(&str),
     SettingsKeyChanged(Key),
 }
 
@@ -197,8 +196,8 @@ impl BookxApplication {
 
         // Create new GObject and downcast it into BookxApplication
         let app = glib::Object::new::<BookxApplication>(&[
-            ("aplication-id", &Some(config::APP_ID)),
-            ("flag", &gio::ApplicationFlags::empty()),
+            ("application-id", &Some(config::APP_ID)),
+            ("flags", &gio::ApplicationFlags::empty()),
             ("resource-base-path", &Some("/com/anuragdhadse/Bookx")),
         ])
         .expect("Application initialization failed...");
@@ -233,6 +232,7 @@ impl BookxApplication {
         // Object alive, pass as @weak. Otherwise, pass
         // as @strong. Most of the time you will want
         // to use @weak.
+        let window = BookxWindow::default();
 
         action!(
             self,
@@ -250,20 +250,34 @@ impl BookxApplication {
             })
         );
 
+        // app.show-preferences
+        action!(
+            self,
+            "show-preferences",
+            clone!(@weak window => move |_, _| {
+                let settings_window = BookxPreferencesWindow::new(&window.upcast());
+                settings_window.show();
+            })
+        );
+
+        // app.quit
+        action!(
+            self,
+            "quit",
+            clone!(@weak window => move |_, _| {
+                window.close();
+            })
+        );
+
         // Sets up keyboard shortcuts
         self.set_accels_for_action("app.help", &["F1"]);
-        self.set_accels_for_action("app.quit", &["<Primary>Q"]);
-        self.set_accels_for_action("app.new-window", &["<Primary>N"]);
-        self.set_accels_for_action("win.open", &["<Primary>O"]);
-        // self.set_accels_for_action("win.print", &["<Primary>P"]);
-        self.set_accels_for_action("win.copy", &["<Primary>C"]);
-        self.set_accels_for_action("win.show-help-overlay", &["<Primary>question"]);
-        self.set_accels_for_action("win.toggle-fullscreen", &["F11"]);
-        self.set_accels_for_action("window.close", &["<Primary>W"]);
+        self.set_accels_for_action("app.show-preferences", &["<primary>comma"]);
+        self.set_accels_for_action("app.quit", &["<primary>w"]);
     }
 
-    // TODO: library(&self) -> Database::BookxLibrary
-    // pub fn library(&self) -> BookxLibrary {}
+    pub fn library(&self) -> BookxLibrary {
+        self.imp().library.clone()
+    }
 
     fn process_action(&self, action: Action) -> glib::Continue {
         let imp = self.imp();
@@ -274,7 +288,6 @@ impl BookxApplication {
         let window = BookxWindow::default();
 
         match action {
-            Action::ShowNotification(&notification) => window.show_notification(&notification),
             Action::SettingsKeyChanged(key) => self.apply_settings_changes(key),
         }
         glib::Continue(true)
@@ -301,7 +314,13 @@ impl BookxApplication {
     }
 
     // TODO -> refresh_data(): Retrieve books data
-    pub fn refresh_data(&self) {}
+    pub fn refresh_data(&self) {
+        let fut = clone!(@weak self as this => async move {
+            let imp = this.imp();
+            imp.library.refresh_data();
+        });
+        spawn!(fut);
+    }
 
     fn show_about(&self) {
         // Uncomment and delete the similar code when libadwaita 0.2 comes out of alpha release

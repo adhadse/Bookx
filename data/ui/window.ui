@@ -8,35 +8,135 @@
       <object class="AdwToastOverlay" id="bookx_toast_overlay">
         <property name="child">
 
-<!--          <object class="GtkStack" id="bookx_stack">-->
-<!--            <property name="transition-type">crossfade</property>-->
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="AdwHeaderBar" id="headerbar">
+                <!-- Back, Book Read, and Edit Button -->
+                <child>
+                  <object class="GtkButton" id="back_button">
+                    <property name="action_name">win.go-back</property>
+                    <property name="icon_name">go-previous-symbolic</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkRevealer" id="book_read_button_revealer">
+                    <property name="transition_type">crossfade</property>
+                    <child>
+                      <object class="GtkToggleButton" id="book_read_button">
+                        <property name="icon_name">accessories-dictionary-symbolic</property>
+                        <property name="tooltip-text" translatable="yes">Read Book</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkRevealer" id="book_edit_button_revealer">
+                    <property name="transition_type">crossfade</property>
+                    <child>
+                      <object class="GtkToggleButton" id="book_edit_button">
+                        <property name="icon_name">document-edit-symbolic</property>
+                        <property name="tooltip-text" translatable="yes">Edit Book</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
 
-<!--            &lt;!&ndash; Initial View (Status page) to add folders when library is empty &ndash;&gt;-->
-<!--            <child>-->
-<!--              <object class="GtkStackPage">-->
-<!--                <property name="name">initial-view</property>-->
-<!--                <property name="child">-->
-<!--                    <object class="SubpageBookxInitialPage"/>-->
-<!--                </property>-->
-<!--              </object>-->
-<!--            </child>-->
+                <!-- Search bar, book info, and menu button -->
+                <!-- Application Menu Button -->
+                <child type="end">
+                  <object class="GtkMenuButton" id="appmenu_button">
+                    <property name="icon-name">open-menu-symbolic</property>
+                    <property name="menu-model">default_menu</property>
+                  </object>
+                </child>
+                <!-- Expandable Search bar -->
+                <child type="end">
+                  <object class="GtkStack" id="search_stack">
+                    <property name="transition_type">slide-right</property>
+                    <property name="transition-duration">300</property>
+                    <property name="visible-child-name">search-button</property> <!-- change this to search_bar-->
+                    <property name="halign">start</property>
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">search-bar</property>
+                          <property name="child">
+                            <object class="GtkSearchBar" id="search_bar">
+                              <property name="visible">false</property>           <!-- change this to true -->
+                              <property name="search_mode_enabled">true</property>
+                              <child>
+                                <object class="GtkSearchEntry" id="search_entry">
+                                </object>
+                              </child>
+                            </object>
+                          </property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">search-button</property>
+                          <property name="child">
+                            <object class="GtkToggleButton" id="search_button">
+                              <property name="icon_name">edit-find-symbolic</property>
+                              <property name="halign">end</property>
+                              <property name="hexpand">false</property>
+                              <property name="tooltip-text" translatable="yes">Search</property>
+                            </object>
+                          </property>
+                        </object>
+                    </child>
+                  </object>
+                </child>
+                <!-- Book Info reveal button -->
+                <child type="end">
+                  <object class="GtkRevealer" id="book_info_button_revealer">
+                    <property name="transition_type">crossfade</property>
+                    <property name="reveal-child">true</property>
+                    <child>
+                      <object class="GtkToggleButton" id="book_info_button">
+                        <property name="icon_name">info-symbolic</property>
+                        <property name="tooltip-text" translatable="yes">Book Info</property>
+                        <!-- TODO: Bind this button with library's content flap to reveal book info -->
+                        <!-- <property name="active" bind-source="bookx_library_content_flap" -->
+                        <!--           bind-property="reveal-flap" -->
+                        <!--           bind-flags="bidirectional"/> -->
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
 
-<!--            &lt;!&ndash; Main View which intiates normal functionalities when library is not empty &ndash;&gt;-->
-<!--            <child>-->
-<!--              <object class="GtkStackPage">-->
-<!--                <property name="name">main-view</property>-->
-<!--                <child>-->
-                  <object class="SubpageBookxMainPage"/>
-<!--                </child>-->
-<!--              </object>-->
-<!--            </child>-->
-<!--          </object>-->
+            <!-- Main Page Begins -->
+            <child>
+              <object class="AdwFlap" id="bookx_window_flap">
+                <property name="reveal-flap">false</property>
+                <property name="flap-position">end</property>
+                <property name="swipe-to-open">false</property>
+                <property name="swipe-to-close">false</property>
+                <property name="transition-type">over</property>
+                <property name="vexpand">True</property>
+                <child>
+                  <object class="AdwLeaflet" id="bookx_window_leaflet">
+                    <property name="can_unfold">False</property>
+                    <property name="hexpand">True</property>
+                      <!-- Library Page -->
+                    <child>
+                      <object class="BookxLibraryPage" id="library_page"/>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+
 
         </property>
       </object>
     </property>
   </template>
 
+  <!-- Default Menu -->
   <menu id="default_menu">
     <section>
       <item>
@@ -54,4 +154,83 @@
     </section>
   </menu>
 
+  <!-- Menu for library page -->
+  <menu id="library_menu">
+    <section>
+      <submenu>
+        <attribute name="label" translatable="yes">_Sorting</attribute>
+        <!-- sortby  -->
+        <section>
+          <item>
+            <attribute name="label" translatable="yes">_Name</attribute>
+            <attribute name="action">win.view-sorting</attribute>
+            <attribute name="target">Name</attribute>
+          </item>
+          <item>
+            <attribute name="label" translatable="yes">_Author</attribute>
+            <attribute name="action">win.view-sorting</attribute>
+            <attribute name="target">Author</attribute>
+          </item>
+          <item>
+            <attribute name="label" translatable="yes">_Language</attribute>
+            <attribute name="action">win.view-sorting</attribute>
+            <attribute name="target">Language</attribute>
+          </item>
+          <item>
+            <attribute name="label" translatable="yes">_Publisher</attribute>
+            <attribute name="action">win.view-sorting</attribute>
+            <attribute name="target">Publisher</attribute>
+          </item>
+        </section>
+        <!-- and ordering -->
+        <section>
+          <item>
+            <attribute name="label" translatable="yes">_Ascending</attribute>
+            <attribute name="action">win.view-order</attribute>
+            <attribute name="target">Ascending</attribute>
+          </item>
+          <item>
+            <attribute name="label" translatable="yes">_Descending</attribute>
+            <attribute name="action">win.view-order</attribute>
+            <attribute name="target">Descending</attribute>
+          </item>
+        </section>
+      </submenu>
+      <submenu>
+        <attribute name="label" translatable="yes">_View</attribute>
+        <section>
+          <item>
+            <attribute name="label" translatable="yes">_Thumbnails</attribute>
+            <attribute name="action">win.view-thumbnails</attribute>
+            <attribute name="target">Thumbnails</attribute>
+          </item>
+          <item>
+            <attribute name="label" translatable="yes">_List</attribute>
+            <attribute name="action">win.view-list</attribute>
+            <attribute name="target">List</attribute>
+          </item>
+        </section>
+      </submenu>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Refresh</attribute>
+        <attribute name="action">win.refresh-data</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Preferences</attribute>
+        <attribute name="action">app.show-preferences</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
+        <attribute name="action">win.show-help-overlay</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_About Bookx</attribute>
+        <attribute name="action">app.about</attribute>
+      </item>
+    </section>
+  </menu>
 </interface>

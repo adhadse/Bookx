@@ -24,7 +24,9 @@
                         <property name="margin_start">12</property>
                         <property name="margin_end">12</property>
                         <child>
-                          <object class="SubpageBookxLibraryContentBox" id="content_box"/>
+                          <object class="GtkBox"></object>
+                          <!-- TODO: create Content box with flap -->
+                          <!-- <object class="SubpageBookxLibraryContentBox" id="content_box"/> -->
                         </child>
                       </object>
                     </child>
@@ -118,8 +120,8 @@
                     <object class="AdwStatusPage" id="library_null_status_page">
                       <property name="margin-start">12</property>
                       <property name="margin-end">12</property>
-                      <property name="title">Amberol</property>
-                      <property name="description" translatable="yes">Select a file or a folder, or drag files from your file manager to the application window to add books to the library</property>
+                      <property name="title">Bookx</property>
+                      <property name="description" translatable="yes">Select a file or a folder to add books to the library</property>
                       <property name="child">
                         <object class="GtkBox">
                           <property name="orientation">vertical</property>
@@ -156,84 +158,5 @@
       </object>
     </child>
   </template>
-
-  <!-- Menu for library page -->
-  <menu id="library_menu">
-    <section>
-      <submenu>
-        <attribute name="label" translatable="yes">_Sorting</attribute>
-        <section>
-          <item>
-            <attribute name="label" translatable="yes">_Name</attribute>
-            <attribute name="action">win.view-sorting</attribute>
-            <attribute name="target">Name</attribute>
-          </item>
-          <item>
-            <attribute name="label" translatable="yes">_Author</attribute>
-            <attribute name="action">win.view-sorting</attribute>
-            <attribute name="target">Author</attribute>
-          </item>
-          <item>
-            <attribute name="label" translatable="yes">_Language</attribute>
-            <attribute name="action">win.view-sorting</attribute>
-            <attribute name="target">Language</attribute>
-          </item>
-          <item>
-            <attribute name="label" translatable="yes">_Publisher</attribute>
-            <attribute name="action">win.view-sorting</attribute>
-            <attribute name="target">Publisher</attribute>
-          </item>
-        </section>
-        <section>
-          <item>
-            <attribute name="label" translatable="yes">_Ascending</attribute>
-            <attribute name="action">win.view-order</attribute>
-            <attribute name="target">Ascending</attribute>
-          </item>
-          <item>
-            <attribute name="label" translatable="yes">_Descending</attribute>
-            <attribute name="action">win.view-order</attribute>
-            <attribute name="target">Descending</attribute>
-          </item>
-        </section>
-      </submenu>
-      <submenu>
-        <attribute name="label" translatable="yes">_View</attribute>
-        <section>
-          <item>
-            <attribute name="label" translatable="yes">_Thumbnails</attribute>
-            <attribute name="action">win.view-thumbnails</attribute>
-            <attribute name="target">Thumbnails</attribute>
-          </item>
-          <item>
-            <attribute name="label" translatable="yes">_List</attribute>
-            <attribute name="action">win.view-list</attribute>
-            <attribute name="target">List</attribute>
-          </item>
-        </section>
-      </submenu>
-    </section>
-    <section>
-      <item>
-        <attribute name="label" translatable="yes">_Refresh</attribute>
-        <attribute name="action">win.refresh-data</attribute>
-      </item>
-    </section>
-    <section>
-      <item>
-        <attribute name="label" translatable="yes">_Preferences</attribute>
-        <attribute name="action">app.show-preferences</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
-        <attribute name="action">win.show-help-overlay</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">_About Bookx</attribute>
-        <attribute name="action">app.about</attribute>
-      </item>
-    </section>
-  </menu>
-
 </interface>
 
