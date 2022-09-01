@@ -284,7 +284,7 @@ impl BookxWindow {
     }
 
     fn setup_gactions(&self, sender: Sender<Action>) {
-        let imp = self.imp();
+        let _imp = self.imp();
         let app = self.application().unwrap();
 
         // win.go-back
@@ -448,13 +448,14 @@ impl BookxWindow {
         dialog.connect_response(
             clone!(@strong dialog, @strong self as this => move |_, response| {
                 if response == gtk::ResponseType::Accept {
-                    debug!("{}", format!("Input dir: {:?}", dialog.current_folder()));
-                    let dir = dialog.current_folder();
+                    let dir = dialog.file().unwrap().uri();
+                    debug!("{}", format!("Input dir: {:?}", dir));
                     let books_dir = this.get_books_folder();
-                    if dir != Some(books_dir) {
+                    if dialog.file() != Some(books_dir) {
                         settings_manager::set_string(
                             Key::BooksDir,
-                            dialog.current_folder().unwrap().to_string());
+                            dir.to_string());
+                        // TODO: make this call asynchronous so as to immediately update books_dir_btn
                         BookxApplication::default().refresh_data();
                     }
                 }
@@ -463,7 +464,7 @@ impl BookxWindow {
         dialog.show();
     }
 
-    fn get_books_folder(&self) -> gio::File {
+    pub fn get_books_folder(&self) -> gio::File {
         let books_dir_uri = settings_manager::string(Key::BooksDir);
         return gio::File::for_uri(&books_dir_uri);
     }

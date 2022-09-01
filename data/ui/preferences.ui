@@ -31,13 +31,25 @@
         <child>
           <object class="AdwPreferencesGroup">
             <property name="title" translatable="yes">Books Location</property>
+            <!-- Remove this property tag to remove `remove_books_dir_btn`-->
+            <property name="header-suffix">
+              <object class="GtkButton" id="remove_books_dir_btn">
+               <property name="child">
+                 <object class="AdwButtonContent">
+                   <property name="icon-name">list-remove-symbolic</property>
+                   <property name="label" translatable="yes">Remove Folder</property>
+                 </object>
+               </property>
+               <style>
+                 <class name="flat"/>
+               </style> </object>
+            </property>
             <child>
               <object class="AdwActionRow">
                 <property name="title" translatable="yes">Load books from folder</property>
                 <property name="activatable_widget">books_dir_btn</property>
                 <child>
                   <object class="GtkButton" id="books_dir_btn">
-                    <property name="action-name">win.add-folder</property>
                     <property name="valign">center</property>
                   </object>
                 </child>

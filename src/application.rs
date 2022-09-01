@@ -280,12 +280,12 @@ impl BookxApplication {
     }
 
     fn process_action(&self, action: Action) -> glib::Continue {
-        let imp = self.imp();
+        let _imp = self.imp();
         if self.active_window().is_none() {
             return glib::Continue(true);
         }
 
-        let window = BookxWindow::default();
+        let _window = BookxWindow::default();
 
         match action {
             Action::SettingsKeyChanged(key) => self.apply_settings_changes(key),

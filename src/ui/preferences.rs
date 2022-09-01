@@ -15,6 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::settings::{settings_manager, Key};
+use crate::ui::BookxWindow;
+use crate::BookxApplication;
 use adw::PreferencesWindow;
 use glib::clone;
 use gtk::glib;
@@ -49,17 +51,42 @@ impl BookxPreferencesWindow {
     }
 
     fn setup_widgets(&self) {
+        let bookx_win = BookxWindow::default();
+        let bookx_app = BookxApplication::default();
+
         let manager = adw::StyleManager::default();
         get_widget!(self.builder, gtk::Widget, appearance_group);
         appearance_group.set_visible(!manager.system_supports_color_schemes());
 
         // TODO: remove it if adding folder action works
-        // get_widget!(self.builder, gtk::Button, books_dir_btn);
-        // books_dir_btn.connect_clicked(
-        //     clone!(@strong books_dir_btn => move |_| {
-        //         win.add_books_folder();
-        //     })
-        // );
+        get_widget!(self.builder, gtk::Button, books_dir_btn);
+        books_dir_btn.set_label(
+            bookx_win
+                .get_books_folder()
+                .query_info(
+                    "standard::display-name",
+                    gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS,
+                    gio::Cancellable::NONE,
+                )
+                .unwrap()
+                .display_name()
+                .as_str(),
+        );
+        books_dir_btn.connect_clicked(clone!(@strong books_dir_btn => move |_| {
+            bookx_win.add_books_folder();
+            books_dir_btn.set_label(bookx_win.get_books_folder().query_info(
+                "standard::display-name",
+                gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS,
+                gio::Cancellable::NONE,
+            ).unwrap().display_name().as_str());
+        }));
+
+        // Remove this section to disable removing directories
+        get_widget!(self.builder, gtk::Button, remove_books_dir_btn);
+        remove_books_dir_btn.connect_clicked(clone!(@strong remove_books_dir_btn => move |_| {
+            settings_manager::set_string(Key::BooksDir, String::new());
+            bookx_app.refresh_data();
+        }));
     }
 
     fn setup_signals(&self) {
