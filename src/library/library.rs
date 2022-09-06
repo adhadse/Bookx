@@ -56,7 +56,6 @@ mod imp {
 
     #[derive(Debug, Default)]
     pub struct BookxLibrary {
-        pub list: Vec<gio::File>,
         pub sender: OnceCell<Sender<Action>>,
         pub status: RefCell<BookxLibraryStatus>,
     }
@@ -115,7 +114,7 @@ impl BookxLibrary {
     }
 
     // previous signature: `files: &[gio::FIle]`
-    pub fn refresh_data(&self) {
+    pub async fn refresh_data(&self) {
         let books_dir = &settings_manager::string(Key::BooksDir);
         debug!(
             "{}",
@@ -123,33 +122,25 @@ impl BookxLibrary {
         );
 
         // if books_dir == ""
-        // TODO: uncomment this once we figure out
-        // BooksLibraryStatus::Empty
         if books_dir.is_empty() {
             self.set_status(&BookxLibraryStatus::Null);
             return;
         }
 
-        // check if folder itself contains any books
-        if books_dir.is_empty() {
-            self.set_status(&BookxLibraryStatus::Empty);
-            let window = BookxWindow::default();
-            window.show_notification("Unable to access files");
-            return;
-        }
-
         self.set_status(&BookxLibraryStatus::Loading);
         let model = gio::ListStore::new(gio::File::static_type());
+        // update this list to have multiple `File` for each dir
+        // (if we want to support multiple dirs)
         let files = [gio::File::for_uri(&books_dir)];
-        // gio::File::for_uri(&books_dir).
         for f in files {
             model.append(&f);
         }
-
-        self.load_books(model.upcast_ref::<gio::ListModel>());
+        self.add_books_to_list(model.upcast_ref::<gio::ListModel>());
     }
 
-    fn load_books(&self, model: &gio::ListModel) {
+    fn add_books_to_list(&self, model: &gio::ListModel) {
+        let mut list: Vec<gio::File> = vec![];
+
         for pos in 0..model.n_items() {
             let file = model.item(pos).unwrap().downcast::<gio::File>().unwrap();
 
@@ -164,20 +155,28 @@ impl BookxLibrary {
                             if gio::content_type_is_mime_type(&content_type, "application/epub+zip")
                             {
                                 debug!("Adding file '{}' to the list", file.uri());
-                                self.imp().list.to_owned().push(file);
+                                list.push(file);
                             }
                         }
                     }
                     gio::FileType::Directory => {
                         debug!("Adding folder '{}' to the list", file.uri());
                         let files = utils::load_files_from_folder(&file, true);
-                        self.imp().list.to_owned().extend(files);
+                        list.extend(files);
                     }
                     _ => (),
                 }
             }
         }
-        // TODO: do something with this list
-        self.set_status(&BookxLibraryStatus::Content);
+
+        if !list.is_empty() {
+            self.set_status(&BookxLibraryStatus::Content);
+            // TODO: do something with this list (asynchronously)
+        } else {
+            self.set_status(&BookxLibraryStatus::Empty);
+            let window = BookxWindow::default();
+            window.show_notification("Could not find any books in the current directory");
+            return;
+        }
     }
 }

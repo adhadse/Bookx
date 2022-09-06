@@ -313,11 +313,10 @@ impl BookxApplication {
         }
     }
 
-    // TODO -> refresh_data(): Retrieve books data
     pub fn refresh_data(&self) {
         let fut = clone!(@weak self as this => async move {
             let imp = this.imp();
-            imp.library.refresh_data();
+            imp.library.refresh_data().await;
         });
         spawn!(fut);
     }

@@ -27,7 +27,7 @@ use std::rc::Rc;
 use adw::subclass::application_window::AdwApplicationWindowImpl;
 use adw::subclass::prelude::*;
 use glib::{clone, subclass, Enum, ParamFlags, ParamSpec, ParamSpecEnum, Sender, ToValue};
-use gtk::{gdk, gio, glib, prelude::*, subclass::prelude::*, CompositeTemplate};
+use gtk::{gdk, gio, glib, prelude::*, subclass::prelude::*, CompositeTemplate, Widget};
 use gtk_macros::*;
 use log::{debug, info};
 use once_cell::sync::Lazy;
@@ -252,16 +252,13 @@ impl BookxWindow {
         );
 
         // search_button
+        // TODO: fix search button expantion
         imp.search_button
             .connect_toggled(clone!(@strong self as this => move |search_button| {
                 if search_button.is_active() {
                     this.imp().search_stack.set_visible_child_name("search-bar");
-                    this.imp().search_bar.set_visible(true);
-                    debug!("Setting search bar active");
                 } else {
                     this.imp().search_stack.set_visible_child_name("search-button");
-                    this.imp().search_bar.set_visible(false);
-                    debug!("Disabling search bar");
                 }
             }));
 
@@ -431,7 +428,6 @@ impl BookxWindow {
         self.imp().bookx_toast_overlay.add_toast(&toast);
     }
 
-    // TODO: Can we try to just get the BookxWindow::default() here ?
     pub fn add_books_folder(&self) {
         let win = BookxWindow::default();
         let dialog = gtk::FileChooserNative::builder()
@@ -455,7 +451,6 @@ impl BookxWindow {
                         settings_manager::set_string(
                             Key::BooksDir,
                             dir.to_string());
-                        // TODO: make this call asynchronous so as to immediately update books_dir_btn
                         BookxApplication::default().refresh_data();
                     }
                 }

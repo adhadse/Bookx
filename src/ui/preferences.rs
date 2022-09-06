@@ -22,6 +22,7 @@ use glib::clone;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk_macros::*;
+use log::debug;
 
 pub struct BookxPreferencesWindow {
     pub widget: PreferencesWindow,
@@ -33,7 +34,6 @@ impl BookxPreferencesWindow {
     pub fn new(window: &gtk::Window) -> Self {
         let builder = gtk::Builder::from_resource("/com/anuragdhadse/Bookx/ui/preferences.ui");
         get_widget!(builder, PreferencesWindow, preferences_window);
-
         preferences_window.set_transient_for(Some(window));
 
         let window = Self {
@@ -73,15 +73,15 @@ impl BookxPreferencesWindow {
                 .as_str(),
         );
         books_dir_btn.connect_clicked(clone!(@strong books_dir_btn => move |_| {
-            bookx_win.add_books_folder();
-            books_dir_btn.set_label(bookx_win.get_books_folder().query_info(
-                "standard::display-name",
-                gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS,
-                gio::Cancellable::NONE,
-            ).unwrap().display_name().as_str());
+                bookx_win.add_books_folder();
+                books_dir_btn.set_label(bookx_win.get_books_folder().query_info(
+                    "standard::display-name",
+                    gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS,
+                    gio::Cancellable::NONE,
+                ).unwrap().display_name().as_str());
         }));
 
-        // Remove this section to disable removing directories
+        // Remove this section to disable removing directory
         get_widget!(self.builder, gtk::Button, remove_books_dir_btn);
         remove_books_dir_btn.connect_clicked(clone!(@strong remove_books_dir_btn => move |_| {
             settings_manager::set_string(Key::BooksDir, String::new());
@@ -92,5 +92,35 @@ impl BookxPreferencesWindow {
     fn setup_signals(&self) {
         get_widget!(self.builder, gtk::Switch, dark_mode_button);
         settings_manager::bind_property(Key::DarkMode, &dark_mode_button, "active");
+    }
+
+    fn pick_books_folder(&self) {
+        let win = BookxWindow::default();
+        let dialog = gtk::FileChooserNative::builder()
+            .accept_label("_Add Folder")
+            .cancel_label("_Cancel")
+            .modal(true)
+            .title("Open Folder")
+            .action(gtk::FileChooserAction::SelectFolder)
+            .select_multiple(false)
+            .transient_for(&win)
+            .build();
+
+        // calls library::refresh_data() and saves folder to settings
+        dialog.connect_response(
+            clone!(@strong dialog, @strong self as this => move |_, response| {
+                if response == gtk::ResponseType::Accept {
+                    let dir = dialog.file().unwrap().uri();
+                    debug!("{}", format!("Input dir: {:?}", dir));
+                    let books_dir = win.get_books_folder();
+                    if dialog.file() != Some(books_dir) {
+                        settings_manager::set_string(
+                            Key::BooksDir,
+                            dir.to_string());
+                    }
+                }
+            }),
+        );
+        dialog.show();
     }
 }
