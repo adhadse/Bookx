@@ -1,5 +1,5 @@
 // Bookx - window.rs
-// Copyright (C) 2022  Anurag Dhadse <hi@anuragdhadse.com>
+// Copyright (C) 2022  Anurag Dhadse <hello@adhadse.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -80,7 +80,7 @@ mod imp {
     // we'd need to have a `new()` function in the
     // `impl ObjectSubclass for $TYPE` section.
     #[derive(Default, Debug, CompositeTemplate)]
-    #[template(resource = "/com/anuragdhadse/Bookx/ui/window.ui")]
+    #[template(resource = "/com/adhadse/Bookx/ui/window.ui")]
     pub struct BookxWindow {
         // Template children are used with the
         // TemplateChild<T> wrapper, where T is the

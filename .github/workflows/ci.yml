@@ -33,6 +33,6 @@ jobs:
     - uses: bilelmoussaoui/flatpak-github-actions/flatpak-builder@v4
       with:
         bundle: bookx.flatpak
-        manifest-path: build-aux/com.anuragdhadse.Bookx.Devel.json
+        manifest-path: build-aux/com.adhadse.Bookx.Devel.json
         run-tests: true
         cache-key: flatpak-builder-${{ github.sha }}

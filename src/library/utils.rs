@@ -1,5 +1,5 @@
 // Bookx - utils.rs
-// Copyright (C) 2022  Anurag Dhadse <hi@anuragdhadse.com>
+// Copyright (C) 2022  Anurag Dhadse <hello@adhadse.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,8 +17,20 @@
 use core::cmp::Ordering;
 use std::path::PathBuf;
 
+use enum_map::{enum_map, Enum, EnumArray, EnumMap};
 use gtk::{gdk, gio, glib, prelude::*};
 use log::{debug, warn};
+
+#[derive(Debug, Enum)]
+pub enum EBook {
+    Epub,
+}
+
+pub fn get_ebook_mime(ebook: EBook) -> String {
+    match ebook {
+        EBook::Epub => String::from("application/epub+zip"),
+    }
+}
 
 pub fn load_files_from_folder(folder: &gio::File, recursive: bool) -> Vec<gio::File> {
     use std::time::Instant;

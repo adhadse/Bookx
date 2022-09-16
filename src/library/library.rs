@@ -1,5 +1,5 @@
 // Bookx - library.rs
-// Copyright (C) 2022  Anurag Dhadse <hi@anuragdhadse.com>
+// Copyright (C) 2022  Anurag Dhadse <hello@adhadse.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 use crate::application::Action;
 use crate::library::utils;
+use crate::library::utils::*;
 use crate::settings::{settings_manager, Key};
 use crate::ui::BookxWindow;
 
@@ -152,8 +153,10 @@ impl BookxLibrary {
                 match info.file_type() {
                     gio::FileType::Regular => {
                         if let Some(content_type) = info.content_type() {
-                            if gio::content_type_is_mime_type(&content_type, "application/epub+zip")
-                            {
+                            if gio::content_type_is_mime_type(
+                                &content_type,
+                                &get_ebook_mime(EBook::Epub),
+                            ) {
                                 debug!("Adding file '{}' to the list", file.uri());
                                 list.push(file);
                             }

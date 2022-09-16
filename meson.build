@@ -12,8 +12,8 @@ gnome = import('gnome')
 prefix = get_option('prefix')
 
 name = 'Bookx'
-base_id = 'com.anuragdhadse.Bookx'
-app_id = 'com.anuragdhadse.Bookx'
+base_id = 'com.adhadse.Bookx'
+app_id = 'com.adhadse.Bookx'
 pkgname = meson.project_name()
 datadir = prefix / get_option('datadir')
 iconsdir = datadir / 'icons'

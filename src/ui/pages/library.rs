@@ -1,5 +1,5 @@
 // Bookx - library.rs
-// Copyright (C) 2022  Anurag Dhadse <hi@anuragdhadse.com>
+// Copyright (C) 2022  Anurag Dhadse <hello@adhadse.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ mod imp {
     use super::*;
 
     #[derive(Debug, CompositeTemplate)]
-    #[template(resource = "/com/anuragdhadse/Bookx/ui/library.ui")]
+    #[template(resource = "/com/adhadse/Bookx/ui/library.ui")]
     pub struct BookxLibraryPage {
         #[template_child]
         pub library_empty_status_page: TemplateChild<adw::StatusPage>,

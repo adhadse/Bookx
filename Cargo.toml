@@ -1,7 +1,7 @@
 [package]
 name = "bookx"
 version = "0.1.0"
-authors = ["Anurag Dhadse <hi@anuragdhadse.com>"]
+authors = ["Anurag Dhadse <hello@adhadse.com>"]
 edition = "2021"
 
 [dependencies]
@@ -31,3 +31,13 @@ version = "0.1.1"
 [dependencies.gettext-rs]
 version = "0.7.0"
 features = ["gettext-system"]
+
+[dependencies.diesel]
+package = "diesel"
+version = "1.4"
+features = ["sqlite", "r2d2", "chrono"]
+
+[dependencies.diesel_migrations]
+package = "diesel_migrations"
+version = "1.4"
+features = ["sqlite"]

@@ -1,5 +1,5 @@
 // Bookx - application.rs
-// Copyright (C) 2022  Anurag Dhadse <hi@anuragdhadse.com>
+// Copyright (C) 2022  Anurag Dhadse <hello@adhadse.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -85,17 +85,6 @@ mod imp {
 
     // Overrides GObject vfuncs
     impl ObjectImpl for BookxApplication {
-        // fn constructed(&self, obj: &Self::Type) {
-        //     self.parent_constructed(obj);
-
-        // Force dark theme
-        //     obj.style_manager()
-        //         .set_color_scheme(adw::ColorScheme::PreferDark);
-
-        // Set up the actions
-        //     obj.setup_gactions();
-        // }
-
         fn properties() -> &'static [ParamSpec] {
             static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
                 vec![ParamSpecObject::new(
@@ -198,7 +187,7 @@ impl BookxApplication {
         let app = glib::Object::new::<BookxApplication>(&[
             ("application-id", &Some(config::APP_ID)),
             ("flags", &gio::ApplicationFlags::empty()),
-            ("resource-base-path", &Some("/com/anuragdhadse/Bookx")),
+            ("resource-base-path", &Some("/com/adhadse/Bookx")),
         ])
         .expect("Application initialization failed...");
 
@@ -327,7 +316,7 @@ impl BookxApplication {
         //     .application_icon("Bookx")
         //     .application_icon(config::APP_ID)
         //     .license_type(gtk::License::Gpl30)
-        //     .website("https://bookx.anuragdhadse.com/")
+        //     .website("https://bookx.adhadse.com/")
         //     .issue_url("https://github.com/adhadse/Bookx/issues/")
         //     .version(config::VERSION)
         //     .translator_credits(String::from("translator-credits"))

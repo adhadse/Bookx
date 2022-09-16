@@ -1,4 +1,4 @@
-// Bookx - mod.rs
+// Bookx - schema.rs
 // Copyright (C) 2022  Anurag Dhadse <hello@adhadse.com>
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod library;
+// table! {
+//     book (id) {
+//         id -> Integer,
 
-pub use library::BookxLibraryPage;
+//     }
+// }

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Anurag Dhadse 2022 <hi@anuragdhadse.com> -->
+<!-- Anurag Dhadse 2022 <hello@adhadse.com> -->
 <component type="desktop-application">
   <id>@APP_ID@</id>
   <metadata_license>CC0</metadata_license>
@@ -31,7 +31,7 @@
      <kudo>HiDpiIcon</kudo>
   </kudos>
   <developer_name>Anurag Dhadse</developer_name>
-  <update_contact>hi@anuragdhadse.com</update_contact>
+  <update_contact>hello@adhadse.com</update_contact>
   <translation type="gettext">@PKGNAME@</translation>
   <launchable type="desktop-id">@APP_ID@.desktop</launchable>
 </component>

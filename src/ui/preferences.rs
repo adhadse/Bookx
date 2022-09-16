@@ -1,5 +1,5 @@
 // Bookx - preferences.rs
-// Copyright (C) 2022  Anurag Dhadse <hi@anuragdhadse.com>
+// Copyright (C) 2022  Anurag Dhadse <hello@adhadse.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ pub struct BookxPreferencesWindow {
 
 impl BookxPreferencesWindow {
     pub fn new(window: &gtk::Window) -> Self {
-        let builder = gtk::Builder::from_resource("/com/anuragdhadse/Bookx/ui/preferences.ui");
+        let builder = gtk::Builder::from_resource("/com/adhadse/Bookx/ui/preferences.ui");
         get_widget!(builder, PreferencesWindow, preferences_window);
         preferences_window.set_transient_for(Some(window));
 
