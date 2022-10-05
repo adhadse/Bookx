@@ -19,30 +19,8 @@
                     <property name="icon_name">go-previous-symbolic</property>
                   </object>
                 </child>
-                <child>
-                  <object class="GtkRevealer" id="book_read_button_revealer">
-                    <property name="transition_type">crossfade</property>
-                    <child>
-                      <object class="GtkToggleButton" id="book_read_button">
-                        <property name="icon_name">accessories-dictionary-symbolic</property>
-                        <property name="tooltip-text" translatable="yes">Read Book</property>
-                      </object>
-                    </child>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkRevealer" id="book_edit_button_revealer">
-                    <property name="transition_type">crossfade</property>
-                    <child>
-                      <object class="GtkToggleButton" id="book_edit_button">
-                        <property name="icon_name">document-edit-symbolic</property>
-                        <property name="tooltip-text" translatable="yes">Edit Book</property>
-                      </object>
-                    </child>
-                  </object>
-                </child>
 
-                <!-- Search bar, book info, and menu button -->
+                <!-- Search bar and menu button -->
                 <!-- Application Menu Button -->
                 <child type="end">
                   <object class="GtkMenuButton" id="appmenu_button">
@@ -75,23 +53,6 @@
                         <property name="halign">end</property>
                         <property name="hexpand">false</property>
                         <property name="tooltip-text" translatable="yes">Search</property>
-                      </object>
-                    </child>
-                  </object>
-                </child>
-                <!-- Book Info reveal button -->
-                <child type="end">
-                  <object class="GtkRevealer" id="book_info_button_revealer">
-                    <property name="transition_type">crossfade</property>
-                    <property name="reveal-child">true</property>
-                    <child>
-                      <object class="GtkToggleButton" id="book_info_button">
-                        <property name="icon_name">info-symbolic</property>
-                        <property name="tooltip-text" translatable="yes">Book Info</property>
-                        <!-- TODO: Bind this button with library's content flap to reveal book info -->
-                        <!-- <property name="active" bind-source="bookx_library_content_flap" -->
-                        <!--           bind-property="reveal-flap" -->
-                        <!--           bind-flags="bidirectional"/> -->
                       </object>
                     </child>
                   </object>

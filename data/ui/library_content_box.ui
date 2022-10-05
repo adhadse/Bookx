@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <template class="SubpageBookxLibraryContentPage" parent="AdwBin">
+  <template class="BookxLibraryContentBox" parent="AdwBin">
     <child>
-      <object class="GtkScrolledWindow" id="scrolledwindow">
+      <object class="GtkScrolledWindow">
         <property name="hscrollbar_policy">never</property>
         <child>
           <object class="GtkViewport">
@@ -21,13 +21,13 @@
                     <property name="orientation">vertical</property>
                     <property name="spacing">12</property>
                     <child>
-                      <object class="SubpageBookxLibraryCarousel" id="carousel"/>
+                      <object class="BookxLibraryCarousel" id="library_carousel"/>
                     </child>
                     <child>
-                      <object class="AdwFlap" id="bookx_library_content_flap">
+                      <object class="AdwFlap" id="book_details_flap">
                         <property name="reveal-flap">false</property>
                         <property name="flap-position">end</property>
-                        <property name="swipe-to-open">true</property>
+                        <property name="swipe-to-open">false</property>
                         <property name="swipe-to-close">true</property>
                         <property name="transition-type">over</property>
                         <property name="fold-policy">always</property>
@@ -38,7 +38,7 @@
                           </object>
                         </property>
                         <property name="flap">
-                          <object class="GtkLabel" id="info_flap">
+                          <object class="GtkLabel">
                             <property name="label" translatable="yes">Flap</property>
                             <style><class name="title-header"/></style>
                             <style><class name="background"/></style>

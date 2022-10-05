@@ -15,8 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::application::Action;
-use crate::library::utils;
-use crate::library::utils::*;
+use crate::library::utils::{self, *};
+// use crate::library::utils::*;
 use crate::settings::{settings_manager, Key};
 use crate::ui::BookxWindow;
 
@@ -25,10 +25,9 @@ use std::cell::RefCell;
 use glib::{
     clone, Enum, ObjectExt, ParamFlags, ParamSpec, ParamSpecEnum, ParamSpecObject, Sender, ToValue,
 };
+use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::{gdk_pixbuf, glib};
-use gtk_macros::*;
 use log::{debug, error, info};
 use once_cell::sync::Lazy;
 use once_cell::unsync::OnceCell;

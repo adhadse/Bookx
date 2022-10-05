@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <template class="SubpageBookxLibraryCarousel" parent="AdwBin">
+  <template class="BookxLibraryCarousel" parent="AdwBin">
     <property name="child">
       <object class="GtkBox">
         <property name="orientation">vertical</property>

@@ -22,7 +22,7 @@ mod settings;
 mod ui;
 
 use application::BookxApplication;
-use gettextrs::*;
+use gettextrs;
 
 mod deps {
     pub use gtk::{gdk, gdk_pixbuf, gio, glib, graphene};
@@ -34,9 +34,10 @@ fn main() {
     pretty_env_logger::init();
 
     // Prepare i18n
-    setlocale(LocaleCategory::LcAll, "");
-    bindtextdomain(config::PKGNAME, config::LOCALEDIR).expect("Unable to bind the text domain");
-    textdomain(config::PKGNAME).expect("Unable to switch to the text domain");
+    gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, "");
+    gettextrs::bindtextdomain(config::PKGNAME, config::LOCALEDIR)
+        .expect("Unable to bind the text domain");
+    gettextrs::textdomain(config::PKGNAME).expect("Unable to switch to the text domain");
 
     // Load app resources
     let path = &format!(

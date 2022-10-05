@@ -14,23 +14,7 @@
               <object class="GtkBox">
                 <property name="orientation">vertical</property>
                 <child>
-                  <object class="GtkScrolledWindow" id="scrolledwindow">
-                    <property name="vexpand">True</property>
-                    <child>
-                      <object class="AdwClamp">
-                        <property name="maximum_size">1600</property>
-                        <property name="margin_top">12</property>
-                        <property name="margin_bottom">12</property>
-                        <property name="margin_start">12</property>
-                        <property name="margin_end">12</property>
-                        <child>
-                          <object class="GtkBox"></object>
-                          <!-- TODO: create Content box with flap -->
-                          <!-- <object class="SubpageBookxLibraryContentBox" id="content_box"/> -->
-                        </child>
-                      </object>
-                    </child>
-                  </object>
+                  <!-- <object class="BookxLibraryContentBox"/> -->
                 </child>
               </object>
             </property>
