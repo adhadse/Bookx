@@ -19,7 +19,7 @@ use crate::config;
 use crate::deps::*;
 use crate::library::BookxLibraryStatus;
 use crate::settings::{settings_manager, Key};
-use crate::ui::pages::BookxLibraryPage;
+use crate::ui::library::BookxLibraryPage;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -27,7 +27,7 @@ use std::rc::Rc;
 use adw::subclass::application_window::AdwApplicationWindowImpl;
 use adw::subclass::prelude::*;
 use glib::{clone, subclass, Enum, ParamFlags, ParamSpec, ParamSpecEnum, Sender, ToValue};
-use gtk::{gdk, gio, glib, prelude::*, subclass::prelude::*, CompositeTemplate, Widget};
+use gtk::{gdk, gio, glib, prelude::*, subclass::prelude::*, Widget};
 use gtk_macros::*;
 use log::{debug, info};
 use once_cell::sync::Lazy;
@@ -36,7 +36,7 @@ use strum_macros::*;
 
 #[derive(Display, Copy, Debug, Clone, EnumString, Eq, PartialEq, Enum)]
 #[repr(u32)]
-#[enum_type(name = "Bookxiew")]
+#[enum_type(name = "BookxView")]
 pub enum BookxView {
     // managed by bookx_window_leaflet
     Library,
@@ -49,21 +49,9 @@ impl Default for BookxView {
     }
 }
 
-// pub enum BookxMode {
-//     // managed by bookx_stack
-//     InitialView, // when no folder is added
-//     MainView,    // when folder is added/known
-// }
-//
-// impl Default for BookxMode {
-//     fn default() -> Self {
-//         BookxMode::InitialView
-//     }
-// }
-
 mod imp {
     use super::*;
-    use gtk::pango::Weight::Book;
+    use gtk::CompositeTemplate;
 
     // To use composite templates, you need
     // to use derive macro. Derive macros generate
@@ -104,12 +92,6 @@ mod imp {
 
         #[template_child]
         pub back_button: TemplateChild<gtk::Button>,
-        #[template_child]
-        pub book_read_button_revealer: TemplateChild<gtk::Revealer>,
-        #[template_child]
-        pub book_edit_button_revealer: TemplateChild<gtk::Revealer>,
-        #[template_child]
-        pub book_info_button_revealer: TemplateChild<gtk::Revealer>,
 
         #[template_child]
         pub appmenu_button: TemplateChild<gtk::MenuButton>,
@@ -221,7 +203,7 @@ impl BookxWindow {
     }
 
     pub fn setup_widgets(&self, sender: Sender<Action>) {
-        // Init pages
+        // Init library
         self.imp().library_page.init(sender.clone());
 
         // Add devel style class for development or beta builds
@@ -252,7 +234,7 @@ impl BookxWindow {
         );
 
         // search_button
-        // TODO: fix search button expantion
+        // TODO: fix search button expansion
         imp.search_button
             .connect_toggled(clone!(@strong self as this => move |search_button| {
                 if search_button.is_active() {
@@ -345,10 +327,6 @@ impl BookxWindow {
         let imp = self.imp();
         let view = *imp.view.borrow();
         debug!("Set view to {:?}", view);
-
-        imp.book_read_button_revealer.set_reveal_child(false);
-        imp.book_edit_button_revealer.set_reveal_child(false);
-        imp.book_info_button_revealer.set_reveal_child(false);
 
         match view {
             BookxView::Library => {

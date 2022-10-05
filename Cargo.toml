@@ -26,18 +26,7 @@ features = ["v2_70"]
 [dependencies.adw]
 package = "libadwaita"
 version = "0.1.1"
-# features = ["v1_2"]
 
 [dependencies.gettext-rs]
 version = "0.7.0"
 features = ["gettext-system"]
-
-[dependencies.diesel]
-package = "diesel"
-version = "1.4"
-features = ["sqlite", "r2d2", "chrono"]
-
-[dependencies.diesel_migrations]
-package = "diesel_migrations"
-version = "1.4"
-features = ["sqlite"]

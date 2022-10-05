@@ -94,7 +94,7 @@ mod imp {
 
 glib::wrapper! {
     pub struct BookxLibraryPage(ObjectSubclass<imp::BookxLibraryPage>)
-        @extends gtk::Widget, adw::Bin;
+    @extends gtk::Widget, adw::Bin;
 }
 
 impl BookxLibraryPage {

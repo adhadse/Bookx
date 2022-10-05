@@ -1,5 +1,5 @@
 {
-    "id": "com.adhadse.bookx.Devel",
+    "id": "com.adhadse.Bookx.Devel",
     "runtime": "org.gnome.Platform",
     "runtime-version": "42",
     "sdk": "org.gnome.Sdk",

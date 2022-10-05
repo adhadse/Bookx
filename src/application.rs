@@ -311,7 +311,8 @@ impl BookxApplication {
     }
 
     fn show_about(&self) {
-        // Uncomment and delete the similar code when libadwaita 0.2 comes out of alpha release
+        // TODO: sudo dnf info libadwaita-devel for 1.2
+        // Uncomment and delete the similar code when libadwaita-devel 1.2 comes out
         // let about = adw::AboutWindow::builder()
         //     .application_icon("Bookx")
         //     .application_icon(config::APP_ID)

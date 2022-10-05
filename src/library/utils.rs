@@ -15,13 +15,15 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use core::cmp::Ordering;
-use std::path::PathBuf;
+use gtk::{
+    gio,
+    glib::{self, Enum},
+    prelude::*,
+};
+use log::debug;
 
-use enum_map::{enum_map, Enum, EnumArray, EnumMap};
-use gtk::{gdk, gio, glib, prelude::*};
-use log::{debug, warn};
-
-#[derive(Debug, Enum)]
+#[derive(Debug, Enum, Clone, Copy)]
+#[enum_type(name = "EBook")]
 pub enum EBook {
     Epub,
 }
