@@ -125,7 +125,7 @@ impl BookxLibraryPage {
         self.update_stack_page();
     }
 
-    // Update stack page whenever `status` get's updated
+    // Update stack page whenever `status` gets updated
     fn setup_signals(&self) {
         self.imp().library.connect_notify_local(
             Some("status"),

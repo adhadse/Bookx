@@ -138,7 +138,7 @@ mod imp {
                 clone!(@strong app => move |action| app.process_action(action)),
             );
 
-            // Retreive Books data
+            // Retrieve Books data
             app.refresh_data();
 
             // Setup settings signal (we get notified when a key gets changed)
