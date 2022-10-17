@@ -94,7 +94,7 @@ mod imp {
 
 glib::wrapper! {
     pub struct BookxLibraryPage(ObjectSubclass<imp::BookxLibraryPage>)
-        @extends gtk::Widget, adw::Bin;
+    @extends gtk::Widget, adw::Bin;
 }
 
 impl BookxLibraryPage {
@@ -124,6 +124,7 @@ impl BookxLibraryPage {
 
         self.update_stack_page();
     }
+
 
     // Update stack page whenever `status` gets updated
     fn setup_signals(&self) {
