@@ -1,4 +1,4 @@
-// Bookx - key.rs
+// Bookx - mod.rs
 // Copyright (C) 2022  Anurag Dhadse <hello@adhadse.com>
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,22 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use strum_macros::*;
+mod annotation;
+mod book;
+mod bookmark;
 
-#[derive(Display, Debug, Clone, EnumString)]
-#[strum(serialize_all = "kebab_case")]
-pub enum Key {
-    // Client Backend
-    ApiLookupDomain,
-
-    // User Interface
-    DarkMode,
-    Notifications,
-    WindowWidth,
-    WindowHeight,
-    IsMaximized,
-
-    BooksDir,
-    CacheCovers,
-    CoverPictureSize,
-}
+pub use annotation::BookAnnotation;
+pub use book::Book;
+pub use bookmark::Bookmark;

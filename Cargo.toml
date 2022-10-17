@@ -30,3 +30,15 @@ version = "0.1.1"
 [dependencies.gettext-rs]
 version = "0.7.0"
 features = ["gettext-system"]
+
+[dependencies.serde]
+package = "serde_json"
+version = "1.0.85"
+
+[dependencies.url]
+package = "url"
+version = "2.3.1"
+
+[dependencies.jsondata]
+package = "jsondata"
+version = "0.8.0"

@@ -22,10 +22,10 @@ use crate::ui::BookxWindow;
 
 use std::cell::RefCell;
 
-use glib::{
-    clone, Enum, ObjectExt, ParamFlags, ParamSpec, ParamSpecEnum, ParamSpecObject, Sender, ToValue,
+use gtk::glib::{
+    self, clone, Enum, ObjectExt, ParamFlags, ParamSpec, ParamSpecEnum, ParamSpecObject, Sender,
+    ToValue,
 };
-use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use log::{debug, error, info};

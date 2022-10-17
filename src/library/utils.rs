@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::glib::{Type, Value};
 use core::cmp::Ordering;
 use gtk::{
     gio,
@@ -26,11 +27,29 @@ use log::debug;
 #[enum_type(name = "EBook")]
 pub enum EBook {
     Epub,
+    FB2,
+}
+
+impl Default for EBook {
+    fn default() -> Self {
+        EBook::Epub
+    }
+}
+
+impl ToValue for EBook {
+    fn to_value(&self) -> Value {
+        self.to_value()
+    }
+
+    fn value_type(&self) -> Type {
+        EBook
+    }
 }
 
 pub fn get_ebook_mime(ebook: EBook) -> String {
     match ebook {
         EBook::Epub => String::from("application/epub+zip"),
+        EBook::FB2 => String::from("text/fb2+xml"),
     }
 }
 
