@@ -15,8 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::application::Action;
-use crate::library::utils::{self, *};
-// use crate::library::utils::*;
+use crate::library::utils::{self, Format};
 use crate::settings::{settings_manager, Key};
 use crate::ui::BookxWindow;
 
@@ -26,6 +25,7 @@ use gtk::glib::{
     self, clone, Enum, ObjectExt, ParamFlags, ParamSpec, ParamSpecEnum, ParamSpecObject, Sender,
     ToValue,
 };
+use gtk_macros::{send};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use log::{debug, error, info};
@@ -49,13 +49,21 @@ impl Default for BookxLibraryStatus {
     }
 }
 
+// Initializing data of books which is then used to create
+// `Book` instance
+#[derive(Debug)]
+struct BookInit {
+    pub id: String,
+    pub format: Format,
+    pub uri: String
+}
+
 mod imp {
     use super::*;
-    use gio::ListStore;
-    use gtk_macros::send;
 
     #[derive(Debug, Default)]
     pub struct BookxLibrary {
+        pub book_init_list: OnceCell<Vec<BookInit>>,
         pub sender: OnceCell<Sender<Action>>,
         pub status: RefCell<BookxLibraryStatus>,
     }
@@ -99,7 +107,6 @@ impl BookxLibrary {
     pub fn new(sender: Sender<Action>) -> Self {
         let library = glib::Object::new::<Self>(&[]).unwrap();
         library.imp().sender.set(sender).unwrap();
-
         library
     }
 
@@ -138,7 +145,7 @@ impl BookxLibrary {
         self.add_books_to_list(model.upcast_ref::<gio::ListModel>());
     }
 
-    fn add_books_to_list(&self, model: &gio::ListModel) {
+    fn add_books_to_list<'a>(&self, model: &gio::ListModel) {
         let mut list: Vec<gio::File> = vec![];
 
         for pos in 0..model.n_items() {
@@ -152,12 +159,20 @@ impl BookxLibrary {
                 match info.file_type() {
                     gio::FileType::Regular => {
                         if let Some(content_type) = info.content_type() {
-                            if gio::content_type_is_mime_type(
-                                &content_type,
-                                &get_ebook_mime(EBook::Epub),
-                            ) {
+                            debug!("Content type: {}", content_type);
+                            // TODO: measure the performance of this condition
+                            if Format::are_ebooks().iter().map(|f| {
+                                gio::content_type_is_mime_type(&content_type, &f.get_mime())
+                            }).any(|f| f == true)
+                            {
                                 debug!("Adding file '{}' to the list", file.uri());
-                                list.push(file);
+                                self.imp().book_init_list.get().unwrap().push(BookInit{
+                                    id: file.uri().to_string(), // TODO: Get a unique Identifier for book
+                                    format: Format::get_format(
+                                        gio::content_type_get_mime_type(
+                                            &content_type).unwrap().to_string()),
+                                    uri: file.uri().to_string()
+                                });
                             }
                         }
                     }
@@ -171,14 +186,11 @@ impl BookxLibrary {
             }
         }
 
-        if !list.is_empty() {
+        if !self.imp().book_init_list.get().unwrap().is_empty() {
             self.set_status(&BookxLibraryStatus::Content);
-            // TODO: do something with this list (asynchronously)
         } else {
             self.set_status(&BookxLibraryStatus::Empty);
-            let window = BookxWindow::default();
-            window.show_notification("Could not find any books in the current directory");
-            return;
+            send!(self.sender, Action::Notification("Could not find any books in the current directory".to_string()));
         }
     }
 }

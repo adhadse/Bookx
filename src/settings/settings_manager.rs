@@ -22,7 +22,7 @@ use gio::prelude::*;
 #[allow(dead_code)]
 pub fn create_action(key: Key) -> gio::Action {
     let settings = settings();
-    settings.create_action(&key.to_string())
+    settings.create_action(&key.try_into())
 }
 
 pub fn settings() -> gio::Settings {

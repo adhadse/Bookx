@@ -16,16 +16,14 @@
 
 use crate::application::{Action, BookxApplication};
 use crate::config;
-use crate::library::{BookxLibrary, BookxLibraryStatus};
-// TODO: BookxLibraryContentBox
-// use crate::ui::BookxLibraryContentBox;
+use crate::library::{Book, BookxLibrary, BookxLibraryStatus, ObjectWrapper};
+use crate::ui::library::{BookBox, BookxFlowBox};
 use adw::subclass::prelude::*;
 use glib::{clone, subclass, Sender};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib, CompositeTemplate};
-use gtk_macros::*;
-use log::{debug, info};
+use log::{info};
 use once_cell::unsync::OnceCell;
 
 mod imp {
@@ -40,9 +38,9 @@ mod imp {
         pub library_null_status_page: TemplateChild<adw::StatusPage>,
         #[template_child]
         pub library_stack: TemplateChild<gtk::Stack>,
-        // TODO: uncomment this
-        // #[template_child]
-        // pub content_box: TemplateChild<BookxLibraryContentBox>,
+        #[template_child]
+        pub book_flow_box: TemplateChild<BookxFlowBox>,
+
         pub library: BookxLibrary,
         pub sender: OnceCell<Sender<Action>>,
     }
@@ -57,8 +55,7 @@ mod imp {
             let library_empty_status_page = TemplateChild::default();
             let library_null_status_page = TemplateChild::default();
             let library_stack = TemplateChild::default();
-            // TODO: uncomment this
-            // let content_box = TemplateChild::default();
+            let book_flow_box = TemplateChild::default();
 
             let app = gio::Application::default()
                 .unwrap()
@@ -72,7 +69,7 @@ mod imp {
                 library_empty_status_page,
                 library_null_status_page,
                 library_stack,
-                // content_box,
+                book_flow_box,
                 library,
                 sender,
             }
@@ -118,33 +115,52 @@ impl BookxLibraryPage {
         imp.library_null_status_page
             .set_icon_name(Some(config::APP_ID));
 
-        // Library content box
-        // imp.content_box.
-        //     init(imp.library.model(), imp.sender.get().unwrap().clone());
-
-        self.update_stack_page();
+        self.update_library_ui();
     }
 
     // Update stack page whenever `status` gets updated
     fn setup_signals(&self) {
         self.imp().library.connect_notify_local(
             Some("status"),
-            clone!(@weak self as this => move |_, _| this.update_stack_page()),
+            clone!(@weak self as this => move |_, _|
+                this.update_library_ui();
+            ),
         );
     }
 
-    fn update_stack_page(&self) {
+    fn update_library_ui(&self) {
         let imp = self.imp();
         info!(
             "{}",
-            format!("Updating stack page to: {}", imp.library.status())
+            format!("Updating stack page to: {:?}", imp.library.status())
         );
         match imp.library.status() {
             BookxLibraryStatus::Loading => imp.library_stack.set_visible_child_name("loading"),
             BookxLibraryStatus::Empty => imp.library_stack.set_visible_child_name("empty"),
             BookxLibraryStatus::Null => imp.library_stack.set_visible_child_name("null"),
-            BookxLibraryStatus::Content => imp.library_stack.set_visible_child_name("content"),
-            _ => (),
+            BookxLibraryStatus::Content => {
+                // generate list store of Book out of book_init_list of library
+                // and bind model of `Book` instances to `book_flow_box`
+                imp.library_stack.set_visible_child_name("content");
+                let book_list = gio::ListStore::new(Book::static_type());
+
+                // let ctx = glib::MainContext::default();
+                // ctx.spawn(async move {
+                //     let futures = async move {
+                //         articles.into_iter().for_each(|article| {
+                //             send!(sender, ArticleAction::Add(article));
+                //         })
+                //     };
+                //     pool.spawn_ok(futures);
+                // });
+
+
+                imp.library.imp().book_init_list.get().unwrap().iter().for_each(|b_init| {
+                    book_list.append(Book::new(b_init.id.clone(), b_init.format, b_init.uri.clone()));
+                });
+                imp.book_flow_box.bind_model(book_list);
+            },
         }
     }
 }
+

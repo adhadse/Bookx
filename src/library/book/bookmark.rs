@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use gtk::glib::{ParamFlags, ParamSpec, ParamSpecString};
+use serde::{Serialize, Deserialize};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib};
@@ -35,7 +36,7 @@ mod imp {
         type ParentType = glib::Object;
         type Class = glib::Class<Self>;
 
-        glib_object_subclass!();
+        // glib_object_subclass!();
     }
 
     impl ObjectImpl for Bookmark {

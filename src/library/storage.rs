@@ -17,7 +17,7 @@
 use crate::config;
 use crate::glib::{Error, GString};
 use adw::glib::subclass::SignalId;
-use gio::FileInfo;
+use gio::{File, FileInfo};
 use gtk::glib::{
     clone, subclass::Signal, ObjectExt, ParamFlags, ParamSpec, ParamSpecEnum, ParamSpecInt,
     ParamSpecObject, ParamSpecString, Sender, SignalFlags, ToValue,
@@ -29,22 +29,24 @@ use jsondata::Json;
 use log::{debug, error};
 use once_cell::sync::Lazy;
 use once_cell::unsync::OnceCell;
-use serde::{json, Deserialize, Serialize};
-use std::borrow::Borrow;
+use std::borrow::{Borrow, BorrowMut};
 use std::cell::{Cell, RefCell};
 use std::fs;
+use std::io::{ErrorKind, Write};
+use std::iter::Once;
 use std::path;
+use futures::TryFutureExt;
 use url::form_urlencoded;
 
 mod imp {
     use super::*;
 
-    #[derive(Default, Eq, PartialEq, Debug, Clone, Serialize, Deserialize)]
+    #[derive(Default, Debug, Clone)]
     pub struct Storage {
-        pub file: RefCell<gio::File>,
-        pub monitor: gio::FileMonitor,
+        pub file: RefCell<File>,
+        pub monitor: RefCell<gio::FileMonitor>,
         pub data: RefCell<Json>,
-        pub modified: u64,
+        pub modified: RefCell<u64>,
     }
 
     #[glib::object_subclass]
@@ -53,7 +55,7 @@ mod imp {
         type ParentType = glib::Object;
         type Class = glib::Class<Self>;
 
-        glib_object_subclass!();
+        // glib_object_subclass!();
     }
 
     impl ObjectImpl for Storage {
@@ -63,7 +65,7 @@ mod imp {
                     "file",
                     "File",
                     "File",
-                    gio::File::static_type(),
+                    File::static_type(),
                     ParamFlags::READWRITE,
                 )]
             });
@@ -84,7 +86,7 @@ mod imp {
             SIGNAL.as_ref()
         }
 
-        fn property(&self, obj: &Self::Type, _id: usize, pspec: &ParamSpec) -> glib::Value {
+        fn property(&self, _obj: &Self::Type, _id: usize, pspec: &ParamSpec) -> glib::Value {
             match pspec.name() {
                 "file" => self.file.to_value(),
                 _ => unimplemented!(),
@@ -101,22 +103,18 @@ glib::wrapper! {
 impl Storage {
     pub fn new(path: String) -> Self {
         let storage = glib::Object::new::<Self>(&[]).unwrap();
-        *storage.imp().file = RefCell::new(gio::File::for_path(path));
-        *storage.imp().data = RefCell::new(storage.read());
-        *storage.imp().monitor = storage
+        storage.imp().file.into_inner() = File::for_path(path.clone());
+        storage.imp().data.into_inner() = storage.read(path.clone());
+        storage.imp().monitor.into_innner() = storage
             .imp()
             .file
             .get()
             .monitor(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE)
             .expect("Cannot create monitor")
             .connect("changed", false, {
-                // TODO
-                if self::get_modified() > storage.imp().modified {
-                    debug!(format!(
-                        "Externally modified: {}",
-                        storage.imp().file.get_path()
-                    ));
-                    *storage.imp().data = storage.read();
+                if Self::get_modified() > storage.imp().modified {
+                    debug!("Externally modified: {}", &storage.imp().file.get_path());
+                    storage.imp().data.into_inner() = storage.read(path.clone());
                     storage.emit_by_name("externally-modified");
                 }
             });
@@ -124,9 +122,20 @@ impl Storage {
         storage
     }
 
-    fn read(&self) -> Json {
+    fn read(&self, path: String) -> Json {
         *self.imp().modified = self.get_modified();
-        let data = fs::read_to_string(path).expect("Unable to read file");
+        let data = fs::read_to_string(&path).unwrap_or_else(|error| {
+            if error.kind() == ErrorKind::NotFound {
+                let _ = fs::File::create(&path).unwrap_or_else(|error| {
+                     panic!("Problem creating the File: {:?}", error);
+                });
+                return fs::read_to_string(&path).unwrap_or_else( |error| {
+                    panic!("Problem reading the File: {:?}", error);
+            })
+            } else {
+                panic!("Unknown problem while reading the File: {:?}", error);
+            }
+        });
         return data.parse::<Json>().unwrap();
     }
 
@@ -146,7 +155,7 @@ impl Storage {
         }
     }
 
-    pub fn get_path(_type: &str, key: String, extension: Option<&str>) -> Option<&str> {
+    pub fn get_path(_type: &str, key: String, extension: Option<String>) -> Option<&str> {
         let mut data_dir: path::PathBuf = path::PathBuf::new();
         if _type == "cache" {
             data_dir = glib::user_cache_dir()
@@ -164,7 +173,7 @@ impl Storage {
 
     fn write(&self, data: Json) {
         let parent = self.imp().file.borrow().parent().unwrap().path();
-        debug!(format!("Writing to {:?}", self.imp().file.borrow().path()));
+        debug!("Writing to {:?}", self.imp().file.borrow().path());
         let mkdirp =
             glib::mkdir_with_parents(self.imp().file.borrow().parent().unwrap().path(), 755);
         if mkdirp == 0 {
@@ -174,7 +183,7 @@ impl Storage {
                 false,
                 gio::FileCreateFlags::REPLACE_DESTINATION,
             ) {
-                *self.imp().modified = self.get_modified();
+                self.imp().modified.replace(self.get_modified());
                 self.emit_by_name("modified");
             }
         } else {
@@ -186,13 +195,15 @@ impl Storage {
         self.imp().data.borrow().get(property)
     }
 
-    pub fn set(&self, property: &str, value: Json) {
-        *self.imp().data.borrow_mut().set(property, value)
+    pub fn set(&mut self, property: &str, value: Json) {
+        self.imp().data.into_inner().set(property, value)
+            .expect(format!("Cannot set `data` for file: {}", self.imp().file.into_inner()).as_str());
     }
 
     pub fn clear(&self) {
-        if let Err(e) = self.imp().file.borrow_mut().delete() {
+        if let Err(_) = self.imp().file.into_inner().delete() {
             ()
         }
     }
 }
+

@@ -16,6 +16,7 @@
 
 use gtk::glib::{ParamFlags, ParamSpec, ParamSpecString};
 use gtk::prelude::*;
+use serde::{Serialize, Deserialize};
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib};
 use once_cell::sync::Lazy;
@@ -38,7 +39,7 @@ mod imp {
         type ParentType = glib::Object;
         type Class = glib::Class<Self>;
 
-        glib_object_subclass!();
+        // glib_object_subclass!();
     }
 
     impl ObjectImpl for BookAnnotation {
@@ -84,3 +85,4 @@ glib::wrapper! {
     pub struct BookAnnotation(ObjectSubclass<imp::BookAnnotation>)
     @extends glib::Object;
 }
+

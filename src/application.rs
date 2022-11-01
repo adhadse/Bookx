@@ -16,7 +16,7 @@
 
 use crate::config;
 use crate::deps::*;
-use crate::library::BookxLibrary;
+use crate::library::{Book, BookxLibrary, BookAction};
 use crate::settings::{settings_manager, Key};
 use crate::ui::{BookxPreferencesWindow, BookxView, BookxWindow};
 
@@ -38,6 +38,8 @@ pub enum Action {
     // BookxApplication.process_action() handles sending actions between
     // different senders and receivers using send! macro
     SettingsKeyChanged(Key),
+    Notification(String),
+    Books(Box<BookAction>),
 }
 
 mod imp {
@@ -186,7 +188,7 @@ impl BookxApplication {
         // Create new GObject and downcast it into BookxApplication
         let app = glib::Object::new::<BookxApplication>(&[
             ("application-id", &Some(config::APP_ID)),
-            ("flags", &gio::ApplicationFlags::empty()),
+            ("flags", &gio::ApplicationFlags::HANDLES_OPEN),
             ("resource-base-path", &Some("/com/adhadse/Bookx")),
         ])
         .expect("Application initialization failed...");
@@ -268,6 +270,7 @@ impl BookxApplication {
         self.imp().library.clone()
     }
 
+    // process application level actions
     fn process_action(&self, action: Action) -> glib::Continue {
         let _imp = self.imp();
         if self.active_window().is_none() {
@@ -278,10 +281,35 @@ impl BookxApplication {
 
         match action {
             Action::SettingsKeyChanged(key) => self.apply_settings_changes(key),
+            Action::Notification(message) => self.main_window().show_notification(message),
+            Action::Books(book_action) => self.process_book_action(book_action)
         }
         glib::Continue(true)
     }
 
+    // handles action specific to a book
+    fn process_book_action(&self, book_action: Box<BookAction>) {
+        match *book_action {
+            BookAction::BookDetails(book) => {
+                self.main_window().show_book_details(book);
+            }
+            BookAction::EditMetadata(book) => {
+                // TODO: call library function create a new window to edit metadata
+            }
+            BookAction::DeleteBook(book) => {
+                // TODO: call library and delete book file
+            }
+            BookAction::ExportAnnotations(book) => {
+                // TODO: call library
+            }
+            BookAction::SendToDevice(book) => {
+                // TODO: call library
+            }
+            BookAction::OpenBook(book) => {
+                // TODO
+            }
+        }
+    }
     fn apply_settings_changes(&self, key: Key) {
         debug!("Settings key changed: {:?}", &key);
         match key {
@@ -311,8 +339,8 @@ impl BookxApplication {
     }
 
     fn show_about(&self) {
-        // TODO: sudo dnf info libadwaita-devel for 1.2
-        // Uncomment and delete the similar code when libadwaita-devel 1.2 comes out
+        // sudo dnf info libadwaita-devel
+        // TODO: Uncomment and delete the similar code when libadwaita-devel 1.2 comes out
         // let about = adw::AboutWindow::builder()
         //     .application_icon("Bookx")
         //     .application_icon(config::APP_ID)

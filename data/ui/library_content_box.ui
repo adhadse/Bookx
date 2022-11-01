@@ -32,10 +32,10 @@
                         <property name="transition-type">over</property>
                         <property name="fold-policy">always</property>
                         <property name="content">
-                          <object class="GtkLabel" id="content">
-                            <property name="label" translatable="yes">Content</property>
-                            <style><class name="title-header"/></style>
-                          </object>
+                          <object class="BookxFlowBox"/>
+                          <packing>
+                            <property name="name">grid</property>
+                          </packing>
                         </property>
                         <property name="flap">
                           <object class="GtkLabel">

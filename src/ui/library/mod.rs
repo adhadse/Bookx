@@ -15,5 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod library;
+pub mod book_image;
+mod book_box;
+mod book_flow_box;
 
 pub use library::BookxLibraryPage;
+pub use book_image::BookImage;
+pub use book_box::BookBox;
+pub use book_flow_box::BookxFlowBox;

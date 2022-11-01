@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <!-- Multiple instance per Book; appended into `BookxBookFlowBox` or `book_flow_box`-->
+  <template class="BookxBookBox" parent="BookxBookFlowBox">
+    <child>
+      <object class="GtkBox">
+        <property name="visible">True</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">1</property>
+        <property name="halign">center</property>
+        <property name="valign">end</property>
+        <property name="width-request">120</property>
+        <child>
+          <object class="GtkOverlay">
+            <property name="visible">True</property>
+            <child>
+              <object class="BookxBookImage" id="book_image">
+                <property name="visible">True</property>
+                <property name="halign">center</property>
+                <property name="valign">end</property>
+              </object>
+            </child>
+<!--            TODO: is this required?-->
+<!--            <child type="overlay">-->
+<!--              <object class="GtkImage" id="emblem">-->
+<!--                <property name="visible">False</property>-->
+<!--                <property name="valign">start</property>-->
+<!--                <property name="halign">end</property>-->
+<!--                <property name="margin">6</property>-->
+<!--                <property name="icon-name">emblem-cloud-symbolic</property>-->
+<!--                <property name="tooltip-text" translatable="yes">Remote file</property>-->
+<!--              </object>-->
+<!--            </child>-->
+            <child type="overlay">
+              <object class="GtkImage" id="select">
+                <property name="visible">False</property>
+                <property name="icon-name">object-select-symbolic</property>
+                <property name="icon-size">5</property>
+                <style><class name="bookx-select"/></style>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="visible">True</property>
+            <property name="margin-start">6</property>
+            <child>
+              <object class="GtkGrid" id="progress_grid">
+                <property name="visible">True</property>
+                <property name="column-homogeneous">True</property>
+                <property name="column-spacing">6</property>
+<!--                TODO: UI | is this required?-->
+<!--                <child>-->
+<!--                  <object class="GtkProgressBar" id="progress_bar">-->
+<!--                    <property name="visible">True</property>-->
+<!--                    <property name="valign">center</property>-->
+<!--                  </object>-->
+<!--                </child>-->
+                <child>
+                  <object class="GtkLabel" id="progress_label">
+                    <property name="visible">True</property>
+                    <property name="valign">center</property>
+                    <property name="xalign">0</property>
+                    <style><class name="dim-label"/></style>
+                    <attributes>
+                      <attribute name="scale" value="0.85"/>
+                    </attributes>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkMenuButton" id="menu_button">
+                <property name="visible">True</property>
+                <property name="relief">none</property>
+                <property name="valign">center</property>
+                <property name="icon_name">view-more-horizontal-symbolic</property>
+                <property name="menu-model">book_box_menu</property>
+              </object>
+              <packing>
+                <property name="pack-type">end</property>
+              </packing>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+    <!-- TODO: Popover menu for right click -->
+    <child>
+      <object class="PopoverMenu" id="popover_menu">
+        <property name="menu-model">book_box_menu</property>
+      </object>
+    </child>
+  </template>
+
+  <menu id="book_box_menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Send To Device</attribute>
+        <attribute name="action">library.send-to-device</attribute>
+      </item>
+    </section>
+    <section>
+      <submenu>
+        <attribute name="label" translatable="yes">_Export Annotations</attribute>
+        <section>
+          <item>
+            <attribute name="label" translatable="yes">_JSON</attribute>
+            <attribute name="action">library.export-annotations</attribute>
+            <attribute name="target">JSON</attribute>
+          </item>
+          <item>
+            <attribute name="label" translatable="yes">_Plain Text</attribute>
+            <attribute name="action">library.export-annotations</attribute>
+            <attribute name="target">Plain Text</attribute>
+          </item>
+          <item>
+            <attribute name="label" translatable="yes">_HTML</attribute>
+            <attribute name="action">library.export-annotations</attribute>
+            <attribute name="target">HTML</attribute>
+          </item>
+          <item>
+            <attribute name="label" translatable="yes">_Markdown</attribute>
+            <attribute name="action">library.export-annotations</attribute>
+            <attribute name="target">Markdown</attribute>
+          </item>
+          <item>
+            <attribute name="label" translatable="yes">_BibTeX</attribute>
+            <attribute name="action">library.export-annotations</attribute>
+            <attribute name="target">BibTeX</attribute>
+          </item>
+        </section>
+      </submenu>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Book Details</attribute>
+        <attribute name="action">library.book-details</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Edit Metadata</attribute>
+        <attribute name="action">library.edit-metadata</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Edit Book</attribute>
+        <attribute name="action">win.edit-book</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Delete</attribute>
+        <attribute name="action">library.delete-book</attribute>
+      </item>
+    </section>
+  </menu>
+</interface>

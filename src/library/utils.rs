@@ -24,32 +24,61 @@ use gtk::{
 use log::debug;
 
 #[derive(Debug, Enum, Clone, Copy)]
-#[enum_type(name = "EBook")]
-pub enum EBook {
-    Epub,
+#[enum_type(name = "Format")]
+pub enum Format {
+    EPUB,
+    MOBI,
+    KINDLE,
+    KINDLEALIAS,
     FB2,
 }
 
-impl Default for EBook {
+impl Default for Format {
     fn default() -> Self {
-        EBook::Epub
+        Format::Epub
     }
 }
 
-impl ToValue for EBook {
-    fn to_value(&self) -> Value {
-        self.to_value()
+// impl ToValue for Format {
+//     fn to_value(&self) -> Value {
+//         self.to_value()
+//     }
+
+    // fn value_type(&self) -> Type {
+    //     Format
+    // }
+// }
+
+impl Format {
+    pub fn get_mime(self) -> String {
+        match self {
+            Format::EPUB => String::from("application/epub+zip"),
+            Format::MOBI => String::from("application/x-mobipocket-ebook"),
+            Format::KINDLE => String::from("application/vnd.amazon.mobi8-ebook"),
+            Format::KINDLEALIAS => String::from("application/x-mobi8-ebook"),
+            Format::FB2 => String::from("text/fb2+xml"),
+        }
     }
 
-    fn value_type(&self) -> Type {
-        EBook
+    // formats that allow user to add annotations without warning
+    pub fn can_annotate() -> Vec<Format> {
+        Vec::from([Format::EPUB, Format::MOBI, Format::KINDLE, Format::KINDLEALIAS])
     }
-}
 
-pub fn get_ebook_mime(ebook: EBook) -> String {
-    match ebook {
-        EBook::Epub => String::from("application/epub+zip"),
-        EBook::FB2 => String::from("text/fb2+xml"),
+    // Formats that gets accepted as EBook by Bookx
+    pub fn are_ebooks() -> Vec<Format> {
+        Vec::from([Format::EPUB, Format::MOBI, Format::KINDLE, Format::KINDLEALIAS,
+                      Format::FB2])
+    }
+
+    pub fn get_format(mime: String) -> Format {
+        match mime {
+            String::from("application/epub+zip") => Format::EPUB,
+            String::from("application/x-mobipocket-ebook") => Format::MOBI,
+            String::from("application/vnd.amazon.mobi8-ebook") => Format::KINDLE,
+            String::from("application/x-mobi8-ebook")  => Format::KINDLEALIAS,
+            String::from("text/fb2+xml") => Format::FB2 ,
+        }
     }
 }
 
@@ -156,3 +185,4 @@ fn cmp_like_nautilus(filename_a: &str, filename_b: &str) -> Ordering {
 
     order
 }
+

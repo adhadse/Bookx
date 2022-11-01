@@ -17,13 +17,11 @@
 use crate::application::{Action, BookxApplication};
 use crate::config;
 use crate::deps::*;
-use crate::library::BookxLibraryStatus;
+use crate::library::{Book, BookxLibraryStatus};
 use crate::settings::{settings_manager, Key};
 use crate::ui::library::BookxLibraryPage;
 
 use std::cell::RefCell;
-use std::rc::Rc;
-
 use adw::subclass::application_window::AdwApplicationWindowImpl;
 use adw::subclass::prelude::*;
 use glib::{clone, subclass, Enum, ParamFlags, ParamSpec, ParamSpecEnum, Sender, ToValue};
@@ -99,6 +97,8 @@ mod imp {
         pub default_menu: TemplateChild<gio::MenuModel>,
         #[template_child]
         pub library_menu: TemplateChild<gio::MenuModel>,
+        #[template_child]
+        pub book_details_flap: TemplateChild<adw::Flap>,
 
         #[template_child]
         pub bookx_window_flap: TemplateChild<adw::Flap>,
@@ -284,15 +284,6 @@ impl BookxWindow {
             })
         );
 
-        // win.add-file
-        action!(
-            self,
-            "add-file",
-            clone!(@weak self as this => move |_, _| {
-                this.add_books_folder();
-            })
-        );
-
         // win.refresh-data
         action!(self, "refresh-data", |_, _| {
             BookxApplication::default().refresh_data();
@@ -401,8 +392,13 @@ impl BookxWindow {
         self.update_visible_view();
     }
 
-    pub fn show_notification(&self, text: &str) {
-        let toast = adw::Toast::new(text);
+    pub fn show_book_details(&self, book: Book) {
+        // TODO: how do we fill flap with book details?
+        self.imp().book_details_flap.set_reveal_flap(true);
+    }
+
+    pub fn show_notification(&self, text: String) {
+        let toast = adw::Toast::new(&text);
         self.imp().bookx_toast_overlay.add_toast(&toast);
     }
 
@@ -457,3 +453,4 @@ impl Default for BookxWindow {
             .unwrap()
     }
 }
+

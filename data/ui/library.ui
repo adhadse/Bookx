@@ -14,7 +14,7 @@
               <object class="GtkBox">
                 <property name="orientation">vertical</property>
                 <child>
-                  <!-- <object class="BookxLibraryContentBox"/> -->
+                   <object class="BookxLibraryContentBox"/>
                 </child>
               </object>
             </property>
@@ -105,7 +105,7 @@
                       <property name="margin-start">12</property>
                       <property name="margin-end">12</property>
                       <property name="title">Bookx</property>
-                      <property name="description" translatable="yes">Select a file or a folder to add books to the library</property>
+                      <property name="description" translatable="yes">Select a folder to add books to the library</property>
                       <property name="child">
                         <object class="GtkBox">
                           <property name="orientation">vertical</property>
@@ -118,15 +118,6 @@
                               <property name="action-name">win.add-folder</property>
                               <style>
                                 <class name="suggested-action"/>
-                                <class name="pill"/>
-                              </style>
-                            </object>
-                          </child>
-                          <child>
-                            <object class="GtkButton">
-                              <property name="label" translatable="yes">Add File</property>
-                              <property name="action-name">win.add-file</property>
-                              <style>
                                 <class name="pill"/>
                               </style>
                             </object>

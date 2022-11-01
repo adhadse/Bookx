@@ -18,5 +18,11 @@ mod book;
 mod library;
 mod storage;
 mod utils;
+mod object_wrapper;
+mod book_manager;
 
 pub use library::{BookxLibrary, BookxLibraryStatus};
+pub use book::Book;
+pub use object_wrapper::ObjectWrapper;
+pub use book_manager::BookAction;
+
