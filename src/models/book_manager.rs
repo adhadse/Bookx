@@ -73,27 +73,44 @@ impl BooksManager {
     }
 
     fn book_details(&self, book: Book) {
-        send!(self.main_sender, Action::Books(Box::new(BookAction::BookDetails(book))));
+        send!(
+            self.main_sender,
+            Action::Books(Box::new(BookAction::BookDetails(book)))
+        );
     }
 
     fn edit_metadata(&self, book: Book) {
-        send!(self.main_sender, Action::Books(Box::new(BookAction::EditMetadata(book))));
+        send!(
+            self.main_sender,
+            Action::Books(Box::new(BookAction::EditMetadata(book)))
+        );
     }
 
     fn delete_book(&self, book: Book) {
-        send!(self.main_sender, Action::Books(Box::new(BookAction::DeleteBook(book))));
+        send!(
+            self.main_sender,
+            Action::Books(Box::new(BookAction::DeleteBook(book)))
+        );
     }
 
     fn export_annotations(&self, book: Book) {
-        send!(self.main_sender, Action::Books(Box::new(BookAction::ExportAnnotations(book))));
+        send!(
+            self.main_sender,
+            Action::Books(Box::new(BookAction::ExportAnnotations(book)))
+        );
     }
 
     fn send_to_device(&self, book: Book) {
-        send!(self.main_sender, Action::Books(Box::new(BookAction::SendToDevice(book))));
+        send!(
+            self.main_sender,
+            Action::Books(Box::new(BookAction::SendToDevice(book)))
+        );
     }
 
     fn open_book(&self, book: Book) {
-        send!(self.main_sender, Action::Books(Box::new(BookAction::OpenBook(book))));
+        send!(
+            self.main_sender,
+            Action::Books(Box::new(BookAction::OpenBook(book)))
+        );
     }
-
 }

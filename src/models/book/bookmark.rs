@@ -15,11 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use gtk::glib::{ParamFlags, ParamSpec, ParamSpecString};
-use serde::{Serialize, Deserialize};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib};
 use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 
 mod imp {
@@ -56,8 +56,7 @@ mod imp {
 }
 
 glib::wrapper! {
-    pub struct Bookmark(ObjectSubclass<imp::Bookmark>)
-    @extends glib::Object;
+    pub struct Bookmark(ObjectSubclass<imp::Bookmark>);
 }
 
 impl Bookmark {

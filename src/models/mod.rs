@@ -14,12 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod book;
+mod book_manager;
 mod library;
-pub mod book_image;
-mod book_box;
-mod book_flow_box;
+mod object_wrapper;
+mod storage;
+mod utils;
 
-pub use library::BookxLibraryPage;
-pub use book_image::BookImage;
-pub use book_box::BookBox;
-pub use book_flow_box::BookxFlowBox;
+pub use book::Book;
+pub use book_manager::BookAction;
+pub use library::{BookxLibrary, BookxLibraryStatus};
+pub use object_wrapper::ObjectWrapper;

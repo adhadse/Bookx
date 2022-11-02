@@ -16,14 +16,14 @@
 
 use crate::application::{Action, BookxApplication};
 use crate::config;
-use crate::library::{Book, BookxLibrary, BookxLibraryStatus, ObjectWrapper};
-use crate::ui::library::{BookBox, BookxFlowBox};
+use crate::models::{Book, BookxLibrary, BookxLibraryStatus, ObjectWrapper};
+use crate::widgets::library::{BookBox, BookxFlowBox};
 use adw::subclass::prelude::*;
 use glib::{clone, subclass, Sender};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib, CompositeTemplate};
-use log::{info};
+use log::info;
 use once_cell::unsync::OnceCell;
 
 mod imp {
@@ -154,13 +154,21 @@ impl BookxLibraryPage {
                 //     pool.spawn_ok(futures);
                 // });
 
-
-                imp.library.imp().book_init_list.get().unwrap().iter().for_each(|b_init| {
-                    book_list.append(Book::new(b_init.id.clone(), b_init.format, b_init.uri.clone()));
-                });
+                imp.library
+                    .imp()
+                    .book_init_list
+                    .get()
+                    .unwrap()
+                    .iter()
+                    .for_each(|b_init| {
+                        book_list.append(Book::new(
+                            b_init.id.clone(),
+                            b_init.format,
+                            b_init.uri.clone(),
+                        ));
+                    });
                 imp.book_flow_box.bind_model(book_list);
-            },
+            }
         }
     }
 }
-

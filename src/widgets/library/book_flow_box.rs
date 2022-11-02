@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::models::{Book, BookAction, ObjectWrapper};
+use crate::widgets::library::BookBox;
 use gio::ListStore;
-use crate::library::{Book, BookAction, ObjectWrapper};
-use crate::ui::library::BookBox;
 use gtk::gio;
 use gtk::gio::prelude::*;
 use gtk::glib::clone;
@@ -46,10 +46,12 @@ impl BookxFlowBox {
     pub fn bind_model(&self, book_list: ListStore) {
         get_widget!(self.builder, gtk::FlowBox, book_flow_box);
 
-        book_flow_box.connect_child_activated(clone!(@strong self.sender as sender => move |_, list_box_row| {
-            let book_box = list_box_row.downcast_ref::<BookBox>().unwrap();
-            send!(sender, BookAction::Open(book_box.book().clone()));
-        }));
+        book_flow_box.connect_child_activated(
+            clone!(@strong self.sender as sender => move |_, list_box_row| {
+                let book_box = list_box_row.downcast_ref::<BookBox>().unwrap();
+                send!(sender, BookAction::Open(book_box.book().clone()));
+            }),
+        );
 
         match book_list {
             Some(book_list) => {

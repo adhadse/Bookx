@@ -44,9 +44,9 @@ impl Default for Format {
 //         self.to_value()
 //     }
 
-    // fn value_type(&self) -> Type {
-    //     Format
-    // }
+// fn value_type(&self) -> Type {
+//     Format
+// }
 // }
 
 impl Format {
@@ -62,13 +62,23 @@ impl Format {
 
     // formats that allow user to add annotations without warning
     pub fn can_annotate() -> Vec<Format> {
-        Vec::from([Format::EPUB, Format::MOBI, Format::KINDLE, Format::KINDLEALIAS])
+        Vec::from([
+            Format::EPUB,
+            Format::MOBI,
+            Format::KINDLE,
+            Format::KINDLEALIAS,
+        ])
     }
 
     // Formats that gets accepted as EBook by Bookx
     pub fn are_ebooks() -> Vec<Format> {
-        Vec::from([Format::EPUB, Format::MOBI, Format::KINDLE, Format::KINDLEALIAS,
-                      Format::FB2])
+        Vec::from([
+            Format::EPUB,
+            Format::MOBI,
+            Format::KINDLE,
+            Format::KINDLEALIAS,
+            Format::FB2,
+        ])
     }
 
     pub fn get_format(mime: String) -> Format {
@@ -76,8 +86,8 @@ impl Format {
             String::from("application/epub+zip") => Format::EPUB,
             String::from("application/x-mobipocket-ebook") => Format::MOBI,
             String::from("application/vnd.amazon.mobi8-ebook") => Format::KINDLE,
-            String::from("application/x-mobi8-ebook")  => Format::KINDLEALIAS,
-            String::from("text/fb2+xml") => Format::FB2 ,
+            String::from("application/x-mobi8-ebook") => Format::KINDLEALIAS,
+            String::from("text/fb2+xml") => Format::FB2,
         }
     }
 }
@@ -185,4 +195,3 @@ fn cmp_like_nautilus(filename_a: &str, filename_b: &str) -> Ordering {
 
     order
 }
-

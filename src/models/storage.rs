@@ -16,7 +16,9 @@
 
 use crate::config;
 use crate::glib::{Error, GString};
+use crate::models::storage;
 use adw::glib::subclass::SignalId;
+use futures::TryFutureExt;
 use gio::{File, FileInfo};
 use gtk::glib::{
     clone, subclass::Signal, ObjectExt, ParamFlags, ParamSpec, ParamSpecEnum, ParamSpecInt,
@@ -35,7 +37,6 @@ use std::fs;
 use std::io::{ErrorKind, Write};
 use std::iter::Once;
 use std::path;
-use futures::TryFutureExt;
 use url::form_urlencoded;
 
 mod imp {
@@ -96,8 +97,7 @@ mod imp {
 }
 
 glib::wrapper! {
-    pub struct Storage(ObjectSubclass<imp::Storage>)
-    @extends glib::Object;
+    pub struct Storage(ObjectSubclass<imp::Storage>);
 }
 
 impl Storage {
@@ -112,7 +112,7 @@ impl Storage {
             .monitor(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE)
             .expect("Cannot create monitor")
             .connect("changed", false, {
-                if Self::get_modified() > storage.imp().modified {
+                if storage.get_modified() > storage.imp().modified {
                     debug!("Externally modified: {}", &storage.imp().file.get_path());
                     storage.imp().data.into_inner() = storage.read(path.clone());
                     storage.emit_by_name("externally-modified");
@@ -127,11 +127,11 @@ impl Storage {
         let data = fs::read_to_string(&path).unwrap_or_else(|error| {
             if error.kind() == ErrorKind::NotFound {
                 let _ = fs::File::create(&path).unwrap_or_else(|error| {
-                     panic!("Problem creating the File: {:?}", error);
+                    panic!("Problem creating the File: {:?}", error);
                 });
-                return fs::read_to_string(&path).unwrap_or_else( |error| {
+                return fs::read_to_string(&path).unwrap_or_else(|error| {
                     panic!("Problem reading the File: {:?}", error);
-            })
+                });
             } else {
                 panic!("Unknown problem while reading the File: {:?}", error);
             }
@@ -155,7 +155,7 @@ impl Storage {
         }
     }
 
-    pub fn get_path(_type: &str, key: String, extension: Option<String>) -> Option<&str> {
+    pub fn get_path(_type: &str, key: &str, extension: Option<String>) -> String {
         let mut data_dir: path::PathBuf = path::PathBuf::new();
         if _type == "cache" {
             data_dir = glib::user_cache_dir()
@@ -166,9 +166,12 @@ impl Storage {
         }
         data_dir
             .join(config::PKGNAME)
-            .join(form_urlencoded::Serializer::new(key))
-            .with_extension(extension.unwrap_or("json"))
+            .join(form_urlencoded::Serializer::new(key.to_string()))
+            .with_extension(extension.unwrap_or(String::from("json")))
             .to_str()
+            .to_owned()
+            .unwrap()
+            .to_string()
     }
 
     fn write(&self, data: Json) {
@@ -196,8 +199,13 @@ impl Storage {
     }
 
     pub fn set(&mut self, property: &str, value: Json) {
-        self.imp().data.into_inner().set(property, value)
-            .expect(format!("Cannot set `data` for file: {}", self.imp().file.into_inner()).as_str());
+        self.imp().data.into_inner().set(property, value).expect(
+            format!(
+                "Cannot set `data` for file: {}",
+                self.imp().file.into_inner()
+            )
+            .as_str(),
+        );
     }
 
     pub fn clear(&self) {
@@ -206,4 +214,3 @@ impl Storage {
         }
     }
 }
-

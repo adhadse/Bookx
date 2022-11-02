@@ -15,9 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::application::Action;
-use crate::library::utils::{self, Format};
+use crate::models::utils::{self, Format};
 use crate::settings::{settings_manager, Key};
-use crate::ui::BookxWindow;
+use crate::widgets::BookxWindow;
 
 use std::cell::RefCell;
 
@@ -25,9 +25,9 @@ use gtk::glib::{
     self, clone, Enum, ObjectExt, ParamFlags, ParamSpec, ParamSpecEnum, ParamSpecObject, Sender,
     ToValue,
 };
-use gtk_macros::{send};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
+use gtk_macros::send;
 use log::{debug, error, info};
 use once_cell::sync::Lazy;
 use once_cell::unsync::OnceCell;
@@ -55,7 +55,7 @@ impl Default for BookxLibraryStatus {
 struct BookInit {
     pub id: String,
     pub format: Format,
-    pub uri: String
+    pub uri: String,
 }
 
 mod imp {
@@ -161,17 +161,23 @@ impl BookxLibrary {
                         if let Some(content_type) = info.content_type() {
                             debug!("Content type: {}", content_type);
                             // TODO: measure the performance of this condition
-                            if Format::are_ebooks().iter().map(|f| {
-                                gio::content_type_is_mime_type(&content_type, &f.get_mime())
-                            }).any(|f| f == true)
+                            // Checks whether the content mime type is acceptable as EBook
+                            if Format::are_ebooks()
+                                .iter()
+                                .map(|f| {
+                                    gio::content_type_is_mime_type(&content_type, &f.get_mime())
+                                })
+                                .any(|f| f == true)
                             {
                                 debug!("Adding file '{}' to the list", file.uri());
-                                self.imp().book_init_list.get().unwrap().push(BookInit{
+                                self.imp().book_init_list.get().unwrap().push(BookInit {
                                     id: file.uri().to_string(), // TODO: Get a unique Identifier for book
                                     format: Format::get_format(
-                                        gio::content_type_get_mime_type(
-                                            &content_type).unwrap().to_string()),
-                                    uri: file.uri().to_string()
+                                        gio::content_type_get_mime_type(&content_type)
+                                            .unwrap()
+                                            .to_string(),
+                                    ),
+                                    uri: file.uri().to_string(),
                                 });
                             }
                         }
@@ -190,7 +196,12 @@ impl BookxLibrary {
             self.set_status(&BookxLibraryStatus::Content);
         } else {
             self.set_status(&BookxLibraryStatus::Empty);
-            send!(self.sender, Action::Notification("Could not find any books in the current directory".to_string()));
+            send!(
+                self.sender,
+                Action::Notification(
+                    "Could not find any books in the current directory".to_string()
+                )
+            );
         }
     }
 }

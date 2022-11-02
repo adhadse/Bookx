@@ -16,19 +16,18 @@
 
 use crate::config;
 use crate::deps::*;
-use crate::library::{Book, BookxLibrary, BookAction};
+use crate::models::{BookAction, BookxLibrary};
 use crate::settings::{settings_manager, Key};
-use crate::ui::{BookxPreferencesWindow, BookxView, BookxWindow};
+use crate::widgets::{BookxPreferencesWindow, BookxView, BookxWindow};
 
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::str::FromStr;
 
 use glib::{clone, ObjectExt, ParamSpec, ParamSpecObject, Receiver, Sender, ToValue};
 use gtk::subclass::application::GtkApplicationImpl;
 use gtk_macros::*;
 use log::{debug, error, info};
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::Lazy;
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
@@ -282,7 +281,7 @@ impl BookxApplication {
         match action {
             Action::SettingsKeyChanged(key) => self.apply_settings_changes(key),
             Action::Notification(message) => self.main_window().show_notification(message),
-            Action::Books(book_action) => self.process_book_action(book_action)
+            Action::Books(book_action) => self.process_book_action(book_action),
         }
         glib::Continue(true)
     }

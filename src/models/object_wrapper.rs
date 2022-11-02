@@ -27,7 +27,9 @@ mod imp {
         type ParentType = glib::Object;
 
         fn new() -> Self {
-            Self { data: RefCell::new(None) }
+            Self {
+                data: RefCell::new(None),
+            }
         }
     }
 

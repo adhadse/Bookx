@@ -14,15 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod annotation;
 mod book;
-mod library;
-mod storage;
-mod utils;
-mod object_wrapper;
-mod book_manager;
+mod bookmark;
 
-pub use library::{BookxLibrary, BookxLibraryStatus};
+pub use annotation::BookAnnotation;
 pub use book::Book;
-pub use object_wrapper::ObjectWrapper;
-pub use book_manager::BookAction;
-
+pub use bookmark::Bookmark;

@@ -14,21 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::models::{Book, BookAction};
+use crate::widgets::library::BookImage;
+use epub::doc::EpubDoc;
+use glib::subclass::InitializingObject;
+use gtk::gdk_pixbuf;
+use gtk::glib::{self, clone, Sender};
+use gtk::prelude::*;
+use gtk::subclass::prelude::*;
+use gtk_macros::{action, send, spawn};
+use log::error;
+use once_cell::sync::OnceCell;
 use std::borrow::Borrow;
 use std::fs;
 use std::io::Write;
-use epub::doc::EpubDoc;
-use gtk::glib::{self, Sender, clone};
-use gtk::prelude::*;
-use gtk::subclass::prelude::*;
-use gtk_macros::{action, spawn, send};
-use log::{error};
-use glib::subclass::InitializingObject;
-use gtk::gdk_pixbuf;
-use once_cell::sync::OnceCell;
-use crate::library::{Book, BookAction};
-use crate::ui::library::BookImage;
-
 
 mod imp {
     use super::*;
@@ -129,21 +128,25 @@ impl BookBox {
         spawn!(async move {
             // src/models/preview_image.rs
             // src/models/article.rs#L168
-            let exists = std::path::Path::new(book.imp().cover_picture_path).try_exists().unwrap_or_else(|_| {
-                // image does not exist; get cover from ebook and save
-                let doc = EpubDoc::new(book.imp().uri).unwrap();
-                let cover_data: Vec<u8> = doc.get_cover().unwrap();
-                let mut f = fs::File::create(book.imp().cover_picture_path).unwrap();
-                let resp = f.write_all(&cover_data);
-            });
+            let exists = std::path::Path::new(book.imp().cover_picture_path)
+                .try_exists()
+                .unwrap_or_else(|_| {
+                    // image does not exist; get cover from ebook and save
+                    let doc = EpubDoc::new(book.imp().uri).unwrap();
+                    let cover_data: Vec<u8> = doc.get_cover().unwrap();
+                    let mut f = fs::File::create(book.imp().cover_picture_path).unwrap();
+                    let resp = f.write_all(&cover_data);
+                });
             if exists {
                 match gdk_pixbuf::Pixbuf::from_file(book.imp().cover_picture_path) {
-                    Ok(Some(pixbuf)) => {
-                        book_image.set_pixbuf(&pixbuf)},
+                    Ok(Some(pixbuf)) => book_image.set_pixbuf(&pixbuf),
                     _ => {
-                        error!("Cannot create pixbuf for cover picture: {}", book.imp().cover_picture_path);
+                        error!(
+                            "Cannot create pixbuf for cover picture: {}",
+                            book.imp().cover_picture_path
+                        );
                         book_image.hide();
-                    },
+                    }
                 };
             } else {
                 // TODO: when even ebook don't have cover,

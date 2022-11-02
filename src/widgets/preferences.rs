@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::settings::{settings_manager, Key};
-use crate::ui::BookxWindow;
+use crate::widgets::BookxWindow;
 use crate::BookxApplication;
 use adw::PreferencesWindow;
 use glib::clone;

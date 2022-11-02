@@ -14,18 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use gtk::glib;
 use gtk::glib::{ParamFlags, ParamSpec, ParamSpecString};
 use gtk::prelude::*;
-use serde::{Serialize, Deserialize};
 use gtk::subclass::prelude::*;
-use gtk::{gio, glib};
 use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 
 mod imp {
     use super::*;
 
-    #[derive(Default, Eq, Debug, Clone, Serialize, Deserialize)]
+    #[derive(Default, Debug, Clone, Serialize, Deserialize)]
     pub struct BookAnnotation {
         pub cfi: RefCell<String>,
         pub text: RefCell<String>,
@@ -82,7 +82,5 @@ mod imp {
 }
 
 glib::wrapper! {
-    pub struct BookAnnotation(ObjectSubclass<imp::BookAnnotation>)
-    @extends glib::Object;
+    pub struct BookAnnotation(ObjectSubclass<imp::BookAnnotation>);
 }
-

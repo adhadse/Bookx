@@ -17,9 +17,9 @@
 mod application;
 #[rustfmt::skip]
 mod config;
-mod library;
+mod models;
 mod settings;
-mod ui;
+mod widgets;
 
 use application::BookxApplication;
 use gettextrs;

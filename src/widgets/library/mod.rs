@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod annotation;
-mod book;
-mod bookmark;
+mod book_box;
+mod book_flow_box;
+pub mod book_image;
+mod library;
 
-pub use annotation::BookAnnotation;
-pub use book::Book;
-pub use bookmark::Bookmark;
+pub use book_box::BookBox;
+pub use book_flow_box::BookxFlowBox;
+pub use book_image::BookImage;
+pub use library::BookxLibraryPage;

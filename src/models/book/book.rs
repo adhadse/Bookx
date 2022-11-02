@@ -14,28 +14,34 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::borrow::Borrow;
-use crate::library::book::{BookAnnotation, Bookmark};
-use crate::library::storage::Storage;
-use crate::library::utils;
-use crate::library::utils::Format;
+use crate::models::book::{BookAnnotation, Bookmark};
+use crate::models::storage::Storage;
+use crate::models::utils;
+use crate::models::utils::Format;
 use crate::settings::{settings_manager, Key};
 use crate::BookxApplication;
 use adw::gdk::{self, gdk_pixbuf};
 use adw::glib::object::GObject;
-use adw::glib::{List};
+use adw::glib::List;
 use gio::ListStore;
 use gtk::gdk_pixbuf::Pixbuf;
-use gtk::glib::{self, clone, subclass::Signal, Enum, ObjectExt, ParamFlags, ParamSpec, ParamSpecBoxed, ParamSpecEnum, ParamSpecInt, ParamSpecObject, ParamSpecString, Sender, SignalFlags, ToValue, DateTime};
+use gtk::glib::{
+    self, clone, subclass::Signal, DateTime, Enum, ObjectExt, ParamFlags, ParamSpec,
+    ParamSpecBoxed, ParamSpecEnum, ParamSpecInt, ParamSpecObject, ParamSpecString, Sender,
+    SignalFlags, ToValue,
+};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use jsondata::Json;
 use log::{debug, error};
 use once_cell::sync::Lazy;
 use once_cell::unsync::OnceCell;
-use serde::{Serialize, Deserialize};
+use serde::de::Unexpected::Str;
+use serde::{Deserialize, Serialize};
+use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
 use std::collections::{hash_map::Values, HashMap, HashSet};
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 
@@ -45,7 +51,7 @@ const CHARACTERS_PER_PAGE: i32 = 1024;
 
 // this should be bumped whenever FB2 rendering (see web/webpub.js) is changed
 // that way we can clear the cache
-const FB2_CONVERTER_VERSION: str = "2.4.0";
+const FB2_CONVERTER_VERSION: String = String::from("2.4.0");
 
 // TODO: switch to serde_json
 struct BookData {
@@ -89,15 +95,13 @@ mod imp {
     impl ObjectImpl for Book {
         fn properties() -> &'static [ParamSpec] {
             static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
-                vec![
-                    ParamSpecObject::new(
-                        "annotations_list",
-                        "AnnotationsList",
-                        "AnnotationsList",
-                        glib::List::default(),
-                        ParamFlags::READWRITE,
-                    ),
-                ]
+                vec![ParamSpecObject::new(
+                    "annotations_list",
+                    "AnnotationsList",
+                    "AnnotationsList",
+                    glib::List::default(),
+                    ParamFlags::READWRITE,
+                )]
             });
 
             PROPERTIES.as_ref()
@@ -144,8 +148,7 @@ mod imp {
 }
 
 glib::wrapper! {
-    pub struct Book(ObjectSubclass<imp::Book>)
-    @extends glib::Object;
+    pub struct Book(ObjectSubclass<imp::Book>);
 }
 
 impl Book {
@@ -153,12 +156,12 @@ impl Book {
         // If this doesn't work then look how BookxApplication GObject is created
         // Line 188, application.rs
         let book = glib::Object::new::<Self>(&[]).unwrap();
-        *book.imp().identifier = identifier;
+        *book.imp().identifier = identifier.clone();
         *book.imp().format = format;
         *book.imp().uri = uri;
-        *book.imp().storage = Storage::new(Self::get_data_path(identifier));
-        *book.imp().cache = Storage::new(Self::get_cache_path(identifier));
-        *book.imp().cover_picture_path = Self::get_cover_path(identifier);
+        *book.imp().storage = Storage::new(Self::get_data_path(identifier.borrow()));
+        *book.imp().cache = Storage::new(Self::get_cache_path(identifier.borrow()));
+        *book.imp().cover_picture_path = Self::get_cover_path(identifier.borrow());
 
         // TODO: only call when entering reader mode
         book.load_data();
@@ -212,7 +215,6 @@ impl Book {
         //
         // self.imp()._storage.get('bookmarks', [])
         //     .forEach(cfi => this.addBookmark(cfi, true))
-
     }
 
     fn annotations(&self) -> Values<'_, String, String> {
@@ -221,12 +223,18 @@ impl Book {
 
     // returns true if book has annotations
     pub fn has_annotations(&self) -> bool {
-        let annotations_array = self.imp().storage.borrow().get("annotations").unwrap().to_array();
+        let annotations_array = self
+            .imp()
+            .storage
+            .borrow()
+            .get("annotations")
+            .unwrap()
+            .to_array();
         !annotations_array.unwrap().is_empty()
     }
 
     // returns annotation corresponding to a CFI
-    pub fn get_annotations(&self, cfi: &str) -> Option<String> {
+    pub fn get_annotations(&self, cfi: &str) -> Option<&BookAnnotation> {
         self.imp().annotations_map.get().get(cfi)
     }
 
@@ -260,7 +268,7 @@ impl Book {
     }
 
     pub fn set_progress(&self, current: i128, total: i128) {
-        let mut percentage = Json::new::<i128>((current/total) * 100);
+        let mut percentage = Json::new::<i128>((current / total) * 100);
         // if let Err(E) = js.append("", Json::new(current)) {
         //     error!(format!(
         //         "Cannot set 'current' value: {} when trying to `set_progress()`",
@@ -281,13 +289,19 @@ impl Book {
         match progress {
             Ok(progress) => {
                 let fraction = progress.to_integer().unwrap_or_else(|error| {
-                    error!("Cannot parse progress for book: {}", self.imp().identifier);
-                    return 0
+                    error!(
+                        "Cannot parse progress for book: {:?}",
+                        self.imp().identifier
+                    );
+                    return 0;
                 });
                 format!("{}%", fraction)
             }
             Err(_) => {
-                error!("Cannot find progress property for book: {}", self.imp().identifier)
+                error!(
+                    "Cannot find progress property for book: {:?}",
+                    self.imp().identifier
+                )
             }
         }
     }
@@ -419,7 +433,7 @@ impl Book {
     }
 
     // fn disconnect_all_handles(&self, object: glib::Object, signal: glib::) {
-        // TODO: where is `GObject.signal_parse_name() ?
+    // TODO: where is `GObject.signal_parse_name() ?
     // }
 
     // TODO: uncomment when `view_set` is required
@@ -443,7 +457,7 @@ impl Book {
         if !settings_manager::boolean(Key::CacheCovers) {
             return;
         }
-        debug!("Saving cover to {}", &self.imp().cover_picture_path);
+        debug!("Saving cover to {:?}", &self.imp().cover_picture_path);
         let width = settings_manager::integer(Key::CoverPictureSize);
 
         let ratio = width / pixbuf.width();
@@ -464,15 +478,15 @@ impl Book {
         }
     }
 
-    pub fn get_data_path(identifier: String) -> String {
+    pub fn get_data_path(identifier: &str) -> String {
         Storage::get_path("data", identifier, None)
     }
 
-    pub fn get_cache_path(identifier: String) -> String {
+    pub fn get_cache_path(identifier: &str) -> String {
         Storage::get_path("cache", identifier, None)
     }
 
-    pub fn get_cover_path(identifier: String) -> String {
-        Storage::get_path("cache", identifier, Some(".png"))
+    pub fn get_cover_path(identifier: &str) -> String {
+        Storage::get_path("cache", identifier, Some(String::from(".png")))
     }
 }

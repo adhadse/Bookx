@@ -17,11 +17,10 @@
 use crate::application::{Action, BookxApplication};
 use crate::config;
 use crate::deps::*;
-use crate::library::{Book, BookxLibraryStatus};
+use crate::models::{Book, BookxLibraryStatus};
 use crate::settings::{settings_manager, Key};
-use crate::ui::library::BookxLibraryPage;
+use crate::widgets::library::BookxLibraryPage;
 
-use std::cell::RefCell;
 use adw::subclass::application_window::AdwApplicationWindowImpl;
 use adw::subclass::prelude::*;
 use glib::{clone, subclass, Enum, ParamFlags, ParamSpec, ParamSpecEnum, Sender, ToValue};
@@ -30,6 +29,7 @@ use gtk_macros::*;
 use log::{debug, info};
 use once_cell::sync::Lazy;
 use once_cell::unsync::OnceCell;
+use std::cell::RefCell;
 use strum_macros::*;
 
 #[derive(Display, Copy, Debug, Clone, EnumString, Eq, PartialEq, Enum)]
@@ -453,4 +453,3 @@ impl Default for BookxWindow {
             .unwrap()
     }
 }
-
