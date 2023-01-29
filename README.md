@@ -2,6 +2,10 @@
 
 # Bookx
 An MVP in progress:
+- [Mockups](/mockups/)
+    - [X] Mockup for Library
+    - [ ] Mockup for Reader
+    - [ ] Mockup for editor
 - [ ] An ebook reader with .epub support
     - [ ] Context menu for each book (delete, rename book, info)
     - [ ] On click switch the carousal to the book
@@ -12,6 +16,9 @@ An MVP in progress:
 ![Main window](data/screenshots/screenshot1.png)
 
 </div>
+
+# Pronunciation
+The app is pronounced just like "Books" but the "s" replaced with "x", as in an extension of something that manages your books. And not "Book-ex" :)
 
 ## Build & Run the project
 
