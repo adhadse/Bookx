@@ -4,7 +4,7 @@
 An MVP in progress:
 - [Mockups](/mockups/)
     - [X] Mockup for Library
-    - [ ] Mockup for Reader
+    - [X] Mockup for Reader
     - [ ] Mockup for editor
 - [ ] An ebook reader with .epub support
     - [ ] Context menu for each book (delete, rename book, info)
