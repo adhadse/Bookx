@@ -1,4 +1,4 @@
-![Bookx_github_description](data/screenshots/Bookx_github_description.png)
+![Bookx_github_description](data/resources/screenshots/Bookx_github_description.png)
 
 # Bookx
 [![Please do not theme this app](https://stopthemingmy.app/badge.svg)](https://stopthemingmy.app)
@@ -15,7 +15,7 @@ An MVP in progress:
 
 <div align="center">
 
-![Main window](data/screenshots/screenshot1.png)
+![Main window](data/resources/screenshots/screenshot1.png)
 
 </div>
 
@@ -27,7 +27,7 @@ The app is pronounced just like "Books" but the "s" replaced with "x", as in an 
 Building the project
 
 ```bash
-flatpak install org.gnome.Sdk//41 org.freedesktop.Sdk.Extension.rust-stable//21.08 org.gnome.Platform//42
+flatpak install org.gnome.Sdk//43 org.freedesktop.Sdk.Extension.rust-stable//22.08 org.gnome.Platform//43
 flatpak-builder --user flatpak_app build-aux/com.adhadse.Bookx.Devel.json
 ```
 

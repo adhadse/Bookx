@@ -14,43 +14,53 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod application;
 #[rustfmt::skip]
 mod config;
-mod models;
-mod settings;
-mod views;
-mod widgets;
+mod app;
+mod components;
+mod setup;
 
-use application::BookxApplication;
-use gettextrs;
-
-use gtk::{
-    gio::{self, prelude::ApplicationExtManual},
-    glib,
+use gtk::prelude::ApplicationExt;
+use relm4::{
+    actions::{AccelsPlus, RelmAction, RelmActionGroup},
+    gtk, main_application, RelmApp,
 };
 
+use app::App;
+use setup::setup;
+
+use crate::config::APP_ID;
+
+relm4::new_action_group!(AppActionGroup, "app");
+relm4::new_stateless_action!(QuitAction, AppActionGroup, "quit");
+
 fn main() {
-    // Initialize logger
-    pretty_env_logger::init();
+    // Enable logging
+    tracing_subscriber::fmt()
+        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::FULL)
+        .with_max_level(tracing::Level::INFO)
+        .init();
 
-    // Prepare i18n
-    gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, "");
-    gettextrs::bindtextdomain(config::PKGNAME, config::LOCALEDIR)
-        .expect("Unable to bind the text domain");
-    gettextrs::textdomain(config::PKGNAME).expect("Unable to switch to the text domain");
+    setup();
 
-    // Load app resources
-    let path = &format!(
-        "{}/{}/{}.gresource",
-        config::DATADIR,
-        config::PKGNAME,
-        config::APP_ID
-    );
-    let res = gio::Resource::load(path).expect("Could not load resources");
-    gio::resources_register(&res);
+    let app = main_application();
+    app.set_resource_base_path(Some("/com/adhadse/Bookx/"));
 
-    let app = BookxApplication::new();
-    let ret = app.run();
-    std::process::exit(ret);
+    let actions = RelmActionGroup::<AppActionGroup>::new();
+
+    let quit_action = {
+        let app = app.clone();
+        RelmAction::<QuitAction>::new_stateless(move |_| {
+            app.quit();
+        })
+    };
+    actions.add_action(&quit_action);
+
+    app.set_accelerators_for_action::<QuitAction>(&["<Control>q"]);
+
+    app.set_action_group(Some(&actions.into_action_group()));
+
+    let app = RelmApp::with_app(app);
+
+    app.run::<App>(());
 }
