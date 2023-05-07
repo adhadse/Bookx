@@ -14,35 +14,35 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::config;
-use crate::deps::*;
-use crate::library::BookxLibrary;
-use crate::settings::{settings_manager, Key};
-use crate::ui::{BookxPreferencesWindow, BookxView, BookxWindow};
-
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::str::FromStr;
-
-use glib::{clone, ObjectExt, ParamSpec, ParamSpecObject, Receiver, Sender, ToValue};
-use gtk::subclass::application::GtkApplicationImpl;
+use crate::application::Action::Book;
+use crate::{
+    config,
+    models::BookAction,
+    settings::{settings_manager, Key},
+    views::BookxLibrary,
+    widgets::{BookxPreferencesWindow, BookxView, BookxWindow},
+};
+use adw::{prelude::*, subclass::prelude::*, ToastPriority};
+use gtk::{
+    glib::{self, clone, ObjectExt, ParamSpec, ParamSpecObject, Receiver, Sender, ToValue},
+    subclass::application::GtkApplicationImpl,
+};
 use gtk_macros::*;
 use log::{debug, error, info};
-use once_cell::sync::{Lazy, OnceCell};
-
-use adw::prelude::*;
-use adw::subclass::prelude::*;
+use once_cell::{sync::Lazy, sync::OnceCell};
+use std::{cell::RefCell, rc::Rc, str::FromStr};
 
 #[derive(Debug, Clone)]
 pub enum Action {
     // BookxApplication.process_action() handles sending actions between
     // different senders and receivers using send! macro
     SettingsKeyChanged(Key),
+    Notification(String),
+    Book(Box<BookAction>),
 }
 
 mod imp {
     use super::*;
-    use once_cell::sync::OnceCell;
 
     // The basic struct that holds our
     // state and widgets
@@ -50,8 +50,7 @@ mod imp {
         pub sender: Sender<Action>,
         pub receiver: RefCell<Option<Receiver<Action>>>,
 
-        pub window: OnceCell<glib::WeakRef<BookxWindow>>,
-        pub library: BookxLibrary,
+        pub window: BookxWindow,
         pub settings: gio::Settings,
     }
 
@@ -63,55 +62,33 @@ mod imp {
         const NAME: &'static str = "BookxApplication";
         type Type = super::BookxApplication;
         type ParentType = adw::Application;
-
-        fn new() -> Self {
-            let (sender, r) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-            let receiver = RefCell::new(Some(r));
-
-            let window = OnceCell::new();
-            let library = BookxLibrary::new(sender.clone());
-
-            let settings = settings_manager::settings();
-
-            Self {
-                sender,
-                receiver,
-                window,
-                library,
-                settings,
-            }
-        }
     }
 
     // Overrides GObject vfuncs
     impl ObjectImpl for BookxApplication {
-        fn properties() -> &'static [ParamSpec] {
-            static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
-                vec![ParamSpecObject::new(
-                    "library",
-                    "Library",
-                    "Library",
-                    BookxLibrary::static_type(),
-                    glib::ParamFlags::READABLE,
-                )]
-            });
+        fn constructed(&self) {
+            let obj = self.instance();
+            self.parent_constructed();
 
-            PROPERTIES.as_ref()
-        }
+            // Force dark theme
+            obj.style_manager()
+                .set_color_scheme(adw::ColorScheme::PreferDark);
 
-        fn property(&self, obj: &Self::Type, _id: usize, pspec: &ParamSpec) -> glib::Value {
-            match pspec.name() {
-                "library" => obj.library().to_value(),
-                _ => unimplemented!(),
-            }
+            // Setup actions
+            obj.setup_actions();
         }
     }
 
     // Overrides Gio.Application for Bookx
     impl ApplicationImpl for BookxApplication {
-        fn activate(&self, app: &Self::Type) {
+        fn activate(&self) {
+            let application = self.instance();
+            let window = BookxWindow::new(self.sender.clone(), &application);
+
             debug!("gio::Application -> activate()");
-            let app = app.downcast_ref::<super::BookxApplication>().unwrap();
+            let app = application
+                .downcast_ref::<super::BookxApplication>()
+                .unwrap();
             glib::set_application_name(config::NAME);
             gtk::Window::set_default_icon_name(config::APP_ID);
 
@@ -129,7 +106,7 @@ mod imp {
             info!("Created application window.");
 
             // Setup app level GActions
-            app.setup_gactions();
+            app.setup_actions();
 
             // Setup action channel
             let receiver = self.receiver.borrow_mut().take().unwrap();
@@ -172,27 +149,29 @@ mod imp {
 // BookxApplication without casting.
 glib::wrapper! {
     pub struct BookxApplication(ObjectSubclass<imp::BookxApplication>)
-        @extends gio::Application, gtk::Application, adw::Application,
-        @implements gio::ActionMap, gio::ActionGroup;
+        @extends gio::Application, gtk::Application, adw::Application;
+        //@implements gio::ActionGroup, gio::ActionMap;
 }
 
 // This is where the member functions of BookxApplication go.
 impl BookxApplication {
-    pub fn run() {
+    pub fn new() -> Self {
+        let (sender, r) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+        let receiver = RefCell::new(Some(r));
+
+        let settings = settings_manager::settings();
+
         info!("Bookx ({})", config::APP_ID);
         info!("Version: {} ({})", config::VERSION, config::PROFILE);
         info!("Datadir: {}", config::DATADIR);
 
-        // Create new GObject and downcast it into BookxApplication
-        let app = glib::Object::new::<BookxApplication>(&[
-            ("application-id", &Some(config::APP_ID)),
-            ("flags", &gio::ApplicationFlags::empty()),
-            ("resource-base-path", &Some("/com/adhadse/Bookx")),
-        ])
-        .expect("Application initialization failed...");
+        let app = glib::Object::builder()
+            .property("application-id", config::APP_ID)
+            .property("flags", config::APP_ID)
+            .property("resource-base-path", config::DATADIR)
+            .build();
 
-        // Start running gtk::Application
-        app.run();
+        app
     }
 
     fn main_window(&self) -> BookxWindow {
@@ -210,62 +189,34 @@ impl BookxApplication {
         window
     }
 
-    fn setup_gactions(&self) {
-        // action! is a macro from gtk_macros
-        // that creates a GSimpleAction with a callback.
-        // clone! is a macro from glib-rs that allows
-        // you to easily handle references in callbacks
-        // without refcycles or leaks.
-        //
-        // When you don't want the callback to keep the
-        // Object alive, pass as @weak. Otherwise, pass
-        // as @strong. Most of the time you will want
-        // to use @weak.
-        let window = BookxWindow::default();
+    fn setup_actions(&self) {
+        // gio::ActionEntryBuilder allows us to build and store an action on an object
+        // that implements gio::ActionMap. Here we build the application's actions and
+        // add them with add_action_entries().
+        let actions = [
+            gio::ActionEntryBuilder::new("about")
+                .activate(|app: &Self, _, _| app.show_about())
+                .build(),
+            gio::ActionEntryBuilder::new("help")
+                .activate(|app: &Self, _, _| app.show_help())
+                .build(),
+            gio::ActionEntryBuilder::new("quit")
+                .activate(|app: &Self, _, _| app.quit())
+                .build,
+            gio::ActionEntryBuilder::new("new-window")
+                .activate(|app: &Self, _, _| {
+                    let win = BookxWindow::new(self.sender, app.clone());
+                    win.present();
+                })
+                .build(),
+        ];
 
-        action!(
-            self,
-            "about",
-            clone!(@weak self as app => move |_, _| {
-                app.show_about();
-            })
-        );
-
-        action!(
-            self,
-            "help",
-            clone!(@weak self as app => move |_, _| {
-                app.show_help();
-            })
-        );
-
-        // app.show-preferences
-        action!(
-            self,
-            "show-preferences",
-            clone!(@weak window => move |_, _| {
-                let settings_window = BookxPreferencesWindow::new(&window.upcast());
-                settings_window.show();
-            })
-        );
-
-        // app.quit
-        action!(
-            self,
-            "quit",
-            clone!(@weak window => move |_, _| {
-                window.close();
-            })
-        );
+        self.add_action_entries(actions).unwrap();
 
         // Sets up keyboard shortcuts
         self.set_accels_for_action("app.help", &["F1"]);
         self.set_accels_for_action("app.show-preferences", &["<primary>comma"]);
-        self.set_accels_for_action("app.quit", &["<primary>w"]);
-    }
-
-    pub fn library(&self) -> BookxLibrary {
-        self.imp().library.clone()
+        self.set_accels_for_action("app.quit", &["<primary>q"]);
     }
 
     fn process_action(&self, action: Action) -> glib::Continue {
@@ -278,8 +229,36 @@ impl BookxApplication {
 
         match action {
             Action::SettingsKeyChanged(key) => self.apply_settings_changes(key),
+            Action::Notification(message) => self
+                .main_window()
+                .show_notification(message, ToastPriority::Normal),
+            Action::Book(book_action) => self.process_book_action(book_action),
         }
         glib::Continue(true)
+    }
+
+    // handles action specific to a book
+    fn process_book_action(&self, book_action: Box<BookAction>) {
+        match *book_action {
+            BookAction::ShowBookProperties(book) => {
+                self.main_window().show_book_properties(book);
+            }
+            BookAction::EditMetadata(book) => {
+                // TODO: call library function create a new window to edit metadata
+            }
+            BookAction::DeleteBook(book) => {
+                // TODO: call library and delete book file
+            }
+            BookAction::ExportAnnotations(book) => {
+                // TODO: call library
+            }
+            BookAction::SendToDevice(book) => {
+                // TODO: call library
+            }
+            BookAction::OpenBook(book) => {
+                // TODO
+            }
+        }
     }
 
     fn apply_settings_changes(&self, key: Key) {
@@ -305,47 +284,27 @@ impl BookxApplication {
     pub fn refresh_data(&self) {
         let fut = clone!(@weak self as this => async move {
             let imp = this.imp();
+            // TODO: who is responsbile?
             imp.library.refresh_data().await;
         });
         spawn!(fut);
     }
 
     fn show_about(&self) {
-        // TODO: sudo dnf info libadwaita-devel for 1.2
-        // Uncomment and delete the similar code when libadwaita-devel 1.2 comes out
-        // let about = adw::AboutWindow::builder()
-        //     .application_icon("Bookx")
-        //     .application_icon(config::APP_ID)
-        //     .license_type(gtk::License::Gpl30)
-        //     .website("https://bookx.adhadse.com/")
-        //     .issue_url("https://github.com/adhadse/Bookx/issues/")
-        //     .version(config::VERSION)
-        //     .translator_credits(String::from("translator-credits"))
-        //     .copyright("© 2022 Anurag Dhadse")
-        //     .developers(vec![
-        //         String::from("Anurag Dhadse")
-        //     ])
-        //     .designers(vec![
-        //         String::from("Anurag Dhadse")
-        //     ])
-        //     .build();
-
-        // if let Some(window) = self.active_window() {
-        //     about.set_transient_for(Some(&window));
-        // }
-
-        let about = gtk::AboutDialog::builder()
-            .authors(vec![String::from("Anurag Dhadse")])
-            .artists(vec![String::from("Anurag Dhadse")])
-            .copyright("© 2022 Anurag Dhadse")
+        let about = adw::AboutWindow::builder()
+            .application_icon("Bookx")
+            .application_icon(config::APP_ID)
             .license_type(gtk::License::Gpl30)
-            .program_name("Bookx")
-            .logo_icon_name(config::APP_ID)
+            .website("https://bookx.adhadse.com/")
+            .issue_url("https://github.com/adhadse/Bookx/issues/")
             .version(config::VERSION)
+            .translator_credits(String::from("translator-credits"))
+            .copyright("© 2022 Anurag Dhadse")
+            .developers(vec![String::from("Anurag Dhadse")])
+            .designers(vec![String::from("Anurag Dhadse")])
             .build();
 
         if let Some(window) = self.active_window() {
-            about.set_modal(true);
             about.set_transient_for(Some(&window));
         }
 

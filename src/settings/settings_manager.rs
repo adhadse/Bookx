@@ -15,14 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::config;
-use crate::deps::*;
 use crate::settings::Key;
 use gio::prelude::*;
+use gtk::glib;
 
 #[allow(dead_code)]
 pub fn create_action(key: Key) -> gio::Action {
     let settings = settings();
-    settings.create_action(&key.to_string())
+    settings.create_action(&key.try_into())
 }
 
 pub fn settings() -> gio::Settings {
@@ -30,7 +30,7 @@ pub fn settings() -> gio::Settings {
 }
 
 #[allow(dead_code)]
-pub fn bind_property<P: IsA<glib::Object>>(key: Key, object: &P, property: &str) {
+pub fn bind_property(key: Key, object: &P, property: &str) {
     let settings = settings();
     settings
         .bind(key.to_string().as_str(), object, property)

@@ -17,17 +17,18 @@
 mod application;
 #[rustfmt::skip]
 mod config;
-mod library;
+mod models;
 mod settings;
-mod ui;
+mod views;
+mod widgets;
 
 use application::BookxApplication;
 use gettextrs;
 
-mod deps {
-    pub use gtk::{gdk, gdk_pixbuf, gio, glib, graphene};
-}
-use gtk::{gio, glib};
+use gtk::{
+    gio::{self, prelude::ApplicationExtManual},
+    glib,
+};
 
 fn main() {
     // Initialize logger
@@ -49,5 +50,7 @@ fn main() {
     let res = gio::Resource::load(path).expect("Could not load resources");
     gio::resources_register(&res);
 
-    BookxApplication::run();
+    let app = BookxApplication::new();
+    let ret = app.run();
+    std::process::exit(ret);
 }

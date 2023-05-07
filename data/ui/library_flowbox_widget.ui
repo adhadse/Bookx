@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="libadwaita" version="1.1"/>
+  <object class="BooksFlowBoxWidget" parent="GtkWidget">
+    <child>
+      <object class="GtkFlowBox" id="flow_box">
+        <property name="activate-on-single-click">False</property>
+        <property name="column-spacing">12</property>
+        <property name="row-spacing">12</property>
+        <property name="focus-on-click">True</property>
+        <property name="selection-mode">Multiple</property>
+        <property name="visible">True</property>
+        <property name="valign">start</property>
+        <property name="max-children-per-line">100</property>
+        <property name="border-width">18</property>
+        <signal name="child-activated" handler="handle_child_activated" />
+        <style>
+          <class name="transparent"/>
+        </style>
+      </object>
+    </child>
+  </object>
+</interface>

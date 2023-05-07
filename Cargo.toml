@@ -9,24 +9,39 @@ log = "0.4"
 pretty_env_logger = "0.4"
 once_cell = "1.9"
 gtk-macros = "0.3.0"
-strum = "0.20"
-strum_macros = "0.20"
-futures = "0.3"
+strum = "0.24.1"
+strum_macros = "0.24.3"
+futures = "0.3.28"
+anyhow = "1.0.70"
+rust-crypto = "0.2.36"
 
 [dependencies.gtk]
 package = "gtk4"
-version = "0.4.4"
-features = ["v4_6"]
+version = "0.6.4"
+features = ["v4_8", "gnome_43"]
 
 [dependencies.gio]
 package = "gio"
-version = "0.15.2"
+version = "0.16.7"
 features = ["v2_70"]
 
 [dependencies.adw]
 package = "libadwaita"
-version = "0.1.1"
+version = "0.4.1"
+features = ["v1_2"]
 
 [dependencies.gettext-rs]
 version = "0.7.0"
 features = ["gettext-system"]
+
+[dependencies.serde]
+version = "1.0.159"
+features = ["derive"]
+
+[dependencies.serde_json]
+package = "serde_json"
+version = "1.0.91"
+
+[dependencies.epub]
+package = "epub"
+version = "2.0.0"

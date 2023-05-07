@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="libadwaita" version="1.2"/>
   <template class="BookxWindow" parent="AdwApplicationWindow">
     <property name="handle-menubar-accel">true</property>
     <property name="default-width">600</property>
@@ -20,7 +22,7 @@
                   </object>
                 </child>
 
-                <!-- Search bar and menu button -->
+                <!-- Search and menu button -->
                 <!-- Application Menu Button -->
                 <child type="end">
                   <object class="GtkMenuButton" id="appmenu_button">
@@ -29,32 +31,13 @@
                   </object>
                 </child>
                 <!-- Expandable Search bar -->
-                <child type="end">
-                  <object class="GtkStack" id="search_stack">
-                    <property name="transition_type">slide-right</property>
-                    <property name="transition-duration">300</property>
-                    <property name="visible-child-name">search-button</property> <!-- change this to search_bar-->
-                    <property name="halign">start</property>
-                    <child>
-                      <object class="GtkSearchBar" id="search_bar">
-                        <property name="name">search-bar</property>
-                        <property name="visible">true</property>
-                        <property name="search_mode_enabled">true</property>
-                        <child>
-                          <object class="GtkSearchEntry" id="search_entry">
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkToggleButton" id="search_button">
-                        <property name="name">search-button</property>
-                        <property name="icon_name">edit-find-symbolic</property>
-                        <property name="halign">end</property>
-                        <property name="hexpand">false</property>
-                        <property name="tooltip-text" translatable="yes">Search</property>
-                      </object>
-                    </child>
+                <child>
+                  <object class="GtkToggleButton" id="search_button">
+                    <property name="name">search-button</property>
+                    <property name="icon_name">edit-find-symbolic</property>
+                    <property name="halign">end</property>
+                    <property name="hexpand">false</property>
+                    <property name="tooltip-text" translatable="yes">Search</property>
                   </object>
                 </child>
               </object>
@@ -75,7 +58,7 @@
                     <property name="hexpand">True</property>
                       <!-- Library Page -->
                     <child>
-                      <object class="BookxLibraryPage" id="library_page"/>
+                      <object class="BookxLibraryWidget" id="bookx_library_widget"/>
                     </child>
                   </object>
                 </child>
@@ -110,50 +93,17 @@
   <!-- Menu for library page -->
   <menu id="library_menu">
     <section>
-      <submenu>
-        <attribute name="label" translatable="yes">_Sorting</attribute>
-        <!-- sortby  -->
-        <section>
-          <item>
-            <attribute name="label" translatable="yes">_Name</attribute>
-            <attribute name="action">win.view-sorting</attribute>
-            <attribute name="target">Name</attribute>
-          </item>
-          <item>
-            <attribute name="label" translatable="yes">_Author</attribute>
-            <attribute name="action">win.view-sorting</attribute>
-            <attribute name="target">Author</attribute>
-          </item>
-          <item>
-            <attribute name="label" translatable="yes">_Language</attribute>
-            <attribute name="action">win.view-sorting</attribute>
-            <attribute name="target">Language</attribute>
-          </item>
-          <item>
-            <attribute name="label" translatable="yes">_Publisher</attribute>
-            <attribute name="action">win.view-sorting</attribute>
-            <attribute name="target">Publisher</attribute>
-          </item>
-        </section>
-        <!-- and ordering -->
-        <section>
-          <item>
-            <attribute name="label" translatable="yes">_Ascending</attribute>
-            <attribute name="action">win.view-order</attribute>
-            <attribute name="target">Ascending</attribute>
-          </item>
-          <item>
-            <attribute name="label" translatable="yes">_Descending</attribute>
-            <attribute name="action">win.view-order</attribute>
-            <attribute name="target">Descending</attribute>
-          </item>
-        </section>
-      </submenu>
+      <item>
+        <attribute name="label" translatable="yes">_Open Book</attribute>
+      </item>
     </section>
     <section>
       <item>
         <attribute name="label" translatable="yes">_Refresh</attribute>
         <attribute name="action">win.refresh-data</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Add Book...</attribute>
       </item>
     </section>
     <section>
