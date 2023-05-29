@@ -18,7 +18,7 @@ impl SimpleComponent for AboutDialog {
         gtk::AboutDialog::builder()
             .logo_icon_name(APP_ID)
             .license_type(gtk::License::Gpl30)
-            .website("https://bookx.adhadse.com")
+            .website("https://bookx.opensource.adhadse.com")
             .version(VERSION)
             .translator_credits(&gettext("translator-credits"))
             .modal(true)

@@ -1,3 +1,5 @@
+use gtk::prelude::*;
+use relm4::prelude::*;
 use relm4::{
     actions::{ActionGroupName, RelmAction, RelmActionGroup},
     gtk, main_application, Component, ComponentController, ComponentParts, ComponentSender,
@@ -7,11 +9,12 @@ use relm4::{
 use gtk::prelude::{ApplicationExt, ApplicationWindowExt, GtkWindowExt, SettingsExt, WidgetExt};
 use gtk::{gio, glib};
 
-use crate::components::about::AboutDialog;
+use crate::components::{AboutDialog, BookxBook};
 use crate::config::{APP_ID, PROFILE};
 
 pub(super) struct App {
     about_dialog: Controller<AboutDialog>,
+    bookx_book: Controller<BookxBook>,
 }
 
 #[derive(Debug)]
@@ -76,9 +79,12 @@ impl SimpleComponent for App {
                 }
             },
 
-            gtk::Label {
-                set_label: "Hello world!",
-                add_css_class: "title-header",
+            gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                set_margin_all: 5,
+                set_spacing: 5,
+
+                append: model.bookx_book.widget()
             }
         }
     }
@@ -93,11 +99,14 @@ impl SimpleComponent for App {
             .launch(())
             .detach();
 
-        let model = Self { about_dialog };
+        let bookx_book = BookxBook::builder().launch(()).detach();
 
-        let widgets = view_output!();
-
+        let model = Self {
+            about_dialog,
+            bookx_book,
+        };
         let actions = RelmActionGroup::<WindowActionGroup>::new();
+        let widgets = view_output!();
 
         let shortcuts_action = {
             let shortcuts = widgets.shortcuts.clone();

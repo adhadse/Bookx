@@ -16,6 +16,7 @@ anyhow = "1.0.70"
 rust-crypto = "0.2.36"
 tracing = "0.1"
 tracing-subscriber = "0.3"
+relm4-macros = "0.5.1"
 
 [dependencies.relm4]
 package = "relm4"
@@ -52,3 +53,7 @@ version = "1.0.91"
 [dependencies.epub]
 package = "epub"
 version = "2.0.0"
+
+[build-dependencies]
+relm4-macros = "0.5.1"
+
