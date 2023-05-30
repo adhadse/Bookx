@@ -1,97 +1,76 @@
-# Icons #
 subdir('icons')
-
+subdir('resources')
 # Desktop file
-conf = configuration_data()
-conf.set('APP_ID', app_id)
-conf.set('PKGNAME', meson.project_name())
-conf.set('NAME', name)
+desktop_conf = configuration_data()
+desktop_conf.set('icon', application_id)
 desktop_file = i18n.merge_file(
+  type: 'desktop',
   input: configure_file(
     input: '@0@.desktop.in.in'.format(base_id),
-    output: '@0@.desktop.in'.format(base_id),
-    configuration: conf
+    output: '@BASENAME@',
+    configuration: desktop_conf
   ),
-  output: '@0@.desktop'.format(app_id),
-  type: 'desktop',
-  po_dir: '../po',
+  output: '@0@.desktop'.format(application_id),
+  po_dir: podir,
   install: true,
-  install_dir: join_paths(datadir, 'applications')
+  install_dir: datadir / 'applications'
 )
-
-# Validate desktop file
-desktop_utils = find_program('desktop-file-validate', required: false)
-if desktop_utils.found()
-  test('Validate desktop file', desktop_utils,
-    args: [desktop_file]
+# Validate Desktop file
+if desktop_file_validate.found()
+  test(
+    'validate-desktop',
+    desktop_file_validate,
+    args: [
+      desktop_file.full_path()
+    ],
+    depends: desktop_file,
   )
 endif
 
 # Appdata
-conf = configuration_data()
-conf.set('APP_ID', app_id)
-conf.set('PKGNAME', meson.project_name())
-conf.set('NAME', name)
+appdata_conf = configuration_data()
+appdata_conf.set('APP_ID', application_id)
+appdata_conf.set('gpkgname', pkgname)
 appdata_file = i18n.merge_file(
   input: configure_file(
     input: '@0@.metainfo.xml.in.in'.format(base_id),
-    output: '@0@.metainfo.xml.in'.format(base_id),
-    configuration: conf
+    output: '@BASENAME@',
+    configuration: appdata_conf
   ),
-  output: '@0@.metainfo.xml'.format(app_id),
-  po_dir: '../po',
+  output: '@0@.metainfo.xml'.format(application_id),
+  po_dir: podir,
   install: true,
-  install_dir: join_paths(datadir, 'metainfo')
+  install_dir: datadir / 'metainfo'
 )
-
 # Validate Appdata
-appstream_util = find_program('appstream-util', required: false)
 if appstream_util.found()
   test(
-    'Validate appdata', appstream_util,
+    'validate-appdata', appstream_util,
     args: [
       'validate', '--nonet', appdata_file.full_path()
-    ]
+    ],
+    depends: appdata_file,
   )
 endif
 
 # GSchema
-conf = configuration_data()
-conf.set('APP_ID', app_id)
-conf.set('PKGNAME', meson.project_name())
+gschema_conf = configuration_data()
+gschema_conf.set('APP_ID', application_id)
+gschema_conf.set('PKGNAME', pkgname)
 configure_file(
   input: '@0@.gschema.xml.in'.format(base_id),
-  output: '@0@.gschema.xml'.format(app_id),
-  configuration: conf,
+  output: '@0@.gschema.xml'.format(application_id),
+  configuration: gschema_conf,
   install: true,
   install_dir: datadir / 'glib-2.0' / 'schemas'
 )
 
 # Validata GSchema
-glib_compile_schemas = find_program('glib-compile-schemas', required: false)
 if glib_compile_schemas.found()
   test(
-    'Validate gschema', glib_compile_schemas,
+    'validate-gschema', glib_compile_schemas,
     args: [
       '--strict', '--dry-run', meson.current_build_dir()
-    ]
+    ],
   )
 endif
-
-# Resources
-gnome.compile_resources(
-  app_id,
-  '@0@.gresource.xml'.format(base_id),
-  gresource_bundle: true,
-  source_dir: meson.current_build_dir(),
-  install: true,
-  install_dir: join_paths(datadir, meson.project_name())
-)
-
-# Run required post-install steps
-gnome.post_install(
-  gtk_update_icon_cache: true,
-  glib_compile_schemas: true,
-  update_desktop_database: true,
-)
-

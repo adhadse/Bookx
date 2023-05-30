@@ -3,7 +3,7 @@ project(
   'rust',
   version: '0.1.0',
   meson_version: '>= 0.59',
-  license: 'APACHE',
+  license: 'GPL3',
 )
 
 i18n = import('i18n')
@@ -16,6 +16,7 @@ base_id = 'com.adhadse.Bookx'
 app_id = 'com.adhadse.Bookx'
 pkgname = meson.project_name()
 datadir = prefix / get_option('datadir')
+pkgdatadir = datadir / meson.project_name()
 iconsdir = datadir / 'icons'
 podir = meson.project_source_root() / 'po'
 bindir = prefix / get_option('bindir')
