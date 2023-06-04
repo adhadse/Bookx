@@ -46,7 +46,7 @@ fn main() {
     let app = main_application();
     app.set_resource_base_path(Some("/com/adhadse/Bookx/"));
 
-    let actions = RelmActionGroup::<AppActionGroup>::new();
+    let mut actions = RelmActionGroup::<AppActionGroup>::new();
 
     let quit_action = {
         let app = app.clone();
@@ -54,13 +54,13 @@ fn main() {
             app.quit();
         })
     };
-    actions.add_action(&quit_action);
+    actions.add_action(quit_action);
 
     app.set_accelerators_for_action::<QuitAction>(&["<Control>q"]);
 
     app.set_action_group(Some(&actions.into_action_group()));
 
-    let app = RelmApp::with_app(app);
+    let app = RelmApp::from_app(app);
 
     app.run::<App>(());
 }

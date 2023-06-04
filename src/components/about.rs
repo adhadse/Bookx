@@ -15,31 +15,32 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use gtk::prelude::GtkWindowExt;
-use relm4::{gtk, ComponentParts, ComponentSender, SimpleComponent};
+use relm4::{adw, gtk, ComponentParts, ComponentSender, SimpleComponent};
 
 use gettextrs::gettext;
 
-use crate::config::{APP_ID, VERSION};
+use crate::config;
 
 pub struct AboutDialog {}
 
 impl SimpleComponent for AboutDialog {
     type Init = ();
-    type Widgets = gtk::AboutDialog;
+    type Widgets = adw::AboutWindow;
     type Input = ();
     type Output = ();
-    type Root = gtk::AboutDialog;
+    type Root = adw::AboutWindow;
 
     fn init_root() -> Self::Root {
-        gtk::AboutDialog::builder()
-            .logo_icon_name(APP_ID)
+        adw::AboutWindow::builder()
+            .application_icon(config::APP_ID)
             .license_type(gtk::License::Gpl30)
-            .website("https://bookx.opensource.adhadse.com")
-            .version(VERSION)
-            .translator_credits(&gettext("translator-credits"))
-            .modal(true)
-            .authors(vec!["Anurag Dhadse".into()])
-            .artists(vec!["Anurag Dhadse".into()])
+            .website("https://bookx.opensource.adhadse.com/")
+            .issue_url("https://github.com/adhadse/Bookx/issues/")
+            .version(config::VERSION)
+            .translator_credits(String::from("translator-credits"))
+            .copyright("© 2023 Anurag Dhadse")
+            .developers(vec![String::from("Anurag Dhadse")])
+            .designers(vec![String::from("Anurag Dhadse")])
             .build()
     }
 
