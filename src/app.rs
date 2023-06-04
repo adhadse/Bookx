@@ -1,3 +1,18 @@
+// Bookx - app.rs
+// Copyright (C) 2023  Anurag Dhadse <hello@adhadse.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
 use gtk::prelude::*;
 use relm4::prelude::*;
 use relm4::{
@@ -9,12 +24,12 @@ use relm4::{
 use gtk::prelude::{ApplicationExt, ApplicationWindowExt, GtkWindowExt, SettingsExt, WidgetExt};
 use gtk::{gio, glib};
 
-use crate::components::{AboutDialog, BookxBook};
+use crate::components::{AboutDialog, MainContainer};
 use crate::config::{APP_ID, PROFILE};
 
 pub(super) struct App {
     about_dialog: Controller<AboutDialog>,
-    bookx_book: Controller<BookxBook>,
+    main_container: Controller<MainContainer>,
 }
 
 #[derive(Debug)]
@@ -84,7 +99,7 @@ impl SimpleComponent for App {
                 set_margin_all: 5,
                 set_spacing: 5,
 
-                append: model.bookx_book.widget()
+                append: model.main_container.widget()
             }
         }
     }
@@ -98,13 +113,12 @@ impl SimpleComponent for App {
             .transient_for(root)
             .launch(())
             .detach();
-
-        let bookx_book = BookxBook::builder().launch(()).detach();
-
+        let main_container = MainContainer::builder().launch(()).detach();
         let model = Self {
             about_dialog,
-            bookx_book,
+            main_container,
         };
+
         let actions = RelmActionGroup::<WindowActionGroup>::new();
         let widgets = view_output!();
 

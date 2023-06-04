@@ -1,5 +1,7 @@
 mod about;
-mod bookxbook;
+mod library;
+mod main_container;
+mod utils;
 
 pub use about::AboutDialog;
-pub use bookxbook::BookxBook;
+pub use main_container::MainContainer;

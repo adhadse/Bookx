@@ -53,7 +53,3 @@ version = "1.0.91"
 [dependencies.epub]
 package = "epub"
 version = "2.0.0"
-
-[build-dependencies]
-relm4-macros = "0.5.1"
-

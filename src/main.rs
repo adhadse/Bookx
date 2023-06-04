@@ -1,5 +1,5 @@
 // Bookx - main.rs
-// Copyright (C) 2022  Anurag Dhadse <hello@adhadse.com>
+// Copyright (C) 2023  Anurag Dhadse <hello@adhadse.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
