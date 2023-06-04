@@ -23,21 +23,6 @@ package = "relm4"
 version = "0.5.1"
 features = ["libadwaita", "gnome_43"]
 
-#[dependencies.gtk]
-#package = "gtk4"
-#version = "0.6.4"
-#features = ["v4_8", "gnome_43"]
-
-#[dependencies.gio]
-#package = "gio"
-#version = "0.16.7"
-#features = ["v2_70"]
-
-#[dependencies.adw]
-#package = "libadwaita"
-#version = "0.4.1"
-#features = ["v1_2"]
-
 [dependencies.gettext-rs]
 version = "0.7.0"
 features = ["gettext-system"]
