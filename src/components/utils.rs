@@ -2,7 +2,6 @@ use core::cmp::Ordering;
 use relm4::gtk::{
     gio::{self, prelude::*},
     glib,
-    prelude::*,
 };
 use std::time::Instant;
 use tracing::{debug, info};

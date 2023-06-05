@@ -1,4 +1,4 @@
-// Bookx - bookxbook.rs
+// Bookx - bookx_book.rs
 // Copyright (C) 2023  Anurag Dhadse <hello@adhadse.com>
 //
 // This program is free software: you can redistribute it and/or modify
@@ -15,12 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use epub::doc::{DocError, EpubDoc};
-use log::debug;
 use relm4::{
     gtk::{self, gdk_pixbuf::Pixbuf, glib, prelude::*},
     ComponentParts, ComponentSender, SimpleComponent,
 };
-use tracing::{error, info};
+use tracing::error;
 
 use std::fs;
 use std::io::Write;
@@ -120,9 +119,10 @@ impl BookxBook {
                             Ok(()) => {
                                 let mut f = fs::File::create(cover_path.clone()).unwrap();
                                 let resp = f.write_all(&cover_data);
-                                debug!(
+                                tracing::debug!(
                                     "Writing book cover for: {:?}; Response: {:?}",
-                                    book_path, resp
+                                    book_path,
+                                    resp
                                 );
                             }
                             Err(e) => {

@@ -25,12 +25,12 @@ use tracing::error;
 
 // serve as the main container for library, reader component
 // status page of library, add Toast messages
-pub struct MainContainer {
+pub struct BookxMainContainer {
     library: Controller<BookxLibrary>,
 }
 
 #[relm4_macros::component(pub)]
-impl SimpleComponent for MainContainer {
+impl SimpleComponent for BookxMainContainer {
     type Init = ();
     type Input = ();
     type Output = ();
@@ -51,7 +51,7 @@ impl SimpleComponent for MainContainer {
         let library = BookxLibrary::builder()
             .launch(String::from("/home/adhadse/Documents/sample_dir"))
             .detach();
-        let model = MainContainer { library };
+        let model = Self { library };
         let widgets = view_output!();
         ComponentParts { model, widgets }
     }

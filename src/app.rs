@@ -24,16 +24,18 @@ use relm4::{
 use gtk::prelude::{ApplicationExt, ApplicationWindowExt, GtkWindowExt, SettingsExt, WidgetExt};
 use gtk::{gio, glib};
 
-use crate::components::{AboutDialog, MainContainer};
+use crate::components::{AboutDialog, BookxMainContainer, BookxPreferences};
 use crate::config::{APP_ID, PROFILE};
 
 pub(super) struct App {
+    bookx_preferences: Controller<BookxPreferences>,
     about_dialog: Controller<AboutDialog>,
-    main_container: Controller<MainContainer>,
+    bookx_main_container: Controller<BookxMainContainer>,
 }
 
 #[derive(Debug)]
-pub(super) enum AppMsg {
+pub(super) enum Event {
+    OpenPreferences,
     Quit,
 }
 
@@ -47,7 +49,7 @@ impl SimpleComponent for App {
     /// The type of data with which this component will be initialized.
     type Init = ();
     /// The type of the messages that this component can receive.
-    type Input = AppMsg;
+    type Input = Event;
     /// The type of the messages that this component can send.
     type Output = ();
     /// A data structure that contains the widgets that you will need to update.
@@ -66,7 +68,7 @@ impl SimpleComponent for App {
     view! {
         main_window = gtk::ApplicationWindow::new(&main_application()) {
             connect_close_request[sender] => move |_| {
-                sender.input(AppMsg::Quit);
+                sender.input(Event::Quit);
                 gtk::Inhibit(true)
             },
 
@@ -99,7 +101,7 @@ impl SimpleComponent for App {
                 set_margin_all: 5,
                 set_spacing: 5,
 
-                append: model.main_container.widget()
+                append: model.bookx_main_container.widget()
             }
         }
     }
@@ -113,10 +115,15 @@ impl SimpleComponent for App {
             .transient_for(root)
             .launch(())
             .detach();
-        let main_container = MainContainer::builder().launch(()).detach();
+        let bookx_preferences = BookxPreferences::builder()
+            .transient_for(root)
+            .launch(())
+            .detach();
+        let bookx_main_container = BookxMainContainer::builder().launch(()).detach();
         let model = Self {
+            bookx_preferences,
             about_dialog,
-            main_container,
+            bookx_main_container,
         };
 
         let mut actions = RelmActionGroup::<WindowActionGroup>::new();
@@ -136,8 +143,16 @@ impl SimpleComponent for App {
             })
         };
 
+        let preferences_action = {
+            let sender = sender.input_sender().clone();
+            RelmAction::<PreferencesAction>::new_stateless(move |_| {
+                sender.send(Event::OpenPreferences).unwrap();
+            })
+        };
+
         actions.add_action(shortcuts_action);
         actions.add_action(about_action);
+        actions.add_action(preferences_action);
 
         widgets
             .main_window
@@ -150,7 +165,8 @@ impl SimpleComponent for App {
 
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
         match message {
-            AppMsg::Quit => main_application().quit(),
+            Event::Quit => main_application().quit(),
+            Event::OpenPreferences => self.bookx_preferences.widget().present(),
         }
     }
 

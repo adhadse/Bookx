@@ -1,4 +1,4 @@
-// Bookx - library.rs
+// Bookx - bookx_library.rs
 // Copyright (C) 2023  Anurag Dhadse <hello@adhadse.com>
 //
 // This program is free software: you can redistribute it and/or modify
