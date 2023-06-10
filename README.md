@@ -27,7 +27,7 @@ The app is pronounced just like "Books" but the "s" replaced with "x", as in an 
 Building the project
 
 ```bash
-flatpak install org.gnome.Sdk//43 org.freedesktop.Sdk.Extension.rust-stable//22.08 org.gnome.Platform//43
+flatpak install org.gnome.Sdk//44 org.freedesktop.Sdk.Extension.rust-stable//22.08 org.gnome.Platform//43
 flatpak-builder --user flatpak_app build-aux/com.adhadse.Bookx.Devel.json
 ```
 

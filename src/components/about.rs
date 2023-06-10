@@ -37,10 +37,10 @@ impl SimpleComponent for AboutDialog {
             .website("https://bookx.opensource.adhadse.com/")
             .issue_url("https://github.com/adhadse/Bookx/issues/")
             .version(config::VERSION)
-            .translator_credits(String::from("translator-credits"))
+            .translator_credits("translator-credits")
             .copyright("© 2023 Anurag Dhadse")
-            .developers(vec![String::from("Anurag Dhadse")])
-            .designers(vec![String::from("Anurag Dhadse")])
+            .developers(vec!["Anurag Dhadse"])
+            .designers(vec!["Anurag Dhadse"])
             .build()
     }
 

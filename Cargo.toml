@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Anurag Dhadse <hello@adhadse.com>"]
 edition = "2021"
 
+[profile.release]
+lto = true
+
 [dependencies]
 futures = "0.3.28"
 anyhow = "1.0.70"
@@ -15,7 +18,7 @@ relm4-macros = "0.5.1"
 [dependencies.relm4]
 package = "relm4"
 version = "0.6.0"
-features = ["libadwaita", "gnome_43"]
+features = ["libadwaita", "gnome_44"]
 
 [dependencies.gettext-rs]
 version = "0.7.0"

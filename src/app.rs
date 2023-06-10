@@ -16,8 +16,8 @@
 use gtk::prelude::*;
 use relm4::prelude::*;
 use relm4::{
-    actions::{ActionGroupName, RelmAction, RelmActionGroup},
-    gtk, main_application, Component, ComponentController, ComponentParts, ComponentSender,
+    actions::{RelmAction, RelmActionGroup},
+    adw, gtk, main_application, Component, ComponentController, ComponentParts, ComponentSender,
     Controller, SimpleComponent,
 };
 
@@ -66,7 +66,7 @@ impl SimpleComponent for App {
     }
 
     view! {
-        main_window = gtk::ApplicationWindow::new(&main_application()) {
+        main_window = adw::ApplicationWindow::new(&main_application()) {
             connect_close_request[sender] => move |_| {
                 sender.input(Event::Quit);
                 gtk::Inhibit(true)
@@ -88,21 +88,24 @@ impl SimpleComponent for App {
                     None
                 },
 
-            #[wrap(Some)]
-            set_titlebar = &gtk::HeaderBar {
-                pack_end = &gtk::MenuButton {
-                    set_icon_name: "open-menu-symbolic",
-                    set_menu_model: Some(&primary_menu),
-                }
-            },
-
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
-                set_margin_all: 5,
-                set_spacing: 5,
 
-                append: model.bookx_main_container.widget()
-            }
+                adw::HeaderBar {
+                    pack_end = &gtk::MenuButton {
+                        set_icon_name: "open-menu-symbolic",
+                        set_menu_model: Some(&primary_menu),
+                    }
+                },
+
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
+                    set_margin_all: 5,
+                    set_spacing: 5,
+
+                    append: model.bookx_main_container.widget()
+                }
+            },
         }
     }
 
@@ -154,9 +157,7 @@ impl SimpleComponent for App {
         actions.add_action(about_action);
         actions.add_action(preferences_action);
 
-        widgets
-            .main_window
-            .insert_action_group(WindowActionGroup::NAME, Some(&actions.into_action_group()));
+        actions.register_for_widget(&widgets.main_window);
 
         widgets.load_window_size();
 
