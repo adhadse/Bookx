@@ -5,5 +5,5 @@ mod preferences;
 mod utils;
 
 pub use about::AboutDialog;
-pub use main_container::BookxMainContainer;
+pub use main_container::{BookxMainContainer, BookxMainContainerMessage};
 pub use preferences::BookxPreferences;

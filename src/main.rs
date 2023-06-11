@@ -26,7 +26,7 @@ use relm4::{
     gtk, main_application, RelmApp,
 };
 
-use app::App;
+use app::{App, AppMode};
 use setup::setup;
 
 relm4::new_action_group!(AppActionGroup, "app");
@@ -59,5 +59,5 @@ fn main() {
 
     let app = RelmApp::from_app(app);
 
-    app.run::<App>(());
+    app.run::<App>(AppMode::Library);
 }

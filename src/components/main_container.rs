@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::components::library::BookxLibrary;
+use crate::components::library::{BookxLibrary, BookxLibraryMessage};
 use gettextrs::gettext;
 use relm4::{
     gtk::{self, prelude::*},
@@ -29,11 +29,16 @@ pub struct BookxMainContainer {
     library: Controller<BookxLibrary>,
 }
 
+#[derive(Debug)]
+pub enum BookxMainContainerMessage {
+    OpenBookxReader,
+}
+
 #[relm4_macros::component(pub)]
 impl SimpleComponent for BookxMainContainer {
     type Init = ();
-    type Input = ();
-    type Output = ();
+    type Input = BookxMainContainerMessage;
+    type Output = BookxMainContainerMessage;
 
     view! {
         #[name = "main_container"]
@@ -50,9 +55,19 @@ impl SimpleComponent for BookxMainContainer {
     fn init(_: (), root: &Self::Root, sender: ComponentSender<Self>) -> ComponentParts<Self> {
         let library = BookxLibrary::builder()
             .launch(String::from("/home/adhadse/Documents/sample_dir"))
-            .detach();
+            .forward(sender.input_sender(), |msg| match msg {
+                BookxLibraryMessage::OpenBookxReader => BookxMainContainerMessage::OpenBookxReader,
+            });
         let model = Self { library };
         let widgets = view_output!();
         ComponentParts { model, widgets }
+    }
+
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
+        match msg {
+            BookxMainContainerMessage::OpenBookxReader => sender
+                .output(BookxMainContainerMessage::OpenBookxReader)
+                .unwrap(),
+        }
     }
 }

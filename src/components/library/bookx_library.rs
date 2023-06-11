@@ -27,23 +27,31 @@ use relm4::{
 // responsible for displaying
 pub struct BookxLibrary {}
 
+#[derive(Debug)]
+pub enum BookxLibraryMessage {
+    OpenBookxReader,
+}
+
 #[relm4_macros::component(pub)]
 impl SimpleComponent for BookxLibrary {
     type Init = String;
     type Input = ();
-    type Output = ();
+    type Output = BookxLibraryMessage;
 
     view! {
         #[name = "library"]
         gtk::FlowBox {
-            set_activate_on_single_click: true,
+            set_activate_on_single_click: false,
             set_column_spacing: 12,
             set_row_spacing: 12,
             set_focus_on_click: true,
-            set_selection_mode: gtk::SelectionMode::None,
+            set_selection_mode: gtk::SelectionMode::Single,
             set_visible: true,
             set_valign: gtk::Align::Start,
             set_max_children_per_line: 100,
+            connect_child_activated[sender] => move |_, _| {
+                sender.output(BookxLibraryMessage::OpenBookxReader).unwrap()
+            }
         }
     }
 

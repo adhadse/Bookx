@@ -18,25 +18,35 @@ use relm4::prelude::*;
 use relm4::{
     actions::{RelmAction, RelmActionGroup},
     adw, gtk, main_application, Component, ComponentController, ComponentParts, ComponentSender,
-    Controller, SimpleComponent,
+    Controller,
 };
 
 use gtk::prelude::{ApplicationExt, ApplicationWindowExt, GtkWindowExt, SettingsExt, WidgetExt};
 use gtk::{gio, glib};
 
-use crate::components::{AboutDialog, BookxMainContainer, BookxPreferences};
+use crate::components::{
+    AboutDialog, BookxMainContainer, BookxMainContainerMessage, BookxPreferences,
+};
 use crate::config::{APP_ID, PROFILE};
 
 pub(super) struct App {
     bookx_preferences: Controller<BookxPreferences>,
     about_dialog: Controller<AboutDialog>,
     bookx_main_container: Controller<BookxMainContainer>,
+    app_mode: AppMode,
+}
+
+#[derive(Debug)]
+pub enum AppMode {
+    Library,
+    Reader,
 }
 
 #[derive(Debug)]
 pub(super) enum Event {
     OpenPreferences,
     Quit,
+    SetMode(AppMode),
 }
 
 relm4::new_action_group!(pub(super) WindowActionGroup, "win");
@@ -45,13 +55,14 @@ relm4::new_stateless_action!(pub(super) ShortcutsAction, WindowActionGroup, "sho
 relm4::new_stateless_action!(AboutAction, WindowActionGroup, "about");
 
 #[relm4::component(pub)]
-impl SimpleComponent for App {
+impl Component for App {
+    type CommandOutput = ();
     /// The type of data with which this component will be initialized.
-    type Init = ();
+    type Init = AppMode;
     /// The type of the messages that this component can receive.
     type Input = Event;
     /// The type of the messages that this component can send.
-    type Output = ();
+    type Output = Event;
     /// A data structure that contains the widgets that you will need to update.
     type Widgets = AppWidgets;
 
@@ -92,6 +103,14 @@ impl SimpleComponent for App {
                 set_orientation: gtk::Orientation::Vertical,
 
                 adw::HeaderBar {
+                    #[name="navigation_back_button"]
+                    pack_start = &gtk::Button {
+                        set_icon_name: "go-previous-symbolic",
+                        set_visible: false,
+                        connect_clicked[sender] => move |_| {
+                            sender.input(Event::SetMode(AppMode::Library))
+                        }
+                    },
                     pack_end = &gtk::MenuButton {
                         set_icon_name: "open-menu-symbolic",
                         set_menu_model: Some(&primary_menu),
@@ -110,7 +129,7 @@ impl SimpleComponent for App {
     }
 
     fn init(
-        _init: Self::Init,
+        app_mode: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
@@ -122,11 +141,17 @@ impl SimpleComponent for App {
             .transient_for(root)
             .launch(())
             .detach();
-        let bookx_main_container = BookxMainContainer::builder().launch(()).detach();
+        let bookx_main_container = BookxMainContainer::builder().launch(()).forward(
+            sender.input_sender(),
+            |msg| match msg {
+                BookxMainContainerMessage::OpenBookxReader => Event::SetMode(AppMode::Reader),
+            },
+        );
         let model = Self {
             bookx_preferences,
             about_dialog,
             bookx_main_container,
+            app_mode,
         };
 
         let mut actions = RelmActionGroup::<WindowActionGroup>::new();
@@ -164,15 +189,39 @@ impl SimpleComponent for App {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
+    fn update_with_view(
+        &mut self,
+        widgets: &mut Self::Widgets,
+        message: Self::Input,
+        sender: ComponentSender<Self>,
+        _root: &Self::Root,
+    ) {
         match message {
             Event::Quit => main_application().quit(),
             Event::OpenPreferences => self.bookx_preferences.widget().present(),
+            Event::SetMode(AppMode::Reader) => {
+                widgets.load_bookx_reader_window_size();
+                widgets.navigation_back_button.set_visible(true);
+                self.app_mode = AppMode::Reader;
+            }
+            Event::SetMode(AppMode::Library) => {
+                widgets.save_bookx_reader_window_size().unwrap();
+                widgets.load_window_size();
+                widgets.navigation_back_button.set_visible(false);
+                self.app_mode = AppMode::Library;
+            }
         }
     }
 
-    fn shutdown(&mut self, widgets: &mut Self::Widgets, _output: relm4::Sender<Self::Output>) {
-        widgets.save_window_size().unwrap();
+    fn shutdown(&mut self, widgets: &mut Self::Widgets, output: relm4::Sender<Self::Output>) {
+        match self.app_mode {
+            AppMode::Library => {
+                widgets.save_window_size().unwrap();
+            }
+            AppMode::Reader => {
+                widgets.save_bookx_reader_window_size().unwrap();
+            }
+        }
     }
 }
 
@@ -190,6 +239,7 @@ impl AppWidgets {
     }
 
     fn load_window_size(&self) {
+        self.main_window.unmaximize();
         let settings = gio::Settings::new(APP_ID);
 
         let width = settings.int("window-width");
@@ -197,6 +247,34 @@ impl AppWidgets {
         let is_maximized = settings.boolean("is-maximized");
 
         self.main_window.set_default_size(width, height);
+        tracing::info!("is_maximised: {:?}", is_maximized);
+
+        if is_maximized {
+            self.main_window.maximize();
+        }
+    }
+
+    fn save_bookx_reader_window_size(&self) -> Result<(), glib::BoolError> {
+        let settings = gio::Settings::new(APP_ID);
+        let (width, height) = self.main_window.default_size();
+
+        settings.set_int("bookx-reader-window-width", width)?;
+        settings.set_int("bookx-reader-window-height", height)?;
+
+        settings.set_boolean("is-bookx-reader-maximized", self.main_window.is_maximized())?;
+
+        Ok(())
+    }
+
+    fn load_bookx_reader_window_size(&self) {
+        let settings = gio::Settings::new(APP_ID);
+
+        let bookx_reader_width = settings.int("bookx-reader-window-width");
+        let bookx_reader_height = settings.int("bookx-reader-window-height");
+        let is_maximized = settings.boolean("is-bookx-reader-maximized");
+
+        self.main_window
+            .set_default_size(bookx_reader_width, bookx_reader_height);
 
         if is_maximized {
             self.main_window.maximize();

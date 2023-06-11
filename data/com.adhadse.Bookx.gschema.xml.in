@@ -9,6 +9,14 @@
       <default>650</default>
       <summary>Window height</summary>
     </key>
+    <key name="bookx-reader-window-width" type="i">
+      <default>1050</default>
+      <summary>Bookx Reader Window width</summary>
+    </key>
+    <key name="bookx-reader-window-height" type="i">
+      <default>720</default>
+      <summary>Bookx Reader Window height</summary>
+    </key>
     <key name="window-previous-width" type="i">
       <default>950</default>
     </key>
@@ -18,6 +26,10 @@
     <key name="is-maximized" type="b">
       <default>false</default>
       <summary>Window maximized state</summary>
+    </key>
+    <key name="is-bookx-reader-maximized" type="b">
+      <default>true</default>
+      <summary>Bookx Reader Window maximized state</summary>
     </key>
     <key name="dark-mode" type="b">
       <default>true</default>
