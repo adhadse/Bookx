@@ -104,12 +104,16 @@ impl Component for App {
 
                 adw::HeaderBar {
                     #[name="navigation_back_button"]
-                    pack_start = &gtk::Button {
-                        set_icon_name: "go-previous-symbolic",
-                        set_visible: false,
-                        connect_clicked[sender] => move |_| {
-                            sender.input(Event::SetMode(AppMode::Library))
-                        }
+                    pack_start = &gtk::Revealer {
+                        set_transition_type: gtk::RevealerTransitionType::Crossfade,
+                        set_reveal_child: false,
+                        gtk::Button {
+                            set_icon_name: "go-previous-symbolic",
+                            set_visible: true,
+                            connect_clicked[sender] => move |_| {
+                                sender.input(Event::SetMode(AppMode::Library))
+                            }
+                        },
                     },
                     pack_end = &gtk::MenuButton {
                         set_icon_name: "open-menu-symbolic",
@@ -145,6 +149,7 @@ impl Component for App {
             sender.input_sender(),
             |msg| match msg {
                 BookxMainContainerMessage::OpenBookxReader => Event::SetMode(AppMode::Reader),
+                BookxMainContainerMessage::CloseBookxReader => Event::SetMode(AppMode::Library),
             },
         );
         let model = Self {
@@ -201,14 +206,19 @@ impl Component for App {
             Event::OpenPreferences => self.bookx_preferences.widget().present(),
             Event::SetMode(AppMode::Reader) => {
                 widgets.load_bookx_reader_window_size();
-                widgets.navigation_back_button.set_visible(true);
+                widgets.navigation_back_button.set_reveal_child(true);
                 self.app_mode = AppMode::Reader;
             }
             Event::SetMode(AppMode::Library) => {
                 widgets.save_bookx_reader_window_size().unwrap();
                 widgets.load_window_size();
-                widgets.navigation_back_button.set_visible(false);
+                widgets.navigation_back_button.set_reveal_child(false);
                 self.app_mode = AppMode::Library;
+                // let the main container know user want to move back to library
+                self.bookx_main_container
+                    .sender()
+                    .send(BookxMainContainerMessage::CloseBookxReader)
+                    .unwrap();
             }
         }
     }
@@ -247,7 +257,6 @@ impl AppWidgets {
         let is_maximized = settings.boolean("is-maximized");
 
         self.main_window.set_default_size(width, height);
-        tracing::info!("is_maximised: {:?}", is_maximized);
 
         if is_maximized {
             self.main_window.maximize();
@@ -267,6 +276,7 @@ impl AppWidgets {
     }
 
     fn load_bookx_reader_window_size(&self) {
+        tracing::info!("calling bookx reader resizing");
         let settings = gio::Settings::new(APP_ID);
 
         let bookx_reader_width = settings.int("bookx-reader-window-width");

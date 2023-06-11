@@ -19,12 +19,12 @@ use gettextrs::gettext;
 use relm4::{
     gtk::{self, prelude::*},
     prelude::*,
-    ComponentParts, ComponentSender, SimpleComponent,
+    Component, ComponentParts, ComponentSender,
 };
 use tracing::error;
 
 // serve as the main container for library, reader component
-// status page of library, add Toast messages
+// add Toast messages
 pub struct BookxMainContainer {
     library: Controller<BookxLibrary>,
 }
@@ -32,29 +32,29 @@ pub struct BookxMainContainer {
 #[derive(Debug)]
 pub enum BookxMainContainerMessage {
     OpenBookxReader,
+    CloseBookxReader,
 }
 
 #[relm4_macros::component(pub)]
-impl SimpleComponent for BookxMainContainer {
+impl Component for BookxMainContainer {
+    type CommandOutput = ();
     type Init = ();
     type Input = BookxMainContainerMessage;
     type Output = BookxMainContainerMessage;
 
     view! {
-        #[name = "main_container"]
-        gtk::ScrolledWindow {
-            set_hscrollbar_policy: gtk::PolicyType::Never,
-            gtk::Viewport {
-                set_vexpand: true,
-                set_scroll_to_focus: true,
-                set_child: Some(model.library.widget())
-            }
+        #[name = "main_stack"]
+        gtk::Stack {
+            set_transition_type: gtk::StackTransitionType::SlideLeftRight,
+            set_transition_duration: 250,
+
+            add_named: (model.library.widget(), Some("bookx_library")),
         }
     }
 
     fn init(_: (), root: &Self::Root, sender: ComponentSender<Self>) -> ComponentParts<Self> {
         let library = BookxLibrary::builder()
-            .launch(String::from("/home/adhadse/Documents/sample_dir"))
+            .launch(())
             .forward(sender.input_sender(), |msg| match msg {
                 BookxLibraryMessage::OpenBookxReader => BookxMainContainerMessage::OpenBookxReader,
             });
@@ -63,11 +63,36 @@ impl SimpleComponent for BookxMainContainer {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
-        match msg {
-            BookxMainContainerMessage::OpenBookxReader => sender
-                .output(BookxMainContainerMessage::OpenBookxReader)
-                .unwrap(),
+    fn update_with_view(
+        &mut self,
+        widgets: &mut Self::Widgets,
+        message: Self::Input,
+        sender: ComponentSender<Self>,
+        _root: &Self::Root,
+    ) {
+        match message {
+            BookxMainContainerMessage::OpenBookxReader => {
+                sender
+                    .output(BookxMainContainerMessage::OpenBookxReader)
+                    .unwrap();
+
+                // Build the bookx_reader widget and then add it named;
+                // this avoids building widget when it's not supposed to be used.
+
+                let bookx_reader = gtk::Box::builder()
+                    .orientation(gtk::Orientation::Vertical)
+                    .build();
+                bookx_reader.append(&gtk::Label::builder().label("This is Bookx Reader").build());
+                widgets
+                    .main_stack
+                    .add_named(&bookx_reader, Some("bookx_reader"));
+
+                widgets.main_stack.set_visible_child_name("bookx_reader");
+            }
+            BookxMainContainerMessage::CloseBookxReader => {
+                // app.rs will tell if want to close the Reader
+                widgets.main_stack.set_visible_child_name("bookx_library");
+            }
         }
     }
 }

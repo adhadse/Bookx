@@ -16,12 +16,12 @@
 
 use crate::components::library::BookxBook;
 use crate::components::utils;
+use crate::config::APP_ID;
 use gettextrs::gettext;
 use gtk::prelude::*;
-use relm4::Component;
 use relm4::{
     gtk::{self, gio},
-    ComponentController, ComponentParts, ComponentSender, SimpleComponent,
+    Component, ComponentController, ComponentParts, ComponentSender,
 };
 
 // responsible for displaying
@@ -33,36 +33,67 @@ pub enum BookxLibraryMessage {
 }
 
 #[relm4_macros::component(pub)]
-impl SimpleComponent for BookxLibrary {
-    type Init = String;
+impl Component for BookxLibrary {
+    type CommandOutput = ();
+    type Init = ();
     type Input = ();
     type Output = BookxLibraryMessage;
 
     view! {
-        #[name = "library"]
-        gtk::FlowBox {
-            set_activate_on_single_click: false,
-            set_column_spacing: 12,
-            set_row_spacing: 12,
-            set_focus_on_click: true,
-            set_selection_mode: gtk::SelectionMode::Single,
-            set_visible: true,
-            set_valign: gtk::Align::Start,
-            set_max_children_per_line: 100,
-            connect_child_activated[sender] => move |_, _| {
-                sender.output(BookxLibraryMessage::OpenBookxReader).unwrap()
+        gtk::ScrolledWindow {
+            set_hscrollbar_policy: gtk::PolicyType::Never,
+            gtk::Viewport {
+                set_vexpand: true,
+                set_scroll_to_focus: true,
+
+                #[name = "library"]
+                #[wrap(Some)]
+                set_child= &gtk::FlowBox {
+                    set_activate_on_single_click: false,
+                    set_column_spacing: 12,
+                    set_row_spacing: 12,
+                    set_focus_on_click: true,
+                    set_selection_mode: gtk::SelectionMode::Single,
+                    set_visible: true,
+                    set_valign: gtk::Align::Start,
+                    set_max_children_per_line: 100,
+                    connect_child_activated[sender] => move |_, _| {
+                        sender.output(BookxLibraryMessage::OpenBookxReader).unwrap()
+                    }
+                }
             }
         }
     }
 
     fn init(
-        content_dir: Self::Init,
+        _init: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = BookxLibrary {};
         let widgets = view_output!();
+
+        // let settings = gio::Settings::new(APP_ID);
+        // let content_dir = settings.string("books-dir");
+
+        // if content_dir == ""
+        // if content_dir.is_empty() {
+        //     self.set_status(&BookxLibraryStatus::Null);
+        //     send!(
+        //         self.sender,
+        //         Action::Notification(
+        //             "Books Directory string is empty. \
+        //             Set it to an existing path in Preferences."
+        //                 .to_string()
+        //         )
+        //     );
+        //     return Err(BookxLibraryError::new("BooksDir string is empty"));
+        // }
+
+        let content_dir = "/home/adhadse/Documents/sample_dir";
+
         let book_files = utils::load_files_from_folder(&gio::File::for_path(content_dir), true);
+
         for book_file in book_files {
             if let Ok(bookx_book) =
                 BookxBook::load_book(book_file.path().unwrap().display().to_string())
@@ -74,8 +105,19 @@ impl SimpleComponent for BookxLibrary {
         }
         ComponentParts { model, widgets }
     }
+
+    // fn update_with_view(
+    //     &mut self,
+    //     widgets: &mut Self::Widgets,
+    //     message: Self::Input,
+    //     sender: ComponentSender<Self>,
+    //     _root: &Self::Root,
+    // ) {
+    //     match message {
+
+    //     }
+    // }
 }
 
 // TODO:
 // Then send message for updated status (let main_container update the status page),
-// load these book using flowbox widget inside library

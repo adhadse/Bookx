@@ -111,33 +111,37 @@ impl BookxBook {
                     .join("cover_images")
                     .join(format!("{}.png", identifier));
 
-                // TODO: not rewrite if exists
-                match doc.get_cover() {
-                    Some((cover_data, _)) => {
-                        let parent = cover_path.parent().unwrap();
-                        match fs::create_dir_all(parent) {
-                            Ok(()) => {
-                                let mut f = fs::File::create(cover_path.clone()).unwrap();
-                                let resp = f.write_all(&cover_data);
-                                tracing::debug!(
-                                    "Writing book cover for: {:?}; Response: {:?}",
-                                    book_path,
-                                    resp
-                                );
+                match cover_path.try_exists() {
+                    Ok(true) => (),
+                    Ok(false) | Err(_) => {
+                        match doc.get_cover() {
+                            Some((cover_data, _)) => {
+                                let parent = cover_path.parent().unwrap();
+                                match fs::create_dir_all(parent) {
+                                    Ok(()) => {
+                                        let mut f = fs::File::create(cover_path.clone()).unwrap();
+                                        let resp = f.write_all(&cover_data);
+                                        tracing::debug!(
+                                            "Writing book cover for: {:?}; Response: {:?}",
+                                            book_path,
+                                            resp
+                                        );
+                                    }
+                                    Err(e) => {
+                                        error!(
+                                            "Error occurred when creating `cover_images` dir for
+                                                bookx cache."
+                                        );
+                                    }
+                                };
                             }
-                            Err(e) => {
-                                error!(
-                                    "Error occurred when creating `cover_images` dir for
-                                        bookx cache."
-                                );
+                            None => {
+                                error!("Cannot find cover for Book at path: {:?}", book_path);
+                                return Err(DocError::InvalidEpub);
                             }
                         };
                     }
-                    None => {
-                        error!("Cannot find cover for Book at path: {:?}", book_path);
-                        return Err(DocError::InvalidEpub);
-                    }
-                };
+                }
 
                 let model = BookxBook {
                     title,
