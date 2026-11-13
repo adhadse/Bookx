@@ -277,7 +277,8 @@ def _wiki_reader_ux(c):
                 '"thumbnail":{"source":"https://upload.wikimedia.org/mock/thumb.png","width":240,"height":120},'
                 '"content_urls":{"desktop":{"page":"https://en.wikipedia.org/wiki/Rabbit"}}}')
     _png(os.path.join(mock, "wiki-thumb.png"), 240, 120)
-    from scenarios_wiki import settings, wshot
+    from scenarios_wiki import no_rings, settings, wshot
+    no_rings()
     c.start(settings=settings(), extra_env={"BOOKX_WEB_MOCK": mock,
                        "BOOKX_DEV_SCRIPT": "wait:2500,read:1,wait:3500,reader:goto=2,wait:2500,reader:demo-highlights"})
     c.wait_node("slider", timeout=25)
@@ -410,3 +411,59 @@ def reader_selection_popover_under_dialog(c):
     c.check("after Preferences closes the popover stays closed (the selection is still there)",
             not [n for n in c.find("button", "Look up in a dictionary") if n.showing] and _selection_text(c))
     c.check("the app is alive", c.is_alive())
+
+
+@scenario
+def lookup_dictionary_download(c):
+    """Enhancement 30 with real input: no dictionary for the language of the book, so the look-up popover offers to
+    download one; one click installs it (from a fake server on this computer) and the definition of the word that was
+    looked up appears in the same popover, which stays where it is."""
+    import re
+    import zipfile
+    from scenarios import select_word
+    words = set()
+    with zipfile.ZipFile(c.books["alice"]) as z:
+        for n in z.namelist():
+            if n.endswith((".xhtml", ".html")):
+                t = re.sub(r"<[^>]+>", " ", z.read(n).decode("utf8", "ignore"))
+                words.update(w.lower() for w in re.findall(r"[A-Za-z]{2,}", t))
+    wf = os.path.join(c.dir, "words.txt")
+    open(wf, "w").write("\n".join(sorted(words)))
+    pf = os.path.join(c.dir, "dict-port")
+    srv = subprocess.Popen([sys.executable, os.path.join(ROOT, "build-aux", "fake-dict-server.py"), pf,
+                            os.path.join(c.dir, "dictmock"), "60", "en", "", wf])
+    try:
+        for _ in range(50):
+            if os.path.exists(pf):
+                break
+            time.sleep(0.1)
+        empty = os.path.join(c.dir, "no-dicts")
+        os.makedirs(empty, exist_ok=True)
+        c.start(extra_env={"BOOKX_DICTIONARIES": empty,
+                           "BOOKX_DICT_CATALOG": os.path.join(c.dir, "dictmock", "catalog.json")})
+        c.open_book()
+        c.go_to_text()
+        select_word(c)
+        btn = c.wait_node("button", "Look up in a dictionary", timeout=5)
+        if not c.check("the action popover shows", btn):
+            return
+        c.click_node(btn)
+        head = c.wait_node("label", "No dictionary for English yet", timeout=6)
+        c.shot("dict-offer")
+        if not c.check("the dictionary page offers a download instead of 'No dictionaries installed'", head):
+            return
+        c.check("with the size on the main button", c.find("button", rx=r"^Download dictionary \(\d+ [KM]B\)$"))
+        c.check("and Choose another and Learn more", c.find("button", "Choose another") and c.find("button", "Learn more"))
+        c.check("the old message is not shown", not c.find("label", rx="No dictionaries installed"))
+        c.click_node(c.wait_node("button", rx=r"^Download dictionary"))
+        c.wait(lambda: c.find("button", "Downloading…") or c.find("label", rx=r"A mock definition"), 8, every=0.1)
+        c.shot("dict-downloading")
+        res = c.wait_node("label", rx="A mock definition of", timeout=25)
+        c.shot("dict-definition")
+        c.check("when the download is done the definition of the word appears in the same popover", res)
+        c.check("the offer is gone", not c.find("label", "No dictionary for English yet"))
+        time.sleep(2.0)
+        c.check("the popover is still there 2 s later (it did not vanish)", c.find("label", rx="A mock definition of"))
+        c.check("the app is alive", c.is_alive())
+    finally:
+        srv.terminate()

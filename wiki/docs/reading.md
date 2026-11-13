@@ -260,7 +260,7 @@ Bookx) the card is where it was, at the same word and speed, paused; a card clos
 
 Double-click a word, or select text, to look it up.
 
-- **Dictionary**: offline StarDict dictionaries. Put them in `~/.local/share/bookx/dictionaries/`.
+- **Dictionary**: offline StarDict dictionaries, see [Dictionaries](#dictionaries) below.
 - **Wikipedia**: an inline summary of the selection with the **lead picture** of the article above it, when it has
   one. The picture is fetched after the text (a placeholder shows meanwhile), kept in a small cache folder (at most
   24 MB, the oldest pictures go first) and shown from there when you are offline (`BOOKX_OFFLINE`); a picture that
@@ -271,6 +271,42 @@ Double-click a word, or select text, to look it up.
 ![A Wikipedia look-up with the picture of the article](assets/reader-wikipedia-dark.png#only-dark)
 
 Looked-up words are added to your [vocabulary](#statistics-and-vocabulary).
+
+### Dictionaries
+
+A look-up uses **StarDict dictionaries on your computer**, so it works offline. You do not have to find one yourself:
+
+- **In the look-up popover.** If there is no dictionary for the language of the book (its `dc:language`; `en-GB` and
+  `pt-BR` count as `en` and `pt`; without one Bookx guesses from the text), the popover says *No dictionary for German
+  yet* and offers **Download dictionary (7 MB)**. One click downloads and installs it, shows the progress, and then
+  shows the definition of the word you looked up in the same popover. *Choose another* opens Preferences → Reading →
+  Dictionaries, *Learn more* opens this page.
+- **By itself.** With *Preferences → Reading → Dictionaries → Download dictionaries automatically for the languages of
+  my books* on (the default), adding a book in a language that has no dictionary (import, Add from the Web, news,
+  device) starts a download in the background, and so does opening such a book. Each language is one job in the
+  **Background Jobs** panel (progress, cancel, log), with a toast *Dictionary for German ready* at the end. Books that
+  were already in your library when the feature first ran do not start downloads by themselves; opening one does.
+  Offline, nothing is started and nothing blocks the import: the language waits and is tried again later (after a
+  failure the pauses grow from one minute to six hours). A dictionary bigger than 50 MB is never downloaded
+  automatically without asking; the button in the popover is your consent. (The dictionaries in the catalogue are 0.3
+  to 22 MB.)
+- **Which dictionaries.** One catalogue ships with Bookx (`data/dictionaries.json`) with a dictionary for English,
+  Spanish, French, German, Italian, Portuguese, Russian, Dutch, Polish, Turkish, Swedish, Czech, Japanese, Chinese,
+  Arabic, Hindi, Korean, Greek, Hebrew and Ukrainian: for English the English definitions of Wiktionary (and
+  Webster's 1913, public domain, as another choice), for the other languages the Wiktionary dictionary of that
+  language with English definitions (headword in the language of the book). All are free to share: Wiktionary data
+  is CC BY-SA 3.0 / GFDL, WikDict CC BY-SA 4.0. Each entry has the licence, size, SHA-256 of every download and
+  several origins, tried in order.
+- **Your own.** StarDict dictionaries (folders with `.ifo`, `.idx`, `.dict` or `.dict.dz`, optional `.syn`) put into
+  `~/.local/share/bookx/dictionaries/` (*Open folder* in the settings) are used too. A dictionary whose name says
+  which language it is for (*German-English*) counts for that language, one that does not counts for every language,
+  so Bookx does not offer a download next to your own.
+- **Remove** a downloaded dictionary with the bin button in the settings. Downloads are checked against the SHA-256 of
+  the catalogue and unpacked safely (no paths outside the folder, size limits).
+- **Privacy.** The only hosts Bookx contacts for dictionaries are the ones named in the catalogue entry:
+  `github.com` / `raw.githubusercontent.com` (the Wiktionary dictionaries of Vuizur, and Webster 1913) and
+  `download.wikdict.com` (WikDict). Nothing about you or your book is sent except what any download sends (your
+  address, the file name). With `BOOKX_OFFLINE` set (or the switch off) no dictionary is downloaded.
 
 ## Annotations and highlights
 

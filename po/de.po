@@ -5946,3 +5946,72 @@ msgstr "Mit {} von 5 Sternen bewertet"
 
 msgid "Remove the tag {}"
 msgstr "Schlagwort {} entfernen"
+
+msgid "Bookx can download {} (free, works offline afterwards) and show the definition at once."
+msgstr "Bookx kann {} herunterladen (kostenlos, danach offline nutzbar) und die Definition sofort anzeigen."
+
+msgid "Cancelled"
+msgstr "Abgebrochen"
+
+msgid "Choose another"
+msgstr "Anderes wählen…"
+
+msgid "Dictionaries"
+msgstr "Wörterbücher"
+
+msgid "Dictionary download"
+msgstr "Wörterbuch-Download"
+
+msgid "Dictionary for {}"
+msgstr "Wörterbuch für {}"
+
+msgid "Dictionary for {} ready"
+msgstr "Wörterbuch für {} bereit"
+
+msgid "Download dictionaries automatically for the languages of my books"
+msgstr "Wörterbücher für die Sprachen meiner Bücher automatisch herunterladen"
+
+msgid "Download dictionary ({})"
+msgstr "Wörterbuch herunterladen ({})"
+
+msgid "Download the dictionary of the chosen language"
+msgstr "Das Wörterbuch der gewählten Sprache herunterladen"
+
+msgid "Downloading…"
+msgstr "Wird heruntergeladen…"
+
+msgid "Get a dictionary"
+msgstr "Wörterbuch holen"
+
+msgid "Learn more"
+msgstr "Mehr erfahren"
+
+msgid "Look-ups use dictionaries on this computer. Bookx can download a free one for the language of a book."
+msgstr "Nachschlagen nutzt Wörterbücher auf diesem Computer. Bookx kann ein kostenloses für die Sprache eines Buches herunterladen."
+
+msgid "No dictionary for {} yet"
+msgstr "Noch kein Wörterbuch für {}"
+
+msgid "Open folder"
+msgstr "Ordner öffnen"
+
+msgid "StarDict dictionaries (folders with .ifo, .idx and .dict files) put in the dictionaries folder are used too."
+msgstr "StarDict-Wörterbücher (Ordner mit .ifo-, .idx- und .dict-Dateien) im Wörterbuchordner werden ebenfalls verwendet."
+
+msgid "The download did not work: {}"
+msgstr "Der Download hat nicht funktioniert: {}"
+
+msgid "The {} dictionary is big ({}). Open a book in that language and press Download dictionary."
+msgstr "Das Wörterbuch für {} ist groß ({}). Öffne ein Buch in dieser Sprache und drücke Wörterbuch herunterladen."
+
+msgid "There is no connection to the internet. Bookx will try again later, or press Try again."
+msgstr "Keine Internetverbindung. Bookx versucht es später erneut, oder drücke Erneut versuchen."
+
+msgid "When a book in a new language is added, or opened, its dictionary is fetched in the background."
+msgstr "Wenn ein Buch in einer neuen Sprache hinzugefügt oder geöffnet wird, wird sein Wörterbuch im Hintergrund geholt."
+
+msgid "Your own dictionaries"
+msgstr "Deine eigenen Wörterbücher"
+
+msgid "Download dictionary"
+msgstr "Wörterbuch herunterladen"

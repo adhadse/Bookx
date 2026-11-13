@@ -10,14 +10,10 @@ hide:
 <div class="home" markdown>
 
 <section class="hero" markdown>
+<img class="hero-logo" src="assets/logo.svg" alt="" width="84" height="84">
 <h1 class="hero-title">Your books, at home on GNOME</h1>
 <p class="hero-lead">Bookx is a free e-book library, reader and editor. A native GTK 4 and libadwaita app, written in Rust. Your books stay on your computer.</p>
 
-<div class="hero-shot">
-<img class="only-light" src="assets/library-banner-hero-light.png#only-light" alt="The Bookx library: a Continue Reading banner above a grid of book covers, with the sidebar on the left" width="1612" height="1160" fetchpriority="high">
-<img class="only-dark" src="assets/library-banner-hero-dark.png#only-dark" alt="The Bookx library: a Continue Reading banner above a grid of book covers, with the sidebar on the left" width="1612" height="1160" fetchpriority="high">
-</div>
-<img class="hero-logo" src="assets/logo.svg" alt="" width="84" height="84">
 
 <div class="hero-actions" markdown>
 
@@ -27,6 +23,10 @@ hide:
 
 </div>
 <p class="hero-note">Free software, GPL-3.0-or-later. Needs GNOME 49 or newer. Build from source; a Flatpak manifest is included.</p>
+<div class="hero-shot">
+<img class="only-light" src="assets/library-banner-hero-light.png#only-light" alt="The Bookx library: a Continue Reading banner above a grid of book covers, with the sidebar on the left" width="1612" height="1160" fetchpriority="high">
+<img class="only-dark" src="assets/library-banner-hero-dark.png#only-dark" alt="The Bookx library: a Continue Reading banner above a grid of book covers, with the sidebar on the left" width="1612" height="1160" fetchpriority="high">
+</div>
 
 </section>
 

@@ -302,6 +302,15 @@ pub fn dump() -> String {
     )
 }
 
+/// Have the cards reached their places (the places are worked out first, as at an allocation)?
+pub fn settled() -> bool {
+    let ov = MGR.with(|m| m.borrow().cards.first().and_then(|c| c.widget.parent()));
+    if let Some(ov) = ov.and_downcast::<gtk::Overlay>() {
+        sync(&ov);
+    }
+    !sliding()
+}
+
 /// Is a slide in progress (tests wait for the end)?
 pub fn sliding() -> bool {
     MGR.with(|m| {

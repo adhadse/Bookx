@@ -23,10 +23,10 @@ cd "$(dirname "$(readlink -f "$0")")/.."
 ROOT=$PWD
 BASE=${RESULTS:-${CARGO_TARGET_DIR:-$ROOT/target}/wiki-screenshots}
 SCHEMES=${SCHEMES:-"light dark"}
-ALL_SCENARIOS="_wiki_shots _wiki_hero _wiki_reading _wiki_strip _wiki_library _wiki_table _wiki_reader_ux _wiki_map _wiki_tts _wiki_editor _wiki_vertical _wiki_eink"
+ALL_SCENARIOS="_wiki_shots _wiki_hero _wiki_reading _wiki_strip _wiki_library _wiki_favourites _wiki_table _wiki_reader_ux _wiki_map _wiki_tts _wiki_editor _wiki_vertical _wiki_eink"
 SCENARIOS=${SCENARIOS:-$ALL_SCENARIOS}
 PICTURES="library-device device-window preferences preferences-search command-palette reader reader-contents editor editor-find editor-palette
-    library-banner-hero library-banner-strip library-details library-notes library-table reader-sidebar-contents reader-sidebar-notes reader-handles
+    library-banner-hero library-banner-strip library-details library-notes library-favourites library-properties library-table reader-sidebar-contents reader-sidebar-notes reader-handles
     reader-wikipedia reader-footer-settings book-map read-aloud-popover read-aloud-reading read-aloud-settings editor-preview editor-split-menu
     reader-vertical reader-eink"
 PY=/usr/bin/python3; [ -x "$PY" ] || PY=$(command -v python3)
@@ -56,6 +56,9 @@ if [ "$SCENARIOS" = "$ALL_SCENARIOS" ]; then
     done
     [ "$missing" = 0 ] || { echo "some pictures were not taken (see the scenario logs in $BASE)"; exit 1; }
 fi
+# no focus ring and no cursor in any picture (build-aux/check-screenshots.py; the scenarios also write a user style sheet that
+# turns focus rings off, and take the pictures with cursor=false)
+"$PY" build-aux/check-screenshots.py "$BASE" || { echo "a screenshot shows a focus ring or a cursor (see above)"; exit 1; }
 [ "${DRY:-0}" = 1 ] && { echo "screenshots are in $BASE"; exit 0; }
 n=0
 for scheme in $SCHEMES; do

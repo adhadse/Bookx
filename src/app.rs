@@ -168,6 +168,11 @@ impl SimpleComponent for App {
             crate::ui::health::on_startup(&shared, Rc::new(move |m| tx.emit(Msg::Toast(m))));
             let tx = sender.input_sender().clone();
             crate::voice_download::set_notifier(Rc::new(move |m| tx.emit(Msg::Toast(m))));
+            let tx = sender.input_sender().clone();
+            crate::ui::dict_service::set_notifier(Rc::new(move |m| tx.emit(Msg::Toast(m))));
+            // the languages of the books that are there are noted; dictionaries that waited for the network are retried
+            crate::ui::dict_service::library_changed(&shared);
+            crate::ui::dict_service::start_retry_timer(&shared);
             // loaded voice models are kept for ten minutes after their last use, then freed
             relm4::gtk::glib::timeout_add_seconds_local(60, || {
                 bookx_tts::service::global().sweep(std::time::Instant::now());
@@ -653,7 +658,10 @@ impl SimpleComponent for App {
             Msg::Toast(t) => {
                 self.toasts.add_toast(adw::Toast::new(&t));
             }
-            Msg::LibraryChanged => self.shared.start_indexing(),
+            Msg::LibraryChanged => {
+                self.shared.start_indexing();
+                crate::ui::dict_service::library_changed(&self.shared);
+            }
             Msg::OpenPaths(paths) => {
                 let mut files = Vec::new();
                 for p in paths {

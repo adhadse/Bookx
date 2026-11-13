@@ -30,9 +30,7 @@ pub struct Loaded {
 /// Opens every StarDict dictionary below `root` (`root` itself, its sub-folders and their
 /// sub-folders). Order is alphabetical, so priority is predictable.
 pub fn load(root: &Path) -> Loaded {
-    let mut dirs = Vec::new();
-    find_dictionaries(root, 0, &mut dirs);
-    dirs.sort();
+    let dirs = dictionary_dirs(root);
     let mut set = DictionarySet::new();
     let mut failed = Vec::new();
     for d in dirs {
@@ -46,6 +44,15 @@ pub fn load(root: &Path) -> Loaded {
     Loaded { set, failed }
 }
 
+/// The folders below `root` that hold a StarDict dictionary, in alphabetical order. Folders whose name
+/// starts with a dot (downloads in progress) are not looked into.
+pub fn dictionary_dirs(root: &Path) -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    find_dictionaries(root, 0, &mut dirs);
+    dirs.sort();
+    dirs
+}
+
 fn find_dictionaries(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) {
     let Ok(rd) = std::fs::read_dir(dir) else {
         return;
@@ -55,6 +62,11 @@ fn find_dictionaries(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) {
     for e in rd.flatten() {
         let p = e.path();
         if p.is_dir() {
+            if p.file_name()
+                .is_some_and(|n| n.to_string_lossy().starts_with('.'))
+            {
+                continue;
+            }
             subs.push(p);
         } else if p.extension().is_some_and(|x| x == "ifo") {
             has_ifo = true;

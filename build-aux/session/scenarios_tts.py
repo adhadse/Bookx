@@ -644,3 +644,30 @@ def cards_no_overlap_real(c):
     c.check("the other is where it was pushed to (the wishes are recomputed to the same places)",
             _near(st3["rsvp_box"], st2["rsvp_box"], 3), f"{st3['rsvp_box']} vs {st2['rsvp_box']}")
     c.check("the app is still alive", c.is_alive())
+
+
+@scenario
+def library_double_click_after_reader_real(c):
+    """Regression: back from a book, the details panel shows the book that was open (long tags) and a double click
+    on another book must open it. Selecting a book used to change the panel's width (its content set the minimum),
+    the grid re-laid out under the pointer between the two clicks and the second one hit empty space. Look at the
+    screenshot library-panel."""
+    c.start(books=("alice", "tiny"))
+    c.check("book A opens", c.open_book("Alice"))
+    c.go_to_text()
+    time.sleep(1.0)
+    _leave_to_library(c)
+    time.sleep(2.5)  # the details panel has slid in
+    c.shot("library-panel")
+    card = c.wait_node("table cell", rx="Masque")
+    before = card.box
+    x, y = card.center()
+    c.sb.click(x, y)
+    time.sleep(1.0)
+    after = c.wait_node("table cell", rx="Masque").box
+    c.check("selecting another book leaves the pointer on its card (the grid does not jump)",
+            after[0] <= x <= after[0] + after[2] and after[1] <= y <= after[1] + after[3],
+            f"pointer {x},{y} card {before} -> {after}")
+    c.sb.double_click(*c.wait_node("table cell", rx="Masque").center())
+    c.check("a double click on it opens it", c.wait_node("slider", timeout=8))
+    c.check("the app is still alive", c.is_alive())

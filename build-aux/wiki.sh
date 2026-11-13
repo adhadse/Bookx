@@ -49,6 +49,9 @@ done
 echo "==> Optimising pictures (WebP, lazy loading)"
 "$VENV/bin/python" build-aux/wiki-optimize.py "$SITE"
 
+echo "==> Checking the screenshots for focus rings"
+"$VENV/bin/python" build-aux/check-screenshots.py wiki/docs/assets || exit 1
+
 echo "==> Checking links and light/dark pictures"
 python3 build-aux/check-site-links.py "$SITE"
 

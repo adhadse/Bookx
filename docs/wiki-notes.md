@@ -65,6 +65,17 @@ shows only one variant, when the fragment is missing, or when a picture is not u
 five pages and checks that exactly the matching variants are visible. `WIKI_SHOTS=/some/dir build-aux/wiki.sh` also saves
 full-page screenshots of the built site (light and dark, desktop and phone width) there.
 
+**No focus rings, no cursor (bug 10).** Four layers: (1) every scenario writes a user style sheet
+(`$XDG_CONFIG_HOME/gtk-4.0/gtk.css`, `no_rings()` in `scenarios_wiki.py`) that turns every outline off, so no keyboard-focus ring,
+no focused-entry outline and no focus-visible ring of the reading canvas is drawn whatever keys the scenario pressed (GTK loads it
+above the application's CSS); (2) `wshot()` takes the picture with `cursor=false` and first parks the pointer on the shell's top bar, so
+nothing is drawn hovered (`park=False` only for the book map's hover card); (3) `build-aux/check-screenshots.py` scans the raw
+captures (from `wiki-screenshots.sh`, before framing) and the finished pictures (from `wiki.sh`) for the shape of a ring (two long thin
+accent-blue horizontal lines of the same extent joined by thin blue vertical ones; progress bars, sliders and fills do not match;
+`--allow FILE` lists pictures that may show one; thresholds at the top of the script) and fails on a scenario that asks for the
+cursor; (4) it found the rings that were in the first capture (reading canvas, editor preview, Notes search).
+It does not look for a cursor sprite in the pixels: the cursor is absent by construction.
+
 **Where the scenarios are.** `build-aux/session/scenarios_wiki.py` (hero banner, the reader page with highlights and its
 popover, strip, details, notes, table, book map, read aloud, editor preview and split menu, vertical text, e-ink) plus
 `_wiki_shots` (`scenarios_a11y.py`: device banner, Device window, Preferences, palette, editor) and `_wiki_reader_ux`
@@ -102,7 +113,9 @@ the feature pages; device support is described as new and tried on one Kobo only
 **Known gaps.** The e-ink picture is the normal screen with the `eink` setting, not a real e-ink panel. The sync-summarydialog (it was a mockup) is no longer shown. Pictures that depend on the app's look change with every UI pass: the
 last capture is from the date in the log below.
 
-Log: 2026-11-13 (wiki agent, wave 4): all 29 pictures x 2 styles taken from the build described in the final report.
+Log: 2026-11-14 (wiki agent): all 30 pictures x 2 styles re-taken in one `wiki-screenshots.sh` run, 0 focus rings found, every picture looked at; the
+shelf covers are real public-domain Standard Ebooks covers (`make-wiki-books.py`, cached in `~/.cache/bookx-wiki-covers`, drawn covers offline).
+If the machine runs out of inotify instances the script waits 90 s and tries again (3 times).
 Log: 2026-11-14: the shelf now uses real Standard Ebooks cover art (`make-wiki-books.py`), and the "Pages made for
 reading" picture is `_wiki_reading` (five highlights in four styles, the selection popover with a note and the Wikipedia
 look-up); the hero, reader, library, details, notes, strip and table pictures were retaken in both styles.

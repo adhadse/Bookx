@@ -10,6 +10,8 @@ pub mod colors;
 pub mod covers;
 pub mod devices;
 pub mod devices_list;
+pub mod dict_service;
+pub mod dict_settings;
 pub mod duplicates;
 pub mod editor;
 pub mod formats;

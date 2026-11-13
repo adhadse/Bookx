@@ -341,6 +341,8 @@ pub struct Config {
     /// The footer position that older versions stored as a default was reset to "middle" (once).
     #[serde(default = "missing_flag")]
     pub footer_pos_migrated: bool,
+    /// Automatic dictionary downloads and what was already looked at.
+    pub dictionaries: crate::dict_auto::Prefs,
 }
 
 impl Default for Config {
@@ -388,6 +390,7 @@ impl Default for Config {
             footer: Default::default(),
             footer_books: Default::default(),
             footer_pos_migrated: true,
+            dictionaries: Default::default(),
         }
     }
 }

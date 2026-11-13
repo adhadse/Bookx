@@ -68,6 +68,13 @@ pub enum Input {
     PopClosed,
     Wiki,
     Dict,
+    /// Download the dictionary for the language of the book (the button in the look-up popover).
+    DictDownload,
+    /// Preferences → Reading → Dictionaries.
+    DictChoose,
+    DictLearn,
+    /// Progress of a dictionary download.
+    DictEvent(super::dict_service::Event),
     Translate,
     TranslateLang(String),
     Zoom(f64),
@@ -144,6 +151,16 @@ pub enum Output {
     OpenPreferences(String),
 }
 
+/// The offer to download a dictionary in the look-up popover.
+#[derive(Clone)]
+struct DictPromptUi {
+    root: gtk::Box,
+    title: gtk::Label,
+    body: gtk::Label,
+    bar: gtk::ProgressBar,
+    primary: gtk::Button,
+}
+
 struct W {
     page: adw::NavigationPage,
     title: adw::WindowTitle,
@@ -199,6 +216,7 @@ struct W {
     zoom_label: gtk::Label,
     wiki_text: gtk::Label,
     dict_text: gtk::Label,
+    dict_prompt: DictPromptUi,
     wiki_spin: gtk::Spinner,
     wiki_img: (gtk::Box, gtk::Stack, gtk::Picture),
     wiki_url: Rc<RefCell<String>>,
@@ -253,6 +271,16 @@ pub struct Reader {
     footer_timer: Option<glib::SourceId>,
     /// Hears every edit of the footer settings (Preferences, popovers, other readers).
     _footer_sub: Option<crate::settings_bus::Subscription>,
+    /// Hears the progress of dictionary downloads.
+    _dict_sub: Option<super::dict_service::Subscription>,
+    /// The language of the book for dictionaries (`de`), once known.
+    dict_lang: RefCell<Option<String>>,
+    /// The download of a dictionary was asked for by a look-up: the definition follows it.
+    dict_waiting: Cell<bool>,
+    /// What the dictionary page offers now (for the dev dump).
+    dict_prompt_state: RefCell<crate::dict_auto::Prompt>,
+    /// The book was opened and its dictionary looked at (once).
+    dict_opened: Cell<bool>,
     /// Closes the selection popover when a dialog, window or menu comes over the reader.
     overlay_guard: Rc<super::overlay_guard::OverlayGuard>,
 }
@@ -1248,6 +1276,97 @@ impl Reader {
     // ---- read aloud ------------------------------------------------------------------------
 
     /// The language the book is read in: its metadata, else what the text looks like.
+    /// The language of the book for its dictionary: `dc:language` (`en-GB` is `en`), else a guess from
+    /// the text on the page. Empty while nothing tells.
+    fn dict_language(&self) -> String {
+        if let Some(l) = self.dict_lang.borrow().clone().filter(|l| !l.is_empty()) {
+            return l;
+        }
+        let sample: String = self.canvas.canonical_text().chars().take(3000).collect();
+        let l = crate::dict_catalog::book_language(&self.book.metadata().language, &sample);
+        if !l.is_empty() {
+            *self.dict_lang.borrow_mut() = Some(l.clone());
+        }
+        l
+    }
+
+    /// Shows what the dictionary page says besides the definition (the offer to download).
+    fn show_dict_prompt(&self, p: &crate::dict_auto::Prompt) {
+        let u = &self.w.dict_prompt;
+        u.root.set_visible(p.visible());
+        u.title.set_label(&p.heading());
+        u.body.set_label(&p.body());
+        u.primary.set_label(&p.primary());
+        u.primary.set_sensitive(p.primary_enabled());
+        match p.progress() {
+            Some(f) => {
+                u.bar.set_visible(true);
+                u.bar.set_fraction(f);
+            }
+            None => u.bar.set_visible(false),
+        }
+        *self.dict_prompt_state.borrow_mut() = p.clone();
+    }
+
+    /// Fills the dictionary page for `term`: the definition from the installed dictionaries, and the offer
+    /// to download one when the language of the book has none.
+    fn fill_dict(&self, term: &str) {
+        let dir = crate::dictionaries::dictionary_dir();
+        let loaded = crate::dictionaries::load(&dir);
+        let lang = self.dict_language();
+        let presence = crate::dict_install::presence(&dir);
+        let prompt = crate::dict_auto::prompt_for(
+            &lang,
+            &presence,
+            crate::dict_catalog::catalog(),
+            super::dict_service::running(&lang),
+            super::dict_service::last_failure(&lang),
+        );
+        self.show_dict_prompt(&prompt);
+        let text = if loaded.set.names().is_empty() {
+            if prompt.visible() {
+                String::new()
+            } else {
+                glib::markup_escape_text(&crate::dictionaries::empty_help(&dir)).to_string()
+            }
+        } else {
+            let lookup = loaded.set.lookup_all(term);
+            let mut t = crate::dictionaries::render(term, &lookup);
+            let definition = lookup
+                .results
+                .first()
+                .and_then(|r| r.entries.first())
+                .map(|e| e.plain_text());
+            if definition.is_some() {
+                let sel = self
+                    .selection
+                    .as_ref()
+                    .map(|s| s.text.clone())
+                    .unwrap_or_default();
+                let now = self.shared.now();
+                let added = self.shared.vocab.borrow_mut().record_lookup(
+                    term,
+                    &sel,
+                    self.book_id,
+                    definition.as_deref(),
+                    now,
+                );
+                if matches!(added, Ok(true)) {
+                    t.push_str("\n\n<small>Saved to your vocabulary.</small>");
+                }
+            }
+            for (d, e) in &loaded.failed {
+                t.push_str(&format!(
+                    "\n\n<small>{} could not be opened: {}</small>",
+                    glib::markup_escape_text(d),
+                    glib::markup_escape_text(e)
+                ));
+            }
+            t
+        };
+        self.w.dict_text.set_markup(&text);
+    }
+
     fn tts_language(&self) -> String {
         let sample: String = self.canvas.canonical_text().chars().take(3000).collect();
         crate::tts::book_language(&self.book.metadata().language, &sample)
@@ -3233,8 +3352,68 @@ impl SimpleComponent for Reader {
             page.append(&scroll);
             (page, head, spin, text)
         };
-        let (dict_page, _dict_head, _dict_spin, dict_text) = lookup_page("Dictionary", 170);
+        let (dict_page, _dict_head, _dict_spin, dict_text) = lookup_page("Dictionary", 210);
         dict_text.set_use_markup(true);
+        // "No dictionary for German yet": the offer to download one, above the text, inside the scroll
+        // area of a fixed height (the popover never changes size when the state changes)
+        let dict_prompt = {
+            let root = gtk::Box::new(gtk::Orientation::Vertical, 6);
+            root.set_margin_start(8);
+            root.set_margin_end(8);
+            root.set_margin_bottom(8);
+            root.set_visible(false);
+            let title = gtk::Label::new(None);
+            title.add_css_class("heading");
+            title.set_xalign(0.0);
+            title.set_wrap(true);
+            let body = gtk::Label::new(None);
+            body.add_css_class("dim-label");
+            body.set_xalign(0.0);
+            body.set_wrap(true);
+            body.set_max_width_chars(44);
+            let bar = gtk::ProgressBar::new();
+            super::audit::label(&bar, &tr("Dictionary download"));
+            bar.set_visible(false);
+            let primary = gtk::Button::with_label(&tr("Download dictionary"));
+            primary.add_css_class("suggested-action");
+            primary.add_css_class("pill");
+            primary.set_halign(gtk::Align::Start);
+            let row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+            let secondary = gtk::Button::with_label(&tr("Choose another"));
+            secondary.add_css_class("flat");
+            let learn = gtk::Button::with_label(&tr("Learn more"));
+            learn.add_css_class("flat");
+            row.append(&secondary);
+            row.append(&learn);
+            root.append(&title);
+            root.append(&body);
+            root.append(&bar);
+            root.append(&primary);
+            root.append(&row);
+            if let Some(scroll) = dict_page
+                .last_child()
+                .and_then(|w| w.downcast::<gtk::ScrolledWindow>().ok())
+            {
+                scroll.set_child(None::<&gtk::Widget>);
+                let body_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                body_box.append(&root);
+                body_box.append(&dict_text);
+                scroll.set_child(Some(&body_box));
+            }
+            let tx = sender.input_sender().clone();
+            primary.connect_clicked(move |_| tx.emit(Input::DictDownload));
+            let tx = sender.input_sender().clone();
+            secondary.connect_clicked(move |_| tx.emit(Input::DictChoose));
+            let tx = sender.input_sender().clone();
+            learn.connect_clicked(move |_| tx.emit(Input::DictLearn));
+            DictPromptUi {
+                root,
+                title,
+                body,
+                bar,
+                primary,
+            }
+        };
         {
             let foot = gtk::Box::new(gtk::Orientation::Horizontal, 6);
             foot.set_halign(gtk::Align::End);
@@ -4117,6 +4296,35 @@ impl SimpleComponent for Reader {
                 Rc::new(move || tx2.emit(Input::RsvpTick)),
             )
         };
+        {
+            // conditions for `until:` in dev scripts (tests wait on these instead of sleeping)
+            let p = tts_ui.player.clone();
+            crate::devtools::probe("tts-playing", move || {
+                let d = p.dev_dump();
+                p.widget.is_mapped()
+                    && d.contains("visible=1")
+                    && d.contains("icon=media-playback-pause")
+            });
+            crate::devtools::probe("cards-settled", super::card_drag::settled);
+            let o = split.clone();
+            crate::devtools::probe("reader", move || o.is_mapped());
+            // the book is laid out: the page has text
+            let (o, c) = (split.clone(), canvas.clone());
+            crate::devtools::probe("page-ready", move || {
+                o.is_mapped() && !c.area.page_text().is_empty()
+            });
+            let p = tts_ui.player.clone();
+            crate::devtools::probe("tts-card", move || {
+                p.widget.is_mapped() && p.dev_dump().contains("visible=1")
+            });
+            let p = tts_ui.player.clone();
+            crate::devtools::probe("tts-card-paused", move || {
+                let d = p.dev_dump();
+                p.widget.is_mapped()
+                    && d.contains("visible=1")
+                    && d.contains("icon=media-playback-start")
+            });
+        }
         let page_overlay = gtk::Overlay::new();
         page_overlay.set_child(Some(&split));
         page_overlay.add_overlay(&tts_ui.player.widget);
@@ -4652,6 +4860,7 @@ impl SimpleComponent for Reader {
             zoom_label,
             wiki_text,
             dict_text,
+            dict_prompt,
             wiki_spin,
             wiki_img,
             wiki_url,
@@ -4718,6 +4927,14 @@ impl SimpleComponent for Reader {
                 g.watch_popover(&footer_pop_guard);
                 g
             },
+            _dict_sub: Some({
+                let tx = sender.input_sender().clone();
+                super::dict_service::subscribe(move |e| tx.emit(Input::DictEvent(e.clone())))
+            }),
+            dict_lang: RefCell::new(None),
+            dict_waiting: Cell::new(false),
+            dict_prompt_state: RefCell::new(crate::dict_auto::Prompt::Hidden),
+            dict_opened: Cell::new(false),
             _footer_sub: Some({
                 let tx = sender.input_sender().clone();
                 crate::settings_bus::footer().subscribe(move || tx.emit(Input::FooterChanged))
@@ -4950,6 +5167,11 @@ impl SimpleComponent for Reader {
             }
             Input::Position(p) => {
                 self.pos = p;
+                if !self.dict_opened.replace(true) {
+                    // a book whose language has no dictionary: with the setting on, it is fetched now
+                    let lang = self.dict_language();
+                    super::dict_service::book_opened(&self.shared, &lang);
+                }
                 self.w.handles.refresh();
                 self.chapter_pages
                     .borrow_mut()
@@ -5130,46 +5352,81 @@ impl SimpleComponent for Reader {
                     return;
                 };
                 self.show_lookup_page("dict");
-                let dir = crate::dictionaries::dictionary_dir();
-                let loaded = crate::dictionaries::load(&dir);
-                let text = if loaded.set.names().is_empty() {
-                    glib::markup_escape_text(&crate::dictionaries::empty_help(&dir)).to_string()
-                } else {
-                    let lookup = loaded.set.lookup_all(&term);
-                    let mut t = crate::dictionaries::render(&term, &lookup);
-                    let definition = lookup
-                        .results
-                        .first()
-                        .and_then(|r| r.entries.first())
-                        .map(|e| e.plain_text());
-                    if definition.is_some() {
-                        let sel = self
-                            .selection
-                            .as_ref()
-                            .map(|s| s.text.clone())
-                            .unwrap_or_default();
-                        let now = self.shared.now();
-                        let added = self.shared.vocab.borrow_mut().record_lookup(
-                            &term,
-                            &sel,
-                            self.book_id,
-                            definition.as_deref(),
-                            now,
-                        );
-                        if matches!(added, Ok(true)) {
-                            t.push_str("\n\n<small>Saved to your vocabulary.</small>");
-                        }
-                    }
-                    for (d, e) in &loaded.failed {
-                        t.push_str(&format!(
-                            "\n\n<small>{} could not be opened: {}</small>",
-                            glib::markup_escape_text(d),
-                            glib::markup_escape_text(e)
-                        ));
-                    }
-                    t
+                self.fill_dict(&term);
+            }
+            Input::DictDownload => {
+                let lang = self.dict_language();
+                self.dict_waiting.set(true);
+                let d = super::dict_service::request(&self.shared, &lang, true);
+                if d == crate::dict_auto::Decision::Offline {
+                    self.show_dict_prompt(&crate::dict_auto::Prompt::Failed {
+                        lang,
+                        message: String::new(),
+                        offline: true,
+                    });
+                } else if let Some(term) = self
+                    .selection
+                    .as_ref()
+                    .and_then(|s| crate::dictionaries::term_for_selection(&s.text))
+                {
+                    self.fill_dict(&term);
+                }
+            }
+            Input::DictChoose => {
+                self.w.sel_pop.popdown();
+                let _ = sender.output(Output::OpenPreferences(tr("Dictionaries")));
+            }
+            Input::DictLearn => {
+                open_uri("https://bookx.adhadse.com/reading/#dictionaries");
+            }
+            Input::DictEvent(e) => {
+                use super::dict_service::Event;
+                let lang = self.dict_language();
+                let (ev_lang, p) = match &e {
+                    Event::Progress {
+                        lang: l,
+                        fraction,
+                        line,
+                    } => (
+                        l.clone(),
+                        crate::dict_auto::Prompt::Working {
+                            lang: l.clone(),
+                            fraction: *fraction,
+                            line: line.clone(),
+                        },
+                    ),
+                    Event::Failed {
+                        lang: l,
+                        message,
+                        offline,
+                    } => (
+                        l.clone(),
+                        crate::dict_auto::Prompt::Failed {
+                            lang: l.clone(),
+                            message: message.clone(),
+                            offline: *offline,
+                        },
+                    ),
+                    Event::Done { lang: l } => (l.clone(), crate::dict_auto::Prompt::Hidden),
                 };
-                self.w.dict_text.set_markup(&text);
+                if ev_lang != lang
+                    || self.w.sel_stack.visible_child_name().as_deref() != Some("dict")
+                {
+                    return;
+                }
+                if matches!(e, Event::Done { .. }) {
+                    // the definition of the word that was looked up appears in the same popover
+                    self.dict_waiting.set(false);
+                    if let Some(term) = self
+                        .selection
+                        .as_ref()
+                        .and_then(|s| crate::dictionaries::term_for_selection(&s.text))
+                    {
+                        self.fill_dict(&term);
+                    }
+                } else {
+                    self.show_dict_prompt(&p);
+                }
             }
             Input::Wiki => {
                 if let Some(sel) = &self.selection {
@@ -5805,6 +6062,23 @@ impl SimpleComponent for Reader {
                     "dump" => {
                         eprintln!("footnote_popup: {}", super::reader_extra::dev_dump());
                         eprintln!("wiki: {}", self.w.wiki_text.label());
+                        {
+                            let p = self.dict_prompt_state.borrow();
+                            eprintln!(
+                                "dict_prompt: state={} lang={} title={:?} primary={:?} enabled={} progress={:?} visible={}",
+                                p.key(),
+                                self.dict_language(),
+                                p.heading(),
+                                p.primary(),
+                                p.primary_enabled(),
+                                p.progress(),
+                                self.w.dict_prompt.root.is_visible()
+                            );
+                            eprintln!(
+                                "dict_service: {}",
+                                super::dict_service::dev_dump(&self.shared)
+                            );
+                        }
                         eprintln!(
                             "wiki_image: frame={} shows={} size={}",
                             self.w.wiki_img.0.is_visible(),
@@ -5962,6 +6236,10 @@ impl SimpleComponent for Reader {
                     }
                     "ui-dict-btn" => {
                         self.w.dict_btn.emit_clicked();
+                        return;
+                    }
+                    "ui-dict-prompt-btn" => {
+                        self.w.dict_prompt.primary.emit_clicked();
                         return;
                     }
                     "ui-wiki-btn" => {

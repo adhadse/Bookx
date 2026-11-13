@@ -603,6 +603,9 @@ msgstr ""
 msgid "Bookx Library"
 msgstr ""
 
+msgid "Bookx can download {} (free, works offline afterwards) and show the definition at once."
+msgstr ""
+
 msgid "Break long words at line ends, in the language of the book"
 msgstr ""
 
@@ -646,6 +649,9 @@ msgid "Cancel requested"
 msgstr ""
 
 msgid "Cancel {}"
+msgstr ""
+
+msgid "Cancelled"
 msgstr ""
 
 msgid "Cancelling…"
@@ -877,6 +883,9 @@ msgid "Choose a folder for the exported files"
 msgstr ""
 
 msgid "Choose a folder or enter an address first"
+msgstr ""
+
+msgid "Choose another"
 msgstr ""
 
 msgid "Choose at least one search"
@@ -1473,6 +1482,18 @@ msgstr ""
 msgid "Diagnostics copied. They hold no book titles or passwords."
 msgstr ""
 
+msgid "Dictionaries"
+msgstr ""
+
+msgid "Dictionary download"
+msgstr ""
+
+msgid "Dictionary for {}"
+msgstr ""
+
+msgid "Dictionary for {} ready"
+msgstr ""
+
 msgid "Dictionary to add the word to"
 msgstr ""
 
@@ -1512,6 +1533,15 @@ msgstr ""
 msgid "Download automatically"
 msgstr ""
 
+msgid "Download dictionaries automatically for the languages of my books"
+msgstr ""
+
+msgid "Download dictionary"
+msgstr ""
+
+msgid "Download dictionary ({})"
+msgstr ""
+
 msgid "Download each article's web page instead of using the feed text"
 msgstr ""
 
@@ -1519,6 +1549,9 @@ msgid "Download or remove {}"
 msgstr ""
 
 msgid "Download the default voice without asking"
+msgstr ""
+
+msgid "Download the dictionary of the chosen language"
 msgstr ""
 
 msgid "Downloaded when you ask, never bundled. Every file is checked against a checksum. They are kept in {}"
@@ -1534,6 +1567,9 @@ msgid "Downloading {}"
 msgstr ""
 
 msgid "Downloading {} resource(s)…"
+msgstr ""
+
+msgid "Downloading…"
 msgstr ""
 
 msgid "Dry run"
@@ -2019,6 +2055,9 @@ msgstr ""
 msgid "Generate"
 msgstr ""
 
+msgid "Get a dictionary"
+msgstr ""
+
 msgid "Give the library a name."
 msgstr ""
 
@@ -2427,6 +2466,9 @@ msgstr ""
 msgid "Layout: Two Columns"
 msgstr ""
 
+msgid "Learn more"
+msgstr ""
+
 msgid "Leave empty to generate automatically"
 msgstr ""
 
@@ -2533,6 +2575,9 @@ msgid "Look up on Wikipedia"
 msgstr ""
 
 msgid "Look up, Wikipedia, translate"
+msgstr ""
+
+msgid "Look-ups use dictionaries on this computer. Bookx can download a free one for the language of a book."
 msgstr ""
 
 msgid "Looking the book up…"
@@ -2937,6 +2982,9 @@ msgstr ""
 msgid "No dictionaries installed.\n\nCopy StarDict dictionaries (folders with .ifo, .idx and .dict files) into:\n{}"
 msgstr ""
 
+msgid "No dictionary for {} yet"
+msgstr ""
+
 msgid "No differences from “{}”"
 msgstr ""
 
@@ -3295,6 +3343,9 @@ msgid "Open an Unzipped Folder"
 msgstr ""
 
 msgid "Open dictionary folder"
+msgstr ""
+
+msgid "Open folder"
 msgstr ""
 
 msgid "Open from start"
@@ -4674,6 +4725,9 @@ msgstr ""
 msgid "Standard Ebooks"
 msgstr ""
 
+msgid "StarDict dictionaries (folders with .ifo, .idx and .dict files) put in the dictionaries folder are used too."
+msgstr ""
+
 msgid "Start"
 msgstr ""
 
@@ -4932,6 +4986,9 @@ msgstr ""
 msgid "The dictionary to add the word to"
 msgstr ""
 
+msgid "The download did not work: {}"
+msgstr ""
+
 msgid "The entry now points to {}#{}"
 msgstr ""
 
@@ -5040,6 +5097,9 @@ msgstr ""
 msgid "The value each property gets from the book's styles"
 msgstr ""
 
+msgid "The {} dictionary is big ({}). Open a book in that language and press Download dictionary."
+msgstr ""
+
 msgid "The {} selected file(s) get the new extension. Links to them are updated."
 msgstr ""
 
@@ -5065,6 +5125,9 @@ msgid "There are no highlights to send"
 msgstr ""
 
 msgid "There are no problems to go to"
+msgstr ""
+
+msgid "There is no connection to the internet. Bookx will try again later, or press Try again."
 msgstr ""
 
 msgid "There is no contents page to remove"
@@ -5460,6 +5523,9 @@ msgstr ""
 msgid "When Read Aloud is pressed and no voice is installed, download Kokoro in the background"
 msgstr ""
 
+msgid "When a book in a new language is added, or opened, its dictionary is fetched in the background."
+msgstr ""
+
 msgid "Where backups go"
 msgstr ""
 
@@ -5536,6 +5602,9 @@ msgid "Your dictionaries"
 msgstr ""
 
 msgid "Your library ({} books) now lives in a database; the old catalogue was kept as bookx-library.json.migrated"
+msgstr ""
+
+msgid "Your own dictionaries"
 msgstr ""
 
 msgid "Your themes"

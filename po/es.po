@@ -5943,3 +5943,72 @@ msgstr "Valorado con {} de 5 estrellas"
 
 msgid "Remove the tag {}"
 msgstr "Quitar la etiqueta {}"
+
+msgid "Bookx can download {} (free, works offline afterwards) and show the definition at once."
+msgstr "Bookx puede descargar {} (gratis, funciona sin conexión después) y mostrar la definición al instante."
+
+msgid "Cancelled"
+msgstr "Cancelado"
+
+msgid "Choose another"
+msgstr "Elegir otro…"
+
+msgid "Dictionaries"
+msgstr "Diccionarios"
+
+msgid "Dictionary download"
+msgstr "Descarga de diccionario"
+
+msgid "Dictionary for {}"
+msgstr "Diccionario de {}"
+
+msgid "Dictionary for {} ready"
+msgstr "Diccionario de {} listo"
+
+msgid "Download dictionaries automatically for the languages of my books"
+msgstr "Descargar diccionarios automáticamente para los idiomas de mis libros"
+
+msgid "Download dictionary ({})"
+msgstr "Descargar diccionario ({})"
+
+msgid "Download the dictionary of the chosen language"
+msgstr "Descargar el diccionario del idioma elegido"
+
+msgid "Downloading…"
+msgstr "Descargando…"
+
+msgid "Get a dictionary"
+msgstr "Obtener un diccionario"
+
+msgid "Learn more"
+msgstr "Más información"
+
+msgid "Look-ups use dictionaries on this computer. Bookx can download a free one for the language of a book."
+msgstr "Las consultas usan diccionarios de este equipo. Bookx puede descargar uno gratuito para el idioma de un libro."
+
+msgid "No dictionary for {} yet"
+msgstr "Todavía no hay diccionario de {}"
+
+msgid "Open folder"
+msgstr "Abrir carpeta"
+
+msgid "StarDict dictionaries (folders with .ifo, .idx and .dict files) put in the dictionaries folder are used too."
+msgstr "También se usan los diccionarios StarDict (carpetas con archivos .ifo, .idx y .dict) que pongas en la carpeta de diccionarios."
+
+msgid "The download did not work: {}"
+msgstr "La descarga no funcionó: {}"
+
+msgid "The {} dictionary is big ({}). Open a book in that language and press Download dictionary."
+msgstr "El diccionario de {} es grande ({}). Abre un libro en ese idioma y pulsa Descargar diccionario."
+
+msgid "There is no connection to the internet. Bookx will try again later, or press Try again."
+msgstr "No hay conexión a internet. Bookx lo intentará más tarde, o pulsa Reintentar."
+
+msgid "When a book in a new language is added, or opened, its dictionary is fetched in the background."
+msgstr "Cuando se añade o abre un libro en un idioma nuevo, su diccionario se descarga en segundo plano."
+
+msgid "Your own dictionaries"
+msgstr "Tus propios diccionarios"
+
+msgid "Download dictionary"
+msgstr "Descargar diccionario"

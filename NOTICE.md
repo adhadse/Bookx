@@ -48,6 +48,15 @@ generated in code.
 - Dev only: mail-parser, wat
 
 
+## Dictionaries downloaded on request (not bundled)
+
+`data/dictionaries.json` lists dictionaries that Bookx downloads when the user asks (or the automatic download is on); none is
+shipped. Sources and licences: the Wiktionary dictionaries extracted by Vuizur with Wiktextract/kaikki.org
+(<https://github.com/Vuizur/Wiktionary-Dictionaries>, CC BY-SA 3.0 and GFDL like Wiktionary), WikDict
+(<https://www.wikdict.com>, CC BY-SA 4.0), Webster's Revised Unabridged Dictionary 1913 as packaged for StarDict by ahacop
+(public domain). Each entry carries its licence, which the app shows in the settings. The catalogue is made and checked by
+`build-aux/dict-catalog.py`. The added crates `tar`, `flate2`, `bzip2` and `sha2` are already in the dependency tree.
+
 ## Read aloud (`crates/bookx-tts`)
 Nothing below is bundled or distributed with Bookx. The models and the runtime are downloaded by the user on demand
 (Preferences → Text to Speech), each with its licence shown first and pinned by SHA-256 in

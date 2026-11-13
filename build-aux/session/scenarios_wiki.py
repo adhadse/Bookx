@@ -21,8 +21,28 @@ def settings():
     return DARK if scheme() == "dark" else ""
 
 
-def wshot(c, label):
-    """A screenshot without the mouse pointer, saved as <scenario>-<label>.png in the results folder."""
+NO_RINGS_CSS = """/* wiki screenshots: no keyboard-focus ring, no focused-entry outline anywhere (docs/bugs.md bug 10) */
+* { outline-color: transparent; outline-width: 0; }
+*:focus, *:focus-visible, *:focus-within { outline-color: transparent; outline-width: 0; }
+"""
+
+
+def no_rings():
+    """Writes the sandbox's user style sheet (GTK loads $XDG_CONFIG_HOME/gtk-4.0/gtk.css above the application's own CSS), so
+    no widget draws a focus ring whatever the keyboard did. Call it before c.start()."""
+    d = os.path.join(os.environ["XDG_CONFIG_HOME"], "gtk-4.0")
+    os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, "gtk.css"), "w") as f:
+        f.write(NO_RINGS_CSS)
+
+
+def wshot(c, label, park=True):
+    """A screenshot without the mouse pointer (cursor=false), saved as <scenario>-<label>.png in the results folder. The
+    pointer is parked on the shell's top bar first, so no row or button is drawn hovered (park=False for pictures that need
+    the pointer, like the book map's hover card)."""
+    if park:
+        c.sb.move_to(c.sb.w // 2, 10)
+        time.sleep(0.4)
     path = os.path.join(c.results, f"{c.name}-{label}.png")
     c.sb.screenshot_to(path, cursor=False)
     return path
@@ -60,6 +80,7 @@ def _wiki_hero(c):
     """The Continue Reading banner as the hero card on a cold start, above a shelf of twelve generated books. The hero
     needs a tall window (a viewport lower than about 930 px gets the strip), so this one runs on a 1500 x 1080 screen."""
     names = shelf(c)
+    no_rings()
     c.start(books=tuple(["alice"] + names), settings=settings(), size=os.environ.get("WIKI_HERO_SIZE", "1500x1080"),
             extra_env={"BOOKX_DEV_SCRIPT": "wait:2500,library:lastread"})
     c.wait_node("table cell", rx="Alice")
@@ -76,6 +97,7 @@ def _wiki_reading(c):
     """The reader picture of the landing page ("Pages made for reading"): a chapter with five highlights in four styles
     (background, underline, strikethrough, squiggly) and the selection popover open on the one with a note, so the note,
     the colours, the style choices and the Wikipedia look-up are all in the same picture."""
+    no_rings()
     c.start(books=("alice",), settings=settings(), extra_env={
         "BOOKX_DEV_SCRIPT": "wait:2500,read:1,wait:4000,reader:goto=2,wait:2500,reader:demo-highlights,"
                             "wait:1500,reader:ui-note-popover"})
@@ -98,6 +120,7 @@ def _wiki_strip(c):
     """The slim strip of the Continue Reading banner (Preferences > Continue reading banner > Compact)."""
     names = shelf(c)
     set_config(banner_mode="compact")
+    no_rings()
     c.start(books=tuple(["alice"] + names), settings=settings(),
             extra_env={"BOOKX_DEV_SCRIPT": "wait:2500,library:lastread"})
     c.wait_node("table cell", rx="Alice")
@@ -112,6 +135,7 @@ def _wiki_strip(c):
 def _wiki_library(c):
     """The details panel and Notes & Highlights of a library with a shelf of books."""
     names = shelf(c)
+    no_rings()
     c.start(books=tuple(["alice"] + names), settings=settings(),
             extra_env={"BOOKX_DEV_SCRIPT": "wait:2500,library:lastread,wait:3500,library:annotate,library:annotate-more"})
     c.wait_node("table cell", rx="Alice")
@@ -132,8 +156,39 @@ def _wiki_library(c):
 
 
 @scenario
+def _wiki_favourites(c):
+    """A starred, rated book in Favourites with its details, and the Properties dialog with the rating and the tag editor."""
+    no_rings()
+    c.start(books=("alice", "tiny"), settings=settings())
+    card = c.wait_node("table cell", rx="Alice")
+    c.sb.click(*card.center())
+    c.wait_node("button", "Properties", timeout=8)
+    c.sb.key("d", ("Control",))
+    time.sleep(0.6)
+    stars = c.wait_node("button", "4 stars", timeout=5)
+    if stars:
+        c.click_node(stars)
+        time.sleep(0.6)
+    c.click_node(c.wait_node(None, "Favourites"))
+    time.sleep(1.0)
+    card = c.wait_node("table cell", rx="Alice", timeout=5)
+    if card:
+        c.sb.click(*card.center())
+    time.sleep(5.0)  # the "Added to Favourites" toast goes away
+    wshot(c, "library-favourites")
+    props = c.wait_node("button", "Properties", timeout=5)
+    if props:
+        c.click_node(props)
+        c.wait_node("dialog", "Properties", timeout=6)
+        time.sleep(1.0)
+        wshot(c, "library-properties")
+    c.check("the app is alive", c.is_alive())
+
+
+@scenario
 def _wiki_table(c):
     names = shelf(c)
+    no_rings()
     c.start(books=tuple(["alice"] + names), settings=settings(),
             extra_env={"BOOKX_DEV_SCRIPT": "wait:2500,library:lastread,wait:2500,library:table"})
     time.sleep(7)
@@ -149,6 +204,7 @@ def _wiki_map(c):
     subprocess.run([sys.executable, os.path.join(HERE, "..", "make-big-epub.py"), big, "900"], check=True,
                    capture_output=True)
     c.books["big"] = big
+    no_rings()
     c.start(books=("big",), settings=settings(), extra_env={"BOOKX_DEV_SCRIPT": MAP_SCRIPT})
     c.wait_node("slider", timeout=40)
     time.sleep(16)
@@ -160,12 +216,13 @@ def _wiki_map(c):
     x0, y0, x1, y1 = c.screen_box(map_label(c))
     c.sb.move_to(x0 + 14 + 22 * 6.5, y0 + 14 + 15 + 15)
     time.sleep(0.8)
-    wshot(c, "book-map")
+    wshot(c, "book-map", park=False)
 
 
 @scenario
 def _wiki_tts(c):
     """The sentence being read, the speaker popover and the Text to Speech settings (a silent mock engine)."""
+    no_rings()
     c.start(settings=settings(), extra_env={"BOOKX_TTS_MOCK": "600"})
     c.check("the book opens", c.open_book())
     c.go_to_text()
@@ -200,6 +257,7 @@ def _wiki_tts(c):
 def _wiki_editor(c):
     """The editor with its preview, and the Markup menu with the split entries."""
     from scenarios_editor_tools import open_editor, status_line
+    no_rings()
     c.start(settings=settings())
     if not c.check("Edit Book opens the editor window", open_editor(c)):
         return
@@ -227,6 +285,7 @@ def _wiki_editor(c):
 def _wiki_vertical(c):
     if not c.books.get("vsynth"):
         raise Skip("vsynth not available (see docs/test-books.md)")
+    no_rings()
     c.start(books=("vsynth",), settings=settings())
     if not c.check("the vertical book opens", c.open_book("縦書き")):
         return
@@ -239,6 +298,7 @@ def _wiki_vertical(c):
 def _wiki_eink(c):
     """The e-ink mode: black on white, no animation, bars that stay (the same in both styles)."""
     set_config(eink=True)
+    no_rings()
     c.start(settings=settings())
     if not c.check("the book opens", c.open_book()):
         return

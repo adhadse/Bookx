@@ -645,6 +645,23 @@ if name == "wiki_image_cached":
     open(os.path.join(c, "%016x.img" % h64), "wb").write(png)
 PY
             ;;
+        dict_*)
+            # a fake dictionary server (BOOKX_DICT_CATALOG points the app at it): English and German mock dictionaries
+            dictauto=on
+            dictdelay=60
+            dictmode=
+            case "$name" in
+            dict_default_on | dict_prefs_switch) dictauto= ;;
+            dict_auto_off) dictauto=off ;;
+            dict_failed) dictmode=down ;;
+            dict_prompt_download | dict_no_source) dictauto=off ;;
+            esac
+            [ "$name" = dict_open_book ] && "$CLI" --library "$d/lib" library add "$ROOT/src/book.md" >/dev/null 2>&1
+            python3 "$HERE/fake-dict-server.py" "$d/dict-port" "$d/dictmock" "$dictdelay" en,de "$dictmode" &
+            dictsrv=$!
+            for _ in $(seq 1 50); do [ -s "$d/dict-port" ] && break; sleep 0.1; done
+            dictcat=$d/dictmock/catalog.json
+            ;;
         side_*)
             # a big book (about 2000 contents entries) is book 1 of these scenarios
             "$CLI" --library "$d/lib" library add "$ROOT/big/big.epub" >/dev/null 2>&1
@@ -708,6 +725,7 @@ PY
             rwurl="http://127.0.0.1:$(cat "$d/rw-port" 2>/dev/null)/api/v2/highlights/"
         fi
         [[ "$name" == dictionary_missing* ]] && dicts=$d/no-dictionaries
+        [[ "$name" == dict_* ]] && dicts=$d/dicts-mine # empty: the downloads of the dictionary scenarios go here
         # a display nobody uses: other test runs (other users, agents) share the runtime dir, so never delete
         # a socket that is not ours, and start from a per-run random base
         rtd=${XDG_RUNTIME_DIR:-/run/user/$UID}
@@ -757,6 +775,10 @@ PY
         OUT=$(
             [ -n "$hun" ] && export BOOKX_HUNSPELL=$hun
             [[ "$name" == wiki_image_cached || "$name" == wiki_image_offline ]] && export BOOKX_OFFLINE=1
+            [[ "$name" == dict_offline ]] && export BOOKX_OFFLINE=1
+            # automatic dictionary downloads are off in every scenario but the ones that test them
+            if [ -n "${dictauto-off}" ]; then export BOOKX_DICT_AUTO=${dictauto-off}; fi
+            [ -n "${dictcat:-}" ] && export BOOKX_DICT_CATALOG=$dictcat
             BOOKX_HUNSPELL_USER=$d/userdicts BOOKX_SMTP_PORT=$(cat "$d/smtp-port" 2>/dev/null) GDK_BACKEND=broadway BROADWAY_DISPLAY=":$disp" XDG_CONFIG_HOME=$d/cfg XDG_CACHE_HOME=$d/cache \
                 BOOKX_SECRETS=$sec BOOKX_READWISE_URL=$rwurl BOOKX_TTS_MOCK=$ttsdelay BOOKX_TTS_MOCK_DOWNLOAD=$ttsdl BOOKX_TTS_MOCK_ESPEAK=$ttsespeak BOOKX_TTS_PLAYER=$ttsplayer BOOKX_TTS_DIR=$d/tts BOOKX_LIBRARY=$d/lib BOOKX_DICTIONARIES=$dicts BOOKX_DEVICE_ROOTS=$d/mounts BOOKX_SOURCES_MOCK=$d/mock BOOKX_SOURCES_CACHE=$srccache BOOKX_WEB_MOCK=$d/webmock BOOKX_OPDS_MOCK=$d/opdsmock BOOKX_LANG=en BOOKX_PLUGINS=$d/plugins BOOKX_PATCHES=$d/patches BOOKX_DEV_SCRIPT="$PREAMBLE,${script%quit}wait:1200,quit" \
                 timeout 120 dbus-run-session -- "$BIN" 2>&1 | grep -v 'Gdk-WARNING\|^$\|dbus-daemon\|portal\|fusermount\|fuse init\|bus can.t be made\|Non-compatible\|oo7\|xdg-desktop'
@@ -765,6 +787,7 @@ PY
         [ -n "$smtp" ] && kill "$smtp" 2>/dev/null
         [ -n "$dav" ] && kill "$dav" 2>/dev/null
         [ -n "${ttssrv:-}" ] && kill "$ttssrv" 2>/dev/null
+        [ -n "${dictsrv:-}" ] && kill "$dictsrv" 2>/dev/null
         [ -n "${rwsrv:-}" ] && kill "$rwsrv" 2>/dev/null
         rm -f "$rtd/broadway$((disp + 1)).socket"
         LIB=$("$CLI" --library "$d/lib" library dump 2>/dev/null)
@@ -1070,7 +1093,7 @@ scenario tts_no_pack 'read:1,wait:3500,reader:tts-play,wait:800,reader:tts-playe
 
 # The layout manager (src/card_layout.rs): the cards never sit on top of each other or of a popover
 G="$HERE/cards_geom.py"
-scenario cards_layout_side_by_side 'read:1,wait:3500,reader:tts-play,wait:600,reader:rsvp,wait:2000,reader:cards-rects,quit' '
+scenario cards_layout_side_by_side 'read:1,wait:3500,reader:tts-play,wait:600,reader:rsvp,wait:300,until:cards-settled,wait:200,reader:cards-rects,quit' '
     "$G" count 1 2 <<<"$OUT"; check "both cards are open" $?
     "$G" disjoint 1 <<<"$OUT"; check "the cards do not overlap" $?
     "$G" centred 1 <<<"$OUT"; check "they stand side by side (a gap of about 12 px), centred as a group, bottoms level" $?
@@ -1078,7 +1101,7 @@ scenario cards_layout_side_by_side 'read:1,wait:3500,reader:tts-play,wait:600,re
     "$G" settled 1 <<<"$OUT"; check "the slide has ended and they are where it wanted them" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
-scenario cards_layout_yield 'read:1,wait:3500,reader:tts-play,wait:600,reader:rsvp,wait:2000,reader:cards-rects,reader:rsvp-drag:0.5:1,wait:60,reader:cards-rects,wait:2200,reader:cards-rects,reader:tts-player-drag:0.5:1,wait:2200,reader:cards-rects,reader:tts-player-drag:0.5:0.5,reader:rsvp-drag:0.5:0.5,wait:2200,reader:cards-rects,quit' '
+scenario cards_layout_yield 'read:1,wait:3500,reader:tts-play,wait:600,reader:rsvp,wait:300,until:cards-settled,wait:200,reader:cards-rects,reader:rsvp-drag:0.5:1,wait:60,reader:cards-rects,wait:300,until:cards-settled,wait:200,reader:cards-rects,reader:tts-player-drag:0.5:1,wait:300,until:cards-settled,wait:200,reader:cards-rects,reader:tts-player-drag:0.5:0.5,reader:rsvp-drag:0.5:0.5,wait:300,until:cards-settled,wait:200,reader:cards-rects,quit' '
     "$G" disjoint 2 <<<"$OUT"; check "a card dragged onto the place of the other: they do not overlap" $?
     "$G" at_wish 3 1 0.5 1 <<<"$OUT"; check "the dragged card is exactly where the user put it" $?
     "$G" moved_from_wish 3 0 0.5 1 <<<"$OUT"; check "and the other one gave way" $?
@@ -1091,7 +1114,7 @@ scenario cards_layout_yield 'read:1,wait:3500,reader:tts-play,wait:600,reader:rs
     "$G" settled 5 <<<"$OUT"; check "and the slide has ended" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
-scenario cards_layout_popover 'read:1,wait:3500,reader:tts-play,wait:600,reader:rsvp,wait:2000,reader:select,wait:800,reader:cards-rects,reader:tts-player-drag:0.0:0.2,reader:rsvp-drag:0.6:0.2,wait:1000,reader:cards-rects,reader:selkey=clear,wait:1000,reader:cards-rects,quit' '
+scenario cards_layout_popover 'read:1,wait:3500,reader:tts-play,wait:600,reader:rsvp,wait:2000,reader:select,wait:800,reader:cards-rects,reader:tts-player-drag:0.0:0.2,reader:rsvp-drag:0.6:0.2,wait:300,until:cards-settled,wait:200,reader:cards-rects,reader:selkey=clear,wait:300,until:cards-settled,wait:200,reader:cards-rects,quit' '
     "$G" pop_shown 1 <<<"$OUT"; check "selecting text opens the action popover" $?
     "$G" no_pop_overlap 1 <<<"$OUT"; check "the cards (side by side, at the bottom) are clear of it" $?
     "$G" no_pop_overlap 2 <<<"$OUT"; check "cards dragged onto the popover: both keep clear of it" $?
@@ -1104,7 +1127,7 @@ scenario cards_layout_popover 'read:1,wait:3500,reader:tts-play,wait:600,reader:
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
 # leaving the book and coming back: the stored places are the user's wishes, the final ones are worked out again
-scenario cards_layout_restore 'read:1,wait:3500,reader:tts-play,wait:600,reader:tts-player-drag:0.5:0.5,reader:tts-pause,reader:rsvp,wait:1500,reader:rsvp-drag:0.5:0.5,wait:1000,reader:cards-rects,reader:tts-player,reader:rsvp-dump,wait:400,close:,wait:1500,read:1,wait:4500,reader:cards-rects,reader:tts-player,reader:rsvp-dump,quit' '
+scenario cards_layout_restore 'read:1,wait:3500,reader:tts-play,wait:600,reader:tts-player-drag:0.5:0.5,reader:tts-pause,reader:rsvp,wait:1500,reader:rsvp-drag:0.5:0.5,wait:300,until:cards-settled,wait:200,reader:cards-rects,reader:tts-player,reader:rsvp-dump,wait:400,close:,until:!reader,read:1,until:tts-card-paused,until:page-ready,wait:300,until:cards-settled,wait:200,reader:cards-rects,reader:tts-player,reader:rsvp-dump,quit' '
     "$G" disjoint 1 <<<"$OUT"; check "(both wishes are the same place, the cards do not overlap)" $?
     "$G" disjoint 2 <<<"$OUT"; check "back in the book the cards do not overlap" $?
     "$G" count 2 2 <<<"$OUT"; check "both cards come back" $?
@@ -1116,7 +1139,7 @@ scenario cards_layout_restore 'read:1,wait:3500,reader:tts-play,wait:600,reader:
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
 # e-ink: no slides, the cards are at their final places at once
-scenario cards_layout_eink 'read:1,wait:3500,eink:on,wait:1500,reader:tts-play,wait:600,reader:rsvp,wait:1500,reader:cards-rects,reader:rsvp-drag:0.5:1,reader:cards-rects,quit' '
+scenario cards_layout_eink 'read:1,wait:3500,eink:on,wait:1500,reader:tts-play,wait:600,reader:rsvp,wait:300,until:cards-settled,wait:200,reader:cards-rects,reader:rsvp-drag:0.5:1,reader:cards-rects,quit' '
     "$G" disjoint 1 <<<"$OUT"; check "e-ink: the cards do not overlap" $?
     "$G" disjoint 2 <<<"$OUT"; check "e-ink: a card dragged onto the other: still not" $?
     "$G" settled 2 <<<"$OUT"; check "e-ink: the other one is at its place at once (no slide)" $?
@@ -1234,7 +1257,7 @@ scenario tts_server 'prefs:,wait:900,prefs:pick=Text to Speech,tts:engine=server
 # the owner's bug: the second book of a run failed with "only one engine/environment ... per process". The real
 # pipeline engine (through the speech service, against the fake voice server) in book 1, back to the library,
 # book 2, back, book 1 again, and a rapid switch; the cards come back per book.
-scenario tts_multi_book 'prefs:,wait:900,prefs:pick=Text to Speech,tts:engine=server,tts:server=http://127.0.0.1:@TTSPORT@,wait:300,read:1,wait:3500,reader:tts-play,wait:2500,reader:tts-dump,reader:tts-player,wait:300,close:,wait:1500,read:2,wait:3500,reader:tts-play,wait:2500,reader:tts-dump,reader:tts-player,close:,wait:1500,read:1,wait:4500,reader:tts-player,reader:tts-play,wait:2500,reader:tts-dump,reader:tts-player,wait:300,close:,wait:1200,read:2,wait:3000,reader:tts-play,wait:300,close:,wait:1000,read:1,wait:3500,reader:tts-play,wait:2500,reader:tts-dump,quit' '
+scenario tts_multi_book 'prefs:,wait:900,prefs:pick=Text to Speech,tts:engine=server,tts:server=http://127.0.0.1:@TTSPORT@,wait:300,read:1,until:page-ready,wait:300,reader:tts-play,until:tts-playing,wait:1200,reader:tts-dump,reader:tts-player,wait:300,close:,until:!reader,read:2,until:page-ready,wait:300,reader:tts-play,until:tts-playing,wait:1200,reader:tts-dump,reader:tts-player,wait:300,close:,until:!reader,read:1,until:tts-card-paused,until:page-ready,wait:300,reader:tts-player,reader:tts-play,until:tts-playing,wait:1200,reader:tts-dump,reader:tts-player,wait:300,close:,until:!reader,read:2,until:page-ready,wait:300,reader:tts-play,wait:300,close:,until:!reader,read:1,until:tts-card-paused,until:page-ready,wait:300,reader:tts-play,until:tts-playing,wait:1200,reader:tts-dump,quit' '
     T=$(grep "^tts: " <<<"$OUT"); P=$(grep "^tts_player:" <<<"$OUT")
     ! has "only one|Reading aloud failed|could not be loaded|busy with"; check "no engine error in any book (the second book used to fail)" $?
     sed -n 1p <<<"$T" | grep -q "state=Playing"; check "book 1 reads aloud" $?
@@ -1279,8 +1302,8 @@ scenario dictionary_button 'read:1,wait:3500,reader:ui-dblclick,wait:1200,reader
     grep "^dict: dict" <<<"$OUT" | tail -1 | grep -q "A main division"; check "and it still shows the dictionary page at the end" $?'
 
 scenario dictionary_missing 'read:1,wait:3500,reader:select,wait:1200,reader:ui-dict,wait:900,reader:dump,quit' '
-    has "^dict: [a-z]+ \| No dictionaries installed"; check "without dictionaries the popover explains where to put them" $?
-    has "no-dictionaries"; check "the explanation names the dictionary folder" $?'
+    has "^dict_prompt: state=offer lang=en "; check "without a dictionary for the language of the book the popover offers to download one (item 30)" $?
+    ! has "^dict: [a-z]+ \| No dictionaries installed"; check "instead of only saying that none is installed" $?'
 
 scenario device_none 'library:devices-scan,wait:300,library:dump,library:ctxmenu,library:send-to-device,wait:500,devwin:dump,devwin:show,wait:1200,devwin:dump,quit' '
     has "^ctxmenu: .*Send to Device"; check "the book menu always has Send to Device" $?
@@ -2909,6 +2932,7 @@ scenario language 'library:language=es,library:menus-tr,library:opds=open,wait:5
 . "$HERE/ui-tests-editor-tools.sh"
 . "$HERE/ui-tests-ux-gaps.sh"
 . "$HERE/ui-tests-reader-ux.sh"
+. "$HERE/ui-tests-dictionaries.sh"
 . "$HERE/ui-tests-i18n.sh"
 
 

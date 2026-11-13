@@ -508,7 +508,8 @@ def _wiki_shots(c):
     import shutil
     shutil.copy(c.books["tiny"], os.path.join(books, "Tiny Book.epub"))
     shutil.copy(c.books["alice"], os.path.join(books, "Alice in Wonderland.epub"))
-    from scenarios_wiki import settings, wshot
+    from scenarios_wiki import no_rings, settings, wshot
+    no_rings()
     c.start(books=("alice", "tiny"), settings=settings(), extra_env={"BOOKX_TTS_MOCK": "300"})
     time.sleep(2.0)
     wshot(c, "library-device")  # the banner that asks about the connected device

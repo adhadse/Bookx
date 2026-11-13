@@ -25,6 +25,7 @@ pub enum Kind {
     Backup,
     News,
     Voice,
+    Dictionary,
 }
 
 impl Kind {
@@ -37,6 +38,7 @@ impl Kind {
             Kind::Backup => "Backup",
             Kind::News => "News",
             Kind::Voice => "Voice download",
+            Kind::Dictionary => "Dictionary download",
         }
     }
 
@@ -49,6 +51,7 @@ impl Kind {
             Kind::Backup => "document-save-symbolic",
             Kind::News => "application-rss+xml-symbolic",
             Kind::Voice => "audio-speakers-symbolic",
+            Kind::Dictionary => "accessories-dictionary-symbolic",
         }
     }
 }

@@ -1,0 +1,575 @@
+{
+ "version": 1,
+ "languages": [
+  {
+   "code": "en",
+   "name": "English",
+   "dictionaries": [
+    {
+     "id": "wiktionary-en",
+     "title": "English (Wiktionary)",
+     "kind": "monolingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/English-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "2800f630d2975ea29a7b5763e7d79ed71dab9abcc6157534d75c7cd721e8b64b",
+       "size": 21839699
+      }
+     ],
+     "size": 21839699
+    },
+    {
+     "id": "webster-1913",
+     "title": "Webster's Revised Unabridged Dictionary, 1913",
+     "kind": "monolingual",
+     "gloss": "en",
+     "source": "dict.org web1913, packaged for StarDict by ahacop",
+     "licence": "Public domain",
+     "licence_url": "https://en.wikisource.org/wiki/Webster%27s_Revised_Unabridged_Dictionary",
+     "origins": [
+      {
+       "url": "https://github.com/ahacop/websters-dict-1913-stardict/raw/main/stardict-dictd-web1913-2.4.2.tgz",
+       "format": "tar.gz",
+       "sha256": "44bc44574277fe28fb7ee0b3fb4eee8fece77c1d27e8f1535bedaffb40776b43",
+       "size": 28584542
+      }
+     ],
+     "size": 28584542
+    }
+   ]
+  },
+  {
+   "code": "es",
+   "name": "Spanish",
+   "dictionaries": [
+    {
+     "id": "wiktionary-es",
+     "title": "Spanish–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/Spanish-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "8bfc767dceb72a64d9fb573792263ec7e0c513f8cba21f5c3e6e389f1f0ee3b4",
+       "size": 4860349
+      },
+      {
+       "url": "https://download.wikdict.com/dictionaries/stardict/wikdict-es-en.zip",
+       "format": "zip",
+       "sha256": "1ea067f7a069745fffa1a1fee7db86b86f875758a86392f6445cceb7a09cf94a",
+       "size": 954820
+      }
+     ],
+     "size": 4860349
+    }
+   ]
+  },
+  {
+   "code": "fr",
+   "name": "French",
+   "dictionaries": [
+    {
+     "id": "wiktionary-fr",
+     "title": "French–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/French-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "86a5f3c7e4734ec1cb0013fa32486cfb1c962b7b331b850d0b8a60d71f01f026",
+       "size": 3370636
+      },
+      {
+       "url": "https://download.wikdict.com/dictionaries/stardict/wikdict-fr-en.zip",
+       "format": "zip",
+       "sha256": "9df76860848673638a910b49b5de745228c53d9cdc2c158f5bfd9c26d086e3f5",
+       "size": 4839120
+      }
+     ],
+     "size": 3370636
+    }
+   ]
+  },
+  {
+   "code": "de",
+   "name": "German",
+   "dictionaries": [
+    {
+     "id": "wiktionary-de",
+     "title": "German–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/German-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "830edffc02d9750cb48027c94f54e9a34bb2e4a1dbc76f47d0a64347f101d8ca",
+       "size": 7276356
+      },
+      {
+       "url": "https://download.wikdict.com/dictionaries/stardict/wikdict-de-en.zip",
+       "format": "zip",
+       "sha256": "4689a737f027720efa589be6590f9eb3b09c13e87ab665c8cf64aebb6097548b",
+       "size": 11474544
+      }
+     ],
+     "size": 7276356
+    }
+   ]
+  },
+  {
+   "code": "it",
+   "name": "Italian",
+   "dictionaries": [
+    {
+     "id": "wiktionary-it",
+     "title": "Italian–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/Italian-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "5e1bc8cbdc36199c868f526ec789396bb16cfa52d1f3527964b61452f3cc2af5",
+       "size": 5563368
+      },
+      {
+       "url": "https://download.wikdict.com/dictionaries/stardict/wikdict-it-en.zip",
+       "format": "zip",
+       "sha256": "3c33b3b926e0409b1407d14c2d3dc7795ec73f73eb0a672d0f0953a6cabb1f2e",
+       "size": 959398
+      }
+     ],
+     "size": 5563368
+    }
+   ]
+  },
+  {
+   "code": "pt",
+   "name": "Portuguese",
+   "dictionaries": [
+    {
+     "id": "wiktionary-pt",
+     "title": "Portuguese–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/Portuguese-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "7d47bc3c076407d5bbdea50dcda9f8ce64c7c1eb65bdcd1c941a83f0ef14a3d7",
+       "size": 2702376
+      },
+      {
+       "url": "https://download.wikdict.com/dictionaries/stardict/wikdict-pt-en.zip",
+       "format": "zip",
+       "sha256": "e918707eae27076b9c803e550c7c088b8d1e1521160f0cf5d84fe5f91318b3ed",
+       "size": 330109
+      }
+     ],
+     "size": 2702376
+    }
+   ]
+  },
+  {
+   "code": "ru",
+   "name": "Russian",
+   "dictionaries": [
+    {
+     "id": "wiktionary-ru",
+     "title": "Russian–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/Russian-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "744eabbf49e216ce901e7f398092af3378d42e0c84d4fb0086116713d8e8dd4c",
+       "size": 4389956
+      },
+      {
+       "url": "https://download.wikdict.com/dictionaries/stardict/wikdict-ru-en.zip",
+       "format": "zip",
+       "sha256": "248f59b0f331bbbc8272774135e68de4e7d713b41ad1e179ae8158a0e6220504",
+       "size": 1262104
+      }
+     ],
+     "size": 4389956
+    }
+   ]
+  },
+  {
+   "code": "nl",
+   "name": "Dutch",
+   "dictionaries": [
+    {
+     "id": "wiktionary-nl",
+     "title": "Dutch–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "WikDict (Wiktionary)",
+     "licence": "CC BY-SA 4.0",
+     "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+     "origins": [
+      {
+       "url": "https://download.wikdict.com/dictionaries/stardict/wikdict-nl-en.zip",
+       "format": "zip",
+       "sha256": "ceb4140b8be40a5dc379d2dbb2f242e675091838460a9fb39d056741c115f437",
+       "size": 1547771
+      }
+     ],
+     "size": 1547771
+    }
+   ]
+  },
+  {
+   "code": "pl",
+   "name": "Polish",
+   "dictionaries": [
+    {
+     "id": "wiktionary-pl",
+     "title": "Polish–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/Polish-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "1acdde862ec68b6c61a4c1ce3fb7ae57387bdb6f8aa9c49cc516424862049c8c",
+       "size": 5971034
+      },
+      {
+       "url": "https://download.wikdict.com/dictionaries/stardict/wikdict-pl-en.zip",
+       "format": "zip",
+       "sha256": "813055a5c83cfcf560118e5c5b27955e2bc42a8d2cdac05666712cbad1f95ad6",
+       "size": 2869258
+      }
+     ],
+     "size": 5971034
+    }
+   ]
+  },
+  {
+   "code": "tr",
+   "name": "Turkish",
+   "dictionaries": [
+    {
+     "id": "wiktionary-tr",
+     "title": "Turkish–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/Turkish-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "e7b49bd2cf515212659335b78ea48c5c26c12b9b15319861d8f45afa65d9b730",
+       "size": 2038941
+      },
+      {
+       "url": "https://download.wikdict.com/dictionaries/stardict/wikdict-tr-en.zip",
+       "format": "zip",
+       "sha256": "2f37a91cbd89c2bfa3c73b5f5aa05c860accdf5dc1db508551305cb56871c4b9",
+       "size": 321673
+      }
+     ],
+     "size": 2038941
+    }
+   ]
+  },
+  {
+   "code": "sv",
+   "name": "Swedish",
+   "dictionaries": [
+    {
+     "id": "wiktionary-sv",
+     "title": "Swedish–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "WikDict (Wiktionary)",
+     "licence": "CC BY-SA 4.0",
+     "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+     "origins": [
+      {
+       "url": "https://download.wikdict.com/dictionaries/stardict/wikdict-sv-en.zip",
+       "format": "zip",
+       "sha256": "a7a06187a298425e5b17a7fe08712cfe1cde2d6f2d3851f4835e4411aa7085ef",
+       "size": 1739189
+      }
+     ],
+     "size": 1739189
+    }
+   ]
+  },
+  {
+   "code": "cs",
+   "name": "Czech",
+   "dictionaries": [
+    {
+     "id": "wiktionary-cs",
+     "title": "Czech–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/Czech-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "af6779803453700df8f8926eaec80dab11d4c42ea2d1fcccb82d128adc518a4d",
+       "size": 1478878
+      },
+      {
+       "url": "https://download.wikdict.com/dictionaries/stardict/wikdict-cs-en.zip",
+       "format": "zip",
+       "sha256": "4f42314730cc69caba49f3016ece8d6a216e6c27a4fa3add1d1aa6ec2f20809a",
+       "size": 633946
+      }
+     ],
+     "size": 1478878
+    }
+   ]
+  },
+  {
+   "code": "ja",
+   "name": "Japanese",
+   "dictionaries": [
+    {
+     "id": "wiktionary-ja",
+     "title": "Japanese–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/Japanese-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "041339f3f772d8d25afdd94ddfbff3a6c7b800f031bd73bb007fff26fff9b00d",
+       "size": 6224775
+      },
+      {
+       "url": "https://download.wikdict.com/dictionaries/stardict/wikdict-ja-en.zip",
+       "format": "zip",
+       "sha256": "61598d85d383dce8630ac5c883a70a9e19feebd8546928fe922776c33fec856f",
+       "size": 351601
+      }
+     ],
+     "size": 6224775
+    }
+   ]
+  },
+  {
+   "code": "zh",
+   "name": "Chinese",
+   "dictionaries": [
+    {
+     "id": "wiktionary-zh",
+     "title": "Chinese–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/Chinese-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "d7cfeebd4d25cb8799e2103bbb1a5ef013a0a7e86801267893d61da17d911b64",
+       "size": 4822174
+      },
+      {
+       "url": "https://download.wikdict.com/dictionaries/stardict/wikdict-zh-en.zip",
+       "format": "zip",
+       "sha256": "7ed7c777c42962331ac83c5d61619e4d2bcdd534bb1be2738780b1f16bc7695f",
+       "size": 1000075
+      }
+     ],
+     "size": 4822174
+    }
+   ]
+  },
+  {
+   "code": "ar",
+   "name": "Arabic",
+   "dictionaries": [
+    {
+     "id": "wiktionary-ar",
+     "title": "Arabic–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/Arabic-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "45b41ea6dd05b357a14feed3a964d7dab58a10be73764cb06c2a67483c912861",
+       "size": 2982353
+      }
+     ],
+     "size": 2982353
+    }
+   ]
+  },
+  {
+   "code": "hi",
+   "name": "Hindi",
+   "dictionaries": [
+    {
+     "id": "wiktionary-hi",
+     "title": "Hindi–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/Hindi-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "6618a905c120903126c61705ce46b5450367c73538a44286291909c7489fdbc0",
+       "size": 1059616
+      }
+     ],
+     "size": 1059616
+    }
+   ]
+  },
+  {
+   "code": "ko",
+   "name": "Korean",
+   "dictionaries": [
+    {
+     "id": "wiktionary-ko",
+     "title": "Korean–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/Korean-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "8e2add978e487cd2e7fb518125b4c89fbe0c341120954283f3e8f07ae2f23ba1",
+       "size": 2167218
+      }
+     ],
+     "size": 2167218
+    }
+   ]
+  },
+  {
+   "code": "el",
+   "name": "Greek",
+   "dictionaries": [
+    {
+     "id": "wiktionary-el",
+     "title": "Greek–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/Greek-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "48ed155897fd04a1b943ff5f1159b491d3b37c17142b0273fb6329791acfd341",
+       "size": 2212542
+      },
+      {
+       "url": "https://download.wikdict.com/dictionaries/stardict/wikdict-el-en.zip",
+       "format": "zip",
+       "sha256": "79fabd3ea39fcb53c002be437e2a1aa4f4f1299fbc9bbc2064c4534d2a78a51c",
+       "size": 1070350
+      }
+     ],
+     "size": 2212542
+    }
+   ]
+  },
+  {
+   "code": "he",
+   "name": "Hebrew",
+   "dictionaries": [
+    {
+     "id": "wiktionary-he",
+     "title": "Hebrew–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/Hebrew-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "a9839f09db85caf109079473854592f8002af792e28dc11ecd06626bce9c84f5",
+       "size": 670071
+      }
+     ],
+     "size": 670071
+    }
+   ]
+  },
+  {
+   "code": "uk",
+   "name": "Ukrainian",
+   "dictionaries": [
+    {
+     "id": "wiktionary-uk",
+     "title": "Ukrainian–English (Wiktionary)",
+     "kind": "bilingual",
+     "gloss": "en",
+     "source": "Wiktionary, extracted by Vuizur with Wiktextract",
+     "licence": "CC BY-SA 3.0 and GFDL (as Wiktionary)",
+     "licence_url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+     "origins": [
+      {
+       "url": "https://github.com/Vuizur/Wiktionary-Dictionaries/raw/master/Ukrainian-English%20Wiktionary%20dictionary%20stardict.tar.gz",
+       "format": "tar.gz",
+       "sha256": "bccad4ada97a1519dcd3e9d101782feb7e22e74617101c70b1e562fb4720e8e7",
+       "size": 1175731
+      }
+     ],
+     "size": 1175731
+    }
+   ]
+  }
+ ]
+}

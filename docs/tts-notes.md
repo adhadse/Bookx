@@ -222,3 +222,13 @@ and compare `kokoro-int8` and `kokoro-fp32`, and judge the espeak-based English 
   `cards_layout_restore`, `cards_layout_eink` (dev hook `reader:cards-rects`, `build-aux/cards_geom.py`); real session
   `cards_no_overlap_real` (real drags, screenshots `cards-side-by-side`, `cards-dragged-over`, `cards-restored`). `tts_multi_book` is
   timing sensitive when all 47 scenarios run at once (failed once in 3 full runs, passes alone 3 of 3).
+
+## ONNX Runtime: conda-forge was checked again and is not usable (wave 4, round 7)
+
+* Asked for: `onnxruntime-1.31.1-py312hc0d5d67_2_cpu.conda` (10,709,624 bytes, sha256 `8b85cf73...4556`) as primary origin. Downloaded and
+  verified (hash matches): its `pkg-*.tar.zst` holds **only the Python package**: biggest member
+  `lib/python3.12/site-packages/onnxruntime/capi/onnxruntime_pybind11_state.so` (33.6 MB), **no `lib/libonnxruntime.so*`** (the only
+  `libonnxruntime*` is `libonnxruntime_providers_shared.so`). The pybind module does not export `OrtGetApiBase` (`nm -D`: 0) so the `ort`
+  crate cannot load it, and it needs conda's own `libprotobuf.so.35`, `libre2.so.11`, `libabsl_*.so.2608`. The package that has the C
+  library, `onnxruntime-cpp`, has the same conda-only dependencies. A conda origin would therefore not install a working runtime, so it was
+  **not added** (no dead `.conda`/zstd code). Faster origin in place: NuGet (5.7 s vs 52 s for GitHub here), see above.

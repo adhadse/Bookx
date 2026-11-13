@@ -210,6 +210,7 @@ fn parse_kind(s: &str) -> Kind {
         "backup" => Kind::Backup,
         "news" => Kind::News,
         "voice" => Kind::Voice,
+        "dictionary" => Kind::Dictionary,
         _ => Kind::Import,
     }
 }

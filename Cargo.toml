@@ -45,6 +45,10 @@ uuid = { version = "1", features = ["v4"] }
 url = "2"
 zbus = "5"
 zip = { version = "9", default-features = false, features = ["deflate"] }
+flate2 = "1"
+tar = "0.4"
+bzip2 = "0.6"
+sha2 = "0.10"
 
 sourceview5 = { version = "0.11", features = ["v5_6"] }
 

@@ -2,9 +2,37 @@
 //!
 //! `BOOKX_DEV_SCRIPT="wait:1500,shot:/tmp/a.png,read:1,wait:2000,shot:/tmp/b.png,quit"`
 //!
+//! `until:<name>[:<ms>]` waits (at most `<ms>`, default 15000) until the named probe holds instead of
+//! sleeping a fixed time (`until:!name` waits for it to stop holding, e.g. `until:!reader` after `close:`); it prints `until: <name> ok|timeout` and goes on either way.
+//!
 //! Used to take screenshots of the real UI for documentation and to smoke-test layouts.
 
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+
 use relm4::gtk::{self, glib, prelude::*};
+
+type Probe = Rc<dyn Fn() -> bool>;
+
+thread_local! {
+    static PROBES: RefCell<HashMap<String, Probe>> = RefCell::new(HashMap::new());
+}
+
+/// Registers a condition that `until:<name>[:<timeout ms>]` in a dev script waits for (the newest
+/// registration of a name wins, so a reader opened later replaces the one that was left).
+pub fn probe(name: &str, f: impl Fn() -> bool + 'static) {
+    PROBES.with(|p| p.borrow_mut().insert(name.to_string(), Rc::new(f)));
+}
+
+fn probe_holds(name: &str) -> bool {
+    // `!name` holds while the probe does not (an unknown probe does not hold)
+    if let Some(rest) = name.strip_prefix('!') {
+        return !probe_holds(rest);
+    }
+    let f = PROBES.with(|p| p.borrow().get(name).cloned());
+    f.is_some_and(|f| f())
+}
 
 pub fn script() -> Vec<String> {
     std::env::var("BOOKX_DEV_SCRIPT")
@@ -28,8 +56,33 @@ pub fn run_script(cmds: Vec<String>, run: impl Fn(&str) + 'static) {
                 });
                 return;
             }
+            if let Some(spec) = c.strip_prefix("until:") {
+                let (name, ms) = match spec.split_once(':') {
+                    Some((n, ms)) => (n.to_string(), ms.parse().unwrap_or(15_000)),
+                    None => (spec.to_string(), 15_000u64),
+                };
+                poll_until(name, ms, std::time::Instant::now(), cmds, run);
+                return;
+            }
             run(&c);
         }
+    }
+    fn poll_until(
+        name: String,
+        ms: u64,
+        start: std::time::Instant,
+        cmds: std::collections::VecDeque<String>,
+        run: std::rc::Rc<dyn Fn(&str)>,
+    ) {
+        let ok = probe_holds(&name);
+        if ok || start.elapsed().as_millis() as u64 >= ms {
+            eprintln!("until: {name} {}", if ok { "ok" } else { "timeout" });
+            step(cmds, run);
+            return;
+        }
+        glib::timeout_add_local_once(std::time::Duration::from_millis(100), move || {
+            poll_until(name, ms, start, cmds, run)
+        });
     }
     step(cmds.into(), std::rc::Rc::new(run));
 }

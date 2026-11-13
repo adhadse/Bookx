@@ -157,7 +157,11 @@ pub fn tag_editor(
             for t in list {
                 let b = gtk::Button::new();
                 let inner = gtk::Box::new(gtk::Orientation::Horizontal, 4);
-                inner.append(&gtk::Label::new(Some(&t)));
+                // a long tag is shortened: its width must not set the width of the panel that holds it
+                let name = gtk::Label::new(Some(&t));
+                name.set_ellipsize(gtk::pango::EllipsizeMode::End);
+                name.set_max_width_chars(28);
+                inner.append(&name);
                 inner.append(&gtk::Image::from_icon_name("window-close-symbolic"));
                 b.set_child(Some(&inner));
                 b.add_css_class("pill");

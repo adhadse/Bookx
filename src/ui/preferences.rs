@@ -126,6 +126,7 @@ fn external_registrations() {
     super::language_settings::register();
     super::reader_extra::register();
     super::reader_footer::register();
+    super::dict_settings::register();
     super::shortcuts_dialog::register();
     super::mcp_settings::register();
 }
@@ -200,7 +201,9 @@ pub fn dev(arg: &str) {
         eprintln!("prefs: not open");
         return;
     };
-    if let Some(f) = arg.strip_prefix("footer-") {
+    if let Some(f) = arg.strip_prefix("dict-") {
+        super::dict_settings::dev(f);
+    } else if let Some(f) = arg.strip_prefix("footer-") {
         super::reader_footer::dev(f);
     } else if let Some(q) = arg.strip_prefix("search=") {
         view.search.set_text(q);

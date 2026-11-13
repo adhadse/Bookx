@@ -137,6 +137,8 @@ class Ctx:
                "BOOKX_DEVICE_ROOTS": os.path.join(self.dir, "mounts")}
         if os.environ.get("WAYLAND_DEBUG"):  # protocol trace of the app, for hunting compositor kills
             env["WAYLAND_DEBUG"] = os.environ["WAYLAND_DEBUG"]
+        # automatic dictionary downloads never go to the network by themselves in the tests
+        env["BOOKX_DICT_AUTO"] = "off"
         env.update(extra_env or {})
         cmd = [self.bin]
         if os.environ.get("GDB") == "1":  # debugging aid: a backtrace of a crash lands in app.log
