@@ -1,204 +1,1447 @@
-// Bookx - app.rs
-// Copyright (C) 2023  Anurag Dhadse <hello@adhadse.com>
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-use gtk::prelude::*;
+//! Application window: navigation between library, reader and the editor windows.
+
+use crate::i18n::trf;
+use crate::i18n::{tr, N_};
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use relm4::adw::{self, prelude::*};
+use relm4::gtk::{self, gio, glib};
 use relm4::prelude::*;
-use relm4::{
-    actions::{ActionGroupName, RelmAction, RelmActionGroup},
-    gtk, main_application, Component, ComponentController, ComponentParts, ComponentSender,
-    Controller, SimpleComponent,
-};
 
-use gtk::prelude::{ApplicationExt, ApplicationWindowExt, GtkWindowExt, SettingsExt, WidgetExt};
-use gtk::{gio, glib};
+use crate::config::{Config, Scheme, APP_ID, APP_NAME, VERSION};
+use crate::ui::preferences::{self, PrefChange};
+use crate::ui::{editor, library, notes, reader, reader_pdf, Shared, SharedRef};
 
-use crate::components::{AboutDialog, BookxMainContainer, BookxPreferences};
-use crate::config::{APP_ID, PROFILE};
+pub struct App {
+    shared: SharedRef,
+    window: adw::ApplicationWindow,
+    nav: adw::NavigationView,
+    toasts: adw::ToastOverlay,
+    library: Controller<library::LibraryView>,
+    reader: Option<Controller<reader::Reader>>,
+    /// The PDF page view, when the open book is shown from its PDF.
+    pdf: Option<Controller<reader_pdf::ReaderPdf>>,
+    /// The next `Read` opens the e-book (reflowed text) of a book that also has a PDF.
+    force_epub: bool,
+    reader_id: Option<u64>,
+    loading: Option<u64>,
+    was_maximized: Option<bool>,
+    pending_read: Option<u64>,
+    editors: Rc<RefCell<Vec<(u64, Controller<editor::Editor>)>>>,
+}
 
-pub(super) struct App {
-    bookx_preferences: Controller<BookxPreferences>,
-    about_dialog: Controller<AboutDialog>,
-    bookx_main_container: Controller<BookxMainContainer>,
+/// An EPUB opened on a worker thread.
+pub struct LoadedBook(crate::core::book::OpenBook);
+
+impl std::fmt::Debug for LoadedBook {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("LoadedBook")
+    }
 }
 
 #[derive(Debug)]
-pub(super) enum Event {
-    OpenPreferences,
-    Quit,
+pub enum Msg {
+    Read(u64),
+    CloseReader,
+    BookLoaded(u64, Result<LoadedBook, String>),
+    /// A PDF read from disk, for the page view.
+    PdfLoaded(u64, Result<Vec<u8>, String>),
+    /// Close the PDF view and open the reflowed text of the book.
+    ReadReflow(u64),
+    LoadingPopped,
+    ReloadReader,
+    OpenFileDialog,
+    OpenedFile(std::path::PathBuf),
+    ReaderPopped,
+    EditBook(u64),
+    /// `bookx --edit FILE [name ...] [--select-text TEXT]`: the book is added to the library if it is not there.
+    EditFile(crate::editor_state::EditRequest),
+    /// A dev command for the editor of one book (opening named files after the editor appeared).
+    EditorDev(u64, String),
+    EditorSaved,
+    EditorClosed(u64),
+    Toast(String),
+    LibraryChanged,
+    Prefs(PrefChange),
+    ShowPrefs,
+    /// Preferences on the row with this title (from the command palette).
+    ShowPrefsAt(String),
+    ShowPalette,
+    /// A book chosen in the palette: from the reader it closes the reader first.
+    PaletteBook(u64),
+    ShowShortcuts,
+    ShowStats,
+    ShowShare,
+    /// The Device window.
+    ShowDevices,
+    /// Reading progress changed from outside the library view.
+    DevicesChanged,
+    ShowVocab,
+    ShowAbout,
+    /// Copy the diagnostics report to the clipboard.
+    CopyDiagnostics,
+    /// A `bookx://` link (from the desktop, another Bookx process or the command line).
+    OpenUri(String),
+    Dev(String),
+    OpenPaths(Vec<std::path::PathBuf>),
 }
 
-relm4::new_action_group!(pub(super) WindowActionGroup, "win");
-relm4::new_stateless_action!(PreferencesAction, WindowActionGroup, "preferences");
-relm4::new_stateless_action!(pub(super) ShortcutsAction, WindowActionGroup, "show-help-overlay");
-relm4::new_stateless_action!(AboutAction, WindowActionGroup, "about");
+fn apply_scheme(s: Scheme) {
+    adw::StyleManager::default().set_color_scheme(match s {
+        Scheme::System => adw::ColorScheme::Default,
+        Scheme::Light => adw::ColorScheme::ForceLight,
+        Scheme::Dark => adw::ColorScheme::ForceDark,
+    });
+}
 
-#[relm4::component(pub)]
 impl SimpleComponent for App {
-    /// The type of data with which this component will be initialized.
     type Init = ();
-    /// The type of the messages that this component can receive.
-    type Input = Event;
-    /// The type of the messages that this component can send.
+    type Input = Msg;
     type Output = ();
-    /// A data structure that contains the widgets that you will need to update.
-    type Widgets = AppWidgets;
+    type Root = adw::ApplicationWindow;
+    type Widgets = ();
 
-    menu! {
-        primary_menu: {
-            section! {
-                "_Preferences" => PreferencesAction,
-                "_Keyboard" => ShortcutsAction,
-                "_About Bookx" => AboutAction,
-            }
-        }
+    fn init_root() -> Self::Root {
+        adw::ApplicationWindow::builder()
+            .title(APP_NAME)
+            .application(&relm4::main_adw_application())
+            .build()
     }
 
-    view! {
-        main_window = gtk::ApplicationWindow::new(&main_application()) {
-            connect_close_request[sender] => move |_| {
-                sender.input(Event::Quit);
-                gtk::Inhibit(true)
-            },
+    fn init(_: (), root: Self::Root, sender: ComponentSender<Self>) -> ComponentParts<Self> {
+        let mut cfg = Config::load();
+        let key_moved = crate::tts::migrate_env_key(
+            &mut cfg.tts,
+            std::env::var("BOOKX_TTS_API_KEY").ok().as_deref(),
+        );
+        if crate::tts::migrate_engine(&mut cfg.tts) || key_moved {
+            cfg.save();
+        }
+        crate::i18n::set_language(&cfg.language);
+        crate::ui::language_settings::apply_direction();
+        if crate::i18n::current_is_rtl() {
+            root.set_direction(gtk::TextDirection::Rtl);
+        }
+        apply_scheme(cfg.scheme);
 
-            #[wrap(Some)]
-            set_help_overlay: shortcuts = &gtk::Builder::from_resource(
-                    "/com/adhadse/Bookx/gtk/help-overlay.ui"
-                )
-                .object::<gtk::ShortcutsWindow>("help_overlay")
-                .unwrap() -> gtk::ShortcutsWindow {
-                    set_transient_for: Some(&main_window),
-                    set_application: Some(&main_application()),
-            },
+        let (lib, guard, migrated) = match crate::library_health::open(&cfg.library_dir) {
+            Ok(o) => o,
+            Err(e) => {
+                tracing::error!("cannot open library {}: {e:#}", cfg.library_dir.display());
+                let fallback = std::env::temp_dir().join("bookx-library");
+                crate::library_health::open(&fallback).expect("cannot create a library folder")
+            }
+        };
+        let mut lib = lib;
+        crate::annotation_ids::migrate_library(&mut lib);
+        let fulltext = crate::fulltext::FullText::new(guard.store.clone());
+        let shared: SharedRef = Rc::new(Shared {
+            lib: RefCell::new(lib),
+            cfg: RefCell::new(cfg.clone()),
+            stats: RefCell::new(crate::reading_stats::StatsHub::load(
+                crate::config::stats_path(),
+            )),
+            clock_skew: std::cell::Cell::new(0),
+            sharing: RefCell::new(crate::sharing::Sharing::default()),
+            plugins: RefCell::new({
+                let mut m = crate::plugins::new_manager(crate::web_import::fetcher());
+                for (id, e) in crate::plugins::reload(&mut m) {
+                    tracing::warn!("plugin {id} could not be loaded: {e}");
+                }
+                m
+            }),
+            vocab: RefCell::new(crate::vocabulary::VocabHub::load(
+                crate::config::vocab_path(),
+            )),
+            fulltext: RefCell::new(Some(fulltext)),
+            guard: RefCell::new(guard),
+        });
+        shared.start_indexing();
+        crate::ui::kosync::start_queue(&shared);
+        {
+            let root = shared.lib.borrow().root.clone();
+            crate::mcp_host::autostart(&root);
+        }
+        {
+            let tx = sender.input_sender().clone();
+            crate::ui::health::on_startup(&shared, Rc::new(move |m| tx.emit(Msg::Toast(m))));
+            let tx = sender.input_sender().clone();
+            crate::voice_download::set_notifier(Rc::new(move |m| tx.emit(Msg::Toast(m))));
+            // loaded voice models are kept for ten minutes after their last use, then freed
+            relm4::gtk::glib::timeout_add_seconds_local(60, || {
+                bookx_tts::service::global().sweep(std::time::Instant::now());
+                relm4::gtk::glib::ControlFlow::Continue
+            });
+            let s2 = shared.clone();
+            relm4::main_adw_application()
+                .connect_shutdown(move |_| crate::ui::health::on_exit(&s2));
+        }
+        if let Some(n) = migrated {
+            tracing::info!("moved {n} books from bookx-library.json into the database");
+            let tx = sender.input_sender().clone();
+            glib::timeout_add_local_once(std::time::Duration::from_millis(1200), move || {
+                tx.emit(Msg::Toast(trf("Your library ({} books) now lives in a database; the old catalogue was kept as bookx-library.json.migrated", &[&n])));
+            });
+        }
 
-            add_css_class?: if PROFILE == "Devel" {
-                    Some("devel")
-                } else {
+        let (mut win_w, mut win_h) = (cfg.window_width, cfg.window_height);
+        if let Some((w, h)) = std::env::var("BOOKX_SIZE").ok().and_then(|s| {
+            let (w, h) = s.split_once('x')?;
+            Some((w.parse().ok()?, h.parse().ok()?))
+        }) {
+            (win_w, win_h) = (w, h);
+        }
+        root.set_default_size(win_w, win_h);
+        if cfg.maximized {
+            root.maximize();
+        }
+        if crate::config::APP_ID.ends_with("Devel") {
+            root.add_css_class("devel");
+        }
+
+        let library = library::LibraryView::builder()
+            .launch(shared.clone())
+            .forward(sender.input_sender(), |out| match out {
+                library::Output::Read(id) => Msg::Read(id),
+                library::Output::EditBook(id) => Msg::EditBook(id),
+                library::Output::Toast(t) => Msg::Toast(t),
+                library::Output::LibraryChanged => Msg::LibraryChanged,
+                library::Output::SwitchLibrary(p) => Msg::Prefs(PrefChange::LibraryDir(p)),
+            });
+
+        let nav = adw::NavigationView::new();
+        nav.add(library.widget());
+        {
+            let tx = sender.input_sender().clone();
+            nav.connect_popped(move |_, page| match page.tag().as_deref() {
+                Some("reader") => tx.emit(Msg::ReaderPopped),
+                Some("loading") => tx.emit(Msg::LoadingPopped),
+                _ => {}
+            });
+        }
+        let toasts = adw::ToastOverlay::new();
+        toasts.set_child(Some(&nav));
+        root.set_content(Some(&toasts));
+
+        // Collapse the sidebars of the library on narrow windows.
+        let bp = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
+            adw::BreakpointConditionLengthType::MaxWidth,
+            900.0,
+            adw::LengthUnit::Sp,
+        ));
+        root.add_breakpoint(bp);
+
+        // app-level actions
+        let app = relm4::main_adw_application();
+        let add_action = |name: &str, msg: Rc<dyn Fn()>| {
+            let a = gio::SimpleAction::new(name, None);
+            a.connect_activate(move |_, _| msg());
+            app.add_action(&a);
+        };
+        {
+            let tx = sender.input_sender().clone();
+            add_action("preferences", Rc::new(move || tx.emit(Msg::ShowPrefs)));
+            let tx = sender.input_sender().clone();
+            add_action("shortcuts", Rc::new(move || tx.emit(Msg::ShowShortcuts)));
+            let tx = sender.input_sender().clone();
+            add_action(
+                "help",
+                Rc::new(move || tx.emit(Msg::OpenUri("https://bookx.adhadse.com".into()))),
+            );
+            let tx = sender.input_sender().clone();
+            add_action("palette", Rc::new(move || tx.emit(Msg::ShowPalette)));
+            let tx = sender.input_sender().clone();
+            add_action("stats", Rc::new(move || tx.emit(Msg::ShowStats)));
+            let tx = sender.input_sender().clone();
+            add_action("share", Rc::new(move || tx.emit(Msg::ShowShare)));
+            let tx = sender.input_sender().clone();
+            add_action("devices", Rc::new(move || tx.emit(Msg::ShowDevices)));
+            let tx = sender.input_sender().clone();
+            add_action("vocab", Rc::new(move || tx.emit(Msg::ShowVocab)));
+            let tx = sender.input_sender().clone();
+            add_action("about", Rc::new(move || tx.emit(Msg::ShowAbout)));
+            let tx = sender.input_sender().clone();
+            add_action(
+                "copy-diagnostics",
+                Rc::new(move || tx.emit(Msg::CopyDiagnostics)),
+            );
+            let tx = sender.input_sender().clone();
+            let open_uri = gio::SimpleAction::new("open-uri", Some(glib::VariantTy::STRING));
+            open_uri.connect_activate(move |_, p| {
+                if let Some(uri) = p.and_then(|p| p.str()) {
+                    tx.emit(Msg::OpenUri(uri.to_string()));
+                }
+            });
+            app.add_action(&open_uri);
+            let win = root.clone();
+            add_action("quit", Rc::new(move || win.close()));
+        }
+        crate::ui::shortcuts_dialog::init(&app);
+        crate::ui::library_switcher::note_current(&shared.lib.borrow().root);
+
+        // persist window geometry
+        {
+            let shared = shared.clone();
+            root.connect_close_request(move |w| {
+                let mut c = shared.cfg.borrow_mut();
+                c.maximized = w.is_maximized();
+                if !w.is_maximized() {
+                    c.window_width = w.width();
+                    c.window_height = w.height();
+                }
+                c.save();
+                let _ = shared.lib.borrow().save();
+                glib::Propagation::Proceed
+            });
+        }
+
+        // `bookx --edit file.epub [name …] [--select-text TEXT]` opens the book in the editor.
+        let edit_request =
+            crate::editor_state::parse_edit_args(&std::env::args().skip(1).collect::<Vec<_>>());
+        if let Some(req) = edit_request.clone() {
+            let tx = sender.input_sender().clone();
+            glib::idle_add_local_once(move || tx.emit(Msg::EditFile(req)));
+        }
+        // `bookx bookx://open?id=3` (the scheme handler) opens the book.
+        for uri in crate::links::from_args(&std::env::args().skip(1).collect::<Vec<_>>()) {
+            let tx = sender.input_sender().clone();
+            glib::idle_add_local_once(move || tx.emit(Msg::OpenUri(uri)));
+        }
+        // `bookx file.epub …` (and "Open With" from the file manager) imports the given books.
+        if edit_request.is_none() {
+            let files: Vec<std::path::PathBuf> = std::env::args()
+                .skip(1)
+                .filter_map(|a| {
+                    if a.starts_with("file://") {
+                        gio::File::for_uri(&a).path()
+                    } else if crate::links::is_link(&a) {
+                        None
+                    } else {
+                        Some(std::path::PathBuf::from(a)).filter(|p| p.exists())
+                    }
+                })
+                .collect();
+            if !files.is_empty() {
+                let tx = sender.input_sender().clone();
+                glib::idle_add_local_once(move || tx.emit(Msg::OpenPaths(files)));
+            }
+        }
+
+        {
+            let tx = sender.input_sender().clone();
+            let cmds = crate::devtools::script();
+            if !cmds.is_empty() {
+                glib::idle_add_local_once(move || {
+                    crate::devtools::run_script(cmds, move |c| tx.emit(Msg::Dev(c.to_string())));
+                });
+            }
+        }
+
+        let model = App {
+            shared,
+            window: root,
+            nav,
+            toasts,
+            library,
+            reader: None,
+            pdf: None,
+            force_epub: false,
+            reader_id: None,
+            loading: None,
+            was_maximized: None,
+            pending_read: None,
+            editors: Rc::new(RefCell::new(Vec::new())),
+        };
+        model.apply_touch_ui();
+        model.apply_eink();
+        ComponentParts { model, widgets: () }
+    }
+
+    fn update(&mut self, msg: Msg, sender: ComponentSender<Self>) {
+        match msg {
+            Msg::Read(id) => {
+                if self.reader.is_some() || self.pdf.is_some() || self.loading.is_some() {
+                    return;
+                }
+                let as_text = std::mem::take(&mut self.force_epub);
+                let pdf_file = if as_text || !crate::pdf::PdfPrefs::load().pages {
                     None
-                },
+                } else {
+                    let lib = self.shared.lib.borrow();
+                    lib.get(id).and_then(|b| {
+                        b.formats
+                            .iter()
+                            .find(|f| f.format == "pdf")
+                            .map(|f| lib.format_path(f))
+                            .filter(|p| p.exists())
+                    })
+                };
+                let path = {
+                    let lib = self.shared.lib.borrow();
+                    match lib.get(id) {
+                        Some(b) if !b.drm.is_empty() => {
+                            let msg = crate::book_formats::protected_message(&b.drm);
+                            drop(lib);
+                            sender.input(Msg::Toast(msg));
+                            return;
+                        }
+                        Some(b) => lib.path_for(b, crate::core::formats::Target::Reader),
+                        None => return,
+                    }
+                };
+                self.loading = Some(id);
+                // The reader opens maximised; the library size is restored when you come back.
+                self.was_maximized = Some(self.window.is_maximized());
+                self.window.maximize();
 
-            #[wrap(Some)]
-            set_titlebar = &gtk::HeaderBar {
-                pack_end = &gtk::MenuButton {
-                    set_icon_name: "open-menu-symbolic",
-                    set_menu_model: Some(&primary_menu),
+                let page = adw::NavigationPage::builder()
+                    .title(tr("Opening…"))
+                    .tag("loading")
+                    .build();
+                let status = adw::StatusPage::builder()
+                    .title(tr("Opening book…"))
+                    .build();
+                let spinner = adw::Spinner::new();
+                spinner.set_size_request(48, 48);
+                status.set_child(Some(&spinner));
+                let tb = adw::ToolbarView::new();
+                let hb = adw::HeaderBar::new();
+                hb.add_css_class("flat");
+                tb.add_top_bar(&hb);
+                tb.set_content(Some(&status));
+                page.set_child(Some(&tb));
+                self.nav.push(&page);
+
+                if let Some(pdf_path) = pdf_file {
+                    let (tx_done, rx) = std::sync::mpsc::channel();
+                    std::thread::spawn(move || {
+                        let res = std::fs::read(&pdf_path)
+                            .map_err(|e| format!("{}: {e}", pdf_path.display()));
+                        let _ = tx_done.send(res);
+                    });
+                    let tx = sender.input_sender().clone();
+                    glib::timeout_add_local(std::time::Duration::from_millis(30), move || match rx
+                        .try_recv()
+                    {
+                        Ok(res) => {
+                            tx.emit(Msg::PdfLoaded(id, res));
+                            glib::ControlFlow::Break
+                        }
+                        Err(std::sync::mpsc::TryRecvError::Empty) => glib::ControlFlow::Continue,
+                        Err(_) => glib::ControlFlow::Break,
+                    });
+                    return;
+                }
+
+                let (tx_done, rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let res = crate::core::book::OpenBook::open(&path)
+                        .map(|mut b| {
+                            crate::plugins::patch_on_open(&mut b.archive);
+                            LoadedBook(b)
+                        })
+                        .map_err(|e| e.to_string());
+                    let _ = tx_done.send(res);
+                });
+                let tx = sender.input_sender().clone();
+                glib::timeout_add_local(std::time::Duration::from_millis(30), move || {
+                    match rx.try_recv() {
+                        Ok(res) => {
+                            tx.emit(Msg::BookLoaded(id, res));
+                            glib::ControlFlow::Break
+                        }
+                        Err(std::sync::mpsc::TryRecvError::Empty) => glib::ControlFlow::Continue,
+                        Err(_) => glib::ControlFlow::Break,
+                    }
+                });
+            }
+            Msg::BookLoaded(id, res) => {
+                if self.loading != Some(id) {
+                    return;
+                }
+                self.loading = None;
+                match res {
+                    Ok(book) => {
+                        let from_pdf = book
+                            .0
+                            .archive
+                            .get_string("OEBPS/content.opf")
+                            .is_some_and(|o| o.contains("bookx:reflowed-from"));
+                        if from_pdf {
+                            sender.input(Msg::Toast(
+                                tr("Reflowed text of a PDF (experimental): columns, tables and formulas may come out wrong"),
+                            ));
+                        }
+                        let ctl = reader::Reader::builder()
+                            .launch((self.shared.clone(), id, book.0))
+                            .forward(sender.input_sender(), |out| match out {
+                                reader::Output::Close => Msg::CloseReader,
+                                reader::Output::Toast(t) => Msg::Toast(t),
+                                reader::Output::Reload => Msg::ReloadReader,
+                                reader::Output::OpenFile => Msg::OpenFileDialog,
+                                reader::Output::OpenPreferences(t) => Msg::ShowPrefsAt(t),
+                            });
+                        self.nav
+                            .replace(&[self.library.widget().clone(), ctl.widget().clone()]);
+                        if let Some(h) = notes::take_jump(id) {
+                            ctl.emit(reader::Input::GoHighlight(h));
+                        }
+                        self.reader = Some(ctl);
+                        self.reader_id = Some(id);
+                    }
+                    Err(e) => {
+                        self.nav.pop();
+                        self.restore_window();
+                        sender.input(Msg::Toast(trf("Could not open the book: {}", &[&e])));
+                    }
+                }
+            }
+            Msg::PdfLoaded(id, res) => {
+                if self.loading != Some(id) {
+                    return;
+                }
+                self.loading = None;
+                match res {
+                    Ok(bytes) => {
+                        let ctl = reader_pdf::ReaderPdf::builder()
+                            .launch((self.shared.clone(), id, bytes))
+                            .forward(sender.input_sender(), move |out| match out {
+                                reader_pdf::Output::Close => Msg::CloseReader,
+                                reader_pdf::Output::Toast(t) => Msg::Toast(t),
+                                reader_pdf::Output::Reflow => Msg::ReadReflow(id),
+                            });
+                        self.nav
+                            .replace(&[self.library.widget().clone(), ctl.widget().clone()]);
+                        if let Some(h) = notes::take_jump(id) {
+                            ctl.emit(reader_pdf::Input::GoHighlight(h));
+                        }
+                        self.pdf = Some(ctl);
+                        self.reader_id = Some(id);
+                    }
+                    Err(e) => {
+                        self.nav.pop();
+                        self.restore_window();
+                        sender.input(Msg::Toast(trf("Could not open the PDF: {}", &[&e])));
+                    }
+                }
+            }
+            Msg::ReadReflow(id) => {
+                self.force_epub = true;
+                self.pending_read = Some(id);
+                self.nav.pop();
+            }
+            Msg::LoadingPopped => {
+                if self.loading.take().is_some() {
+                    self.restore_window();
+                }
+            }
+            Msg::ReloadReader => {
+                if let Some(id) = self.reader_id {
+                    self.pending_read = Some(id);
+                    self.nav.pop();
+                }
+            }
+            Msg::OpenFileDialog => {
+                let dlg = gtk::FileDialog::builder().title(tr("Open Book")).build();
+                let filter = gtk::FileFilter::new();
+                filter.set_name(Some("E-books"));
+                for ext in crate::import::extensions() {
+                    filter.add_suffix(&ext);
+                }
+                let filters = gio::ListStore::new::<gtk::FileFilter>();
+                filters.append(&filter);
+                dlg.set_filters(Some(&filters));
+                let tx = sender.input_sender().clone();
+                dlg.open(Some(&self.window), gio::Cancellable::NONE, move |res| {
+                    if let Some(p) = res.ok().and_then(|f| f.path()) {
+                        tx.emit(Msg::OpenedFile(p));
+                    }
+                });
+            }
+            Msg::OpenedFile(path) => {
+                use crate::core::library::AddOutcome;
+                let res = self.shared.lib.borrow_mut().add_path(&path, false);
+                match res {
+                    Ok(AddOutcome::Added(id)) | Ok(AddOutcome::Duplicate(id)) => {
+                        self.library.emit(library::Input::Refresh);
+                        self.pending_read = Some(id);
+                        if self.reader.is_some() || self.pdf.is_some() {
+                            self.nav.pop();
+                        } else {
+                            sender.input(Msg::Read(id));
+                            self.pending_read = None;
+                        }
+                    }
+                    Err(e) => sender.input(Msg::Toast(trf("Cannot open that file: {}", &[&e]))),
+                }
+            }
+            Msg::CloseReader => {
+                self.nav.pop();
+            }
+            Msg::ReaderPopped => {
+                self.reader = None;
+                self.pdf = None;
+                self.reader_id = None;
+                self.restore_window();
+                if let Some(id) = self.pending_read.take() {
+                    sender.input(Msg::Read(id));
+                }
+                let _ = self.shared.lib.borrow().save();
+                self.window.set_fullscreened(false);
+                self.library.emit(library::Input::Requery);
+            }
+            Msg::EditBook(id) => {
+                if let Some((_, c)) = self.editors.borrow().iter().find(|(i, _)| *i == id) {
+                    c.widget().present();
+                    return;
+                }
+                let ctl = editor::Editor::builder()
+                    .launch((self.shared.clone(), id))
+                    .forward(sender.input_sender(), move |out| match out {
+                        editor::Output::Saved => Msg::EditorSaved,
+                        editor::Output::Closed => Msg::EditorClosed(id),
+                        editor::Output::Toast(t) => Msg::Toast(t),
+                    });
+                ctl.widget().set_transient_for(Some(&self.window));
+                ctl.widget().present();
+                self.editors.borrow_mut().push((id, ctl));
+            }
+            Msg::EditFile(req) => {
+                let added = self.shared.lib.borrow_mut().add_path(&req.file, false);
+                match added {
+                    Ok(out) => {
+                        let id = match out {
+                            crate::core::library::AddOutcome::Added(i)
+                            | crate::core::library::AddOutcome::Duplicate(i) => i,
+                        };
+                        let _ = self.shared.lib.borrow().save();
+                        self.library.emit(library::Input::Refresh);
+                        sender.input(Msg::EditBook(id));
+                        if !req.names.is_empty() || req.select.is_some() {
+                            let cmd = format!(
+                                "x:open-names={}|{}",
+                                req.names.join(","),
+                                req.select.clone().unwrap_or_default()
+                            );
+                            let tx = sender.input_sender().clone();
+                            glib::timeout_add_local_once(
+                                std::time::Duration::from_millis(600),
+                                move || tx.emit(Msg::EditorDev(id, cmd)),
+                            );
+                        }
+                    }
+                    Err(e) => sender.input(Msg::Toast(trf(
+                        "Cannot open {} for editing: {}",
+                        &[&req.file.display(), &e],
+                    ))),
+                }
+            }
+            Msg::EditorDev(id, cmd) => {
+                if let Some((_, c)) = self.editors.borrow().iter().find(|(i, _)| *i == id) {
+                    c.emit(editor::Input::Dev(cmd));
+                }
+            }
+            Msg::EditorSaved => {
+                crate::ui::covers::clear();
+                self.library.emit(library::Input::Refresh);
+            }
+            Msg::EditorClosed(id) => {
+                let editors = self.editors.clone();
+                glib::idle_add_local_once(move || editors.borrow_mut().retain(|(i, _)| *i != id));
+            }
+            Msg::Toast(t) => {
+                self.toasts.add_toast(adw::Toast::new(&t));
+            }
+            Msg::LibraryChanged => self.shared.start_indexing(),
+            Msg::OpenPaths(paths) => {
+                let mut files = Vec::new();
+                for p in paths {
+                    if p.is_dir() {
+                        crate::import::collect(&p, true, &mut files);
+                    } else {
+                        files.push(p);
+                    }
+                }
+                self.library.emit(library::Input::ImportPaths(files));
+            }
+            Msg::ShowPrefs => {
+                let tx = sender.input_sender().clone();
+                preferences::show(
+                    &self.window,
+                    &self.shared,
+                    Rc::new(move |c| tx.emit(Msg::Prefs(c))),
+                );
+            }
+            Msg::ShowPrefsAt(title) => {
+                let tx = sender.input_sender().clone();
+                preferences::show_at(
+                    &self.window,
+                    &self.shared,
+                    Rc::new(move |c| tx.emit(Msg::Prefs(c))),
+                    Some(&title),
+                );
+            }
+            Msg::ShowPalette => self.show_palette(&sender),
+            Msg::PaletteBook(id) => {
+                if self.reader.is_some() || self.pdf.is_some() {
+                    self.pending_read = Some(id);
+                    self.nav.pop();
+                } else {
+                    sender.input(Msg::Read(id));
+                }
+            }
+            Msg::Prefs(c) => match c {
+                PrefChange::Scheme(s) => {
+                    self.shared.cfg.borrow_mut().scheme = s;
+                    self.shared.cfg.borrow().save();
+                    apply_scheme(s);
+                }
+                PrefChange::Banner => self.library.emit(library::Input::BannerLayout),
+                PrefChange::ReaderDefaults => {
+                    self.apply_touch_ui();
+                    self.apply_eink();
+                }
+                PrefChange::LibraryDir(p) if p == self.shared.lib.borrow().root => {}
+                PrefChange::LibraryDir(p) => match crate::library_health::open(&p) {
+                    Ok((lib, guard, _)) => {
+                        // leave the old library in order: a last snapshot, then its lock goes
+                        crate::ui::health::on_exit(&self.shared);
+                        *self.shared.fulltext.borrow_mut() =
+                            Some(crate::fulltext::FullText::new(guard.store.clone()));
+                        *self.shared.lib.borrow_mut() = lib;
+                        *self.shared.guard.borrow_mut() = guard;
+                        self.shared.start_indexing();
+                        self.shared.cfg.borrow_mut().library_dir = p.clone();
+                        self.shared.cfg.borrow().save();
+                        crate::ui::library_switcher::note_current(&p);
+                        crate::ui::covers::clear();
+                        self.library.emit(library::Input::Refresh);
+                        {
+                            let tx = sender.input_sender().clone();
+                            crate::ui::health::on_startup(
+                                &self.shared,
+                                Rc::new(move |m| tx.emit(Msg::Toast(m))),
+                            );
+                        }
+                        sender.input(Msg::Toast(trf("Library switched to {}", &[&p.display()])));
+                    }
+                    Err(e) => sender.input(Msg::Toast(trf("Cannot open that folder: {}", &[&e]))),
+                },
+                PrefChange::Layout(msg) => {
+                    self.library.emit(library::Input::Refresh);
+                    sender.input(Msg::Toast(msg));
                 }
             },
-
-            gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_margin_all: 5,
-                set_spacing: 5,
-
-                append: model.bookx_main_container.widget()
+            Msg::ShowShortcuts => show_shortcuts(&self.window),
+            Msg::ShowStats => crate::ui::stats::show(&self.window, &self.shared),
+            Msg::ShowShare => crate::ui::share::show(&self.window, &self.shared),
+            Msg::ShowDevices => {
+                let tx = sender.input_sender().clone();
+                crate::ui::devices::show(
+                    &self.window,
+                    &self.shared,
+                    std::rc::Rc::new(move || tx.emit(Msg::DevicesChanged)),
+                );
+            }
+            Msg::DevicesChanged => self.library.emit(library::Input::Refresh),
+            Msg::ShowVocab => crate::ui::vocab::show(&self.window, &self.shared),
+            Msg::Dev(cmd) => {
+                let (name, arg) = cmd.split_once(':').unwrap_or((cmd.as_str(), ""));
+                match name {
+                    "shot" => {
+                        let (path, which) = arg
+                            .rsplit_once('@')
+                            .map(|(p, w)| (p, w.parse().unwrap_or(0)))
+                            .unwrap_or((arg, 0));
+                        crate::devtools::screenshot(path, which)
+                    }
+                    // `read:<id>` waits (up to ~20 s) for a book that is still being imported,
+                    // so scripted tests do not depend on import timing.
+                    "read" => {
+                        let (id, tries) = match arg.split_once('/') {
+                            Some((i, t)) => (i.parse().unwrap_or(1), t.parse().unwrap_or(0u32)),
+                            None => (arg.parse().unwrap_or(1), 0),
+                        };
+                        let known = self.shared.lib.borrow().get(id).is_some();
+                        if known || tries >= 40 {
+                            sender.input(Msg::Read(id));
+                        } else {
+                            let tx = sender.input_sender().clone();
+                            glib::timeout_add_local_once(
+                                std::time::Duration::from_millis(500),
+                                move || tx.emit(Msg::Dev(format!("read:{id}/{}", tries + 1))),
+                            );
+                        }
+                    }
+                    "edit" => sender.input(Msg::EditBook(arg.parse().unwrap_or(1))),
+                    "close" => sender.input(Msg::CloseReader),
+                    // `share:start[:port]`, `share:stop`, `share:dump`: drive sharing without dialogs
+                    "share" => {
+                        let (sub, rest) = arg.split_once(':').unwrap_or((arg, ""));
+                        match sub {
+                            "start" => {
+                                let mut s = self.shared.cfg.borrow().share.clone();
+                                s.port = rest.parse().unwrap_or(0);
+                                if let Some(pw) = std::env::var("BOOKX_SHARE_PASSWORD")
+                                    .ok()
+                                    .filter(|p| !p.is_empty())
+                                {
+                                    s.password = pw;
+                                }
+                                match crate::ui::share::apply(&self.shared, &s, true) {
+                                    Ok(u) => eprintln!("share_started: {}", u.join(" ")),
+                                    Err(e) => eprintln!("share_error: {e}"),
+                                }
+                            }
+                            "lan" => {
+                                let mut s = self.shared.cfg.borrow().share.clone();
+                                s.port = 0;
+                                s.lan = true;
+                                s.password = rest.to_string();
+                                match crate::ui::share::apply(&self.shared, &s, true) {
+                                    Ok(u) => eprintln!("share_started: {}", u.join(" ")),
+                                    Err(e) => eprintln!("share_error: {e}"),
+                                }
+                            }
+                            "stop" => {
+                                let _ = crate::ui::share::apply(
+                                    &self.shared,
+                                    &self.shared.cfg.borrow().share.clone(),
+                                    false,
+                                );
+                                eprintln!("share_stopped");
+                            }
+                            // `share:kosync` serves with the KOReader switch on (kept in the settings,
+                            // so the window opens with it), `share:kodump` prints what the window shows
+                            "kosync" => {
+                                let mut s = self.shared.cfg.borrow().share.clone();
+                                s.port = 0;
+                                s.kosync = true;
+                                self.shared.cfg.borrow_mut().share = s.clone();
+                                match crate::ui::share::apply(&self.shared, &s, true) {
+                                    Ok(u) => eprintln!("share_started: {}", u.join(" ")),
+                                    Err(e) => eprintln!("share_error: {e}"),
+                                }
+                            }
+                            "kodump" => crate::ui::share::dev_dump(),
+                            "show" => sender.input(Msg::ShowShare),
+                            // `share:https` serves HTTPS with the self-signed certificate,
+                            // `share:httpsfiles:<cert>:<key>` with the given files
+                            "https" | "httpsfiles" => {
+                                let mut s = self.shared.cfg.borrow().share.clone();
+                                s.port = 0;
+                                s.https = true;
+                                if sub == "httpsfiles" {
+                                    let (c, k) = rest.split_once(':').unwrap_or((rest, ""));
+                                    s.cert_file = c.to_string();
+                                    s.key_file = k.to_string();
+                                }
+                                match crate::ui::share::apply(&self.shared, &s, true) {
+                                    Ok(u) => eprintln!("share_started: {}", u.join(" ")),
+                                    Err(e) => eprintln!("share_error: {e}"),
+                                }
+                            }
+                            // `share:httpsown` serves HTTPS with a certificate and key made as
+                            // files of the user's own (a folder next to the config)
+                            "httpsown" => {
+                                let data = crate::config::stats_path()
+                                    .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+                                    .unwrap_or_else(std::env::temp_dir);
+                                match bookx_serve::cert::write_self_signed(
+                                    &data.join("own-tls"),
+                                    &[],
+                                ) {
+                                    Ok((c, k)) => {
+                                        let mut s = self.shared.cfg.borrow().share.clone();
+                                        s.port = 0;
+                                        s.https = true;
+                                        s.cert_file = c.display().to_string();
+                                        s.key_file = k.display().to_string();
+                                        match crate::ui::share::apply(&self.shared, &s, true) {
+                                            Ok(u) => eprintln!("share_started: {}", u.join(" ")),
+                                            Err(e) => eprintln!("share_error: {e}"),
+                                        }
+                                    }
+                                    Err(e) => eprintln!("share_error: {e:#}"),
+                                }
+                            }
+                            // `share:gen` makes a new self-signed certificate
+                            "gen" => {
+                                let s = self.shared.cfg.borrow().share.clone();
+                                let data = crate::config::stats_path()
+                                    .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+                                    .unwrap_or_else(std::env::temp_dir);
+                                match crate::sharing::generate_certificate(&s, &data) {
+                                    Ok((c, k)) => {
+                                        eprintln!("share_cert: {} {}", c.is_file(), k.is_file())
+                                    }
+                                    Err(e) => eprintln!("share_cert_error: {e:#}"),
+                                }
+                            }
+                            // `share:fetchtls:<path>[:untrusted]` asks over HTTPS, trusting only
+                            // the share's own certificate (or nothing)
+                            "fetchtls" => {
+                                let (path, untrusted) = match rest.strip_suffix(":untrusted") {
+                                    Some(p) => (p, true),
+                                    None => (rest, false),
+                                };
+                                let url = self.shared.sharing.borrow().urls().first().cloned();
+                                let data = crate::config::stats_path()
+                                    .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+                                    .unwrap_or_else(std::env::temp_dir);
+                                let pem = std::fs::read(
+                                    crate::sharing::tls_dir(&data)
+                                        .join(bookx_serve::cert::CERT_FILE),
+                                )
+                                .ok();
+                                if let Some(u) = url {
+                                    let trust = if untrusted { None } else { pem.as_deref() };
+                                    let r = bookx_serve::httpc::get_status(
+                                        &format!("{}{}", u.trim_end_matches('/'), path),
+                                        trust,
+                                    );
+                                    match r {
+                                        Ok(code) => eprintln!(
+                                            "share_fetchtls {path} untrusted={untrusted}: {code}"
+                                        ),
+                                        Err(_) => eprintln!(
+                                            "share_fetchtls {path} untrusted={untrusted}: refused"
+                                        ),
+                                    }
+                                }
+                            }
+                            "fetch" => {
+                                // fetch:<path> from the running server, printing the status line
+                                let url = self.shared.sharing.borrow().urls().first().cloned();
+                                if let Some(u) = url {
+                                    let addr = u
+                                        .trim_start_matches("http://")
+                                        .trim_end_matches('/')
+                                        .to_string();
+                                    eprintln!("share_fetch {rest}: {}", http_status(&addr, rest));
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    // `kosync:<command>`: the reading-position sync (see `ui::kosync::dev_command`)
+                    "kosync" => crate::ui::kosync::dev_command(&self.shared, arg),
+                    // `devwin:<command>`: drive the Device window (see `ui::devices::dev_command`)
+                    "devwin" => {
+                        let tx = sender.input_sender().clone();
+                        crate::ui::devices::dev_command(
+                            &self.window,
+                            &self.shared,
+                            std::rc::Rc::new(move || tx.emit(Msg::DevicesChanged)),
+                            arg,
+                        );
+                    }
+                    // `plugins:dump`, `plugins:enable=<id>`, `plugins:disable=<id>`, `plugins:show`
+                    "plugins" => {
+                        let mut m = self.shared.plugins.borrow_mut();
+                        if let Some(id) = arg.strip_prefix("enable=") {
+                            eprintln!(
+                                "plugin_enable: {:?}",
+                                m.set_enabled(id, true).map_err(|e| format!("{e:#}"))
+                            );
+                        } else if let Some(id) = arg.strip_prefix("disable=") {
+                            eprintln!(
+                                "plugin_disable: {:?}",
+                                m.set_enabled(id, false).map_err(|e| format!("{e:#}"))
+                            );
+                        } else if let Some(id) = arg.strip_prefix("auto=") {
+                            let path = crate::plugins::auto_transforms_path();
+                            eprintln!(
+                                "plugin_auto: {:?}",
+                                crate::plugins::set_auto_transform(&path, id, true)
+                                    .map_err(|e| format!("{e:#}"))
+                            );
+                        } else if arg == "show" {
+                            drop(m);
+                            sender.input(Msg::ShowPrefs);
+                            return;
+                        }
+                        crate::plugins::reload(&mut m);
+                        let cur = crate::plugins::current();
+                        for p in m.list() {
+                            eprintln!("plugin: {} enabled={} error={:?}", p.id, p.enabled, p.error);
+                        }
+                        eprintln!(
+                            "plugins_active: sources={} readers={} writers={} transforms={} devices={}",
+                            cur.sources.len(),
+                            cur.readers.len(),
+                            cur.writers.len(),
+                            cur.transforms.len(),
+                            cur.devices.len()
+                        );
+                    }
+                    // `patches:dump`, `patches:enable=<id>`, `patches:disable=<id>`, `patches:up=<id>`,
+                    // `patches:down=<id>`, `patches:preview=<id>` (first library book), `patches:show`
+                    "patches" => {
+                        let mut m = crate::plugins::patch_manager();
+                        if let Some(id) = arg.strip_prefix("enable=") {
+                            eprintln!(
+                                "patch_enable: {:?}",
+                                m.set_enabled(id, true).map_err(|e| format!("{e:#}"))
+                            );
+                        } else if let Some(id) = arg.strip_prefix("disable=") {
+                            eprintln!(
+                                "patch_disable: {:?}",
+                                m.set_enabled(id, false).map_err(|e| format!("{e:#}"))
+                            );
+                        } else if let Some(id) = arg.strip_prefix("up=") {
+                            let _ = m.move_by(id, -1);
+                        } else if let Some(id) = arg.strip_prefix("down=") {
+                            let _ = m.move_by(id, 1);
+                        } else if let Some(id) = arg.strip_prefix("preview=") {
+                            let path = {
+                                let lib = self.shared.lib.borrow();
+                                lib.books.first().map(|b| lib.book_path(b))
+                            };
+                            match crate::plugins::preview_patch(&m, id, path.as_deref()) {
+                                Ok(r) => eprintln!(
+                                    "patch_preview: {id} changes={} files={}",
+                                    r.total_changes(),
+                                    r.files.len()
+                                ),
+                                Err(e) => eprintln!("patch_preview: {id} error={e:#}"),
+                            }
+                        } else if arg == "show" {
+                            sender.input(Msg::ShowPrefs);
+                            return;
+                        }
+                        let set = crate::plugins::reload_patches();
+                        for p in m.list() {
+                            eprintln!(
+                                "patch: {} enabled={} hook={:?} error={:?}",
+                                p.id,
+                                p.enabled,
+                                p.hook.map(|h| h.as_str()),
+                                p.error
+                            );
+                        }
+                        eprintln!("patches_active: {}", set.len());
+                    }
+                    // `touch:on|off|auto` sets the large-controls preference
+                    "touch" => {
+                        use crate::gestures::TouchUi;
+                        let t = match arg {
+                            "on" => TouchUi::On,
+                            "off" => TouchUi::Off,
+                            _ => TouchUi::Auto,
+                        };
+                        self.shared.cfg.borrow_mut().reader.touch_ui = t;
+                        self.apply_touch_ui();
+                        eprintln!("touch_ui: {}", self.window.has_css_class("touch"));
+                    }
+                    // `eink:on|off`
+                    "eink" => {
+                        let on = arg == "on";
+                        {
+                            let mut c = self.shared.cfg.borrow_mut();
+                            c.eink = on;
+                            if on {
+                                crate::eink::tune_prefs(&mut c.reader);
+                            }
+                        }
+                        self.apply_eink();
+                        eprintln!(
+                            "eink: {} animations={} window_class={}",
+                            on,
+                            gtk::Settings::default().is_some_and(|s| s.is_gtk_enable_animations()),
+                            self.window.has_css_class("eink")
+                        );
+                    }
+                    "vocab" => {
+                        let now = self.shared.now();
+                        match arg {
+                            "show" => sender.input(Msg::ShowVocab),
+                            "dump" => {
+                                let hub = self.shared.vocab.borrow();
+                                let c = hub.counts(now);
+                                eprintln!(
+                                    "vocab: total={} due={} learning={} mastered={}",
+                                    c.total, c.due, c.learning, c.mastered
+                                );
+                                let words: Vec<String> = hub
+                                    .store
+                                    .entries()
+                                    .iter()
+                                    .map(|e| {
+                                        format!(
+                                            "{}={}",
+                                            e.word,
+                                            e.definition.clone().unwrap_or_default()
+                                        )
+                                    })
+                                    .collect();
+                                eprintln!("vocab_words: {}", words.join(" | "));
+                            }
+                            a if a.starts_with("grade:") => {
+                                let q: u8 = a[6..].parse().unwrap_or(4);
+                                let r = self.shared.vocab.borrow_mut().grade_first_due(q, now);
+                                eprintln!("vocab_graded: {:?}", r.ok().flatten());
+                            }
+                            a if a.starts_with("skew:") => {
+                                let n: i64 = a[5..].parse().unwrap_or(0);
+                                self.shared.clock_skew.set(self.shared.clock_skew.get() + n);
+                            }
+                            _ => {}
+                        }
+                    }
+                    "stats" => match arg {
+                        "show" => sender.input(Msg::ShowStats),
+                        "dump" => self.dump_stats(),
+                        a if a.starts_with("goal:") => {
+                            crate::ui::stats::dev_goals(&self.shared, &a[5..])
+                        }
+                        a if a.starts_with("skew:") => {
+                            let n: i64 = a[5..].parse().unwrap_or(0);
+                            let s = &self.shared;
+                            s.clock_skew.set(s.clock_skew.get() + n);
+                        }
+                        _ => {}
+                    },
+                    "prefs" if arg.is_empty() => sender.input(Msg::ShowPrefs),
+                    "prefs" => preferences::dev(arg),
+                    // `dialog:state` prints whether an AdwDialog is on the window, `dialog:close` closes it
+                    "dialog" => {
+                        if arg == "close" {
+                            if let Some(d) = self.window.visible_dialog() {
+                                d.close();
+                            }
+                        }
+                        eprintln!("dialog: open={}", self.window.visible_dialog().is_some());
+                    }
+                    "tts" => crate::ui::tts_settings::dev(arg),
+                    "mcp" => crate::ui::mcp_settings::dev(arg),
+                    "keys" => crate::ui::shortcuts_dialog::dev(arg),
+                    "jobs" => eprintln!("jobs: {}", crate::ui::jobs::dev(arg)),
+                    // `action:NAME` activates an application action (`share`, `devices`, `stats`, `palette` …)
+                    "action" => {
+                        gio::prelude::ActionGroupExt::activate_action(
+                            &relm4::main_adw_application(),
+                            arg,
+                            None,
+                        );
+                    }
+                    "open-uri" => sender.input(Msg::OpenUri(arg.to_string())),
+                    // `resolve-uri:bookx://…` prints which book of this library a link names
+                    "resolve-uri" => {
+                        let out = match crate::links::parse(arg) {
+                            None => "invalid".to_string(),
+                            Some(link) => {
+                                match crate::links::resolve(&link, &self.shared.lib.borrow()) {
+                                    Some(id) => format!("book {id}"),
+                                    None => "no book".to_string(),
+                                }
+                            }
+                        };
+                        eprintln!("resolve_uri: {out}");
+                    }
+                    // `ntr:3` prints the plural forms in the current language
+                    "ntr" => {
+                        let n: u64 = arg.parse().unwrap_or(0);
+                        eprintln!(
+                            "ntr: {} | {}",
+                            crate::i18n::ntr("{} book", "{} books", n),
+                            crate::i18n::fmt_int(1_234_567)
+                        );
+                    }
+                    "diag" => {
+                        let books = self.shared.lib.borrow().books.len();
+                        let text = crate::diagnostics::report(&self.shared.cfg.borrow(), books);
+                        eprintln!("diag: {}", text.replace('\n', " | "));
+                    }
+                    "a11y-audit" => crate::ui::audit::report(),
+                    "palette" => match arg {
+                        "open" => sender.input(Msg::ShowPalette),
+                        a => {
+                            if let Some(out) = crate::ui::palette::dev(a) {
+                                eprintln!("palette: {out}");
+                            }
+                        }
+                    },
+                    "reader" => {
+                        if let Some(r) = &self.reader {
+                            r.emit(reader::Input::Dev(arg.to_string()));
+                        }
+                        if let Some(r) = &self.pdf {
+                            r.emit(reader_pdf::Input::Dev(arg.to_string()));
+                        }
+                    }
+                    "library" => self.library.emit(library::Input::Dev(arg.to_string())),
+                    "editor" => {
+                        for (_, e) in self.editors.borrow().iter() {
+                            e.emit(editor::Input::Dev(arg.to_string()));
+                        }
+                    }
+                    "quit" => relm4::main_adw_application().quit(),
+                    _ => {}
+                }
+            }
+            Msg::CopyDiagnostics => {
+                let books = self.shared.lib.borrow().books.len();
+                let text = crate::diagnostics::report(&self.shared.cfg.borrow(), books);
+                self.window.clipboard().set_text(&text);
+                sender.input(Msg::Toast(tr(
+                    "Diagnostics copied. They hold no book titles or passwords.",
+                )));
+            }
+            Msg::OpenUri(uri) => match crate::links::parse(&uri) {
+                Some(link) => {
+                    let found = crate::links::resolve(&link, &self.shared.lib.borrow());
+                    match found {
+                        Some(id) => {
+                            self.window.present();
+                            sender.input(Msg::Read(id));
+                        }
+                        None => sender
+                            .input(Msg::Toast(tr("No book in this library matches that link."))),
+                    }
+                }
+                None => sender.input(Msg::Toast(tr("That link is not one Bookx understands."))),
+            },
+            Msg::ShowAbout => {
+                let d = adw::AboutDialog::builder()
+                    .application_name(APP_NAME)
+                    .application_icon(APP_ID)
+                    .developer_name("Anurag Dhadse")
+                    .version(VERSION)
+                    .comments(tr("A modern library, reader and editor for e-books — written entirely in Rust."))
+                    .website("https://github.com/adhadse/Bookx")
+                    .issue_url("https://github.com/adhadse/Bookx/issues")
+                    .license_type(gtk::License::Gpl30)
+                    .copyright("© 2023–2026 Anurag Dhadse")
+                    .developers(vec!["Anurag Dhadse".to_string()])
+                    .debug_info(crate::diagnostics::report(
+                        &self.shared.cfg.borrow(),
+                        self.shared.lib.borrow().books.len(),
+                    ))
+                    .debug_info_filename("bookx-diagnostics.txt")
+                    .build();
+                d.present(Some(&self.window));
             }
         }
     }
+}
 
-    fn init(
-        _init: Self::Init,
-        root: &Self::Root,
-        sender: ComponentSender<Self>,
-    ) -> ComponentParts<Self> {
-        let about_dialog = AboutDialog::builder()
-            .transient_for(root)
-            .launch(())
-            .detach();
-        let bookx_preferences = BookxPreferences::builder()
-            .transient_for(root)
-            .launch(())
-            .detach();
-        let bookx_main_container = BookxMainContainer::builder().launch(()).detach();
-        let model = Self {
-            bookx_preferences,
-            about_dialog,
-            bookx_main_container,
-        };
+/// Minimal blocking GET used by the UI tests: the status code of `path` on `addr`.
+fn http_status(addr: &str, path: &str) -> String {
+    use std::io::{Read, Write};
+    let Ok(mut s) = std::net::TcpStream::connect(addr) else {
+        return "connection refused".into();
+    };
+    let _ = s.set_read_timeout(Some(std::time::Duration::from_secs(3)));
+    let _ = write!(
+        s,
+        "GET {path} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n"
+    );
+    let mut buf = String::new();
+    let _ = s.read_to_string(&mut buf);
+    buf.split_whitespace()
+        .nth(1)
+        .unwrap_or("no answer")
+        .to_string()
+}
 
-        let mut actions = RelmActionGroup::<WindowActionGroup>::new();
-        let widgets = view_output!();
-
-        let shortcuts_action = {
-            let shortcuts = widgets.shortcuts.clone();
-            RelmAction::<ShortcutsAction>::new_stateless(move |_| {
-                shortcuts.present();
-            })
-        };
-
-        let about_action = {
-            let sender = model.about_dialog.sender().clone();
-            RelmAction::<AboutAction>::new_stateless(move |_| {
-                sender.send(()).unwrap();
-            })
-        };
-
-        let preferences_action = {
-            let sender = sender.input_sender().clone();
-            RelmAction::<PreferencesAction>::new_stateless(move |_| {
-                sender.send(Event::OpenPreferences).unwrap();
-            })
-        };
-
-        actions.add_action(shortcuts_action);
-        actions.add_action(about_action);
-        actions.add_action(preferences_action);
-
-        widgets
-            .main_window
-            .insert_action_group(WindowActionGroup::NAME, Some(&actions.into_action_group()));
-
-        widgets.load_window_size();
-
-        ComponentParts { model, widgets }
-    }
-
-    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
-        match message {
-            Event::Quit => main_application().quit(),
-            Event::OpenPreferences => self.bookx_preferences.widget().present(),
+impl App {
+    /// E-ink mode: no animations, pure black on white, bars that stay.
+    fn apply_eink(&self) {
+        let on = self.shared.cfg.borrow().eink;
+        crate::eink::set_active(on);
+        let fx = crate::eink::effects(on);
+        if let Some(settings) = gtk::Settings::default() {
+            settings.set_gtk_enable_animations(fx.animations);
+        }
+        if on {
+            self.window.add_css_class("eink");
+        } else {
+            self.window.remove_css_class("eink");
+        }
+        if let Some(r) = &self.reader {
+            r.emit(reader::Input::Prefs(
+                self.shared.cfg.borrow().reader.clone(),
+            ));
         }
     }
 
-    fn shutdown(&mut self, widgets: &mut Self::Widgets, _output: relm4::Sender<Self::Output>) {
-        widgets.save_window_size().unwrap();
+    /// Large touch targets on touch screens (or when switched on).
+    fn apply_touch_ui(&self) {
+        let has_touch = gtk::gdk::Display::default()
+            .and_then(|d| d.default_seat())
+            .is_some_and(|s| s.capabilities().contains(gtk::gdk::SeatCapabilities::TOUCH));
+        let on = self.shared.cfg.borrow().reader.touch_ui.enabled(has_touch);
+        if on {
+            self.window.add_css_class("touch");
+        } else {
+            self.window.remove_css_class("touch");
+        }
+    }
+
+    /// Test hook: prints what the statistics window would show.
+    fn dump_stats(&self) {
+        let now = self.shared.now();
+        let hub = self.shared.stats.borrow();
+        let sum = crate::reading_stats::summarize(&hub.store, now, &chrono::Local);
+        eprintln!("touch_ui: {}", self.window.has_css_class("touch"));
+        eprintln!("stats_sessions: {}", hub.store.sessions().len());
+        eprintln!("stats_today_secs: {}", sum.today_secs);
+        eprintln!("stats_total_pages: {}", sum.total_pages);
+        eprintln!("stats_streak: {}", sum.streak_current);
+        for (k, v) in crate::ui::stats::summary_lines(&sum) {
+            eprintln!("stats_line: {k} = {v}");
+        }
+        let review = crate::goals::review(&hub.store, now, &chrono::Local);
+        for (k, v) in crate::goals::review_lines(&review) {
+            eprintln!("stats_review: {k} = {v}");
+        }
+    }
+
+    fn restore_window(&mut self) {
+        if self.was_maximized.take() == Some(false) {
+            self.window.unmaximize();
+        }
     }
 }
 
-impl AppWidgets {
-    fn save_window_size(&self) -> Result<(), glib::BoolError> {
-        let settings = gio::Settings::new(APP_ID);
-        let (width, height) = self.main_window.default_size();
-
-        settings.set_int("window-width", width)?;
-        settings.set_int("window-height", height)?;
-
-        settings.set_boolean("is-maximized", self.main_window.is_maximized())?;
-
-        Ok(())
-    }
-
-    fn load_window_size(&self) {
-        let settings = gio::Settings::new(APP_ID);
-
-        let width = settings.int("window-width");
-        let height = settings.int("window-height");
-        let is_maximized = settings.boolean("is-maximized");
-
-        self.main_window.set_default_size(width, height);
-
-        if is_maximized {
-            self.main_window.maximize();
+impl App {
+    /// The command palette: commands of the window that is showing, books, recent books, settings.
+    fn show_palette(&self, sender: &ComponentSender<Self>) {
+        use crate::palette::{self, Scope, Target};
+        if !self.window.is_active() && !self.window.is_visible() {
+            return;
         }
+        let in_reader = self.reader.is_some() && self.loading.is_none();
+        let scope = if in_reader {
+            Scope::Reader
+        } else {
+            Scope::Library
+        };
+        let mut entries = palette::commands(scope);
+        {
+            let lib = self.shared.lib.borrow();
+            let mut books: Vec<&crate::core::library::Book> = lib.books.iter().collect();
+            books.sort_by_key(|b| std::cmp::Reverse(b.last_read));
+            for (n, b) in books.iter().enumerate() {
+                let recent = n < 5 && b.last_read.is_some();
+                entries.push(palette::book_entry(
+                    b.id,
+                    &b.meta.title,
+                    &b.meta.authors.join(", "),
+                    recent,
+                ));
+            }
+        }
+        entries.extend(preferences::index(&self.window, &self.shared));
+        let ctx: gtk::Widget = match (&self.reader, in_reader) {
+            (Some(r), true) => r.widget().clone().upcast(),
+            _ => self.library.widget().clone().upcast(),
+        };
+        let tx = sender.input_sender().clone();
+        crate::ui::palette::show(
+            &self.window,
+            entries,
+            Rc::new(move |e| {
+                if !crate::devtools::script().is_empty() {
+                    eprintln!("palette: picked {} -> {:?}", e.title, e.target);
+                }
+                match e.target {
+                    Target::Action(name) => match name.strip_prefix("app.") {
+                        Some(short) => {
+                            if let Some(app) = gio::Application::default() {
+                                gio::prelude::ActionGroupExt::activate_action(&app, short, None);
+                            }
+                        }
+                        None => {
+                            let _ = ctx.activate_action(&name, None);
+                        }
+                    },
+                    Target::Book(id) => tx.emit(Msg::PaletteBook(id)),
+                    Target::Setting(title) => tx.emit(Msg::ShowPrefsAt(title)),
+                    Target::ActionWith(..) | Target::Editor(_) | Target::File(_) => {}
+                }
+            }),
+        );
     }
+}
+
+fn show_shortcuts(parent: &adw::ApplicationWindow) {
+    let dialog = adw::ShortcutsDialog::new();
+    let section = |title: &str, items: &[(&str, &str)]| {
+        let s = adw::ShortcutsSection::new(Some(&tr(title)));
+        for (t, a) in items {
+            // "@action" takes the keys the user has set for that action
+            let keys = match a.strip_prefix('@') {
+                Some(action) => crate::shortcuts::current().effective(action).join(" "),
+                None => a.to_string(),
+            };
+            if !keys.is_empty() {
+                s.add(adw::ShortcutsItem::new(&tr(t), &keys));
+            }
+        }
+        s
+    };
+    dialog.add(section(
+        &tr("Library"),
+        &[
+            (N_("Add books"), "@lib.add-books"),
+            (N_("Search"), "@lib.focus-search"),
+            (N_("Edit metadata"), "@book.edit-meta"),
+            (N_("Edit book"), "@book.edit-book"),
+            (N_("Book properties"), "@book.properties"),
+            (N_("Select all books"), "@lib.select-all"),
+            (N_("Remove selected books"), "@book.delete"),
+            (N_("Command palette"), "@app.palette"),
+            (N_("Preferences"), "@app.preferences"),
+            (N_("Online help"), "@app.help"),
+            (N_("Quit"), "@app.quit"),
+        ],
+    ));
+    dialog.add(section(
+        &tr("Reader"),
+        &[
+            (N_("Next page"), "@reader.next-page"),
+            (N_("Previous page"), "@reader.prev-page"),
+            (N_("Next chapter"), "@reader.next-chapter"),
+            (N_("Previous chapter"), "@reader.prev-chapter"),
+            (N_("Select text by character"), "<Shift>Right"),
+            (N_("Select text by word"), "<Control><Shift>Right"),
+            (N_("Select text by sentence"), "<Shift>Down"),
+            (N_("Actions for the selection"), "Return"),
+            (N_("Look up, Wikipedia, translate"), "d w t"),
+            (N_("Highlight, add a note, copy"), "h n <Control>c"),
+            (N_("Command palette"), "@app.palette"),
+            (N_("Search in book"), "@reader.search"),
+            (N_("Contents"), "@reader.contents"),
+            (N_("Toggle bookmark"), "@reader.bookmark"),
+            (N_("Bookmarks and highlights"), "@reader.notes"),
+            (N_("Go to"), "@reader.goto"),
+            (N_("Back to the previous place"), "@reader.jump-back"),
+            (N_("Book map"), "@reader.map"),
+            (N_("Next theme"), "@reader.cycle-theme"),
+            (N_("Read aloud"), "@reader.read-aloud"),
+            (N_("Larger text"), "@reader.larger"),
+            (N_("Smaller text"), "@reader.smaller"),
+            (N_("Reset text size"), "@reader.reset-size"),
+            (N_("Fullscreen"), "@reader.fullscreen"),
+            (N_("Book properties"), "@reader.properties"),
+            (N_("Reload the book"), "@reader.reload"),
+            (N_("Back to library"), "@reader.back"),
+        ],
+    ));
+    dialog.add(section(
+        &tr("Book editor"),
+        &[
+            (N_("Save"), "<Control>s"),
+            (N_("Find & replace"), "<Control>h"),
+            (N_("Check book"), "F7"),
+            (N_("Next problem"), "F8"),
+            (N_("Previous problem"), "<Shift>F8"),
+            (N_("Undo"), "<Control>z"),
+            (N_("Redo"), "<Control><Shift>z"),
+        ],
+    ));
+    dialog.present(Some(parent));
 }

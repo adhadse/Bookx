@@ -1,0 +1,20 @@
+[package]
+name = "bookx-store"
+version = "0.2.0"
+authors = ["Anurag Dhadse <hello@adhadse.com>"]
+edition = "2021"
+rust-version = "1.85"
+description = "SQLite catalogue store of Bookx: full-text search, collections, Calibre import, backup"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+anyhow = "1"
+bookx-core = { path = "../bookx-core" }
+chrono = { version = "0.4", features = ["serde"] }
+rusqlite = { version = "0.42", features = ["bundled", "backup"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+uuid = { version = "1", features = ["v4"] }

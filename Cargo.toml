@@ -1,35 +1,62 @@
+[workspace]
+members = [".", "crates/*"]
+
 [package]
 name = "bookx"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Anurag Dhadse <hello@adhadse.com>"]
 edition = "2021"
+rust-version = "1.85"
+description = "A modern, pure-Rust e-book library, reader and editor for GNOME"
+license = "GPL-3.0-or-later"
 
 [dependencies]
-futures = "0.3.28"
-anyhow = "1.0.70"
+bookx-backup = { path = "crates/bookx-backup" }
+bookx-core = { path = "crates/bookx-core" }
+bookx-editing = { path = "crates/bookx-editing" }
+bookx-convert = { path = "crates/bookx-convert" }
+bookx-formats = { path = "crates/bookx-formats" }
+bookx-lookup = { path = "crates/bookx-lookup" }
+bookx-mcp = { path = "crates/bookx-mcp" }
+bookx-pdf = { path = "crates/bookx-pdf" }
+bookx-plugin = { path = "crates/bookx-plugin" }
+bookx-secrets = { path = "crates/bookx-secrets" }
+bookx-serve = { path = "crates/bookx-serve" }
+bookx-sources = { path = "crates/bookx-sources" }
+bookx-store = { path = "crates/bookx-store" }
+bookx-text = { path = "crates/bookx-text" }
+bookx-tts = { path = "crates/bookx-tts" }
+anyhow = "1"
+base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
+directories = "6"
+regex = "1"
+fancy-regex = "0.14"
+rhai = { version = "1", default-features = false, features = ["std", "no_module", "no_time", "no_custom_syntax"] }
+roxmltree = "0.21"
+scraper = "0.29"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 tracing = "0.1"
-tracker = "0.1"
 tracing-subscriber = "0.3"
-relm4-macros = "0.5.1"
+pangocairo = "0.22"
+pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
+uuid = { version = "1", features = ["v4"] }
+url = "2"
+zbus = "5"
+zip = { version = "9", default-features = false, features = ["deflate"] }
+
+sourceview5 = { version = "0.11", features = ["v5_6"] }
 
 [dependencies.relm4]
-package = "relm4"
-version = "0.6.0"
-features = ["libadwaita", "gnome_43"]
+version = "0.11"
+features = ["libadwaita", "gnome_49"]
 
-[dependencies.gettext-rs]
-version = "0.7.0"
-features = ["gettext-system"]
+[dev-dependencies]
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+wat = "1"
+resvg = "0.47"
 
-[dependencies.serde]
-version = "1.0.159"
-features = ["derive"]
-
-[dependencies.serde_json]
-package = "serde_json"
-version = "1.0.91"
-
-[dependencies.epub]
-package = "epub"
-version = "2.0.0"
-
+[profile.release]
+lto = "thin"
+codegen-units = 4

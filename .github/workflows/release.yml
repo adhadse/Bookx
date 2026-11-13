@@ -1,0 +1,103 @@
+name: Release
+
+# Push a tag like v0.2.0: builds the release binaries, a source-and-binary tarball with
+# checksums and a Flatpak bundle, and attaches them to a GitHub release.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  tarball:
+    name: Release build and tarball
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          dnf install -y gcc gcc-c++ make pkgconf-pkg-config rust cargo \
+            gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
+            gdk-pixbuf2-devel openssl-devel gettext tar gzip
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: cargo-release-${{ hashFiles('**/Cargo.lock') }}
+      - name: Build
+        run: cargo build --release --locked -p bookx -p bookx-cli
+      - name: Check that the tag matches the version
+        run: |
+          version=$(cargo pkgid -p bookx | sed 's/.*[#@]//')
+          tag="${GITHUB_REF_NAME:-v$version}"
+          [ "${tag#v}" = "$version" ] || { echo "tag $tag does not match Cargo version $version" >&2; exit 1; }
+      - name: Stage and pack
+        run: |
+          version=$(cargo pkgid -p bookx | sed 's/.*[#@]//')
+          name="bookx-$version-linux-x86_64"
+          make install-flatpak DESTDIR="$PWD/stage/$name" PREFIX=/usr
+          cp README.md LICENSE NOTICE.md "stage/$name/"
+          tar -C stage -czf "$name.tar.gz" "$name"
+          sha256sum "$name.tar.gz" > "$name.tar.gz.sha256"
+          cat "$name.tar.gz.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tarball
+          path: |
+            bookx-*.tar.gz
+            bookx-*.tar.gz.sha256
+
+  flatpak:
+    name: Flatpak bundle
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - name: Regenerate the offline cargo sources
+        run: python3 build-aux/flatpak-cargo-sources.py
+      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
+        with:
+          bundle: bookx.flatpak
+          manifest-path: build-aux/com.adhadse.Bookx.json
+          cache-key: flatpak-release-${{ github.sha }}
+      - name: Checksum
+        run: sha256sum bookx.flatpak > bookx.flatpak.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak
+          path: |
+            bookx.flatpak
+            bookx.flatpak.sha256
+
+  publish:
+    name: Attach to the release
+    needs: [tarball, flatpak]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums of everything
+        run: |
+          cd dist
+          sha256sum bookx-*.tar.gz bookx.flatpak > SHA256SUMS
+          cat SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

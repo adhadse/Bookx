@@ -1,0 +1,19 @@
+[package]
+name = "bookx-lookup"
+version = "0.2.0"
+authors = ["Anurag Dhadse <hello@adhadse.com>"]
+edition = "2021"
+rust-version = "1.85"
+description = "Pure-logic helpers for Bookx: dictionaries, vocabulary, reading statistics, in-book search, RSVP and annotation export"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+flate2 = "1"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+rusqlite = { version = "0.42", features = ["bundled", "serialize"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }

@@ -1,0 +1,583 @@
+# Hindi translation of Bookx.
+# Starting file: the most visible strings only.
+# Machine-assisted translation: needs review by a native speaker before it is treated as final.
+msgid ""
+msgstr ""
+"Project-Id-Version: Bookx\n"
+"Language: hi\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "About Bookx"
+msgstr "Bookx के बारे में"
+
+msgid "Add"
+msgstr "जोड़ें"
+
+msgid "Add Books"
+msgstr "पुस्तकें जोड़ें"
+
+msgid "Add Folder"
+msgstr "फ़ोल्डर जोड़ें"
+
+msgid "Add a note"
+msgstr "नोट जोड़ें"
+
+msgid "Add bookmark (Ctrl+B)"
+msgstr "बुकमार्क जोड़ें (Ctrl+B)"
+
+msgid "Add from the Web"
+msgstr "वेब से जोड़ें"
+
+msgid "Added"
+msgstr "जोड़ा गया"
+
+msgid "Added {}"
+msgstr "{} जोड़ा गया"
+
+msgid "Address"
+msgstr "पता"
+
+msgid "Annotations"
+msgstr "टिप्पणियाँ"
+
+msgid "Appearance"
+msgstr "रूप-रंग"
+
+msgid "Apply"
+msgstr "लागू करें"
+
+msgid "Audiobooks"
+msgstr "ऑडियोबुक"
+
+msgid "Authors"
+msgstr "लेखक"
+
+msgid "Back"
+msgstr "वापस"
+
+msgid "Back up now"
+msgstr "अभी बैकअप लें"
+
+msgid "Backups"
+msgstr "बैकअप"
+
+msgid "Book"
+msgstr "पुस्तक"
+
+msgid "Book saved"
+msgstr "पुस्तक सहेजी गई"
+
+msgid "Bookmarks and Highlights"
+msgstr "बुकमार्क और हाइलाइट"
+
+msgid "Books"
+msgstr "पुस्तकें"
+
+msgid "Cancel"
+msgstr "रद्द करें"
+
+msgid "Cannot open that file: {}"
+msgstr "वह फ़ाइल खोली नहीं जा सकती: {}"
+
+msgid "Check Book"
+msgstr "पुस्तक जाँचें"
+
+msgid "Check library"
+msgstr "लाइब्रेरी जाँचें"
+
+msgid "Checking…"
+msgstr "जाँच हो रही है…"
+
+msgid "Close"
+msgstr "बंद करें"
+
+msgid "Command Palette"
+msgstr "कमांड पैलेट"
+
+msgid "Command palette"
+msgstr "कमांड पैलेट"
+
+msgid "Comments"
+msgstr "टिप्पणियाँ"
+
+msgid "Connect"
+msgstr "जुड़ें"
+
+msgid "Connected"
+msgstr "जुड़ा हुआ"
+
+msgid "Connecting…"
+msgstr "जुड़ रहा है…"
+
+msgid "Contents"
+msgstr "विषय-सूची"
+
+msgid "Continue"
+msgstr "जारी रखें"
+
+msgid "Convert To"
+msgstr "में बदलें"
+
+msgid "Copy"
+msgstr "कॉपी करें"
+
+msgid "Copy Diagnostics"
+msgstr "निदान जानकारी कॉपी करें"
+
+msgid "Could not open the book: {}"
+msgstr "पुस्तक खोली नहीं जा सकी: {}"
+
+msgid "Could not save: {}"
+msgstr "सहेजा नहीं जा सका: {}"
+
+msgid "Could not send: {}"
+msgstr "भेजा नहीं जा सका: {}"
+
+msgid "Cover size"
+msgstr "कवर का आकार"
+
+msgid "Covers"
+msgstr "कवर"
+
+msgid "Delete"
+msgstr "हटाएँ"
+
+msgid "Deleted {}"
+msgstr "{} हटाया गया"
+
+msgid "Details"
+msgstr "विवरण"
+
+msgid "Device"
+msgstr "डिवाइस"
+
+msgid "Devices"
+msgstr "डिवाइस"
+
+msgid "Devices and Sharing"
+msgstr "डिवाइस और साझा करना"
+
+msgid "Dictionary to add the word to"
+msgstr "शब्द जोड़ने के लिए शब्दकोश"
+
+msgid "Download"
+msgstr "डाउनलोड करें"
+
+msgid "E-ink mode"
+msgstr "ई-इंक मोड"
+
+msgid "E-mail"
+msgstr "ईमेल"
+
+msgid "Edit"
+msgstr "संपादित करें"
+
+msgid "Edit Metadata"
+msgstr "मेटाडेटा संपादित करें"
+
+msgid "Editor"
+msgstr "संपादक"
+
+msgid "Empty Trash"
+msgstr "कचरा खाली करें"
+
+msgid "Export"
+msgstr "निर्यात करें"
+
+msgid "Export Annotations"
+msgstr "टिप्पणियाँ निर्यात करें"
+
+msgid "Exported to {}"
+msgstr "{} में निर्यात किया गया"
+
+msgid "Extensions"
+msgstr "एक्सटेंशन"
+
+msgid "Failed: {}"
+msgstr "विफल: {}"
+
+msgid "Fetch Metadata"
+msgstr "मेटाडेटा प्राप्त करें"
+
+msgid "File"
+msgstr "फ़ाइल"
+
+msgid "Files"
+msgstr "फ़ाइलें"
+
+msgid "Find"
+msgstr "ढूँढें"
+
+msgid "Find Duplicates"
+msgstr "डुप्लिकेट खोजें"
+
+msgid "Find and Replace"
+msgstr "ढूँढें और बदलें"
+
+msgid "Folder"
+msgstr "फ़ोल्डर"
+
+msgid "Font family"
+msgstr "फ़ॉन्ट परिवार"
+
+msgid "Font size (pt)"
+msgstr "फ़ॉन्ट आकार (pt)"
+
+msgid "Format"
+msgstr "प्रारूप"
+
+msgid "Formats"
+msgstr "प्रारूप"
+
+msgid "Fullscreen"
+msgstr "पूर्ण स्क्रीन"
+
+msgid "General"
+msgstr "सामान्य"
+
+msgid "Go to page"
+msgstr "पृष्ठ पर जाएँ"
+
+msgid "Highlight, add a note, copy"
+msgstr "हाइलाइट करें, नोट जोड़ें, कॉपी करें"
+
+msgid "History"
+msgstr "इतिहास"
+
+msgid "Hyphenate words"
+msgstr "शब्दों में हाइफ़न लगाएँ"
+
+msgid "Identifiers"
+msgstr "पहचानकर्ता"
+
+msgid "Images"
+msgstr "चित्र"
+
+msgid "Import"
+msgstr "आयात करें"
+
+msgid "Import Calibre Library"
+msgstr "Calibre लाइब्रेरी आयात करें"
+
+msgid "Importing…"
+msgstr "आयात हो रहा है…"
+
+msgid "Interface language"
+msgstr "इंटरफ़ेस की भाषा"
+
+msgid "Justify text"
+msgstr "पाठ को समायोजित (जस्टिफ़ाई) करें"
+
+msgid "Keep this checkpoint when old ones are removed"
+msgstr "पुराने हटाए जाने पर भी यह चेकपॉइंट रखें"
+
+msgid "Keyboard Shortcuts"
+msgstr "कीबोर्ड शॉर्टकट"
+
+msgid "Language"
+msgstr "भाषा"
+
+msgid "Large touch controls"
+msgstr "बड़े टच नियंत्रण"
+
+msgid "Larger text"
+msgstr "बड़ा पाठ"
+
+msgid "Last read"
+msgstr "अंतिम बार पढ़ा"
+
+msgid "Layout"
+msgstr "लेआउट"
+
+msgid "Layout: Continuous Scroll"
+msgstr "लेआउट: लगातार स्क्रॉल"
+
+msgid "Layout: Single Column"
+msgstr "लेआउट: एक कॉलम"
+
+msgid "Layout: Two Columns"
+msgstr "लेआउट: दो कॉलम"
+
+msgid "Library"
+msgstr "लाइब्रेरी"
+
+msgid "Library Health"
+msgstr "लाइब्रेरी की सेहत"
+
+msgid "Look up in a dictionary"
+msgstr "शब्दकोश में देखें"
+
+msgid "Look up on Wikipedia"
+msgstr "विकिपीडिया पर देखें"
+
+msgid "Main menu"
+msgstr "मुख्य मेनू"
+
+msgid "Name"
+msgstr "नाम"
+
+msgid "News Subscriptions"
+msgstr "समाचार सदस्यताएँ"
+
+msgid "Next page"
+msgstr "अगला पृष्ठ"
+
+msgid "No Results"
+msgstr "कोई परिणाम नहीं"
+
+msgid "No book matches your search"
+msgstr "आपकी खोज से कोई पुस्तक मेल नहीं खाती"
+
+msgid "No dictionaries installed"
+msgstr "कोई शब्दकोश स्थापित नहीं है"
+
+msgid "None"
+msgstr "कोई नहीं"
+
+msgid "Note"
+msgstr "नोट"
+
+msgid "Notes & Highlights"
+msgstr "नोट्स और हाइलाइट"
+
+msgid "Nothing to undo"
+msgstr "पूर्ववत करने के लिए कुछ नहीं"
+
+msgid "Nothing yet"
+msgstr "अभी कुछ नहीं"
+
+msgid "Online Catalogues"
+msgstr "ऑनलाइन कैटलॉग"
+
+msgid "Open"
+msgstr "खोलें"
+
+msgid "Open Library Folder"
+msgstr "लाइब्रेरी फ़ोल्डर खोलें"
+
+msgid "Opening…"
+msgstr "खुल रहा है…"
+
+msgid "Page"
+msgstr "पृष्ठ"
+
+msgid "Password"
+msgstr "पासवर्ड"
+
+msgid "Patches"
+msgstr "पैच"
+
+msgid "Pause"
+msgstr "रोकें"
+
+msgid "Play"
+msgstr "चलाएँ"
+
+msgid "Port"
+msgstr "पोर्ट"
+
+msgid "Preferences"
+msgstr "प्राथमिकताएँ"
+
+msgid "Previous page"
+msgstr "पिछला पृष्ठ"
+
+msgid "Published"
+msgstr "प्रकाशित"
+
+msgid "Publisher"
+msgstr "प्रकाशक"
+
+msgid "Rating"
+msgstr "रेटिंग"
+
+msgid "Read aloud"
+msgstr "ज़ोर से पढ़ें"
+
+msgid "Reader"
+msgstr "पाठक"
+
+msgid "Reading"
+msgstr "पढ़ना"
+
+msgid "Reading Statistics"
+msgstr "पढ़ने के आँकड़े"
+
+msgid "Redo"
+msgstr "फिर से करें"
+
+msgid "Reload"
+msgstr "फिर लोड करें"
+
+msgid "Remove"
+msgstr "निकालें"
+
+msgid "Remove bookmark"
+msgstr "बुकमार्क हटाएँ"
+
+msgid "Rename"
+msgstr "नाम बदलें"
+
+msgid "Replace"
+msgstr "बदलें"
+
+msgid "Replace All"
+msgstr "सब बदलें"
+
+msgid "Restore"
+msgstr "पुनर्स्थापित करें"
+
+msgid "Restore from a backup"
+msgstr "बैकअप से पुनर्स्थापित करें"
+
+msgid "Save"
+msgstr "सहेजें"
+
+msgid "Saved Searches"
+msgstr "सहेजी गई खोजें"
+
+msgid "Search"
+msgstr "खोजें"
+
+msgid "Search in book"
+msgstr "पुस्तक में खोजें"
+
+msgid "Searching…"
+msgstr "खोज जारी है…"
+
+msgid "Select All"
+msgstr "सभी चुनें"
+
+msgid "Send by E-mail"
+msgstr "ईमेल से भेजें"
+
+msgid "Send to Device"
+msgstr "डिवाइस पर भेजें"
+
+msgid "Series"
+msgstr "शृंखला"
+
+msgid "Share Library"
+msgstr "लाइब्रेरी साझा करें"
+
+msgid "Share this library"
+msgstr "इस लाइब्रेरी को साझा करें"
+
+msgid "Shelves"
+msgstr "शेल्फ़"
+
+msgid "Show"
+msgstr "दिखाएँ"
+
+msgid "Sidebar"
+msgstr "साइडबार"
+
+msgid "Smaller text"
+msgstr "छोटा पाठ"
+
+msgid "Smart shelf"
+msgstr "स्मार्ट शेल्फ़"
+
+msgid "Speed"
+msgstr "गति"
+
+msgid "Stop"
+msgstr "बंद करें"
+
+msgid "Sync"
+msgstr "सिंक"
+
+msgid "System language"
+msgstr "सिस्टम की भाषा"
+
+msgid "Tags"
+msgstr "टैग"
+
+msgid "Test"
+msgstr "परीक्षण"
+
+msgid "Text to Speech"
+msgstr "टेक्स्ट-टू-स्पीच"
+
+msgid "Theme: Dark"
+msgstr "थीम: गहरी"
+
+msgid "Theme: Light"
+msgstr "थीम: हल्की"
+
+msgid "Theme: Sepia"
+msgstr "थीम: सेपिया"
+
+msgid "Title"
+msgstr "शीर्षक"
+
+msgid "Translate"
+msgstr "अनुवाद करें"
+
+msgid "Trash"
+msgstr "कचरा"
+
+msgid "Type a command, book or setting"
+msgstr "कमांड, पुस्तक या सेटिंग लिखें"
+
+msgid "Undo"
+msgstr "पूर्ववत करें"
+
+msgid "User name"
+msgstr "उपयोगकर्ता नाम"
+
+msgid "Vocabulary"
+msgstr "शब्दावली"
+
+msgid "Voice"
+msgstr "आवाज़"
+
+msgid "Waiting books"
+msgstr "प्रतीक्षारत पुस्तकें"
+
+msgid "Welcome to Bookx"
+msgstr "Bookx में आपका स्वागत है"
+
+msgid "{} backup"
+msgid_plural "{} backups"
+msgstr[0] "{} बैकअप"
+msgstr[1] "{} बैकअप"
+
+msgid "{} book"
+msgid_plural "{} books"
+msgstr[0] "{} पुस्तक"
+msgstr[1] "{} पुस्तकें"
+
+msgid "{} day"
+msgid_plural "{} days"
+msgstr[0] "{} दिन"
+msgstr[1] "{} दिन"
+
+msgid "{} file"
+msgid_plural "{} files"
+msgstr[0] "{} फ़ाइल"
+msgstr[1] "{} फ़ाइलें"
+
+msgid "{} highlight"
+msgid_plural "{} highlights"
+msgstr[0] "{} हाइलाइट"
+msgstr[1] "{} हाइलाइट"
+
+msgid "{} match"
+msgid_plural "{} matches"
+msgstr[0] "{} मेल"
+msgstr[1] "{} मेल"
+
+msgid "{} note"
+msgid_plural "{} notes"
+msgstr[0] "{} नोट"
+msgstr[1] "{} नोट्स"
+
+msgid "{} problem"
+msgid_plural "{} problems"
+msgstr[0] "{} समस्या"
+msgstr[1] "{} समस्याएँ"
+
+msgid "Sync scrolling both ways: scrolling the preview also scrolls the code (the code always moves the preview)"
+msgstr "दोनों तरफ़ स्क्रॉल सिंक: पूर्वावलोकन स्क्रॉल करने पर कोड भी स्क्रॉल होता है (कोड हमेशा पूर्वावलोकन को चलाता है)"

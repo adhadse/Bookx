@@ -1,0 +1,29 @@
+[package]
+name = "bookx-convert"
+version = "0.2.0"
+authors = ["Anurag Dhadse <hello@adhadse.com>"]
+edition = "2021"
+rust-version = "1.85"
+description = "Conversion pipeline of Bookx: output writers (EPUB, KEPUB, FB2, HTMLZ, TXTZ, MOBI, AZW3, DOCX, RTF, PDB, PMLZ, RB, SNB, OEB, ZIP), transforms and presets"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+bookx-core = { path = "../bookx-core" }
+anyhow = "1"
+base64 = "0.22"
+bzip2 = "0.6"
+flate2 = "1"
+encoding_rs = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif"] }
+regex = "1"
+roxmltree = "0.21"
+scraper = "0.29"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+base64 = "0.22"
+bookx-formats = { path = "../bookx-formats" }

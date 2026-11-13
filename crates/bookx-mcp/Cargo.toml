@@ -1,0 +1,25 @@
+[package]
+name = "bookx-mcp"
+version = "0.2.0"
+authors = ["Anurag Dhadse <hello@adhadse.com>"]
+edition = "2021"
+rust-version = "1.85"
+description = "Model Context Protocol server for the Bookx library (stdio and Streamable HTTP), GTK free"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+anyhow = "1"
+base64 = "0.22"
+bookx-convert = { path = "../bookx-convert" }
+bookx-core = { path = "../bookx-core" }
+bookx-lookup = { path = "../bookx-lookup" }
+bookx-serve = { path = "../bookx-serve" }
+bookx-sources = { path = "../bookx-sources" }
+bookx-store = { path = "../bookx-store" }
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+url = "2"

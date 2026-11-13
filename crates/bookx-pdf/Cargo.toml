@@ -1,0 +1,12 @@
+[package]
+name = "bookx-pdf"
+version = "0.2.0"
+authors = ["Anurag Dhadse <hello@adhadse.com>"]
+edition = "2021"
+rust-version = "1.92"
+description = "PDF for Bookx: pure-Rust page rendering (hayro), text with positions, outline, links, search and a reflow to EPUB chapters"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+hayro = "0.9"
+anyhow = "1"

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- File types Bookx opens that shared-mime-info does not describe (yet). -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-kobo-epub+zip">
+    <comment>Kobo EPUB</comment>
+    <sub-class-of type="application/epub+zip"/>
+    <glob pattern="*.kepub.epub" weight="60"/>
+    <glob pattern="*.kepub" weight="60"/>
+    <icon name="com.adhadse.Bookx"/>
+  </mime-type>
+  <mime-type type="application/vnd.amazon.ebook">
+    <comment>Amazon Kindle e-book</comment>
+    <sub-class-of type="application/x-mobipocket-ebook"/>
+    <glob pattern="*.azw"/>
+    <icon name="com.adhadse.Bookx"/>
+  </mime-type>
+</mime-info>

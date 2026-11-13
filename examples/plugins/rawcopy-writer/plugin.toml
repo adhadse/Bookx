@@ -1,0 +1,12 @@
+id = "org.bookx.example.rawcopy"
+name = "EPUB copy (example writer)"
+version = "1.0.0"
+api_version = 1
+kind = "format-writer"
+description = "Example output format: writes the book unchanged with the extension .epubcopy"
+extension = "epubcopy"
+# no permissions: the plugin cannot reach the network (and never any files)
+permissions = []
+
+memory_pages = 256
+timeout_ms = 5000

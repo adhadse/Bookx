@@ -1,0 +1,26 @@
+[package]
+name = "bookx-sources"
+version = "0.2.0"
+authors = ["Anurag Dhadse <hello@adhadse.com>"]
+edition = "2021"
+rust-version = "1.85"
+description = "Online sources of Bookx: metadata lookup, read-later articles, news recipes, covers, duplicates, filename guessing"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+bookx-core = { path = "../bookx-core" }
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+ego-tree = "0.11"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+regex = "1"
+roxmltree = "0.21"
+scraper = "0.29"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1"
+ureq = { version = "3", default-features = false, features = ["rustls"] }
+url = "2"
+
+[dev-dependencies]
+zip = { version = "9", default-features = false, features = ["deflate"] }

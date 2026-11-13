@@ -1,0 +1,67 @@
+name: Wiki
+
+# Builds the public wiki (wiki/, Zensical) and publishes it to https://bookx.adhadse.com
+# with GitHub Pages. In the repository settings, Pages > Source must be "GitHub Actions".
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "wiki/**"
+      - "build-aux/wiki.sh"
+      - "build-aux/wiki-optimize.py"
+      - "build-aux/wiki-theme-check.py"
+      - "build-aux/check-site-links.py"
+      - ".github/workflows/wiki.yml"
+  pull_request:
+    paths:
+      - "wiki/**"
+      - "build-aux/wiki.sh"
+      - "build-aux/wiki-optimize.py"
+      - "build-aux/wiki-theme-check.py"
+      - "build-aux/check-site-links.py"
+      - ".github/workflows/wiki.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  # The pinned Zensical version lives in build-aux/wiki.sh (ZENSICAL_VERSION).
+  VENV: ${{ github.workspace }}/.cache/wiki-venv
+
+jobs:
+  build:
+    name: Build and check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the wiki and check links
+        run: build-aux/wiki.sh
+      - name: Upload the site
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: wiki/site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="3200" height="1880" viewBox="0 0 3200 1880">
+<defs>
+</defs>
+<rect width="3200" height="1880" fill="#ffffff"/>
+<text x="90" y="130" font-size="74" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Bookx E-ink</text>
+<text x="90" y="180" font-size="17" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">E-ink mode (Preferences → Reader defaults → E-ink mode) is for slow black-and-white screens: pure black on white, no animations,</text>
+<text x="90" y="204" font-size="17" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">bars that stay put, hard 2 px edges and wide tap zones. Large touch controls make every button at least 44 px.</text>
+<text x="90" y="300" font-size="17" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">4.a The reader in e-ink mode</text>
+<rect x="90" y="320" width="760" height="1000" rx="14" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>
+<rect x="89" y="319" width="762" height="1002" rx="15" fill="none" stroke="#000000" stroke-width="1.5"/>
+<path d="M90,334 a14,14 0 0 1 14,-14 h732 a14,14 0 0 1 14,14 v32 h-760 z" fill="#ffffff" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="90" y1="366" x2="850" y2="366" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
+<path d="M118,343 m2,-5 l-5,5 l5,5" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="144" y="329" width="34" height="30" rx="8" fill="none"/>
+<rect x="153" y="337" width="16" height="14" rx="3" fill="none" stroke="#000000" stroke-width="1.5"/>
+<line x1="158" y1="337" x2="158" y2="351" stroke="#000000" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M197,337 h10 v14 l-5,-4 l-5,4 z" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="470" y="341" font-size="14" font-weight="700" fill="#000000" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Moby-Dick; or, The Whale</text>
+<text x="470" y="358" font-size="11" font-weight="400" fill="#333333" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Chapter 1</text>
+<circle cx="616.5" cy="342.5" r="5.5" fill="none" stroke="#000000" stroke-width="1.8"/>
+<line x1="620.5" y1="346.5" x2="625" y2="351" stroke="#000000" stroke-width="1.8" stroke-linecap="round"/>
+<text x="658" y="350" font-size="17" font-weight="700" fill="#000000" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">A</text>
+<path d="M697,337 h-6 v6 M699,351 h6 v-6" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M699,337 h6 v6 M697,351 h-6 v-6" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="731" y1="339" x2="745" y2="339" stroke="#000000" stroke-width="1.8" stroke-linecap="round"/>
+<line x1="731" y1="344" x2="745" y2="344" stroke="#000000" stroke-width="1.8" stroke-linecap="round"/>
+<line x1="731" y1="349" x2="745" y2="349" stroke="#000000" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="824" cy="343" r="12" fill="#e6e6e6"/>
+<path d="M820,339 l8,8 m0,-8 l-8,8" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="160" y="414.6666666666667" font-size="14.237037037037036" font-weight="700" fill="#333333" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">CHAPTER 1</text>
+<text x="160" y="451.4074074074074" font-size="43.629629629629626" font-weight="700" fill="#000000" font-family="Noto Serif, Liberation Serif, serif">Loomings.</text>
+<text x="160" y="532.4666666666667" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">Call me Ishmael. Some years ago—never mind how long</text>
+<text x="160" y="570.5851851851852" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">precisely—having little or no money in my purse, and</text>
+<text x="160" y="608.7037037037037" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">nothing particular to interest me on shore, I</text>
+<text x="160" y="646.8222222222222" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">thought I would sail about a little and see the wa-</text>
+<rect x="159" y="660.8296296296296" width="267.44750430292623" height="32.148148148148145" rx="2" fill="#000000" fill-opacity="0.18"/>
+<text x="160" y="684.9407407407407" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">tery part of the world. It is a way I have of driv-</text>
+<rect x="442.2547332185888" y="689.5333333333333" width="239.30292598967316" height="2" rx="0" fill="#000000"/>
+<text x="160" y="723.0592592592592" font-size="22.962962962962962" font-weight="400" fill="#000000" font-family="Noto Serif, Liberation Serif, serif">ing off the spleen and regulating the circulation.</text>
+<text x="160" y="778.331111111111" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">Whenever I find myself growing grim about the mouth;</text>
+<rect x="358.7383483237941" y="792.3385185185184" width="284.1177432542928" height="32.148148148148145" rx="2" fill="#000000" fill-opacity="0.18"/>
+<rect x="358.7383483237941" y="822.4866666666666" width="284.1177432542928" height="2" rx="0" fill="#000000"/>
+<text x="160" y="816.4496296296295" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">whenever it is a damp, drizzly November in my soul;</text>
+<text x="160" y="854.568148148148" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">whenever I find myself involuntarily pausing before</text>
+<path d="M453.3997509339977,860.9977777777776 L456.3997509339977,858.9977777777776 L459.3997509339977,862.4977777777776 L462.3997509339977,858.9977777777776 L465.3997509339977,862.4977777777776 L468.3997509339977,858.9977777777776 L471.3997509339977,862.4977777777776 L474.3997509339977,858.9977777777776 L477.3997509339977,862.4977777777776 L480.3997509339977,858.9977777777776 L483.3997509339977,862.4977777777776 L486.3997509339977,858.9977777777776 L489.3997509339977,862.4977777777776 L492.3997509339977,858.9977777777776 L495.3997509339977,862.4977777777776 L498.3997509339977,858.9977777777776 L501.3997509339977,862.4977777777776 L504.3997509339977,858.9977777777776 L507.3997509339977,862.4977777777776 L510.3997509339977,858.9977777777776 L513.3997509339977,862.4977777777776 L516.3997509339977,858.9977777777776 L519.3997509339977,862.4977777777776 L522.3997509339977,858.9977777777776 L525.3997509339977,862.4977777777776 L528.3997509339977,858.9977777777776 L531.3997509339977,862.4977777777776 L534.3997509339977,858.9977777777776 L537.3997509339977,862.4977777777776 L540.3997509339977,858.9977777777776 L543.3997509339977,862.4977777777776 L546.3997509339977,858.9977777777776 L549.3997509339977,862.4977777777776 L552.3997509339977,858.9977777777776 L555.3997509339977,862.4977777777776 L558.3997509339977,858.9977777777776 L561.3997509339977,862.4977777777776 L564.3997509339977,858.9977777777776 L567.3997509339977,862.4977777777776 L570.3997509339977,858.9977777777776 L573.3997509339977,862.4977777777776 L576.3997509339977,858.9977777777776 L579.3997509339977,862.4977777777776 L582.3997509339977,858.9977777777776 L585.3997509339977,862.4977777777776 L588.3997509339977,858.9977777777776 L591.3997509339977,862.4977777777776 L594.3997509339977,858.9977777777776 L597.0112079701124,862.4977777777776" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="160" y="892.6866666666665" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">coffin warehouses, and bringing up the rear of every</text>
+<text x="160" y="930.805185185185" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">funeral I meet; and especially whenever my hypos get</text>
+<text x="160" y="968.9237037037035" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">such an upper hand of me, that it requires a strong</text>
+<text x="160" y="1007.042222222222" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">moral principle to prevent me from deliberately step-</text>
+<text x="160" y="1045.1607407407405" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">ping into the street, and methodically knocking peo-</text>
+<text x="160" y="1083.279259259259" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">ple's hats off—then, I account it high time to get to</text>
+<rect x="224.61538461538467" y="1075.931111111111" width="92.30769230769239" height="2" rx="0" fill="#000000"/>
+<text x="160" y="1121.3977777777777" font-size="22.962962962962962" font-weight="400" fill="#000000" font-family="Noto Serif, Liberation Serif, serif">sea as soon as I can.</text>
+<text x="160" y="1176.6696296296298" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">This is my substitute for pistol and ball. With a</text>
+<text x="160" y="1214.7881481481484" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">philosophical flourish Cato throws himself upon his</text>
+<line x1="90" y1="1242" x2="850" y2="1242" stroke="#000000" stroke-width="1" stroke-linecap="round"/>
+<path d="M126,1268 m2,-5 l-5,5 l5,5" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M814,1268 m-2,-5 l5,5 l-5,5" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="154" y="1266" width="632" height="4" rx="2" fill="#000000"/>
+<rect x="154" y="1266" width="31.6" height="4" rx="2" fill="#000000"/>
+<circle cx="185.6" cy="1268" r="8" fill="#ffffff"/>
+<circle cx="185.6" cy="1268" r="8" fill="none" stroke="#000000" stroke-width="1"/>
+<text x="120" y="1306" font-size="12" font-weight="400" fill="#333333" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">9 of 180</text>
+<text x="820" y="1306" font-size="12" font-weight="400" fill="#333333" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">Loomings  ·  3 minutes to complete</text>
+<text x="90" y="1356" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Black on white, hyphenated and justified. Highlights become grey or black</text>
+<text x="90" y="1376" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">lines (underline, strikethrough, squiggly); the bars never fade.</text>
+<text x="930" y="300" font-size="17" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">4.b Selecting text</text>
+<rect x="930" y="320" width="760" height="1000" rx="14" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>
+<rect x="929" y="319" width="762" height="1002" rx="15" fill="none" stroke="#000000" stroke-width="1.5"/>
+<path d="M930,334 a14,14 0 0 1 14,-14 h732 a14,14 0 0 1 14,14 v32 h-760 z" fill="#ffffff" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="930" y1="366" x2="1690" y2="366" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
+<path d="M958,343 m2,-5 l-5,5 l5,5" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="984" y="329" width="34" height="30" rx="8" fill="none"/>
+<rect x="993" y="337" width="16" height="14" rx="3" fill="none" stroke="#000000" stroke-width="1.5"/>
+<line x1="998" y1="337" x2="998" y2="351" stroke="#000000" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M1037,337 h10 v14 l-5,-4 l-5,4 z" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1310" y="341" font-size="14" font-weight="700" fill="#000000" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Moby-Dick; or, The Whale</text>
+<text x="1310" y="358" font-size="11" font-weight="400" fill="#333333" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Chapter 1</text>
+<circle cx="1456.5" cy="342.5" r="5.5" fill="none" stroke="#000000" stroke-width="1.8"/>
+<line x1="1460.5" y1="346.5" x2="1465" y2="351" stroke="#000000" stroke-width="1.8" stroke-linecap="round"/>
+<text x="1498" y="350" font-size="17" font-weight="700" fill="#000000" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">A</text>
+<path d="M1537,337 h-6 v6 M1539,351 h6 v-6" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1539,337 h6 v6 M1537,351 h-6 v-6" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="1571" y1="339" x2="1585" y2="339" stroke="#000000" stroke-width="1.8" stroke-linecap="round"/>
+<line x1="1571" y1="344" x2="1585" y2="344" stroke="#000000" stroke-width="1.8" stroke-linecap="round"/>
+<line x1="1571" y1="349" x2="1585" y2="349" stroke="#000000" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="1664" cy="343" r="12" fill="#e6e6e6"/>
+<path d="M1660,339 l8,8 m0,-8 l-8,8" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1000" y="414.6666666666667" font-size="14.237037037037036" font-weight="700" fill="#333333" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">CHAPTER 1</text>
+<text x="1000" y="451.4074074074074" font-size="43.629629629629626" font-weight="700" fill="#000000" font-family="Noto Serif, Liberation Serif, serif">Loomings.</text>
+<text x="1000" y="532.4666666666667" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">Call me Ishmael. Some years ago—never mind how long</text>
+<text x="1000" y="570.5851851851852" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">precisely—having little or no money in my purse, and</text>
+<text x="1000" y="608.7037037037037" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">nothing particular to interest me on shore, I</text>
+<text x="1000" y="646.8222222222222" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">thought I would sail about a little and see the wa-</text>
+<text x="1000" y="684.9407407407407" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">tery part of the world. It is a way I have of driv-</text>
+<rect x="1116.8" y="698.9481481481481" width="227.26666666666665" height="32.148148148148145" rx="2" fill="#000000" fill-opacity="0.32"/>
+<text x="1000" y="723.0592592592592" font-size="22.962962962962962" font-weight="400" fill="#000000" font-family="Noto Serif, Liberation Serif, serif">ing off the spleen and regulating the circulation.</text>
+<text x="1000" y="778.331111111111" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">Whenever I find myself growing grim about the mouth;</text>
+<text x="1000" y="816.4496296296295" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">whenever it is a damp, drizzly November in my soul;</text>
+<text x="1000" y="854.568148148148" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">whenever I find myself involuntarily pausing before</text>
+<text x="1000" y="892.6866666666665" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">coffin warehouses, and bringing up the rear of every</text>
+<text x="1000" y="930.805185185185" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">funeral I meet; and especially whenever my hypos get</text>
+<text x="1000" y="968.9237037037035" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">such an upper hand of me, that it requires a strong</text>
+<text x="1000" y="1007.042222222222" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">moral principle to prevent me from deliberately step-</text>
+<text x="1000" y="1045.1607407407405" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">ping into the street, and methodically knocking peo-</text>
+<text x="1000" y="1083.279259259259" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">ple's hats off—then, I account it high time to get to</text>
+<text x="1000" y="1121.3977777777777" font-size="22.962962962962962" font-weight="400" fill="#000000" font-family="Noto Serif, Liberation Serif, serif">sea as soon as I can.</text>
+<text x="1000" y="1176.6696296296298" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">This is my substitute for pistol and ball. With a</text>
+<text x="1000" y="1214.7881481481484" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">philosophical flourish Cato throws himself upon his</text>
+<line x1="930" y1="1242" x2="1690" y2="1242" stroke="#000000" stroke-width="1" stroke-linecap="round"/>
+<path d="M966,1268 m2,-5 l-5,5 l5,5" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1654,1268 m-2,-5 l5,5 l-5,5" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="994" y="1266" width="632" height="4" rx="2" fill="#000000"/>
+<rect x="994" y="1266" width="31.6" height="4" rx="2" fill="#000000"/>
+<circle cx="1025.6" cy="1268" r="8" fill="#ffffff"/>
+<circle cx="1025.6" cy="1268" r="8" fill="none" stroke="#000000" stroke-width="1"/>
+<text x="960" y="1306" font-size="12" font-weight="400" fill="#333333" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">9 of 180</text>
+<text x="1660" y="1306" font-size="12" font-weight="400" fill="#333333" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">Loomings  ·  3 minutes to complete</text>
+<rect x="1010.4333333333334" y="580.9481481481481" width="440" height="112" rx="14" fill="#000" fill-opacity="0"/>
+<rect x="1007.4333333333334" y="577.9481481481481" width="446" height="118" rx="17" fill="#000" fill-opacity="0"/>
+<rect x="1004.4333333333334" y="574.9481481481481" width="452" height="124" rx="20" fill="#000" fill-opacity="0"/>
+<rect x="1001.4333333333334" y="571.9481481481481" width="458" height="130" rx="23" fill="#000" fill-opacity="0"/>
+<rect x="998.4333333333334" y="568.9481481481481" width="464" height="136" rx="26" fill="#000" fill-opacity="0"/>
+<rect x="995.4333333333334" y="565.9481481481481" width="470" height="142" rx="29" fill="#000" fill-opacity="0"/>
+<rect x="1010.4333333333334" y="572.9481481481481" width="440" height="112" rx="14" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>
+<path d="M1220.4333333333334,684.9481481481481 l10,10 l10,-10" fill="#ffffff" stroke="#000000" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="1221.4333333333334" y="683.4481481481481" width="18" height="3" rx="0" fill="#ffffff"/>
+<circle cx="1038.4333333333334" cy="604.9481481481481" r="12" fill="#808080"/>
+<circle cx="1072.4333333333334" cy="604.9481481481481" r="12" fill="#808080"/>
+<circle cx="1106.4333333333334" cy="604.9481481481481" r="12" fill="#808080"/>
+<circle cx="1140.4333333333334" cy="604.9481481481481" r="12" fill="#808080"/>
+<circle cx="1174.4333333333334" cy="604.9481481481481" r="12" fill="#808080"/>
+<line x1="1198.4333333333334" y1="590.9481481481481" x2="1198.4333333333334" y2="618.9481481481481" stroke="#000000" stroke-width="1" stroke-linecap="round"/>
+<path d="M1218.4333333333334,610.9481481481481 l9,-9 l3,3 l-9,9 h-3 z" fill="none" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="1256.4333333333334" y="597.9481481481481" width="10" height="12" rx="2" fill="none" stroke="#000000" stroke-width="1.5"/>
+<rect x="1260.4333333333334" y="601.9481481481481" width="10" height="12" rx="2" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>
+<rect x="1294.4333333333334" y="596.9481481481481" width="12" height="16" rx="2" fill="none" stroke="#000000" stroke-width="1.5"/>
+<line x1="1297.4333333333334" y1="601.9481481481481" x2="1303.4333333333334" y2="601.9481481481481" stroke="#000000" stroke-width="1.4" stroke-linecap="round"/>
+<line x1="1297.4333333333334" y1="605.9481481481481" x2="1303.4333333333334" y2="605.9481481481481" stroke="#000000" stroke-width="1.4" stroke-linecap="round"/>
+<text x="1338.4333333333334" y="610.9481481481481" font-size="17" font-weight="700" fill="#000000" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">W</text>
+<text x="1376.4333333333334" y="609.9481481481481" font-size="14" font-weight="700" fill="#000000" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">文A</text>
+<path d="M1408.4333333333334,600.9481481481481 h12 m-10,0 v10 h8 v-10 m-6,-3 h4" fill="none" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="1024.4333333333334" y="634.9481481481481" width="36" height="34" rx="8" fill="#e6e6e6"/>
+<rect x="1032.4333333333334" y="641.9481481481481" width="20" height="20" rx="3" fill="#cccccc"/>
+<text x="1042.4333333333334" y="657.9481481481481" font-size="14" font-weight="700" fill="#000000" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">A</text>
+<rect x="1064.4333333333334" y="634.9481481481481" width="36" height="34" rx="8" fill="none"/>
+<text x="1082.4333333333334" y="656.9481481481481" font-size="14" font-weight="700" fill="#000000" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">A</text>
+<line x1="1075.4333333333334" y1="661.9481481481481" x2="1089.4333333333334" y2="661.9481481481481" stroke="#000000" stroke-width="1.6" stroke-linecap="round"/>
+<rect x="1104.4333333333334" y="634.9481481481481" width="36" height="34" rx="8" fill="none"/>
+<text x="1122.4333333333334" y="657.9481481481481" font-size="14" font-weight="700" fill="#000000" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">A</text>
+<line x1="1114.4333333333334" y1="651.9481481481481" x2="1130.4333333333334" y2="651.9481481481481" stroke="#000000" stroke-width="1.6" stroke-linecap="round"/>
+<rect x="1144.4333333333334" y="634.9481481481481" width="36" height="34" rx="8" fill="none"/>
+<text x="1162.4333333333334" y="656.9481481481481" font-size="14" font-weight="700" fill="#000000" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">A</text>
+<path d="M1154.4333333333334,661.9481481481481 l2,-2 l2,2 l2,-2 l2,2 l2,-2 l2,2 l2,-2" fill="none" stroke="#000000" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1196.4333333333334" y="656.9481481481481" font-size="12" font-weight="400" fill="#333333" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">How the highlight is drawn</text>
+<text x="930" y="1356" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">The selection is a grey band; the popover has hard black edges</text>
+<text x="930" y="1376" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">and grey swatches. Dictionary, Wikipedia and Translate are as usual.</text>
+<text x="1770" y="300" font-size="17" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">4.c Wide tap zones (the e-ink default)</text>
+<rect x="1770" y="320" width="760" height="1000" rx="14" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>
+<rect x="1769" y="319" width="762" height="1002" rx="15" fill="none" stroke="#000000" stroke-width="1.5"/>
+<path d="M1770,334 a14,14 0 0 1 14,-14 h732 a14,14 0 0 1 14,14 v32 h-760 z" fill="#ffffff" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="1770" y1="366" x2="2530" y2="366" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
+<path d="M1798,343 m2,-5 l-5,5 l5,5" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="1824" y="329" width="34" height="30" rx="8" fill="none"/>
+<rect x="1833" y="337" width="16" height="14" rx="3" fill="none" stroke="#000000" stroke-width="1.5"/>
+<line x1="1838" y1="337" x2="1838" y2="351" stroke="#000000" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M1877,337 h10 v14 l-5,-4 l-5,4 z" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="2150" y="341" font-size="14" font-weight="700" fill="#000000" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Moby-Dick; or, The Whale</text>
+<text x="2150" y="358" font-size="11" font-weight="400" fill="#333333" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Chapter 1</text>
+<circle cx="2296.5" cy="342.5" r="5.5" fill="none" stroke="#000000" stroke-width="1.8"/>
+<line x1="2300.5" y1="346.5" x2="2305" y2="351" stroke="#000000" stroke-width="1.8" stroke-linecap="round"/>
+<text x="2338" y="350" font-size="17" font-weight="700" fill="#000000" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">A</text>
+<path d="M2377,337 h-6 v6 M2379,351 h6 v-6" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M2379,337 h6 v6 M2377,351 h-6 v-6" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="2411" y1="339" x2="2425" y2="339" stroke="#000000" stroke-width="1.8" stroke-linecap="round"/>
+<line x1="2411" y1="344" x2="2425" y2="344" stroke="#000000" stroke-width="1.8" stroke-linecap="round"/>
+<line x1="2411" y1="349" x2="2425" y2="349" stroke="#000000" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="2504" cy="343" r="12" fill="#e6e6e6"/>
+<path d="M2500,339 l8,8 m0,-8 l-8,8" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1840" y="414.6666666666667" font-size="14.237037037037036" font-weight="700" fill="#333333" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">CHAPTER 1</text>
+<text x="1840" y="451.4074074074074" font-size="43.629629629629626" font-weight="700" fill="#000000" font-family="Noto Serif, Liberation Serif, serif">Loomings.</text>
+<text x="1840" y="532.4666666666667" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">Call me Ishmael. Some years ago—never mind how long</text>
+<text x="1840" y="570.5851851851852" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">precisely—having little or no money in my purse, and</text>
+<text x="1840" y="608.7037037037037" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">nothing particular to interest me on shore, I</text>
+<text x="1840" y="646.8222222222222" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">thought I would sail about a little and see the wa-</text>
+<text x="1840" y="684.9407407407407" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">tery part of the world. It is a way I have of driv-</text>
+<text x="1840" y="723.0592592592592" font-size="22.962962962962962" font-weight="400" fill="#000000" font-family="Noto Serif, Liberation Serif, serif">ing off the spleen and regulating the circulation.</text>
+<text x="1840" y="778.331111111111" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">Whenever I find myself growing grim about the mouth;</text>
+<text x="1840" y="816.4496296296295" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">whenever it is a damp, drizzly November in my soul;</text>
+<text x="1840" y="854.568148148148" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">whenever I find myself involuntarily pausing before</text>
+<text x="1840" y="892.6866666666665" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">coffin warehouses, and bringing up the rear of every</text>
+<text x="1840" y="930.805185185185" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">funeral I meet; and especially whenever my hypos get</text>
+<text x="1840" y="968.9237037037035" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">such an upper hand of me, that it requires a strong</text>
+<text x="1840" y="1007.042222222222" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">moral principle to prevent me from deliberately step-</text>
+<text x="1840" y="1045.1607407407405" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">ping into the street, and methodically knocking peo-</text>
+<text x="1840" y="1083.279259259259" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">ple's hats off—then, I account it high time to get to</text>
+<text x="1840" y="1121.3977777777777" font-size="22.962962962962962" font-weight="400" fill="#000000" font-family="Noto Serif, Liberation Serif, serif">sea as soon as I can.</text>
+<text x="1840" y="1176.6696296296298" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">This is my substitute for pistol and ball. With a</text>
+<text x="1840" y="1214.7881481481484" font-size="22.962962962962962" fill="#000000" textLength="620" lengthAdjust="spacing" xml:space="preserve" font-family="Noto Serif, Liberation Serif, serif">philosophical flourish Cato throws himself upon his</text>
+<line x1="1770" y1="1242" x2="2530" y2="1242" stroke="#000000" stroke-width="1" stroke-linecap="round"/>
+<path d="M1806,1268 m2,-5 l-5,5 l5,5" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M2494,1268 m-2,-5 l5,5 l-5,5" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="1834" y="1266" width="632" height="4" rx="2" fill="#000000"/>
+<rect x="1834" y="1266" width="31.6" height="4" rx="2" fill="#000000"/>
+<circle cx="1865.6" cy="1268" r="8" fill="#ffffff"/>
+<circle cx="1865.6" cy="1268" r="8" fill="none" stroke="#000000" stroke-width="1"/>
+<text x="1800" y="1306" font-size="12" font-weight="400" fill="#333333" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">9 of 180</text>
+<text x="2500" y="1306" font-size="12" font-weight="400" fill="#333333" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">Loomings  ·  3 minutes to complete</text>
+<rect x="1770" y="366" width="253.33333333333334" height="876" rx="0" fill="#000000" fill-opacity="0.08"/>
+<rect x="2023.3333333333333" y="366" width="506.6666666666667" height="876" rx="0" fill="#000000" fill-opacity="0.16"/>
+<line x1="2023.3333333333333" y1="366" x2="2023.3333333333333" y2="1242" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
+<circle cx="1896.6666666666667" cy="804" r="34" fill="#ffffff"/>
+<circle cx="1896.6666666666667" cy="804" r="34" fill="none" stroke="#000000" stroke-width="2"/>
+<path d="M1896.6666666666667,804 m2,-5 l-5,5 l5,5" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="1860.6666666666667" y="848" width="72" height="22" rx="4" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>
+<text x="1896.6666666666667" y="864" font-size="13" font-weight="700" fill="#000000" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">previous</text>
+<circle cx="2276.6666666666665" cy="804" r="34" fill="#ffffff"/>
+<circle cx="2276.6666666666665" cy="804" r="34" fill="none" stroke="#000000" stroke-width="2"/>
+<path d="M2276.6666666666665,804 m-2,-5 l5,5 l-5,5" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="2240.6666666666665" y="848" width="72" height="22" rx="4" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>
+<text x="2276.6666666666665" y="864" font-size="13" font-weight="700" fill="#000000" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">next</text>
+<text x="1770" y="1356" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Left third: previous page. Right two thirds: next page. No tap toggles</text>
+<text x="1770" y="1376" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">the bars, so nothing flashes. Other choices: Edges, Thirds, mirrored Thirds, Off.</text>
+<text x="2610" y="300" font-size="17" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">What E-ink mode changes</text>
+<rect x="2610" y="330" width="490" height="62" rx="10" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>
+<text x="2630" y="356" font-size="15" font-weight="700" fill="#000000" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">No animations</text>
+<text x="2630" y="378" font-size="12" font-weight="400" fill="#333333" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">sliding and fading are switched off</text>
+<rect x="2610" y="406" width="490" height="62" rx="10" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>
+<text x="2630" y="432" font-size="15" font-weight="700" fill="#000000" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Bars stay</text>
+<text x="2630" y="454" font-size="12" font-weight="400" fill="#333333" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">header and navigation row never fade</text>
+<rect x="2610" y="482" width="490" height="62" rx="10" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>
+<text x="2630" y="508" font-size="15" font-weight="700" fill="#000000" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Pure black on white</text>
+<text x="2630" y="530" font-size="12" font-weight="400" fill="#333333" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">text, links and accents are black</text>
+<rect x="2610" y="558" width="490" height="62" rx="10" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>
+<text x="2630" y="584" font-size="15" font-weight="700" fill="#000000" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Hyphenation + justify</text>
+<text x="2630" y="606" font-size="12" font-weight="400" fill="#333333" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">fewer ragged lines on a narrow page</text>
+<rect x="2610" y="634" width="490" height="62" rx="10" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>
+<text x="2630" y="660" font-size="15" font-weight="700" fill="#000000" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Wide tap zones</text>
+<text x="2630" y="682" font-size="12" font-weight="400" fill="#333333" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">no bar toggle on tap</text>
+<rect x="2610" y="710" width="490" height="62" rx="10" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>
+<text x="2630" y="736" font-size="15" font-weight="700" fill="#000000" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">One column</text>
+<text x="2630" y="758" font-size="12" font-weight="400" fill="#333333" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">unless two columns were chosen; scrolling becomes single column</text>
+<rect x="2610" y="786" width="490" height="62" rx="10" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>
+<text x="2630" y="812" font-size="15" font-weight="700" fill="#000000" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Hard edges</text>
+<text x="2630" y="834" font-size="12" font-weight="400" fill="#333333" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">2 px header line, 1 px button borders, no shadows</text>
+<text x="90" y="1500" font-size="17" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">4.d Large touch controls — Preferences → Large touch controls (Automatic · Always on · Off)</text>
+<rect x="90" y="1530" width="700" height="54" rx="12" fill="#ebebeb" stroke="#d6d6d6" stroke-width="1.5"/>
+<rect x="104" y="1540" width="34" height="34" rx="8" fill="#e4e4e4" stroke="#d6d6d6" stroke-width="1.5"/>
+<path d="M121,1557 m2,-5 l-5,5 l5,5" fill="none" stroke="#2e3436" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="152" y="1540" width="34" height="34" rx="8" fill="#e4e4e4" stroke="#d6d6d6" stroke-width="1.5"/>
+<rect x="161" y="1550" width="16" height="14" rx="3" fill="none" stroke="#2e3436" stroke-width="1.5"/>
+<line x1="166" y1="1550" x2="166" y2="1564" stroke="#2e3436" stroke-width="1.6" stroke-linecap="round"/>
+<rect x="200" y="1540" width="34" height="34" rx="8" fill="#e4e4e4" stroke="#d6d6d6" stroke-width="1.5"/>
+<path d="M212,1550 h10 v14 l-5,-4 l-5,4 z" fill="none" stroke="#2e3436" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="248" y="1540" width="34" height="34" rx="8" fill="#e4e4e4" stroke="#d6d6d6" stroke-width="1.5"/>
+<circle cx="263.5" cy="1555.5" r="5.5" fill="none" stroke="#2e3436" stroke-width="1.8"/>
+<line x1="267.5" y1="1559.5" x2="272" y2="1564" stroke="#2e3436" stroke-width="1.8" stroke-linecap="round"/>
+<rect x="316" y="1555" width="434" height="4" rx="2" fill="#d6d6d6"/>
+<rect x="316" y="1555" width="173.60000000000002" height="4" rx="2" fill="#3584e4"/>
+<circle cx="489.6" cy="1557" r="8" fill="#ffffff"/>
+<circle cx="489.6" cy="1557" r="8" fill="none" stroke="#d6d6d6" stroke-width="1"/>
+<text x="440" y="1608" font-size="13" font-weight="700" fill="#5e5c64" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Off — normal controls</text>
+<rect x="930" y="1530" width="700" height="64" rx="12" fill="#ebebeb" stroke="#d6d6d6" stroke-width="1.5"/>
+<rect x="944" y="1540" width="44" height="44" rx="8" fill="#e4e4e4" stroke="#d6d6d6" stroke-width="1.5"/>
+<path d="M966,1562 m2,-5 l-5,5 l5,5" fill="none" stroke="#2e3436" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="1002" y="1540" width="44" height="44" rx="8" fill="#e4e4e4" stroke="#d6d6d6" stroke-width="1.5"/>
+<rect x="1016" y="1555" width="16" height="14" rx="3" fill="none" stroke="#2e3436" stroke-width="1.5"/>
+<line x1="1021" y1="1555" x2="1021" y2="1569" stroke="#2e3436" stroke-width="1.6" stroke-linecap="round"/>
+<rect x="1060" y="1540" width="44" height="44" rx="8" fill="#e4e4e4" stroke="#d6d6d6" stroke-width="1.5"/>
+<path d="M1077,1555 h10 v14 l-5,-4 l-5,4 z" fill="none" stroke="#2e3436" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="1118" y="1540" width="44" height="44" rx="8" fill="#e4e4e4" stroke="#d6d6d6" stroke-width="1.5"/>
+<circle cx="1138.5" cy="1560.5" r="5.5" fill="none" stroke="#2e3436" stroke-width="1.8"/>
+<line x1="1142.5" y1="1564.5" x2="1147" y2="1569" stroke="#2e3436" stroke-width="1.8" stroke-linecap="round"/>
+<rect x="1196" y="1560" width="394" height="4" rx="2" fill="#d6d6d6"/>
+<rect x="1196" y="1560" width="157.60000000000002" height="4" rx="2" fill="#3584e4"/>
+<circle cx="1353.6" cy="1562" r="8" fill="#ffffff"/>
+<circle cx="1353.6" cy="1562" r="8" fill="none" stroke="#d6d6d6" stroke-width="1"/>
+<circle cx="1353.6" cy="1562" r="14" fill="#ffffff"/>
+<circle cx="1353.6" cy="1562" r="14" fill="none" stroke="#d6d6d6" stroke-width="1.5"/>
+<text x="1280" y="1618" font-size="13" font-weight="700" fill="#5e5c64" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">On — every button and row at least 44 px, bigger slider thumb</text>
+<text x="90" y="1680" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Automatic turns them on when the screen has a touch device. They combine with E-ink mode, but are independent of it.</text>
+<text x="90" y="1700" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Highlight swatches grow from 26 to 38 px; list rows are at least 48 px tall.</text>
+<text x="1600" y="1820" font-size="12" font-weight="400" fill="#77767b" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Mockups are design illustrations. Sample text: Moby-Dick (public domain).</text>
+</svg>

@@ -1,0 +1,29 @@
+[package]
+name = "bookx-formats"
+version = "0.2.0"
+authors = ["Anurag Dhadse <hello@adhadse.com>"]
+edition = "2021"
+rust-version = "1.85"
+description = "Input format readers of Bookx: FB2, HTMLZ, TXT, RTF, DOCX, ODT, CBZ/CBT, MOBI/AZW3 converted to the internal EPUB"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+bookx-core = { path = "../bookx-core" }
+bookx-pdf = { path = "../bookx-pdf" }
+anyhow = "1"
+base64 = "0.22"
+ego-tree = "0.11"
+encoding_rs = "0.8"
+flate2 = "1"
+uuid = { version = "1", features = ["v4"] }
+regex = "1"
+roxmltree = "0.21"
+scraper = "0.29"
+tar = { version = "0.4", default-features = false }
+bzip2-rs = "0.1"
+lzxd = "0.2"
+zip = { version = "9", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+lzxc = "0.2"
+bzip2 = "0.6"

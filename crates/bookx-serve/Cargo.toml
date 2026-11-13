@@ -1,0 +1,37 @@
+[package]
+name = "bookx-serve"
+version = "0.2.0"
+authors = ["Anurag Dhadse <hello@adhadse.com>"]
+edition = "2021"
+rust-version = "1.85"
+description = "Devices and servers for Bookx: USB e-reader driver, OPDS server/client, KOSync server, send by email"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+bookx-core = { path = "../bookx-core" }
+anyhow = "1"
+base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
+md5 = "0.7"
+percent-encoding = "2"
+roxmltree = "0.21"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = "2"
+uuid = { version = "1", features = ["v4", "v5"] }
+hyper = { version = "1", default-features = false, features = ["http1", "server"] }
+hyper-util = { version = "0.1", default-features = false, features = ["tokio"] }
+http-body-util = { version = "0.1.5", default-features = false }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+tokio = { version = "1.54.1", default-features = false, features = ["rt-multi-thread", "net", "time", "sync", "io-util", "macros"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-pki-types = { version = "1", features = ["std"] }
+rcgen = { version = "0.14", default-features = false, features = ["ring", "pem"] }
+rusqlite = { version = "0.42", features = ["bundled"] }
+webpki-roots = "1"
+nix = { version = "0.31", default-features = false, features = ["fs", "user"] }
+lettre = { version = "0.11", default-features = false, features = ["builder", "rustls-tls", "smtp-transport"] }
+
+[dev-dependencies]
+mail-parser = "0.11.9"
+roxmltree = "0.21"

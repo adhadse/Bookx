@@ -1,0 +1,25 @@
+[package]
+name = "bookx-core"
+version = "0.2.0"
+authors = ["Anurag Dhadse <hello@adhadse.com>"]
+edition = "2021"
+rust-version = "1.85"
+description = "GUI-independent engine of Bookx: EPUB parsing/editing, conversion, library catalogue"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+anyhow = "1"
+bookx-text = { path = "../bookx-text" }
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1"
+roxmltree = "0.21"
+scraper = "0.29"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
+uuid = { version = "1", features = ["v4"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+chrono = "0.4"
+uuid = { version = "1", features = ["v4"] }

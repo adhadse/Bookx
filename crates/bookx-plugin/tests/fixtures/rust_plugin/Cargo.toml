@@ -1,0 +1,18 @@
+[package]
+name = "bookx-test-rust-plugin"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+
+[profile.release]
+opt-level = "s"
+lto = true
+panic = "abort"
+
+# not a member of the Bookx workspace: built on demand by tests/rust_plugin.rs
+[workspace]

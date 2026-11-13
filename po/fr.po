@@ -1,0 +1,583 @@
+# French translation of Bookx.
+# Starting file: the most visible strings only.
+# Machine-assisted translation: needs review by a native speaker before it is treated as final.
+msgid ""
+msgstr ""
+"Project-Id-Version: Bookx\n"
+"Language: fr\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "About Bookx"
+msgstr "À propos de Bookx"
+
+msgid "Add"
+msgstr "Ajouter"
+
+msgid "Add Books"
+msgstr "Ajouter des livres"
+
+msgid "Add Folder"
+msgstr "Ajouter un dossier"
+
+msgid "Add a note"
+msgstr "Ajouter une note"
+
+msgid "Add bookmark (Ctrl+B)"
+msgstr "Ajouter un marque-page (Ctrl+B)"
+
+msgid "Add from the Web"
+msgstr "Ajouter depuis le Web"
+
+msgid "Added"
+msgstr "Ajouté"
+
+msgid "Added {}"
+msgstr "{} ajouté"
+
+msgid "Address"
+msgstr "Adresse"
+
+msgid "Annotations"
+msgstr "Annotations"
+
+msgid "Appearance"
+msgstr "Apparence"
+
+msgid "Apply"
+msgstr "Appliquer"
+
+msgid "Audiobooks"
+msgstr "Livres audio"
+
+msgid "Authors"
+msgstr "Auteurs"
+
+msgid "Back"
+msgstr "Retour"
+
+msgid "Back up now"
+msgstr "Sauvegarder maintenant"
+
+msgid "Backups"
+msgstr "Sauvegardes"
+
+msgid "Book"
+msgstr "Livre"
+
+msgid "Book saved"
+msgstr "Livre enregistré"
+
+msgid "Bookmarks and Highlights"
+msgstr "Marque-pages et surlignages"
+
+msgid "Books"
+msgstr "Livres"
+
+msgid "Cancel"
+msgstr "Annuler"
+
+msgid "Cannot open that file: {}"
+msgstr "Impossible d'ouvrir ce fichier : {}"
+
+msgid "Check Book"
+msgstr "Vérifier le livre"
+
+msgid "Check library"
+msgstr "Vérifier la bibliothèque"
+
+msgid "Checking…"
+msgstr "Vérification…"
+
+msgid "Close"
+msgstr "Fermer"
+
+msgid "Command Palette"
+msgstr "Palette de commandes"
+
+msgid "Command palette"
+msgstr "Palette de commandes"
+
+msgid "Comments"
+msgstr "Commentaires"
+
+msgid "Connect"
+msgstr "Se connecter"
+
+msgid "Connected"
+msgstr "Connecté"
+
+msgid "Connecting…"
+msgstr "Connexion…"
+
+msgid "Contents"
+msgstr "Sommaire"
+
+msgid "Continue"
+msgstr "Continuer"
+
+msgid "Convert To"
+msgstr "Convertir en"
+
+msgid "Copy"
+msgstr "Copier"
+
+msgid "Copy Diagnostics"
+msgstr "Copier les informations de diagnostic"
+
+msgid "Could not open the book: {}"
+msgstr "Impossible d'ouvrir le livre : {}"
+
+msgid "Could not save: {}"
+msgstr "Impossible d'enregistrer : {}"
+
+msgid "Could not send: {}"
+msgstr "Impossible d'envoyer : {}"
+
+msgid "Cover size"
+msgstr "Taille des couvertures"
+
+msgid "Covers"
+msgstr "Couvertures"
+
+msgid "Delete"
+msgstr "Supprimer"
+
+msgid "Deleted {}"
+msgstr "{} supprimé"
+
+msgid "Details"
+msgstr "Détails"
+
+msgid "Device"
+msgstr "Appareil"
+
+msgid "Devices"
+msgstr "Appareils"
+
+msgid "Devices and Sharing"
+msgstr "Appareils et partage"
+
+msgid "Dictionary to add the word to"
+msgstr "Dictionnaire où ajouter le mot"
+
+msgid "Download"
+msgstr "Télécharger"
+
+msgid "E-ink mode"
+msgstr "Mode e-ink"
+
+msgid "E-mail"
+msgstr "E-mail"
+
+msgid "Edit"
+msgstr "Modifier"
+
+msgid "Edit Metadata"
+msgstr "Modifier les métadonnées"
+
+msgid "Editor"
+msgstr "Éditeur"
+
+msgid "Empty Trash"
+msgstr "Vider la corbeille"
+
+msgid "Export"
+msgstr "Exporter"
+
+msgid "Export Annotations"
+msgstr "Exporter les annotations"
+
+msgid "Exported to {}"
+msgstr "Exporté vers {}"
+
+msgid "Extensions"
+msgstr "Extensions"
+
+msgid "Failed: {}"
+msgstr "Échec : {}"
+
+msgid "Fetch Metadata"
+msgstr "Récupérer les métadonnées"
+
+msgid "File"
+msgstr "Fichier"
+
+msgid "Files"
+msgstr "Fichiers"
+
+msgid "Find"
+msgstr "Rechercher"
+
+msgid "Find Duplicates"
+msgstr "Rechercher les doublons"
+
+msgid "Find and Replace"
+msgstr "Rechercher et remplacer"
+
+msgid "Folder"
+msgstr "Dossier"
+
+msgid "Font family"
+msgstr "Famille de police"
+
+msgid "Font size (pt)"
+msgstr "Taille de police (pt)"
+
+msgid "Format"
+msgstr "Format"
+
+msgid "Formats"
+msgstr "Formats"
+
+msgid "Fullscreen"
+msgstr "Plein écran"
+
+msgid "General"
+msgstr "Général"
+
+msgid "Go to page"
+msgstr "Aller à la page"
+
+msgid "Highlight, add a note, copy"
+msgstr "Surligner, ajouter une note, copier"
+
+msgid "History"
+msgstr "Historique"
+
+msgid "Hyphenate words"
+msgstr "Couper les mots avec des traits d'union"
+
+msgid "Identifiers"
+msgstr "Identifiants"
+
+msgid "Images"
+msgstr "Images"
+
+msgid "Import"
+msgstr "Importer"
+
+msgid "Import Calibre Library"
+msgstr "Importer une bibliothèque Calibre"
+
+msgid "Importing…"
+msgstr "Importation…"
+
+msgid "Interface language"
+msgstr "Langue de l'interface"
+
+msgid "Justify text"
+msgstr "Justifier le texte"
+
+msgid "Keep this checkpoint when old ones are removed"
+msgstr "Conserver ce point de contrôle quand les anciens sont retirés"
+
+msgid "Keyboard Shortcuts"
+msgstr "Raccourcis clavier"
+
+msgid "Language"
+msgstr "Langue"
+
+msgid "Large touch controls"
+msgstr "Grands contrôles tactiles"
+
+msgid "Larger text"
+msgstr "Texte plus grand"
+
+msgid "Last read"
+msgstr "Dernière lecture"
+
+msgid "Layout"
+msgstr "Mise en page"
+
+msgid "Layout: Continuous Scroll"
+msgstr "Mise en page : défilement continu"
+
+msgid "Layout: Single Column"
+msgstr "Mise en page : une colonne"
+
+msgid "Layout: Two Columns"
+msgstr "Mise en page : deux colonnes"
+
+msgid "Library"
+msgstr "Bibliothèque"
+
+msgid "Library Health"
+msgstr "État de la bibliothèque"
+
+msgid "Look up in a dictionary"
+msgstr "Chercher dans un dictionnaire"
+
+msgid "Look up on Wikipedia"
+msgstr "Chercher sur Wikipédia"
+
+msgid "Main menu"
+msgstr "Menu principal"
+
+msgid "Name"
+msgstr "Nom"
+
+msgid "News Subscriptions"
+msgstr "Abonnements aux actualités"
+
+msgid "Next page"
+msgstr "Page suivante"
+
+msgid "No Results"
+msgstr "Aucun résultat"
+
+msgid "No book matches your search"
+msgstr "Aucun livre ne correspond à votre recherche"
+
+msgid "No dictionaries installed"
+msgstr "Aucun dictionnaire installé"
+
+msgid "None"
+msgstr "Aucun"
+
+msgid "Note"
+msgstr "Note"
+
+msgid "Notes & Highlights"
+msgstr "Notes et surlignages"
+
+msgid "Nothing to undo"
+msgstr "Rien à annuler"
+
+msgid "Nothing yet"
+msgstr "Rien pour l'instant"
+
+msgid "Online Catalogues"
+msgstr "Catalogues en ligne"
+
+msgid "Open"
+msgstr "Ouvrir"
+
+msgid "Open Library Folder"
+msgstr "Ouvrir le dossier de la bibliothèque"
+
+msgid "Opening…"
+msgstr "Ouverture…"
+
+msgid "Page"
+msgstr "Page"
+
+msgid "Password"
+msgstr "Mot de passe"
+
+msgid "Patches"
+msgstr "Correctifs"
+
+msgid "Pause"
+msgstr "Pause"
+
+msgid "Play"
+msgstr "Lire"
+
+msgid "Port"
+msgstr "Port"
+
+msgid "Preferences"
+msgstr "Préférences"
+
+msgid "Previous page"
+msgstr "Page précédente"
+
+msgid "Published"
+msgstr "Publié"
+
+msgid "Publisher"
+msgstr "Éditeur"
+
+msgid "Rating"
+msgstr "Note"
+
+msgid "Read aloud"
+msgstr "Lecture à voix haute"
+
+msgid "Reader"
+msgstr "Lecteur"
+
+msgid "Reading"
+msgstr "Lecture"
+
+msgid "Reading Statistics"
+msgstr "Statistiques de lecture"
+
+msgid "Redo"
+msgstr "Rétablir"
+
+msgid "Reload"
+msgstr "Recharger"
+
+msgid "Remove"
+msgstr "Retirer"
+
+msgid "Remove bookmark"
+msgstr "Retirer le marque-page"
+
+msgid "Rename"
+msgstr "Renommer"
+
+msgid "Replace"
+msgstr "Remplacer"
+
+msgid "Replace All"
+msgstr "Tout remplacer"
+
+msgid "Restore"
+msgstr "Restaurer"
+
+msgid "Restore from a backup"
+msgstr "Restaurer depuis une sauvegarde"
+
+msgid "Save"
+msgstr "Enregistrer"
+
+msgid "Saved Searches"
+msgstr "Recherches enregistrées"
+
+msgid "Search"
+msgstr "Rechercher"
+
+msgid "Search in book"
+msgstr "Rechercher dans le livre"
+
+msgid "Searching…"
+msgstr "Recherche…"
+
+msgid "Select All"
+msgstr "Tout sélectionner"
+
+msgid "Send by E-mail"
+msgstr "Envoyer par e-mail"
+
+msgid "Send to Device"
+msgstr "Envoyer vers l'appareil"
+
+msgid "Series"
+msgstr "Série"
+
+msgid "Share Library"
+msgstr "Partager la bibliothèque"
+
+msgid "Share this library"
+msgstr "Partager cette bibliothèque"
+
+msgid "Shelves"
+msgstr "Étagères"
+
+msgid "Show"
+msgstr "Afficher"
+
+msgid "Sidebar"
+msgstr "Barre latérale"
+
+msgid "Smaller text"
+msgstr "Texte plus petit"
+
+msgid "Smart shelf"
+msgstr "Étagère intelligente"
+
+msgid "Speed"
+msgstr "Vitesse"
+
+msgid "Stop"
+msgstr "Arrêter"
+
+msgid "Sync"
+msgstr "Synchronisation"
+
+msgid "System language"
+msgstr "Langue du système"
+
+msgid "Tags"
+msgstr "Étiquettes"
+
+msgid "Test"
+msgstr "Tester"
+
+msgid "Text to Speech"
+msgstr "Synthèse vocale"
+
+msgid "Theme: Dark"
+msgstr "Thème : sombre"
+
+msgid "Theme: Light"
+msgstr "Thème : clair"
+
+msgid "Theme: Sepia"
+msgstr "Thème : sépia"
+
+msgid "Title"
+msgstr "Titre"
+
+msgid "Translate"
+msgstr "Traduire"
+
+msgid "Trash"
+msgstr "Corbeille"
+
+msgid "Type a command, book or setting"
+msgstr "Saisissez une commande, un livre ou un réglage"
+
+msgid "Undo"
+msgstr "Annuler"
+
+msgid "User name"
+msgstr "Nom d'utilisateur"
+
+msgid "Vocabulary"
+msgstr "Vocabulaire"
+
+msgid "Voice"
+msgstr "Voix"
+
+msgid "Waiting books"
+msgstr "Livres en attente"
+
+msgid "Welcome to Bookx"
+msgstr "Bienvenue dans Bookx"
+
+msgid "{} backup"
+msgid_plural "{} backups"
+msgstr[0] "{} sauvegarde"
+msgstr[1] "{} sauvegardes"
+
+msgid "{} book"
+msgid_plural "{} books"
+msgstr[0] "{} livre"
+msgstr[1] "{} livres"
+
+msgid "{} day"
+msgid_plural "{} days"
+msgstr[0] "{} jour"
+msgstr[1] "{} jours"
+
+msgid "{} file"
+msgid_plural "{} files"
+msgstr[0] "{} fichier"
+msgstr[1] "{} fichiers"
+
+msgid "{} highlight"
+msgid_plural "{} highlights"
+msgstr[0] "{} surlignage"
+msgstr[1] "{} surlignages"
+
+msgid "{} match"
+msgid_plural "{} matches"
+msgstr[0] "{} résultat"
+msgstr[1] "{} résultats"
+
+msgid "{} note"
+msgid_plural "{} notes"
+msgstr[0] "{} note"
+msgstr[1] "{} notes"
+
+msgid "{} problem"
+msgid_plural "{} problems"
+msgstr[0] "{} problème"
+msgstr[1] "{} problèmes"
+
+msgid "Sync scrolling both ways: scrolling the preview also scrolls the code (the code always moves the preview)"
+msgstr "Défilement synchronisé dans les deux sens : faire défiler l'aperçu fait aussi défiler le code (le code déplace toujours l'aperçu)"

@@ -1,0 +1,303 @@
+/* A libadwaita-like look: Cantarell where installed, the GNOME blue, soft corners. */
+:root {
+  --md-text-font: "Cantarell", "Adwaita Sans", "Inter", system-ui, sans-serif;
+  --md-code-font: "Adwaita Mono", "Source Code Pro", "JetBrains Mono", ui-monospace, monospace;
+}
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #ffffff;
+  --md-primary-bg-color: #2e3436;
+  --md-default-bg-color: #fafafb;
+  --md-accent-fg-color: #1c71d8;
+  --md-typeset-a-color: #1c71d8;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-hue: 220;
+  --md-primary-fg-color: #303030;
+  --md-primary-bg-color: #ffffff;
+  --md-default-bg-color: #242424;
+  --md-default-fg-color: #ffffff;
+  --md-accent-fg-color: #78aeed;
+  --md-typeset-a-color: #78aeed;
+}
+
+.md-header,
+.md-tabs {
+  box-shadow: none;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.md-typeset img,
+.md-typeset table:not([class]),
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 12px;
+}
+
+.md-typeset img {
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25);
+}
+
+.md-typeset .logo-hero {
+  box-shadow: none;
+  width: 96px;
+}
+
+.md-typeset .shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 0.8rem;
+}
+
+.md-typeset figure figcaption {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+/* ---- screenshots: light and dark variants, the window shadow is part of the picture ---- */
+img.only-light,
+img.only-dark {
+  height: auto;
+}
+
+[data-md-color-scheme="slate"] img.only-light,
+[data-md-color-scheme="default"] img.only-dark {
+  display: none;
+}
+
+.md-typeset img[src*="-light."],
+.md-typeset img[src*="-dark."],
+.md-typeset img.shot {
+  box-shadow: none;
+  border-radius: 0;
+  height: auto;
+}
+
+/* ---- landing page ---- */
+.md-content__button {
+  display: none;
+}
+
+.md-typeset .home .headerlink {
+  display: none;
+}
+
+.hero {
+  text-align: center;
+  padding: 3rem 0 0;
+}
+
+.hero .hero-logo {
+  width: 84px;
+  height: 84px;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.md-typeset .hero h1.hero-title {
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0.6rem auto 0.8rem;
+  max-width: 18ch;
+  color: var(--md-default-fg-color);
+}
+
+.hero .hero-lead {
+  font-size: clamp(1rem, 2.2vw, 1.25rem);
+  max-width: 40rem;
+  margin: 0 auto 1.4rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.hero .hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+}
+
+.hero .hero-actions .md-button {
+  margin: 0;
+  border-radius: 999px;
+  padding: 0.55em 1.5em;
+  font-weight: 600;
+}
+
+.hero .hero-note {
+  font-size: 0.75rem;
+  color: var(--md-default-fg-color--light);
+  margin-top: 0.9rem;
+}
+
+.hero-shot {
+  margin: 1.2rem auto 0;
+  max-width: 62rem;
+}
+
+.hero-shot img {
+  width: 100%;
+  height: auto;
+}
+
+.feature {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 2rem;
+  align-items: center;
+  margin: 3.5rem 0;
+}
+
+.feature.reverse {
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+}
+
+.feature.reverse > .feature-text {
+  order: 2;
+}
+
+.feature .md-button {
+  border-radius: 999px;
+  font-size: 0.7rem;
+  padding: 0.4em 1.2em;
+  margin-top: 0.4rem;
+}
+
+.feature .feature-text p,
+.feature .feature-text ul {
+  color: var(--md-default-fg-color--light);
+}
+
+.feature .feature-text h2 {
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.5rem;
+}
+
+.feature .feature-text .eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--md-accent-fg-color);
+  margin: 0;
+}
+
+.feature .feature-shot img {
+  width: 100%;
+  height: auto;
+  margin: -1.5rem 0;
+}
+
+.md-typeset .home .section-title {
+  text-align: center;
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 4rem 0 0.4rem;
+}
+
+.md-typeset .home .section-lead {
+  text-align: center;
+  color: var(--md-default-fg-color--light);
+  max-width: 38rem;
+  margin: 0 auto 1.6rem;
+}
+
+.md-typeset .home .grid.cards > ul > li {
+  border-radius: 14px;
+}
+
+.md-typeset .home .grid.cards .twemoji {
+  color: var(--md-accent-fg-color);
+}
+
+.formats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+  max-width: 46rem;
+  margin: 0 auto;
+}
+
+.formats span {
+  font-family: var(--md-code-font);
+  font-size: 0.78rem;
+  padding: 0.2em 0.8em;
+  border-radius: 999px;
+  background: var(--md-code-bg-color);
+}
+
+.formats-note {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color--light);
+  margin-top: 0.8rem;
+}
+
+.cta {
+  text-align: center;
+  margin: 4rem 0 2rem;
+  padding: 2.5rem 1rem;
+  border-radius: 18px;
+  background: var(--md-code-bg-color);
+}
+
+.cta .md-button {
+  border-radius: 999px;
+}
+
+@media (max-width: 52em) {
+  .feature {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+    margin: 2.5rem 0;
+  }
+
+  .feature.reverse {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .feature.reverse > .feature-text {
+    order: 0;
+  }
+
+  .feature .feature-shot img {
+    margin: -0.6rem 0;
+  }
+
+  .hero {
+    padding-top: 1.5rem;
+  }
+}
+
+/* buttons: the GNOME blue on both palettes (the theme's primary colour is white or dark grey here) */
+.md-typeset .md-button {
+  color: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+}
+
+.md-typeset .md-button:hover,
+.md-typeset .md-button:focus {
+  color: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+  background: var(--md-accent-fg-color--transparent);
+}
+
+.md-typeset .md-button--primary,
+.md-typeset .md-button--primary:hover,
+.md-typeset .md-button--primary:focus {
+  color: #ffffff;
+  background: #3584e4;
+  border-color: #3584e4;
+}
+
+.md-typeset .md-button--primary:hover,
+.md-typeset .md-button--primary:focus {
+  background: #1c71d8;
+  border-color: #1c71d8;
+}

@@ -1,0 +1,219 @@
+/* ---- library -------------------------------------------------------- */
+.book-grid { padding: 6px 12px 24px 12px; }
+.book-grid > child { border-radius: 12px; padding: 0; }
+
+.book-cover {
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.35), 0 4px 10px rgba(0,0,0,.18);
+}
+.details-cover { border-radius: 6px; }
+.cover-title { color: white; font-weight: 700; font-size: 11pt; }
+.cover-0 { background: linear-gradient(160deg, #3584e4, #1c4f94); }
+.cover-1 { background: linear-gradient(160deg, #e66100, #a34100); }
+.cover-2 { background: linear-gradient(160deg, #26a269, #17633f); }
+.cover-3 { background: linear-gradient(160deg, #9141ac, #5b2670); }
+.cover-4 { background: linear-gradient(160deg, #c64600, #7a2b00); }
+.cover-5 { background: linear-gradient(160deg, #1a5fb4, #0f3667); }
+.cover-6 { background: linear-gradient(160deg, #a51d2d, #67121c); }
+.cover-7 { background: linear-gradient(160deg, #5e5c64, #34333a); }
+
+.cover-done {
+  background: @accent_bg_color; color: @accent_fg_color;
+  border-radius: 99px; padding: 3px;
+}
+.rating { color: #f5c211; letter-spacing: 2px; font-size: 14pt; }
+
+
+statuspage.compact > scrolledwindow > viewport > clamp > box { margin: 12px; }
+
+/* ---- reader --------------------------------------------------------- */
+.reader-page.reader-light headerbar, .reader-page.reader-light .reader-bottom,
+.reader-page.reader-light toolbarview { background: #ffffff; color: #1c1c1e; }
+.reader-page.reader-sepia headerbar, .reader-page.reader-sepia .reader-bottom,
+.reader-page.reader-sepia toolbarview { background: #f4ecd8; color: #433522; }
+.reader-page.reader-dark headerbar, .reader-page.reader-dark .reader-bottom,
+.reader-page.reader-dark toolbarview { background: #1e1e21; color: #d4d4d2; }
+.reader-page.reader-black headerbar, .reader-page.reader-black .reader-bottom,
+.reader-page.reader-black toolbarview { background: #000000; color: #cccccc; }
+.reader-page headerbar { box-shadow: none; border-bottom: 1px solid alpha(currentColor, .08); }
+.reader-page .reader-bottom { border-top: 1px solid alpha(currentColor, .06); padding-top: 4px; }
+.reader-page splitview-sidebar, .reader-page .sidebar-pane { background: @sidebar_bg_color; color: @sidebar_fg_color; }
+/* the reader's sidebar uses the colours of the app (light or dark as the desktop is), whatever the reading theme */
+.reader-page .reader-side { background-color: @window_bg_color; color: @window_fg_color; }
+.reader-side .side-style.active { box-shadow: inset 0 0 0 2px @accent_bg_color; }
+window.eink .reader-page .reader-side { background-color: #ffffff; color: #000000; }
+
+.reader-slider trough { min-height: 4px; }
+
+.theme-swatch { min-width: 36px; min-height: 36px; padding: 0; border-radius: 99px; border: 2px solid alpha(currentColor, .2); }
+.theme-swatch:checked { border-color: @accent_bg_color; box-shadow: 0 0 0 1px @accent_bg_color; }
+.swatch-light { background: #ffffff; }
+.swatch-sepia { background: #f4ecd8; }
+.swatch-dark { background: #1e1e21; }
+.swatch-black { background: #000000; }
+.swatch-auto { background: linear-gradient(135deg, #ffffff 50%, #1e1e21 50%); }
+
+.hl-swatch { min-width: 26px; min-height: 26px; padding: 0; margin: 0 2px; border-radius: 50%; border: 2px solid alpha(white, .0); }
+.hl-swatch:hover { border-color: alpha(currentColor, .4); }
+.hl-yellow { background: #ffd91f; } .hl-purple { background: #b873f2; }
+.hl-blue { background: #408cff; }   .hl-red { background: #ff6152; }
+.hl-green { background: #33cc6b; }
+.hl-dot-yellow { background: #ffd91f; border-radius: 3px; } .hl-dot-purple { background: #b873f2; border-radius: 3px; }
+.hl-dot-blue { background: #408cff; border-radius: 3px; }   .hl-dot-red { background: #ff6152; border-radius: 3px; }
+.hl-dot-green { background: #33cc6b; border-radius: 3px; }
+.selection-popover > contents { padding: 6px; border-radius: 12px; }
+
+/* ---- editor --------------------------------------------------------- */
+.code-view { font-family: "JetBrains Mono", "Source Code Pro", "Cascadia Mono", monospace; font-size: 11pt; }
+.issue-error { color: @error_color; }
+.issue-warning { color: @warning_color; }
+.issue-info { color: @accent_color; }
+.editor-status { font-size: 9pt; padding: 3px 10px; }
+
+/* ---- reader: chrome that merges into the page ----------------------- */
+.reader-page headerbar button,
+.reader-page headerbar windowcontrols,
+.reader-page .reader-nav { transition: opacity 600ms ease; }
+.reader-page.chrome-idle headerbar button,
+.reader-page.chrome-idle headerbar windowcontrols,
+.reader-page.chrome-idle .reader-nav { opacity: 0; }
+.reader-page.chrome-idle headerbar { border-bottom-color: transparent; }
+.reader-page.chrome-idle .reader-bottom { border-top-color: transparent; }
+/* Reader focus while read aloud or speed reading plays: nothing of the bars is left, not even the title and the status line */
+.reader-page.chrome-idle.chrome-playing headerbar,
+.reader-page.chrome-idle.chrome-playing .reader-bottom { opacity: 0; transition: opacity 400ms ease; }
+.hl-swatch.active { border-color: currentColor; box-shadow: 0 0 0 2px alpha(currentColor, .25); }
+button.menu-item { padding: 6px 10px; border-radius: 8px; }
+
+/* ---- clean library ---------------------------------------------------- */
+.continue-banner {
+  background-image: linear-gradient(135deg, #f3dd8c, #e8c961);
+  color: #2e3436;
+  border: none;
+  border-radius: 18px;
+  padding: 10px 18px;
+  box-shadow: 0 2px 8px alpha(black, .16);
+}
+window.eink .continue-banner { background-image: none; background: #ffffff; color: #000000; border: 2px solid #000000; box-shadow: none; }
+.continue-banner button.banner-continue { background: #2e3436; color: #ffffff; box-shadow: none; }
+.continue-banner button.banner-secondary { background: alpha(#2e3436, .12); color: #2e3436; box-shadow: none; }
+.continue-banner .banner-kicker { color: alpha(#2e3436, .7); }
+.continue-banner .banner-author { color: alpha(#2e3436, .75); }
+.continue-banner .banner-done { color: alpha(#2e3436, .7); }
+.continue-banner .banner-bar trough { background: alpha(#2e3436, .2); min-height: 3px; }
+.continue-banner .banner-bar progress { background: #2e3436; min-height: 3px; }
+.cover-progress trough { min-height: 4px; background: alpha(currentColor, .15); border-radius: 2px; }
+.cover-progress progress { min-height: 4px; border-radius: 2px; background: @accent_bg_color; }
+.cover-pct { opacity: .7; }
+
+/* ---- touch screens: larger targets ------------------------------------ */
+window.touch button:not(.hl-swatch):not(.flat-label) { min-height: 44px; min-width: 44px; }
+window.touch .hl-swatch { min-width: 38px; min-height: 38px; }
+window.touch row, window.touch .navigation-sidebar row { min-height: 48px; }
+window.touch scale slider { min-width: 28px; min-height: 28px; }
+
+/* ---- e-ink mode: no motion, hard edges, pure black on white ------------- */
+window.eink * { transition: none; animation: none; box-shadow: none; text-shadow: none; }
+window.eink .reader-page headerbar, window.eink .reader-page .reader-bottom,
+window.eink .reader-page toolbarview { background: #ffffff; color: #000000; }
+window.eink headerbar { border-bottom: 2px solid #000000; }
+window.eink button { border: 1px solid #000000; }
+window.eink .dim-label, window.eink .caption { opacity: 1; color: #333333; }
+
+/* ---- device: header button, connect banner, covers --------------------- */
+.device-banner {
+  background: alpha(@accent_bg_color, .16);
+  padding: 8px 14px;
+  border-bottom: 1px solid alpha(@accent_bg_color, .35);
+}
+.device-cover { border-radius: 4px; box-shadow: 0 1px 3px alpha(black, .25); }
+/* the browse and details panels sit under the one header bar */
+.sidebar-pane { background: transparent; }
+
+/* ---- device window lists: rows and tiles that toggle on a click ---------- */
+.pick-selected { background: alpha(@accent_bg_color, .22); }
+.pick-tile { border-radius: 10px; }
+.pick-row { transition: background 100ms; }
+
+/* ---- accessibility: a visible focus ring on the reading canvas, a key hint look ---------- */
+.book-canvas:focus-visible {
+  outline: 2px solid @accent_color;
+  outline-offset: -4px;
+}
+.keycap {
+  padding: 1px 6px;
+  border-radius: 5px;
+  border: 1px solid alpha(currentColor, .3);
+  background: alpha(currentColor, .06);
+}
+
+/* Preferences: rows that match the search */
+row.pref-hit { background-color: alpha(@accent_bg_color, 0.14); }
+
+/* ---- read-aloud player card (floats over the bottom of the page) ----------------------- */
+.tts-player { padding: 6px 10px; border-radius: 16px; background: @popover_bg_color; box-shadow: 0 2px 12px alpha(black, .25); }
+.tts-player.mini { padding: 4px 8px; }
+.tts-player .tts-cover { border-radius: 6px; }
+.tts-player .tts-play { min-width: 40px; min-height: 40px; }
+.tts-player .tts-speed { font-feature-settings: "tnum"; }
+window.eink .tts-player { background: #ffffff; color: #000000; border: 2px solid #000000; box-shadow: none; }
+
+/* the book map's preview card: solid, never see-through, in the window's own colours */
+.book-map { background-color: @window_bg_color; color: @window_fg_color; }
+.book-map .map-preview { background-color: @popover_bg_color; color: @popover_fg_color; }
+.map-preview { background-color: @popover_bg_color; color: @popover_fg_color; border: 1px solid alpha(currentColor, .22); border-radius: 12px; padding: 10px 12px; box-shadow: 0 3px 12px alpha(black, .35), 0 0 0 1px alpha(black, .06); }
+window.eink .map-preview { background-color: #ffffff; color: #000000; border: 2px solid #000000; box-shadow: none; }
+
+/* ---- library window: sidebar like Files (compact rows, hover actions) --------------------- */
+.bookx-sidebar list.navigation-sidebar { padding: 0 6px; }
+.bookx-sidebar row { min-height: 36px; border-radius: 8px; margin: 1px 0; }
+.bookx-sidebar row.expander { margin: 0; }
+.bookx-sidebar row.expander > box > box.header, .bookx-sidebar row.expander > box > list > row { min-height: 36px; }
+.bookx-sidebar row .title { font-weight: normal; font-size: .95em; }
+.bookx-sidebar row.expander > box > box.header .title { font-size: .85em; font-weight: 700; opacity: .75; }
+.bookx-sidebar row.placeholder-row { opacity: .6; min-height: 30px; }
+.bookx-sidebar .row-actions { opacity: 0; min-width: 28px; min-height: 28px; padding: 0; }
+.bookx-sidebar row:hover .row-actions, .bookx-sidebar row:focus-within .row-actions,
+.bookx-sidebar .row-actions:focus-visible, .bookx-sidebar .row-actions:checked { opacity: 1; }
+window.touch .bookx-sidebar .row-actions { opacity: 1; }
+.bookx-sidebar scrolledwindow { background: transparent; }
+
+/* ---- highlight cards (reader sidebar and library Notes & Highlights) ------------------------ */
+.note-card { padding: 4px 2px; }
+.note-quote { font-size: 1em; }
+.note-block {
+  background: alpha(@accent_bg_color, .13);
+  border-left: 3px solid @accent_bg_color;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.note-block-title { color: @accent_color; }
+.note-text { font-size: 1.06em; font-weight: normal; }
+.note-meta { font-size: 12px; opacity: .72; }
+.note-row { background: @card_bg_color; color: @card_fg_color; border-radius: 12px; margin: 4px 0; padding: 10px 14px;
+  box-shadow: 0 0 0 1px alpha(currentColor, .08); }
+.note-row:hover { background: mix(@card_bg_color, @accent_bg_color, .06); }
+.notes-view list { background: transparent; }
+.notes-filters dropdown, .notes-filters menubutton > button { min-height: 32px; }
+
+/* ---- Notes & Highlights: compact cards in a responsive grid ----------------------------------- */
+.note-card.compact .note-block { padding: 3px 8px; border-radius: 6px; }
+.note-card.compact .note-block-title { font-size: 11px; }
+.note-card.compact menubutton > button { min-height: 24px; min-width: 24px; padding: 0; }
+.note-row { padding: 6px 8px; border-radius: 10px; margin: 0; }
+.notes-section { opacity: .65; letter-spacing: .04em; }
+.notes-badge { background: @accent_bg_color; color: @accent_fg_color; border-radius: 99px; padding: 0 6px; font-size: 11px; font-weight: 700; min-width: 14px; }
+.notes-chip { padding: 2px 10px; min-height: 24px; font-size: 12px; }
+.note-card.compact .note-meta { font-size: 12px; }
+.note-row { padding: 4px 8px; }
+
+/* ---- favourites: the star on a cover, the toggle of the details panel, the rating stars ------------- */
+.fav-badge { min-width: 24px; min-height: 24px; padding: 0; border-radius: 99px; background: alpha(black, .55); color: #ffd23f;
+  box-shadow: 0 1px 3px alpha(black, .4); border: 1px solid alpha(white, .25); }
+.fav-badge:hover { background: alpha(black, .75); }
+window.eink .fav-badge { background: #ffffff; color: #000000; border: 2px solid #000000; }
+.fav-toggle:checked { background: alpha(#ffd23f, .3); color: #b38600; }
+.rating-stars button { min-width: 26px; min-height: 26px; padding: 0; }
+.rating-stars button.rated { color: #e5a50a; }
+.rating-stars:focus-visible { outline: 2px solid @accent_color; outline-offset: 2px; border-radius: 8px; }
+.tag-chip { padding: 2px 10px; min-height: 24px; font-size: 12px; }

@@ -1,0 +1,118 @@
+[project]
+site_name = "Bookx"
+site_url = "https://bookx.adhadse.com/"
+site_description = "Bookx is an e-book library, reader and editor for GNOME, written in Rust."
+site_author = "Anurag Dhadse"
+docs_dir = "docs"
+site_dir = "site"
+copyright = 'Copyright © 2026 Anurag Dhadse. Bookx is licensed under the GPL-3.0-or-later.'
+repo_url = "https://github.com/adhadse/Bookx"
+repo_name = "adhadse/Bookx"
+edit_uri = "edit/main/wiki/docs/"
+extra_css = ["assets/extra.css"]
+
+nav = [
+  { "Home" = "index.md" },
+  { "Start" = [
+    "install.md",
+    "getting-started.md",
+  ] },
+  { "Use" = [
+    "library.md",
+    "backup-and-restore.md",
+    "reading.md",
+    "read-aloud.md",
+    "editing.md",
+    "search-and-replace.md",
+    "converting.md",
+    "annotations.md",
+    "progress-sync.md",
+    "devices-and-sharing.md",
+    "news-and-web.md",
+  ] },
+  { "Extend" = [
+    "plugins-and-patches.md",
+    "plugin-development.md",
+    "ai-assistants.md",
+    "command-line.md",
+  ] },
+  { "Reference" = [
+    "preferences.md",
+    "shortcuts.md",
+    "accessibility.md",
+    "troubleshooting.md",
+    "translating.md",
+    "contributing.md",
+  ] },
+]
+
+[project.theme]
+variant = "classic"
+logo = "assets/logo.svg"
+favicon = "assets/logo.svg"
+features = [
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.tracking",
+  "navigation.tabs",
+  "navigation.tabs.sticky",
+  "navigation.sections",
+  "navigation.path",
+  "navigation.top",
+  "navigation.footer",
+  "toc.follow",
+  "search.suggest",
+  "search.highlight",
+  "content.action.edit",
+  "content.code.copy",
+  "content.tabs.link",
+]
+
+[project.theme.font]
+text = false
+code = false
+font.code = "JetBrains Mono"
+
+[project.theme.icon]
+repo = "fontawesome/brands/github"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "white"
+accent = "blue"
+toggle.icon = "material/weather-sunny"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "custom"
+accent = "blue"
+toggle.icon = "material/weather-night"
+toggle.name = "Switch to light mode"
+
+[project.markdown_extensions]
+admonition = {}
+attr_list = {}
+md_in_html = {}
+tables = {}
+toc = { permalink = true }
+pymdownx.details = {}
+pymdownx.emoji.emoji_index = "zensical.extensions.emoji.twemoji"
+pymdownx.emoji.emoji_generator = "zensical.extensions.emoji.to_svg"
+pymdownx.superfences = {}
+pymdownx.highlight = {}
+pymdownx.inlinehilite = {}
+pymdownx.keys = {}
+pymdownx.tabbed = { alternate_style = true }
+
+[project.plugins.search]
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/adhadse/Bookx"
+
+[project.extra.analytics]
+provider = "google"
+property = "G-R1KM31G2MB"

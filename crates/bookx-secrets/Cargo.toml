@@ -1,0 +1,13 @@
+[package]
+name = "bookx-secrets"
+version = "0.2.0"
+authors = ["Anurag Dhadse <hello@adhadse.com>"]
+edition = "2021"
+rust-version = "1.85"
+description = "Passwords in the Secret Service (GNOME Keyring, KWallet, the Flatpak portal) with a testable store trait"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+anyhow = "1"
+oo7 = { version = "0.5", default-features = false, features = ["async-std", "native_crypto"] }
+async-io = "2"

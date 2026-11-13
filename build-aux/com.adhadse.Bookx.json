@@ -1,0 +1,85 @@
+{
+    "id": "com.adhadse.Bookx",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "50",
+    "sdk": "org.gnome.Sdk",
+    "sdk-extensions": ["org.freedesktop.Sdk.Extension.rust-stable"],
+    "command": "bookx",
+    "finish-args": [
+        "--share=ipc",
+        "--share=network",
+        "--socket=wayland",
+        "--socket=fallback-x11",
+        "--device=dri",
+        "--socket=pulseaudio",
+        "--filesystem=xdg-documents",
+        "--filesystem=/run/media",
+        "--filesystem=xdg-run/gvfs",
+        "--filesystem=xdg-run/gvfsd",
+        "--talk-name=org.gtk.vfs.*",
+        "--env=RUST_LOG=bookx=info"
+    ],
+    "build-options": {
+        "append-path": "/usr/lib/sdk/rust-stable/bin",
+        "env": {
+            "CARGO_HOME": "/run/build/bookx/cargo",
+            "CARGO_NET_OFFLINE": "true"
+        }
+    },
+    "cleanup": ["/include", "/lib/pkgconfig", "/share/man", "/share/doc", "*.la", "*.a"],
+    "modules": [
+        {
+            "name": "espeak-ng",
+            "buildsystem": "autotools",
+            "builddir": false,
+            "no-parallel-make": true,
+            "config-opts": [
+                "--without-async",
+                "--without-mbrola",
+                "--without-sonic",
+                "--without-speechplayer",
+                "--without-pcaudiolib",
+                "--disable-static"
+            ],
+            "cleanup": ["/bin/speak-ng", "/lib/libespeak-ng.la", "/share/vim"],
+            "sources": [
+                {
+                    "type": "archive",
+                    "url": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz",
+                    "sha256": "bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23",
+                    "x-checker-data": {
+                        "type": "anitya",
+                        "project-id": 5440,
+                        "stable-only": true,
+                        "url-template": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/$version.tar.gz"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "bookx",
+            "buildsystem": "simple",
+            "build-commands": [
+                "cargo --offline build --release --locked -p bookx -p bookx-cli",
+                "make install-flatpak PREFIX=/app TARGET_DIR=target/release"
+            ],
+            "sources": [
+                {
+                    "type": "dir",
+                    "path": "../",
+                    "skip": [
+                        "target",
+                        ".git",
+                        ".flatpak-builder",
+                        "_legacy",
+                        "mockups",
+                        "wiki",
+                        "docs",
+                        "examples"
+                    ]
+                },
+                "cargo-sources.json"
+            ]
+        }
+    ]
+}

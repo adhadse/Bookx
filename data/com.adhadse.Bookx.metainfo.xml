@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.adhadse.Bookx</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Bookx</name>
+  <summary>A modern e-book library, reader and editor</summary>
+  <description>
+    <p>
+      Bookx is a native GNOME application for your e-books, written entirely in Rust.
+      It combines a Calibre-style library, a distraction-free reader and a full EPUB editor.
+    </p>
+    <ul>
+      <li>Library: covers or table view, tag browser, Calibre-style search, metadata editing, bulk edits, TXT / Markdown / HTML import and export</li>
+      <li>Reader: two-column pages, single column or scrolling, light / sepia / dark / black themes, highlights, notes, bookmarks, in-book search</li>
+      <li>Editor: file browser, syntax-highlighted code editor with live preview, find and replace, table-of-contents and spine editing, book checker</li>
+    </ul>
+  </description>
+  <categories>
+    <category>Office</category>
+    <category>Viewer</category>
+    <category>Literature</category>
+  </categories>
+  <keywords>
+    <keyword>ebook</keyword>
+    <keyword>epub</keyword>
+    <keyword>library</keyword>
+    <keyword>reader</keyword>
+    <keyword>calibre</keyword>
+    <keyword>kobo</keyword>
+    <keyword>kindle</keyword>
+  </keywords>
+  <launchable type="desktop-id">com.adhadse.Bookx.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/library-banner-hero-light.png</image>
+      <caption>Your library as covers, with search and the tag browser</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/library-table-light.png</image>
+      <caption>The library as a table, sorted and filtered</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/reader-light.png</image>
+      <caption>The reader on a light page</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/reader-dark.png</image>
+      <caption>The reader in the dark theme</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/editor-light.png</image>
+      <caption>The built-in EPUB editor with live preview</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/device-window-light.png</image>
+      <caption>Send books to an e-reader and bring reading progress back</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/read-aloud-reading-light.png</image>
+      <caption>Read aloud with the sentence highlighted</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/preferences-light.png</image>
+      <caption>Preferences, with a search box</caption>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://github.com/adhadse/Bookx</url>
+  <url type="bugtracker">https://github.com/adhadse/Bookx/issues</url>
+  <url type="help">https://bookx.adhadse.com</url>
+  <url type="translate">https://bookx.adhadse.com/translating/</url>
+  <url type="contribute">https://bookx.adhadse.com/contributing/</url>
+  <translation type="gettext">bookx</translation>
+  <developer id="com.adhadse"><name>Anurag Dhadse</name></developer>
+  <update_contact>hello@adhadse.com</update_contact>
+  <content_rating type="oars-1.1" />
+  <branding>
+    <color type="primary" scheme_preference="light">#e8d9c0</color>
+    <color type="primary" scheme_preference="dark">#3d2f1f</color>
+  </branding>
+  <recommends>
+    <display_length compare="ge">360</display_length>
+  </recommends>
+  <supports><control>keyboard</control><control>pointing</control><control>touch</control></supports>
+  <provides>
+    <mediatype>application/epub+zip</mediatype>
+    <mediatype>application/x-kobo-epub+zip</mediatype>
+    <mediatype>application/x-mobipocket-ebook</mediatype>
+    <mediatype>application/vnd.amazon.ebook</mediatype>
+    <mediatype>application/vnd.amazon.mobi8-ebook</mediatype>
+    <mediatype>application/x-fictionbook+xml</mediatype>
+    <mediatype>application/x-zip-compressed-fb2</mediatype>
+    <mediatype>application/vnd.comicbook+zip</mediatype>
+    <mediatype>application/vnd.comicbook-rar</mediatype>
+    <mediatype>application/x-cbt</mediatype>
+    <mediatype>application/pdf</mediatype>
+    <mediatype>application/rtf</mediatype>
+    <mediatype>application/vnd.oasis.opendocument.text</mediatype>
+    <mediatype>application/vnd.openxmlformats-officedocument.wordprocessingml.document</mediatype>
+    <mediatype>application/x-sony-bbeb</mediatype>
+    <mediatype>application/vnd.ms-htmlhelp</mediatype>
+    <mediatype>x-scheme-handler/bookx</mediatype>
+  </provides>
+  <releases>
+    <release version="0.2.0" date="2026-11-11">
+      <description>
+        <p>Complete rewrite on the latest GTK 4, libadwaita and Relm4: new library, a Rust-only reader and a built-in EPUB editor.</p>
+        <ul>
+          <li>Send books to Kobo, Kindle and other e-readers and bring reading progress and notes back</li>
+          <li>Read aloud with natural offline voices, backups to drives, shares and WebDAV, a command palette</li>
+          <li>Translated into Spanish, German, French and Hindi (more welcome)</li>
+          <li>Opens bookx:// links and copies diagnostics for bug reports</li>
+        </ul>
+      </description>
+      <url type="details">https://github.com/adhadse/Bookx/releases</url>
+    </release>
+  </releases>
+</component>

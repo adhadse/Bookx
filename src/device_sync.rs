@@ -1,0 +1,1535 @@
+//! Syncing the reading state between a device and the library: reading progress, highlights and notes.
+//!
+//! The rule is **progressive and information-conserving**:
+//!
+//! * progress only ever moves forward (the side that is further along wins, never the other way);
+//! * highlights and notes are united by identity (the same id, else the same text), so nothing is
+//!   duplicated and nothing is lost; when both sides have the same highlight and only one has a note,
+//!   the richer one is kept;
+//! * nothing is ever deleted on either side because the other side lacks it.
+//!
+//! The work is split in three pure steps that the window shows to the user in this order:
+//! [`plan`] (what would change), [`Plan::summary`] (the words and counts) and [`apply_to_library`]
+//! (the library side; the device side goes through [`NoteSink`]). Reading the device is a thin glue
+//! layer at the end of the file ([`read_device`]).
+
+use std::collections::{BTreeMap, HashSet};
+use std::path::{Path, PathBuf};
+
+use bookx_serve::reading::{DeviceState, Status};
+use bookx_serve::syncplan::{self, Annot, Conflict, Side, SideBook};
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+
+use crate::core::library::{Book, Highlight};
+
+/// Settings of the sync, kept in the config.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SyncPrefs {
+    /// Sync reading progress and notes from the device whenever it is connected (off by default).
+    pub auto_sync: bool,
+    /// "Send to <device>" appends the book's notes to the copy it sends.
+    pub include_notes: bool,
+}
+
+impl Default for SyncPrefs {
+    fn default() -> Self {
+        SyncPrefs {
+            auto_sync: false,
+            include_notes: true,
+        }
+    }
+}
+
+/// Title and subtitle of the "add my notes" switch (Device window and Preferences).
+pub const NOTES_TITLE: &str = "Add my notes to the copy sent to the device";
+pub const NOTES_SUBTITLE: &str = "The copy on the device gets an extra “My notes” section at the end (readable in any e-reader app) and a KOReader notes file, so KOReader lists them too. Your library copy is not changed.";
+
+/// Title and subtitle of the automatic sync switch.
+pub const AUTO_SYNC_TITLE: &str = "Sync automatically when a device connects";
+pub const AUTO_SYNC_SUBTITLE: &str = "For e-readers plugged in with a cable. Bookx reads the progress, highlights and notes the device keeps and merges them with your library: progress only moves forward, notes are united, nothing is deleted.";
+
+/// The longer explanation behind the "?" button of the automatic sync switch.
+pub const AUTO_SYNC_HELP: &str = "This is about a device plugged in with a USB cable (or mounted in Files).\n\nWhen you plug in a Kobo, Kindle or similar reader, Bookx reads the reading progress and the highlights and notes the device keeps: from the Kobo’s own database, or from KOReader’s “.sdr” files if KOReader is installed on it. It merges them with your library. Progress only moves forward, highlights and notes are united, and nothing is deleted on either side.\n\nA Kobo needs no KOReader for this; its own reading state is read. A Kindle’s own state is not readable, only KOReader’s files. If the device has no readable state, nothing happens. Reading progress is never written to the device; notes go to it only as a new KOReader notes file where there is none.\n\nOff by default: you are asked first, with a summary of what will change.";
+
+/// A highlight or note as the device has it.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct DeviceNote {
+    /// The id when the device kept ours (a book sent by Bookx), else `None`.
+    pub id: Option<String>,
+    pub text: String,
+    pub note: String,
+    pub created: Option<DateTime<Utc>>,
+}
+
+/// What a device knows about one of its books.
+#[derive(Debug, Clone)]
+pub struct DeviceReading {
+    pub path: PathBuf,
+    pub state: Option<DeviceState>,
+    pub notes: Vec<DeviceNote>,
+    /// Whether Bookx can put notes next to this device copy (it never touches a notes file that
+    /// the device already has).
+    pub accepts_notes: bool,
+}
+
+/// What the library knows about one of its books.
+#[derive(Debug, Clone)]
+pub struct LibraryBook {
+    pub id: u64,
+    pub title: String,
+    pub authors: Vec<String>,
+    pub progress: f64,
+    /// Seconds since the epoch.
+    pub last_read: Option<i64>,
+    pub highlights: Vec<Highlight>,
+}
+
+pub fn library_books(books: &[Book]) -> Vec<LibraryBook> {
+    books
+        .iter()
+        .map(|b| LibraryBook {
+            id: b.id,
+            title: b.meta.title.clone(),
+            authors: b.meta.authors.clone(),
+            progress: b.progress,
+            last_read: b.last_read.map(|d| d.timestamp()),
+            // PDF highlights are page rectangles, not EPUB spine positions
+            highlights: b
+                .highlights
+                .iter()
+                .filter(|h| !crate::pdf::is_pdf(h))
+                .cloned()
+                .collect(),
+        })
+        .collect()
+}
+
+/// Finds where a quote sits in a book, as the position a library highlight is stored with.
+pub trait Locator {
+    fn locate(&self, book_id: u64, text: &str) -> Option<(usize, i32, i32)>;
+}
+
+/// Receives the notes that go to the device.
+pub trait NoteSink {
+    /// Puts `highlights` of the book titled `title` next to the device copy at `path`; returns how
+    /// many were written.
+    fn write(
+        &mut self,
+        path: &Path,
+        title: &str,
+        highlights: &[Highlight],
+    ) -> anyhow::Result<usize>;
+}
+
+fn key(s: &str) -> String {
+    s.chars()
+        .filter(|c| c.is_alphanumeric())
+        .flat_map(|c| c.to_lowercase())
+        .collect()
+}
+
+/// The identity of a quote: its text without case, spacing and punctuation.
+pub fn identity(text: &str) -> String {
+    key(text)
+}
+
+fn same_note(h: &Highlight, n: &DeviceNote) -> bool {
+    if let Some(id) = &n.id {
+        if *id == h.id {
+            return true;
+        }
+    }
+    let (a, b) = (identity(&h.text), identity(&n.text));
+    !a.is_empty() && a == b
+}
+
+/// A device note that is new to the library, with the place it will be stored at.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Incoming {
+    pub note: DeviceNote,
+    pub spine: usize,
+    pub start: i32,
+    pub end: i32,
+}
+
+/// Highlights of the library that go to one device copy.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Outgoing {
+    pub path: PathBuf,
+    pub highlights: Vec<Highlight>,
+}
+
+/// Progress the device is ahead with.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProgressMove {
+    pub from: f64,
+    pub to: f64,
+    pub finished: bool,
+    pub source: &'static str,
+}
+
+/// What happens to one library book.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct BookPlan {
+    pub book_id: u64,
+    pub title: String,
+    pub progress: Option<ProgressMove>,
+    /// The library is further along than the device; nothing is done about it.
+    pub library_ahead: Option<(f64, f64)>,
+    pub highlights_in: Vec<Incoming>,
+    /// `(highlight id, note)`: the device has a note on a highlight the library has without one.
+    pub notes_in: Vec<(String, String)>,
+    /// Device notes that could not be placed in the book (kept on the device, not imported).
+    pub unplaced: usize,
+    pub out: Vec<Outgoing>,
+    /// Library highlights the device copy lacks but cannot take (it has a notes file of its own).
+    pub held_back: usize,
+    /// Highlights whose note differs on the two sides: both stay as they are, nothing is merged
+    /// or overwritten (the library keeps its note, the device keeps its own).
+    pub conflicts: Vec<Conflict>,
+    /// `(library, device)`: the device is ahead but the library copy was read more recently, so
+    /// the book was probably started again; progress is left alone.
+    pub restarted: Option<(f64, f64)>,
+}
+
+impl BookPlan {
+    pub fn is_empty(&self) -> bool {
+        self.progress.is_none()
+            && self.highlights_in.is_empty()
+            && self.notes_in.is_empty()
+            && self.out.is_empty()
+    }
+
+    fn outgoing_ids(&self) -> HashSet<&str> {
+        self.out
+            .iter()
+            .flat_map(|o| o.highlights.iter().map(|h| h.id.as_str()))
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Plan {
+    pub books: Vec<BookPlan>,
+    /// Device books that are not in the library.
+    pub unmatched: usize,
+    /// Device books that were matched to a library book.
+    pub matched: usize,
+}
+
+pub(crate) fn side_of_library(b: &LibraryBook) -> SideBook {
+    SideBook {
+        id: b.id.to_string(),
+        title: b.title.clone(),
+        authors: b.authors.clone(),
+        progress: b.progress,
+        status: if b.progress >= 1.0 {
+            Status::Finished
+        } else if b.progress > 0.0 {
+            Status::Reading
+        } else {
+            Status::Unread
+        },
+        last_read: b.last_read,
+        // `when` carries the index, so the plan can be mapped back to the highlight
+        notes: b
+            .highlights
+            .iter()
+            .enumerate()
+            .map(|(i, h)| Annot {
+                text: h.text.clone(),
+                note: h.note.clone(),
+                when: Some(i.to_string()),
+            })
+            .collect(),
+    }
+}
+
+fn side_of_device(i: usize, r: &DeviceReading, library: &[LibraryBook]) -> SideBook {
+    let stem = r
+        .path
+        .file_name()
+        .map(|n| bookx_serve::devfs::file_stem(&n.to_string_lossy()).to_string())
+        .unwrap_or_default();
+    let st = r.state.as_ref();
+    SideBook {
+        id: i.to_string(),
+        title: st
+            .and_then(|s| s.title.clone())
+            .filter(|t| !t.trim().is_empty())
+            .unwrap_or(stem),
+        authors: Vec::new(),
+        progress: st.map_or(0.0, |s| s.progress),
+        status: st.map_or(Status::Unread, |s| s.status),
+        last_read: st
+            .and_then(|s| s.last_read.as_deref())
+            .and_then(bookx_serve::reading::parse_time),
+        notes: r
+            .notes
+            .iter()
+            .enumerate()
+            .map(|(j, n)| Annot {
+                // a note that carries the id of one of our highlights is that highlight
+                text: n
+                    .id
+                    .as_ref()
+                    .and_then(|id| {
+                        library
+                            .iter()
+                            .flat_map(|b| b.highlights.iter())
+                            .find(|h| h.id == *id)
+                    })
+                    .map_or_else(|| n.text.clone(), |h| h.text.clone()),
+                note: n.note.clone(),
+                when: Some(j.to_string()),
+            })
+            .collect(),
+    }
+}
+
+fn index_of(a: &Annot) -> Option<usize> {
+    a.when.as_deref().and_then(|w| w.parse().ok())
+}
+
+/// Decides what a sync would do. Nothing here changes any data. Pairing the books, the progress
+/// rule and the highlight/note rules are those of [`bookx_serve::syncplan`]; this function maps
+/// its answer onto the library's types (where a highlight is stored, which device copy gets
+/// which notes).
+pub fn plan(device: &[DeviceReading], library: &[LibraryBook], locator: &dyn Locator) -> Plan {
+    let lib_sides: Vec<SideBook> = library.iter().map(side_of_library).collect();
+    let dev_sides: Vec<SideBook> = device
+        .iter()
+        .enumerate()
+        .map(|(i, r)| side_of_device(i, r, library))
+        .collect();
+    let sp = syncplan::plan(&lib_sides, &dev_sides);
+    let mut out = Plan {
+        unmatched: sp.skipped.len(),
+        matched: sp.books.len(),
+        ..Default::default()
+    };
+    // one plan per library book, however many device copies there are
+    let mut by_book: BTreeMap<u64, BookPlan> = BTreeMap::new();
+    let mut copies: BTreeMap<u64, (usize, usize)> = BTreeMap::new();
+    let mut ahead: BTreeMap<u64, f64> = BTreeMap::new();
+    let mut seen: BTreeMap<u64, Vec<String>> = BTreeMap::new();
+    for b in &sp.books {
+        let (Ok(bid), Ok(di)) = (b.library_id.parse::<u64>(), b.device_id.parse::<usize>()) else {
+            continue;
+        };
+        let (Some(book), Some(reading)) = (library.iter().find(|l| l.id == bid), device.get(di))
+        else {
+            continue;
+        };
+        let bp = by_book.entry(bid).or_insert_with(|| BookPlan {
+            book_id: bid,
+            title: book.title.clone(),
+            ..Default::default()
+        });
+        let c = copies.entry(bid).or_default();
+        if reading.state.is_some() {
+            c.0 += 1;
+        }
+        let source = reading.state.as_ref().map_or("", |s| s.source);
+        match b.progress {
+            syncplan::Progress::Forward {
+                to_side: Side::Library,
+                from,
+                to,
+                finished,
+            } => {
+                if bp.progress.as_ref().is_none_or(|p| to > p.to) {
+                    bp.progress = Some(ProgressMove {
+                        from,
+                        to,
+                        finished: finished || to >= 0.98,
+                        source,
+                    });
+                }
+            }
+            syncplan::Progress::Forward {
+                to_side: Side::Device,
+                from,
+                ..
+            } => {
+                c.1 += 1;
+                let e = ahead.entry(bid).or_insert(from);
+                *e = e.max(from);
+            }
+            syncplan::Progress::InSync => {}
+        }
+        if b.behind_but_newer.is_some() {
+            let dev_p = dev_sides[di].effective_progress();
+            bp.restarted = Some((book.progress, dev_p));
+        }
+        // device -> library
+        for a in &b.notes_to_library {
+            let Some(n) = index_of(a).and_then(|j| reading.notes.get(j)) else {
+                continue;
+            };
+            if identity(&n.text).is_empty() && n.id.is_none() {
+                continue;
+            }
+            let known = seen.entry(bid).or_default();
+            let key = syncplan::norm(&n.text);
+            if known.contains(&key) {
+                // a second device copy of the same quote: keep the one with the note
+                if !n.note.trim().is_empty() {
+                    if let Some(i) = bp
+                        .highlights_in
+                        .iter_mut()
+                        .find(|h| syncplan::norm(&h.note.text) == key)
+                    {
+                        if i.note.note.trim().is_empty() {
+                            i.note.note = n.note.clone();
+                        }
+                    }
+                }
+                continue;
+            }
+            known.push(key);
+            match locator.locate(bid, &n.text) {
+                Some((spine, start, end)) => bp.highlights_in.push(Incoming {
+                    note: n.clone(),
+                    spine,
+                    start,
+                    end,
+                }),
+                None => bp.unplaced += 1,
+            }
+        }
+        // notes the library lacks on highlights it has
+        for e in b.enrich.iter().filter(|e| e.to_side == Side::Library) {
+            let Some(h) = index_of(&e.annot).and_then(|i| book.highlights.get(i)) else {
+                continue;
+            };
+            if h.note.trim().is_empty()
+                && !e.annot.note.trim().is_empty()
+                && !bp.notes_in.iter().any(|(id, _)| *id == h.id)
+            {
+                bp.notes_in
+                    .push((h.id.clone(), e.annot.note.trim().to_string()));
+            }
+        }
+        for c in &b.conflicts {
+            if !bp.conflicts.contains(c) {
+                bp.conflicts.push(c.clone());
+            }
+        }
+        // library -> device
+        let missing: Vec<Highlight> = b
+            .notes_to_device
+            .iter()
+            .filter_map(|a| index_of(a).and_then(|i| book.highlights.get(i)).cloned())
+            .collect();
+        if !missing.is_empty() {
+            if reading.accepts_notes {
+                bp.out.push(Outgoing {
+                    path: reading.path.clone(),
+                    highlights: missing,
+                });
+            } else {
+                bp.held_back += missing.len();
+            }
+        }
+    }
+    for (bid, mut bp) in by_book {
+        let (with_state, behind) = copies.get(&bid).copied().unwrap_or_default();
+        if bp.progress.is_some() {
+            bp.restarted = None;
+        } else if with_state > 0 && behind == with_state && bp.restarted.is_none() {
+            if let (Some(f), Some(book)) = (ahead.get(&bid), library.iter().find(|l| l.id == bid)) {
+                bp.library_ahead = Some((book.progress, *f));
+            }
+        }
+        out.books.push(bp);
+    }
+    out
+}
+
+/// The counts the user is shown before anything happens.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Summary {
+    /// `(title, from, to)`
+    pub progress: Vec<(String, f64, f64)>,
+    pub highlights_to_library: usize,
+    pub notes_to_library: usize,
+    pub highlights_to_device: usize,
+    pub notes_to_device: usize,
+    pub library_ahead: usize,
+    pub held_back: usize,
+    pub unplaced: usize,
+    pub unmatched: usize,
+    /// `(title, conflict)`
+    pub conflicts: Vec<(String, Conflict)>,
+    /// Books whose progress was left alone because the library copy was read more recently.
+    pub restarted: usize,
+}
+
+fn plural(n: usize, one: &str, many: &str) -> String {
+    format!("{n} {}", if n == 1 { one } else { many })
+}
+
+fn go(n: usize) -> &'static str {
+    if n == 1 {
+        "goes"
+    } else {
+        "go"
+    }
+}
+
+fn clip(s: &str, n: usize) -> String {
+    let s = s.split_whitespace().collect::<Vec<_>>().join(" ");
+    if s.chars().count() <= n {
+        s
+    } else {
+        format!("{}…", s.chars().take(n).collect::<String>())
+    }
+}
+
+fn pct(p: f64) -> u32 {
+    (p * 100.0).round() as u32
+}
+
+impl Summary {
+    /// One line per kind of change, in plain words, ending with the promise.
+    pub fn lines(&self) -> Vec<String> {
+        let mut v = Vec::new();
+        if !self.progress.is_empty() {
+            let shown: Vec<String> = self
+                .progress
+                .iter()
+                .take(3)
+                .map(|(t, a, b)| format!("{t} {}%→{}%", pct(*a), pct(*b)))
+                .collect();
+            let more = self.progress.len().saturating_sub(3);
+            v.push(format!(
+                "{}: progress moves forward from the device ({}{})",
+                plural(self.progress.len(), "book", "books"),
+                shown.join(", "),
+                if more > 0 {
+                    format!(", and {more} more")
+                } else {
+                    String::new()
+                }
+            ));
+        }
+        if self.highlights_to_library > 0 {
+            v.push(format!(
+                "{} {} device→Bookx",
+                plural(self.highlights_to_library, "highlight", "highlights"),
+                go(self.highlights_to_library)
+            ));
+        }
+        if self.notes_to_library > 0 {
+            v.push(format!(
+                "{} {} device→Bookx",
+                plural(self.notes_to_library, "note", "notes"),
+                go(self.notes_to_library)
+            ));
+        }
+        if self.highlights_to_device > 0 {
+            v.push(format!(
+                "{} {} Bookx→device{}",
+                plural(self.highlights_to_device, "highlight", "highlights"),
+                go(self.highlights_to_device),
+                if self.notes_to_device > 0 {
+                    format!(" ({} with notes)", self.notes_to_device)
+                } else {
+                    String::new()
+                }
+            ));
+        }
+        if self.library_ahead > 0 {
+            v.push(format!(
+                "{} further along in Bookx than on the device; the device keeps its own progress",
+                plural(self.library_ahead, "book is", "books are"),
+            ));
+        }
+        if self.held_back > 0 {
+            v.push(format!(
+                "{} {} in Bookx: the device copy keeps a notes file of its own, which is not touched",
+                plural(self.held_back, "highlight", "highlights"),
+                if self.held_back == 1 { "stays" } else { "stay" },
+            ));
+        }
+        if self.restarted > 0 {
+            v.push(format!(
+                "{} read more recently in Bookx than the device is ahead; progress is left alone",
+                plural(self.restarted, "book was", "books were"),
+            ));
+        }
+        if !self.conflicts.is_empty() {
+            v.push(format!(
+                "{} a different note on the two sides; both versions are kept (Bookx keeps its note, the device keeps its own, nothing is overwritten)",
+                plural(self.conflicts.len(), "highlight has", "highlights have"),
+            ));
+            for (t, c) in self.conflicts.iter().take(3) {
+                v.push(format!(
+                    "  • {t}: “{}” — Bookx: “{}” · device: “{}”",
+                    clip(&c.text, 60),
+                    clip(&c.library_note, 60),
+                    clip(&c.device_note, 60)
+                ));
+            }
+            if self.conflicts.len() > 3 {
+                v.push(format!("  • and {} more", self.conflicts.len() - 3));
+            }
+        }
+        if self.unplaced > 0 {
+            v.push(format!(
+                "{} on the device could not be located in the book and {} on the device",
+                plural(self.unplaced, "highlight", "highlights"),
+                if self.unplaced == 1 { "stays" } else { "stay" },
+            ));
+        }
+        if v.is_empty() {
+            v.push("Everything is already up to date.".to_string());
+        }
+        v.push("Nothing is deleted on either side.".to_string());
+        v
+    }
+
+    pub fn text(&self) -> String {
+        self.lines().join("\n")
+    }
+}
+
+impl Plan {
+    pub fn summary(&self) -> Summary {
+        let mut s = Summary {
+            unmatched: self.unmatched,
+            ..Default::default()
+        };
+        let mut out_seen: HashSet<(u64, String)> = HashSet::new();
+        for b in &self.books {
+            if let Some(p) = &b.progress {
+                s.progress.push((b.title.clone(), p.from, p.to));
+            }
+            if b.library_ahead.is_some() {
+                s.library_ahead += 1;
+            }
+            s.highlights_to_library += b.highlights_in.len();
+            s.notes_to_library += b.notes_in.len();
+            s.restarted += b.restarted.is_some() as usize;
+            s.conflicts
+                .extend(b.conflicts.iter().map(|c| (b.title.clone(), c.clone())));
+            s.unplaced += b.unplaced;
+            s.held_back += b.held_back;
+            let ids = b.outgoing_ids();
+            for o in &b.out {
+                for h in &o.highlights {
+                    if ids.contains(h.id.as_str()) && out_seen.insert((b.book_id, h.id.clone())) {
+                        s.highlights_to_device += 1;
+                        if !h.note.trim().is_empty() {
+                            s.notes_to_device += 1;
+                        }
+                    }
+                }
+            }
+        }
+        s
+    }
+
+    /// Whether applying the plan changes anything.
+    pub fn is_empty(&self) -> bool {
+        self.books.iter().all(BookPlan::is_empty)
+    }
+}
+
+/// What [`apply_to_library`] did.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Applied {
+    pub progress: usize,
+    pub highlights: usize,
+    pub notes: usize,
+}
+
+/// Applies the library side of one book's plan. Progress never goes down, highlights are only
+/// added, a note is only written onto a highlight that has none.
+pub fn apply_book(book: &mut Book, plan: &BookPlan, now: DateTime<Utc>) -> Applied {
+    let mut done = Applied::default();
+    if let Some(p) = &plan.progress {
+        if p.to > book.progress {
+            book.progress = if p.finished {
+                1.0
+            } else {
+                p.to.clamp(0.0, 1.0)
+            };
+            book.last_read = Some(now);
+            done.progress = 1;
+        }
+    }
+    for (id, note) in &plan.notes_in {
+        if let Some(h) = book.highlights.iter_mut().find(|h| h.id == *id) {
+            if h.note.trim().is_empty() {
+                h.note = note.clone();
+                done.notes += 1;
+            }
+        }
+    }
+    for i in &plan.highlights_in {
+        if book.highlights.iter().any(|h| same_note(h, &i.note)) {
+            continue;
+        }
+        let id = i
+            .note
+            .id
+            .clone()
+            .unwrap_or_else(|| crate::annotation_ids::incoming_id(book, &i.note.text));
+        book.highlights.push(Highlight {
+            id,
+            spine: i.spine,
+            start: i.start,
+            end: i.end,
+            color: "yellow".into(),
+            style: String::new(),
+            note: i.note.note.trim().to_string(),
+            text: i.note.text.clone(),
+            created: i.note.created.unwrap_or(now),
+        });
+        done.highlights += 1;
+    }
+    done
+}
+
+pub fn apply_to_library(lib: &mut crate::core::library::Library, plan: &Plan) -> Applied {
+    let now = Utc::now();
+    let mut total = Applied::default();
+    for b in &plan.books {
+        if let Some(book) = lib.get_mut(b.book_id) {
+            let a = apply_book(book, b, now);
+            total.progress += a.progress;
+            total.highlights += a.highlights;
+            total.notes += a.notes;
+        }
+    }
+    total
+}
+
+/// Hands the outgoing notes to `sink`; returns how many were written and the problems.
+pub fn apply_to_device(plan: &Plan, sink: &mut dyn NoteSink) -> (usize, Vec<String>) {
+    let (mut written, mut errors) = (0, Vec::new());
+    for b in &plan.books {
+        for o in &b.out {
+            match sink.write(&o.path, &b.title, &o.highlights) {
+                Ok(n) => written += n,
+                Err(e) => errors.push(format!("{}: {e:#}", b.title)),
+            }
+        }
+    }
+    (written, errors)
+}
+
+// -- the header bar and the connect banner -----------------------------------------------------
+
+/// The label of the header-bar Device button: `None` (hidden) without a device, else the name of
+/// the first device, with how many more there are.
+pub fn button_label(devices: &[bookx_core::contracts::DeviceInfo]) -> Option<String> {
+    let first = devices.first()?;
+    Some(match devices.len() {
+        1 => first.name.clone(),
+        n => format!("{} +{}", first.name, n - 1),
+    })
+}
+
+/// The devices that were not there before.
+pub fn newly_connected(
+    before: &[bookx_core::contracts::DeviceInfo],
+    now: &[bookx_core::contracts::DeviceInfo],
+) -> Vec<bookx_core::contracts::DeviceInfo> {
+    now.iter()
+        .filter(|d| !before.iter().any(|b| b.id == d.id))
+        .cloned()
+        .collect()
+}
+
+/// What the banner asks when a device shows up.
+pub fn banner_text(device: &str) -> String {
+    format!("{device} connected — Sync reading progress and notes?")
+}
+
+// -- reading the device and writing to it (glue) ---------------------------------------------
+
+/// Notes as the device reader (`bookx_serve::reading`) finds them: Kobo database, KOReader sidecars.
+fn note_of(n: &bookx_serve::reading::DeviceNote) -> DeviceNote {
+    let when = n
+        .updated
+        .as_deref()
+        .or(n.created.as_deref())
+        .and_then(bookx_serve::reading::parse_time)
+        .and_then(|t| DateTime::from_timestamp(t, 0));
+    let mut note = n.note.trim().to_string();
+    if note == n.text.trim() {
+        // Bookx writes the quote into `notes` when there is no note
+        note.clear();
+    }
+    DeviceNote {
+        id: None,
+        text: n.text.clone(),
+        note,
+        created: when,
+    }
+}
+
+/// Reads the reading state and notes of every book of `device`.
+pub fn read_device(
+    drivers: &crate::devices::Drivers,
+    device: &bookx_core::contracts::DeviceInfo,
+) -> anyhow::Result<Vec<DeviceReading>> {
+    use bookx_serve::devices::DeviceKind;
+    let books = drivers.books(device)?;
+    let local = matches!(
+        drivers.backend(device),
+        crate::devices::Backend::Usb | crate::devices::Backend::Mtp
+    );
+    let data = if local {
+        bookx_serve::reading::collect_data(&device.mount, &books)
+    } else {
+        Vec::new()
+    };
+    let sidecars = local && drivers.kind(device) != Some(DeviceKind::Kindle);
+    Ok(books
+        .iter()
+        .map(|b| {
+            let d = data.iter().find(|d| d.path == b.path);
+            DeviceReading {
+                path: b.path.clone(),
+                state: d.and_then(|d| d.state.clone()),
+                notes: d
+                    .map(|d| d.notes.iter().map(note_of).collect())
+                    .unwrap_or_default(),
+                accepts_notes: sidecars && !bookx_serve::reading::sidecar_file(&b.path).exists(),
+            }
+        })
+        .collect())
+}
+
+/// Writes highlights as a new KOReader sidecar; an existing one is never touched.
+pub struct SidecarSink;
+
+impl NoteSink for SidecarSink {
+    fn write(
+        &mut self,
+        path: &Path,
+        title: &str,
+        highlights: &[Highlight],
+    ) -> anyhow::Result<usize> {
+        let file = bookx_serve::reading::sidecar_file(path);
+        if file.exists() || highlights.is_empty() {
+            return Ok(0);
+        }
+        if let Some(dir) = file.parent() {
+            std::fs::create_dir_all(dir)?;
+        }
+        let notes = crate::send_notes::Notes::new(highlights, &[]);
+        std::fs::write(
+            &file,
+            crate::send_notes::koreader_sidecar(title, &[], &notes),
+        )?;
+        Ok(highlights.len())
+    }
+}
+
+/// Finds a quote in the text of the book's chapters (character offsets in the chapter text).
+pub struct BookLocator {
+    pub root: PathBuf,
+    pub files: BTreeMap<u64, String>,
+}
+
+impl Locator for BookLocator {
+    fn locate(&self, book_id: u64, text: &str) -> Option<(usize, i32, i32)> {
+        let file = self.files.get(&book_id)?;
+        let book = crate::core::book::OpenBook::open(&self.root.join(file)).ok()?;
+        let want: Vec<char> = text.trim().chars().collect();
+        if want.len() < 8 {
+            return None;
+        }
+        for (spine, p) in book.spine_paths().iter().enumerate() {
+            let Some(doc) = book.chapter_doc(p) else {
+                continue;
+            };
+            let hay: Vec<char> = doc.to_text().chars().collect();
+            if let Some(pos) = hay.windows(want.len()).position(|w| w == want.as_slice()) {
+                return Some((spine, pos as i32, (pos + want.len()) as i32));
+            }
+            if let Some((a, b)) = find_loose(&hay, text) {
+                return Some((spine, a as i32, b as i32));
+            }
+        }
+        None
+    }
+}
+
+fn loose_char(c: char) -> Option<char> {
+    match c {
+        '\u{ad}' | '\u{200b}' | '\u{feff}' => None,
+        '\u{2018}' | '\u{2019}' | '\u{201b}' => Some('\''),
+        '\u{201c}' | '\u{201d}' | '\u{201e}' => Some('"'),
+        '\u{2013}' | '\u{2014}' => Some('-'),
+        c if c.is_whitespace() => Some(' '),
+        c => Some(c),
+    }
+}
+
+/// Finds `quote` in `hay` ignoring what devices and stores change in a quote: curly or straight
+/// quotes, dashes, runs of spaces and line breaks, soft hyphens. Returns the character range in
+/// `hay`.
+pub fn find_loose(hay: &[char], quote: &str) -> Option<(usize, usize)> {
+    let mut norm = String::new();
+    let mut origin: Vec<usize> = Vec::new();
+    let mut last_space = true;
+    for (i, &c) in hay.iter().enumerate() {
+        let Some(c) = loose_char(c) else { continue };
+        if c == ' ' {
+            if last_space {
+                continue;
+            }
+            last_space = true;
+        } else {
+            last_space = false;
+        }
+        norm.push(c);
+        origin.push(i);
+    }
+    let mut want = String::new();
+    let mut last_space = true;
+    for c in quote.trim().chars().filter_map(loose_char) {
+        if c == ' ' {
+            if last_space {
+                continue;
+            }
+            last_space = true;
+        } else {
+            last_space = false;
+        }
+        want.push(c);
+    }
+    let want = want.trim_end();
+    if want.chars().count() < 8 {
+        return None;
+    }
+    let byte = norm.find(want)?;
+    let first = norm[..byte].chars().count();
+    let last = first + want.chars().count() - 1;
+    Some((*origin.get(first)?, origin.get(last)? + 1))
+}
+
+/// A locator for the library's books.
+pub fn book_locator(lib: &crate::core::library::Library) -> BookLocator {
+    BookLocator {
+        root: lib.root.clone(),
+        files: lib.books.iter().map(|b| (b.id, b.file.clone())).collect(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::TimeZone;
+
+    /// A locator that finds nothing (device notes are then reported, not imported).
+    struct NoLocator;
+
+    impl Locator for NoLocator {
+        fn locate(&self, _: u64, _: &str) -> Option<(usize, i32, i32)> {
+            None
+        }
+    }
+
+    fn hl(id: &str, text: &str, note: &str) -> Highlight {
+        Highlight {
+            id: id.into(),
+            spine: 0,
+            start: 0,
+            end: text.len() as i32,
+            color: "yellow".into(),
+            style: String::new(),
+            note: note.into(),
+            text: text.into(),
+            created: Utc.with_ymd_and_hms(2026, 1, 2, 3, 4, 5).unwrap(),
+        }
+    }
+
+    fn dn(text: &str, note: &str) -> DeviceNote {
+        DeviceNote {
+            id: None,
+            text: text.into(),
+            note: note.into(),
+            created: None,
+        }
+    }
+
+    fn lib_book(id: u64, title: &str, progress: f64, hs: Vec<Highlight>) -> LibraryBook {
+        LibraryBook {
+            id,
+            title: title.into(),
+            authors: vec![],
+            progress,
+            last_read: None,
+            highlights: hs,
+        }
+    }
+
+    fn reading(file: &str, progress: f64, notes: Vec<DeviceNote>, accepts: bool) -> DeviceReading {
+        DeviceReading {
+            path: PathBuf::from(format!("/dev/{file}")),
+            state: Some(DeviceState {
+                title: None,
+                progress,
+                status: if progress >= 1.0 {
+                    Status::Finished
+                } else {
+                    Status::Reading
+                },
+                last_read: None,
+                source: "Kobo",
+            }),
+            notes,
+            accepts_notes: accepts,
+        }
+    }
+
+    struct Fixed(Option<(usize, i32, i32)>);
+    impl Locator for Fixed {
+        fn locate(&self, _: u64, _: &str) -> Option<(usize, i32, i32)> {
+            self.0
+        }
+    }
+
+    #[test]
+    fn progress_moves_forward_only() {
+        let lib = [
+            lib_book(1, "Dune", 0.42, vec![]),
+            lib_book(2, "Emma", 0.9, vec![]),
+        ];
+        let dev = [
+            reading("Dune.kepub.epub", 0.67, vec![], true),
+            reading("Emma.epub", 0.3, vec![], true),
+        ];
+        let p = plan(&dev, &lib, &NoLocator);
+        let dune = &p.books[0];
+        assert_eq!(
+            dune.progress.as_ref().map(|m| (m.from, m.to)),
+            Some((0.42, 0.67))
+        );
+        let emma = &p.books[1];
+        assert!(emma.progress.is_none());
+        assert_eq!(emma.library_ahead, Some((0.9, 0.3)));
+        let s = p.summary();
+        assert_eq!(s.progress.len(), 1);
+        assert_eq!(s.library_ahead, 1);
+        assert!(s.lines()[0].contains("Dune 42%→67%"));
+    }
+
+    #[test]
+    fn books_are_matched_by_title_with_a_file_name_prefix_and_two_copies() {
+        let lib = [
+            lib_book(1, "Gamma Rays", 0.0, vec![]),
+            lib_book(2, "Delta", 0.0, vec![]),
+        ];
+        let mut dev = [
+            reading("01 - Gamma Rays.kepub.epub", 0.2, vec![], true),
+            reading("Delta.epub", 0.4, vec![], true),
+            reading("Delta (1).epub", 1.0, vec![], true),
+            reading("Unknown.epub", 1.0, vec![], true),
+        ];
+        // the device says what the second copy is called, whatever the file name
+        dev[2].state.as_mut().unwrap().title = Some("Delta".into());
+        let p = plan(&dev, &lib, &NoLocator);
+        let moves: Vec<(u64, f64)> = p
+            .books
+            .iter()
+            .map(|b| (b.book_id, b.progress.as_ref().unwrap().to))
+            .collect();
+        assert_eq!(moves, vec![(1, 0.2), (2, 1.0)]);
+        assert_eq!(p.unmatched, 1);
+    }
+
+    #[test]
+    fn a_small_difference_is_not_a_change() {
+        let lib = [lib_book(1, "Dune", 0.5, vec![])];
+        let p = plan(
+            &[reading("Dune.epub", 0.503, vec![], true)],
+            &lib,
+            &NoLocator,
+        );
+        assert!(p.is_empty());
+    }
+
+    #[test]
+    fn progress_never_goes_down_even_when_applied_blindly() {
+        let mut b = book(1, "Dune", 0.8, vec![]);
+        let bp = BookPlan {
+            book_id: 1,
+            progress: Some(ProgressMove {
+                from: 0.1,
+                to: 0.3,
+                finished: false,
+                source: "Kobo",
+            }),
+            ..Default::default()
+        };
+        let done = apply_book(&mut b, &bp, Utc::now());
+        assert_eq!(done.progress, 0);
+        assert_eq!(b.progress, 0.8);
+    }
+
+    fn book(id: u64, title: &str, progress: f64, hs: Vec<Highlight>) -> Book {
+        let now = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap();
+        Book {
+            id,
+            file: format!("{title}.epub"),
+            cover: None,
+            meta: crate::core::opf::Metadata {
+                title: title.into(),
+                ..Default::default()
+            },
+            added: now,
+            modified: now,
+            last_read: None,
+            size: 1,
+            progress,
+            position: None,
+            bookmarks: vec![],
+            highlights: hs,
+            formats: vec![],
+            resources: vec![],
+            drm: String::new(),
+        }
+    }
+
+    #[test]
+    fn the_furthest_device_copy_wins_and_finished_means_one() {
+        let lib = [lib_book(1, "Dune", 0.1, vec![])];
+        let dev = [
+            reading("a/Dune.epub", 0.4, vec![], true),
+            reading("b/Dune.kepub.epub", 1.0, vec![], true),
+        ];
+        let p = plan(&dev, &lib, &NoLocator);
+        let m = p.books[0].progress.clone().unwrap();
+        assert_eq!(m.to, 1.0);
+        assert!(m.finished);
+        let mut b = book(1, "Dune", 0.1, vec![]);
+        apply_book(&mut b, &p.books[0], Utc::now());
+        assert_eq!(b.progress, 1.0);
+        assert!(b.last_read.is_some());
+    }
+
+    #[test]
+    fn highlights_are_united_by_identity_not_duplicated() {
+        let lib = [lib_book(
+            1,
+            "Dune",
+            0.5,
+            vec![hl("a", "Fear is the mind-killer.", "")],
+        )];
+        let dev = [reading(
+            "Dune.epub",
+            0.5,
+            // same quote with other case and punctuation, plus a new one
+            vec![
+                dn("fear is the MIND killer", ""),
+                dn("I must not fear.", ""),
+            ],
+            true,
+        )];
+        let p = plan(&dev, &lib, &Fixed(Some((2, 10, 26))));
+        let b = &p.books[0];
+        assert_eq!(b.highlights_in.len(), 1);
+        assert_eq!(b.highlights_in[0].note.text, "I must not fear.");
+        assert_eq!(
+            (b.highlights_in[0].spine, b.highlights_in[0].start),
+            (2, 10)
+        );
+        assert!(b.out.is_empty());
+        let mut bk = book(
+            1,
+            "Dune",
+            0.5,
+            vec![hl("a", "Fear is the mind-killer.", "")],
+        );
+        let done = apply_book(&mut bk, b, Utc::now());
+        assert_eq!(done.highlights, 1);
+        assert_eq!(bk.highlights.len(), 2);
+        // applying again adds nothing
+        let again = apply_book(&mut bk, b, Utc::now());
+        assert_eq!(again.highlights, 0);
+        assert_eq!(bk.highlights.len(), 2);
+    }
+
+    #[test]
+    fn the_same_id_is_the_same_highlight() {
+        let lib = [lib_book(
+            1,
+            "Dune",
+            0.5,
+            vec![hl("a", "original words", "")],
+        )];
+        let mut n = dn("reworded by the device", "");
+        n.id = Some("a".into());
+        let p = plan(
+            &[reading("Dune.epub", 0.5, vec![n], true)],
+            &lib,
+            &Fixed(Some((0, 0, 1))),
+        );
+        assert!(p.is_empty());
+    }
+
+    #[test]
+    fn the_richer_note_wins_and_an_existing_note_is_never_overwritten() {
+        let lib = [lib_book(
+            1,
+            "Dune",
+            0.5,
+            vec![
+                hl("a", "no note here", ""),
+                hl("b", "my own note here", "mine"),
+            ],
+        )];
+        let dev = [reading(
+            "Dune.epub",
+            0.5,
+            vec![
+                dn("no note here", "device note"),
+                dn("my own note here", "theirs"),
+            ],
+            true,
+        )];
+        let p = plan(&dev, &lib, &NoLocator);
+        let b = &p.books[0];
+        assert_eq!(
+            b.notes_in,
+            vec![("a".to_string(), "device note".to_string())]
+        );
+        let mut bk = book(
+            1,
+            "Dune",
+            0.5,
+            vec![
+                hl("a", "no note here", ""),
+                hl("b", "my own note here", "mine"),
+            ],
+        );
+        let done = apply_book(&mut bk, b, Utc::now());
+        assert_eq!(done.notes, 1);
+        assert_eq!(bk.highlights[0].note, "device note");
+        assert_eq!(bk.highlights[1].note, "mine");
+        assert_eq!(p.summary().notes_to_library, 1);
+    }
+
+    #[test]
+    fn library_highlights_go_to_a_device_that_lacks_them() {
+        let lib = [lib_book(
+            1,
+            "Dune",
+            0.5,
+            vec![
+                hl("a", "kept on both", "n1"),
+                hl("b", "only in bookx", "n2"),
+                hl("c", "plain one", ""),
+            ],
+        )];
+        let dev = [reading(
+            "Dune.epub",
+            0.5,
+            vec![dn("kept on both", "n1")],
+            true,
+        )];
+        let p = plan(&dev, &lib, &NoLocator);
+        let b = &p.books[0];
+        assert_eq!(b.out.len(), 1);
+        assert_eq!(b.out[0].highlights.len(), 2);
+        let s = p.summary();
+        assert_eq!((s.highlights_to_device, s.notes_to_device), (2, 1));
+        assert!(s
+            .text()
+            .contains("2 highlights go Bookx→device (1 with notes)"));
+    }
+
+    #[test]
+    fn a_device_copy_with_a_notes_file_is_not_written_to() {
+        let lib = [lib_book(1, "Dune", 0.5, vec![hl("b", "only in bookx", "")])];
+        let dev = [reading("Dune.epub", 0.5, vec![dn("other", "")], false)];
+        let p = plan(&dev, &lib, &Fixed(None));
+        assert!(p.books[0].out.is_empty());
+        assert_eq!(p.books[0].held_back, 1);
+        assert_eq!(p.books[0].unplaced, 1);
+        let s = p.summary();
+        assert_eq!((s.held_back, s.unplaced, s.highlights_to_device), (1, 1, 0));
+    }
+
+    #[test]
+    fn nothing_is_ever_removed_from_the_library() {
+        // the device has no notes at all: the library keeps its own
+        let lib = [lib_book(
+            1,
+            "Dune",
+            0.5,
+            vec![hl("a", "mine", "x"), hl("b", "mine too", "")],
+        )];
+        let p = plan(&[reading("Dune.epub", 0.2, vec![], true)], &lib, &NoLocator);
+        let mut bk = book(1, "Dune", 0.5, lib[0].highlights.clone());
+        apply_book(&mut bk, &p.books[0], Utc::now());
+        assert_eq!(bk.highlights.len(), 2);
+        assert_eq!(bk.progress, 0.5);
+        // and the device is only ever added to
+        assert_eq!(p.books[0].out[0].highlights.len(), 2);
+    }
+
+    #[test]
+    fn unknown_device_books_are_counted_not_invented() {
+        let lib = [lib_book(1, "Dune", 0.0, vec![])];
+        let p = plan(
+            &[reading("Something Else.epub", 0.5, vec![], true)],
+            &lib,
+            &NoLocator,
+        );
+        assert_eq!((p.matched, p.unmatched), (0, 1));
+        assert!(p.books.is_empty());
+        assert_eq!(p.summary().unmatched, 1);
+    }
+
+    #[test]
+    fn two_device_copies_of_one_quote_import_it_once_with_the_note() {
+        let lib = [lib_book(1, "Dune", 0.5, vec![])];
+        let dev = [
+            reading("a/Dune.epub", 0.5, vec![dn("a long quote here", "")], true),
+            reading(
+                "b/Dune.epub",
+                0.5,
+                vec![dn("A long quote here!", "with note")],
+                true,
+            ),
+        ];
+        let p = plan(&dev, &lib, &Fixed(Some((0, 1, 18))));
+        assert_eq!(p.books[0].highlights_in.len(), 1);
+        assert_eq!(p.books[0].highlights_in[0].note.note, "with note");
+    }
+
+    #[test]
+    fn different_notes_on_the_same_highlight_are_reported_and_nothing_is_overwritten() {
+        let lib = [lib_book(
+            1,
+            "Dune",
+            0.5,
+            vec![hl("b", "my own note here", "mine")],
+        )];
+        let dev = [reading(
+            "Dune.epub",
+            0.5,
+            vec![dn("my own note here", "theirs")],
+            true,
+        )];
+        let p = plan(&dev, &lib, &NoLocator);
+        assert_eq!(p.summary().conflicts.len(), 1);
+        assert!(p.is_empty(), "a conflict changes nothing");
+        let s = p.summary();
+        let text = s.text();
+        assert!(text.contains("1 highlight has a different note on the two sides"));
+        assert!(text.contains("Bookx: “mine” · device: “theirs”"));
+        assert!(text.contains("nothing is overwritten"));
+        let mut bk = book(1, "Dune", 0.5, lib[0].highlights.clone());
+        apply_book(&mut bk, &p.books[0], Utc::now());
+        assert_eq!(bk.highlights[0].note, "mine");
+    }
+
+    #[test]
+    fn a_book_read_again_in_bookx_is_not_pulled_forward_by_an_old_device_position() {
+        let mut l = lib_book(1, "Dune", 0.1, vec![]);
+        l.last_read = Some(1_800_000_000);
+        let mut r = reading("Dune.epub", 0.8, vec![], true);
+        r.state.as_mut().unwrap().last_read = Some("2020-01-01 00:00:00".into());
+        let p = plan(&[r], &[l], &NoLocator);
+        assert!(p.books[0].progress.is_none());
+        assert_eq!(p.books[0].restarted, Some((0.1, 0.8)));
+        assert_eq!(p.summary().restarted, 1);
+        assert!(p.summary().text().contains("read more recently in Bookx"));
+    }
+
+    #[test]
+    fn authors_decide_between_two_books_with_the_same_title() {
+        let mut a = lib_book(1, "Dune", 0.0, vec![]);
+        a.authors = vec!["Frank Herbert".into()];
+        let mut b = lib_book(2, "Dune", 0.0, vec![]);
+        b.authors = vec!["Someone Else".into()];
+        let ambiguous = plan(
+            &[reading("Dune.epub", 0.5, vec![], true)],
+            &[a, b],
+            &NoLocator,
+        );
+        assert_eq!((ambiguous.matched, ambiguous.unmatched), (0, 1));
+    }
+
+    #[test]
+    fn the_summary_says_what_goes_where() {
+        let mut s = Summary::default();
+        for (t, a, b) in [
+            ("A", 0.42, 0.67),
+            ("B", 0.0, 0.5),
+            ("C", 0.1, 0.2),
+            ("D", 0.1, 0.9),
+        ] {
+            s.progress.push((t.to_string(), a, b));
+        }
+        s.highlights_to_library = 5;
+        s.highlights_to_device = 2;
+        s.notes_to_device = 2;
+        let text = s.text();
+        assert!(text.contains("4 books: progress moves forward from the device (A 42%→67%"));
+        assert!(text.contains("and 1 more"));
+        assert!(text.contains("5 highlights go device→Bookx"));
+        assert!(text.contains("2 highlights go Bookx→device (2 with notes)"));
+        assert!(text.ends_with("Nothing is deleted on either side."));
+        assert!(Summary::default().text().contains("already up to date"));
+    }
+
+    #[test]
+    fn device_notes_are_converted_and_a_quote_in_notes_is_no_note() {
+        let n = bookx_serve::reading::DeviceNote {
+            text: "Quoted words".into(),
+            note: "Quoted words".into(),
+            chapter: None,
+            created: Some("2026-05-06 07:08:09".into()),
+            updated: None,
+        };
+        let d = note_of(&n);
+        assert_eq!(d.note, "");
+        assert_eq!(
+            d.created,
+            Some(Utc.with_ymd_and_hms(2026, 5, 6, 7, 8, 9).unwrap())
+        );
+        let mine = bookx_serve::reading::DeviceNote {
+            note: " my note ".into(),
+            ..n
+        };
+        assert_eq!(note_of(&mine).note, "my note");
+    }
+
+    #[test]
+    fn our_own_sidecar_reads_back_as_the_same_notes() {
+        let hs = vec![
+            hl("a", "first quote", "with note"),
+            hl("b", "second quote", ""),
+        ];
+        let lua =
+            crate::send_notes::koreader_sidecar("T", &[], &crate::send_notes::Notes::new(&hs, &[]));
+        let n: Vec<DeviceNote> = bookx_serve::reading::parse_sidecar(&lua)
+            .notes
+            .iter()
+            .map(note_of)
+            .collect();
+        assert_eq!(n.len(), 2);
+        let lib = [lib_book(1, "T", 0.0, hs)];
+        let p = plan(&[reading("T.epub", 0.0, n, false)], &lib, &NoLocator);
+        assert!(p.is_empty(), "a round trip must be a no-op");
+    }
+
+    struct Mem(Vec<(PathBuf, usize)>);
+    impl NoteSink for Mem {
+        fn write(&mut self, path: &Path, _: &str, h: &[Highlight]) -> anyhow::Result<usize> {
+            self.0.push((path.to_path_buf(), h.len()));
+            Ok(h.len())
+        }
+    }
+
+    #[test]
+    fn outgoing_notes_reach_the_sink() {
+        let lib = [lib_book(
+            1,
+            "Dune",
+            0.0,
+            vec![hl("a", "one", "x"), hl("b", "two", "")],
+        )];
+        let p = plan(&[reading("Dune.epub", 0.0, vec![], true)], &lib, &NoLocator);
+        let mut m = Mem(vec![]);
+        let (n, errs) = apply_to_device(&p, &mut m);
+        assert_eq!((n, errs.len()), (2, 0));
+        assert_eq!(m.0[0].0, PathBuf::from("/dev/Dune.epub"));
+    }
+
+    #[test]
+    fn the_sidecar_sink_never_overwrites() {
+        let d = std::env::temp_dir().join(format!("bookx-ds-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&d).unwrap();
+        let book = d.join("Dune.epub");
+        let hs = vec![hl("a", "a quote", "")];
+        let mut sink = SidecarSink;
+        assert_eq!(sink.write(&book, "Dune", &hs).unwrap(), 1);
+        let file = bookx_serve::reading::sidecar_file(&book);
+        std::fs::write(&file, "device wrote this").unwrap();
+        assert_eq!(sink.write(&book, "Dune", &hs).unwrap(), 0);
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "device wrote this");
+        let _ = std::fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn the_button_and_banner_follow_the_devices() {
+        use bookx_core::contracts::DeviceInfo;
+        let d = |id: &str, name: &str| DeviceInfo {
+            id: id.into(),
+            name: name.into(),
+            mount: PathBuf::from("/m").join(id),
+        };
+        assert_eq!(button_label(&[]), None);
+        let kobo = d("k", "Kobo Libra");
+        assert_eq!(
+            button_label(std::slice::from_ref(&kobo)).as_deref(),
+            Some("Kobo Libra")
+        );
+        let both = [kobo.clone(), d("b", "Boox")];
+        assert_eq!(button_label(&both).as_deref(), Some("Kobo Libra +1"));
+        assert_eq!(newly_connected(std::slice::from_ref(&kobo), &both).len(), 1);
+        assert_eq!(newly_connected(&both, &both).len(), 0);
+        assert_eq!(newly_connected(&[], &both).len(), 2);
+        assert_eq!(
+            banner_text("Kobo Libra"),
+            "Kobo Libra connected — Sync reading progress and notes?"
+        );
+    }
+
+    #[test]
+    fn the_explanations_say_what_the_code_does() {
+        for needle in [
+            "USB",
+            "Kobo’s own database",
+            "KOReader’s",
+            "nothing is deleted",
+            "never written",
+        ] {
+            assert!(AUTO_SYNC_HELP.contains(needle), "{needle}");
+        }
+        assert!(NOTES_SUBTITLE.contains("My notes"));
+        // the section title the text promises is the one that is written
+        assert_eq!(crate::send_notes::APPENDIX_TITLE, "My notes");
+        assert!(NOTES_SUBTITLE.contains("library copy is not changed"));
+    }
+
+    #[test]
+    fn quotes_are_found_despite_curly_quotes_dashes_and_line_breaks() {
+        let hay: Vec<char> =
+            "He said, \u{201c}Fear is the\n  mind\u{2014}killer.\u{201d} Then more."
+                .chars()
+                .collect();
+        let (a, b) = find_loose(&hay, "\"Fear is the mind-killer.\"").unwrap();
+        let found: String = hay[a..b].iter().collect();
+        assert!(
+            found.starts_with('\u{201c}') && found.ends_with('\u{201d}'),
+            "{found:?}"
+        );
+        assert!(find_loose(&hay, "Fear is the mind-killer. Then less.").is_none());
+        assert!(find_loose(&hay, "short").is_none());
+        let soft: Vec<char> = "mind-kil\u{ad}ler is here".chars().collect();
+        assert_eq!(find_loose(&soft, "mind-killer is"), Some((0, 15)));
+    }
+
+    #[test]
+    fn prefs_default_to_manual_sync_and_notes_on() {
+        let p = SyncPrefs::default();
+        assert!(!p.auto_sync && p.include_notes);
+        let q: SyncPrefs = serde_json::from_str("{}").unwrap();
+        assert_eq!(p, q);
+    }
+}

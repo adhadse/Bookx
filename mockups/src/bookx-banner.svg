@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="3100" height="3300" viewBox="0 0 3100 3300">
+<defs>
+</defs>
+<rect width="3100" height="3300" fill="#ffffff"/>
+<text x="90" y="100" font-size="54" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Continue Reading banner</text>
+<text x="90" y="140" font-size="18" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Three variants for the cold-start hero, A is chosen: it carries every action and the other books being read. After the first visit Home shows the slim strip.</text>
+<text x="90" y="210" font-size="26" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">1  Cold start: the hero (viewport 1250 px high: 32 % of it)</text>
+<rect x="90" y="270" width="1400" height="520" rx="14" fill="#fafafa" stroke="#d0d0d0" stroke-width="1.5"/>
+<text x="94" y="258" font-size="18" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">A  text | big cover | also reading (chosen)</text>
+<rect x="114" y="571.5999999999999" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="234" y="571.5999999999999" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="354" y="571.5999999999999" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="474" y="571.5999999999999" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="114" y="294" width="1352" height="260" rx="16" fill="#d9c3ab"/>
+<rect x="114" y="294" width="1352" height="260" rx="16" fill="#ffffff" fill-opacity="0.18"/>
+<rect x="132" y="308" width="154.66666666666666" height="232" rx="4" fill="#c9a47a"/>
+<rect x="150.56" y="335.84" width="117.54666666666667" height="116" rx="2" fill="#e9d3a8"/>
+<rect x="162.93333333333334" y="475.03999999999996" width="92.8" height="11.600000000000001" rx="2" fill="#6b4f2a"/>
+<text x="314.66666666666663" y="338" font-size="12" font-weight="700" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">CONTINUE READING</text>
+<text x="314.66666666666663" y="376" font-size="30" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Alice's Adventures in Wonderland</text>
+<text x="314.66666666666663" y="404" font-size="18" font-weight="700" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Lewis Carroll</text>
+<text x="314.66666666666663" y="430" font-size="13" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Chapter 5 · about 2 h 30 min left · 40% completed</text>
+<rect x="314.66666666666663" y="442" width="300" height="5" rx="2.5" fill="#00000033"/>
+<rect x="314.66666666666663" y="442" width="120" height="5" rx="2.5" fill="#1d1d20"/>
+<rect x="314.66666666666663" y="464" width="100" height="30" rx="15" fill="#1d1d20"/>
+<text x="364.66666666666663" y="484" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Continue</text>
+<rect x="424.66666666666663" y="464" width="80" height="30" rx="15" fill="#c5ad93"/>
+<text x="464.66666666666663" y="484" font-size="13" font-weight="700" fill="#1d1d20" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Details</text>
+<rect x="514.6666666666666" y="464" width="120" height="30" rx="15" fill="#c5ad93"/>
+<text x="574.6666666666666" y="484" font-size="13" font-weight="700" fill="#1d1d20" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Open from start</text>
+<rect x="644.6666666666666" y="464" width="110" height="30" rx="15" fill="#c5ad93"/>
+<text x="699.6666666666666" y="484" font-size="13" font-weight="700" fill="#1d1d20" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Mark finished</text>
+<text x="1276" y="354" font-size="11" font-weight="700" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">ALSO READING</text>
+<rect x="1276" y="366" width="48" height="72" rx="4" fill="#c9a47a"/>
+<rect x="1281.76" y="374.64" width="36.480000000000004" height="36" rx="2" fill="#e9d3a8"/>
+<rect x="1285.6" y="417.84" width="28.799999999999997" height="3.6" rx="2" fill="#6b4f2a"/>
+<rect x="1332" y="366" width="48" height="72" rx="4" fill="#c9a47a"/>
+<rect x="1337.76" y="374.64" width="36.480000000000004" height="36" rx="2" fill="#e9d3a8"/>
+<rect x="1341.6" y="417.84" width="28.799999999999997" height="3.6" rx="2" fill="#6b4f2a"/>
+<rect x="1388" y="366" width="48" height="72" rx="4" fill="#c9a47a"/>
+<rect x="1393.76" y="374.64" width="36.480000000000004" height="36" rx="2" fill="#e9d3a8"/>
+<rect x="1397.6" y="417.84" width="28.799999999999997" height="3.6" rx="2" fill="#6b4f2a"/>
+<rect x="1560" y="270" width="1400" height="520" rx="14" fill="#fafafa" stroke="#d0d0d0" stroke-width="1.5"/>
+<text x="1564" y="258" font-size="18" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">B  text, cover leaning out</text>
+<rect x="1584" y="571.5999999999999" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="1704" y="571.5999999999999" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="1824" y="571.5999999999999" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="1944" y="571.5999999999999" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="1584" y="294" width="1352" height="260" rx="16" fill="#d9c3ab"/>
+<rect x="1584" y="294" width="1352" height="260" rx="16" fill="#ffffff" fill-opacity="0.18"/>
+<text x="1612" y="344" font-size="12" font-weight="700" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">CONTINUE READING</text>
+<text x="1612" y="390" font-size="34" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Alice's Adventures in Wonderland</text>
+<text x="1612" y="420" font-size="18" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Lewis Carroll · 40% · about 2 h 30 min left</text>
+<rect x="1612" y="498" width="120" height="30" rx="15" fill="#1d1d20"/>
+<text x="1672" y="518" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Continue</text>
+<rect x="2786" y="276" width="180" height="270" rx="4" fill="#c9a47a"/>
+<rect x="2807.6" y="308.4" width="136.8" height="135" rx="2" fill="#e9d3a8"/>
+<rect x="2822" y="470.4" width="108" height="13.5" rx="2" fill="#6b4f2a"/>
+<rect x="90" y="900" width="1400" height="520" rx="14" fill="#fafafa" stroke="#d0d0d0" stroke-width="1.5"/>
+<text x="94" y="888" font-size="18" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">C  progress ring, one action and a menu</text>
+<rect x="114" y="1201.6" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="234" y="1201.6" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="354" y="1201.6" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="474" y="1201.6" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="114" y="924" width="1352" height="260" rx="16" fill="#d9c3ab"/>
+<rect x="114" y="924" width="1352" height="260" rx="16" fill="#ffffff" fill-opacity="0.18"/>
+<circle cx="204" cy="1054" r="62" fill="none" stroke="#00000022" stroke-width="8"/>
+<circle cx="204" cy="1054" r="62" fill="none" stroke="#1d1d20" stroke-width="8"/>
+<rect x="170" y="1004" width="66.66666666666667" height="100" rx="4" fill="#c9a47a"/>
+<rect x="178" y="1016" width="50.66666666666667" height="50" rx="2" fill="#e9d3a8"/>
+<rect x="183.33333333333334" y="1076" width="40" height="5" rx="2" fill="#6b4f2a"/>
+<text x="304" y="994" font-size="28" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Alice's Adventures in Wonderland</text>
+<text x="304" y="1022" font-size="16" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Lewis Carroll · 40%</text>
+<rect x="304" y="1124" width="120" height="30" rx="15" fill="#1d1d20"/>
+<text x="364" y="1144" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Continue</text>
+<rect x="434" y="1124" width="40" height="30" rx="15" fill="#c5ad93"/>
+<text x="454" y="1144" font-size="13" font-weight="700" fill="#1d1d20" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">…</text>
+<text x="90" y="1530" font-size="26" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">2  Later visits to Home in the same session: the strip (64 px card, 88 px with margins)</text>
+<rect x="90" y="1590" width="1400" height="320" rx="14" fill="#fafafa" stroke="#d0d0d0" stroke-width="1.5"/>
+<text x="94" y="1578" font-size="18" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">A  strip</text>
+<rect x="114" y="1775.6" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="234" y="1775.6" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="354" y="1775.6" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="474" y="1775.6" width="90" height="120" rx="6" fill="#e6e0d6"/>
+<rect x="114" y="1614" width="1352" height="64" rx="16" fill="#d9c3ab"/>
+<rect x="114" y="1614" width="1352" height="64" rx="16" fill="#ffffff" fill-opacity="0.18"/>
+<rect x="126" y="1620" width="34.666666666666664" height="52" rx="4" fill="#c9a47a"/>
+<rect x="130.16" y="1626.24" width="26.346666666666664" height="26" rx="2" fill="#e9d3a8"/>
+<rect x="132.93333333333334" y="1657.44" width="20.799999999999997" height="2.6" rx="2" fill="#6b4f2a"/>
+<text x="196" y="1640" font-size="15" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Alice's Adventures in Wonderland</text>
+<text x="196" y="1657" font-size="12" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Lewis Carroll · 40%</text>
+<rect x="196" y="1665" width="1102" height="4" rx="2" fill="#00000033"/>
+<rect x="196" y="1665" width="440.8" height="4" rx="2" fill="#1d1d20"/>
+<rect x="1354" y="1631" width="100" height="30" rx="15" fill="#1d1d20"/>
+<text x="1404" y="1651" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Continue</text>
+<text x="90" y="2010" font-size="26" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">3  Resize ladder of variant A: the layout follows the width of the book area, the height follows the viewport</text>
+<text x="90" y="2070" font-size="16" font-weight="700" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">wide ≥ 900 px (+ also reading from 1150)</text>
+<rect x="90" y="2084" width="1000" height="230" rx="16" fill="#d9c3ab"/>
+<rect x="90" y="2084" width="1000" height="230" rx="16" fill="#ffffff" fill-opacity="0.18"/>
+<rect x="108" y="2098" width="134.66666666666666" height="202" rx="4" fill="#c9a47a"/>
+<rect x="124.16" y="2122.24" width="102.34666666666666" height="101" rx="2" fill="#e9d3a8"/>
+<rect x="134.93333333333334" y="2243.44" width="80.8" height="10.100000000000001" rx="2" fill="#6b4f2a"/>
+<text x="270.66666666666663" y="2128" font-size="12" font-weight="700" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">CONTINUE READING</text>
+<text x="270.66666666666663" y="2166" font-size="30" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Alice's Adventures in Wonderland</text>
+<text x="270.66666666666663" y="2194" font-size="18" font-weight="700" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Lewis Carroll</text>
+<text x="270.66666666666663" y="2220" font-size="13" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Chapter 5 · about 2 h 30 min left · 40% completed</text>
+<rect x="270.66666666666663" y="2232" width="300" height="5" rx="2.5" fill="#00000033"/>
+<rect x="270.66666666666663" y="2232" width="120" height="5" rx="2.5" fill="#1d1d20"/>
+<rect x="270.66666666666663" y="2254" width="100" height="30" rx="15" fill="#1d1d20"/>
+<text x="320.66666666666663" y="2274" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Continue</text>
+<rect x="380.66666666666663" y="2254" width="80" height="30" rx="15" fill="#c5ad93"/>
+<text x="420.66666666666663" y="2274" font-size="13" font-weight="700" fill="#1d1d20" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Details</text>
+<rect x="470.66666666666663" y="2254" width="120" height="30" rx="15" fill="#c5ad93"/>
+<text x="530.6666666666666" y="2274" font-size="13" font-weight="700" fill="#1d1d20" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Open from start</text>
+<rect x="600.6666666666666" y="2254" width="110" height="30" rx="15" fill="#c5ad93"/>
+<text x="655.6666666666666" y="2274" font-size="13" font-weight="700" fill="#1d1d20" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Mark finished</text>
+<text x="900" y="2144" font-size="11" font-weight="700" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">ALSO READING</text>
+<rect x="900" y="2156" width="48" height="72" rx="4" fill="#c9a47a"/>
+<rect x="905.76" y="2164.64" width="36.480000000000004" height="36" rx="2" fill="#e9d3a8"/>
+<rect x="909.6" y="2207.84" width="28.799999999999997" height="3.6" rx="2" fill="#6b4f2a"/>
+<rect x="956" y="2156" width="48" height="72" rx="4" fill="#c9a47a"/>
+<rect x="961.76" y="2164.64" width="36.480000000000004" height="36" rx="2" fill="#e9d3a8"/>
+<rect x="965.6" y="2207.84" width="28.799999999999997" height="3.6" rx="2" fill="#6b4f2a"/>
+<rect x="1012" y="2156" width="48" height="72" rx="4" fill="#c9a47a"/>
+<rect x="1017.76" y="2164.64" width="36.480000000000004" height="36" rx="2" fill="#e9d3a8"/>
+<rect x="1021.6" y="2207.84" width="28.799999999999997" height="3.6" rx="2" fill="#6b4f2a"/>
+<text x="90" y="2364" font-size="16" font-weight="700" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">medium 640-900 px: smaller cover, one More menu</text>
+<rect x="90" y="2378" width="760" height="200" rx="16" fill="#d9c3ab"/>
+<rect x="90" y="2378" width="760" height="200" rx="16" fill="#ffffff" fill-opacity="0.18"/>
+<rect x="108" y="2392" width="114.66666666666667" height="172" rx="4" fill="#c9a47a"/>
+<rect x="121.76" y="2412.64" width="87.14666666666668" height="86" rx="2" fill="#e9d3a8"/>
+<rect x="130.93333333333334" y="2515.84" width="68.8" height="8.6" rx="2" fill="#6b4f2a"/>
+<text x="250" y="2438" font-size="22" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Alice's Adventures in Wonderland</text>
+<text x="250" y="2464" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Lewis Carroll · 40%</text>
+<rect x="250" y="2508" width="100" height="30" rx="15" fill="#1d1d20"/>
+<text x="300" y="2528" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Continue</text>
+<rect x="360" y="2508" width="40" height="30" rx="15" fill="#c5ad93"/>
+<text x="380" y="2528" font-size="13" font-weight="700" fill="#1d1d20" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">…</text>
+<text x="90" y="2628" font-size="16" font-weight="700" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">strip 420-640 px, or a viewport under 928 px high</text>
+<rect x="90" y="2642" width="560" height="64" rx="16" fill="#d9c3ab"/>
+<rect x="90" y="2642" width="560" height="64" rx="16" fill="#ffffff" fill-opacity="0.18"/>
+<rect x="102" y="2648" width="34.666666666666664" height="52" rx="4" fill="#c9a47a"/>
+<rect x="106.16" y="2654.24" width="26.346666666666664" height="26" rx="2" fill="#e9d3a8"/>
+<rect x="108.93333333333334" y="2685.44" width="20.799999999999997" height="2.6" rx="2" fill="#6b4f2a"/>
+<text x="172" y="2668" font-size="15" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Alice's Adventures in Wonderland</text>
+<text x="172" y="2685" font-size="12" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Lewis Carroll · 40%</text>
+<rect x="172" y="2693" width="310" height="4" rx="2" fill="#00000033"/>
+<rect x="172" y="2693" width="124" height="4" rx="2" fill="#1d1d20"/>
+<rect x="538" y="2659" width="100" height="30" rx="15" fill="#1d1d20"/>
+<text x="588" y="2679" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Continue</text>
+<text x="90" y="2752" font-size="16" font-weight="700" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">mini &lt; 420 px: title and play button</text>
+<rect x="90" y="2766" width="330" height="64" rx="16" fill="#d9c3ab"/>
+<rect x="90" y="2766" width="330" height="64" rx="16" fill="#ffffff" fill-opacity="0.18"/>
+<rect x="102" y="2772" width="34.666666666666664" height="52" rx="4" fill="#c9a47a"/>
+<rect x="106.16" y="2778.24" width="26.346666666666664" height="26" rx="2" fill="#e9d3a8"/>
+<rect x="108.93333333333334" y="2809.44" width="20.799999999999997" height="2.6" rx="2" fill="#6b4f2a"/>
+<text x="172" y="2804" font-size="14" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Alice's Adventures…</text>
+<circle cx="386" cy="2798" r="17" fill="#1d1d20"/>
+<path d="M381 2791 l12 7 l-12 7 z" fill="#fff"/>
+<text x="90" y="2876" font-size="16" font-weight="700" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">scrolled: it shrinks to the strip, then slides off</text>
+<rect x="90" y="2890" width="760" height="64" rx="16" fill="#d9c3ab"/>
+<rect x="90" y="2890" width="760" height="64" rx="16" fill="#ffffff" fill-opacity="0.18"/>
+<rect x="102" y="2896" width="34.666666666666664" height="52" rx="4" fill="#c9a47a"/>
+<rect x="106.16" y="2902.24" width="26.346666666666664" height="26" rx="2" fill="#e9d3a8"/>
+<rect x="108.93333333333334" y="2933.44" width="20.799999999999997" height="2.6" rx="2" fill="#6b4f2a"/>
+<text x="172" y="2916" font-size="15" font-weight="700" fill="#1d1d20" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Alice's Adventures in Wonderland</text>
+<text x="172" y="2933" font-size="12" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Lewis Carroll · 40%</text>
+<rect x="172" y="2941" width="510" height="4" rx="2" fill="#00000033"/>
+<rect x="172" y="2941" width="204" height="4" rx="2" fill="#1d1d20"/>
+<rect x="738" y="2907" width="100" height="30" rx="15" fill="#1d1d20"/>
+<text x="788" y="2927" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Continue</text>
+<text x="870" y="2928" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">← shrinks from the hero first (no jump of the books), then slides off</text>
+<text x="90" y="3030" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Colours: the dominant colour of the cover, saturation capped, pastel in light mode and deep in dark mode; the text colour has at least 4.5:1 contrast on both ends of the gradient.</text>
+</svg>

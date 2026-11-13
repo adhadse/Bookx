@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=Bookx
+GenericName=E-book Manager
+Comment=Manage, read and edit your e-books
+Type=Application
+Exec=bookx %U
+Terminal=false
+Categories=GNOME;GTK;Office;Viewer;Literature;
+Keywords=ebook;epub;reader;library;calibre;editor;books;kobo;kindle;
+MimeType=application/epub+zip;application/x-kobo-epub+zip;application/x-mobipocket-ebook;application/vnd.amazon.ebook;application/vnd.amazon.mobi8-ebook;application/x-fictionbook+xml;application/x-zip-compressed-fb2;application/vnd.comicbook+zip;application/vnd.comicbook-rar;application/x-cbt;application/pdf;application/rtf;application/vnd.oasis.opendocument.text;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/x-sony-bbeb;application/vnd.ms-htmlhelp;x-scheme-handler/bookx;
+Icon=com.adhadse.Bookx
+StartupNotify=true
+StartupWMClass=com.adhadse.Bookx
+X-GNOME-UsesNotifications=false

@@ -1,0 +1,495 @@
+//! The "AI Assistants (MCP)" page of Preferences: run the assistant server inside Bookx, its
+//! token, whether assistants may change the library, ready-made connection snippets and the
+//! assistants that are connected. The logic is in `mcp_host.rs`, the server in `bookx-mcp`.
+
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
+
+use relm4::adw::{self, prelude::*};
+use relm4::gtk::{self, glib};
+
+use super::preferences::{register_group, register_page, PrefCtx};
+use crate::i18n::{tr, trf};
+use crate::mcp_host::{self as host, McpSettings};
+
+const WRITE_WARNING: &str = "Assistants can then edit titles, authors, tags and ratings, add notes and highlights, mark books read and import books from folders you allow. Metadata edits and imports can be undone in Bookx (Edit → Undo); notes and highlights can be deleted in the reader. Switch this on only for assistants you trust.";
+
+thread_local! {
+    static REGISTERED: Cell<bool> = const { Cell::new(false) };
+    static STATE: Rc<RefCell<McpSettings>> = Rc::new(RefCell::new(host::load()));
+    static HANDLES: RefCell<Option<Handles>> = const { RefCell::new(None) };
+    static LAST_COPY: RefCell<String> = const { RefCell::new(String::new()) };
+}
+
+#[derive(Clone)]
+struct Handles {
+    shared: super::SharedRef,
+    on: adw::SwitchRow,
+    port: adw::SpinRow,
+    write: adw::SwitchRow,
+    status: adw::ActionRow,
+    token: adw::ActionRow,
+    clients: adw::ActionRow,
+    guard: Rc<Cell<bool>>,
+}
+
+fn state() -> Rc<RefCell<McpSettings>> {
+    STATE.with(|s| s.clone())
+}
+
+/// Adds the page; called once from the registry of Preferences.
+pub fn register() {
+    if REGISTERED.with(|r| r.replace(true)) {
+        return;
+    }
+    register_page(
+        "mcp",
+        &tr("AI Assistants (MCP)"),
+        "network-server-symbolic",
+        130,
+    );
+    register_group("mcp", 10, server_group);
+    register_group("mcp", 20, token_group);
+    register_group("mcp", 30, connect_group);
+    register_group("mcp", 40, clients_group);
+}
+
+fn root_of(shared: &super::SharedRef) -> std::path::PathBuf {
+    shared.lib.borrow().root.clone()
+}
+
+/// What the status row says.
+fn status_text() -> (String, String) {
+    match host::url() {
+        Some(u) => (tr("Listening"), u),
+        None => (
+            tr("Off"),
+            tr("Assistants can still use the command-line tool below."),
+        ),
+    }
+}
+
+fn refresh_status(h: &Handles) {
+    let (t, s) = status_text();
+    h.status.set_title(&t);
+    h.status.set_subtitle(&s);
+}
+
+/// Starts, restarts or stops the server to match the settings. Errors show in the status row.
+fn apply(h: &Handles) {
+    let st = state();
+    if st.borrow().enabled {
+        let root = root_of(&h.shared);
+        let result = host::start(&root, &mut st.borrow_mut());
+        match result {
+            Ok(_) => refresh_status(h),
+            Err(e) => {
+                host::stop();
+                st.borrow_mut().enabled = false;
+                h.guard.set(true);
+                h.on.set_active(false);
+                h.guard.set(false);
+                h.status.set_title(&tr("Could not start"));
+                h.status.set_subtitle(&format!("{e:#}"));
+            }
+        }
+    } else {
+        host::stop();
+        refresh_status(h);
+    }
+    host::save(&st.borrow());
+}
+
+fn set_enabled(h: &Handles, on: bool) {
+    state().borrow_mut().enabled = on;
+    apply(h);
+}
+
+fn set_write(h: &Handles, on: bool) {
+    state().borrow_mut().write = on;
+    if host::running() {
+        apply(h);
+    } else {
+        host::save(&state().borrow());
+    }
+}
+
+fn copy_text(w: &impl IsA<gtk::Widget>, text: &str) {
+    w.as_ref().clipboard().set_text(text);
+    LAST_COPY.with(|l| *l.borrow_mut() = text.to_string());
+}
+
+fn icon_button(icon: &str, label: &str) -> gtk::Button {
+    let b = gtk::Button::from_icon_name(icon);
+    b.set_valign(gtk::Align::Center);
+    b.add_css_class("flat");
+    b.set_tooltip_text(Some(label));
+    super::audit::label(&b, label);
+    b
+}
+
+fn server_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
+    let st = state();
+    let g = adw::PreferencesGroup::new();
+    g.set_title(&tr("Server inside Bookx"));
+    g.set_description(Some(&tr(
+        "Lets AI assistants such as Claude, Cursor or opencode search and read your library while Bookx is open. It only listens on this computer and every request needs the token below. Switched off until you turn it on.",
+    )));
+    let on = adw::SwitchRow::builder()
+        .title(tr("Let AI assistants connect"))
+        .subtitle(tr("Starts a local server on this computer"))
+        .build();
+    let port = adw::SpinRow::with_range(1024.0, 65535.0, 1.0);
+    port.set_title(&tr("Port"));
+    port.set_value(f64::from(st.borrow().port));
+    let status = adw::ActionRow::builder()
+        .title(tr("Off"))
+        .subtitle(tr("Assistants can still use the command-line tool below."))
+        .subtitle_selectable(true)
+        .build();
+    let copy = icon_button("edit-copy-symbolic", &tr("Copy the server address"));
+    status.add_suffix(&copy);
+    let write = adw::SwitchRow::builder()
+        .title(tr("Allow changes to my library"))
+        .subtitle(tr(WRITE_WARNING))
+        .build();
+    write.add_css_class("warning");
+    for r in [
+        on.upcast_ref::<gtk::Widget>(),
+        port.upcast_ref(),
+        status.upcast_ref(),
+        write.upcast_ref(),
+    ] {
+        g.add(r);
+    }
+    let h = Handles {
+        shared: ctx.shared.clone(),
+        on: on.clone(),
+        port: port.clone(),
+        write: write.clone(),
+        status: status.clone(),
+        token: adw::ActionRow::new(),
+        clients: adw::ActionRow::new(),
+        guard: Rc::new(Cell::new(false)),
+    };
+    on.set_active(host::running());
+    write.set_active(st.borrow().write);
+    refresh_status(&h);
+    HANDLES.with(|x| {
+        let mut x = x.borrow_mut();
+        match x.as_mut() {
+            Some(old) => {
+                old.shared = h.shared.clone();
+                old.on = h.on.clone();
+                old.port = h.port.clone();
+                old.write = h.write.clone();
+                old.status = h.status.clone();
+                old.guard = h.guard.clone();
+            }
+            None => *x = Some(h.clone()),
+        }
+    });
+    on.connect_active_notify({
+        let h = h.clone();
+        move |s| {
+            if !h.guard.get() {
+                set_enabled(&h, s.is_active());
+            }
+        }
+    });
+    port.connect_value_notify({
+        let h = h.clone();
+        move |s| {
+            state().borrow_mut().port = s.value() as u16;
+            if host::running() {
+                apply(&h);
+            } else {
+                host::save(&state().borrow());
+            }
+        }
+    });
+    copy.connect_clicked({
+        let status = status.clone();
+        move |b| {
+            if let Some(u) = host::url() {
+                copy_text(b, &u);
+                status.set_subtitle(&format!("{u}  ·  {}", tr("copied")));
+            }
+        }
+    });
+    write.connect_active_notify({
+        let h = h.clone();
+        let parent = ctx.parent.clone();
+        move |s| {
+            if h.guard.get() {
+                return;
+            }
+            let confirm_needed =
+                s.is_active() && !state().borrow().write && crate::devtools::script().is_empty();
+            if confirm_needed {
+                h.guard.set(true);
+                s.set_active(false);
+                h.guard.set(false);
+                let (h2, sw) = (h.clone(), s.clone());
+                super::alert(
+                    &parent,
+                    &tr("Allow assistants to change your library?"),
+                    &tr(WRITE_WARNING),
+                    &tr("Allow Changes"),
+                    true,
+                    move || {
+                        h2.guard.set(true);
+                        sw.set_active(true);
+                        h2.guard.set(false);
+                        set_write(&h2, true);
+                    },
+                );
+            } else {
+                set_write(&h, s.is_active());
+            }
+        }
+    });
+    g
+}
+
+fn token_group(_ctx: &PrefCtx) -> adw::PreferencesGroup {
+    let st = state();
+    let g = adw::PreferencesGroup::new();
+    g.set_title(&tr("Access token"));
+    g.set_description(Some(&trf(
+        "Assistants send this token with every request. Treat it like a password. {}",
+        &[&crate::secrets::caption_now()],
+    )));
+    let row = adw::ActionRow::builder().title(tr("Token")).build();
+    let token = host::token(&mut st.borrow_mut());
+    row.set_subtitle(&host::masked(&token));
+    let copy = icon_button("edit-copy-symbolic", &tr("Copy the token"));
+    let renew = icon_button("view-refresh-symbolic", &tr("Make a new token"));
+    row.add_suffix(&copy);
+    row.add_suffix(&renew);
+    g.add(&row);
+    HANDLES.with(|x| {
+        if let Some(h) = x.borrow_mut().as_mut() {
+            h.token = row.clone();
+        }
+    });
+    copy.connect_clicked(|b| {
+        let t = host::token(&mut state().borrow_mut());
+        copy_text(b, &t);
+    });
+    renew.connect_clicked({
+        let row = row.clone();
+        move |_| {
+            let t = host::regenerate_token(&mut state().borrow_mut());
+            row.set_subtitle(&format!(
+                "{}  ·  {}",
+                host::masked(&t),
+                tr("new token; copy the new settings into your assistants")
+            ));
+            // the running server keeps the old token until restarted
+            if host::running() {
+                HANDLES.with(|x| {
+                    if let Some(h) = x.borrow().as_ref() {
+                        apply(h);
+                    }
+                });
+            }
+        }
+    });
+    g
+}
+
+fn connect_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
+    let g = adw::PreferencesGroup::new();
+    g.set_title(&tr("Connect an assistant"));
+    g.set_description(Some(&tr(
+        "Copy the setting for your assistant and paste it into its configuration. “Command” starts Bookx's tool for the assistant and works even when Bookx is closed (read-only). “Server” uses the server inside Bookx, which needs the switch above.",
+    )));
+    for (id, name) in host::CLIENTS {
+        let row = adw::ActionRow::builder().title(name).build();
+        for (kind, label, tip) in [
+            (
+                false,
+                tr("Command"),
+                tr("Copy the configuration that starts the command-line tool"),
+            ),
+            (
+                true,
+                tr("Server"),
+                tr("Copy the configuration for the server inside Bookx, with the token"),
+            ),
+        ] {
+            let b = gtk::Button::with_label(&label);
+            b.set_valign(gtk::Align::Center);
+            b.set_tooltip_text(Some(&tip));
+            super::audit::label(&b, &format!("{name}: {tip}"));
+            let shared = ctx.shared.clone();
+            b.connect_clicked(move |b| {
+                let text = snippet_for(&shared, id, kind);
+                copy_text(b, &text);
+            });
+            row.add_suffix(&b);
+        }
+        g.add(&row);
+    }
+    g
+}
+
+/// The text to paste for `client`: the command form, or the server form with the token.
+fn snippet_for(shared: &super::SharedRef, client: &str, http: bool) -> String {
+    let root = root_of(shared);
+    let cli = host::cli_path();
+    if http {
+        let st = state();
+        let url =
+            host::url().unwrap_or_else(|| format!("http://127.0.0.1:{}/mcp", st.borrow().port));
+        let token = host::token(&mut st.borrow_mut());
+        host::snippet(client, &cli, &root, Some((&url, &token)))
+    } else {
+        host::snippet(client, &cli, &root, None)
+    }
+}
+
+fn clients_group(_ctx: &PrefCtx) -> adw::PreferencesGroup {
+    let g = adw::PreferencesGroup::new();
+    g.set_title(&tr("Connected assistants"));
+    let row = adw::ActionRow::builder()
+        .title(tr("Recent activity"))
+        .subtitle(host::clients_text(&host::clients()))
+        .build();
+    g.add(&row);
+    HANDLES.with(|x| {
+        if let Some(h) = x.borrow_mut().as_mut() {
+            h.clients = row.clone();
+        }
+    });
+    let weak = row.downgrade();
+    glib::timeout_add_seconds_local(2, move || match weak.upgrade() {
+        Some(r) => {
+            r.set_subtitle(&host::clients_text(&host::clients()));
+            glib::ControlFlow::Continue
+        }
+        None => glib::ControlFlow::Break,
+    });
+    g
+}
+
+/// Dev hook `mcp:ARG` for the UI tests: `dump`, `enable=on|off`, `port=N`, `write=on|off`,
+/// `snippet=CLIENT[:http]` (puts the text on the clipboard like the buttons), `copied`,
+/// `token=regen`, `ping` (a real request to the running server).
+pub fn dev(arg: &str) {
+    let Some(h) = HANDLES.with(|x| x.borrow().clone()) else {
+        eprintln!("mcp: not open");
+        return;
+    };
+    if let Some(v) = arg.strip_prefix("enable=") {
+        h.on.set_active(v == "on");
+    } else if let Some(v) = arg.strip_prefix("port=") {
+        h.port.set_value(v.parse().unwrap_or(8765.0));
+    } else if let Some(v) = arg.strip_prefix("write=") {
+        h.write.set_active(v == "on");
+    } else if let Some(v) = arg.strip_prefix("snippet=") {
+        let (id, http) = match v.strip_suffix(":http") {
+            Some(id) => (id, true),
+            None => (v, false),
+        };
+        let text = snippet_for(&h.shared, id, http);
+        copy_text(&h.on, &text);
+        let token = host::token(&mut state().borrow_mut());
+        eprintln!(
+            "mcp_snippet: client={id} http={} has_token={} has_url={} json={} first={:?}",
+            http as u8,
+            text.contains(&token) as u8,
+            text.contains("/mcp") as u8,
+            serde_json::from_str::<serde_json::Value>(&text).is_ok() as u8,
+            text.lines().next().unwrap_or("")
+        );
+    } else if arg == "copied" {
+        let t = LAST_COPY.with(|l| l.borrow().clone());
+        let token = host::token(&mut state().borrow_mut());
+        eprintln!(
+            "mcp_copied: len={} has_token={}",
+            t.len(),
+            t.contains(&token) as u8
+        );
+    } else if arg == "token=regen" {
+        let before = host::token(&mut state().borrow_mut());
+        let after = host::regenerate_token(&mut state().borrow_mut());
+        h.token.set_subtitle(&host::masked(&after));
+        if host::running() {
+            apply(&h);
+        }
+        eprintln!(
+            "mcp_token: changed={} len={}",
+            (before != after) as u8,
+            after.len()
+        );
+    } else if arg == "ping" {
+        eprintln!("mcp_ping: {}", ping());
+    } else if arg == "dump" {
+        h.clients
+            .set_subtitle(&host::clients_text(&host::clients()));
+        let token = host::token(&mut state().borrow_mut());
+        let st = state();
+        let s = st.borrow();
+        eprintln!(
+            "mcp: running={} url={} enabled={} port={} write={} status={:?} token_shown={:?} clients={:?} leaked={} saved={}",
+            host::running() as u8,
+            host::url().unwrap_or_default(),
+            s.enabled as u8,
+            s.port,
+            s.write as u8,
+            h.status.title(),
+            h.token.subtitle().unwrap_or_default(),
+            h.clients.subtitle().unwrap_or_default().replace('\n', " | "),
+            h.token.subtitle().unwrap_or_default().contains(&token) as u8,
+            host::settings_path().map(|p| p.exists() as u8).unwrap_or(0),
+        );
+    }
+}
+
+/// A real `initialize` and `tools/call` against the running server, as an assistant would.
+fn ping() -> String {
+    let Some(url) = host::url() else {
+        return "off".into();
+    };
+    let Ok(u) = url::Url::parse(&url) else {
+        return "bad url".into();
+    };
+    let token = host::token(&mut state().borrow_mut());
+    let bearer = format!("Bearer {token}");
+    let call = |auth: Option<&str>, body: serde_json::Value| {
+        let mut headers = vec![("Content-Type", "application/json")];
+        if let Some(a) = auth {
+            headers.push(("Authorization", a));
+        }
+        bookx_serve::httpc::request(
+            "POST",
+            &u,
+            &headers,
+            body.to_string().as_bytes(),
+            std::time::Duration::from_secs(5),
+        )
+        .map(|r| (r.status, String::from_utf8_lossy(&r.body).to_string()))
+        .unwrap_or((0, String::new()))
+    };
+    let init = serde_json::json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{
+        "protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ui-test-assistant","version":"1.0"}}});
+    let (s1, _) = call(Some(&bearer), init);
+    let search = serde_json::json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"search_books","arguments":{}}});
+    let (s2, b2) = call(Some(&bearer), search.clone());
+    let total = serde_json::from_str::<serde_json::Value>(&b2)
+        .ok()
+        .and_then(|v| v["result"]["structuredContent"]["total"].as_u64())
+        .unwrap_or(0);
+    let (s3, _) = call(None, search);
+    let write = serde_json::json!({"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"add_tags","arguments":{"book_id":1,"tags":["from-assistant"]}}});
+    let (_, b4) = call(Some(&bearer), write);
+    let write_state = match serde_json::from_str::<serde_json::Value>(&b4) {
+        Ok(v) if v["error"]["code"] == -32602 => "no-such-tool",
+        Ok(v) if v["result"]["isError"] == false => "done",
+        Ok(_) => "refused",
+        Err(_) => "no-answer",
+    };
+    format!("init={s1} search={s2} total={total} no_token={s3} write={write_state}")
+}

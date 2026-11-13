@@ -1,0 +1,500 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="3200" height="2740" viewBox="0 0 3200 2740">
+<defs>
+<linearGradient id="g1" x1="0" y1="0" x2="0.6" y2="1"><stop offset="0" stop-color="#9141ac"/><stop offset="1" stop-color="#5b2670"/></linearGradient>
+</defs>
+<rect width="3200" height="2740" fill="#ffffff"/>
+<text x="90" y="130" font-size="74" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Bookx Dialogs</text>
+<text x="90" y="180" font-size="17" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">The windows behind the main menu and the book dialogs: reading statistics, sharing, vocabulary flashcards, Edit Metadata with Fetch Metadata, and Preferences.</text>
+<text x="90" y="204" font-size="17" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">All are libadwaita dialogs (rounded card, title in the header, close button at the right) that sit on top of the library or the reader.</text>
+<text x="90" y="300" font-size="17" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">3.a Reading Statistics</text>
+<rect x="90" y="338" width="500" height="820" rx="18" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="87" y="335" width="506" height="826" rx="21" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="84" y="332" width="512" height="832" rx="24" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="81" y="329" width="518" height="838" rx="27" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="78" y="326" width="524" height="844" rx="30" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="75" y="323" width="530" height="850" rx="33" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="90" y="330" width="500" height="820" rx="18" fill="#fafafa" stroke="#d6d6d6" stroke-width="1.5"/>
+<text x="340" y="363" font-size="16" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Reading Statistics</text>
+<circle cx="562" cy="358" r="12" fill="#e4e4e4"/>
+<path d="M558,354 l8,8 m0,-8 l-8,8" fill="none" stroke="#2e3436" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="110" y="392" width="460" height="364" rx="12" fill="#ffffff" stroke="#d6d6d6" stroke-width="1.5"/>
+<text x="126" y="423" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Today</text>
+<text x="554" y="423" font-size="14" font-weight="400" fill="#77767b" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">42 min</text>
+<line x1="110" y1="444" x2="570" y2="444" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="126" y="475" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Last 7 days</text>
+<text x="554" y="475" font-size="14" font-weight="400" fill="#77767b" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">3 h 40 min</text>
+<line x1="110" y1="496" x2="570" y2="496" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="126" y="527" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Last 30 days</text>
+<text x="554" y="527" font-size="14" font-weight="400" fill="#77767b" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">14 h 05 min</text>
+<line x1="110" y1="548" x2="570" y2="548" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="126" y="579" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">All time</text>
+<text x="554" y="579" font-size="14" font-weight="400" fill="#77767b" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">62 h 20 min</text>
+<line x1="110" y1="600" x2="570" y2="600" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="126" y="631" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Streak</text>
+<text x="554" y="631" font-size="14" font-weight="400" fill="#77767b" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">5 days (longest 12)</text>
+<line x1="110" y1="652" x2="570" y2="652" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="126" y="683" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Books finished this year</text>
+<text x="554" y="683" font-size="14" font-weight="400" fill="#77767b" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">7</text>
+<line x1="110" y1="704" x2="570" y2="704" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="126" y="735" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Reading speed</text>
+<text x="554" y="735" font-size="14" font-weight="400" fill="#77767b" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">238 words per minute</text>
+<text x="114" y="788" font-size="14" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Last 7 days</text>
+<rect x="110" y="800" width="460" height="150" rx="12" fill="#ffffff" stroke="#d6d6d6" stroke-width="1.5"/>
+<rect x="124.78571428571428" y="870.3" width="36.142857142857146" height="51.7" rx="2" fill="#2e3436" fill-opacity="0.75"/>
+<text x="142.85714285714286" y="940" font-size="11" font-weight="400" fill="#77767b" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Fri</text>
+<rect x="190.5" y="837.4" width="36.142857142857146" height="84.60000000000001" rx="2" fill="#2e3436" fill-opacity="0.75"/>
+<text x="208.57142857142858" y="940" font-size="11" font-weight="400" fill="#77767b" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Sat</text>
+<rect x="256.2142857142857" y="828" width="36.142857142857146" height="94" rx="2" fill="#2e3436" fill-opacity="0.75"/>
+<text x="274.2857142857143" y="940" font-size="11" font-weight="400" fill="#77767b" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Sun</text>
+<rect x="321.9285714285714" y="903.2" width="36.142857142857146" height="18.8" rx="2" fill="#2e3436" fill-opacity="0.75"/>
+<text x="339.99999999999994" y="940" font-size="11" font-weight="400" fill="#77767b" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Mon</text>
+<rect x="387.6428571428571" y="920" width="36.142857142857146" height="2" rx="2" fill="#2e3436" fill-opacity="0.12"/>
+<text x="405.71428571428567" y="940" font-size="11" font-weight="400" fill="#77767b" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Tue</text>
+<rect x="453.35714285714283" y="879.7" width="36.142857142857146" height="42.300000000000004" rx="2" fill="#2e3436" fill-opacity="0.75"/>
+<text x="471.4285714285714" y="940" font-size="11" font-weight="400" fill="#77767b" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Wed</text>
+<rect x="519.0714285714286" y="893.8" width="36.142857142857146" height="28.2" rx="2" fill="#2e3436" fill-opacity="0.75"/>
+<text x="537.1428571428571" y="940" font-size="11" font-weight="400" fill="#77767b" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Thu</text>
+<text x="114" y="982" font-size="14" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Most read</text>
+<rect x="110" y="998" width="460" height="156" rx="12" fill="#ffffff" stroke="#d6d6d6" stroke-width="1.5"/>
+<text x="126" y="1029" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Moby-Dick</text>
+<text x="554" y="1029" font-size="14" font-weight="400" fill="#77767b" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">5 h 10 min</text>
+<line x1="110" y1="1050" x2="570" y2="1050" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="126" y="1081" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Designing Data-Intensive Applications</text>
+<text x="554" y="1081" font-size="14" font-weight="400" fill="#77767b" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">3 h 25 min</text>
+<line x1="110" y1="1102" x2="570" y2="1102" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="126" y="1133" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">A Wizard of Earthsea</text>
+<text x="554" y="1133" font-size="14" font-weight="400" fill="#77767b" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">1 h 50 min</text>
+<text x="90" y="1170" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Time read today, in the last 7 and 30 days and overall, the reading streak,</text>
+<text x="90" y="1190" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">books finished this year and the measured reading speed. The chart shows</text>
+<text x="90" y="1210" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">the last seven days (today on the right); Most read lists the top books.</text>
+<text x="660" y="300" font-size="17" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">3.b Share Library</text>
+<rect x="660" y="338" width="500" height="590" rx="18" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="657" y="335" width="506" height="596" rx="21" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="654" y="332" width="512" height="602" rx="24" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="651" y="329" width="518" height="608" rx="27" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="648" y="326" width="524" height="614" rx="30" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="645" y="323" width="530" height="620" rx="33" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="660" y="330" width="500" height="590" rx="18" fill="#fafafa" stroke="#d6d6d6" stroke-width="1.5"/>
+<text x="910" y="363" font-size="16" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Share Library</text>
+<circle cx="1132" cy="358" r="12" fill="#e4e4e4"/>
+<path d="M1128,354 l8,8 m0,-8 l-8,8" fill="none" stroke="#2e3436" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="684" y="408" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Other apps and e-readers can browse and download your books</text>
+<text x="684" y="425" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">over OPDS: KOReader, Moon+ Reader, Librera, Kybook and more.</text>
+<rect x="680" y="434" width="460" height="286" rx="12" fill="#ffffff" stroke="#d6d6d6" stroke-width="1.5"/>
+<text x="696" y="465" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Share this library</text>
+<rect x="1078" y="447" width="46" height="26" rx="13" fill="#3584e4"/>
+<circle cx="1111" cy="460" r="10" fill="#ffffff"/>
+<line x1="680" y1="486" x2="1140" y2="486" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="696" y="514" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Allow other devices on my network</text>
+<text x="696" y="532" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Needs a password. Only on networks you trust.</text>
+<rect x="1078" y="504" width="46" height="26" rx="13" fill="#3584e4"/>
+<circle cx="1111" cy="517" r="10" fill="#ffffff"/>
+<line x1="680" y1="548" x2="1140" y2="548" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="696" y="570" font-size="11" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Password (user name: bookx)</text>
+<text x="696" y="592" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">••••••••••</text>
+<line x1="680" y1="606" x2="1140" y2="606" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="696" y="637" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Port</text>
+<text x="1028" y="637" font-size="14" font-weight="400" fill="#2e3436" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">8080</text>
+<circle cx="1056" cy="632" r="14" fill="#e4e4e4"/>
+<line x1="1049" y1="632" x2="1063" y2="632" stroke="#2e3436" stroke-width="2" stroke-linecap="round"/>
+<circle cx="1100" cy="632" r="14" fill="#e4e4e4"/>
+<line x1="1093" y1="632" x2="1107" y2="632" stroke="#2e3436" stroke-width="2" stroke-linecap="round"/>
+<line x1="1100" y1="625" x2="1100" y2="639" stroke="#2e3436" stroke-width="2" stroke-linecap="round"/>
+<line x1="680" y1="658" x2="1140" y2="658" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="696" y="686" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">KOReader progress sync</text>
+<text x="696" y="704" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Lets KOReader devices keep their reading position here</text>
+<rect x="1078" y="676" width="46" height="26" rx="13" fill="#3584e4"/>
+<circle cx="1111" cy="689" r="10" fill="#ffffff"/>
+<rect x="680" y="738" width="460" height="130" rx="12" fill="#ffffff" stroke="#d6d6d6" stroke-width="1.5"/>
+<text x="696" y="766" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Sharing at:</text>
+<text x="696" y="790" font-size="13" fill="#3584e4" xml:space="preserve" font-family="Noto Sans Mono, DejaVu Sans Mono, monospace">http://192.168.1.20:8080/</text>
+<text x="696" y="812" font-size="13" fill="#3584e4" xml:space="preserve" font-family="Noto Sans Mono, DejaVu Sans Mono, monospace">http://localhost:8080/</text>
+<rect x="692" y="826" width="130" height="32" rx="8" fill="none"/>
+<text x="757" y="847" font-size="14" font-weight="400" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Copy address</text>
+<text x="660" y="960" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Serves the library as an OPDS catalogue and a web page. Reachable from</text>
+<text x="660" y="980" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">other devices only when “Allow other devices on my network” is on, and</text>
+<text x="660" y="1000" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">then always behind a password (user name “bookx”). KOReader can also keep</text>
+<text x="660" y="1020" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">its reading position here.</text>
+<text x="90" y="1260" font-size="17" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">3.c Vocabulary — flashcard, question</text>
+<rect x="90" y="1298" width="500" height="440" rx="18" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="87" y="1295" width="506" height="446" rx="21" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="84" y="1292" width="512" height="452" rx="24" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="81" y="1289" width="518" height="458" rx="27" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="78" y="1286" width="524" height="464" rx="30" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="75" y="1283" width="530" height="470" rx="33" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="90" y="1290" width="500" height="440" rx="18" fill="#fafafa" stroke="#d6d6d6" stroke-width="1.5"/>
+<text x="340" y="1323" font-size="16" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Vocabulary</text>
+<circle cx="562" cy="1318" r="12" fill="#e4e4e4"/>
+<path d="M558,1314 l8,8 m0,-8 l-8,8" fill="none" stroke="#2e3436" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="110" y="1376" font-size="13" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">24 words · 6 due · 14 learning · 4 mastered</text>
+<text x="340" y="1524" font-size="38" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">ephemeral</text>
+<rect x="240" y="1654" width="200" height="44" rx="22" fill="#3584e4"/>
+<text x="340" y="1682" font-size="15" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Show Answer</text>
+<text x="660" y="1260" font-size="17" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">3.d Vocabulary — answer, grade yourself</text>
+<rect x="660" y="1298" width="500" height="520" rx="18" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="657" y="1295" width="506" height="526" rx="21" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="654" y="1292" width="512" height="532" rx="24" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="651" y="1289" width="518" height="538" rx="27" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="648" y="1286" width="524" height="544" rx="30" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="645" y="1283" width="530" height="550" rx="33" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="660" y="1290" width="500" height="520" rx="18" fill="#fafafa" stroke="#d6d6d6" stroke-width="1.5"/>
+<text x="910" y="1323" font-size="16" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Vocabulary</text>
+<circle cx="1132" cy="1318" r="12" fill="#e4e4e4"/>
+<path d="M1128,1314 l8,8 m0,-8 l-8,8" fill="none" stroke="#2e3436" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="680" y="1376" font-size="13" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">24 words · 6 due · 14 learning · 4 mastered</text>
+<text x="910" y="1518" font-size="38" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">ephemeral</text>
+<text x="700" y="1564" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">lasting for a very short time</text>
+<text x="700" y="1608" font-size="14" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">“Fame, like the ephemeral beauty of cherry</text>
+<text x="700" y="1630" font-size="14" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">blossoms, is gone almost as soon as it arrives.”</text>
+<rect x="680" y="1740" width="109" height="40" rx="8" fill="#e4e4e4"/>
+<text x="734.5" y="1765" font-size="14" font-weight="400" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Again</text>
+<rect x="797" y="1740" width="109" height="40" rx="8" fill="#e4e4e4"/>
+<text x="851.5" y="1765" font-size="14" font-weight="400" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Hard</text>
+<rect x="914" y="1740" width="109" height="40" rx="8" fill="#e4e4e4"/>
+<text x="968.5" y="1765" font-size="14" font-weight="400" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Good</text>
+<rect x="1031" y="1740" width="109" height="40" rx="8" fill="#e4e4e4"/>
+<text x="1085.5" y="1765" font-size="14" font-weight="400" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Easy</text>
+<text x="90" y="1790" font-size="17" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">3.e Vocabulary — done for today</text>
+<rect x="90" y="1828" width="500" height="330" rx="18" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="87" y="1825" width="506" height="336" rx="21" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="84" y="1822" width="512" height="342" rx="24" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="81" y="1819" width="518" height="348" rx="27" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="78" y="1816" width="524" height="354" rx="30" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="75" y="1813" width="530" height="360" rx="33" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="90" y="1820" width="500" height="330" rx="18" fill="#fafafa" stroke="#d6d6d6" stroke-width="1.5"/>
+<text x="340" y="1853" font-size="16" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Vocabulary</text>
+<circle cx="562" cy="1848" r="12" fill="#e4e4e4"/>
+<path d="M558,1844 l8,8 m0,-8 l-8,8" fill="none" stroke="#2e3436" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="110" y="1906" font-size="13" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">24 words · 6 due · 14 learning · 4 mastered</text>
+<text x="340" y="1993" font-size="38" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">All done!</text>
+<text x="340" y="2031" font-size="14" font-weight="400" fill="#77767b" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Reviewed 6 cards, 5 remembered.</text>
+<text x="660" y="1855" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Words you look up in the reader’s dictionary are collected here</text>
+<text x="660" y="1875" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">with the sentence they came from. Again · Hard · Good · Easy</text>
+<text x="660" y="1895" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">schedule the next review (spaced repetition). When the list is</text>
+<text x="660" y="1915" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">empty the card explains how to collect words.</text>
+<text x="660" y="1990" font-size="17" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">3.j Find Duplicates (main menu)</text>
+<rect x="660" y="2028" width="560" height="600" rx="18" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="657" y="2025" width="566" height="606" rx="21" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="654" y="2022" width="572" height="612" rx="24" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="651" y="2019" width="578" height="618" rx="27" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="648" y="2016" width="584" height="624" rx="30" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="645" y="2013" width="590" height="630" rx="33" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="660" y="2020" width="560" height="600" rx="18" fill="#fafafa" stroke="#d6d6d6" stroke-width="1.5"/>
+<text x="940" y="2053" font-size="16" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Duplicate Books</text>
+<circle cx="1192" cy="2048" r="12" fill="#e4e4e4"/>
+<path d="M1188,2044 l8,8 m0,-8 l-8,8" fill="none" stroke="#2e3436" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="684" y="2100" font-size="14" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Moby-Dick</text>
+<text x="684" y="2120" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">2 copies. Pick the one to keep.</text>
+<rect x="1110" y="2090" width="90" height="34" rx="8" fill="#3584e4"/>
+<text x="1155" y="2112" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Merge</text>
+<rect x="680" y="2136" width="520" height="124" rx="12" fill="#ffffff" stroke="#d6d6d6" stroke-width="1.5"/>
+<circle cx="708" cy="2167" r="9" fill="none" stroke="#77767b" stroke-width="1.5"/>
+<circle cx="708" cy="2167" r="5" fill="#3584e4"/>
+<text x="732" y="2164" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Moby-Dick</text>
+<text x="732" y="2183" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Herman Melville · EPUB · 1.2 MB · 5% read</text>
+<line x1="680" y1="2198" x2="1200" y2="2198" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<circle cx="708" cy="2229" r="9" fill="none" stroke="#77767b" stroke-width="1.5"/>
+<text x="732" y="2226" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Moby-Dick; or, The Whale</text>
+<text x="732" y="2245" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Herman Melville · EPUB · 1.4 MB</text>
+<text x="684" y="2298" font-size="14" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Dune</text>
+<text x="684" y="2318" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">2 copies. Pick the one to keep.</text>
+<rect x="1110" y="2288" width="90" height="34" rx="8" fill="#3584e4"/>
+<text x="1155" y="2310" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Merge</text>
+<rect x="680" y="2334" width="520" height="124" rx="12" fill="#ffffff" stroke="#d6d6d6" stroke-width="1.5"/>
+<circle cx="708" cy="2365" r="9" fill="none" stroke="#77767b" stroke-width="1.5"/>
+<circle cx="708" cy="2365" r="5" fill="#3584e4"/>
+<text x="732" y="2362" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Dune</text>
+<text x="732" y="2381" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Frank Herbert · EPUB · 1.4 MB · isbn:9780441172719</text>
+<line x1="680" y1="2396" x2="1200" y2="2396" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<circle cx="708" cy="2427" r="9" fill="none" stroke="#77767b" stroke-width="1.5"/>
+<text x="732" y="2424" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Dune (Chilton)</text>
+<text x="732" y="2443" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Frank Herbert · EPUB · 0.9 MB · isbn:9780441172719</text>
+<text x="940" y="2522" font-size="12" font-weight="400" fill="#77767b" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Merging unites metadata, notes and reading progress in the copy you keep.</text>
+<text x="660" y="2650" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Books with the same title and author, or the same ISBN, are grouped. When there are none, a status page says so.</text>
+<text x="1230" y="300" font-size="17" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">3.f Preferences — a sidebar of sections, a search over all of them</text>
+<rect x="1480" y="338" width="610" height="1000" rx="18" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="1477" y="335" width="616" height="1006" rx="21" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="1474" y="332" width="622" height="1012" rx="24" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="1471" y="329" width="628" height="1018" rx="27" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="1468" y="326" width="634" height="1024" rx="30" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="1465" y="323" width="640" height="1030" rx="33" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="1480" y="330" width="610" height="1000" rx="18" fill="#fafafa" stroke="#d6d6d6" stroke-width="1.5"/>
+<text x="1785" y="363" font-size="16" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Reading</text>
+<circle cx="2062" cy="358" r="12" fill="#e4e4e4"/>
+<path d="M2058,354 l8,8 m0,-8 l-8,8" fill="none" stroke="#2e3436" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="1230" y="330" width="250" height="1000" rx="18" fill="#f1f1f1" stroke="#d6d6d6" stroke-width="1.5"/>
+<rect x="1460" y="330" width="20" height="1000" rx="0" fill="#f1f1f1"/>
+<line x1="1480" y1="330" x2="1480" y2="1330" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="1355" y="363" font-size="16" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Preferences</text>
+<rect x="1242" y="386" width="226" height="36" rx="8" fill="#e4e4e4"/>
+<circle cx="1260.5" cy="402.5" r="5.5" fill="none" stroke="#77767b" stroke-width="1.8"/>
+<line x1="1264.5" y1="406.5" x2="1269" y2="411" stroke="#77767b" stroke-width="1.8" stroke-linecap="round"/>
+<text x="1280" y="409" font-size="14" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Search settings</text>
+<circle cx="1260" cy="457" r="5" fill="#77767b"/>
+<text x="1280" y="463" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">General</text>
+<circle cx="1260" cy="501" r="5" fill="#77767b"/>
+<text x="1280" y="507" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Library</text>
+<rect x="1238" y="526" width="234" height="38" rx="8" fill="#e4e4e4"/>
+<circle cx="1260" cy="545" r="5" fill="#77767b"/>
+<text x="1280" y="551" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Reading</text>
+<circle cx="1260" cy="589" r="5" fill="#77767b"/>
+<text x="1280" y="595" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Devices and Sharing</text>
+<circle cx="1260" cy="633" r="5" fill="#77767b"/>
+<text x="1280" y="639" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">E-mail</text>
+<circle cx="1260" cy="677" r="5" fill="#77767b"/>
+<text x="1280" y="683" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Sync</text>
+<circle cx="1260" cy="721" r="5" fill="#77767b"/>
+<text x="1280" y="727" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Backup</text>
+<circle cx="1260" cy="765" r="5" fill="#77767b"/>
+<text x="1280" y="771" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Extensions</text>
+<circle cx="1260" cy="809" r="5" fill="#77767b"/>
+<text x="1280" y="815" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Patches</text>
+<circle cx="1260" cy="853" r="5" fill="#77767b"/>
+<text x="1280" y="859" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Text to Speech</text>
+<text x="1514" y="412" font-size="14" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Reader defaults</text>
+<text x="1514" y="436" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">These can also be changed while reading from the Appearance menu</text>
+<rect x="1510" y="445" width="550" height="508" rx="12" fill="#ffffff" stroke="#d6d6d6" stroke-width="1.5"/>
+<text x="1526" y="476" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Theme</text>
+<text x="2020" y="476" font-size="14" font-weight="400" fill="#77767b" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">Sepia</text>
+<path d="M2036,470 m-5,-2 l5,5 l5,-5" fill="none" stroke="#77767b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="1510" y1="497" x2="2060" y2="497" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="1526" y="528" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Layout</text>
+<text x="2020" y="528" font-size="14" font-weight="400" fill="#77767b" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">Two columns</text>
+<path d="M2036,522 m-5,-2 l5,5 l5,-5" fill="none" stroke="#77767b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="1510" y1="549" x2="2060" y2="549" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="1526" y="580" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Font size (pt)</text>
+<text x="1948" y="580" font-size="14" font-weight="400" fill="#2e3436" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">14</text>
+<circle cx="1976" cy="575" r="14" fill="#e4e4e4"/>
+<line x1="1969" y1="575" x2="1983" y2="575" stroke="#2e3436" stroke-width="2" stroke-linecap="round"/>
+<circle cx="2020" cy="575" r="14" fill="#e4e4e4"/>
+<line x1="2013" y1="575" x2="2027" y2="575" stroke="#2e3436" stroke-width="2" stroke-linecap="round"/>
+<line x1="2020" y1="568" x2="2020" y2="582" stroke="#2e3436" stroke-width="2" stroke-linecap="round"/>
+<line x1="1510" y1="601" x2="2060" y2="601" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="1526" y="632" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Justify text</text>
+<rect x="1998" y="614" width="46" height="26" rx="13" fill="#3584e4"/>
+<circle cx="2031" cy="627" r="10" fill="#ffffff"/>
+<line x1="1510" y1="653" x2="2060" y2="653" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="1526" y="681" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Hyphenate words</text>
+<text x="1526" y="699" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Break long words at line ends, in the language of the book</text>
+<rect x="1998" y="671" width="46" height="26" rx="13" fill="#3584e4"/>
+<circle cx="2031" cy="684" r="10" fill="#ffffff"/>
+<line x1="1510" y1="715" x2="2060" y2="715" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="1526" y="743" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Use the book's own styling</text>
+<text x="1526" y="761" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Italic and bold classes, alignment, hidden text. Takes effect when a chapter loads.</text>
+<rect x="1998" y="733" width="46" height="26" rx="13" fill="#3584e4"/>
+<circle cx="2031" cy="746" r="10" fill="#ffffff"/>
+<line x1="1510" y1="777" x2="2060" y2="777" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="1526" y="805" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">E-ink mode</text>
+<text x="1526" y="823" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Black on white, no animations, bars that stay, wide tap zones</text>
+<rect x="1998" y="795" width="46" height="26" rx="13" fill="#d6d6d6"/>
+<circle cx="2011" cy="808" r="10" fill="#ffffff"/>
+<line x1="1510" y1="839" x2="2060" y2="839" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="1526" y="867" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Tap zones</text>
+<text x="1526" y="885" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Which part of the page turns it when tapped or clicked</text>
+<text x="2020" y="875" font-size="14" font-weight="400" fill="#77767b" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">Edges (narrow strips)</text>
+<path d="M2036,869 m-5,-2 l5,5 l5,-5" fill="none" stroke="#77767b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="1510" y1="901" x2="2060" y2="901" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="1526" y="932" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Large touch controls</text>
+<text x="2020" y="932" font-size="14" font-weight="400" fill="#77767b" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">Automatic (touch screens)</text>
+<path d="M2036,926 m-5,-2 l5,5 l5,-5" fill="none" stroke="#77767b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1230" y="1370" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Typing in the search entry (Ctrl+F) filters the settings of every section and the sidebar lists the sections that match.</text>
+<text x="1230" y="1390" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">In a narrow window the sidebar becomes an overlay that a button in the header opens.</text>
+<text x="1230" y="1410" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">New reader options: Hyphenate words, Use the book's own styling (the book’s CSS classes for italic, bold,</text>
+<text x="1230" y="1430" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">alignment and hidden text), E-ink mode, Tap zones and Large touch controls. Turning on E-ink mode also</text>
+<text x="1230" y="1450" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">switches to wide tap zones, hyphenation and justified text (see the e-ink sheet).</text>
+<text x="1230" y="1530" font-size="17" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">3.g Tap zones — the choices of the Tap zones row</text>
+<rect x="1230" y="1560" width="130" height="180" rx="8" fill="#ffffff" stroke="#d6d6d6" stroke-width="1.5"/>
+<rect x="1231" y="1561" width="21.4" height="178" rx="6" fill="#3584e4" fill-opacity="0.28"/>
+<text x="1241.7" y="1658" font-size="26" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">‹</text>
+<rect x="1254.4" y="1561" width="81.19999999999999" height="178" rx="6" fill="#9a9996" fill-opacity="0.28"/>
+<text x="1295" y="1658" font-size="12" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">bars</text>
+<rect x="1337.6" y="1561" width="21.400000000000006" height="178" rx="6" fill="#26a269" fill-opacity="0.28"/>
+<text x="1348.3" y="1658" font-size="26" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">›</text>
+<text x="1295" y="1762" font-size="12" font-weight="400" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Edges (narrow strips)</text>
+<rect x="1400" y="1560" width="130" height="180" rx="8" fill="#ffffff" stroke="#d6d6d6" stroke-width="1.5"/>
+<rect x="1401" y="1561" width="41.33333333333333" height="178" rx="6" fill="#3584e4" fill-opacity="0.28"/>
+<text x="1421.6666666666667" y="1658" font-size="26" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">‹</text>
+<rect x="1444.3333333333333" y="1561" width="41.33333333333333" height="178" rx="6" fill="#9a9996" fill-opacity="0.28"/>
+<text x="1465" y="1658" font-size="12" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">bars</text>
+<rect x="1487.6666666666667" y="1561" width="41.333333333333336" height="178" rx="6" fill="#26a269" fill-opacity="0.28"/>
+<text x="1508.3333333333333" y="1658" font-size="26" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">›</text>
+<text x="1465" y="1762" font-size="12" font-weight="400" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Thirds (tablet)</text>
+<rect x="1570" y="1560" width="130" height="180" rx="8" fill="#ffffff" stroke="#d6d6d6" stroke-width="1.5"/>
+<rect x="1571" y="1561" width="41.33333333333333" height="178" rx="6" fill="#26a269" fill-opacity="0.28"/>
+<text x="1591.6666666666667" y="1658" font-size="26" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">›</text>
+<rect x="1614.3333333333333" y="1561" width="41.33333333333333" height="178" rx="6" fill="#9a9996" fill-opacity="0.28"/>
+<text x="1635" y="1658" font-size="12" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">bars</text>
+<rect x="1657.6666666666667" y="1561" width="41.333333333333336" height="178" rx="6" fill="#3584e4" fill-opacity="0.28"/>
+<text x="1678.3333333333333" y="1658" font-size="26" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">‹</text>
+<text x="1635" y="1762" font-size="12" font-weight="400" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Thirds, mirrored (left hand)</text>
+<rect x="1740" y="1560" width="130" height="180" rx="8" fill="#ffffff" stroke="#d6d6d6" stroke-width="1.5"/>
+<rect x="1741" y="1561" width="41.33333333333333" height="178" rx="6" fill="#3584e4" fill-opacity="0.28"/>
+<text x="1761.6666666666667" y="1658" font-size="26" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">‹</text>
+<rect x="1784.3333333333333" y="1561" width="84.66666666666667" height="178" rx="6" fill="#26a269" fill-opacity="0.28"/>
+<text x="1826.6666666666667" y="1658" font-size="26" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">›</text>
+<text x="1805" y="1762" font-size="12" font-weight="400" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Wide (no bar toggle)</text>
+<rect x="1910" y="1560" width="130" height="180" rx="8" fill="#ffffff" stroke="#d6d6d6" stroke-width="1.5"/>
+<text x="1975" y="1655" font-size="12" font-weight="400" fill="#77767b" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">swipe · keys</text>
+<text x="1975" y="1762" font-size="12" font-weight="400" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Off (swipe or keys only)</text>
+<text x="1230" y="1810" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">‹ previous page   › next page   bars: show or hide the header and the navigation row.</text>
+<text x="1230" y="1830" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Wide is for e-ink: no bar toggle, so a tap never flashes the screen for nothing.</text>
+<text x="2130" y="300" font-size="17" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">3.h Edit Metadata — with Fetch Metadata and its status line</text>
+<rect x="2130" y="338" width="780" height="1300" rx="18" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="2127" y="335" width="786" height="1306" rx="21" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="2124" y="332" width="792" height="1312" rx="24" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="2121" y="329" width="798" height="1318" rx="27" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="2118" y="326" width="804" height="1324" rx="30" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="2115" y="323" width="810" height="1330" rx="33" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="2130" y="330" width="780" height="1300" rx="18" fill="#fafafa" stroke="#d6d6d6" stroke-width="1.5"/>
+<line x1="2130" y1="384" x2="2910" y2="384" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<rect x="2144" y="339" width="92" height="36" rx="8" fill="#e4e4e4"/>
+<text x="2190" y="362" font-size="14" font-weight="400" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Cancel</text>
+<rect x="2804" y="339" width="92" height="36" rx="8" fill="#3584e4"/>
+<text x="2850" y="362" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Save</text>
+<text x="2520" y="363" font-size="16" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Edit Metadata</text>
+<rect x="2252" y="421" width="126" height="191" rx="5" fill="#000" fill-opacity="0.017857142857142856"/>
+<rect x="2249" y="418" width="132" height="197" rx="8" fill="#000" fill-opacity="0.017857142857142856"/>
+<rect x="2246" y="415" width="138" height="203" rx="11" fill="#000" fill-opacity="0.017857142857142856"/>
+<rect x="2243" y="412" width="144" height="209" rx="14" fill="#000" fill-opacity="0.017857142857142856"/>
+<rect x="2240" y="409" width="150" height="215" rx="17" fill="#000" fill-opacity="0.017857142857142856"/>
+<rect x="2237" y="406" width="156" height="221" rx="20" fill="#000" fill-opacity="0.017857142857142856"/>
+<rect x="2250" y="412" width="130" height="195" rx="5" fill="url(#g1)"/>
+<rect x="2258" y="420" width="6" height="179" rx="2" fill="#ffffff" fill-opacity="0.12"/>
+<text x="2315" y="470.5" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Dune</text>
+<text x="2315" y="593" font-size="10" font-weight="400" fill="#ffffffcc" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Frank Herbert</text>
+<rect x="2420" y="414" width="300" height="38" rx="8" fill="#3584e4"/>
+<text x="2570" y="438" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Fetch Metadata</text>
+<rect x="2420" y="466" width="18" height="18" rx="4" fill="none" stroke="#77767b" stroke-width="1.5"/>
+<text x="2448" y="481" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Replace existing values</text>
+<rect x="2420" y="500" width="300" height="38" rx="8" fill="#e4e4e4"/>
+<text x="2570" y="524" font-size="14" font-weight="400" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Choose Cover</text>
+<rect x="2420" y="550" width="300" height="38" rx="8" fill="#e01b24"/>
+<text x="2570" y="574" font-size="14" font-weight="400" fill="#ffffff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Remove Cover</text>
+<text x="2420" y="606" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Looks the book up on Open Library, Google Books and Wikidata</text>
+<rect x="2170" y="626" width="700" height="50" rx="10" fill="#3584e4" fill-opacity="0.1"/>
+<text x="2186" y="648" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Found on Open Library, Wikidata (92% match). Updated: publisher, published,</text>
+<text x="2186" y="666" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">identifiers, tags. Cover added.</text>
+<text x="2170" y="718" font-size="15" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Basics</text>
+<rect x="2170" y="730" width="700" height="56" rx="0" fill="#ffffff"/>
+<line x1="2170" y1="786" x2="2870" y2="786" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="2186" y="752" font-size="11" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Title</text>
+<text x="2186" y="772" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Dune</text>
+<path d="M2836,764 l9,-9 l3,3 l-9,9 h-3 z" fill="none" stroke="#77767b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="2170" y="786" width="700" height="56" rx="0" fill="#ffffff"/>
+<line x1="2170" y1="842" x2="2870" y2="842" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="2186" y="808" font-size="11" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Authors (separate with &amp;)</text>
+<text x="2186" y="828" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Frank Herbert</text>
+<path d="M2836,820 l9,-9 l3,3 l-9,9 h-3 z" fill="none" stroke="#77767b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="2170" y="842" width="700" height="56" rx="0" fill="#ffffff"/>
+<line x1="2170" y1="898" x2="2870" y2="898" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="2186" y="864" font-size="11" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Series</text>
+<text x="2186" y="884" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Dune</text>
+<path d="M2836,876 l9,-9 l3,3 l-9,9 h-3 z" fill="none" stroke="#77767b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="2170" y="898" width="700" height="56" rx="0" fill="#ffffff"/>
+<line x1="2170" y1="954" x2="2870" y2="954" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="2186" y="932" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Series number</text>
+<text x="2760" y="932" font-size="14" font-weight="400" fill="#2e3436" text-anchor="end" font-family="Cantarell, Inter, Noto Sans, sans-serif">1.0</text>
+<circle cx="2788" cy="926" r="15" fill="#e4e4e4"/>
+<line x1="2781" y1="926" x2="2795" y2="926" stroke="#2e3436" stroke-width="2" stroke-linecap="round"/>
+<circle cx="2830" cy="926" r="15" fill="#e4e4e4"/>
+<line x1="2823" y1="926" x2="2837" y2="926" stroke="#2e3436" stroke-width="2" stroke-linecap="round"/>
+<line x1="2830" y1="919" x2="2830" y2="933" stroke="#2e3436" stroke-width="2" stroke-linecap="round"/>
+<rect x="2170" y="954" width="700" height="56" rx="0" fill="#ffffff"/>
+<text x="2186" y="988" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Rating</text>
+<path d="M2712.0,970.0L2715.2,977.6L2723.4,978.3L2717.1,983.7L2719.1,991.7L2712.0,987.4L2704.9,991.7L2706.9,983.7L2700.6,978.3L2708.8,977.6Z" fill="#f5c211" stroke="#f5c211" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M2740.0,970.0L2743.2,977.6L2751.4,978.3L2745.1,983.7L2747.1,991.7L2740.0,987.4L2732.9,991.7L2734.9,983.7L2728.6,978.3L2736.8,977.6Z" fill="#f5c211" stroke="#f5c211" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M2768.0,970.0L2771.2,977.6L2779.4,978.3L2773.1,983.7L2775.1,991.7L2768.0,987.4L2760.9,991.7L2762.9,983.7L2756.6,978.3L2764.8,977.6Z" fill="#f5c211" stroke="#f5c211" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M2796.0,970.0L2799.2,977.6L2807.4,978.3L2801.1,983.7L2803.1,991.7L2796.0,987.4L2788.9,991.7L2790.9,983.7L2784.6,978.3L2792.8,977.6Z" fill="#f5c211" stroke="#f5c211" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M2824.0,970.0L2827.2,977.6L2835.4,978.3L2829.1,983.7L2831.1,991.7L2824.0,987.4L2816.9,991.7L2818.9,983.7L2812.6,978.3L2820.8,977.6Z" fill="#f5c211" stroke="#f5c211" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="2170" y="1030" font-size="15" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Details</text>
+<rect x="2170" y="1042" width="700" height="56" rx="0" fill="#ffffff"/>
+<line x1="2170" y1="1098" x2="2870" y2="1098" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="2186" y="1064" font-size="11" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Tags (comma separated)</text>
+<text x="2186" y="1084" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">sci-fi, classics</text>
+<path d="M2836,1076 l9,-9 l3,3 l-9,9 h-3 z" fill="none" stroke="#77767b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="2170" y="1098" width="700" height="56" rx="0" fill="#ffffff"/>
+<line x1="2170" y1="1154" x2="2870" y2="1154" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="2186" y="1120" font-size="11" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Publisher</text>
+<text x="2186" y="1140" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Chilton Books</text>
+<path d="M2836,1132 l9,-9 l3,3 l-9,9 h-3 z" fill="none" stroke="#77767b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="2170" y="1154" width="700" height="56" rx="0" fill="#ffffff"/>
+<line x1="2170" y1="1210" x2="2870" y2="1210" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="2186" y="1176" font-size="11" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Published (YYYY-MM-DD)</text>
+<text x="2186" y="1196" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">1965-08-01</text>
+<path d="M2836,1188 l9,-9 l3,3 l-9,9 h-3 z" fill="none" stroke="#77767b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="2170" y="1210" width="700" height="56" rx="0" fill="#ffffff"/>
+<line x1="2170" y1="1266" x2="2870" y2="1266" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="2186" y="1232" font-size="11" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Language</text>
+<text x="2186" y="1252" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">en</text>
+<path d="M2836,1244 l9,-9 l3,3 l-9,9 h-3 z" fill="none" stroke="#77767b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="2170" y="1266" width="700" height="56" rx="0" fill="#ffffff"/>
+<line x1="2170" y1="1322" x2="2870" y2="1322" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="2186" y="1288" font-size="11" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Identifiers (isbn:…, doi:…)</text>
+<text x="2186" y="1308" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">isbn:9780441172719</text>
+<path d="M2836,1300 l9,-9 l3,3 l-9,9 h-3 z" fill="none" stroke="#77767b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="2170" y="1342" font-size="15" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Sorting</text>
+<text x="2240" y="1342" font-size="12" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Leave empty to generate automatically</text>
+<rect x="2170" y="1354" width="700" height="56" rx="0" fill="#ffffff"/>
+<line x1="2170" y1="1410" x2="2870" y2="1410" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="2186" y="1376" font-size="11" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Title sort</text>
+<text x="2186" y="1396" font-size="14" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif"></text>
+<path d="M2836,1388 l9,-9 l3,3 l-9,9 h-3 z" fill="none" stroke="#77767b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="2170" y="1410" width="700" height="56" rx="0" fill="#ffffff"/>
+<line x1="2170" y1="1466" x2="2870" y2="1466" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="2186" y="1432" font-size="11" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Author sort</text>
+<text x="2186" y="1452" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Herbert, Frank</text>
+<path d="M2836,1444 l9,-9 l3,3 l-9,9 h-3 z" fill="none" stroke="#77767b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="2170" y="1494" font-size="15" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Comments</text>
+<rect x="2170" y="1504" width="700" height="100" rx="10" fill="#ffffff" stroke="#d6d6d6" stroke-width="1.5"/>
+<rect x="2184" y="1520" width="667.52" height="7.48" rx="2" fill="#d6d6d6" fill-opacity="0.42"/>
+<rect x="2184" y="1542" width="656.32" height="7.48" rx="2" fill="#d6d6d6" fill-opacity="0.42"/>
+<rect x="2184" y="1564" width="235.2" height="7.48" rx="2" fill="#d6d6d6" fill-opacity="0.42"/>
+<text x="2130" y="1670" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Fetch Metadata looks the book up on Open Library, Google Books and Wikidata and fills</text>
+<text x="2130" y="1690" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">the empty fields; tick “Replace existing values” to overwrite filled ones too.</text>
+<text x="2130" y="1710" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">The status line says where it was found, how good the match is and what changed</text>
+<text x="2130" y="1730" font-size="14" font-weight="400" fill="#5e5c64" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">(“Looking the book up…” while it works, “No match found…” when nothing fits).</text>
+<text x="2130" y="1830" font-size="17" font-weight="700" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">3.i Bulk edit (several books)</text>
+<rect x="2130" y="1868" width="780" height="520" rx="18" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="2127" y="1865" width="786" height="526" rx="21" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="2124" y="1862" width="792" height="532" rx="24" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="2121" y="1859" width="798" height="538" rx="27" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="2118" y="1856" width="804" height="544" rx="30" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="2115" y="1853" width="810" height="550" rx="33" fill="#000" fill-opacity="0.024999999999999998"/>
+<rect x="2130" y="1860" width="780" height="520" rx="18" fill="#fafafa" stroke="#d6d6d6" stroke-width="1.5"/>
+<line x1="2130" y1="1914" x2="2910" y2="1914" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<rect x="2144" y="1869" width="92" height="36" rx="8" fill="#e4e4e4"/>
+<text x="2190" y="1892" font-size="14" font-weight="400" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Cancel</text>
+<rect x="2804" y="1869" width="92" height="36" rx="8" fill="#3584e4"/>
+<text x="2850" y="1892" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Apply</text>
+<text x="2520" y="1893" font-size="16" font-weight="700" fill="#2e3436" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Edit 3 Books</text>
+<text x="2170" y="1954" font-size="13" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Only the fields you fill in are changed</text>
+<rect x="2170" y="1970" width="700" height="56" rx="0" fill="#ffffff"/>
+<line x1="2170" y1="2026" x2="2870" y2="2026" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="2186" y="1992" font-size="11" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Add tags (comma separated)</text>
+<text x="2186" y="2012" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">to-read</text>
+<path d="M2836,2004 l9,-9 l3,3 l-9,9 h-3 z" fill="none" stroke="#77767b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="2170" y="2026" width="700" height="56" rx="0" fill="#ffffff"/>
+<line x1="2170" y1="2082" x2="2870" y2="2082" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="2186" y="2048" font-size="11" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Remove tags (comma separated)</text>
+<text x="2186" y="2068" font-size="14" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif"></text>
+<path d="M2836,2060 l9,-9 l3,3 l-9,9 h-3 z" fill="none" stroke="#77767b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="2170" y="2082" width="700" height="56" rx="0" fill="#ffffff"/>
+<line x1="2170" y1="2138" x2="2870" y2="2138" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="2186" y="2104" font-size="11" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Set authors</text>
+<text x="2186" y="2124" font-size="14" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif"></text>
+<path d="M2836,2116 l9,-9 l3,3 l-9,9 h-3 z" fill="none" stroke="#77767b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="2170" y="2138" width="700" height="56" rx="0" fill="#ffffff"/>
+<line x1="2170" y1="2194" x2="2870" y2="2194" stroke="#d6d6d6" stroke-width="1" stroke-linecap="round"/>
+<text x="2186" y="2160" font-size="11" font-weight="400" fill="#77767b" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Set series</text>
+<text x="2186" y="2180" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Earthsea</text>
+<path d="M2836,2172 l9,-9 l3,3 l-9,9 h-3 z" fill="none" stroke="#77767b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="2170" y="2194" width="700" height="56" rx="0" fill="#ffffff"/>
+<text x="2186" y="2228" font-size="14" font-weight="400" fill="#2e3436" text-anchor="start" font-family="Cantarell, Inter, Noto Sans, sans-serif">Set rating (click to choose)</text>
+<path d="M2702.0,2210.0L2705.2,2217.6L2713.4,2218.3L2707.1,2223.7L2709.1,2231.7L2702.0,2227.4L2694.9,2231.7L2696.9,2223.7L2690.6,2218.3L2698.8,2217.6Z" fill="#f5c211" stroke="#f5c211" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M2730.0,2210.0L2733.2,2217.6L2741.4,2218.3L2735.1,2223.7L2737.1,2231.7L2730.0,2227.4L2722.9,2231.7L2724.9,2223.7L2718.6,2218.3L2726.8,2217.6Z" fill="#f5c211" stroke="#f5c211" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M2758.0,2210.0L2761.2,2217.6L2769.4,2218.3L2763.1,2223.7L2765.1,2231.7L2758.0,2227.4L2750.9,2231.7L2752.9,2223.7L2746.6,2218.3L2754.8,2217.6Z" fill="#f5c211" stroke="#f5c211" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M2786.0,2210.0L2789.2,2217.6L2797.4,2218.3L2791.1,2223.7L2793.1,2231.7L2786.0,2227.4L2778.9,2231.7L2780.9,2223.7L2774.6,2218.3L2782.8,2217.6Z" fill="#f5c211" stroke="#f5c211" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M2814.0,2210.0L2817.2,2217.6L2825.4,2218.3L2819.1,2223.7L2821.1,2231.7L2814.0,2227.4L2806.9,2231.7L2808.9,2223.7L2802.6,2218.3L2810.8,2217.6Z" fill="none" stroke="#9a9996" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1600" y="2720" font-size="12" font-weight="400" fill="#77767b" text-anchor="middle" font-family="Cantarell, Inter, Noto Sans, sans-serif">Mockups are design illustrations. Book titles are used for illustration purposes only.</text>
+</svg>

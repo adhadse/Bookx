@@ -1,38 +1,87 @@
-on:
-  push:
-    branches: [main]
-  pull_request:
-
 name: CI
 
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  rustfmt:
-    name: Rustfmt
-    runs-on: ubuntu-20.04
+  check:
+    name: Format, lint, test (stable Rust)
+    runs-on: ubuntu-latest
+    # Bookx needs GTK >= 4.20 and libadwaita >= 1.8, which current Fedora ships.
+    container: fedora:latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          dnf install -y gcc gcc-c++ make pkgconf-pkg-config rust cargo rustfmt clippy \
+            gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
+            gdk-pixbuf2-devel openssl-devel gettext \
+            dbus-daemon xorg-x11-server-Xvfb xz tar gzip \
+            desktop-file-utils libappstream-glib appstream libxml2 python3
+      - name: Cache cargo
+        uses: actions/cache@v4
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt
-      - name: Create blank versions of configured file
-        run: echo -e "" >> src/config.rs
-      - name: Run cargo fmt
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: cargo-${{ runner.os }}-stable-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-stable-
+      - name: rustfmt
         run: cargo fmt --all -- --check
+      - name: clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: tests
+        run: cargo test --workspace --locked
+        env:
+          NET: "0"
+          BOOKX_SECRETS: memory
+      - name: Desktop file, metainfo and MIME definitions
+        run: |
+          desktop-file-validate data/com.adhadse.Bookx.desktop
+          appstreamcli validate --no-net data/com.adhadse.Bookx.metainfo.xml
+          xmllint --noout data/com.adhadse.Bookx.mime.xml
+      - name: Translations are in step with the code
+        run: "cargo test -p bookx --locked --quiet i18n::"
+      - name: Flatpak sources match Cargo.lock
+        run: python3 build-aux/flatpak-cargo-sources.py --check
+      - name: mockups still render
+        run: cargo run --example mockups --locked
+      - name: UI scenarios on Broadway (skipped when gtk4-broadwayd is missing)
+        # The real-session tests (build-aux/session-tests.sh) need GNOME Shell and are not run here.
+        run: |
+          if command -v gtk4-broadwayd >/dev/null; then
+            NET=0 BOOKX_SECRETS=memory JOBS=2 build-aux/ui-tests.sh
+          else
+            echo "gtk4-broadwayd not available: UI scenarios skipped"
+          fi
 
   flatpak:
-    name: Flatpak
-    runs-on: ubuntu-20.04
+    name: Flatpak build
+    runs-on: ubuntu-latest
+    needs: check
     container:
-      image: bilelmoussaoui/flatpak-github-actions:gnome-43
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
       options: --privileged
     steps:
-    - uses: actions/checkout@v3
-    - uses: bilelmoussaoui/flatpak-github-actions/flatpak-builder@v6
-      with:
-        bundle: bookx.flatpak
-        manifest-path: build-aux/com.adhadse.Bookx.Devel.json
-        run-tests: true
-        cache-key: flatpak-builder-${{ github.sha }}
+      - uses: actions/checkout@v4
+      - name: Static checks
+        run: CHECK_ONLY=1 build-aux/flatpak.sh
+      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
+        with:
+          bundle: bookx.flatpak
+          manifest-path: build-aux/com.adhadse.Bookx.json
+          cache-key: flatpak-builder-${{ hashFiles('Cargo.lock', 'build-aux/com.adhadse.Bookx.json') }}
