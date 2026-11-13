@@ -109,6 +109,9 @@ pymdownx.tabbed = { alternate_style = true }
 
 [project.plugins.search]
 
+[project.plugins.social]
+cards_layout_options = { font_family = "Inter", background_color = "#16213a", color = "#ffffff" }
+
 [[project.extra.social]]
 icon = "fontawesome/brands/github"
 link = "https://github.com/adhadse/Bookx"

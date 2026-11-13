@@ -294,7 +294,7 @@ def editor_edit_and_replace(c):
         return
     time.sleep(2)
     c.shot("editor")
-    code = c.find("text")[0]
+    code = max(c.find("text"), key=lambda n: n.box[2] * n.box[3])
     c.click_node(code)
     c.sb.key("End", ("Control",))
     c.sb.type("<!-- zzmarker Hello -->")
@@ -338,7 +338,7 @@ def editor_problems_open(c):
     if not c.check("Edit Book opens the editor window", ed):
         return
     time.sleep(2)
-    code = c.find("text")[0]
+    code = max(c.find("text"), key=lambda n: n.box[2] * n.box[3])
     c.click_node(code)
     c.sb.key("End", ("Control",))
     c.sb.type("<p>AT&T</p>")
@@ -395,7 +395,7 @@ def editor_search_bar_session(c):
     if not c.check("Edit Book opens the editor window", ed):
         return
     time.sleep(2)
-    c.click_node(c.find("text")[0])
+    c.click_node(max(c.find("text"), key=lambda n: n.box[2] * n.box[3]))
     c.sb.key("End", ("Control",))
     c.sb.type("<!-- zzone zztwo zztwo -->")
     time.sleep(0.5)

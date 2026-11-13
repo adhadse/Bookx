@@ -302,7 +302,7 @@ def editor_palette_keys(c):
     if not c.check("Edit Book opens the editor window", ed):
         return
     time.sleep(2)
-    c.click_node(c.find("text")[0])
+    c.click_node(max(c.find("text"), key=lambda n: n.box[2] * n.box[3]))
     c.sb.key("p", ("Control", "Shift"))
     c.check("Ctrl+Shift+P opens the palette", c.wait_node(None, "Command palette search", timeout=5))
     c.sb.type("split")
@@ -550,8 +550,6 @@ def _wiki_shots(c):
     time.sleep(1.5)
     c.sb.key("Right")
     time.sleep(0.8)
-    c.sb.move_to(640, 440)
-    wshot(c, "reader")
     toc = c.wait_node("toggle button", rx="^Contents", timeout=5)
     if toc:
         c.click_node(toc)

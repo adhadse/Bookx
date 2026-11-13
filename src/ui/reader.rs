@@ -5932,6 +5932,13 @@ impl SimpleComponent for Reader {
                         }
                         return;
                     }
+                    // the popover of the first highlight that has a note, at the highlight's real place
+                    "ui-note-popover" => {
+                        if let Some(info) = self.canvas.dev_note_highlight_info() {
+                            sender.input(Input::HighlightClick(info));
+                        }
+                        return;
+                    }
                     "ui-click-away" => {
                         self.canvas.dev_click_middle();
                         return;

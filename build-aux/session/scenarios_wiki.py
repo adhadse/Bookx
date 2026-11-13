@@ -72,6 +72,28 @@ def _wiki_hero(c):
 
 
 @scenario
+def _wiki_reading(c):
+    """The reader picture of the landing page ("Pages made for reading"): a chapter with five highlights in four styles
+    (background, underline, strikethrough, squiggly) and the selection popover open on the one with a note, so the note,
+    the colours, the style choices and the Wikipedia look-up are all in the same picture."""
+    c.start(books=("alice",), settings=settings(), extra_env={
+        "BOOKX_DEV_SCRIPT": "wait:2500,read:1,wait:4000,reader:goto=2,wait:2500,reader:demo-highlights,"
+                            "wait:1500,reader:ui-note-popover"})
+    if not c.check("the book opens", c.wait_node("slider", timeout=25)):
+        return
+    time.sleep(6)
+    wiki = c.wait_node("button", "Look up on Wikipedia", timeout=12)
+    if not c.check("the selection popover of the highlighted passage is open", wiki):
+        return
+    c.check("its note is shown in the popover", c.wait_node(None, rx="Where the story really starts", timeout=5))
+    c.check("the four highlight styles are in the popover", len(c.find("toggle button")) >= 4)
+    c.sb.move_to(1270, 790)
+    time.sleep(1.0)
+    wshot(c, "reader")
+    c.check("the app is alive", c.is_alive())
+
+
+@scenario
 def _wiki_strip(c):
     """The slim strip of the Continue Reading banner (Preferences > Continue reading banner > Compact)."""
     names = shelf(c)
@@ -185,7 +207,7 @@ def _wiki_editor(c):
     if len(rows) > 3:
         c.click_node(rows[3])
         time.sleep(1.5)
-    code = c.find("text")[0]
+    code = max(c.find("text"), key=lambda n: n.box[2] * n.box[3])
     c.click_node(code)
     c.sb.key("Home", ("Control",))
     for _ in range(31):

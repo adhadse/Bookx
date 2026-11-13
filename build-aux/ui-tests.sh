@@ -2214,6 +2214,9 @@ scenario note_hover_and_touch 'read:1,wait:3500,reader:select,wait:500,reader:no
     grep -q "^hover_note: Some(\"Great opening" <<<"$OUT"; check "the note appears instantly while hovering its highlight (no tooltip delay)" $?
     grep -q "^popover_note: true \"Great opening" <<<"$OUT"; check "the quick-options popover shows the note (touch screens have no hover)" $?'
 
+scenario popover_note_from_highlight 'read:1,wait:3500,reader:demo-highlights,wait:800,reader:ui-note-popover,wait:800,reader:dump,quit' '
+    grep -q "^popover_note: true \"Where the story really starts." <<<"$OUT"; check "opening a highlighted passage shows its note in the popover (the wiki screenshot hook)" $?'
+
 scenario popover_without_note 'read:1,wait:3500,reader:select,wait:500,reader:hl,wait:800,reader:ui-hl-popover,wait:800,reader:dump,quit' '
     grep -q "^popover_note: false" <<<"$OUT"; check "a highlight without a note shows just the buttons" $?'
 

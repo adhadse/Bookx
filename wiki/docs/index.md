@@ -14,8 +14,8 @@ hide:
 <p class="hero-lead">Bookx is a free e-book library, reader and editor. A native GTK 4 and libadwaita app, written in Rust. Your books stay on your computer.</p>
 
 <div class="hero-shot">
-<img class="only-light" src="assets/library-banner-hero-light.png#only-light" alt="The Bookx library: a Continue Reading banner above a grid of book covers, with the sidebar on the left" width="1612" height="1000" fetchpriority="high">
-<img class="only-dark" src="assets/library-banner-hero-dark.png#only-dark" alt="The Bookx library: a Continue Reading banner above a grid of book covers, with the sidebar on the left" width="1612" height="1000" fetchpriority="high">
+<img class="only-light" src="assets/library-banner-hero-light.png#only-light" alt="The Bookx library: a Continue Reading banner above a grid of book covers, with the sidebar on the left" width="1612" height="1160" fetchpriority="high">
+<img class="only-dark" src="assets/library-banner-hero-dark.png#only-dark" alt="The Bookx library: a Continue Reading banner above a grid of book covers, with the sidebar on the left" width="1612" height="1160" fetchpriority="high">
 </div>
 <img class="hero-logo" src="assets/logo.svg" alt="" width="84" height="84">
 
@@ -61,8 +61,8 @@ shows where your highlights and bookmarks are.
 [More about reading](reading.md){ .md-button }
 </div>
 <div class="feature-shot">
-<img class="only-light" src="assets/reader-light.png#only-light" alt="The reader showing a page of a book" width="1392" height="880" loading="lazy" decoding="async">
-<img class="only-dark" src="assets/reader-dark.png#only-dark" alt="The reader showing a page of a book" width="1392" height="880" loading="lazy" decoding="async">
+<img class="only-light" src="assets/reader-light.png#only-light" alt="The reader showing a page with highlighted passages and the selection popover open on a note" width="1392" height="880" loading="lazy" decoding="async">
+<img class="only-dark" src="assets/reader-dark.png#only-dark" alt="The reader showing a page with highlighted passages and the selection popover open on a note" width="1392" height="880" loading="lazy" decoding="async">
 </div>
 </section>
 

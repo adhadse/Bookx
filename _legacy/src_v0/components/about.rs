@@ -34,7 +34,7 @@ impl SimpleComponent for AboutDialog {
         adw::AboutWindow::builder()
             .application_icon(config::APP_ID)
             .license_type(gtk::License::Gpl30)
-            .website("https://bookx.opensource.adhadse.com/")
+            .website("https://bookx.adhadse.com/")
             .issue_url("https://github.com/adhadse/Bookx/issues/")
             .version(config::VERSION)
             .translator_credits(String::from("translator-credits"))

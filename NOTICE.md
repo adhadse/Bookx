@@ -87,6 +87,16 @@ Nothing below is bundled or distributed with Bookx. The models and the runtime a
   and converted to a vertical EPUB by `build-aux/make-vertical-epubs.py` for the vertical-writing scenarios. The same text,
   drawn by the reader in the Noto Serif CJK JP font (SIL Open Font Licence, a system font, not distributed), is the
   screenshot `wiki/docs/assets/reader-vertical.png`.
+- Cover art for the twelve books of the wiki screenshots (*Moby-Dick*, *Pride and Prejudice*, *Frankenstein*, *Dracula*,
+  *The Time Machine*, *Treasure Island*, *Jane Eyre*, *The Odyssey*, *Walden*, *Great Expectations*, *The Art of War*,
+  *Siddhartha*) from Standard Ebooks (<https://standardebooks.org>), whose cover art is in the public domain and whose own
+  work is dedicated to the public domain (CC0 1.0). It is downloaded into `~/.cache/bookx-wiki-covers` by
+  `build-aux/make-wiki-books.py` and appears in the wiki screenshots (`wiki/docs/assets/library-banner-hero-*.png`,
+  `library-*.png`, `reader-*.png`); no cover file is committed to this repository.
+- The wiki's social cards (the link previews of <https://bookx.adhadse.com>) are drawn by Zensical's `social` plugin
+  with the **Inter** typeface, which it downloads from Google Fonts at build time and caches in
+  `wiki/.cache/plugin/social` (not committed). Inter is licensed under the SIL Open Font Licence 1.1
+  (<https://github.com/rsms/inter>), which permits embedding the rendered glyphs; no font file is redistributed.
 
 `crates/bookx-editing/testdata/cmyk.jpg` (351 bytes) is a CMYK JPEG made for the tests with Pillow from a flat colour: our own file, CC0. It is the one committed fixture (a CMYK JPEG cannot be generated with the `image` crate).
 - `unicode_names2` 4 (MIT OR Apache-2.0, with `phf`) in `bookx-editing`: the Unicode character names of the Insert Special Character dialog and the Characters report. Pure Rust, tables compiled in (about 0.5 MB); chosen over reading `UnicodeData.txt` at run time, which would need a bundled data file.

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Real screenshots for the public wiki, taken in sandboxed GNOME Shell sessions (build-aux/session): the library
-# (with the Continue Reading banner), details, notes, table, Device window, Preferences, palette, the reader, read aloud,
-# the book map, the editor, vertical text and the e-ink mode, with public-domain test books and a shelf of generated
-# covers (build-aux/make-wiki-books.py). Nothing touches your library or config.
+# (with the Continue Reading banner), details, notes, table, Device window, Preferences, palette, the reader (with
+# highlights and the selection popover), read aloud, the book map, the editor, vertical text and the e-ink mode, with
+# public-domain test books and a shelf with their real public-domain covers (build-aux/make-wiki-books.py, Standard
+# Ebooks). Nothing touches your library or config.
 #
 # Every picture is made twice, in the Light and in the Dark style (the sandbox's GNOME color-scheme, so libadwaita draws
 # the real style), then framed by build-aux/screenshot-frame.py (rounded corners, thin outline, soft drop shadow on a
@@ -22,7 +23,7 @@ cd "$(dirname "$(readlink -f "$0")")/.."
 ROOT=$PWD
 BASE=${RESULTS:-${CARGO_TARGET_DIR:-$ROOT/target}/wiki-screenshots}
 SCHEMES=${SCHEMES:-"light dark"}
-ALL_SCENARIOS="_wiki_shots _wiki_hero _wiki_strip _wiki_library _wiki_table _wiki_reader_ux _wiki_map _wiki_tts _wiki_editor _wiki_vertical _wiki_eink"
+ALL_SCENARIOS="_wiki_shots _wiki_hero _wiki_reading _wiki_strip _wiki_library _wiki_table _wiki_reader_ux _wiki_map _wiki_tts _wiki_editor _wiki_vertical _wiki_eink"
 SCENARIOS=${SCENARIOS:-$ALL_SCENARIOS}
 PICTURES="library-device device-window preferences preferences-search command-palette reader reader-contents editor editor-find editor-palette
     library-banner-hero library-banner-strip library-details library-notes library-table reader-sidebar-contents reader-sidebar-notes reader-handles

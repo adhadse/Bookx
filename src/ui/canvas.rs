@@ -1881,6 +1881,15 @@ impl BookCanvas {
         self.note_tooltip(x, y)
     }
 
+    /// Dev/test helper: the selection info of the first highlight that has a note (for screenshots of the popover).
+    pub fn dev_note_highlight_info(&self) -> Option<SelectionInfo> {
+        let id = {
+            let s = self.st.borrow();
+            s.highlights.iter().find(|h| !h.note.is_empty())?.id.clone()
+        };
+        self.highlight_info(&id)
+    }
+
     /// Dev/test helper: a plain click in the middle of the page.
     pub fn dev_click_middle(&self) {
         let (w, h) = {

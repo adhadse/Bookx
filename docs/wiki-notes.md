@@ -65,14 +65,16 @@ shows only one variant, when the fragment is missing, or when a picture is not u
 five pages and checks that exactly the matching variants are visible. `WIKI_SHOTS=/some/dir build-aux/wiki.sh` also saves
 full-page screenshots of the built site (light and dark, desktop and phone width) there.
 
-**Where the scenarios are.** `build-aux/session/scenarios_wiki.py` (hero banner, strip, details, notes, table, book
-map, read aloud, editor preview and split menu, vertical text, e-ink) plus `_wiki_shots` (`scenarios_a11y.py`: device banner,
-Device window, Preferences, palette, reader, editor) and `_wiki_reader_ux` (`scenarios_reader_ux.py`: sidebar, handles,
-Wikipedia, footer). The leading `_` keeps them out of the normal `session-tests.sh` run. They use the public-domain test
-books of `~/.cache/bookx-testbooks`, a shelf of twelve generated books (`build-aux/make-wiki-books.py`: public-domain
-titles, covers drawn with Pillow, no real cover art), a fake Boox folder and the mock read-aloud engine, and take the
-picture without the mouse pointer. `wiki-screenshots.sh` fails when a picture of the `PICTURES` list was not taken (a scenario
-that skips a step still passes by itself); add new pictures to that list.
+**Where the scenarios are.** `build-aux/session/scenarios_wiki.py` (hero banner, the reader page with highlights and its
+popover, strip, details, notes, table, book map, read aloud, editor preview and split menu, vertical text, e-ink) plus
+`_wiki_shots` (`scenarios_a11y.py`: device banner, Device window, Preferences, palette, editor) and `_wiki_reader_ux`
+(`scenarios_reader_ux.py`: sidebar, handles, Wikipedia, footer). The leading `_` keeps them out of the normal
+`session-tests.sh` run. They use the public-domain test books of `~/.cache/bookx-testbooks`, a shelf of twelve generated
+books (`build-aux/make-wiki-books.py`: public-domain titles whose covers are the public-domain cover art of Standard
+Ebooks, downloaded once into `~/.cache/bookx-wiki-covers` and cropped to 2:3; `NET=0` or any download error falls back
+to a drawn Pillow cover), a fake Boox folder and the mock read-aloud engine, and take the picture without the mouse
+pointer. `wiki-screenshots.sh` fails when a picture of the `PICTURES` list was not taken (a scenario that skips a step
+still passes by itself); add new pictures to that list.
 
 **The window shadow.** Mutter in a headless session draws no shadow, so `build-aux/screenshot-frame.py` paints it (Pillow):
 the GNOME top bar is cut off, the corners are rounded (14 px, as GNOME draws them), a 1 px outline is added and a soft shadow
@@ -97,11 +99,13 @@ navigation (`hide:` in the front matter). The hero's large banner is the app's o
 setting (config `banner_mode`), because the automatic banner is slim on a 1280 x 800 window. All claims on the page come from
 the feature pages; device support is described as new and tried on one Kobo only.
 
-**Known gaps.** The e-ink picture is the normal screen with the `eink` setting, not a real e-ink panel. The sync-summary
-dialog (it was a mockup) is no longer shown. Pictures that depend on the app's look change with every UI pass: the
+**Known gaps.** The e-ink picture is the normal screen with the `eink` setting, not a real e-ink panel. The sync-summarydialog (it was a mockup) is no longer shown. Pictures that depend on the app's look change with every UI pass: the
 last capture is from the date in the log below.
 
 Log: 2026-11-13 (wiki agent, wave 4): all 29 pictures x 2 styles taken from the build described in the final report.
+Log: 2026-11-14: the shelf now uses real Standard Ebooks cover art (`make-wiki-books.py`), and the "Pages made for
+reading" picture is `_wiki_reading` (five highlights in four styles, the selection popover with a note and the Wikipedia
+look-up); the hero, reader, library, details, notes, strip and table pictures were retaken in both styles.
 
 ## Pages that are thin or need more screenshots
 

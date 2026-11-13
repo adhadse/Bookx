@@ -6,8 +6,8 @@ them back. Your position is remembered per book.
 
 <div class="shots" markdown>
 
-![The reader](assets/reader-light.png#only-light)
-![The reader](assets/reader-dark.png#only-dark)
+![The reader, with highlighted passages and the selection popover open on a note](assets/reader-light.png#only-light)
+![The reader, with highlighted passages and the selection popover open on a note](assets/reader-dark.png#only-dark)
 
 ![The reader with the contents sidebar](assets/reader-contents-light.png#only-light)
 ![The reader with the contents sidebar](assets/reader-contents-dark.png#only-dark)

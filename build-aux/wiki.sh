@@ -52,6 +52,9 @@ echo "==> Optimising pictures (WebP, lazy loading)"
 echo "==> Checking links and light/dark pictures"
 python3 build-aux/check-site-links.py "$SITE"
 
+echo "==> Checking the social cards and their Open Graph tags"
+python3 build-aux/check-social-cards.py "$SITE"
+
 if [ "${WIKI_BROWSER:-1}" != 0 ]; then
     echo "==> Checking the colour-scheme toggle in a browser (WIKI_BROWSER=0 skips; needs firefox)"
     python3 build-aux/wiki-theme-check.py "$SITE" ${WIKI_SHOTS:+--shots "$WIKI_SHOTS"} || exit 1

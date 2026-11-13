@@ -12,6 +12,7 @@ on:
       - "build-aux/wiki-optimize.py"
       - "build-aux/wiki-theme-check.py"
       - "build-aux/check-site-links.py"
+      - "build-aux/check-social-cards.py"
       - ".github/workflows/wiki.yml"
   pull_request:
     paths:
@@ -20,6 +21,7 @@ on:
       - "build-aux/wiki-optimize.py"
       - "build-aux/wiki-theme-check.py"
       - "build-aux/check-site-links.py"
+      - "build-aux/check-social-cards.py"
       - ".github/workflows/wiki.yml"
   workflow_dispatch:
 

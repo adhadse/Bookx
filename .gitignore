@@ -15,3 +15,7 @@ repo/
 # Wiki (Zensical) build output
 /wiki/site/
 .cache/
+
+# Python
+__pycache__/
+*.pyc

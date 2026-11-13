@@ -114,7 +114,7 @@ def editor_alt_x(c):
     c.start()
     if not c.check("Edit Book opens the editor window", open_editor(c)):
         return
-    code = c.find("text")[0]
+    code = max(c.find("text"), key=lambda n: n.box[2] * n.box[3])
     c.click_node(code)
     c.sb.key("End", ("Control",))
     c.sb.type("<!-- zz")
