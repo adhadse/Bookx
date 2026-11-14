@@ -110,7 +110,17 @@ navigation (`hide:` in the front matter). The hero's large banner is the app's o
 setting (config `banner_mode`), because the automatic banner is slim on a 1280 x 800 window. All claims on the page come from
 the feature pages; device support is described as new and tried on one Kobo only.
 
-**Known gaps.** The e-ink picture is the normal screen with the `eink` setting, not a real e-ink panel. The sync-summarydialog (it was a mockup) is no longer shown. Pictures that depend on the app's look change with every UI pass: the
+**Social cards (link previews).** `[project.plugins.social]` in `wiki/zensical.toml` makes Zensical draw a 1200 x 630 PNG per
+page (`assets/images/social/<page>.png`) and write the Open Graph and Twitter Card tags, so a pasted link shows a preview in
+chat apps and social sites. It needs `site_url` (set) and downloads the Inter font from Google Fonts on the first build
+(cached in `wiki/.cache/plugin/social`, so the build needs network once; the font option is required, without it the plugin
+fails with "font family 'False'"). Colours: `#16213a` background, white text. When a card cannot be drawn the plugin only
+logs a warning, so `build-aux/check-social-cards.py` (run by `wiki.sh`) fails the build for missing tags, cards of the wrong
+size or a wrong `og:url`. After a deploy, force a re-scrape with the Facebook Sharing Debugger / LinkedIn Post Inspector
+(they cache previews); chat apps fetch on first share.
+
+**Known gaps.** The e-ink picture is the normal screen with the `eink` setting, not a real e-ink panel. The sync-summary
+dialog (it was a mockup) is no longer shown. Pictures that depend on the app's look change with every UI pass: the
 last capture is from the date in the log below.
 
 Log: 2026-11-14 (wiki agent): all 30 pictures x 2 styles re-taken in one `wiki-screenshots.sh` run, 0 focus rings found, every picture looked at; the
