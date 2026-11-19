@@ -26,41 +26,86 @@ How to read it:
 
 | ID | Pain point | Freq | Bookx | Proposal | Eff | Prio |
 |---|---|---|---|---|---|---|
-| PP-G-1 | Metadata sources are wrong, rate-limited or die | high | PARTIAL | Provenance, source health, offline cache, review queue | M | P1 |
-| PP-G-2 | Edits live in the database, not in the file | high | PARTIAL | Drift check and write-back everywhere | M | P1 |
-| PP-G-3 | Series and author naming chaos | high | PARTIAL | Normaliser, series view, author aliases in UI | M | P1 |
-| PP-G-4 | Duplicate detection too naive or too late | high | PARTIAL | Numerals, post-import check, edition-aware merge | S | P2 |
+| PP-G-1 | Metadata sources are wrong, rate-limited or die | high | DONE | Provenance, source health, offline cache, review queue | M | P1 |
+| PP-G-2 | Edits live in the database, not in the file | high | DONE | Drift check and write-back everywhere | M | P1 |
+| PP-G-3 | Series and author naming chaos | high | DONE | Normaliser, series view, author aliases in UI | M | P1 |
+| PP-G-4 | Duplicate detection too naive or too late | high | DONE | Numerals, post-import check, edition-aware merge | S | P2 |
 | PP-G-5 | Work vs edition vs format is not modelled | medium | PARTIAL | "Work" grouping over several files | L | P3 |
 | PP-G-6 | Format fragmentation and device-specific conversion | high | PARTIAL | Send-to-device preflight, real-device test matrix | M | P1 |
-| PP-G-7 | DRM and store lock-in | high | PARTIAL | Detect and explain DRM, LCP later | S | P2 |
-| PP-G-8 | Reading position sync across apps and devices | high | DONE (untested against real KOReader) | Reader as KOSync client, precise matching | M | P1 |
-| PP-G-9 | Kobo and Kindle sideloaded books lose sync and notes | high | MOSTLY DONE | Read Kobo DB annotations, carry notes on send | M | P1 |
-| PP-G-10 | Highlights are trapped in the app or the store | high | DONE (unverified against real Anki / Readwise) | Wire exporters, add importers | M | P1 |
+| PP-G-7 | DRM and store lock-in | high | DONE | Detect and explain DRM, LCP later | S | P2 |
+| PP-G-8 | Reading position sync across apps and devices | high | DONE | Reader as KOSync client, precise matching | M | P1 |
+| PP-G-9 | Kobo and Kindle sideloaded books lose sync and notes | high | DONE | Read Kobo DB annotations, carry notes on send | M | P1 |
+| PP-G-10 | Highlights are trapped in the app or the store | high | DONE | Wire exporters, add importers | M | P1 |
 | PP-G-11 | Device transfer is clumsy | medium | PARTIAL | MTP via gio, wireless pull | M | P2 |
 | PP-G-12 | Large library performance | high | PARTIAL | 100k budgets, lazy covers | M | P2 |
-| PP-G-13 | Fragile database, cloud sync and schema breaks | high | PARTIAL | Lock guard, schema doc, read-only mode | S | P2 |
-| PP-G-14 | Backups are manual or absent | medium | DONE (2026-11-12, see `docs/backup-notes.md`) | Scheduler, destinations, restore UI | S | P1 |
+| PP-G-13 | Fragile database, cloud sync and schema breaks | high | DONE | Lock guard, schema doc, read-only mode | S | P2 |
+| PP-G-14 | Backups are manual or absent | medium | DONE | Scheduler, destinations, restore UI | S | P1 |
 | PP-G-15 | Import and migration lock-in | medium | PARTIAL | Round-trip to Calibre layout, OPF sidecars | M | P2 |
 | PP-G-16 | Tracker data: Goodreads API dead, silos | medium | PARTIAL | CSV import/export, Hardcover sync | M | P2 |
-| PP-G-17 | Projects get abandoned or change terms | medium | PARTIAL | Documented schema, plain-file export | S | P2 |
+| PP-G-17 | Projects get abandoned or change terms | medium | DONE | Documented schema, plain-file export | S | P2 |
 | PP-G-18 | Cloud dependence and privacy | medium | DONE | Keep the rule, add a written network ledger | S | P3 |
 | PP-G-19 | Accessibility of the reader and the app | medium | PARTIAL | AT-SPI text for the canvas (done), keyboard reading (done), TTS | L | P1 |
 | PP-G-20 | Typography and rendering quality | medium | PARTIAL | Knuth-Plass and CSS in the canvas | L | P2 |
 | PP-G-21 | CJK, RTL and vertical text | medium | PARTIAL | RTL page direction done; vertical writing planned (`docs/vertical-writing-plan.md`) | L | P2 |
-| PP-G-22 | Dictionary and translation | medium | PARTIAL | Fix bug 1, offline-first fallbacks | S | P2 |
+| PP-G-22 | Dictionary and translation | medium | DONE | Fix bug 1, offline-first fallbacks | S | P2 |
 | PP-G-23 | E-ink support | medium | PARTIAL | Refresh hints, stay nice-to-have | M | P3 |
 | PP-G-24 | Comics and manga | high | PARTIAL | Page reader with RTL, ComicInfo rules | L | P2 |
 | PP-G-25 | Audiobook and ebook pairing | medium | PARTIAL | EPUB 3 media overlays, linked audio | L | P3 |
 | PP-G-26 | Multi-user and sharing | high | PARTIAL | Per-user accounts in Share Library | M | P3 |
 | PP-G-27 | Mobile and offline | medium | PARTIAL | Offline-capable web client | L | P3 |
 | PP-G-28 | Cover quality | medium | PARTIAL | Candidate picker with resolution score | S | P2 |
-| PP-G-29 | Tagging and organisation | medium | PARTIAL | Smart shelves from saved queries | S | P2 |
+| PP-G-29 | Tagging and organisation | medium | DONE | Smart shelves from saved queries | S | P2 |
 | PP-G-30 | Search inside books | low | DONE | Keep, add budgets at 100k | S | P3 |
 | PP-G-31 | Long-term preservation | medium | PARTIAL | Fixity checksums, validate on import | M | P2 |
-| PP-G-32 | Ingest folders are fragile | medium | NOT YET | Watch folder with a review queue | S | P1 |
-| PP-G-33 | Destructive operations without undo | medium | NOT YET | Operation log with undo | M | P2 |
+| PP-G-32 | Ingest folders are fragile | medium | DONE | Watch folder with a review queue | S | P1 |
+| PP-G-33 | Destructive operations without undo | medium | DONE | Operation log with undo | M | P2 |
 
-Counts: DONE 4 (two with a note), MOSTLY DONE 2, PARTIAL 25, NOT YET 2 (33 points).
+Counts (audited 2026-11-20): **DONE 17, PARTIAL 16, NOT YET 0** (33 points; "MOSTLY DONE" is folded into DONE or PARTIAL). Before the audit: DONE 4, MOSTLY DONE 2, PARTIAL 25, NOT YET 2.
+
+## Audit 2026-11-20 (current status; the paragraphs below are the research-time state)
+
+Every point was checked against the code, tests, wiki and UI scenarios on 2026-11-20. **The status column above and
+this table are current; the "Bookx:" paragraphs below keep the state at the time of writing and their own dated
+updates.** DONE means everything the proposal asks for and that code can solve is built, tested and reachable.
+
+| ID | Status | Evidence | What is left |
+|---|---|---|---|
+| PP-G-1 metadata sources | DONE | Bulk fetch + review table with source per field, provenance, on-disk cache, health with backoff, fetch for new books, undo incl. covers (`bulk_fetch.rs`, `metadata_fetch.rs`, `docs/metadata-notes.md`); plugin sources | No live-network tests; three built-in sources |
+| PP-G-2 edits only in the database | DONE | Every edit goes through `Library::update_metadata` (file and catalogue together); drift check with *use file* / *use catalogue* fixes (`library check --drift`, Health) | AZW3/PDF write-back |
+| PP-G-3 series and author chaos | DONE | Series number parser, Series window with gaps, author aliases window, tidy names, `library authors/rename-author` (`series_view.rs`, `authors_view.rs`, `bookx-sources::{authors,aliases,tidy}`) | Language-aware name order; no automatic transliteration |
+| PP-G-4 duplicates | DONE | ISBN/title/author fuzzy match, number words, import-time check, merge or merge as formats, **"Not a Duplicate" memory** (`duplicates::Apart`, scenario `pain_apart`) | |
+| PP-G-5 work vs edition vs format | PARTIAL | One book holds several formats (merge, add format, best format per device); *Editions & Formats* groups books of one work | No "work" entity above books in the grid (a grouped card with an expander); editions of different ISBN stay separate books; reading progress is not shared with an audiobook |
+| PP-G-6 format fragmentation | PARTIAL | Check Before Sending (validator + Kindle/Kobo/e-mail rules), Fix All, best format per device, conversion report | Check not in the Device window's send flow; no real-device test matrix |
+| PP-G-7 DRM | DONE | Detection of Adobe, Kindle, Kobo, FairPlay, LCP with a clear message (`core::drm`, `drm:` search) | Synthetic fixtures only; no LCP support (and no circumvention, by design) |
+| PP-G-8 position sync | DONE | KOSync client and server, partial-MD5 ids, "continue from X%?" (`kosync_sync.rs`, `ui/kosync.rs`) | Not verified against a real KOReader |
+| PP-G-9 Kobo/Kindle notes | DONE | Highlights imported from `KoboReader.sqlite`, KOReader sidecars, My Clippings; notes travel with sent books (`annotation_import.rs`, `send_notes.rs`) | Nothing is written into the Kobo database (by design) |
+| PP-G-10 highlights trapped | DONE | Notes & Highlights window, export to Markdown/HTML/JSON/text/Kindle/Readwise/Anki, imports, stable ids | Anki and Readwise only tested against stand-ins |
+| PP-G-11 device transfer | PARTIAL | USB mass storage, WebDAV, gvfs mounts, OPDS, e-mail | No direct MTP, no wireless pull from a device |
+| PP-G-12 large libraries | PARTIAL | Virtual grid, per-book diff commits, budgets at 10,000 books | No 100,000-book budget, no scroll fps / memory ceiling |
+| PP-G-13 fragile DB / cloud sync | DONE | Transactions, library lock, read-only mode, network/synced folder warning, **documented schema (wiki "Your data and leaving Bookx")**, `check` | |
+| PP-G-14 backups | DONE | Snapshots, restore, off-site with encryption and verification (`docs/backup-notes.md`) | |
+| PP-G-15 migration lock-in | PARTIAL | Calibre import (GUI + CLI), JSON dump, save-to-disk templates, citations (BibTeX/RIS/CSL/APA), tracker CSV, annotation exports | No export back to Calibre's `metadata.db`, no OPF sidecars |
+| PP-G-16 tracker data | PARTIAL | Goodreads/StoryGraph/Hardcover CSV import, Goodreads/StoryGraph export | No Hardcover API sync; Hardcover CSV not checked against a real export |
+| PP-G-17 abandonment / terms | DONE | GPL-3.0-or-later, plain files, SQLite, `library dump`, **documented data layout** | |
+| PP-G-18 cloud and privacy | DONE | No telemetry; **list of every connection and an offline mode switch (Preferences → Privacy, wiki Privacy, `src/privacy.rs`)** | |
+| PP-G-19 accessibility | PARTIAL | Accessible page text, every control named, keyboard-only reading, Orca, OpenDyslexic, high contrast, TTS, **reading ruler** | Image alt text; popover names not verified |
+| PP-G-20 typography | PARTIAL | Hyphenation, Knuth-Plass (setting), highlight styles, user CSS layer, partial book CSS | Fonts/colours/tables/positioning from the book's CSS; widows/orphans |
+| PP-G-21 CJK, RTL, vertical | PARTIAL | RTL pages, vertical writing and furigana in the canvas (`docs/vertical-writing-plan.md`) | Tate-chu-yoko edge cases, selection in vertical text |
+| PP-G-22 dictionary / translation | DONE | StarDict with word forms, automatic dictionary download per language, vocabulary with SM-2 and Anki export, Wikipedia with picture, offline-first fallbacks | Translation always goes to an online service (listed in Privacy) |
+| PP-G-23 e-ink | PARTIAL | E-ink mode (palette, no animation, wide tap zones) | No frontlight / partial-refresh control; not on hardware |
+| PP-G-24 comics | PARTIAL | CBZ/CBT/CBC reader, RTL flag | No panel zoom, spreads or next-file-in-folder |
+| PP-G-25 audiobooks | PARTIAL | Pairing of audio files with books (open in the system player) | No playback, no position sync, no media overlays playback in the reader |
+| PP-G-26 multi-user | PARTIAL | Share password, KOSync accounts | No per-user libraries or progress |
+| PP-G-27 mobile / offline | PARTIAL | OPDS, web page, touch controls | No offline web client |
+| PP-G-28 cover quality | PARTIAL | **Size and shape grading, small-cover scan, larger covers offered as safe changes in the fetch review (`cover_quality.rs`, Health → Covers)**, cover crop and generation | One candidate per book, no side-by-side picker of several covers |
+| PP-G-29 tagging / organisation | DONE | Tags, shelves with smart shelves, saved searches and virtual libraries, query language, tag browser | Hierarchical tags |
+| PP-G-30 search inside books | DONE | FTS5 index, `text:` term | Budgets at 100,000 books |
+| PP-G-31 preservation | PARTIAL | **SHA-256 fixity with damage detection (`core::fixity`, Health → File integrity, `library fixity`)**, validator, check-before-send | No validate-on-import, no scheduled verification, no keep-original policy in the UI |
+| PP-G-32 ingest folders | DONE | Watched import folder with a review queue, files must settle first, remembers what was added or dismissed (`core::inbox`, Health, `library inbox`) | Scans when Health opens and at start-up, not continuously |
+| PP-G-33 destructive operations | DONE | Operation log with undo, trash with restore | |
+
+New in this pass (2026-11-20, "pain" track): PP-G-4 (not-a-duplicate), PP-G-13/17 (documented data), PP-G-18 (offline
+mode and the list), PP-G-19 (reading ruler), PP-G-28 (cover quality), PP-G-31 (checksums), PP-G-15/17 (citations export).
 
 ---
 

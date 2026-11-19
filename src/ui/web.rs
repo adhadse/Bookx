@@ -69,6 +69,11 @@ fn fetch_bytes(url: &str, cb: impl FnOnce(Result<Vec<u8>, String>) + 'static) {
             return;
         }
     }
+    if offline() {
+        let msg = bookx_sources::fetch::OFFLINE_MESSAGE.to_string();
+        glib::idle_add_local_once(move || cb(Err(msg)));
+        return;
+    }
     let file = gio::File::for_uri(url);
     file.load_contents_async(gio::Cancellable::NONE, move |res| {
         cb(res
@@ -85,7 +90,7 @@ fn fetch(url: &str, cb: impl FnOnce(Result<String, String>) + 'static) {
 
 /// No pictures are fetched when the app is offline (`BOOKX_OFFLINE`); cached ones still show.
 pub fn offline() -> bool {
-    std::env::var_os("BOOKX_OFFLINE").is_some()
+    crate::privacy::is_offline()
 }
 
 /// The most the picture cache keeps on disk.

@@ -1,0 +1,13 @@
+id = "org.bookx.example.trim-whitespace"
+name = "Trim trailing whitespace"
+version = "1.0.0"
+api_version = 2
+kind = "editor-action"
+description = "Removes spaces and tabs at the end of every line in the book's text and style files."
+permissions = ["editor.read", "editor.write"]
+
+[[action]]
+id = "trim"
+label = "Trim Trailing Whitespace"
+group = "Cleanup"
+shortcut = "<Ctrl><Alt>t"

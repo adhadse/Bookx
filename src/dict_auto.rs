@@ -54,7 +54,7 @@ pub fn auto_enabled(p: &Prefs) -> bool {
 
 /// `BOOKX_OFFLINE` set: the app is told not to use the network.
 pub fn offline() -> bool {
-    std::env::var_os("BOOKX_OFFLINE").is_some()
+    crate::privacy::is_offline()
 }
 
 /// How long to wait after the n-th failure in a row before the next automatic try (seconds).

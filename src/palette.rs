@@ -160,6 +160,13 @@ pub const COMMANDS: &[Command] = &[
         LIB
     ),
     cmd!(
+        "lib.citations",
+        N_("Export Citations"),
+        "",
+        "bibliography bibtex ris csl json apa references cite zotero",
+        LIB
+    ),
+    cmd!(
         "lib.health",
         N_("Library Health"),
         "",
@@ -305,6 +312,27 @@ pub const COMMANDS: &[Command] = &[
         "Book Map",
         "m",
         "chapters overview strip thumbnails page browser bookmarks highlights",
+        RDR
+    ),
+    cmd!(
+        "reader.ruler",
+        "Reading Ruler",
+        "",
+        "line focus guide dim band concentrate dyslexia accessibility",
+        RDR
+    ),
+    cmd!(
+        "reader.ruler-up",
+        "Move Ruler Up",
+        "<Alt>Up",
+        "line focus guide band",
+        RDR
+    ),
+    cmd!(
+        "reader.ruler-down",
+        "Move Ruler Down",
+        "<Alt>Down",
+        "line focus guide band",
         RDR
     ),
     cmd!(
@@ -611,6 +639,19 @@ pub const EDITOR_COMMANDS: &[(&str, &str, &str, &str)] = &[
     ),
     ("metadata", N_("Edit Metadata"), "", "title author cover"),
     ("find-all", N_("Find All in Book"), "", "search results"),
+    (
+        "clear-marks",
+        N_("Clear Marked Text"),
+        "",
+        "highlight remove",
+    ),
+    (
+        "insert-snippet",
+        N_("Insert Snippet"),
+        "",
+        "template expand",
+    ),
+    ("preferences", N_("Editor Preferences"), "", "settings font"),
     ("close-tab", N_("Close Tab"), "", "file"),
     ("next-file", N_("Next File"), "", "step spine reading order"),
     (

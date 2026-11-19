@@ -297,7 +297,11 @@ pub const RULES: &[Rule] = &[
 
 /// The rule for `id`.
 pub fn rule(id: &str) -> Option<&'static Rule> {
-    RULES.iter().chain(EXTRA_RULES.iter()).find(|r| r.id == id)
+    RULES
+        .iter()
+        .chain(EXTRA_RULES.iter())
+        .chain(crate::media_overlay_check::MEDIA_RULES.iter())
+        .find(|r| r.id == id)
 }
 
 /// One finding.
@@ -447,6 +451,8 @@ pub fn validate_with(archive: &Archive, opts: &Options) -> Report {
     zipcheck::check_names(&mut cx);
     zipcheck::check_mimetype_content(&mut cx);
     package::run(&mut cx);
+    cx.messages
+        .extend(crate::media_overlay_check::check_overlays(archive));
     if opts.extended {
         extra::run(&mut cx);
     }

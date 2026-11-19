@@ -304,6 +304,9 @@ def _notes_case(c, name, settings, size):
     env = {"BOOKX_DEV_SCRIPT": "wait:2500,library:annotate,library:annotate-more"}
     if size != (1280, 800):
         env["BOOKX_SIZE"] = f"{w}x{h}"
+    if w < 1100:
+        # a narrow window has the sidebar as an overlay, closed to begin with
+        env["BOOKX_DEV_SCRIPT"] += ",library:sidebar-toggle"
     c.start(books=("alice", "tiny"), settings=settings, extra_env=env)
     time.sleep(4)
     _click(c, c.wait_node(None, "Notes & Highlights"), origin)
@@ -389,3 +392,225 @@ def library_favourites_light(c):
 @scenario
 def library_favourites_dark(c):
     _fav_case(c, "fav-dark", DARK)
+
+
+def _jobs_case(c, name, settings, size, lang="en"):
+    """The Background Jobs popover with long titles, in a real session: the rows fit the popover (no sideways
+    scrolling), rings instead of bars, the header on one line (also in German)."""
+    long_title = "Ein sehr langer Titel einer Hintergrundaufgabe der immer weiter geht und nirgends mehr hinpasst" \
+        if lang == "de" else "A very long title of a background job that goes on and on and on until nothing fits"
+    script = (f"wait:2500,jobs:start=voice|{long_title}|cancel,jobs:progress=1|0.98|130 MB of 132 MB \u00b7 1.4 MB/s \u00b7 2 s left,"
+              f"jobs:start=import|{long_title}|cancel,jobs:start=send|{long_title}|no,"
+              f"jobs:finish=3|{long_title} {long_title},jobs:retryable=3,jobs:start=backup|Backup|no,jobs:finish=4|ok,"
+              "jobs:open,wait:1500,jobs:overflow,jobs:rows")
+    env = {"BOOKX_DEV_SCRIPT": script, "BOOKX_LANG": lang}
+    w, h = size
+    if size != (1280, 800):
+        env["BOOKX_SIZE"] = f"{w}x{h}"
+    c.start(books=("alice",), settings=settings, extra_env=env)
+    c.wait_node("table cell", rx="Alice")
+    time.sleep(8)
+    c.shot(f"{name}-{lang}-{w}x{h}")
+    log = open(os.path.join(c.dir, "app.log"), errors="replace").read()
+    m = re.search(r"jobs: overflow upper=(\d+) page=(\d+) body=(\d+) popover=(\d+)", log)
+    if not c.check("the panel reported its size", m):
+        return
+    upper, page, body, pop = (int(v) for v in m.groups())
+    c.check(f"no sideways scrolling ({upper} of {page} px)", upper == page)
+    c.check(f"the popover is at most 380 px wide and fits the window ({body} px)", 240 <= body <= 380)
+    title = c.find("label", rx="Background Jobs|Hintergrundaufgaben")
+    clear = c.find("button", rx="Clear Finished|Erledigte|Beendete")
+    c.check("the header has its title and the Clear Finished button on one line",
+            title and clear and abs(title[0].box[1] - clear[0].box[1]) < 14, f"{[t.box for t in title[:1]]} {[b.box for b in clear[:1]]}")
+    c.check("the Retry button of the failed job is there", c.find("button", rx="^Retry|^Wiederholen|^Reintentar") or c.find("button", rx="Retry"))
+    c.check("the app is still alive", c.is_alive())
+
+
+@scenario
+def library_jobs_light(c):
+    _jobs_case(c, "jobs-light", "", (1280, 800))
+
+
+@scenario
+def library_jobs_dark(c):
+    _jobs_case(c, "jobs-dark", DARK, (1280, 800))
+
+
+@scenario
+def library_jobs_german_small(c):
+    _jobs_case(c, "jobs-light", "", (900, 600), "de")
+
+
+@scenario
+def library_jobs_german_dark(c):
+    _jobs_case(c, "jobs-dark", DARK, (1280, 800), "de")
+
+
+_RESP_STATES = {
+    "sidebar": "library:sidebar-toggle,wait:900",
+    "details": "library:select1,wait:600,library:details-open,wait:900",
+    "jobs": ("jobs:start=voice|A very long title of a background job that goes on and on|cancel,"
+             "jobs:progress=1|0.6|60 MB of 100 MB \u00b7 1.4 MB/s \u00b7 20 s left,"
+             "jobs:start=send|Send to the reader|no,jobs:finish=2|disk full,jobs:open,wait:1200"),
+    "base": "wait:300",
+}
+
+
+def _resp_case(c, name, settings, size, lang, state):
+    """The library at a small window size: the header never clips, the panels are overlays."""
+    w, h = size
+    env = {"BOOKX_DEV_SCRIPT": f"wait:2500,{_RESP_STATES[state]},library:header",
+           "BOOKX_LANG": lang, "BOOKX_SIZE": f"{w}x{h}"}
+    c.start(books=("alice", "tiny"), settings=settings, extra_env=env)
+    c.wait_node("table cell", rx="Alice|Tiny")
+    time.sleep(9)
+    c.shot(f"{name}-{state}-{lang}-{w}x{h}")
+    log = open(os.path.join(c.dir, "app.log"), errors="replace").read()
+    hd = re.findall(r"header: width=(\d+) children=(\d+) rightmost=(\d+) clipped=\[(.*?)\]", log)
+    lay = re.findall(r"layout: window=(\d+) sidebar_overlay=(\w+) details_overlay=(\w+)", log)
+    if not c.check("the header was measured", hd and lay):
+        return
+    width, kids, right, clipped = hd[-1]
+    c.check("nothing sticks out of the header", clipped == "" and int(right) <= int(width), f"{hd[-1]}")
+    c.check("the header has its buttons", int(kids) >= 4, kids)
+    win, side, det = lay[-1]
+    c.check("both panels are overlays in a small window", side == "true" and det == "true", f"{lay[-1]}")
+    c.check("the window is as wide as asked (or the minimum)", int(win) <= max(w, 360) + 2, f"{win} for {w}")
+    mw = re.findall(r"minwidth: header=(\d+) .*toolbar=(\d+)", log)
+    if c.check("the least width was reported", mw):
+        c.check("the content fits the window (its least width is not more than the window)",
+                int(mw[-1][1]) <= max(w, 360), f"{mw[-1]} in {w}")
+    c.check("the app is still alive", c.is_alive())
+
+
+def _resp_scenarios():
+    cases = [
+        ((900, 600), "", "en", "sidebar"), ((900, 600), DARK, "de", "details"), ((900, 600), "", "de", "jobs"),
+        ((800, 600), DARK, "en", "sidebar"), ((800, 600), "", "de", "details"), ((800, 600), DARK, "de", "jobs"),
+        ((700, 500), "", "en", "jobs"), ((700, 500), DARK, "de", "sidebar"), ((700, 500), "", "de", "details"),
+        ((360, 294), "", "de", "base"), ((360, 294), DARK, "en", "sidebar"), ((360, 294), "", "en", "jobs"),
+    ]
+    for size, settings, lang, state in cases:
+        theme = "dark" if settings else "light"
+        fname = f"library_resp_{size[0]}_{theme}_{lang}_{state}"
+
+        def run(c, size=size, settings=settings, lang=lang, state=state, theme=theme):
+            _resp_case(c, f"resp-{theme}", settings, size, lang, state)
+        run.__name__ = fname
+        scenario(run)
+
+
+_resp_scenarios()
+
+
+def _chips_case(c, name, settings, screen, win):
+    """The "Also reading" covers of the hero: big enough to hit, the column inside the card, the hero still
+    25-35 % of the viewport, a hover and a keyboard focus that show, the whole button opens the book."""
+    sw, sh = screen
+    w, h = win
+    c.start(books=("alice", "tiny", "vsynth", "vneko"), settings=settings, size=f"{sw}x{sh}",
+            extra_env={"BOOKX_SIZE": f"{w}x{h}", "BOOKX_DEV_SCRIPT": "wait:2500,library:lastread-many,library:banner-watch,wait:3000,library:banner-focus-chip,wait:800,library:banner"})
+    origin = _origin(w, h, screen)
+    c.wait_node("table cell", rx="Alice|Tiny|Neko|Synth|vertical", timeout=40)
+    time.sleep(6)
+    line = _last_banner(c)
+    c.shot(f"{name}-{w}x{h}")
+    if not c.check("the banner is shown", line and line.get("shown") == "true", str(line)):
+        return
+    pct = float(line["percent"])
+    c.check("the hero layout", line["variant"] == "wide", line["variant"])
+    c.check("the hero is 24-33 % of the viewport", 24 <= pct <= 33, f"{pct}")
+    c.check("three covers under Also reading", line.get("chips") == "3", str(line.get("chips")))
+    cw, ch = (int(v) for v in line["chip"].split("x"))
+    c.check("each button is 88 x 130 px (72 x 108 cover, 8 px padding, progress bar), not wider",
+            88 <= cw <= 96 and 124 <= ch <= 140, line["chip"])
+    c.check("the column lies inside the card", line.get("col_in") == "true", str(line.get("col_in")))
+    chips = c.find("button", rx="^Continue reading .*completed")
+    if not c.check("the covers are buttons with a name that has the title and the progress", len(chips) >= 3, str(len(chips))):
+        return
+    x, y = chips[0].center(origin)
+    # the pointer on the padding next to the cover is on the button too
+    c.sb.move_to(x - 40, y)
+    time.sleep(0.8)
+    c.shot(f"{name}-{w}x{h}-hover")
+    # keyboard focus on a chip (set by the dev script): the focus ring shows
+    c.sb.move_to(x, y + 420)
+    c.sb.key("Shift")
+    time.sleep(0.8)
+    c.shot(f"{name}-{w}x{h}-focus")
+    log = open(os.path.join(c.dir, "app.log"), errors="replace").read()
+    c.check("a chip can take the keyboard focus", "banner-focus-chip: true" in log and "chip_focus=true" in log)
+    c.sb.click(x - 40, y)
+    c.check("a click on the padding of a cover opens that book",
+            c.wait_node("button", rx="^Back", timeout=20) is not None)
+    c.check("the app is still alive", c.is_alive())
+
+
+@scenario
+def library_chips_light_1080(c):
+    _chips_case(c, "chips-light", "", (1920, 1080), (1800, 1030))
+
+
+@scenario
+def library_chips_dark_1080(c):
+    _chips_case(c, "chips-dark", DARK, (1920, 1080), (1800, 1030))
+
+
+@scenario
+def library_chips_light_1300(c):
+    _chips_case(c, "chips-light", "", (2560, 1440), (2400, 1300))
+
+
+@scenario
+def library_chips_dark_1300(c):
+    _chips_case(c, "chips-dark", DARK, (2560, 1440), (2400, 1300))
+
+
+def _filter_case(c, name, settings):
+    """Real clicks: a sidebar filter row opens the search bar with its query (the search button on, the keyboard
+    focus stays on the sidebar), Home clears it again."""
+    poll = "wait:3000" + ",library:searchstate,wait:1500" * 24
+    c.start(books=("alice", "tiny"), settings=settings, extra_env={"BOOKX_DEV_SCRIPT": poll})
+    origin = (7, 37)
+    c.wait_node("table cell", rx="Alice")
+    time.sleep(3)
+    _click(c, c.wait_node(None, "Authors"), origin)
+    time.sleep(1)
+    c.wait_node(None, rx="Lewis Carroll", timeout=8)
+    rows = sorted(c.find(None, rx="Lewis Carroll"), key=lambda n: n.box[0])
+    row = rows[0] if rows and rows[0].box[0] < 260 else None
+    if not c.check("the Authors section lists the author", row):
+        return
+    _click(c, row, origin)
+    time.sleep(2.5)
+    c.shot(f"{name}-filter")
+    toggle = [n for n in c.find("toggle button") if n.name.startswith("Search")]
+    c.check("the search button is there", bool(toggle))
+    entry = c.find("search text") or c.find("entry")
+    c.check("the search entry is on screen", bool(entry))
+    _click(c, c.wait_node(None, "Home"), origin)
+    time.sleep(2.5)
+    c.shot(f"{name}-home")
+    time.sleep(8)
+    log = open(os.path.join(c.dir, "app.log"), errors="replace").read()
+    states = re.findall(r'searchstate: bar=(\w+) text="(.*?)" books=(\d+) view=(\w+) focus=(\S+)', log)
+    filt = [s for s in states if s[0] == "true" and "Carroll" in s[1]]
+    if not c.check("the app reported the filter state", filt, str(states[-3:])):
+        return
+    c.check("the filter row opened the bar with its query and filtered the books", filt[0][2] == "1", str(filt[0]))
+    c.check("the keyboard focus stayed on the sidebar (not in the search entry)",
+            "Text" not in filt[0][4] and "Search" not in filt[0][4], filt[0][4])
+    last = states[-1]
+    c.check("Home closed the bar, cleared the query and shows every book", last[0] == "false" and last[1] == "" and last[2] == "2",
+            str(last))
+    c.check("the app is still alive", c.is_alive())
+
+
+@scenario
+def library_filter_light(c):
+    _filter_case(c, "filter-light", "")
+
+
+@scenario
+def library_filter_dark(c):
+    _filter_case(c, "filter-dark", DARK)

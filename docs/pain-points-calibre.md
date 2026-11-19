@@ -17,13 +17,13 @@ Constraints respected (roadmap Part 2): D1 everything in, D2 SQLite via `rusqlit
 
 | Rank | ID | Pain point | Frequency | Bookx status | Priority |
 |---|---|---|---|---|---|
-| 1 | PP-C-1 | Dated, cluttered, hard to discover UI | high | PARTIAL | P1 |
-| 2 | PP-C-2 | `metadata.db` fragility and corruption | high | PARTIAL | P1 |
-| 3 | PP-C-3 | Network drives, NAS and cloud-synced folders break the library | high | PARTIAL | P1 |
+| 1 | PP-C-1 | Dated, cluttered, hard to discover UI | high | DONE | P1 |
+| 2 | PP-C-2 | `metadata.db` fragility and corruption | high | DONE | P1 |
+| 3 | PP-C-3 | Network drives, NAS and cloud-synced folders break the library | high | DONE | P1 |
 | 4 | PP-C-4 | Metadata download is unreliable and often wrong | high | PARTIAL | P1 |
 | 5 | PP-C-5 | Conversion quality and failures | high | PARTIAL | P1 |
 | 6 | PP-C-6 | Kindle: format churn, KFX and DRM | high | PARTIAL | P2 |
-| 7 | PP-C-7 | Forced `Author/Title` folder layout, files move on edit | high | NOT YET | P1 |
+| 7 | PP-C-7 | Forced `Author/Title` folder layout, files move on edit | high | DONE | P1 |
 | 8 | PP-C-8 | Governance, bus factor, AI features, telemetry | high (2025-26) | PARTIAL | P2 |
 | 9 | PP-C-9 | Plugin breakage on Python/Qt/Calibre upgrades | high | PARTIAL | P2 |
 | 10 | PP-C-10 | Not made for several users or processes | high | PARTIAL | P2 |
@@ -32,18 +32,57 @@ Constraints respected (roadmap Part 2): D1 everything in, D2 SQLite via `rusqlit
 | 13 | PP-C-13 | Qt look, Wayland, HiDPI, dark mode | medium | DONE | P3 |
 | 14 | PP-C-14 | Content server is basic and open by default | medium | PARTIAL | P2 |
 | 15 | PP-C-15 | Duplicate handling | medium | DONE | P3 |
-| 16 | PP-C-16 | No automatic backups, restore takes days on big libraries | medium | PARTIAL | P1 |
+| 16 | PP-C-16 | No automatic backups, restore takes days on big libraries | medium | DONE | P1 |
 | 17 | PP-C-17 | No official mobile reader | medium | PARTIAL | P2 |
 | 18 | PP-C-18 | Database as a black box, lock-in, hard to migrate | medium | PARTIAL | P1 |
 | 19 | PP-C-19 | Installation and update friction | medium | PARTIAL | P2 |
-| 20 | PP-C-20 | Weak built-in reader | medium | PARTIAL | P3 |
+| 20 | PP-C-20 | Weak built-in reader | medium | DONE | P3 |
 | 21 | PP-C-21 | Reading progress does not follow you | medium | DONE | P3 |
 | 22 | PP-C-22 | Security record and phone-home | low-medium | PARTIAL | P2 |
 | 23 | PP-C-23 | Accessibility | low (thin evidence) | PARTIAL | P2 |
-| 24 | PP-C-24 | Risky merge and delete, no library undo | low | NOT YET | P2 |
+| 24 | PP-C-24 | Risky merge and delete, no library undo | low | DONE | P2 |
 | 25 | PP-C-25 | News recipes: clunky and Python-bound | low | PARTIAL | P3 |
 
-Counts: DONE 3, PARTIAL 19, NOT YET 3 (25 pain points).
+Counts (audited 2026-11-20): **DONE 10, PARTIAL 15, NOT YET 0** (25 pain points). Before the audit: DONE 3, PARTIAL 19, NOT YET 3.
+
+## Audit 2026-11-20 (current status; the paragraphs below are the research-time state)
+
+This table was made by checking every entry against the code, the tests, the wiki and the UI scenarios on 2026-11-20.
+**The "Bookx status" column above and this table are current; the "Bookx today" paragraphs further down describe
+the state when the research was written (2026-11-12) and are kept for the record.** DONE means every item of the
+proposal that code can solve is built, tested and reachable; what is left is written in the last column.
+
+| ID | Status | Evidence (code, tests, wiki) | What is left |
+|---|---|---|---|
+| PP-C-1 UI | DONE | Command palette (`src/palette.rs`, scenario `palette_library`, also in the editor), one searchable Preferences with a sidebar (`ui/preferences.rs`), preview dialogs for layout change, merge, bulk fetch (review table); descriptions in the UI | Design mockups are out of date (docs only); context menus are still dense |
+| PP-C-2 `metadata.db` fragility | DONE | One SQLite transaction per save; snapshots at start and exit, Back up now, restore, check with drift (`ui/health.rs`, `bookx-store::health`, `library check`), off-site copies (`bookx-backup`), library lock, **file checksums that notice silent damage (`core::fixity`, `library fixity`, Health → File integrity)**; metadata is also written into the EPUB, so a lost catalogue can be rebuilt from the files | No per-book OPF sidecar (the EPUB itself carries the metadata) |
+| PP-C-3 Network / synced folders | DONE | Library lock + read-only mode, one-time warning for network and Dropbox/Syncthing-style folders (`bookx-store::guard`, wiki Library → Locking), headless server for the NAS case (`bookx-cli serve`) | A lock left by another computer is never taken over automatically (by design) |
+| PP-C-4 Metadata unreliable | PARTIAL | Bulk fetch with review table, provenance per field, response cache, source health with backoff, undo (`src/bulk_fetch.rs`, `metadata_fetch.rs`); **a clearly larger cover now replaces a small one as a safe change** | Three built-in sources (plus plugins); no live-network tests; no per-field source priority UI |
+| PP-C-5 Conversion quality | PARTIAL | Writers and 11 transforms checked against Calibre as an oracle (`docs/convert-parity.md`), check-before-send (`preflight.rs`), conversion report, PDF input (`bookx-pdf`) | No PDF output, never tried on a real Kindle, known differences listed in `convert-parity.md` |
+| PP-C-6 Kindle | PARTIAL | Send by e-mail, AZW3/MOBI read and write, DRM detected and explained (`core::drm`) | Never tried on a real Kindle; KFX not owed (D4); DRM removal is out of scope |
+| PP-C-7 Forced folder layout | DONE | Layouts tree / flat / template / link in place, preview, all-or-nothing transactional moves, undo (`core::layout`, `core::files`, `library layout`, wiki Library files and layout) | |
+| PP-C-8 Governance, AI, telemetry | PARTIAL | No telemetry or update check; **written policy and the full list of connections (wiki Privacy, Preferences → Privacy), offline mode switch** (`src/privacy.rs`); MCP server is opt-in and read-only by default | Bus factor and governance are not a code problem (one owner) |
+| PP-C-9 Plugin breakage | PARTIAL | Sandboxed WASM host with a versioned ABI (`bookx-plugin`, `docs/plugin-development.md`) | No test that old plugins keep working across releases (plugin area is being worked on) |
+| PP-C-10 Several users or processes | PARTIAL | One database for app, CLI and server; library lock with a clear "who has it" message and read-only mode | No accounts or per-user reading state |
+| PP-C-11 Startup / large libraries | PARTIAL | Virtualised grid, performance budgets for search, sort, load, save, import at 10,000 books (`crates/*/tests/perf_budgets.rs`) | Nothing measured at 100,000 books, cold start or scroll frame rate |
+| PP-C-12 Kobo | PARTIAL | KEPUB writer, send to Kobo with shelf, highlights and reading state read back from `KoboReader.sqlite` (read-only), device window with covers (`devices.rs`, `device_sync.rs`, `docs/kobo-real-device-report.md`) | The Kobo database is never written for shelves/read state beyond the tested path; write paths verified on snapshots only |
+| PP-C-13 Qt look / Wayland | DONE | GTK4 + libadwaita, Wayland, light/dark/e-ink | Fractional-scale sharpness of the page canvas is not tested |
+| PP-C-14 Content server | PARTIAL | Hardened server, password required for LAN, optional HTTPS with your certificate or a self-signed one (wiki Share Library) | No per-user accounts; bodies buffered in memory |
+| PP-C-15 Duplicates | DONE | Finder with keep/merge, merge as formats, import-time check, number-word matching, **"Not a Duplicate" memory (`duplicates::Apart`, scenario `pain_apart`)** | |
+| PP-C-16 Backups | DONE | Automatic snapshots, Back up now, restore with a safety copy, off-site copies with optional encryption and verification (`bookx-backup`, wiki Backup and restore, `library backup/restore`) | |
+| PP-C-17 Mobile | PARTIAL | OPDS + web page + KOSync for phone readers, touch controls | No PWA / offline web client; not tried on a real touch screen |
+| PP-C-18 Lock-in / migration | PARTIAL | **Import from Calibre in the GUI and CLI** (`bookx-store::calibre`, Health → Import from Calibre), JSON dump, citations export, annotation/tracker exports, **documented catalogue and file layout (wiki "Your data and leaving Bookx")** | No export back to Calibre's `metadata.db` |
+| PP-C-19 Installation | PARTIAL | Flatpak builds offline, release workflow, tarball with checksums | Workflow never run on GitHub; no AppImage, deb/rpm; no Flathub submission |
+| PP-C-20 Weak built-in reader | DONE | Own canvas with hyphenation, Knuth-Plass, highlights, dictionary, book map, goto, footer stats, TTS, RSVP, **reading ruler**, vertical writing, PDF, comics | Fixed-layout spreads, panel zoom |
+| PP-C-21 Progress sync | DONE | KOSync server and client, device sync | Not verified against a real KOReader |
+| PP-C-22 Security / phone-home | PARTIAL | `docs/security.md`, `SECURITY.md`, hardened server, WASM sandbox, secrets in the keyring, no phone-home (list in wiki Privacy), the reader draws pages itself (no web view) | The editor's web preview has not been audited for remote content |
+| PP-C-23 Accessibility | PARTIAL | `GtkAccessibleText` page, every control named (audit scenarios), keyboard-only reading, Orca run, OpenDyslexic option, e-ink high contrast, **reading ruler**, TTS | Image alt text not read; popover menu names unverified |
+| PP-C-24 Risky merge / delete | DONE | Operation log with undo for imports, deletes, edits, moves, merges; trash with restore (`core::history`, Health → Trash & History) | |
+| PP-C-25 News recipes | PARTIAL | Feeds → EPUB with schedule and keep-N, OPML | No recipe editor, per-recipe accounts or Wallabag |
+
+New in this pass (2026-11-20, "pain" track): offline mode and the connection list (PP-C-8, PP-C-22), file checksums
+(PP-C-2), small-cover scan and cover upgrades (PP-C-4), "Not a Duplicate" (PP-C-15), the documented data layout
+(PP-C-18), the reading ruler (PP-C-20, PP-C-23).
 
 ---
 

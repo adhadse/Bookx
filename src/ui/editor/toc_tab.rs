@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::i18n::{tr, trf};
+use bookx_editing::toc_ops;
 
 impl Editor {
     pub(super) fn rebuild_toc(&self) {
@@ -11,6 +12,7 @@ impl Editor {
         for (i, t) in self.toc.iter().enumerate() {
             let row = gtk::ListBoxRow::new();
             let bx = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+            bx.append(&self.toc_row_dnd(&row, i));
             bx.set_margin_start(6 + 18 * t.depth as i32);
             bx.set_margin_end(6);
             bx.set_margin_top(3);
@@ -49,6 +51,15 @@ impl Editor {
         if let Some(i) = self.toc_selected {
             if let Some(r) = self.w.toc_list.row_at_index(i as i32) {
                 self.w.toc_list.select_row(Some(&r));
+                if self.ext.structure.toc_refocus.replace(false) {
+                    if let Some(e) = r
+                        .child()
+                        .and_then(|c| c.first_child())
+                        .and_then(|g| g.next_sibling())
+                    {
+                        e.grab_focus();
+                    }
+                }
             }
         }
     }
@@ -58,14 +69,7 @@ impl Editor {
         match op {
             TocOp::Delete => {
                 if let Some(i) = sel.filter(|i| *i < self.toc.len()) {
-                    let d = self.toc[i].depth;
-                    self.toc.remove(i);
-                    // promote orphaned children one level
-                    let mut k = i;
-                    while k < self.toc.len() && self.toc[k].depth > d {
-                        self.toc[k].depth -= 1;
-                        k += 1;
-                    }
+                    toc_ops::delete(&mut self.toc, i, false);
                     self.toc_selected = if self.toc.is_empty() {
                         None
                     } else {
@@ -74,27 +78,23 @@ impl Editor {
                 }
             }
             TocOp::Up => {
-                if let Some(i) = sel.filter(|i| *i > 0 && *i < self.toc.len()) {
-                    self.toc.swap(i, i - 1);
-                    self.toc_selected = Some(i - 1);
+                if let Some(n) = sel.and_then(|i| toc_ops::move_up(&mut self.toc, i)) {
+                    self.toc_selected = Some(n);
                 }
             }
             TocOp::Down => {
-                if let Some(i) = sel.filter(|i| i + 1 < self.toc.len()) {
-                    self.toc.swap(i, i + 1);
-                    self.toc_selected = Some(i + 1);
+                if let Some(n) = sel.and_then(|i| toc_ops::move_down(&mut self.toc, i)) {
+                    self.toc_selected = Some(n);
                 }
             }
             TocOp::Indent => {
-                if let Some(i) = sel.filter(|i| *i > 0 && *i < self.toc.len()) {
-                    if self.toc[i].depth <= self.toc[i - 1].depth {
-                        self.toc[i].depth += 1;
-                    }
+                if let Some(i) = sel {
+                    toc_ops::demote(&mut self.toc, i);
                 }
             }
             TocOp::Outdent => {
-                if let Some(i) = sel.filter(|i| *i < self.toc.len()) {
-                    self.toc[i].depth = self.toc[i].depth.saturating_sub(1);
+                if let Some(n) = sel.and_then(|i| toc_ops::promote(&mut self.toc, i)) {
+                    self.toc_selected = Some(n);
                 }
             }
             TocOp::Add => {
@@ -107,7 +107,8 @@ impl Editor {
                             && extension(c) != "ncx"
                     })
                     .unwrap_or_default();
-                let title = if href.is_empty() {
+                let mut href = href;
+                let mut title = if href.is_empty() {
                     "New entry".to_string()
                 } else {
                     file_name(&href)
@@ -115,15 +116,21 @@ impl Editor {
                         .trim_end_matches(".html")
                         .to_string()
                 };
-                let at = sel
-                    .map(|i| i + 1)
-                    .unwrap_or(self.toc.len())
-                    .min(self.toc.len());
-                let depth = sel
-                    .and_then(|i| self.toc.get(i))
-                    .map(|t| t.depth)
-                    .unwrap_or(0);
-                self.toc.insert(at, FlatToc { depth, title, href });
+                if let Some((id, t)) = self.anchor_at_cursor() {
+                    href = format!("{href}#{id}");
+                    if !t.is_empty() {
+                        title = t;
+                    }
+                }
+                let at = toc_ops::insert_after(
+                    &mut self.toc,
+                    sel,
+                    FlatToc {
+                        depth: 0,
+                        title,
+                        href,
+                    },
+                );
                 self.toc_selected = Some(at);
             }
             TocOp::LinkCurrent => {
@@ -141,6 +148,20 @@ impl Editor {
         self.toc_dirty = true;
         self.rebuild_toc();
         self.update_title();
+    }
+
+    /// The `id` the cursor of the open page sits in or after, with a title for it.
+    fn anchor_at_cursor(&self) -> Option<(String, String)> {
+        let cur = self.current.as_ref().filter(|c| is_text_path(c))?;
+        let buf = self.buffers.get(cur)?;
+        let text = buffer_text(buf);
+        let off = buf.iter_at_mark(&buf.get_insert()).offset() as usize;
+        let byte = text
+            .char_indices()
+            .nth(off)
+            .map(|(b, _)| b)
+            .unwrap_or(text.len());
+        toc_ops::nearest_anchor(&text, byte)
     }
 
     /// Selecting an entry opens its file and scrolls to its anchor; `force` also re-opens the same entry.

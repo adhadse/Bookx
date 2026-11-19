@@ -42,6 +42,19 @@ impl Kind {
         }
     }
 
+    /// What the job is doing, for its status line ("Downloading · 130 of 132 MB").
+    pub fn verb(self) -> String {
+        match self {
+            Kind::Import => tr("Importing"),
+            Kind::Convert => tr("Converting"),
+            Kind::Send => tr("Sending"),
+            Kind::Fetch => tr("Looking up metadata"),
+            Kind::Backup => tr("Backing up"),
+            Kind::News => tr("Downloading news"),
+            Kind::Voice | Kind::Dictionary => tr("Downloading"),
+        }
+    }
+
     pub fn icon(self) -> &'static str {
         match self {
             Kind::Import => "document-open-symbolic",
@@ -117,6 +130,131 @@ impl Job {
 
     pub fn elapsed_ms(&self, now_ms: i64) -> i64 {
         (self.finished_ms.unwrap_or(now_ms) - self.started_ms).max(0)
+    }
+}
+
+/// The two dim lines under a job's title.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct StatusLines {
+    /// What it is doing and how far: "Downloading · 130 of 132 MB · 1.4 MB/s".
+    pub primary: String,
+    /// While running the time left ("about 2 s left", when the job knows); after the end how long
+    /// it took. Never both.
+    pub secondary: String,
+}
+
+/// The longest reason a failed job shows in its row (the log has all of it).
+const REASON_MAX: usize = 140;
+
+/// "130 MB of 132 MB" becomes "130 of 132 MB" (the same unit twice is said once).
+fn tidy_sizes(seg: &str) -> String {
+    let parts: Vec<&str> = seg.split_whitespace().collect();
+    if let [a, ua, "of", b, ub] = parts.as_slice() {
+        if ua == ub {
+            return format!("{a} of {b} {ua}");
+        }
+    }
+    seg.to_string()
+}
+
+/// Splits what a job says about its step into the parts to show and the time left (`"2 s left"`),
+/// which goes on the second line.
+fn split_detail(detail: &str) -> (Vec<String>, Option<String>) {
+    let mut parts = Vec::new();
+    let mut eta = None;
+    for seg in detail.split(" · ").map(str::trim).filter(|s| !s.is_empty()) {
+        if seg.ends_with(" left")
+            && seg
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_ascii_digit() || seg.starts_with("about"))
+        {
+            eta = Some(seg.to_string());
+        } else {
+            parts.push(tidy_sizes(seg));
+        }
+    }
+    (parts, eta)
+}
+
+fn cut(text: &str, max: usize) -> String {
+    let one: String = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if one.chars().count() <= max {
+        return one;
+    }
+    let mut t: String = one.chars().take(max).collect();
+    t.push('…');
+    t
+}
+
+/// The status lines of a job at `now_ms`: one dim line for what is happening, one for the time left
+/// (running) or how long it took (finished); not both at once.
+pub fn status_lines(job: &Job, now_ms: i64) -> StatusLines {
+    let took = duration_text(job.elapsed_ms(now_ms));
+    match &job.state {
+        State::Running if job.cancel_asked() => StatusLines {
+            primary: tr("Cancelling…"),
+            secondary: String::new(),
+        },
+        State::Running => {
+            let (parts, eta) = split_detail(&job.detail);
+            let mut primary = job.kind.verb();
+            if !parts.is_empty() {
+                primary = format!("{primary} · {}", parts.join(" · "));
+            }
+            let secondary = match eta {
+                Some(e) if e.starts_with("about") => e,
+                Some(e) => format!("about {e}"),
+                None => String::new(),
+            };
+            StatusLines { primary, secondary }
+        }
+        State::Done => StatusLines {
+            primary: tr("Done"),
+            secondary: crate::i18n::trf("Took {}", &[&took]),
+        },
+        State::Failed(reason) => StatusLines {
+            primary: format!("{}: {}", tr("Failed"), cut(reason, REASON_MAX)),
+            secondary: crate::i18n::trf("After {}", &[&took]),
+        },
+        State::Cancelled => StatusLines {
+            primary: tr("Cancelled"),
+            secondary: crate::i18n::trf("After {}", &[&took]),
+        },
+    }
+}
+
+thread_local! {
+    static RETRY: RefCell<Vec<(u64, Rc<dyn Fn()>)>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Lets a job be run again after it failed (the panel then shows a Retry button).
+pub fn set_retry(id: u64, f: Rc<dyn Fn()>) {
+    RETRY.with(|r| {
+        let mut r = r.borrow_mut();
+        r.retain(|(i, _)| *i != id);
+        r.push((id, f));
+    });
+}
+
+pub fn can_retry(id: u64) -> bool {
+    RETRY.with(|r| r.borrow().iter().any(|(i, _)| *i == id))
+}
+
+/// Runs the retry of a job.
+pub fn retry(id: u64) -> bool {
+    let f = RETRY.with(|r| {
+        r.borrow()
+            .iter()
+            .find(|(i, _)| *i == id)
+            .map(|(_, f)| f.clone())
+    });
+    match f {
+        Some(f) => {
+            f();
+            true
+        }
+        None => false,
     }
 }
 
@@ -488,5 +626,126 @@ mod tests {
             with(|h| h.get(id).map(|j| j.state.clone())),
             Some(State::Done)
         );
+    }
+
+    fn job(kind: Kind, state: State, detail: &str, title: &str) -> Job {
+        Job {
+            id: 1,
+            kind,
+            title: title.into(),
+            state,
+            progress: None,
+            detail: detail.into(),
+            log: vec![],
+            started_ms: 0,
+            finished_ms: None,
+            cancellable: true,
+            token: CancelToken::default(),
+        }
+    }
+
+    #[test]
+    fn a_running_download_says_what_it_does_and_the_time_left_on_the_second_line() {
+        let j = job(
+            Kind::Voice,
+            State::Running,
+            "130 MB of 132 MB · 1.4 MB/s · 2 s left",
+            "Voice",
+        );
+        let l = status_lines(&j, 87_000);
+        assert_eq!(l.primary, "Downloading · 130 of 132 MB · 1.4 MB/s");
+        assert_eq!(l.secondary, "about 2 s left");
+        // no elapsed time while it runs (it contradicted the time left)
+        assert!(!l.primary.contains("min") && !l.secondary.contains("1 min"));
+    }
+
+    #[test]
+    fn a_job_without_numbers_or_with_unknown_totals_just_says_what_it_does() {
+        let j = job(Kind::Import, State::Running, "", "Importing 3 files");
+        let l = status_lines(&j, 5000);
+        assert_eq!(
+            (l.primary.as_str(), l.secondary.as_str()),
+            ("Importing", "")
+        );
+        let j = job(Kind::Fetch, State::Running, "3 of 12", "x");
+        assert_eq!(status_lines(&j, 0).primary, "Looking up metadata · 3 of 12");
+        // zero speed, no total: nothing is invented
+        let j = job(Kind::Voice, State::Running, "0 MB · 0 B/s", "x");
+        assert_eq!(status_lines(&j, 0).primary, "Downloading · 0 MB · 0 B/s");
+        // different units are kept
+        let j = job(Kind::Voice, State::Running, "900 KB of 2 MB", "x");
+        assert_eq!(status_lines(&j, 0).primary, "Downloading · 900 KB of 2 MB");
+        // an estimate that already says "about"
+        let j = job(
+            Kind::Voice,
+            State::Running,
+            "5 MB of 9 MB · about 3 min left",
+            "x",
+        );
+        assert_eq!(status_lines(&j, 0).secondary, "about 3 min left");
+    }
+
+    #[test]
+    fn a_finished_job_shows_the_result_and_how_long_it_took() {
+        let mut j = job(Kind::Backup, State::Done, "", "Backup");
+        j.finished_ms = Some(87_000);
+        let l = status_lines(&j, 999_999);
+        assert_eq!(l.primary, "Done");
+        assert_eq!(l.secondary, "Took 1 min 27 s");
+        let mut j = job(Kind::Send, State::Failed("disk full".into()), "", "Send");
+        j.finished_ms = Some(12_000);
+        let l = status_lines(&j, 999_999);
+        assert_eq!(l.primary, "Failed: disk full");
+        assert_eq!(l.secondary, "After 12 s");
+        let mut j = job(Kind::Send, State::Cancelled, "", "Send");
+        j.finished_ms = Some(500);
+        assert_eq!(status_lines(&j, 9).secondary, "After 500 ms");
+    }
+
+    #[test]
+    fn a_long_reason_is_cut_and_a_cancel_in_progress_is_clear() {
+        let reason = "x ".repeat(400);
+        let j = job(Kind::Send, State::Failed(reason), "", "Send");
+        let l = status_lines(&j, 0);
+        assert!(
+            l.primary.chars().count() <= "Failed: ".len() + REASON_MAX + 1,
+            "{}",
+            l.primary.len()
+        );
+        assert!(l.primary.ends_with('…'));
+        let j = job(
+            Kind::Convert,
+            State::Running,
+            "2 of 5 · 4 s left",
+            "Convert",
+        );
+        j.token.cancel();
+        let l = status_lines(&j, 0);
+        assert_eq!(
+            (l.primary.as_str(), l.secondary.as_str()),
+            ("Cancelling…", "")
+        );
+    }
+
+    #[test]
+    fn long_titles_never_reach_the_status_lines() {
+        let j = job(
+            Kind::Import,
+            State::Running,
+            "1 of 2",
+            &"very long title ".repeat(30),
+        );
+        assert_eq!(status_lines(&j, 0).primary, "Importing · 1 of 2");
+    }
+
+    #[test]
+    fn a_retry_can_be_registered_and_run() {
+        let hits = Rc::new(std::cell::Cell::new(0));
+        let h = hits.clone();
+        assert!(!can_retry(777));
+        set_retry(777, Rc::new(move || h.set(h.get() + 1)));
+        assert!(can_retry(777) && retry(777));
+        assert_eq!(hits.get(), 1);
+        assert!(!retry(778));
     }
 }

@@ -71,6 +71,13 @@ fn start_with(
     notify: Notify,
     silent: bool,
 ) {
+    let cover_files: std::collections::HashMap<u64, std::path::PathBuf> = {
+        let lib = shared.lib.borrow();
+        ids.iter()
+            .filter_map(|id| lib.get(*id))
+            .filter_map(|b| lib.cover_path(b).map(|p| (b.id, p)))
+            .collect()
+    };
     let items: Vec<(u64, crate::core::opf::Metadata, bool)> = {
         let lib = shared.lib.borrow();
         ids.iter()
@@ -244,11 +251,15 @@ fn start_with(
     if !silent {
         dialog.present(Some(parent));
     }
-    ctx.run(items);
+    ctx.run(items, cover_files);
 }
 
 impl Ctx {
-    fn run(self: &Rc<Self>, items: Vec<(u64, crate::core::opf::Metadata, bool)>) {
+    fn run(
+        self: &Rc<Self>,
+        items: Vec<(u64, crate::core::opf::Metadata, bool)>,
+        cover_files: std::collections::HashMap<u64, std::path::PathBuf>,
+    ) {
         let total = items.len();
         self.progress.set_text(Some(&trf("0 of {}", &[&total])));
         let (tx, rx) = mpsc::channel::<Msg>();
@@ -271,7 +282,7 @@ impl Ctx {
         std::thread::spawn(move || {
             let tx2 = tx.clone();
             let plugins = crate::plugins::current();
-            let results = bf::run_batch(
+            let mut results = bf::run_batch(
                 items,
                 mf::fetcher(),
                 &plugins,
@@ -281,6 +292,13 @@ impl Ctx {
                     let _ = tx2.send(Msg::Progress(d, t));
                 },
             );
+            // how big the covers are now, so a clearly larger one can replace a poor one
+            for r in results.iter_mut().filter(|r| r.has_cover) {
+                r.cover_px = cover_files
+                    .get(&r.book)
+                    .and_then(|p| std::fs::read(p).ok())
+                    .and_then(|b| bookx_sources::cover_quality::size_of(&b));
+            }
             mf::persist_health();
             let _ = tx.send(Msg::Done(results));
         });

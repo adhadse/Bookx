@@ -156,3 +156,65 @@ def editor_file_drag_reorder(c):
     c.note(f"order now: {now[:5]}")
     c.check("dropping the third page above the first puts it first in the list", now and now[0] == moved, str(now[:4]))
     c.check("the app is still alive", c.is_alive())
+
+
+# (group position in the Tools menu after the two one-click entries, entries, dialog titles)
+TOOL_ENTRIES = [
+    (0, 0, "Smarten Punctuation"), (0, 1, "Fix HTML"), (0, 2, "Beautify"),
+    (1, 0, "Transform Styles"), (1, 1, "Remove Unused CSS Rules"), (1, 2, "Filter Style Information"),
+    (2, 0, "Delete Unused Media"), (2, 1, "Embed Referenced Fonts"), (2, 2, "Download External Resources"),
+    (3, 0, "Set Semantics"), (3, 1, "Accessibility"),
+    (4, 0, "Check External Links"), (4, 1, "Repair Broken Links"), (4, 2, "Move Files to a Folder"),
+]
+
+
+def tools_smoke(c, size, tag):
+    c.start(size=size)
+    if not c.check("Edit Book opens the editor window", open_editor(c)):
+        return
+    c.sb.key("Escape")
+    code = max(c.find("text"), key=lambda n: n.box[2] * n.box[3])
+    c.click_node(code)
+    opened = 0
+    for _group, _entry, title in TOOL_ENTRIES:
+        # the command palette lists every menu entry: type its name and press Enter
+        c.sb.key("p", ("Control", "Shift"))
+        time.sleep(0.8)
+        c.sb.type(title)
+        time.sleep(0.6)
+        c.sb.key("Return")
+        time.sleep(1.2)
+        dlg = [n for n in c.find(None, title) if n.showing]
+        c.note(f"{title}: dialog nodes {[(n.role, n.box) for n in dlg][:3]}")
+        if dlg:
+            opened += 1
+            prev = [n for n in c.find("button", "Preview") if n.showing]
+            if prev:
+                c.click_node(prev[0])
+                time.sleep(1.0)
+            c.shot(f"{tag}-{title.replace(' ', '-')}")
+            # nothing may be cut off: the dialog's buttons and text stay inside the window
+            win = c.find("frame")[0].box
+            for b in c.find("button"):
+                if b.showing and b.name in ("Preview", "Apply") and b.box[2] > 20:
+                    x, y, w, h = b.box
+                    c.check(f"{title}: the {b.name} button is inside the window", 0 <= x and x + w <= win[2] + 2 and 0 <= y and y + h <= win[3] + 2, f"{b.box} in {win}")
+                    break
+            c.sb.key("Escape")
+            time.sleep(0.6)
+        else:
+            c.shot(f"{tag}-{title.replace(' ', '-')}-none")
+            c.sb.key("Escape")
+            time.sleep(0.4)
+    c.check("most tool dialogs open from the menu with real key presses", opened >= 9, f"{opened} of {len(TOOL_ENTRIES)}")
+    c.check("the app is still alive", c.is_alive())
+
+
+@scenario
+def editor_tools_smoke_1280(c):
+    tools_smoke(c, "1280x800", "1280")
+
+
+@scenario
+def editor_tools_smoke_900(c):
+    tools_smoke(c, "900x600", "900")

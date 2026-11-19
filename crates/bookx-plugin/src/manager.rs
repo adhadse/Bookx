@@ -74,6 +74,8 @@ pub struct PluginStatus {
     pub description: String,
     pub dir: PathBuf,
     pub permissions: Vec<String>,
+    /// Editor actions as "Label" or "Label (suggested shortcut X)".
+    pub actions: Vec<String>,
     pub enabled: bool,
     /// The module is compiled and cached right now.
     pub loaded: bool,
@@ -290,6 +292,17 @@ impl PluginManager {
         self.entries
             .iter()
             .map(|e| {
+                let actions: Vec<String> = match &e.manifest {
+                    Ok(m) => m
+                        .actions
+                        .iter()
+                        .map(|a| match &a.shortcut {
+                            Some(s) => format!("{} ({s})", a.label),
+                            None => a.label.clone(),
+                        })
+                        .collect(),
+                    Err(_) => Vec::new(),
+                };
                 let (name, version, kind, description, permissions, mut error) = match &e.manifest {
                     Ok(m) => (
                         m.name.clone(),
@@ -322,6 +335,7 @@ impl PluginManager {
                     description,
                     dir: e.dir.clone(),
                     permissions,
+                    actions,
                     enabled: e.manifest.is_ok() && self.enabled.contains(e.key()),
                     loaded: matches!(e.loaded, Some(Ok(_))),
                     error,
@@ -408,6 +422,11 @@ impl PluginManager {
             }
         }
         errors
+    }
+
+    /// The enabled `editor-action` plugins (ABI v2): `(plugin, error)` as for the other kinds.
+    pub fn editor_plugins(&mut self) -> (Vec<Arc<Plugin>>, Vec<(String, String)>) {
+        self.enabled_of_kind(PluginKind::EditorAction)
     }
 
     /// Registers every enabled `device` plugin. `mounts` tells them which folders to look at.

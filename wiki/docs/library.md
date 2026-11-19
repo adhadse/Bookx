@@ -9,8 +9,11 @@ book, its details on the right. Search and the view options are in the header ba
 
 ## The sidebar
 
-The sidebar is always there on a wide window. In a narrow window it turns into an overlay on top of the books and a
-sidebar button appears at the left of the header bar to open it; picking an entry closes it again.
+The sidebar is always there on a wide window. In a window narrower than about 920 px it turns into an overlay on top of
+the books (so they keep at least about 670 px) and a sidebar button appears at the left of the header bar to open it;
+picking an entry closes it again. The details panel becomes an overlay too below about 1170 px, before it could squeeze
+the covers. The header never clips: the title shortens with "…", and below about 600 px the device button moves into the
+*View options* popover. The smallest window is 360 × 294 px.
 
 | Entry | Shows |
 |---|---|
@@ -24,6 +27,13 @@ sidebar button appears at the left of the header bar to open it; picking an entr
 | **Library Health** | at the bottom: checks, duplicates, editions, books that need attention, backups, trash and history (a badge shows how many books need attention) |
 
 The view you picked is remembered for the next start.
+
+**Filters and the search bar.** Clicking a filter entry (an author, tag, series, publisher, language, rating, shelf or
+saved search) opens the search bar with the query it stands for, for example `author:="Ian Miell"`, and the search button
+in the header is switched on, so it is clear a filter is active. The keyboard focus stays on the sidebar entry. Clicking
+**Home**, **Recent**, **Favourites** or **Notes & Highlights** clears the filter again: the search entry is emptied, the
+bar closes and the view shows all its books (also when you had typed a search by hand). Closing the bar clears the filter
+as well.
 
 The sidebar has its own header bar, as in Files: the **+** (add books, add a folder, news subscriptions), the library
 switcher, the search button and the main menu. The header bar of the books shows the name of what you look at
@@ -66,7 +76,9 @@ shown.
     - **When you open Bookx** it is a **hero card** across the book area (centred, at most about 1100 px wide): the cover,
       *Continue reading*, the title, the author, the progress with the chapter and a rough time left, a prominent
       **Continue** button and the small buttons *Details*, *Open from start* and *Mark finished*; on a wide window the other
-      books you are reading appear as small covers under *Also reading*. Its colours come from the cover (softened, with
+      books you are reading appear as larger covers (72 × 108 px) under *Also reading*, each with a thin progress bar,
+      a highlight on hover and a focus ring from the keyboard; the whole button opens the book and its tooltip shows the
+      title and progress. Its colours come from the cover (softened, with
       readable text in light and dark mode).
     - **On the next visits to Home** in the same session (you came back from a book or switched views) it is a **slim strip**:
       a small cover, the title, the author and progress, and **Continue**, so the books stay the focus. The hero comes back
@@ -229,7 +241,10 @@ When the lookups are done, a **review table** lists every proposed change: book,
 value, **the source that gave that very field** (the publisher from Open Library, the description from Google Books)
 and how sure the match is. **Nothing is written until you accept rows and press *Apply***. Tick
 single rows, press *All publisher (12)* for one field at a time, *Accept All*, or *Only Empty Fields* to accept just
-the rows that fill a field the book has nothing in yet. Covers are proposed too.
+the rows that fill a field the book has nothing in yet. Covers are proposed too: the table shows the size of the cover you have and of the proposed one
+(for example *has a cover (150 × 200 px, very small)* → *new cover (800 × 1200 px, 210 KB)*). A clearly
+larger cover (at least half as many pixels again, upright, not tiny) replaces a **small** cover as a safe change; a
+cover that is already good is never replaced without you ticking the row.
 
 *Apply safe changes automatically* (a switch in the window) writes the empty-field rows as soon as the lookups are
 done; everything that would replace a value you have waits in the table for your review.
@@ -409,9 +424,30 @@ is released; if another copy of Bookx has the new library open, it opens read-on
 ## Background jobs
 
 The list button in the header opens **Background Jobs**: imports, conversions, e-mailing books, metadata fetches,
-scheduled backups and news downloads, each with its progress, how long it took and a log (expand the row). The
-spinner shows while something runs. **Cancel** (the stop button) is offered for imports, conversions and metadata
-fetches; the others finish by themselves. *Clear Finished* empties the list; it keeps the last 30 finished jobs.
+downloads of voices and dictionaries, scheduled backups and news downloads.
+
+![The Background Jobs panel](assets/library-jobs-light.png#only-light)
+![The Background Jobs panel](assets/library-jobs-dark.png#only-dark)
+
+- The panel has a fixed width (at most about 380 px, narrower in a narrow window) and scrolls only up and down; long titles
+  wrap to two lines and end in "…", the full title is in the tooltip.
+- Each job has a **ring** at the left: the percent when the job knows how far it is, an icon and a turning arc when it does
+  not (a still arc with reduced motion or in e-ink mode), a check when it is done, a warning when it failed. While jobs run the
+  header button shows a small ring too, and a number when several run.
+- Two dim lines say what it is doing (*Downloading · 130 of 132 MB · 1.4 MB/s*) and, while it runs, the time left (*about 2 s
+  left*); when it ends they say *Done* and *Took 1 min 27 s*, or *Failed: the reason* and *After 12 s*.
+- **Cancel** (the ✕) stops imports, conversions and metadata fetches; the others finish by themselves. A failed job that can be
+  run again has a **Retry** button. A click on a row shows its log. *Clear Finished* empties the list; it keeps the last 30
+  finished jobs.
+
+## Export citations
+
+Menu → *Export Citations* writes a bibliography of the whole library, or of the books the current search shows, as
+**BibTeX**, **RIS** (Zotero, EndNote, Mendeley), **CSL JSON** (Zotero, Pandoc) or **APA 7** text. *Copy* puts it on the
+clipboard, *Save* writes a file. Each reference has the authors (as `Last, First`), title, publisher, year of the
+published date, ISBN, language and series; BibTeX keys look like `herbert1965dune` and stay unique in one file. The
+fields come from the catalogue, so fix wrong titles or dates first. The same from the command line:
+`bookx-cli library cite --style bibtex "author:herbert" -o refs.bib`.
 
 ## Duplicates
 
@@ -447,6 +483,23 @@ Menu → *Library Health* is the safety net of the library.
 - **History and Undo**: imports, deletions, edits and layout changes can be taken back.
 - **Trash**: deleting a book moves its files to the trash. Restore or empty it from this window.
 - **Name tidying**: one spelling per author and series, and series with missing numbers.
+
+### File integrity
+
+*Library Health → Health → File integrity → Verify Files* reads every book file and compares its SHA-256 checksum
+with the one Bookx recorded the last time (the first run only records them, in `<library>/.bookx/fixity.json`). A file
+that changed together with its date or size was **edited** and is simply recorded again. A file whose content changed
+while its **date and size stayed the same** is reported as **damaged**: that is what a failing disk or a bad sync
+looks like. Restore such a book from a backup, or press *Accept* if you know the file is right. Files that vanished are
+listed too. `bookx-cli library fixity` does the same on the command line (exit code 1 when something is damaged,
+`--accept PATH` accepts one file).
+
+### Small covers
+
+*Library Health → Health → Covers → Scan Covers* lists the books whose cover is small or blurry (less than 600 pixels
+high, or very narrow), smallest first. *Look Up Better Covers* starts *Fetch Metadata* for those books; the review
+table then offers a larger cover wherever a source has one. `bookx-cli library covers` lists them (`--all` shows
+every size, `--json` for scripts).
 
 ### Locking and read-only
 

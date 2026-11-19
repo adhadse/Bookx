@@ -30,6 +30,23 @@ pub enum BannerAct {
     Finish,
 }
 
+/// Size of the covers under "Also reading": big enough to hit easily with a pointer or a finger.
+const CHIP_W: i32 = 72;
+const CHIP_H: i32 = 108;
+/// Padding around a cover inside its button (the whole button is the click target), the thin
+/// progress bar under it and the gap between them.
+const CHIP_PAD: i32 = 8;
+const CHIP_BAR_GAP: i32 = 4;
+const CHIP_BAR_H: i32 = 3;
+
+/// The height of the "Also reading" column: its kicker (about 16 px), the gap and a chip.
+#[cfg(test)]
+const CHIP_COLUMN_H: i32 = 16 + 6 + 2 * CHIP_PAD + CHIP_H + CHIP_BAR_GAP + CHIP_BAR_H;
+
+// big enough to hit with a pointer or a finger; the click target reaches 8 px beyond the cover
+const _: () = assert!(CHIP_W >= 64 && CHIP_H >= 96 && CHIP_H > CHIP_W);
+const _: () = assert!(CHIP_PAD >= 8 && CHIP_BAR_H <= 4);
+
 /// What the banner shows.
 #[derive(Clone)]
 pub struct BannerData {
@@ -41,7 +58,7 @@ pub struct BannerData {
     pub chapter: String,
     pub left: String,
     /// Other books being read: (id, title, cover), at most three.
-    pub others: Vec<(u64, String, Option<gdk::Texture>)>,
+    pub others: Vec<(u64, String, Option<gdk::Texture>, f64)>,
 }
 
 /// The widest the card gets on a very wide screen.
@@ -416,6 +433,57 @@ impl BannerCtl {
             self.card.width(),
             self.clamp.width(),
             self.card.height()
+        ) + self.describe_chips().as_str()
+    }
+
+    fn chip_buttons(&self) -> Vec<gtk::Widget> {
+        fn collect(w: &gtk::Widget, out: &mut Vec<gtk::Widget>) {
+            let mut c = w.first_child();
+            while let Some(ch) = c {
+                if ch.has_css_class("banner-chip") {
+                    out.push(ch.clone());
+                }
+                collect(&ch, out);
+                c = ch.next_sibling();
+            }
+        }
+        let mut out = Vec::new();
+        for col in self.chips.borrow().iter() {
+            collect(col, &mut out);
+        }
+        out
+    }
+
+    /// Puts the keyboard focus on the first "Also reading" cover (test command).
+    pub fn focus_chip(&self) -> bool {
+        self.chip_buttons().first().is_some_and(|b| b.grab_focus())
+    }
+
+    /// ` chips=N chip=WxH col_in=true|false`: the visible "Also reading" buttons, the first one's
+    /// size and whether the column lies inside the card.
+    fn describe_chips(&self) -> String {
+        let col = self.chips.borrow().iter().find(|c| c.is_mapped()).cloned();
+        let Some(col) = col else {
+            return " chips=0".into();
+        };
+        let buttons = self.chip_buttons();
+        let first = buttons
+            .first()
+            .map(|b| format!("{}x{}", b.width(), b.height()))
+            .unwrap_or_default();
+        let inside = col
+            .compute_bounds(&self.card)
+            .map(|b| {
+                b.x() >= 0.0
+                    && b.y() >= 0.0
+                    && b.x() + b.width() <= self.card.width() as f32 + 0.5
+                    && b.y() + b.height() <= self.card.height() as f32 + 0.5
+            })
+            .unwrap_or(false);
+        let focused = buttons.iter().any(|b| b.has_focus());
+        format!(
+            " chips={} chip={first} col_in={inside} chip_focus={focused}",
+            buttons.len()
         )
     }
 }
@@ -606,15 +674,51 @@ fn page(
                     &["caption-heading", "banner-kicker"],
                     gtk::Align::Start,
                 ));
-                let line = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-                for (id, title, tex) in &d.others {
+                let line = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+                for (id, title, tex, progress) in &d.others {
                     let b = gtk::Button::new();
                     b.add_css_class("banner-chip");
                     b.add_css_class("flat");
-                    let p = cover_picture(tex.as_ref());
-                    b.set_child(Some(&sized(&p, 48, 72)));
-                    b.set_tooltip_text(Some(title));
-                    super::audit::label(&b, &trf("Continue reading {}", &[title]));
+                    let inner = gtk::Box::new(gtk::Orientation::Vertical, CHIP_BAR_GAP);
+                    let p: gtk::Widget = match tex {
+                        Some(_) => sized(&cover_picture(tex.as_ref()), CHIP_W, CHIP_H).upcast(),
+                        None => {
+                            // a book without a cover: its title on the colour the grid uses
+                            let l = gtk::Label::new(Some(title));
+                            l.set_wrap(true);
+                            l.set_wrap_mode(gtk::pango::WrapMode::WordChar);
+                            l.set_ellipsize(gtk::pango::EllipsizeMode::End);
+                            l.set_lines(4);
+                            l.set_justify(gtk::Justification::Center);
+                            l.set_max_width_chars(8);
+                            l.add_css_class("caption");
+                            l.add_css_class("placeholder-title");
+                            let f = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                            f.add_css_class("book-cover");
+                            f.add_css_class(&super::covers::placeholder_class(title));
+                            l.set_valign(gtk::Align::Center);
+                            l.set_vexpand(true);
+                            f.append(&l);
+                            f.upcast()
+                        }
+                    };
+                    p.set_size_request(CHIP_W, CHIP_H);
+                    p.set_halign(gtk::Align::Center);
+                    inner.append(&p);
+                    let bar = gtk::ProgressBar::new();
+                    bar.set_fraction(*progress);
+                    bar.add_css_class("banner-bar");
+                    bar.set_can_target(false);
+                    bar.set_size_request(CHIP_W, -1);
+                    inner.append(&bar);
+                    inner.set_margin_top(CHIP_PAD);
+                    inner.set_margin_bottom(CHIP_PAD);
+                    inner.set_margin_start(CHIP_PAD);
+                    inner.set_margin_end(CHIP_PAD);
+                    b.set_child(Some(&inner));
+                    let pct = trf("{}% completed", &[&format!("{:.0}", progress * 100.0)]);
+                    b.set_tooltip_text(Some(&format!("{title} · {pct}")));
+                    super::audit::label(&b, &trf("Continue reading {}, {}", &[title, &pct]));
                     let (act, id) = (act.clone(), *id);
                     b.connect_clicked(move |_| act(id, BannerAct::Continue));
                     line.append(&b);
@@ -681,4 +785,22 @@ fn page(
         }
     }
     row
+}
+
+#[cfg(test)]
+mod chip_tests {
+    use super::*;
+
+    #[test]
+    fn the_chips_column_fits_the_smallest_hero() {
+        // the card has 12 px of margin and 10 px of padding above and below the content
+        let inner = nav::hero_height(nav::HERO_MIN_VH) - 24.0 - 20.0;
+        assert!(
+            f64::from(CHIP_COLUMN_H) <= inner,
+            "{CHIP_COLUMN_H} > {inner}"
+        );
+        // three chips and their gaps fit the card at the width where they show
+        let w = 3 * (CHIP_W + 2 * CHIP_PAD) + 2 * 10;
+        assert!(f64::from(w) < nav::CHIPS_FROM / 3.0);
+    }
 }

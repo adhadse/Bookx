@@ -57,9 +57,14 @@ pub fn register() {
         120,
     );
     register_group("shortcuts", 10, tools_group);
-    for (i, g) in [Group::Application, Group::Library, Group::Reader]
-        .into_iter()
-        .enumerate()
+    for (i, g) in [
+        Group::Application,
+        Group::Library,
+        Group::Reader,
+        Group::Editor,
+    ]
+    .into_iter()
+    .enumerate()
     {
         register_group("shortcuts", 20 + i as i32, move |ctx| actions_group(ctx, g));
     }
@@ -80,7 +85,7 @@ pub fn init(app: &impl IsA<gtk::Application>) {
 pub fn apply_app_accels(app: &gtk::Application) {
     let cur = shortcuts::current();
     for a in shortcuts::registry() {
-        if a.group == Group::Reader || is_local_only(&a.action) {
+        if a.group == Group::Reader || a.group == Group::Editor || is_local_only(&a.action) {
             continue;
         }
         let keys = cur.effective(&a.action);

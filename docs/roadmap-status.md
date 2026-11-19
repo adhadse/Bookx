@@ -103,7 +103,7 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | R61 | Remote HTTP control of the reader | MISSING |  |  | M | L |
 | R62 | Built-in text editor for sidecar/CSS | DONE | covered by Bookx editor |  |  |  |
 | R63 | Reading goals, streaks, yearly review | DONE (was PARTIAL) | `goals.rs`, `ui/stats.rs`; scenario `reading_goals` |  | S | H |
-| R64 | Accessibility: screen reader, high contrast, dyslexia fonts | PARTIAL | `a11y.rs`, `ui/audit.rs`, OpenDyslexic option, e-ink high contrast; page itself not exposed | reader page to AT, reduced motion | M | M |
+| R64 | Accessibility: screen reader, high contrast, dyslexia fonts | PARTIAL | `a11y.rs`, `ui/audit.rs`, OpenDyslexic option, e-ink high contrast, page text exposed to AT; **reading ruler / line focus (`reading_ruler.rs`, `ui/reading_ruler.rs`, Alt+Up/Down, Preferences → Reading; scenario `pain_ruler`, session `reading_ruler_keys`)** | reduced motion, image alt text | M | M |
 
 ## B. Library (L1-L13)
 
@@ -121,7 +121,7 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | L10 | Calibre import | DONE | `bookx-store::calibre` | export back to Calibre format | M | L |
 | L11 | Multiple libraries, switcher | DONE (was PARTIAL) | `libraries.rs`, `ui/library_switcher.rs`, header button; scenario `library_switcher` |  | S | M |
 | L12 | Folder watcher | PARTIAL | inbox (rescan on open/start) | background `notify` watcher | S | L |
-| L13 | Cover tools | PARTIAL | `bookx-sources::cover` generation/crop; edit dialog | crop UI, extract from PDF | M | L |
+| L13 | Cover tools | PARTIAL (2026-11-20) | `bookx-sources::cover` generation/crop; edit dialog; **`cover_quality` grading, Health → Covers scan, larger covers offered as safe changes in the fetch review; `library covers`; scenario `pain_health`** | crop UI, extract from PDF, side-by-side candidates | M | L |
 
 ## B2. Library additions (L14-L38)
 
@@ -141,7 +141,7 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | L25 | Custom column types | MISSING | see L3 |  | M | H |
 | L26 | Save to disk / send with templates | DONE | layout templates, device save-path templates, Save a Copy |  |  |  |
 | L27 | Jobs panel | PARTIAL | `jobs.rs`, `ui/jobs.rs`: imports, conversions, e-mailing, metadata fetches, scheduled backups, news; cancel for imports, conversions, fetches; scenario `jobs_panel` | sends to devices, manual backup window, add from the web, device cover sync do not publish yet | M | M |
-| L28 | Catalogs (CSV/BibTeX/EPUB catalogue) | PARTIAL | Goodreads/StoryGraph CSV export | BibTeX, EPUB/AZW3 catalogue | M | L |
+| L28 | Catalogs (CSV/BibTeX/EPUB catalogue) | PARTIAL (2026-11-20) | Goodreads/StoryGraph CSV export; **Export Citations (BibTeX, RIS, CSL JSON, APA): `bookx-sources::citation`, `ui/citations.rs`, `library cite`; scenario `pain_citations`** | EPUB/AZW3 catalogue | M | L |
 | L29 | Collections/shelves, history, multi-select | DONE (was PARTIAL) | multi-select, shelves (see L5) |  | M | H |
 | L30 | Reading status per book, finished date, ratings | DONE | status, rating in UI/search | review text | S | L |
 | L31 | Sidecar import/export (KOReader) | PARTIAL | annotation + progress sync from KOReader sidecars | export reading state to sidecar | M | L |
@@ -232,7 +232,7 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | X12 | CLI tool coverage | PARTIAL | convert, meta, check, library, search, serve | catalog, fetch-news, polish, embed/subset-fonts, saved_searches, custom_columns | M | M |
 | X13 | E-ink mode | DONE | `eink.rs` | not on hardware |  |  |
 | X14 | Keyboard-first + command palette | DONE | `palette.rs`, `ui/palette.rs` |  |  |  |
-| X15 | Offline-first principles | DONE | no telemetry |  |  |  |
+| X15 | Offline-first principles | DONE | no telemetry; **offline mode switch and the list of connections (`privacy.rs`, Preferences → Privacy, wiki Privacy; tests in `bookx-sources/tests/offline.rs`, `bookx-tts/tests/offline.rs`, scenario `pain_offline`)** |  |  |  |
 | X16 | Release channels, deb/rpm | PARTIAL | Flatpak bundle + tarball with checksums in `.github/workflows/release.yml` (never run on GitHub) | deb/rpm, reproducible builds | M | L |
 | X17 | Localization workflow | PARTIAL | as X6; RTL default direction for right-to-left languages (unit tested, no RTL catalogue ships); locale-aware numbers, plurals and some dates | live re-translation of open windows; Weblate project | M | H |
 | X18 | Performance harness extended | PARTIAL | budgets for open, search, import, conversion | scroll fps, memory ceiling | M | L |

@@ -45,6 +45,15 @@ impl Editor {
         for (group, menu) in &self.w.menus {
             walk(menu, group, &mut out);
         }
+        for e in out.iter_mut() {
+            let target = match &e.target {
+                Target::Editor(id) => format!("editor:{id}"),
+                Target::Action(a) => a.clone(),
+                Target::ActionWith(a, p) => format!("{a}::{p}"),
+                _ => continue,
+            };
+            e.shortcut = super::keymap::display_for_target(&target);
+        }
         for f in self.quick_open_results("") {
             out.push(palette::file_entry(&f));
         }
@@ -101,6 +110,9 @@ fn editor_input(id: &str) -> Option<Input> {
         "close-tab" => Input::CloseTab,
         "next-file" => Input::StepFile(1),
         "previous-file" => Input::StepFile(-1),
+        "clear-marks" => Input::Prefs(prefs_page::PrefsAct::ClearMarks),
+        "insert-snippet" => Input::Prefs(prefs_page::PrefsAct::InsertSnippet),
+        "preferences" => Input::Prefs(prefs_page::PrefsAct::Open),
         _ => return None,
     })
 }

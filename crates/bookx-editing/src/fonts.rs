@@ -961,13 +961,34 @@ fn walk_fonts(dir: &std::path::Path, depth: usize, out: &mut Vec<std::path::Path
 /// Reads the family, weight and style of the font files under `dirs` (TrueType and OpenType; collections and web
 /// fonts are skipped).
 pub fn scan_system_fonts(dirs: &[std::path::PathBuf]) -> Vec<SystemFont> {
+    scan_system_fonts_with(dirs, &mut |_, _| {}, &|| false)
+}
+
+/// Font files larger than this are not read (CJK families run to tens of megabytes and are never embedded).
+pub const MAX_SCANNED_FONT_BYTES: u64 = 12 * 1024 * 1024;
+
+/// [`scan_system_fonts`] for a worker thread: `progress(done, total)` after each file, `cancelled` stops early. Files
+/// over [`MAX_SCANNED_FONT_BYTES`] are skipped.
+pub fn scan_system_fonts_with(
+    dirs: &[std::path::PathBuf],
+    progress: &mut dyn FnMut(usize, usize),
+    cancelled: &dyn Fn() -> bool,
+) -> Vec<SystemFont> {
     let mut files = Vec::new();
     for d in dirs {
         walk_fonts(d, 0, &mut files);
     }
     files.sort();
+    let total = files.len();
     let mut out = Vec::new();
-    for path in files {
+    for (i, path) in files.into_iter().enumerate() {
+        if cancelled() {
+            break;
+        }
+        progress(i + 1, total);
+        if std::fs::metadata(&path).is_ok_and(|m| m.len() > MAX_SCANNED_FONT_BYTES) {
+            continue;
+        }
         let Ok(data) = std::fs::read(&path) else {
             continue;
         };
@@ -1132,6 +1153,34 @@ pub(crate) mod tests {
         assert!(best_system_font(&fonts, "\"tiny test\"", 400, false).is_some());
         assert!(best_system_font(&fonts, "Other", 400, false).is_none());
         assert!(scan_system_fonts(&[dir.join("nothing")]).is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn scanning_reports_progress_skips_huge_files_and_can_stop() {
+        let dir = std::env::temp_dir().join(format!("bookx-fonts-big-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        for n in ["a.ttf", "b.ttf"] {
+            std::fs::write(dir.join(n), font_with_fs_type(0)).unwrap();
+        }
+        let mut huge = font_with_fs_type(0);
+        huge.resize(MAX_SCANNED_FONT_BYTES as usize + 1, 0);
+        std::fs::write(dir.join("c-huge.ttf"), huge).unwrap();
+        let mut seen = Vec::new();
+        let fonts = scan_system_fonts_with(
+            std::slice::from_ref(&dir),
+            &mut |d, t| seen.push((d, t)),
+            &|| false,
+        );
+        assert_eq!(fonts.len(), 2, "the oversized file is skipped");
+        assert_eq!(seen, vec![(1, 3), (2, 3), (3, 3)]);
+        let n = std::cell::Cell::new(0);
+        let few = scan_system_fonts_with(
+            std::slice::from_ref(&dir),
+            &mut |_, _| n.set(n.get() + 1),
+            &|| n.get() >= 1,
+        );
+        assert_eq!(few.len(), 1, "cancelling stops the scan");
         let _ = std::fs::remove_dir_all(&dir);
     }
 

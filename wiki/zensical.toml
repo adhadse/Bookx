@@ -40,6 +40,8 @@ nav = [
     "preferences.md",
     "shortcuts.md",
     "accessibility.md",
+    "privacy.md",
+    "catalogue-format.md",
     "troubleshooting.md",
     "translating.md",
     "contributing.md",

@@ -469,6 +469,8 @@ pub enum Input {
     HealthTab(&'static str),
     /// Show this view of the sidebar (Home, Recent, Favourites, Notes & Highlights).
     SetNav(View),
+    /// A filter row of the sidebar: Home with this search, the search bar open.
+    GoFilter(String),
     /// A click on nothing: clear the selection.
     ClearSelection,
     /// Star or unstar one book (the badge on its cover, the star of the details panel).
@@ -563,7 +565,7 @@ struct W {
     order_btn: gtk::Button,
     send_action: gio::SimpleAction,
     header: adw::HeaderBar,
-    empty_btns: gtk::Box,
+    empty_btns: gtk::FlowBox,
     device_btn: gtk::Button,
     device_banner: gtk::Revealer,
     banner_label: gtk::Label,
@@ -1113,6 +1115,29 @@ impl LibraryView {
     }
 
     /// Shows a view of the sidebar.
+    /// Opens the search bar without taking the keyboard focus from where it is (a sidebar row).
+    fn open_search_bar(&self) {
+        let prev = self.root.root().and_then(|r| r.focus());
+        self.w.search_bar.set_search_mode(true);
+        if let Some(p) = prev {
+            p.grab_focus();
+        }
+    }
+
+    /// Puts the search bar and entry in the state a sidebar click asks for.
+    fn show_search(&mut self, state: nav::SearchState) {
+        self.query = state.query.clone();
+        if state.open {
+            self.open_search_bar();
+            if self.w.search.text() != state.query {
+                self.w.search.set_text(&state.query);
+            }
+        } else {
+            self.w.search.set_text("");
+            self.w.search_bar.set_search_mode(false);
+        }
+    }
+
     fn set_view(&mut self, view: View) {
         let changed = self.view != view;
         if changed {
@@ -1479,7 +1504,8 @@ impl LibraryView {
                         o.meta.title.clone(),
                         lib.cover_path(o)
                             .as_deref()
-                            .and_then(|p| covers::thumbnail(p, 100)),
+                            .and_then(|p| covers::thumbnail(p, 160)),
+                        o.progress,
                     )
                 })
                 .collect(),
@@ -1513,11 +1539,8 @@ impl LibraryView {
     /// What a click on a shelf, saved search or browse entry does: back to the Home view, then
     /// the search (the narrow window's sidebar overlay closes).
     fn sidebar_go(&self) -> Rc<dyn Fn(String)> {
-        let (tx, search) = (self.sender.input_sender().clone(), self.w.search.clone());
-        Rc::new(move |q: String| {
-            tx.emit(Input::SetNav(View::Home));
-            search.set_text(&q);
-        })
+        let tx = self.sender.input_sender().clone();
+        Rc::new(move |q: String| tx.emit(Input::GoFilter(q)))
     }
 
     /// The counts next to Home, Recent, Favourites and Notes & Highlights.
@@ -2942,7 +2965,7 @@ use crate::i18n::{tr, trf};
 /// The entries of the main (hamburger) menu below the view options; an empty entry is a
 /// separator between groups. Series, Notes & Highlights, News Subscriptions, Duplicates, Editions
 /// & Formats and Needs Attention are in the sidebar, the + menu and Library Health.
-const MAIN_MENU: [(&str, &str); 21] = [
+const MAIN_MENU: [(&str, &str); 22] = [
     (N_("Open Library Folder"), "lib.open-folder"),
     (N_("Saved Searches"), "lib.saved"),
     (N_("Online Catalogues"), "lib.opds"),
@@ -2955,6 +2978,7 @@ const MAIN_MENU: [(&str, &str); 21] = [
     (N_("Import Calibre Library"), "lib.calibre"),
     (N_("Import Highlights"), "lib.import-highlights"),
     (N_("Export All Annotations"), "lib.export-annotations"),
+    (N_("Export Citations"), "lib.citations"),
     (N_("Share Library"), "app.share"),
     (N_("Device"), "app.devices"),
     ("", ""),
@@ -3127,7 +3151,13 @@ impl SimpleComponent for LibraryView {
             .title(tr("Welcome to Bookx"))
             .description(tr("Add some books to start your library.\nEPUB, plain text, Markdown and HTML files are supported — drop them here."))
             .build();
-        let empty_btns = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+        // the buttons wrap in a narrow window
+        let empty_btns = gtk::FlowBox::new();
+        empty_btns.set_selection_mode(gtk::SelectionMode::None);
+        empty_btns.set_column_spacing(12);
+        empty_btns.set_row_spacing(8);
+        empty_btns.set_max_children_per_line(3);
+        empty_btns.set_homogeneous(false);
         empty_btns.set_halign(gtk::Align::Center);
         let add_books = gtk::Button::with_label(&tr("Add Books"));
         add_books.add_css_class("suggested-action");
@@ -3136,15 +3166,15 @@ impl SimpleComponent for LibraryView {
         let add_folder = gtk::Button::with_label(&tr("Add Folder"));
         add_folder.add_css_class("pill");
         add_folder.set_action_name(Some("lib.add-folder"));
-        empty_btns.append(&add_books);
-        empty_btns.append(&add_folder);
+        empty_btns.insert(&add_books, -1);
+        empty_btns.insert(&add_folder, -1);
         let add_news = gtk::Button::with_label(&tr("News Subscriptions"));
         add_news.add_css_class("pill");
         add_news.set_tooltip_text(Some(
             "Turn news sites and blogs (RSS, Atom) into books that update by themselves",
         ));
         add_news.set_action_name(Some("lib.news"));
-        empty_btns.append(&add_news);
+        empty_btns.insert(&add_news, -1);
         empty.set_child(Some(&empty_btns));
         stack.add_named(&empty, Some("empty"));
 
@@ -3277,19 +3307,33 @@ impl SimpleComponent for LibraryView {
         sidebar_header.set_show_end_title_buttons(false);
         let sidebar_view = adw::ToolbarView::new();
         sidebar_view.add_top_bar(&sidebar_header);
-        sidebar_view.set_content(Some(&sidebar));
+        // in a very short window the whole sidebar scrolls instead of making the window taller
+        let sidebar_scroll = gtk::ScrolledWindow::new();
+        sidebar_scroll.set_hscrollbar_policy(gtk::PolicyType::Never);
+        sidebar_scroll.set_child(Some(&sidebar));
+        sidebar_view.set_content(Some(&sidebar_scroll));
         split_tags.set_sidebar(Some(&sidebar_view));
         split_tags.set_show_sidebar(true);
         // narrow windows: both panels become overlays on top of the books, closed to begin with
         let split_bin = adw::BreakpointBin::new();
-        split_bin.set_width_request(360);
-        split_bin.set_height_request(240);
+        split_bin.set_width_request(crate::library_nav::MIN_WIDTH);
+        split_bin.set_height_request(crate::library_nav::MIN_HEIGHT);
         split_bin.set_child(Some(&split_tags));
-        let narrow = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
-            adw::BreakpointConditionLengthType::MaxWidth,
-            860.0,
-            adw::LengthUnit::Sp,
-        ));
+        // the docked sidebar leaves the content at least 670 px; with the details panel docked as
+        // well the grid keeps 470 px (see `library_nav::window_layout`)
+        let bp = |w: f64| {
+            adw::Breakpoint::new(adw::BreakpointCondition::new_length(
+                adw::BreakpointConditionLengthType::MaxWidth,
+                w,
+                adw::LengthUnit::Sp,
+            ))
+        };
+        // each breakpoint sets everything that holds from its width down: only the narrowest
+        // matching one is in force
+        let mid = bp(crate::library_nav::DETAILS_COLLAPSE_AT);
+        mid.add_setter(&split_details, "collapsed", Some(&true.to_value()));
+        split_bin.add_breakpoint(mid);
+        let narrow = bp(crate::library_nav::SIDEBAR_COLLAPSE_AT);
         narrow.add_setter(&split_tags, "collapsed", Some(&true.to_value()));
         narrow.add_setter(&split_tags, "show-sidebar", Some(&false.to_value()));
         narrow.add_setter(&split_details, "collapsed", Some(&true.to_value()));
@@ -3518,7 +3562,28 @@ impl SimpleComponent for LibraryView {
             "A device is connected: its books, sending books, syncing reading progress and notes",
         ));
         device_btn.set_action_name(Some("lib.device"));
-        header.pack_end(&device_btn);
+        // in a very narrow header the device button moves into the view options popover
+        let device_slot = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        device_slot.append(&device_btn);
+        header.pack_end(&device_slot);
+        let device_more = gtk::Button::with_label(&tr("Connected device"));
+        device_more.add_css_class("flat");
+        device_more.set_action_name(Some("lib.device"));
+        device_more.set_visible(false);
+        opts.append(&device_more);
+        {
+            let (b, s, m) = (device_btn.clone(), device_slot.clone(), device_more.clone());
+            let sync = move || m.set_visible(b.is_visible() && !s.is_visible());
+            let f = sync.clone();
+            device_btn.connect_visible_notify(move |_| f());
+            let f = sync.clone();
+            device_slot.connect_visible_notify(move |_| f());
+        }
+        let small = bp(crate::library_nav::HEADER_COMPACT_AT);
+        small.add_setter(&split_tags, "collapsed", Some(&true.to_value()));
+        small.add_setter(&split_tags, "show-sidebar", Some(&false.to_value()));
+        small.add_setter(&split_details, "collapsed", Some(&true.to_value()));
+        small.add_setter(&device_slot, "visible", Some(&false.to_value()));
 
         // asks what to do when a device shows up
         let device_banner = gtk::Revealer::new();
@@ -3580,6 +3645,11 @@ impl SimpleComponent for LibraryView {
         bar.pack_end(&sel_details);
         bar.pack_end(&sel_read);
 
+        // in the smallest window the selection bar keeps Read, Remove, Details and Clear
+        small.add_setter(&sel_label, "visible", Some(&false.to_value()));
+        small.add_setter(&sel_edit, "visible", Some(&false.to_value()));
+        split_bin.add_breakpoint(small);
+
         let toolbar = adw::ToolbarView::new();
         toolbar.add_top_bar(&header);
         toolbar.add_top_bar(&search_bar);
@@ -3628,6 +3698,7 @@ impl SimpleComponent for LibraryView {
                 ("authors", "authors"),
                 ("audiobooks", "audiobooks"),
                 ("trackers", "trackers"),
+                ("citations", "citations"),
             ] {
                 let tx = sender.input_sender().clone();
                 add(name, Box::new(move || tx.emit(Input::Organize(which))));
@@ -3946,7 +4017,14 @@ impl SimpleComponent for LibraryView {
                 self.requery();
                 self.rebuild_tags();
             }
-            Input::SetNav(v) => self.set_view(v),
+            Input::SetNav(v) => {
+                self.show_search(nav::search_for(nav::NavTarget::View(v)));
+                self.set_view(v);
+            }
+            Input::GoFilter(q) => {
+                self.show_search(nav::search_for(nav::NavTarget::Filter(&q)));
+                self.set_view(View::Home);
+            }
             Input::ToggleFav(id) => {
                 {
                     let mut c = self.shared.cfg.borrow_mut();
@@ -4170,6 +4248,9 @@ impl SimpleComponent for LibraryView {
                         "audiobooks" => {
                             crate::ui::audiobooks::show(&win, &self.shared, notify, Vec::new())
                         }
+                        "citations" => {
+                            crate::ui::citations::show(&win, &self.shared, &self.query, notify)
+                        }
                         _ => crate::ui::trackers::show(&win, &self.shared, notify),
                     }
                 }
@@ -4196,6 +4277,10 @@ impl SimpleComponent for LibraryView {
             }
             Input::Requery => self.requery(),
             Input::Search(q) => {
+                // a filter from anywhere (sidebar, shelves, a dialog) shows the bar
+                if !q.is_empty() && !self.w.search_bar.is_search_mode() {
+                    self.open_search_bar();
+                }
                 self.query = q;
                 self.requery();
             }
@@ -4429,6 +4514,19 @@ impl SimpleComponent for LibraryView {
                         }
                         sender.input(Input::Refresh);
                     }
+                    // four books being read (the hero shows the first, the others as chips)
+                    "lastread-many" => {
+                        {
+                            let mut lib = self.shared.lib.borrow_mut();
+                            let now = chrono::Utc::now();
+                            for (i, b) in lib.books.iter_mut().take(4).enumerate() {
+                                b.last_read = Some(now - chrono::Duration::minutes(i as i64));
+                                b.progress = [0.4, 0.25, 0.6, 0.1][i];
+                            }
+                            let _ = lib.save();
+                        }
+                        sender.input(Input::Refresh);
+                    }
                     // `banner-mode=large|compact|hidden|auto`, `banner` prints how it looks now
                     other if other.starts_with("banner-mode=") => {
                         {
@@ -4440,6 +4538,40 @@ impl SimpleComponent for LibraryView {
                             c.save();
                         }
                         self.update_banner();
+                    }
+                    "banner-focus-chip" => {
+                        eprintln!("banner-focus-chip: {}", self.w.banner_ctl.focus_chip())
+                    }
+                    // where the header's widgets are against the header: nothing may stick out
+                    "header" => {
+                        eprintln!("{}", header_report(&self.w.header));
+                        let w = self.w.split_tags.root().map_or(0, |r| r.width());
+                        let want = crate::library_nav::window_layout(w);
+                        eprintln!(
+                            "layout: window={w} sidebar_overlay={} details_overlay={} expected={}/{} content={}",
+                            self.w.split_tags.is_collapsed(),
+                            self.w.split_details.is_collapsed(),
+                            want.sidebar_overlay,
+                            want.details_overlay,
+                            self.w.toolbar.width()
+                        );
+                        let minw = |w: &gtk::Widget| w.measure(gtk::Orientation::Horizontal, -1).0;
+                        eprintln!(
+                            "minwidth: header={} search={} details_split={} bar={} toolbar={}",
+                            minw(self.w.header.upcast_ref()),
+                            minw(self.w.search_bar.upcast_ref()),
+                            minw(self.w.split_details.upcast_ref()),
+                            minw(self.w.banner.upcast_ref()),
+                            minw(self.w.toolbar.upcast_ref()),
+                        );
+                        let minh = |w: &gtk::Widget| w.measure(gtk::Orientation::Vertical, -1).0;
+                        eprintln!(
+                            "minheight: header={} toolbar={} details_split={} sidebar={}",
+                            minh(self.w.header.upcast_ref()),
+                            minh(self.w.toolbar.upcast_ref()),
+                            minh(self.w.split_details.upcast_ref()),
+                            minh(self.w.split_tags.upcast_ref()),
+                        );
                     }
                     "banner" => eprintln!(
                         "banner: {} mode={:?}",
@@ -4656,7 +4788,11 @@ impl SimpleComponent for LibraryView {
                         let mut welcome = Vec::new();
                         let mut c = self.w.empty_btns.first_child();
                         while let Some(w) = c {
-                            if let Some(b) = w.downcast_ref::<gtk::Button>() {
+                            let inner = w
+                                .downcast_ref::<gtk::FlowBoxChild>()
+                                .and_then(|fc| fc.child())
+                                .unwrap_or_else(|| w.clone());
+                            if let Some(b) = inner.downcast_ref::<gtk::Button>() {
                                 welcome.push(format!(
                                     "{} [{}]",
                                     b.label().unwrap_or_default(),
@@ -4749,6 +4885,7 @@ impl SimpleComponent for LibraryView {
                             self.w.split_details.set_show_sidebar(false);
                         } else {
                             self.w.split_tags.set_show_sidebar(true);
+                            self.w.split_details.set_show_sidebar(false);
                         }
                         self.update_bottom_bar();
                     }
@@ -5071,6 +5208,16 @@ impl SimpleComponent for LibraryView {
                             );
                         }
                     }
+                    other if other.starts_with("citations=") => {
+                        if let Some(win) = window_of(&self.root) {
+                            crate::ui::citations::dev(
+                                &win,
+                                &self.shared,
+                                self.health_notify(),
+                                &other[10..],
+                            );
+                        }
+                    }
                     other if other.starts_with("trackers=") => {
                         if let Some(win) = window_of(&self.root) {
                             crate::ui::trackers::dev(
@@ -5124,6 +5271,19 @@ impl SimpleComponent for LibraryView {
                         eprintln!("undo: {done}");
                         self.lib_changed();
                         sender.input(Input::Refresh);
+                    }
+                    "dupsapart" | "dupsvisible" => {
+                        let root = self.shared.lib.borrow().root.clone();
+                        let mut apart = crate::duplicates::Apart::load(&root);
+                        let groups = crate::duplicates::find(&self.shared.lib.borrow().books);
+                        if c == "dupsapart" {
+                            for g in &groups {
+                                apart.keep_apart(&g.ids);
+                            }
+                            let saved = apart.save(&root).is_ok();
+                            eprintln!("dupsapart: {} groups saved={saved}", groups.len());
+                        }
+                        eprintln!("dupsvisible: {}", apart.hide(groups).len());
                     }
                     "dups" => {
                         let groups = crate::duplicates::find(&self.shared.lib.borrow().books);
@@ -5304,6 +5464,34 @@ impl SimpleComponent for LibraryView {
                             .collect();
                         eprintln!("mainmenu_tr: {}", items.join(" | "));
                     }
+                    // `go=author:=Ian Miell`: what a click on that sidebar filter row does
+                    other if other.starts_with("go=") => {
+                        (self.sidebar_go())(other[3..].to_string())
+                    }
+                    // the search bar after a click: open, the entry's text, the books shown, the focus
+                    "searchstate" => {
+                        let focus = self
+                            .root
+                            .root()
+                            .and_then(|r| r.focus())
+                            .map(|w| {
+                                let n = w.widget_name();
+                                if n.is_empty() {
+                                    w.type_().name().to_string()
+                                } else {
+                                    n.to_string()
+                                }
+                            })
+                            .unwrap_or_default();
+                        eprintln!(
+                            "searchstate: bar={} text={:?} books={} view={} focus={}",
+                            self.w.search_bar.is_search_mode(),
+                            self.w.search.text(),
+                            self.visible_ids().len(),
+                            self.view.key(),
+                            focus
+                        );
+                    }
                     "visible" => {
                         let ids = self.visible_ids();
                         eprintln!("visible: {} | {:?}", ids.len(), ids);
@@ -5450,4 +5638,54 @@ fn count_badges(w: &gtk::Widget, n: &mut usize) {
         count_badges(&ch, n);
         c = ch.next_sibling();
     }
+}
+
+/// One line: the header width, how many visible widgets it has, and which of them leave it
+/// (`clipped=[...]`; empty when all is inside). Buttons count as clipped when not fully inside.
+fn header_report(header: &adw::HeaderBar) -> String {
+    fn walk(w: &gtk::Widget, header: &gtk::Widget, out: &mut Vec<(String, f32, f32)>) {
+        let mut c = w.first_child();
+        while let Some(child) = c {
+            if child.is_visible() && child.is_mapped() {
+                let leaf = child.is::<gtk::Button>()
+                    || child.is::<gtk::MenuButton>()
+                    || child.is::<gtk::Label>()
+                    || child.is::<gtk::Image>();
+                if leaf {
+                    if let Some(b) = child.compute_bounds(header) {
+                        let name = child
+                            .tooltip_text()
+                            .map(|t| t.to_string())
+                            .or_else(|| {
+                                child
+                                    .downcast_ref::<gtk::Label>()
+                                    .map(|l| l.label().to_string())
+                            })
+                            .unwrap_or_else(|| child.type_().name().to_string());
+                        out.push((name, b.x(), b.x() + b.width()));
+                    }
+                }
+                if !child.is::<gtk::Button>() && !child.is::<gtk::MenuButton>() {
+                    walk(&child, header, out);
+                }
+            }
+            c = child.next_sibling();
+        }
+    }
+    let hw = header.width() as f32;
+    let mut all = Vec::new();
+    walk(header.upcast_ref(), header.upcast_ref(), &mut all);
+    let clipped: Vec<String> = all
+        .iter()
+        .filter(|(_, l, r)| *l < -0.5 || *r > hw + 0.5)
+        .map(|(n, l, r)| format!("{n}@{l:.0}-{r:.0}"))
+        .collect();
+    let rightmost = all.iter().map(|(_, _, r)| *r).fold(0.0, f32::max);
+    format!(
+        "header: width={} children={} rightmost={:.0} clipped=[{}]",
+        hw as i32,
+        all.len(),
+        rightmost,
+        clipped.join(", ")
+    )
 }

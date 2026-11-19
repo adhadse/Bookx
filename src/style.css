@@ -97,6 +97,13 @@ button.menu-item { padding: 6px 10px; border-radius: 8px; }
 window.eink .continue-banner { background-image: none; background: #ffffff; color: #000000; border: 2px solid #000000; box-shadow: none; }
 .continue-banner button.banner-continue { background: #2e3436; color: #ffffff; box-shadow: none; }
 .continue-banner button.banner-secondary { background: alpha(#2e3436, .12); color: #2e3436; box-shadow: none; }
+.continue-banner button.banner-chip { padding: 0; border-radius: 12px; background: transparent; box-shadow: none; color: #2e3436; transition: background 120ms; }
+.continue-banner button.banner-chip:hover { background: alpha(#2e3436, .12); }
+.continue-banner button.banner-chip:active { background: alpha(#2e3436, .22); }
+.continue-banner button.banner-chip:focus { outline: 2px solid #2e3436; outline-offset: 0; background: alpha(#2e3436, .12); }
+window.eink .continue-banner button.banner-chip:focus, window.eink .continue-banner button.banner-chip:hover { outline: 2px solid #000000; background: transparent; }
+.continue-banner button.banner-chip progressbar trough { min-width: 0; }
+.continue-banner .placeholder-title { color: #ffffff; padding: 4px; }
 .continue-banner .banner-kicker { color: alpha(#2e3436, .7); }
 .continue-banner .banner-author { color: alpha(#2e3436, .75); }
 .continue-banner .banner-done { color: alpha(#2e3436, .7); }
@@ -217,3 +224,10 @@ window.eink .fav-badge { background: #ffffff; color: #000000; border: 2px solid 
 .rating-stars button.rated { color: #e5a50a; }
 .rating-stars:focus-visible { outline: 2px solid @accent_color; outline-offset: 2px; border-radius: 8px; }
 .tag-chip { padding: 2px 10px; min-height: 24px; font-size: 12px; }
+
+/* ---- Background Jobs panel ------------------------------------------------------------------ */
+.job-row { padding: 8px 10px; border-radius: 12px; background: alpha(currentColor, .06); }
+.job-row .job-title { font-weight: 600; }
+.job-row .success image { color: @success_color; }
+.job-row .warning image { color: @warning_color; }
+.jobs-badge { background: @accent_bg_color; color: @accent_fg_color; border-radius: 99px; padding: 0 6px; font-size: 11px; font-weight: 700; min-width: 14px; }

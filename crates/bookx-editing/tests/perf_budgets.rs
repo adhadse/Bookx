@@ -245,3 +245,182 @@ fn preview_map_and_side_by_side_on_a_large_chapter() {
     check("live_css::inspect", t.elapsed(), budget(500));
     assert!(l.is_ok());
 }
+
+fn big_chapter(min: usize) -> String {
+    let book = big_book();
+    let one = book.archive.get_string("OEBPS/chapter-1.xhtml").unwrap();
+    let mut s = String::new();
+    while s.len() < min {
+        s.push_str(&one);
+    }
+    s
+}
+
+/// The code view's background passes (invalid markup, link targets, colour swatches, bold/italic spans,
+/// anchor snippets) on a 1 MB chapter.
+#[test]
+fn code_view_marks_on_a_1mb_chapter() {
+    use bookx_editing::code_marks::*;
+    let text = big_chapter(1_000_000);
+    let t = Instant::now();
+    let errs = markup_errors(&text, true);
+    check("markup_errors 1 MB", t.elapsed(), budget(250));
+    assert!(errs.len() <= MAX_MARKS);
+    let t = Instant::now();
+    let links = link_marks(
+        &text,
+        "OEBPS/chapter-1.xhtml",
+        false,
+        &|p| p.starts_with("OEBPS/chapter-"),
+        &|_, _| None,
+    );
+    check("link_marks 1 MB", t.elapsed(), budget(250));
+    assert!(!links.is_empty());
+    let t = Instant::now();
+    let _ = emphasis_spans(&text);
+    check("emphasis_spans 1 MB", t.elapsed(), budget(250));
+    let t = Instant::now();
+    let snippets = anchor_snippets(&text);
+    check("anchor_snippets 1 MB", t.elapsed(), budget(250));
+    assert!(!snippets.is_empty());
+    let mut css = String::new();
+    while css.len() < 1_000_000 {
+        css.push_str(".a { color: #ff0000; background: rgb(0,0,255); margin: 0 }\n.b:hover { color: hsl(120, 50%, 40%); border: 1px solid navy }\n");
+    }
+    let t = Instant::now();
+    let colours = css_colors(&css, true);
+    check("css_colors 1 MB", t.elapsed(), budget(250));
+    assert_eq!(colours.len(), MAX_MARKS, "capped");
+    let t = Instant::now();
+    let _ = css_errors(&css);
+    check("css_errors 1 MB", t.elapsed(), budget(250));
+}
+
+/// Ctrl+click and class rename over a book of 200 files.
+#[test]
+fn rename_class_across_200_files() {
+    let files: Vec<(String, String)> = (0..200)
+        .map(|i| {
+            let mut s = String::from("<html><body>");
+            while s.len() < 20_000 {
+                s.push_str("<p class=\"note big\">text <span class=\"x\">y</span></p>\n");
+            }
+            s.push_str("</body></html>");
+            (format!("OEBPS/c{i}.xhtml"), s)
+        })
+        .chain(std::iter::once((
+            "OEBPS/s.css".to_string(),
+            ".note { a: b }\n.big { c: d }\n".to_string(),
+        )))
+        .collect();
+    let t = Instant::now();
+    let r = bookx_editing::code_nav::rename_class(&files, "note", "remark").unwrap();
+    check("rename_class 200 files", t.elapsed(), budget(500));
+    assert_eq!(r.changes.len(), 201);
+    let names: Vec<String> = files.iter().map(|f| f.0.clone()).collect();
+    let by: std::collections::HashMap<&str, &str> =
+        files.iter().map(|f| (f.0.as_str(), f.1.as_str())).collect();
+    let t = Instant::now();
+    let text = |p: &str| by.get(p).map(|s| s.to_string());
+    let hit = bookx_editing::code_nav::Hit::Class {
+        name: "big".into(),
+        range: 0..0,
+        in_css: true,
+    };
+    let j = bookx_editing::code_nav::plan_jump(&hit, "OEBPS/s.css", ".big {}", &names, &text);
+    check("jump from a selector to a use", t.elapsed(), budget(250));
+    assert!(matches!(j, bookx_editing::code_nav::Jump::To { .. }));
+}
+
+/// Transform HTML over every page of a 5 MB book (three rules: rename, class, attribute), and its dry run.
+#[test]
+fn transform_html_on_a_5mb_book() {
+    use bookx_editing::transform_html::{transform_book, HtmlRule};
+    let mut book = big_book();
+    let rules = vec![
+        HtmlRule::RenameTag {
+            selector: "a".into(),
+            to: "span".into(),
+        },
+        HtmlRule::AddClass {
+            selector: "p".into(),
+            class: "x".into(),
+        },
+        HtmlRule::SetAttr {
+            selector: "h1".into(),
+            name: "lang".into(),
+            value: "en".into(),
+        },
+    ];
+    let t = Instant::now();
+    let dry = transform_book(&mut book, &rules, &[], true);
+    check("transform_html dry run", t.elapsed(), budget(3000));
+    assert!(dry.total() > 30_000, "{}", dry.total());
+    assert!(dry.skipped.is_empty(), "{:?}", dry.skipped);
+    let t = Instant::now();
+    let r = transform_book(&mut book, &rules, &[], false);
+    check("transform_html", t.elapsed(), budget(3000));
+    assert_eq!(r.total(), dry.total());
+}
+
+/// Dragging in a long Contents (2000 entries) and the problem check run on every drop.
+#[test]
+fn contents_drag_and_drop_on_a_long_contents() {
+    use bookx_core::toc::FlatToc;
+    use bookx_editing::toc_ops::{drop_entry, normalize, problems, DropPos};
+    let mut toc: Vec<FlatToc> = (0..2000)
+        .map(|i| FlatToc {
+            depth: if i % 10 == 0 { 0 } else { 1 + (i % 3) / 2 },
+            title: format!("Entry {i}"),
+            href: format!("c{i}.xhtml"),
+        })
+        .collect();
+    normalize(&mut toc);
+    let t = Instant::now();
+    for i in 0..200 {
+        let from = (i * 7) % 2000;
+        let to = (i * 13 + 5) % 2000;
+        let _ = drop_entry(&mut toc, from, to, DropPos::Into);
+        let _ = problems(&toc);
+    }
+    check("200 contents drops", t.elapsed(), budget(500));
+    assert_eq!(toc.len(), 2000);
+    assert!(problems(&toc).is_empty());
+}
+
+/// The cover dialog decodes, crops and scales a large image on every choice.
+#[test]
+fn cover_prepare_on_a_large_image() {
+    use bookx_editing::cover::{centered_crop, prepare_image};
+    let data = common::png(3000, 4000);
+    let t = Instant::now();
+    let (out, _) = prepare_image(
+        &data,
+        "png",
+        Some(centered_crop(3000, 4000, 2.0 / 3.0)),
+        Some((1600, 1600)),
+    )
+    .unwrap();
+    check("prepare_image", t.elapsed(), budget(1500));
+    assert!(!out.is_empty());
+}
+
+/// All decoration scans of the code view together (what one live pass does on a 1 MB page), on the UI thread.
+#[test]
+fn code_view_whole_pass_on_a_1mb_chapter() {
+    use bookx_editing::code_marks::*;
+    let text = big_chapter(1_000_000);
+    let t = Instant::now();
+    let _ = markup_errors(&text, true);
+    let _ = link_marks(
+        &text,
+        "OEBPS/chapter-1.xhtml",
+        false,
+        &|p| p.starts_with("OEBPS/chapter-"),
+        &|_, _| None,
+    );
+    let _ = emphasis_spans(&text);
+    let _ = css_colors(&text, false);
+    let _ = anchor_snippets(&text);
+    check("code view pass 1 MB", t.elapsed(), budget(500));
+}

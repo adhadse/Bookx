@@ -27,7 +27,9 @@ pub fn show(parent: &impl IsA<gtk::Widget>, shared: &SharedRef, on_changed: Rc<d
 /// The list of duplicate groups with their Merge buttons (the Duplicates tab of Library Health).
 pub fn page(shared: &SharedRef, on_changed: Rc<dyn Fn(String)>) -> gtk::Widget {
     let page = adw::PreferencesPage::new();
-    let groups: Vec<Group> = duplicates::find(&shared.lib.borrow().books);
+    let root = shared.lib.borrow().root.clone();
+    let groups: Vec<Group> =
+        duplicates::Apart::load(&root).hide(duplicates::find(&shared.lib.borrow().books));
     let status = adw::StatusPage::new();
     status.set_icon_name(Some("object-select-symbolic"));
     status.set_title(&tr("No duplicates found"));
@@ -75,7 +77,16 @@ pub fn page(shared: &SharedRef, on_changed: Rc<dyn Fn(String)>) -> gtk::Widget {
         );
         merge_btn.add_css_class("suggested-action");
         merge_btn.set_valign(gtk::Align::Center);
-        group.set_header_suffix(Some(&merge_btn));
+        let apart_btn = gtk::Button::with_label(&tr("Not a Duplicate"));
+        apart_btn.add_css_class("flat");
+        apart_btn.set_valign(gtk::Align::Center);
+        apart_btn.set_tooltip_text(Some(&tr(
+            "These books are different; do not suggest them as copies again",
+        )));
+        let header = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        header.append(&apart_btn);
+        header.append(&merge_btn);
+        group.set_header_suffix(Some(&header));
         let mut first: Option<gtk::CheckButton> = None;
         for (id, t, sub) in &rows {
             let row = adw::ActionRow::new();
@@ -98,6 +109,32 @@ pub fn page(shared: &SharedRef, on_changed: Rc<dyn Fn(String)>) -> gtk::Widget {
             group.add(&row);
         }
         page.add(&group);
+        {
+            let (shared, ids, group, status, remaining, on_changed) = (
+                shared.clone(),
+                g.ids.clone(),
+                group.clone(),
+                status.clone(),
+                remaining.clone(),
+                on_changed.clone(),
+            );
+            apart_btn.connect_clicked(move |_| {
+                let root = shared.lib.borrow().root.clone();
+                let mut apart = duplicates::Apart::load(&root);
+                apart.keep_apart(&ids);
+                match apart.save(&root) {
+                    Ok(()) => {
+                        group.set_visible(false);
+                        remaining.set(remaining.get().saturating_sub(1));
+                        status.set_visible(remaining.get() == 0);
+                        on_changed(tr(
+                            "Kept apart: these books will not be suggested as copies again",
+                        ));
+                    }
+                    Err(e) => on_changed(trf("Could not save: {}", &[&format!("{:#}", e)])),
+                }
+            });
+        }
         {
             let (shared, ids, keep, group, status, remaining, on_changed) = (
                 shared.clone(),

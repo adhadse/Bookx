@@ -1,21 +1,33 @@
 #![forbid(unsafe_code)]
 //! GUI-free logic behind the Bookx e-book editor (roadmap track T7).
 
+pub mod a11y_meta;
 pub mod accessibility;
 pub mod book_tools;
 pub mod charinfo;
 pub mod checkpoints;
+pub mod code_format;
+pub mod code_marks;
+pub mod code_nav;
 pub mod compare;
+pub mod cover;
 pub mod files;
 pub mod filter_styles;
 pub mod fixes;
 pub mod fontlayout;
 pub mod fonts;
+pub mod fonts_manage;
+pub mod fuzzy;
 pub mod images;
 pub mod inline_toc;
+pub mod jacket;
 pub mod links;
 pub mod live_css;
 pub mod markup;
+pub mod media_overlay;
+pub mod media_overlay_check;
+pub mod media_overlay_narrate;
+pub mod media_overlay_opf;
 pub mod opf_edit;
 pub mod preview_map;
 pub mod problems;
@@ -32,7 +44,9 @@ pub mod split_merge;
 pub mod tag_search;
 pub mod tags;
 pub mod toc_gen;
+pub mod toc_ops;
 pub mod transform_css;
+pub mod transform_html;
 pub mod upgrade;
 pub mod validate;
 

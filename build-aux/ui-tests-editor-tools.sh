@@ -11,6 +11,11 @@ printf 'p { color: blue }\n' >"$ROOT/xt/net/remote.css"
 
 XP='http://www.w3.org/1999/xhtml'
 
+# the "other program" of Open With: it rewrites the file it is given
+printf '#!/bin/sh\nsleep 0.3\nprintf "<html xmlns=\\"http://www.w3.org/1999/xhtml\\"><head><title>E</title></head><body><p>EXTERNAL EDIT</p></body></html>" > "$1"\n' >"$ROOT/xt/mock-editor.sh"
+chmod +x "$ROOT/xt/mock-editor.sh"
+export BOOKX_OPEN_WITH_PROGRAM="$ROOT/xt/mock-editor.sh"
+
 
 scenario editor_x_text "edit:1,wait:3000,editor:x:put=OEBPS/chapter-1.xhtml|<html xmlns=\"$XP\"><head><title>T</title></head><body><p>\"Hello\" she said -- ok... Fine.</p><pre>\"keep\" -- this</pre></body></html>,editor:x:smarten=OEBPS/chapter-1.xhtml|smarten|de|qde,wait:500,editor:cat=OEBPS/chapter-1.xhtml,editor:x:smarten=all|unsmarten,wait:500,editor:cat=OEBPS/chapter-1.xhtml,editor:x:smarten=all|smarten|en|d,wait:500,editor:cat=OEBPS/chapter-1.xhtml,editor:x:put=OEBPS/chapter-2.xhtml|<html><body><p>Open <b>tags<p>more</body></html>,editor:x:fixhtml=OEBPS/chapter-2.xhtml|html5,wait:500,editor:cat=OEBPS/chapter-2.xhtml,editor:x:put=OEBPS/chapter-1.xhtml|<html><body><p>Sloppy<br></body></html>,editor:x:fixhtml=all,wait:500,editor:cat=OEBPS/chapter-1.xhtml,editor:x:beautify=OEBPS/chapter-3.xhtml,wait:500,editor:cat=OEBPS/chapter-3.xhtml,editor:x:beautify=OEBPS/chapter-3.xhtml,wait:400,editor:dump,editor:cps,quit" '
     C=$(grep "^editor_cat:" <<<"$OUT")
@@ -129,4 +134,23 @@ scenario editor_x_dialogs "edit:1,wait:3000,editor:x:add-png=orphan.png,editor:x
     has "^editor_x: dialog: 1 checked: 1 fine, 0 broken|^editor_x: dialog: .*checked"; check "Check external links runs in the background and reports in the dialog" $?
     ! has "^a11y-problem:"; check "every tool dialog has accessible names" $?
     has "^palette: .*Smarten Punctuation"; check "the tools are in the command palette" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario editor_x_edit_cli "wait:2500,edit-file:$ROOT/css-epub/lib/styled.epub|c1.xhtml|slanted words,wait:2500,editor:cur,editor:tabs,quit" '
+    has "^editor_cur: file=OEBPS/c1.xhtml .*sel=\"slanted words\""; check "bookx --edit FILE name --select-text TEXT opens the book in the editor, the file in a tab and selects the text" $?
+    has "^editor_tabs: .*OEBPS/c1.xhtml"; check "the named file has its tab" $?
+    grep -q "Styled Book" <<<"$LIB"; check "the book was added to the library" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario editor_x_embed_dialog "edit:1,wait:3000,editor:x:write-font=$ROOT/xt/fonts/tiny.ttf,editor:x:put=OEBPS/chapter-2.xhtml|<html xmlns=\"$XP\"><head><title>T</title></head><body><p style=\"font-family: Tiny Test\">ABC</p></body></html>,wait:300,editor:x:dialog=embed-fonts,editor:x:dialog-text,wait:1200,editor:x:dialog-click=preview,wait:300,editor:x:dialog-text,a11y-audit:,editor:x:dialog-click=apply,wait:800,editor:dump,quit" '
+    has "^editor_x: dialog: Searching the installed fonts|^editor_x: dialog: Press Preview"; check "the dialog opens at once while the fonts are searched in the background" $?
+    has "^editor_x: dialog: Embedded 1 font"; check "when the search is done the font is offered and Preview says what would happen" $?
+    has "^editor: .*toast=\"Embedded 1 font"; check "Apply embeds it" $?
+    ! has "^a11y-problem:"; check "the dialog has accessible names" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario editor_x_open_with "edit:1,wait:3000,editor:open=OEBPS/chapter-1.xhtml,wait:300,editor:x:open-with-export,wait:1500,editor:x:external-pending,editor:x:external-accept,wait:600,editor:cat=OEBPS/chapter-1.xhtml,editor:dump,quit" '
+    has "^editor_x: external: OEBPS/chapter-1.xhtml"; check "a file saved by the other program is noticed and waits for the answer" $?
+    has "^editor_cat: .*EXTERNAL EDIT"; check "accepting puts the new content into the book" $?
+    has "^editor: .*toast=\"Replaced chapter-1.xhtml|^editor: .*checkpoints=[1-9]"; check "the update is one undoable step" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'

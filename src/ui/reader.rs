@@ -1378,10 +1378,21 @@ impl Reader {
         }
         let prefs = self.shared.cfg.borrow().tts.clamped();
         let language = self.tts_language();
-        match crate::tts::open_engine(&prefs, &language) {
+        // a book with its own narration (EPUB 3 media overlay) is read with that
+        let narration = crate::overlay_play::open_engine(&self.book);
+        let has_narration = narration.is_some();
+        match narration.map_or_else(|| crate::tts::open_engine(&prefs, &language), Ok) {
             Ok(opened) => {
-                let id = opened.choice.map_or("mock", |c| c.id());
-                let title = opened.choice.map_or("Silent test voice", |c| c.title());
+                let id = if has_narration {
+                    "narration"
+                } else {
+                    opened.choice.map_or("mock", |c| c.id())
+                };
+                let title = if has_narration {
+                    "Narration of the book"
+                } else {
+                    opened.choice.map_or("Silent test voice", |c| c.title())
+                };
                 let mut e = opened.engine;
                 e.set_book(&self.book_id.to_string());
                 e.set_language(&language);
@@ -3636,6 +3647,11 @@ impl SimpleComponent for Reader {
             )
         };
         content.append(&page_overlay);
+        super::reading_ruler::set_current(super::reading_ruler::Ruler::install(
+            &page_overlay,
+            &canvas,
+            &shared,
+        ));
 
         let slider = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 1000.0, 1.0);
         super::audit::label(&slider, &tr("Position in the book"));
@@ -3970,6 +3986,7 @@ impl SimpleComponent for Reader {
         let layout_b = item(&tr("Layout"), "", true);
         let rsvp_b = item(&tr("Speed Reading"), "", false);
         let map_b = item(&tr("Book Map"), "reader.map", false);
+        let ruler_b = item(&tr("Reading Ruler"), "reader.ruler", false);
         let footer_b = item(&tr("Footer Stats"), "", false);
         let prefs_b = item(&tr("Preferences"), "app.preferences", false);
         let keys_b = item(&tr("Keyboard Shortcuts"), "app.shortcuts", false);
@@ -3986,6 +4003,7 @@ impl SimpleComponent for Reader {
         main.append(&layout_b);
         main.append(&rsvp_b);
         main.append(&map_b);
+        main.append(&ruler_b);
         main.append(&footer_b);
         main.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
         for b in [&prefs_b, &keys_b, &about_b] {
@@ -4641,6 +4659,8 @@ impl SimpleComponent for Reader {
                 match key {
                     Key::Left if alt => tx.emit(Input::Back),
                     Key::Right if alt => tx.emit(Input::Forward),
+                    Key::Down if alt => super::reading_ruler::act(1),
+                    Key::Up if alt => super::reading_ruler::act(-1),
                     Key::g if ctrl => tx.emit(Input::GotoDialog),
                     Key::Right if !ctrl => tx.emit(Input::Turn(right_is_forward(rtl))),
                     Key::Left if !ctrl => tx.emit(Input::Turn(!right_is_forward(rtl))),
@@ -4724,6 +4744,11 @@ impl SimpleComponent for Reader {
             add("reload", Rc::new(|| Input::Reload));
             add("properties", Rc::new(|| Input::Properties));
             add("rsvp", Rc::new(|| Input::Rsvp));
+            for (name, dir) in [("ruler", 0), ("ruler-up", -1), ("ruler-down", 1)] {
+                let a = gio::SimpleAction::new(name, None);
+                a.connect_activate(move |_, _| super::reading_ruler::act(dir));
+                group.add_action(&a);
+            }
             add("back", Rc::new(|| Input::Quit));
             let size = |d: f64| {
                 Rc::new(move || {
@@ -6462,6 +6487,10 @@ impl SimpleComponent for Reader {
                             secs.parse().unwrap_or(0.0),
                         );
                         eprintln!("reader_dwell: ok");
+                        return;
+                    }
+                    k if k.starts_with("ruler=") => {
+                        eprintln!("ruler: {}", super::reading_ruler::dev_reader(&k[6..]));
                         return;
                     }
                     k if k.starts_with("map-") => {

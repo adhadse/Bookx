@@ -143,3 +143,22 @@ The selection stays; the popover is not brought back by itself (a new selection,
 `selection_popover_dialogs` (Preferences, Properties, book map, shortcuts, footer popover; fails without the guard, 6 of 13 checks),
 real session `reader_selection_popover_under_dialog` (screenshot `prefs-over-selection`). The TTS and speed-reading cards are
 overlay children of the page, so they are below dialogs by construction. Hook: `dialog:state|close`, `reader:properties`.
+
+### Code-editing helpers with real input (`build-aux/session/scenarios_editor_code.py`)
+
+Real pointer and keys in the editor of the Alice test book (public domain, `~/.cache/bookx-testbooks`): `editor_code_ctrl_click`
+(Ctrl+click on a link, on a class and on a selector, then F12), `editor_code_context_menu` (right-click: the *Go to Definition*
+entry follows the spelling entries), `editor_code_format_keys` (Ctrl+B / Ctrl+I on a keyboard selection, `</` closes the tag and
+typing the rest of the tag is not doubled), `editor_code_complete_keys` (file popup and Tab, anchor popup with text snippets),
+`editor_code_insert_dialogs` (Ctrl+K, filter, Down, Enter; Ctrl+Alt+M), `editor_code_dialogs_small` (the dialog fits 900x600),
+`editor_code_rename_class_dialog` (right-click, *Rename Class*, new name, Enter, the style sheet follows), `editor_code_marks_visual`
+(colour swatch and red squiggle by pixel count), `editor_code_tag_keys` (Ctrl+<, Ctrl+>, Ctrl+Alt+>).
+
+* A character's screen position comes from AT-SPI `Atspi.Text.get_character_extents` on the code view (window coordinates plus the
+  usual `(7, 37)` origin): it is exact enough to Ctrl+click a single class name. A character that is scrolled out horizontally is
+  not on screen, so the scenarios type the test line at the top of the page.
+* Typing `>` after an open tag adds the closing tag (Preferences option): scenarios that want to type a tag by hand delete the
+  added tag or leave the caret where the editor put it.
+* Findings: the context menu entries of a second right-click gesture were wiped by the spelling handler (`remove_all`), so the code
+  entries are appended from that handler; the *Wrap in Tag* prompt did not take the keyboard focus (fixed); `</` completion
+  doubled the closing tag when it was typed in full (fixed with the type-over of what was inserted).

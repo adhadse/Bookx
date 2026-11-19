@@ -581,3 +581,18 @@ msgstr[1] "{} समस्याएँ"
 
 msgid "Sync scrolling both ways: scrolling the preview also scrolls the code (the code always moves the preview)"
 msgstr "दोनों तरफ़ स्क्रॉल सिंक: पूर्वावलोकन स्क्रॉल करने पर कोड भी स्क्रॉल होता है (कोड हमेशा पूर्वावलोकन को चलाता है)"
+
+msgid "Could not start the program"
+msgstr "प्रोग्राम शुरू नहीं हो सका"
+
+msgid "Searching the installed fonts"
+msgstr "इंस्टॉल किए गए फ़ॉन्ट खोजे जा रहे हैं"
+
+msgid "Still searching the installed fonts, try again in a moment"
+msgstr "इंस्टॉल किए गए फ़ॉन्ट अभी खोजे जा रहे हैं; थोड़ी देर बाद फिर कोशिश करें"
+
+msgid "Searching the installed fonts: {} of {}"
+msgstr "इंस्टॉल किए गए फ़ॉन्ट खोजे जा रहे हैं: {} / {}"
+
+msgid "Colour scheme preview"
+msgstr "रंग योजना का पूर्वावलोकन"

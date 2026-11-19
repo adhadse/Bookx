@@ -20,8 +20,14 @@
 //! dictionary), `text_upper/text_lower/text_capitalize/text_swap_case/text_title(s)` (tags are left alone),
 //! `smarten_hyphens(s)`, `strip_tags(s)`, `escape_html(s)`.
 //!
+//! * `functions` (optional sixth parameter): the other saved functions, `functions["name"].invoke(m, number,
+//!   file, meta, data)` runs one of them and returns what it returned; they share `data`, and a called
+//!   function cannot call further ones (CE-107).
+//!
 //! Optional header comments in the script set the options of Calibre's `replace.*` attributes:
-//! `// @file_order spine` (or `spine-reverse`), `// @call_after_last_match`, `// @suppress_result_dialog`.
+//! `// @file_order spine` (or `spine-reverse`), `// @call_after_last_match`, `// @suppress_result_dialog`,
+//! `// @append_final_output_to_marked` (the final output is added after the marked text, CE-110) and
+//! `// @persistent_data` (`data` is kept per library between runs, CE-107).
 //!
 //! Sandbox: Rhai has no file or network access of its own and nothing here adds any; modules, `eval` and
 //! custom syntax are off. Each call may run at most [`Limits::max_ops`] operations, a whole run at most
@@ -68,6 +74,12 @@ pub struct Function {
     pub call_after_last_match: bool,
     #[serde(default)]
     pub suppress_result_dialog: bool,
+    /// The final output is appended after the marked text of the open file (CE-110).
+    #[serde(default)]
+    pub append_final_output_to_marked: bool,
+    /// `data` keeps its content between runs (per library).
+    #[serde(default)]
+    pub persistent_data: bool,
     #[serde(default)]
     pub builtin: bool,
 }
@@ -82,6 +94,8 @@ impl Function {
             file_order: FileOrder::Normal,
             call_after_last_match: false,
             suppress_result_dialog: false,
+            append_final_output_to_marked: false,
+            persistent_data: false,
             builtin: false,
         };
         f.read_header();
@@ -92,6 +106,7 @@ impl Function {
     pub fn read_header(&mut self) {
         let mut order = FileOrder::Normal;
         let (mut after, mut quiet) = (false, false);
+        let (mut append, mut persistent) = (false, false);
         for line in self.source.lines() {
             let Some(rest) = line.trim().strip_prefix("//") else {
                 if line.trim().is_empty() {
@@ -110,12 +125,129 @@ impl Function {
                 after = true;
             } else if rest.starts_with("@suppress_result_dialog") {
                 quiet = true;
+            } else if rest.starts_with("@append_final_output_to_marked") {
+                append = true;
+            } else if rest.starts_with("@persistent_data") {
+                persistent = true;
             }
         }
         self.file_order = order;
         self.call_after_last_match = after;
         self.suppress_result_dialog = quiet;
+        self.append_final_output_to_marked = append;
+        self.persistent_data = persistent;
     }
+}
+
+/// Inserts `output` on a new line after the last marked range (byte offsets) of `text`; returns the
+/// new text and the range of the inserted output, which becomes marked too (CE-110). `None` when
+/// nothing is marked.
+pub fn append_after_marked(
+    text: &str,
+    marked: &[(usize, usize)],
+    output: &str,
+) -> Option<(String, (usize, usize))> {
+    let end = marked.iter().map(|m| m.1).max()?;
+    if end > text.len() || !text.is_char_boundary(end) {
+        return None;
+    }
+    let mut out = String::with_capacity(text.len() + output.len() + 1);
+    out.push_str(&text[..end]);
+    out.push('\n');
+    let start = out.len();
+    out.push_str(output);
+    let stop = out.len();
+    out.push_str(&text[end..]);
+    Some((out, (start, stop)))
+}
+
+// ---- data kept between runs (CE-107) ----
+
+fn to_json_value(d: &Dynamic) -> Option<serde_json::Value> {
+    use serde_json::Value;
+    if d.is_unit() {
+        return Some(Value::Null);
+    }
+    if let Ok(b) = d.as_bool() {
+        return Some(Value::Bool(b));
+    }
+    if let Ok(i) = d.as_int() {
+        return Some(Value::from(i));
+    }
+    if let Ok(f) = d.as_float() {
+        return serde_json::Number::from_f64(f).map(Value::Number);
+    }
+    if d.is_string() {
+        return Some(Value::String(d.clone().into_string().ok()?));
+    }
+    if let Some(a) = d.clone().try_cast::<Array>() {
+        return Some(Value::Array(a.iter().filter_map(to_json_value).collect()));
+    }
+    if let Some(m) = d.clone().try_cast::<Map>() {
+        return Some(Value::Object(
+            m.iter()
+                .filter_map(|(k, v)| to_json_value(v).map(|v| (k.to_string(), v)))
+                .collect(),
+        ));
+    }
+    None
+}
+
+fn from_json_value(v: &serde_json::Value) -> Dynamic {
+    use serde_json::Value;
+    match v {
+        Value::Null => Dynamic::UNIT,
+        Value::Bool(b) => (*b).into(),
+        Value::Number(n) => match n.as_i64() {
+            Some(i) => i.into(),
+            None => n.as_f64().unwrap_or(0.0).into(),
+        },
+        Value::String(s) => s.clone().into(),
+        Value::Array(a) => a.iter().map(from_json_value).collect::<Array>().into(),
+        Value::Object(o) => o
+            .iter()
+            .map(|(k, v)| (k.as_str().into(), from_json_value(v)))
+            .collect::<Map>()
+            .into(),
+    }
+}
+
+/// The file that keeps the data of function `name` in `library` (a library key such as its folder),
+/// inside `dir`. Names are hashed so nothing in them can leave the folder.
+pub fn data_file(dir: &Path, library: &str, name: &str) -> PathBuf {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    library.hash(&mut h);
+    let lib = h.finish();
+    let safe: String = name
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '_' })
+        .take(40)
+        .collect();
+    dir.join(format!("{lib:016x}-{safe}.json"))
+}
+
+pub fn load_data(path: &Path) -> Map {
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+        .map(|v| from_json_value(&v))
+        .and_then(|d| d.try_cast::<Map>())
+        .unwrap_or_default()
+}
+
+pub fn save_data(path: &Path, data: &Map) -> std::io::Result<()> {
+    if let Some(d) = path.parent() {
+        std::fs::create_dir_all(d)?;
+    }
+    let v = to_json_value(&Dynamic::from(data.clone())).unwrap_or(serde_json::Value::Null);
+    std::fs::write(path, serde_json::to_string(&v).unwrap_or_default())
+}
+
+/// Where the data of persistent functions lives.
+pub fn data_dir() -> Option<PathBuf> {
+    directories::ProjectDirs::from("com", "adhadse", "Bookx")
+        .map(|d| d.config_dir().join("search-function-data"))
 }
 
 /// Orders `files` for a run: `Spine` visits the spine documents first in reading order, then the rest.
@@ -499,6 +631,8 @@ pub struct Env {
     pub rights: String,
     /// `dict_recognized`.
     pub dict: Option<Rc<dyn Fn(&str) -> bool>>,
+    /// The saved functions a function can call through `functions` (CE-107).
+    pub functions: Vec<Function>,
 }
 
 impl Env {
@@ -519,6 +653,7 @@ impl Env {
             description: m.description.clone(),
             rights: m.rights.clone(),
             dict: None,
+            functions: Vec::new(),
         }
     }
 
@@ -561,6 +696,52 @@ struct Mt(MatchInfo);
 
 #[derive(Clone, Default)]
 struct Data(Rc<RefCell<Map>>);
+
+/// The `functions` argument: the other saved functions by name.
+#[derive(Clone)]
+struct Fns(Rc<FnTable>);
+
+struct FnTable {
+    functions: Vec<Function>,
+    limits: Limits,
+    out: Rc<RefCell<Vec<String>>>,
+    deadline: Rc<Cell<Instant>>,
+    env: Env,
+    /// Compiled functions, by name, with the engine that runs them (no `functions` inside).
+    cache: RefCell<std::collections::HashMap<String, Rc<(Engine, AST)>>>,
+}
+
+#[derive(Clone)]
+struct FnRef {
+    table: Rc<FnTable>,
+    name: String,
+}
+
+impl FnTable {
+    fn compiled(&self, name: &str) -> Result<Rc<(Engine, AST)>, String> {
+        if let Some(c) = self.cache.borrow().get(name) {
+            return Ok(c.clone());
+        }
+        let f = self
+            .functions
+            .iter()
+            .find(|f| f.name == name)
+            .ok_or_else(|| format!("there is no saved function called “{name}”"))?;
+        let e = engine(
+            self.limits,
+            self.out.clone(),
+            self.deadline.clone(),
+            &self.env,
+        );
+        let ast = e
+            .compile(&f.source)
+            .map_err(|pe| format!("{name}: {}", pe.0))?;
+        has_replace(&ast).map_err(|e| format!("{name}: {e}"))?;
+        let c = Rc::new((e, ast));
+        self.cache.borrow_mut().insert(name.to_string(), c.clone());
+        Ok(c)
+    }
+}
 
 fn friendly(e: &EvalAltResult, limits: &Limits) -> FnError {
     let mut inner = e;
@@ -682,6 +863,51 @@ fn engine(
             .collect()
     });
 
+    e.register_type_with_name::<Fns>("Functions");
+    e.register_type_with_name::<FnRef>("SavedFunction");
+    e.register_indexer_get(|f: &mut Fns, name: &str| -> Dynamic {
+        if f.0.functions.iter().any(|x| x.name == name) {
+            Dynamic::from(FnRef {
+                table: f.0.clone(),
+                name: name.to_string(),
+            })
+        } else {
+            Dynamic::UNIT
+        }
+    });
+    e.register_fn("contains", |f: &mut Fns, name: &str| {
+        f.0.functions.iter().any(|x| x.name == name)
+    });
+    e.register_fn("keys", |f: &mut Fns| -> Array {
+        f.0.functions
+            .iter()
+            .map(|x| Dynamic::from(x.name.clone()))
+            .collect()
+    });
+    e.register_fn(
+        "invoke",
+        |f: &mut FnRef,
+         m: Dynamic,
+         number: i64,
+         file: ImmutableString,
+         meta: Map,
+         data: Data|
+         -> Result<Dynamic, Box<EvalAltResult>> {
+            let c = f.table.compiled(&f.name).map_err(|msg| {
+                Box::new(EvalAltResult::ErrorRuntime(
+                    msg.into(),
+                    rhai::Position::NONE,
+                ))
+            })?;
+            let mut scope = Scope::new();
+            c.0.call_fn::<Dynamic>(
+                &mut scope,
+                &c.1,
+                "replace",
+                (m, number, file.to_string(), meta, data),
+            )
+        },
+    );
     e.register_fn("text_upper", |s: &str| upper_text(s));
     e.register_fn("text_lower", |s: &str| lower_text(s));
     e.register_fn("text_capitalize", |s: &str| capitalize_text(s));
@@ -704,7 +930,7 @@ fn to_error(pe: &rhai::ParseError) -> FnError {
     }
 }
 
-/// Checks that `source` compiles and defines `replace` with five parameters.
+/// Checks that `source` compiles and defines `replace` with five parameters (six with `functions`).
 pub fn check(source: &str) -> Result<(), FnError> {
     let e = Engine::new();
     let ast = e.compile(source).map_err(|pe| to_error(&pe))?;
@@ -719,11 +945,11 @@ fn has_replace(ast: &AST) -> Result<(), FnError> {
             line: None,
             message: "define fn replace(m, number, file, meta, data) { … }".into(),
         })?;
-    if found.params.len() != 5 {
+    if found.params.len() != 5 && found.params.len() != 6 {
         return Err(FnError {
             line: None,
             message: format!(
-                "replace takes 5 parameters (m, number, file, meta, data), not {}",
+                "replace takes 5 parameters (m, number, file, meta, data) or 6 with functions, not {}",
                 found.params.len()
             ),
         });
@@ -742,6 +968,9 @@ pub struct Runner {
     output: Rc<RefCell<Vec<String>>>,
     deadline: Rc<Cell<Instant>>,
     pub func: Function,
+    /// `replace` also takes the `functions` argument.
+    takes_functions: bool,
+    fns: Fns,
     /// The first changes of the run as `(before, after)`, for a preview.
     pub changes: Vec<(String, String)>,
 }
@@ -757,6 +986,25 @@ impl Runner {
         let engine = engine(limits, output.clone(), deadline.clone(), env);
         let ast = engine.compile(&func.source).map_err(|pe| to_error(&pe))?;
         has_replace(&ast)?;
+        let takes_functions = ast
+            .iter_functions()
+            .any(|f| f.name == "replace" && f.params.len() == 6);
+        let fns = Fns(Rc::new(FnTable {
+            functions: env
+                .functions
+                .iter()
+                .filter(|f| f.name != func.name)
+                .cloned()
+                .collect(),
+            limits,
+            out: output.clone(),
+            deadline: deadline.clone(),
+            env: Env {
+                functions: Vec::new(),
+                ..env.clone()
+            },
+            cache: Default::default(),
+        }));
         Ok(Runner {
             engine,
             ast,
@@ -767,27 +1015,44 @@ impl Runner {
             output,
             deadline,
             func: func.clone(),
+            takes_functions,
+            fns,
             changes: Vec::new(),
         })
+    }
+
+    /// Sets the content of `data` (what a persistent function left at the end of its last run).
+    pub fn set_data(&mut self, m: Map) {
+        *self.data.0.borrow_mut() = m;
+    }
+
+    /// The content of `data` now.
+    pub fn data_map(&self) -> Map {
+        self.data.0.borrow().clone()
     }
 
     fn call(&mut self, m: Dynamic, number: i64, file: &str) -> Result<Dynamic, FnError> {
         self.deadline.set(Instant::now() + self.limits.max_time);
         let mut scope = Scope::new();
-        self.engine
-            .call_fn::<Dynamic>(
+        let args = (
+            m,
+            number,
+            file.to_string(),
+            self.meta.clone(),
+            self.data.clone(),
+        );
+        let r = if self.takes_functions {
+            self.engine.call_fn::<Dynamic>(
                 &mut scope,
                 &self.ast,
                 "replace",
-                (
-                    m,
-                    number,
-                    file.to_string(),
-                    self.meta.clone(),
-                    self.data.clone(),
-                ),
+                (args.0, args.1, args.2, args.3, args.4, self.fns.clone()),
             )
-            .map_err(|e| friendly(&e, &self.limits))
+        } else {
+            self.engine
+                .call_fn::<Dynamic>(&mut scope, &self.ast, "replace", args)
+        };
+        r.map_err(|e| friendly(&e, &self.limits))
     }
 
     /// Replaces the matches of `pat` in `text` (inside `ranges`) with what the function returns.
@@ -1447,5 +1712,121 @@ mod tests {
         assert_eq!(all.len(), builtins().len());
         assert!(!all.last().unwrap().builtin);
         assert!(all.last().unwrap().source.contains("{ 1 }"));
+    }
+
+    #[test]
+    fn a_function_calls_another_saved_function() {
+        let helper = Function::new(
+            "wrap",
+            "",
+            "fn replace(m, number, file, meta, data) { \"[\" + m.text + \"]\" }",
+        );
+        let main = Function::new(
+            "main",
+            "",
+            "fn replace(m, number, file, meta, data, functions) {\n    functions[\"wrap\"].invoke(m, number, file, meta, data) + \"!\"\n}",
+        );
+        let env = Env {
+            functions: vec![helper, main.clone()],
+            ..Env::default()
+        };
+        let t = test_run(&main, &env, &rx("[a-z]+"), "ab cd", "f");
+        assert_eq!(t.error, None);
+        assert_eq!(t.text, "[ab]! [cd]!");
+    }
+
+    #[test]
+    fn called_functions_share_data_and_report_missing_ones() {
+        let counter = Function::new(
+            "count",
+            "",
+            "fn replace(m, number, file, meta, data) {\n    if data[\"n\"] == () { data[\"n\"] = 0; }\n    data[\"n\"] += 1;\n    data[\"n\"]\n}",
+        );
+        let main = Function::new(
+            "main",
+            "",
+            "fn replace(m, number, file, meta, data, functions) {\n    functions[\"count\"].invoke(m, number, file, meta, data)\n}",
+        );
+        let env = Env {
+            functions: vec![counter],
+            ..Env::default()
+        };
+        let t = test_run(&main, &env, &rx("x"), "x x x", "");
+        assert_eq!(t.text, "1 2 3");
+        let missing = Function::new(
+            "m2",
+            "",
+            "fn replace(m, number, file, meta, data, functions) {\n    functions[\"nope\"].invoke(m, number, file, meta, data)\n}",
+        );
+        let t = test_run(&missing, &env, &rx("x"), "x", "");
+        assert!(
+            t.error.is_some(),
+            "an unknown function is an error, not a crash"
+        );
+        // five-parameter functions keep working
+        let old = Function::new(
+            "old",
+            "",
+            "fn replace(m, number, file, meta, data) { \"o\" }",
+        );
+        assert_eq!(test_run(&old, &env, &rx("x"), "x", "").text, "o");
+        assert!(check("fn replace(a, b) { a }").is_err());
+    }
+
+    #[test]
+    fn persistent_data_survives_between_runs() {
+        let dir = std::env::temp_dir().join(format!("bookx-fndata-{}", uuid::Uuid::new_v4()));
+        let mut f = Function::new(
+            "total",
+            "",
+            "// @persistent_data\nfn replace(m, number, file, meta, data) {\n    if data[\"sum\"] == () { data[\"sum\"] = 0; }\n    data[\"sum\"] += 1;\n    data[\"list\"] = [1, \"a\", true];\n    data[\"sum\"]\n}",
+        );
+        assert!(f.persistent_data);
+        f.read_header();
+        let file = data_file(&dir, "/lib/one", &f.name);
+        let mut r = Runner::new(&f, &Env::default()).unwrap();
+        r.set_data(load_data(&file));
+        let (out, _) = r.run_text(&rx("x"), "x x", None, "").unwrap();
+        assert_eq!(out, "1 2");
+        save_data(&file, &r.data_map()).unwrap();
+        // the next run starts where the last one stopped
+        let mut r2 = Runner::new(&f, &Env::default()).unwrap();
+        r2.set_data(load_data(&file));
+        let (out, _) = r2.run_text(&rx("x"), "x", None, "").unwrap();
+        assert_eq!(out, "3");
+        // another library has its own data
+        let other = data_file(&dir, "/lib/two", &f.name);
+        assert_ne!(file, other);
+        assert!(load_data(&other).is_empty());
+        // odd names cannot leave the folder
+        let evil = data_file(&dir, "l", "../../etc/passwd");
+        assert!(evil.starts_with(&dir));
+        assert!(!evil.to_string_lossy().contains(".."));
+        std::fs::write(&file, "garbage").unwrap();
+        assert!(load_data(&file).is_empty());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn the_final_output_is_added_after_the_marked_text() {
+        let text = "<p>one</p>\n<p>two</p>\n<p>three</p>";
+        let marked = [(0, 10), (11, 21)];
+        let (out, range) = append_after_marked(text, &marked, "TOTAL").unwrap();
+        assert_eq!(out, "<p>one</p>\n<p>two</p>\nTOTAL\n<p>three</p>");
+        assert_eq!(&out[range.0..range.1], "TOTAL");
+        assert!(append_after_marked(text, &[], "x").is_none());
+        assert!(
+            append_after_marked("é", &[(0, 1)], "x").is_none(),
+            "not on a character boundary"
+        );
+        let mut f = Function::new(
+            "a",
+            "",
+            "// @append_final_output_to_marked\nfn replace(m, number, file, meta, data) { () }",
+        );
+        assert!(f.append_final_output_to_marked);
+        f.source = "fn replace(m, number, file, meta, data) { () }".into();
+        f.read_header();
+        assert!(!f.append_final_output_to_marked);
     }
 }

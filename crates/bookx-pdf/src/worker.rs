@@ -495,18 +495,23 @@ mod tests {
         wait_for(&w, |e| matches!(e, Event::Opened(_)));
         w.search(1, "alpha");
         w.search(2, "delta");
-        let mut done = vec![];
-        let mut ids = vec![];
-        while done.is_empty() {
+        // the worker may finish search 1 before it sees search 2; either way the last search
+        // finishes, and nothing of search 1 arrives after anything of search 2
+        let mut seen = vec![];
+        loop {
             match w.recv_timeout(T).unwrap() {
-                Event::SearchHits { id, .. } => ids.push(id),
-                Event::SearchDone { id } => done.push(id),
+                Event::SearchHits { id, .. } => seen.push(id),
+                Event::SearchDone { id } => {
+                    seen.push(id);
+                    if id == 2 {
+                        break;
+                    }
+                }
                 _ => {}
             }
         }
-        // the first search may have produced nothing but the last one finishes
-        assert_eq!(done, vec![2]);
-        assert!(ids.iter().all(|i| *i == 2), "{ids:?}");
+        let first2 = seen.iter().position(|i| *i == 2).unwrap();
+        assert!(seen[first2..].iter().all(|i| *i == 2), "{seen:?}");
     }
 
     #[test]

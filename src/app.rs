@@ -119,6 +119,7 @@ impl SimpleComponent for App {
             cfg.save();
         }
         crate::i18n::set_language(&cfg.language);
+        crate::privacy::apply(cfg.offline);
         crate::ui::language_settings::apply_direction();
         if crate::i18n::current_is_rtl() {
             root.set_direction(gtk::TextDirection::Rtl);
@@ -783,6 +784,26 @@ impl SimpleComponent for App {
                         }
                     }
                     "edit" => sender.input(Msg::EditBook(arg.parse().unwrap_or(1))),
+                    // `edit-file:FILE|name,name|text`: what `bookx --edit FILE name... --select-text text` does
+                    "edit-file" => {
+                        let mut p = arg.split('|');
+                        let mut args =
+                            vec!["--edit".to_string(), p.next().unwrap_or("").to_string()];
+                        args.extend(
+                            p.next()
+                                .unwrap_or("")
+                                .split(';')
+                                .filter(|n| !n.is_empty())
+                                .map(str::to_string),
+                        );
+                        if let Some(t) = p.next().filter(|t| !t.is_empty()) {
+                            args.push("--select-text".into());
+                            args.push(t.to_string());
+                        }
+                        if let Some(req) = crate::editor_state::parse_edit_args(&args) {
+                            sender.input(Msg::EditFile(req));
+                        }
+                    }
                     "close" => sender.input(Msg::CloseReader),
                     // `share:start[:port]`, `share:stop`, `share:dump`: drive sharing without dialogs
                     "share" => {
@@ -1442,11 +1463,17 @@ fn show_shortcuts(parent: &adw::ApplicationWindow) {
     dialog.add(section(
         &tr("Book editor"),
         &[
-            (N_("Save"), "<Control>s"),
-            (N_("Find & replace"), "<Control>h"),
-            (N_("Check book"), "F7"),
-            (N_("Next problem"), "F8"),
-            (N_("Previous problem"), "<Shift>F8"),
+            (N_("Save"), "@editor.save"),
+            (N_("Find & replace"), "@editor.find"),
+            (N_("Find next"), "@editor.find-next"),
+            (N_("Go to line"), "@editor.go-to-line"),
+            (N_("Open a file"), "@editor.quick-open"),
+            (N_("Command palette"), "@editor.palette"),
+            (N_("Check book"), "@editor.check"),
+            (N_("Next problem"), "@editor.next-problem"),
+            (N_("Previous problem"), "@editor.previous-problem"),
+            (N_("Mark selected text"), "@editor.mark"),
+            (N_("Insert a snippet"), "@editor.insert-snippet"),
             (N_("Undo"), "<Control>z"),
             (N_("Redo"), "<Control><Shift>z"),
         ],

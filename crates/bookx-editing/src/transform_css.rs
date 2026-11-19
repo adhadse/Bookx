@@ -435,6 +435,12 @@ fn split_commas(s: &str) -> Vec<&str> {
 
 fn rename_family_list(list: &str, from: &str, to: &str) -> String {
     let lead: String = list.chars().take_while(|c| c.is_whitespace()).collect();
+    if !split_commas(list.trim())
+        .into_iter()
+        .any(|p| unquote_family(p).0.eq_ignore_ascii_case(from))
+    {
+        return list.to_string();
+    }
     let parts: Vec<String> = split_commas(list.trim())
         .into_iter()
         .map(|p| {

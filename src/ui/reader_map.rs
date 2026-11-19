@@ -1507,7 +1507,13 @@ pub fn dev(cmd: &str) -> String {
                 .unwrap_or(0);
             let cached = th.cached(page).is_some();
             let t0 = std::time::Instant::now();
-            return match th.render(page) {
+            let made = if cached {
+                th.render(page)
+            } else {
+                // not from the disk cache: the check is about how the page is laid out
+                th.render_laid(page)
+            };
+            return match made {
                 Some(t) if arg.contains('|') => {
                     let file = arg.split_once('|').map(|x| x.1).unwrap_or("");
                     #[allow(deprecated)]

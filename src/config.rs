@@ -343,6 +343,10 @@ pub struct Config {
     pub footer_pos_migrated: bool,
     /// Automatic dictionary downloads and what was already looked at.
     pub dictionaries: crate::dict_auto::Prefs,
+    /// Offline mode: nothing is downloaded or looked up online (`crate::privacy`).
+    pub offline: bool,
+    /// The reading ruler of the reader (`crate::reading_ruler`).
+    pub ruler: crate::reading_ruler::RulerPrefs,
 }
 
 impl Default for Config {
@@ -391,6 +395,8 @@ impl Default for Config {
             footer_books: Default::default(),
             footer_pos_migrated: true,
             dictionaries: Default::default(),
+            offline: false,
+            ruler: Default::default(),
         }
     }
 }

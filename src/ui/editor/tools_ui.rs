@@ -51,6 +51,8 @@ pub enum Cmd {
     LinkResults(Vec<(String, LinkStatus)>),
     /// A tool of `ext_dev.rs`.
     Dev(String),
+    /// The structure tools (`struct_hub.rs`).
+    Struct(super::struct_hub::StructCmd),
 }
 
 /// The pieces of an open tool dialog.
@@ -124,6 +126,14 @@ pub fn scrolled(child: &impl IsA<gtk::Widget>, height: i32) -> gtk::ScrolledWind
     s
 }
 
+/// A dialog size that fits the window it opens over (small windows get a smaller dialog that scrolls).
+pub fn fit_dialog(win: &adw::Window, width: i32, height: i32) -> (i32, i32) {
+    let (ww, wh) = (win.width(), win.height());
+    let w = if ww > 0 { width.min(ww - 40) } else { width };
+    let h = if wh > 0 { height.min(wh - 80) } else { height };
+    (w.max(300), h.max(280))
+}
+
 pub fn menu_item(label: &str, action: &str, target: &str) -> gio::MenuItem {
     let it = gio::MenuItem::new(Some(label), None);
     it.set_action_and_target_value(Some(action), Some(&target.to_variant()));
@@ -144,6 +154,7 @@ pub const TOOL_GROUPS: &[(&str, &[(&str, &str)])] = &[
         N_("Styles"),
         &[
             (N_("Transform Styles"), "styles"),
+            (N_("Transform HTML"), "transform-html"),
             (N_("Remove Unused CSS Rules"), "unused-css"),
             (N_("Filter Style Information"), "filter"),
         ],
@@ -152,6 +163,8 @@ pub const TOOL_GROUPS: &[(&str, &[(&str, &str)])] = &[
         N_("Media and Fonts"),
         &[
             (N_("Delete Unused Media"), "unused-media"),
+            (N_("Manage Fonts"), "fonts"),
+            (N_("Set Cover"), "cover"),
             (N_("Embed Referenced Fonts"), "embed-fonts"),
             (N_("Download External Resources"), "download"),
         ],
@@ -161,6 +174,8 @@ pub const TOOL_GROUPS: &[(&str, &[(&str, &str)])] = &[
         &[
             (N_("Set Semantics"), "semantics"),
             (N_("Accessibility"), "accessibility"),
+            (N_("Accessibility Metadata"), "a11y-form"),
+            (N_("Book Jacket"), "jacket"),
         ],
     ),
     (
@@ -220,6 +235,7 @@ impl Editor {
             Cmd::NewFromUser(name, idx, link) => self.new_file_from_user(&name, idx, link),
             Cmd::LinkResults(r) => self.show_link_results(r),
             Cmd::Dev(c) => self.ext_dev(&c),
+            Cmd::Struct(c) => self.struct_update(c),
         }
     }
 
@@ -241,7 +257,11 @@ impl Editor {
             "check-links" => self.tool_check_links(),
             "repair-links" => self.tool_repair_links(),
             "move-files" => self.tool_move_files(),
-            other => self.toast(&trf("Unknown tool {}", &[&other])),
+            other => {
+                if !self.struct_open_tool(other) {
+                    self.toast(&trf("Unknown tool {}", &[&other]));
+                }
+            }
         }
     }
 
@@ -256,8 +276,9 @@ impl Editor {
     ) -> ToolUi {
         let dialog = adw::Dialog::new();
         dialog.set_title(spec.title);
-        dialog.set_content_width(560);
-        dialog.set_content_height(spec.height);
+        let (w, h) = fit_dialog(&self.w.win, 560, spec.height);
+        dialog.set_content_width(w);
+        dialog.set_content_height(h);
         let body = gtk::Box::new(gtk::Orientation::Vertical, 14);
         body.set_margin_top(12);
         body.set_margin_bottom(12);
@@ -672,94 +693,58 @@ impl Editor {
     }
 
     fn tool_embed_fonts(&self) {
-        let installed = Rc::new(fonts::scan_system_fonts(&fonts::system_font_dirs()));
-        let cands = editor_tools::font_candidates(&self.book.borrow(), &installed);
-        if cands.is_empty() {
+        if fonts::missing_faces(&self.book.borrow()).is_empty() {
             self.toast(&tr(
                 "The book does not use any font it does not already carry",
             ));
             return;
         }
-        let list = gtk::ListBox::new();
-        list.set_selection_mode(gtk::SelectionMode::None);
-        list.add_css_class("boxed-list");
-        let mut checks: Vec<(String, gtk::CheckButton)> = Vec::new();
-        for c in &cands {
-            let row = adw::ActionRow::new();
-            row.set_title(&glib::markup_escape_text(&format!(
-                "{} · {}{}",
-                c.key.family,
-                c.key.weight,
-                if c.key.italic { " italic" } else { "" }
-            )));
-            let check = gtk::CheckButton::new();
-            crate::ui::audit::label(&check, &trf("Embed {}", &[&c.key.family]));
-            match &c.font {
-                None => {
-                    row.set_subtitle(&tr("Not installed on this computer"));
-                    check.set_sensitive(false);
-                }
-                Some(f) => {
-                    row.set_subtitle(&glib::markup_escape_text(&format!(
-                        "{} · {}",
-                        f.path.display(),
-                        f.embedding.label()
-                    )));
-                    match f.embedding {
-                        fonts::Embedding::Restricted => check.set_sensitive(false),
-                        fonts::Embedding::Installable => check.set_active(true),
-                        _ => {}
-                    }
-                    if f.embedding != fonts::Embedding::Installable {
-                        let w = gtk::Image::from_icon_name("dialog-warning-symbolic");
-                        w.set_tooltip_text(Some(match f.embedding {
-                            fonts::Embedding::Restricted => {
-                                "The licence of this font forbids embedding it in a book."
-                            }
-                            fonts::Embedding::Unknown => {
-                                "This font does not say whether embedding is allowed. Check its licence."
-                            }
-                            _ => "This font may only be embedded for viewing and printing.",
-                        }));
-                        row.add_suffix(&w);
-                    }
-                }
-            }
-            row.add_prefix(&check);
-            row.set_activatable_widget(Some(&check));
-            list.append(&row);
-            checks.push((c.key.family.clone(), check));
-        }
-        let subset = switch_row(
-            &tr("Keep only the characters the book uses"),
-            &tr("Smaller files. Text you add later may need glyphs that are no longer there."),
-            true,
+        type Chosen = (
+            Vec<(String, gtk::CheckButton)>,
+            adw::SwitchRow,
+            Rc<Vec<fonts::SystemFont>>,
         );
-        let g = group("");
-        g.add(&subset);
-        let bx = gtk::Box::new(gtk::Orientation::Vertical, 10);
-        bx.append(&scrolled(&list, 200));
-        bx.append(&g);
-        let inst = installed.clone();
-        let make: MakeOp = Rc::new(move || {
-            let chosen: HashSet<String> = checks
-                .iter()
-                .filter(|(_, c)| c.is_active())
-                .map(|(f, _)| f.to_ascii_lowercase())
-                .collect();
-            if chosen.is_empty() {
-                return Err("Tick the fonts to embed".to_string());
-            }
-            let sub = subset.is_active();
-            let inst = inst.clone();
-            Ok((
-                "Embed Fonts".to_string(),
-                Rc::new(move |b: &mut OpenBook, _: Option<&str>| {
-                    editor_tools::embed_fonts(b, &inst, &chosen, sub)
-                }) as Op,
-            ))
-        });
-        self.tool_dialog(
+        let state: Rc<RefCell<Option<Chosen>>> = Rc::new(RefCell::new(None));
+        // the options appear when the search of the installed fonts is done (it runs on a worker thread)
+        let holder = gtk::Box::new(gtk::Orientation::Vertical, 10);
+        let searching = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+        searching.set_halign(gtk::Align::Center);
+        searching.set_margin_top(12);
+        searching.set_margin_bottom(12);
+        let spinner = gtk::Spinner::new();
+        spinner.start();
+        let progress = gtk::Label::new(Some(&tr("Searching the installed fonts")));
+        searching.append(&spinner);
+        searching.append(&progress);
+        holder.append(&searching);
+        let make: MakeOp = {
+            let state = state.clone();
+            Rc::new(move || {
+                let st = state.borrow();
+                let Some((checks, subset, inst)) = st.as_ref() else {
+                    return Err(tr(
+                        "Still searching the installed fonts, try again in a moment",
+                    ));
+                };
+                let chosen: HashSet<String> = checks
+                    .iter()
+                    .filter(|(_, c)| c.is_active())
+                    .map(|(f, _)| f.to_ascii_lowercase())
+                    .collect();
+                if chosen.is_empty() {
+                    return Err("Tick the fonts to embed".to_string());
+                }
+                let sub = subset.is_active();
+                let inst = inst.clone();
+                Ok((
+                    "Embed Fonts".to_string(),
+                    Rc::new(move |b: &mut OpenBook, _: Option<&str>| {
+                        editor_tools::embed_fonts(b, &inst, &chosen, sub)
+                    }) as Op,
+                ))
+            })
+        };
+        let ui = self.tool_dialog(
             Spec {
                 height: 620,
                 ..Spec::new(
@@ -768,10 +753,120 @@ impl Editor {
                     "Embed",
                 )
             },
-            Some(bx.upcast()),
+            Some(holder.clone().upcast()),
             make,
             None,
         );
+        let cancel = Arc::new(AtomicBool::new(false));
+        {
+            let c = cancel.clone();
+            ui.dialog
+                .connect_closed(move |_| c.store(true, Ordering::Relaxed));
+        }
+        enum Msg {
+            Progress(usize, usize),
+            Done(Vec<fonts::SystemFont>),
+        }
+        let (tx, rx) = mpsc::channel::<Msg>();
+        let c = cancel.clone();
+        std::thread::spawn(move || {
+            let tx2 = tx.clone();
+            let found = fonts::scan_system_fonts_with(
+                &fonts::system_font_dirs(),
+                &mut |d, t| {
+                    let _ = tx2.send(Msg::Progress(d, t));
+                },
+                &|| c.load(Ordering::Relaxed),
+            );
+            let _ = tx.send(Msg::Done(found));
+        });
+        let book = self.book.clone();
+        glib::timeout_add_local(std::time::Duration::from_millis(60), move || {
+            let mut last = None;
+            loop {
+                match rx.try_recv() {
+                    Ok(Msg::Progress(d, t)) => last = Some((d, t)),
+                    Ok(Msg::Done(found)) => {
+                        let installed = Rc::new(found);
+                        let cands = editor_tools::font_candidates(&book.borrow(), &installed);
+                        let list = gtk::ListBox::new();
+                        list.set_selection_mode(gtk::SelectionMode::None);
+                        list.add_css_class("boxed-list");
+                        let mut checks: Vec<(String, gtk::CheckButton)> = Vec::new();
+                        for c in &cands {
+                            let row = adw::ActionRow::new();
+                            row.set_title(&glib::markup_escape_text(&format!(
+                                "{} · {}{}",
+                                c.key.family,
+                                c.key.weight,
+                                if c.key.italic { " italic" } else { "" }
+                            )));
+                            let check = gtk::CheckButton::new();
+                            crate::ui::audit::label(&check, &trf("Embed {}", &[&c.key.family]));
+                            match &c.font {
+                                None => {
+                                    row.set_subtitle(&tr("Not installed on this computer"));
+                                    check.set_sensitive(false);
+                                }
+                                Some(f) => {
+                                    row.set_subtitle(&glib::markup_escape_text(&format!(
+                                        "{} · {}",
+                                        f.path.display(),
+                                        f.embedding.label()
+                                    )));
+                                    match f.embedding {
+                                        fonts::Embedding::Restricted => check.set_sensitive(false),
+                                        fonts::Embedding::Installable => check.set_active(true),
+                                        _ => {}
+                                    }
+                                    if f.embedding != fonts::Embedding::Installable {
+                                        let w =
+                                            gtk::Image::from_icon_name("dialog-warning-symbolic");
+                                        w.set_tooltip_text(Some(match f.embedding {
+                                            fonts::Embedding::Restricted => {
+                                                "The licence of this font forbids embedding it in a book."
+                                            }
+                                            fonts::Embedding::Unknown => {
+                                                "This font does not say whether embedding is allowed. Check its licence."
+                                            }
+                                            _ => "This font may only be embedded for viewing and printing.",
+                                        }));
+                                        row.add_suffix(&w);
+                                    }
+                                }
+                            }
+                            row.add_prefix(&check);
+                            row.set_activatable_widget(Some(&check));
+                            list.append(&row);
+                            checks.push((c.key.family.clone(), check));
+                        }
+                        let subset = switch_row(
+                            &tr("Keep only the characters the book uses"),
+                            &tr("Smaller files. Text you add later may need glyphs that are no longer there."),
+                            true,
+                        );
+                        let g = group("");
+                        g.add(&subset);
+                        let bx = gtk::Box::new(gtk::Orientation::Vertical, 10);
+                        bx.append(&scrolled(&list, 200));
+                        bx.append(&g);
+
+                        while let Some(c) = holder.first_child() {
+                            holder.remove(&c);
+                        }
+                        holder.append(&bx);
+                        *state.borrow_mut() = Some((checks, subset, installed));
+                        return glib::ControlFlow::Break;
+                    }
+                    Err(mpsc::TryRecvError::Empty) => break,
+                    Err(_) => return glib::ControlFlow::Break,
+                }
+            }
+            if let Some((d, t)) = last {
+                progress.set_text(&trf("Searching the installed fonts: {} of {}", &[&d, &t]));
+            }
+            glib::ControlFlow::Continue
+        });
     }
 
     // ---- structure -----------------------------------------------------

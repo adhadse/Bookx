@@ -38,6 +38,8 @@ pub struct Candidate {
     /// Characters the cursor moves back after inserting (to sit inside `=""`).
     pub back: usize,
     pub kind: Kind,
+    /// A short text shown next to the label (the start of the text an anchor points at).
+    pub detail: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,6 +79,8 @@ pub struct Data<'a> {
     pub classes: &'a [String],
     /// Words of the open file.
     pub words: &'a [String],
+    /// The first words of the text at an anchor of a file (CE-346): `(file, id)`.
+    pub snippet_of: &'a dyn Fn(&str, &str) -> Option<String>,
 }
 
 const MAX_PROPOSALS: usize = 60;
@@ -448,6 +452,7 @@ fn plain(label: &str, kind: Kind) -> Candidate {
         insert: label.to_string(),
         back: 0,
         kind,
+        detail: None,
     }
 }
 
@@ -495,6 +500,7 @@ pub fn candidates(ctx: &Context, data: &Data) -> Vec<Candidate> {
                     insert: format!("{a}=\"\""),
                     back: 1,
                     kind: Kind::Attribute,
+                    detail: None,
                 })
                 .collect()
         }
@@ -506,6 +512,7 @@ pub fn candidates(ctx: &Context, data: &Data) -> Vec<Candidate> {
                 insert: format!("{p}: "),
                 back: 0,
                 kind: Kind::Property,
+                detail: None,
             })
             .collect(),
         Context::ClassValue { prefix } => data
@@ -544,25 +551,37 @@ fn link_candidates(prefix: &str, data: &Data) -> Vec<Candidate> {
         return (data.ids_of)(&target)
             .into_iter()
             .filter(|id| starts_ci(id, id_prefix))
-            .map(|id| plain(&id, Kind::Anchor))
+            .map(|id| Candidate {
+                detail: (data.snippet_of)(&target, &id).filter(|t| !t.is_empty()),
+                ..plain(&id, Kind::Anchor)
+            })
             .collect();
     }
     if prefix.contains("://") || prefix.starts_with("mailto:") {
         return Vec::new();
     }
-    let mut v: Vec<Candidate> = data
+    // subsequence matching: word starts and the start of the base name count most (CE-345)
+    let rels: Vec<String> = data
         .files
         .iter()
         .filter(|f| *f != data.current)
         .map(|f| relative_href(data.current, f))
-        .filter(|rel| {
-            let base = rel.rsplit('/').next().unwrap_or(rel);
-            starts_ci(rel, prefix) || (!prefix.contains('/') && starts_ci(base, prefix))
-        })
-        .map(|rel| plain(&rel, Kind::File))
         .collect();
-    v.sort_by(|a, b| a.label.cmp(&b.label));
-    v
+    let mut scored: Vec<(i32, &String)> = rels
+        .iter()
+        .filter_map(|rel| {
+            let base = rel.rsplit('/').next().unwrap_or(rel);
+            let exact =
+                starts_ci(rel, prefix) || (!prefix.contains('/') && starts_ci(base, prefix));
+            bookx_editing::fuzzy::score(prefix, rel)
+                .map(|s| (s + if exact { 10_000 } else { 0 }, rel))
+        })
+        .collect();
+    scored.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(b.1)));
+    scored
+        .into_iter()
+        .map(|(_, r)| plain(r, Kind::File))
+        .collect()
 }
 
 /// Distinct words of at least 4 letters, most frequent first (the fallback proposals).
@@ -641,6 +660,7 @@ mod tests {
             ids_of: ids,
             classes,
             words,
+            snippet_of: &|_, id| (id == "zzmark").then(|| "The mark".to_string()),
         }
     }
 

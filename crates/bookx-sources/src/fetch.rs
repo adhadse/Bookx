@@ -115,8 +115,27 @@ impl Default for UreqFetcher {
     }
 }
 
+static OFFLINE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Offline mode (PP-C-8, PP-C-22, PP-G-18): while it is on, [`UreqFetcher`] answers every request
+/// with an error and sends nothing. It covers everything that fetches through this crate:
+/// metadata and covers, web articles and news, online catalogues, link checks and dictionary lists.
+pub fn set_offline(on: bool) {
+    OFFLINE.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub fn is_offline() -> bool {
+    OFFLINE.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// The message shown when offline mode stopped a request.
+pub const OFFLINE_MESSAGE: &str = "Offline mode is on (Preferences → Privacy)";
+
 impl Fetcher for UreqFetcher {
     fn get(&self, url: &str, headers: &[(String, String)]) -> Result<Vec<u8>> {
+        if is_offline() {
+            return Err(FetchError::Other(OFFLINE_MESSAGE.into()).into());
+        }
         let mut req = self.agent.get(url);
         for (k, v) in headers {
             req = req.header(k.as_str(), v.as_str());

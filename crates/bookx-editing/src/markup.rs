@@ -448,7 +448,7 @@ fn unescape_attr(v: &str) -> String {
 }
 
 fn escape_attr(v: &str, quote: char) -> String {
-    let v = v.replace('&', "&amp;");
+    let v = v.replace('&', "&amp;").replace('<', "&lt;");
     if quote == '"' {
         v.replace('"', "&quot;")
     } else {

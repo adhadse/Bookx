@@ -45,6 +45,14 @@ impl Editor {
 
     /// Runs a transform plugin on the open book.
     pub(super) fn run_plugin_tool(&mut self, id: &str) {
+        if let Some(cmd) = id.strip_prefix("narration:") {
+            self.narration_cmd(cmd);
+            return;
+        }
+        if let Some((plugin, action)) = super::plugin_host::parse_action_target(id) {
+            self.run_editor_plugin(plugin, action);
+            return;
+        }
         let loaded = crate::plugins::current();
         let label = loaded
             .names

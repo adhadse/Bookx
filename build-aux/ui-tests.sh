@@ -360,7 +360,7 @@ scenario() {
             rm -f "$d/lib/bookx-library.db" "$d/lib/bookx-library.db-wal" "$d/lib/bookx-library.db-shm"
             cp "$d/legacy.json" "$d/lib/bookx-library.json"
         fi
-        if [ "$name" = duplicates ]; then
+        if [ "$name" = duplicates ] || [ "$name" = pain_apart ]; then
             # the same book three times in the library, plus a different one
             for i in 1 2 3; do "$CLI" --library "$d/lib" library add --allow-duplicates "$ROOT/src/book.md" >/dev/null 2>&1; done
             "$CLI" --library "$d/lib" library add "$ROOT/src/second.md" >/dev/null 2>&1
@@ -416,7 +416,7 @@ scenario() {
             printf '{"pid":4194000,"host":"%s","since":1700000000,"app":"Bookx"}' "$(cat /proc/sys/kernel/hostname)" >"$d/lib/.bookx-lock"
             ;;
         health_sync_warning) touch "$d/.stfolder" ;;
-        grid_reflow)
+        grid_reflow*)
             # enough books for several rows
             for n in 1 2 3 4 5 6 7 8 9 10; do
                 "$CLI" --library "$d/lib" library add --allow-duplicates "$ROOT/src/book.md" >/dev/null 2>&1
@@ -551,6 +551,11 @@ PY
         esac
         case "$name" in
         plugin_writer | plugin_transform | plugin_device) "$PLUGS" "$d/plugins" "$d/mounts" ;;
+        editor_plugin*)
+            # the example editor plugin (examples/plugins/trim-whitespace), prebuilt
+            mkdir -p "$d/plugins/trim"
+            cp "$HERE/../examples/plugins/trim-whitespace/plugin.toml" "$HERE/../examples/plugins/trim-whitespace/plugin.wasm" "$d/plugins/trim/"
+            ;;
         esac
         if [[ "$name" == patches_* ]]; then
             mkdir -p "$d/patches" "$ROOT/third"
@@ -609,6 +614,31 @@ PY
                 printf -- '---\ntitle: "%s"\nauthor: "%s"\n---\n# One\n\nText.\n' "$t" "$a" >"$d/$t.md"
                 "$CLI" --library "$d/lib" library add "$d/$t.md" >/dev/null 2>&1
             done
+            ;;
+        pain_health)
+            # a book with a small cover whose file was damaged without its date or size changing
+            python3 - "$d" <<'PY'
+import struct, sys, zlib
+d = sys.argv[1]
+w, h = 150, 220
+raw = b"".join(b"\x00" + b"\x30\x60\xc0" * w for _ in range(h))
+def chunk(t, x):
+    c = struct.pack(">I", len(x)) + t + x
+    return c + struct.pack(">I", zlib.crc32(t + x) & 0xFFFFFFFF)
+open(d + "/small.png", "wb").write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+PY
+            "$CLI" convert "$ROOT/src/second.md" "$d/damaged.epub" --title "Damaged Tale" --author "Worn Writer" --cover "$d/small.png" >/dev/null 2>&1
+            "$CLI" --library "$d/lib" library add "$d/damaged.epub" >/dev/null 2>&1
+            "$CLI" --library "$d/lib" library fixity >/dev/null 2>&1
+            python3 - "$d/lib" <<'PY'
+import glob, os, sys
+f = [p for p in glob.glob(sys.argv[1] + "/*/*/*.epub") if "Damaged" in p][0]
+st = os.stat(f)
+b = bytearray(open(f, "rb").read())
+b[len(b) // 2] ^= 0xFF
+open(f, "wb").write(b)
+os.utime(f, ns=(st.st_atime_ns, st.st_mtime_ns))
+PY
             ;;
         cat_trackers)
             for pair in "Dune|Frank Herbert" "Emma|Jane Austen"; do
@@ -768,6 +798,9 @@ z.close()
 PY
         fi
         # passwords go to an in-memory keyring in the tests; one scenario pretends there is none
+        lang=en bsize=
+        [[ "$name" =~ _([0-9]+x[0-9]+)(_de)?$ ]] && bsize=${BASH_REMATCH[1]}
+        [[ "$name" == *_de ]] && lang=de
         srccache=0 # the canned answers of the tests are not cached unless a scenario asks
         [ "$name" = cat_cache ] && srccache=1
         sec=memory
@@ -780,7 +813,7 @@ PY
             if [ -n "${dictauto-off}" ]; then export BOOKX_DICT_AUTO=${dictauto-off}; fi
             [ -n "${dictcat:-}" ] && export BOOKX_DICT_CATALOG=$dictcat
             BOOKX_HUNSPELL_USER=$d/userdicts BOOKX_SMTP_PORT=$(cat "$d/smtp-port" 2>/dev/null) GDK_BACKEND=broadway BROADWAY_DISPLAY=":$disp" XDG_CONFIG_HOME=$d/cfg XDG_CACHE_HOME=$d/cache \
-                BOOKX_SECRETS=$sec BOOKX_READWISE_URL=$rwurl BOOKX_TTS_MOCK=$ttsdelay BOOKX_TTS_MOCK_DOWNLOAD=$ttsdl BOOKX_TTS_MOCK_ESPEAK=$ttsespeak BOOKX_TTS_PLAYER=$ttsplayer BOOKX_TTS_DIR=$d/tts BOOKX_LIBRARY=$d/lib BOOKX_DICTIONARIES=$dicts BOOKX_DEVICE_ROOTS=$d/mounts BOOKX_SOURCES_MOCK=$d/mock BOOKX_SOURCES_CACHE=$srccache BOOKX_WEB_MOCK=$d/webmock BOOKX_OPDS_MOCK=$d/opdsmock BOOKX_LANG=en BOOKX_PLUGINS=$d/plugins BOOKX_PATCHES=$d/patches BOOKX_DEV_SCRIPT="$PREAMBLE,${script%quit}wait:1200,quit" \
+                BOOKX_SECRETS=$sec BOOKX_READWISE_URL=$rwurl BOOKX_TTS_MOCK=$ttsdelay BOOKX_TTS_MOCK_DOWNLOAD=$ttsdl BOOKX_TTS_MOCK_ESPEAK=$ttsespeak BOOKX_TTS_PLAYER=$ttsplayer BOOKX_TTS_DIR=$d/tts BOOKX_LIBRARY=$d/lib BOOKX_DICTIONARIES=$dicts BOOKX_DEVICE_ROOTS=$d/mounts BOOKX_SOURCES_MOCK=$d/mock BOOKX_SOURCES_CACHE=$srccache BOOKX_WEB_MOCK=$d/webmock BOOKX_OPDS_MOCK=$d/opdsmock BOOKX_LANG=$lang BOOKX_SIZE=$bsize BOOKX_PLUGINS=$d/plugins BOOKX_PATCHES=$d/patches BOOKX_DEV_SCRIPT="$PREAMBLE,${script%quit}wait:1200,quit" \
                 timeout 120 dbus-run-session -- "$BIN" 2>&1 | grep -v 'Gdk-WARNING\|^$\|dbus-daemon\|portal\|fusermount\|fuse init\|bus can.t be made\|Non-compatible\|oo7\|xdg-desktop'
         )
         kill "$bw" 2>/dev/null
@@ -817,7 +850,7 @@ scenario notes 'read:1,wait:2500,reader:select,wait:600,reader:ui-note,wait:400,
     grep -q "typed through the UI" <<<"$LIB"; check "note text is persisted" $?
     has "^autohide: false"; check "popover is non-modal again afterwards" $?'
 
-scenario clean_library 'library:dump,library:select1,wait:600,library:dump,library:selectall,wait:800,library:dump,library:search-toggle,wait:600,library:dump,quit' '
+scenario clean_library 'library:wide,wait:300,library:dump,library:select1,wait:600,library:dump,library:selectall,wait:800,library:dump,library:search-toggle,wait:600,library:dump,quit' '
     L=$(grep -E "^(browse_panel|details_panel|search_bar|selection_bar|banner|title):" <<<"$OUT")
     grep -q "^browse_panel: true" <<<"$L"; check "the sidebar is always there on a wide window" $?
     grep -q "^details_panel: false" <<<"$L"; check "no details panel until a book is selected" $?
@@ -1504,7 +1537,7 @@ scenario device_auto_sync 'library:annotate,library:dump,library:autosync=on,lib
     grep "^device_banner:" <<<"$OUT" | tail -1 | grep -q "revealed=false"; check "no banner is shown when automatic sync is on" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
-scenario details_panel 'library:dump,library:select1,wait:800,library:dump,library:selectall,wait:800,library:dump,library:unselect,wait:800,library:dump,library:select1,wait:800,library:dump,quit' '
+scenario details_panel 'library:wide,wait:300,library:dump,library:select1,wait:800,library:dump,library:selectall,wait:800,library:dump,library:unselect,wait:800,library:dump,library:select1,wait:800,library:dump,quit' '
     P=$(grep "^details_panel:" <<<"$OUT")
     [ "$(sed -n 1p <<<"$P")" = "details_panel: false" ]; check "the panel starts closed" $?
     [ "$(sed -n 2p <<<"$P")" = "details_panel: true" ]; check "selecting a book opens the details panel by itself" $?
@@ -1548,7 +1581,7 @@ scenario selection_clicks 'library:selectall,wait:200,library:selection,library:
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
 # enhancement 24: the cover tiles keep their size when a panel opens or the window gets narrower; the grid reflows
-scenario grid_reflow 'library:grid,wait:800,library:tiles,library:sidebar-toggle,wait:1000,library:tiles,library:sidebar-toggle,wait:1000,library:tiles,library:select1,wait:800,library:tiles,library:unselect,wait:800,library:tiles,library:narrow,wait:800,library:tiles,library:wide,wait:600,library:tiles,quit' '
+scenario grid_reflow_1400x900 'library:grid,wait:800,library:tiles,library:sidebar-toggle,wait:1000,library:tiles,library:sidebar-toggle,wait:1000,library:tiles,library:select1,wait:800,library:tiles,library:unselect,wait:800,library:tiles,library:narrow,wait:800,library:tiles,library:wide,wait:600,library:tiles,quit' '
     T=$(grep "^tiles:" <<<"$OUT")
     size() { sed -n "$1p" <<<"$T" | sed "s/.*size=\([0-9x]*\) .*/\1/"; }
     cols() { sed -n "$1p" <<<"$T" | sed "s/.*cols=\([0-9]*\) .*/\1/"; }
@@ -2686,12 +2719,12 @@ scenario prefs_search 'prefs:,wait:800,palette:open,wait:600,palette:type=sync,w
 
 scenario prefs_sidebar 'prefs:,wait:900,prefs:dump,prefs:search=hyphen,wait:400,prefs:dump,prefs:search=mail server,wait:400,prefs:dump,prefs:search=sync,wait:400,prefs:dump,prefs:search=zzqq,wait:400,prefs:dump,prefs:search=,wait:400,prefs:dump,prefs:pick=Patches,wait:300,prefs:dump,quit' '
     P=$(grep "^prefs: query" <<<"$OUT")
-    sed -n 1p <<<"$P" | grep -q "sections=General|Library|Reading|Devices and Sharing|E-mail|Sync|Extensions|Patches.* selected=General"; check "Preferences lists its sections in the sidebar, General first" $?
+    sed -n 1p <<<"$P" | grep -q "sections=General|Library|Reading|Devices and Sharing|Editor|E-mail|Sync|Extensions|Patches.* selected=General"; check "Preferences lists its sections in the sidebar, General first" $?
     sed -n 2p <<<"$P" | grep -q "sections=Reading selected=Reading hits=[1-9]"; check "searching filters the sidebar to the matching section, selects it and highlights the hit" $?
-    sed -n 3p <<<"$P" | grep -q "sections=E-mail selected=E-mail"; check "a search finds a row of another section" $?
-    sed -n 4p <<<"$P" | grep -q "sections=.*Sync selected"; check "the search also matches section titles" $?
+    sed -n 3p <<<"$P" | grep -q "sections=E-mail.* selected=E-mail"; check "a search finds a row of another section" $?
+    sed -n 4p <<<"$P" | grep -q "sections=.*Sync.* selected"; check "the search also matches section titles" $?
     sed -n 5p <<<"$P" | grep -q "empty=true"; check "nonsense shows the empty state" $?
-    sed -n 6p <<<"$P" | grep -q "sections=General|Library|Reading|Devices and Sharing|E-mail|Sync|Extensions|Patches.* selected=.* hits=0"; check "clearing the search brings every section back" $?
+    sed -n 6p <<<"$P" | grep -q "sections=General|Library|Reading|Devices and Sharing|Editor|E-mail|Sync|Extensions|Patches.* selected=.* hits=0"; check "clearing the search brings every section back" $?
     sed -n 7p <<<"$P" | grep -q "selected=Patches"; check "a section can be picked" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no GTK warnings" $?'
 
@@ -2930,9 +2963,14 @@ scenario language 'library:language=es,library:menus-tr,library:opds=open,wait:5
 . "$HERE/ui-tests-editor-preview.sh"
 . "$HERE/ui-tests-pdf.sh"
 . "$HERE/ui-tests-editor-tools.sh"
+. "$HERE/ui-tests-ed-xl.sh"
+. "$HERE/ui-tests-editor-struct.sh"
+. "$HERE/ui-tests-editor-prefs.sh"
+. "$HERE/ui-tests-editor-code.sh"
 . "$HERE/ui-tests-ux-gaps.sh"
 . "$HERE/ui-tests-reader-ux.sh"
 . "$HERE/ui-tests-dictionaries.sh"
+. "$HERE/ui-tests-pain.sh"
 . "$HERE/ui-tests-i18n.sh"
 
 

@@ -39,6 +39,14 @@ You never need the mouse:
 
 The reading area shows a visible focus ring when you use the keyboard.
 
+## Reading ruler
+
+*Reading Ruler* (main menu of the reader, or the command palette) dims the page except for a band of one to five
+lines, which keeps your eyes on the line you read. The band follows the pointer; ++alt+up++ and ++alt+down++ move it one
+line at a time (the first press turns it on). *Preferences → Reading → Reading ruler* sets the number of lines and how
+strongly the rest is dimmed (20 to 90 percent) and whether the ruler is on. It is off by default and only draws over the
+page: it does not change the text, the pages or what a screen reader hears.
+
 ## Command palette
 
 ++ctrl+k++ or ++ctrl+shift+p++ in the library and in the reader (in the book editor only ++ctrl+shift+p++) opens the command palette:

@@ -942,8 +942,7 @@ pub fn archive_from_folder(dir: &std::path::Path) -> Result<bookx_core::archive:
 /// network is set.
 pub fn network_allowed() -> bool {
     std::env::var_os("BOOKX_EDITOR_NET_MOCK").is_some()
-        || (std::env::var("NET").map(|v| v != "0").unwrap_or(true)
-            && std::env::var_os("BOOKX_OFFLINE").is_none())
+        || (std::env::var("NET").map(|v| v != "0").unwrap_or(true) && !crate::privacy::is_offline())
 }
 
 #[cfg(test)]

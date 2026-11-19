@@ -321,6 +321,7 @@ impl Editor {
         self.w.find_entry.set_placeholder_text(Some(match mode {
             Mode::Tag => "Tag query, e.g. img[alt=\"\"]",
             Mode::Function => "Regular expression (the function decides the replacement)",
+            Mode::Fuzzy => "Find (small typing mistakes still match)",
             _ => "Find",
         }));
         if mode == Mode::Function {
@@ -426,7 +427,7 @@ impl Editor {
     /// Tag search and "ignore markup" are highlighted by the editor itself.
     pub(super) fn own_highlight(&self) -> bool {
         let st = self.settings();
-        !st.find.is_empty() && (st.mode == Mode::Tag || st.ignore_markup)
+        !st.find.is_empty() && (matches!(st.mode, Mode::Tag | Mode::Fuzzy) || st.ignore_markup)
     }
 
     pub(super) fn update_own_highlight(&self) {
@@ -667,7 +668,29 @@ impl Editor {
                 .as_ref()
                 .is_some_and(|s| s.recognized(w))
         }));
+        env.functions = sfn::merged(&self.w.sx.state.borrow().user_fns);
         env
+    }
+
+    /// Where the `data` of a persistent function is kept for this library.
+    fn fn_data_file(&self, name: &str) -> Option<std::path::PathBuf> {
+        let dir = sfn::data_dir()?;
+        let lib = self
+            .shared
+            .cfg
+            .borrow()
+            .library_dir
+            .to_string_lossy()
+            .to_string();
+        Some(sfn::data_file(&dir, &lib, name))
+    }
+
+    fn save_fn_data(&self, r: &Runner) {
+        if r.func.persistent_data {
+            if let Some(p) = self.fn_data_file(&r.func.name) {
+                let _ = sfn::save_data(&p, &r.data_map());
+            }
+        }
     }
 
     /// A runner for the function chosen in the bar.
@@ -682,7 +705,13 @@ impl Editor {
             .sx
             .function(&name)
             .ok_or_else(|| trf("The function “{}” does not exist", &[&name]))?;
-        Runner::new(&f, &self.fn_env()).map_err(|e| e.to_string())
+        let mut r = Runner::new(&f, &self.fn_env()).map_err(|e| e.to_string())?;
+        if f.persistent_data {
+            if let Some(p) = self.fn_data_file(&f.name) {
+                r.set_data(sfn::load_data(&p));
+            }
+        }
+        Ok(r)
     }
 
     /// The result dialog after a function run: what it printed, what the last call returned.
@@ -712,6 +741,12 @@ impl Editor {
             }
         }
         self.w.sx.state.borrow_mut().last_report = text.clone();
+        self.save_fn_data(r);
+        if r.func.append_final_output_to_marked {
+            if let Some(f) = &final_output {
+                self.append_final_to_marked(f);
+            }
+        }
         if r.func.suppress_result_dialog {
             return;
         }
@@ -781,6 +816,7 @@ impl Editor {
                     "regex" => Mode::Regex,
                     "function" => Mode::Function,
                     "tag" => Mode::Tag,
+                    "fuzzy" => Mode::Fuzzy,
                     _ => Mode::Normal,
                 };
                 self.w.find_rev.set_reveal_child(true);

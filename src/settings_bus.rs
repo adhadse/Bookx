@@ -53,6 +53,12 @@ impl Drop for Subscription {
 
 thread_local! {
     static FOOTER: Rc<Bus> = Rc::new(Bus::default());
+    static EDITOR: Rc<Bus> = Rc::new(Bus::default());
+}
+
+/// The editor settings (`editor_prefs`) were changed; every open editor window applies them.
+pub fn editor() -> Rc<Bus> {
+    EDITOR.with(|b| b.clone())
 }
 
 /// The footer statistics were changed (in the common settings or in a book's own).

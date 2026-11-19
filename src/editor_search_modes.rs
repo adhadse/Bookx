@@ -17,10 +17,18 @@ pub enum Mode {
     Regex,
     Function,
     Tag,
+    /// Approximate matches that tolerate typing mistakes (CE-424).
+    Fuzzy,
 }
 
 impl Mode {
-    pub const ALL: [Mode; 4] = [Mode::Normal, Mode::Regex, Mode::Function, Mode::Tag];
+    pub const ALL: [Mode; 5] = [
+        Mode::Normal,
+        Mode::Regex,
+        Mode::Function,
+        Mode::Tag,
+        Mode::Fuzzy,
+    ];
 
     pub fn label(self) -> &'static str {
         match self {
@@ -28,6 +36,7 @@ impl Mode {
             Mode::Regex => "Regex",
             Mode::Function => "Function",
             Mode::Tag => "Tag",
+            Mode::Fuzzy => "Fuzzy",
         }
     }
 
@@ -69,6 +78,11 @@ pub enum Engine {
     Markup(Pattern),
     Function(Pattern),
     Tag(TagQuery),
+    Fuzzy {
+        query: String,
+        case_sensitive: bool,
+        whole_word: bool,
+    },
 }
 
 /// What Replace All needs besides the text: the function runner of function mode and the file name.
@@ -94,6 +108,11 @@ impl Engine {
             Mode::Tag => tag_search::parse(&s.find)
                 .map(Engine::Tag)
                 .map_err(|e| format!("Tag query: {e}")),
+            Mode::Fuzzy => Ok(Engine::Fuzzy {
+                query: s.find.clone(),
+                case_sensitive: s.case_sensitive,
+                whole_word: s.whole_word,
+            }),
             Mode::Function => Pattern::new(&s.find, opts)
                 .map(Engine::Function)
                 .map_err(|_| tr("Invalid regular expression")),
@@ -121,6 +140,20 @@ impl Engine {
                 .into_iter()
                 .filter(|m| ranges.is_none_or(|rs| rs.iter().any(|r| m.0 >= r.0 && m.1 <= r.1)))
                 .collect(),
+            Engine::Fuzzy {
+                query,
+                case_sensitive,
+                whole_word,
+            } => crate::editor_search_fuzzy::find_all(
+                text,
+                query,
+                None,
+                *case_sensitive,
+                *whole_word,
+            )
+            .into_iter()
+            .filter(|m| ranges.is_none_or(|rs| rs.iter().any(|r| m.0 >= r.0 && m.1 <= r.1)))
+            .collect(),
             Engine::Tag(q) => q
                 .find(text)
                 .into_iter()
@@ -171,6 +204,10 @@ impl Engine {
                         search_ignore::apply_edits_range(text, &edits, start, end)
                     })
             }
+            Engine::Fuzzy { .. } => self
+                .find_all(text, None)
+                .contains(&(start, end))
+                .then(|| replacement.to_string()),
             Engine::Tag(q) => {
                 let edit = tag_search::parse_edit(replacement).ok()?;
                 let tag = text.get(start..end)?;
@@ -218,6 +255,18 @@ impl Engine {
                 runner
                     .run_text(p, text, ranges, ctx.file)
                     .map_err(|e| e.to_string())
+            }
+            Engine::Fuzzy { .. } => {
+                let hits = self.find_all(text, ranges);
+                let mut out = String::with_capacity(text.len());
+                let mut at = 0;
+                for (a, b) in &hits {
+                    out.push_str(&text[at..*a]);
+                    out.push_str(replacement);
+                    at = *b;
+                }
+                out.push_str(&text[at..]);
+                Ok((out, hits.len()))
             }
             Engine::Tag(q) => {
                 if ranges.is_some() {
@@ -372,6 +421,30 @@ mod tests {
         st.ignore_markup = true;
         let m = Engine::new(&st).unwrap();
         assert_eq!(m.find_at("<p>ab</p>", 0), Some((4, 5)));
+    }
+
+    #[test]
+    fn fuzzy_mode_finds_and_replaces_near_matches() {
+        let e = Engine::new(&s("receive", Mode::Fuzzy)).unwrap();
+        let src = "<p>We recieve and receive.</p>";
+        let hits = e.find_all(src, None);
+        assert_eq!(hits.len(), 2);
+        assert_eq!(&src[hits[0].0..hits[0].1], "recieve");
+        let (out, n) = e
+            .replace_all(src, "get", None, &mut RunCtx::default())
+            .unwrap();
+        assert_eq!((out.as_str(), n), ("<p>We get and get.</p>", 2));
+        assert_eq!(
+            e.replacement_for(src, hits[0].0, hits[0].1, "get")
+                .as_deref(),
+            Some("get")
+        );
+        assert_eq!(e.replacement_for(src, 0, 3, "get"), None);
+        // marked ranges limit the matches
+        let inside = [(0, 14)];
+        assert_eq!(e.find_all(src, Some(&inside)).len(), 1);
+        assert!(!Mode::Fuzzy.is_regex());
+        assert_eq!(Mode::from_index(4), Mode::Fuzzy);
     }
 
     #[test]

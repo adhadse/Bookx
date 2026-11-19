@@ -21,8 +21,11 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
-/// The only ABI version this host speaks.
+/// The base ABI version (all kinds except `editor-action`).
 pub const API_VERSION: u32 = 1;
+/// ABI v2 (additive): adds the `editor_call` host import and the `editor-action` kind. v1 plugins
+/// keep working unchanged.
+pub const API_VERSION_EDITOR: u32 = 2;
 pub const DEFAULT_MEMORY_PAGES: u32 = 512;
 pub const MAX_MEMORY_PAGES: u32 = 4096;
 pub const DEFAULT_FUEL: u64 = 100_000_000;
@@ -30,6 +33,8 @@ pub const MAX_FUEL: u64 = 10_000_000_000;
 pub const DEFAULT_TIMEOUT_MS: u64 = 5_000;
 pub const MAX_TIMEOUT_MS: u64 = 60_000;
 /// Upper bound on the size of a manifest file we are willing to parse.
+/// Most actions one plugin may declare.
+pub const MAX_ACTIONS: usize = 32;
 pub const MAX_MANIFEST_BYTES: u64 = 64 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -40,6 +45,8 @@ pub enum PluginKind {
     Transform,
     FormatWriter,
     Device,
+    /// ABI v2: acts on the book open in the editor (see [`crate::editor`]).
+    EditorAction,
 }
 
 impl PluginKind {
@@ -50,6 +57,7 @@ impl PluginKind {
             PluginKind::Transform => "transform",
             PluginKind::FormatWriter => "format-writer",
             PluginKind::Device => "device",
+            PluginKind::EditorAction => "editor-action",
         }
     }
 }
@@ -59,11 +67,20 @@ impl PluginKind {
 pub enum Permission {
     /// `http_get` may contact this exact host name (lower case, no port, no wildcard).
     Network(String),
+    /// `editor.read`: the editor host calls that read the open book (files, metadata, selection).
+    EditorRead,
+    /// `editor.write`: the editor host calls that change the open book (always inside a checkpoint).
+    EditorWrite,
 }
 
 impl Permission {
     /// Parses `network:<host>`. `fs:read` / `fs:write` and everything else are rejected.
     pub fn parse(s: &str) -> Result<Permission> {
+        match s {
+            "editor.read" => return Ok(Permission::EditorRead),
+            "editor.write" => return Ok(Permission::EditorWrite),
+            _ => {}
+        }
         if s == "fs:read" || s == "fs:write" || s.starts_with("fs:") {
             bail!("permission `{s}` is never granted in API v1");
         }
@@ -92,6 +109,8 @@ impl Permission {
     pub fn to_manifest_string(&self) -> String {
         match self {
             Permission::Network(h) => format!("network:{h}"),
+            Permission::EditorRead => "editor.read".to_string(),
+            Permission::EditorWrite => "editor.write".to_string(),
         }
     }
 }
@@ -138,6 +157,29 @@ struct RawManifest {
     fuel: Option<u64>,
     #[serde(default)]
     timeout_ms: Option<u64>,
+    #[serde(default, rename = "action")]
+    actions: Vec<RawAction>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawAction {
+    id: String,
+    label: String,
+    #[serde(default)]
+    group: Option<String>,
+    #[serde(default)]
+    shortcut: Option<String>,
+}
+
+/// One menu entry / palette command an `editor-action` plugin declares (`[[action]]`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Action {
+    pub id: String,
+    pub label: String,
+    pub group: String,
+    /// A suggestion only: the user decides whether to bind it (`<Ctrl><Shift>x` style).
+    pub shortcut: Option<String>,
 }
 
 /// A validated manifest.
@@ -153,6 +195,8 @@ pub struct Manifest {
     pub extensions: Vec<String>,
     pub extension: Option<String>,
     pub limits: Limits,
+    pub api_version: u32,
+    pub actions: Vec<Action>,
 }
 
 fn valid_id(id: &str) -> bool {
@@ -212,9 +256,9 @@ impl Manifest {
                 raw.version
             );
         }
-        if raw.api_version != API_VERSION {
+        if raw.api_version != API_VERSION && raw.api_version != API_VERSION_EDITOR {
             bail!(
-                "api_version {} is not supported (this host speaks {API_VERSION})",
+                "api_version {} is not supported (this host speaks {API_VERSION} and {API_VERSION_EDITOR})",
                 raw.api_version
             );
         }
@@ -224,6 +268,7 @@ impl Manifest {
             "transform" => PluginKind::Transform,
             "format-writer" => PluginKind::FormatWriter,
             "device" => PluginKind::Device,
+            "editor-action" => PluginKind::EditorAction,
             other => bail!("unknown kind `{other}`"),
         };
         let wasm = raw.wasm.unwrap_or_else(|| "plugin.wasm".to_string());
@@ -236,6 +281,61 @@ impl Manifest {
             if !permissions.contains(&perm) {
                 permissions.push(perm);
             }
+        }
+        if kind == PluginKind::EditorAction && raw.api_version != API_VERSION_EDITOR {
+            bail!("an editor-action plugin needs api_version = {API_VERSION_EDITOR}");
+        }
+        if kind != PluginKind::EditorAction {
+            if permissions
+                .iter()
+                .any(|p| matches!(p, Permission::EditorRead | Permission::EditorWrite))
+            {
+                bail!("`editor.*` permissions are only for kind = \"editor-action\"");
+            }
+            if !raw.actions.is_empty() {
+                bail!("`[[action]]` is only for kind = \"editor-action\"");
+            }
+        } else {
+            if permissions
+                .iter()
+                .any(|p| matches!(p, Permission::Network(_)))
+            {
+                bail!("an editor-action plugin cannot hold `network:` permissions");
+            }
+            if raw.actions.is_empty() {
+                bail!("an editor-action plugin needs at least one `[[action]]`");
+            }
+        }
+        let mut actions: Vec<Action> = Vec::new();
+        if raw.actions.len() > MAX_ACTIONS {
+            bail!("more than {MAX_ACTIONS} actions");
+        }
+        for a in raw.actions {
+            if !valid_id(&a.id) {
+                bail!("invalid action id `{}`", a.id);
+            }
+            if actions.iter().any(|x| x.id == a.id) {
+                bail!("duplicate action id `{}`", a.id);
+            }
+            let label = a.label.trim().to_string();
+            if label.is_empty() || label.len() > 80 || label.chars().any(char::is_control) {
+                bail!("action `{}`: the label must be 1..=80 characters", a.id);
+            }
+            let group = a.group.unwrap_or_default().trim().to_string();
+            if group.len() > 40 || group.chars().any(char::is_control) {
+                bail!("action `{}`: the group is too long", a.id);
+            }
+            if let Some(sc) = &a.shortcut {
+                if sc.len() > 40 || !sc.chars().all(|c| c.is_ascii_graphic()) {
+                    bail!("action `{}`: invalid shortcut `{sc}`", a.id);
+                }
+            }
+            actions.push(Action {
+                id: a.id,
+                label,
+                group,
+                shortcut: a.shortcut,
+            });
         }
         let mut extensions = Vec::new();
         for e in &raw.extensions {
@@ -296,6 +396,8 @@ impl Manifest {
             extensions,
             extension,
             limits,
+            api_version: raw.api_version,
+            actions,
         })
     }
 
@@ -324,7 +426,10 @@ impl Manifest {
     pub fn allowed_hosts(&self) -> Vec<&str> {
         self.permissions
             .iter()
-            .map(|Permission::Network(h)| h.as_str())
+            .filter_map(|p| match p {
+                Permission::Network(h) => Some(h.as_str()),
+                _ => None,
+            })
             .collect()
     }
 }
@@ -421,13 +526,66 @@ timeout_ms = 7
 
     #[test]
     fn api_version_mismatch_is_rejected() {
-        for v in [0, 2, 99] {
+        for v in [0, 3, 99] {
             let e = err(&MIN.replace("api_version = 1", &format!("api_version = {v}")));
             assert!(
                 e.contains(&format!("api_version {v} is not supported")),
                 "{e}"
             );
         }
+    }
+
+    const EDITOR: &str = r#"
+id = "a.ed"
+name = "Ed"
+version = "1.0"
+api_version = 2
+kind = "editor-action"
+permissions = ["editor.read", "editor.write"]
+
+[[action]]
+id = "trim"
+label = "Trim"
+group = "Whitespace"
+shortcut = "<Ctrl><Shift>t"
+"#;
+
+    #[test]
+    fn editor_action_manifest() {
+        let m = Manifest::parse(EDITOR).unwrap();
+        assert_eq!(m.kind, PluginKind::EditorAction);
+        assert_eq!(m.api_version, 2);
+        assert_eq!(
+            m.permissions,
+            vec![Permission::EditorRead, Permission::EditorWrite]
+        );
+        assert_eq!(m.actions[0].label, "Trim");
+        assert_eq!(m.actions[0].shortcut.as_deref(), Some("<Ctrl><Shift>t"));
+        assert!(m.allowed_hosts().is_empty());
+        assert_eq!(Permission::EditorWrite.to_manifest_string(), "editor.write");
+    }
+
+    #[test]
+    fn editor_action_rules() {
+        let e = err(&EDITOR.replace("api_version = 2", "api_version = 1"));
+        assert!(e.contains("needs api_version = 2"), "{e}");
+        let e = err(&EDITOR.replace("[[action]]", "[[nothing]]"));
+        assert!(e.contains("invalid TOML"), "{e}");
+        let no_action = EDITOR.split("[[action]]").next().unwrap();
+        assert!(err(no_action).contains("at least one"));
+        let e = err(&EDITOR.replace("\"editor.read\"", "\"network:x.org\""));
+        assert!(e.contains("network"), "{e}");
+        let dup = format!("{EDITOR}\n[[action]]\nid = \"trim\"\nlabel = \"x\"\n");
+        assert!(err(&dup).contains("duplicate action id"));
+        let e = err(&EDITOR.replace("label = \"Trim\"", "label = \"\""));
+        assert!(e.contains("label"), "{e}");
+        // editor permissions and actions are refused for other kinds
+        let e = err(&with("permissions = [\"editor.write\"]"));
+        assert!(e.contains("only for kind"), "{e}");
+        let e = err(&with("[[action]]\nid = \"a\"\nlabel = \"A\""));
+        assert!(e.contains("only for kind"), "{e}");
+        // v2 is fine for a transform (additive), v1 plugins unchanged
+        assert!(Manifest::parse(&MIN.replace("api_version = 1", "api_version = 2")).is_ok());
     }
 
     #[test]

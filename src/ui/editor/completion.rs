@@ -23,6 +23,8 @@ pub struct Data {
     pub words: Vec<String>,
     /// Ids of files whose text differs from the archive (the buffers being edited).
     pub edited_ids: HashMap<String, Vec<String>>,
+    /// `(id, first words of its text)` of the files being edited (CE-346).
+    pub edited_snips: HashMap<String, Vec<(String, String)>>,
     pub book: Rc<RefCell<OpenBook>>,
     pub snippets: Vec<Snippet>,
     pub region: Rc<SnippetRegion>,
@@ -37,7 +39,7 @@ impl Data {
         crate::core::util::extension(&self.current) == "css"
     }
 
-    fn ids_of(&self, path: &str) -> Vec<String> {
+    pub fn ids_of(&self, path: &str) -> Vec<String> {
         if let Some(v) = self.edited_ids.get(path) {
             return v.clone();
         }
@@ -71,6 +73,12 @@ impl SnippetRegion {
     }
 
     fn set(&self, buf: &gtk::TextBuffer, start: gtk::TextMark, end: gtk::TextMark) {
+        self.reset(buf);
+        *self.marks.borrow_mut() = Some((start, end));
+    }
+
+    /// Forgets the last expansion (the text was replaced as a whole).
+    pub fn reset(&self, buf: &gtk::TextBuffer) {
         if let Some((a, b)) = self.marks.borrow_mut().take() {
             if !a.is_deleted() {
                 buf.delete_mark(&a);
@@ -79,59 +87,76 @@ impl SnippetRegion {
                 buf.delete_mark(&b);
             }
         }
-        *self.marks.borrow_mut() = Some((start, end));
     }
 }
 
-/// Inserts the snippet at the caret, replacing the `trigger_len` characters before it.
+/// Inserts the snippet at the caret, replacing the `trigger_len` characters before it. Text that
+/// is selected goes into the snippet's `${N*}` stop (and is replaced by the snippet); a snippet
+/// without such a stop is inserted at the caret and leaves the selection alone.
 pub fn expand(view: &sv::View, region: &SnippetRegion, s: &Snippet, trigger_len: i32) -> bool {
     let buf = view.buffer();
-    let Ok(snippet) = sv::Snippet::new_parsed(&s.body) else {
+    let star = snip::has_selection_placeholder(&s.body);
+    let sel = buf.selection_bounds().filter(|_| star);
+    let selected = sel
+        .map(|(a, b)| buf.text(&a, &b, false).to_string())
+        .unwrap_or_default();
+    let body = snip::with_selection(&s.body, &selected);
+    let Ok(snippet) = sv::Snippet::new_parsed(&body) else {
         return false;
     };
     snippet.set_name(&s.name);
     buf.begin_user_action();
-    let mut end = buf.iter_at_mark(&buf.get_insert());
-    let mut start = end;
+    let (mut start, mut end) = match sel {
+        Some((a, b)) => (a, b),
+        None => {
+            let c = buf.iter_at_mark(&buf.get_insert());
+            (c, c)
+        }
+    };
     start.backward_chars(trigger_len);
-    if trigger_len > 0 {
+    if start != end {
         buf.delete(&mut start, &mut end);
     }
     let mut at = buf.iter_at_mark(&buf.get_insert());
     let m_start = gtk::TextMark::new(None, true);
-    let m_end = gtk::TextMark::new(None, false);
     buf.add_mark(&m_start, &at);
-    buf.add_mark(&m_end, &at);
+    let (from, count) = (at.offset(), buf.char_count());
     view.push_snippet(&snippet, Some(&mut at));
+    // the end of the region stays put when text is typed right after the snippet (a mark with
+    // right gravity would grow, and Tab would not expand the next trigger typed there)
+    let end = from + (buf.char_count() - count).max(0);
+    let m_end = gtk::TextMark::new(None, true);
+    buf.add_mark(&m_end, &buf.iter_at_offset(end));
     buf.end_user_action();
     region.set(&buf, m_start, m_end);
     true
 }
 
-/// Expands the snippet whose trigger stands before the caret. `false` when none does.
+/// Expands the snippet whose trigger stands before the caret (or before the selection, which then
+/// fills the snippet's `${N*}` stop). `false` when none does.
 pub fn expand_at_caret(view: &sv::View, data: &SharedData) -> bool {
     let buf = view.buffer();
-    if buf.selection_bounds().is_some() {
-        return false;
-    }
     let d = data.borrow();
     if d.region.active(&buf) {
         return false;
     }
-    let cur = buf.iter_at_mark(&buf.get_insert());
+    let selection = buf.selection_bounds();
+    let cur = selection
+        .map(|(a, _)| a)
+        .unwrap_or_else(|| buf.iter_at_mark(&buf.get_insert()));
     let mut from = cur;
     from.backward_chars(40);
     let before = buf.text(&from, &cur, false);
-    let word = snip::trailing_trigger(&before);
-    if word.is_empty() {
-        return false;
-    }
-    let Some(s) = snip::find(&d.snippets, word, d.is_css()).cloned() else {
+    let Some((s, trigger)) = snip::find_for(&d.snippets, &before, d.is_css()) else {
         return false;
     };
+    if selection.is_some() && !snip::has_selection_placeholder(&s.body) {
+        return false;
+    }
+    let s = s.clone();
     let region = d.region.clone();
     drop(d);
-    expand(view, &region, &s, word.chars().count() as i32)
+    expand(view, &region, &s, trigger.chars().count() as i32)
 }
 
 // ---- proposal ------------------------------------------------------------------
@@ -144,6 +169,8 @@ pub struct Item {
     pub kind: &'static str,
     pub replace_len: usize,
     pub snippet: Option<Snippet>,
+    /// Text shown next to the label (anchors: the start of the target text).
+    pub detail: Option<String>,
 }
 
 mod proposal_imp {
@@ -239,7 +266,11 @@ mod provider_imp {
             };
             let it = p.item();
             match cell.column() {
-                sv::CompletionColumn::TypedText => cell.set_text(Some(&it.label)),
+                sv::CompletionColumn::TypedText => match &it.detail {
+                    // anchors show the start of the text they point at
+                    Some(t) => cell.set_text(Some(&format!("{}  —  {t}", it.label))),
+                    None => cell.set_text(Some(&it.label)),
+                },
                 sv::CompletionColumn::Comment => cell.set_text(Some(it.kind)),
                 sv::CompletionColumn::Icon => cell.set_icon_name(match it.kind {
                     "tag" => "text-html-symbolic",
@@ -312,12 +343,28 @@ mod provider_imp {
 /// What the popup offers when `before` (the text up to the caret) has just been typed.
 pub fn proposals(d: &Data, before: &str) -> Vec<Item> {
     let ids = |p: &str| d.ids_of(p);
+    let cache: RefCell<HashMap<String, Vec<(String, String)>>> = RefCell::default();
+    let snippet = |file: &str, id: &str| -> Option<String> {
+        let mut c = cache.borrow_mut();
+        let list = c.entry(file.to_string()).or_insert_with(|| {
+            d.edited_snips.get(file).cloned().unwrap_or_else(|| {
+                d.book
+                    .borrow()
+                    .archive
+                    .get_string(file)
+                    .map(|t| bookx_editing::code_marks::anchor_snippets(&t))
+                    .unwrap_or_default()
+            })
+        });
+        list.iter().find(|(i, _)| i == id).map(|(_, t)| t.clone())
+    };
     let cd = ec::Data {
         current: &d.current,
         files: &d.files,
         ids_of: &ids,
         classes: &d.classes,
         words: &d.words,
+        snippet_of: &snippet,
     };
     let ctx = ec::context(before, d.is_css());
     let replace_len = ec::prefix_len(&ctx);
@@ -354,6 +401,7 @@ fn item_of(c: &Candidate, replace_len: usize) -> Item {
         kind: c.kind.label(),
         replace_len,
         snippet: None,
+        detail: c.detail.clone(),
     }
 }
 

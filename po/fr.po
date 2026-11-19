@@ -581,3 +581,18 @@ msgstr[1] "{} problèmes"
 
 msgid "Sync scrolling both ways: scrolling the preview also scrolls the code (the code always moves the preview)"
 msgstr "Défilement synchronisé dans les deux sens : faire défiler l'aperçu fait aussi défiler le code (le code déplace toujours l'aperçu)"
+
+msgid "Could not start the program"
+msgstr "Impossible de lancer le programme"
+
+msgid "Searching the installed fonts"
+msgstr "Recherche des polices installées"
+
+msgid "Still searching the installed fonts, try again in a moment"
+msgstr "La recherche des polices installées se poursuit ; réessayez dans un instant"
+
+msgid "Searching the installed fonts: {} of {}"
+msgstr "Recherche des polices installées : {} sur {}"
+
+msgid "Colour scheme preview"
+msgstr "Aperçu du jeu de couleurs"

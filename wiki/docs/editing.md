@@ -63,8 +63,10 @@ Files bigger than about 700 kB are not checked while typing.
 Completion pops up while you type, or press ++ctrl+space++.
 
 - after `<`: tag names; inside a tag: attribute names for that tag (picking one adds `=""` and puts the caret inside);
-- in `href`, `src`, `poster` and CSS `url()`: the files of the book, with the relative path worked out for you; after
-  `#` (or `file.xhtml#`): the ids in that file, including ones you typed and have not saved;
+- in `href`, `src`, `poster` and CSS `url()`: the files of the book, with the relative path worked out for you. The
+  letters you type only have to appear in order, and word starts count most: `c2` finds `chapter-2.xhtml`, `s.css`
+  finds `style.css`. After `#` (or `file.xhtml#`): the ids in that file (including ones you typed and have not
+  saved), each with the first words of the text it points at. Press ++tab++ or ++enter++ to take the highlighted one;
 - in `class="…"`: the classes your stylesheets define; in a CSS rule: property names;
 - in text: words from the open file and snippets whose trigger matches.
 
@@ -72,9 +74,42 @@ Completion pops up while you type, or press ++ctrl+space++.
 
 A snippet is a short word that expands into text with tab stops. Type the word and press ++tab++. Tab moves to the next
 stop, `${1:text}` stops hold a default, and the caret ends where `$0` is. Built in: `p` (paragraph), `h` (heading),
-`img`, `link`, `sec` (a section with `epub:type`), `fn` (footnote reference), `aside` (footnote) and, in stylesheets,
-`rule`. Markup menu → **Manage Snippets** adds your own (trigger, files it applies to, text). A snippet of yours with
-the same trigger replaces a built-in one. They are stored as `snippets.json` next to the settings.
+`img`, `link`, `sec` (a section with `epub:type`), `fn` (footnote reference), `aside` (footnote), `Lorem` (three filler
+paragraphs), `<>` (self-closing tag), `<a` (link), `<i` (image), `<<` (any tag) and `<c` (tag with a class) and, in
+stylesheets, `rule`. Triggers may start with `<`: type `<a` and press ++tab++.
+
+**Wrapping the selection.** A stop written `${2*}` (or `${2*:default}`) takes the text that was selected when you expand
+the snippet: select a word, type nothing, and press ++ctrl+j++ (**Insert Snippet**, a searchable list), or type the
+trigger just before the selection and press ++tab++. `p`, `h`, `link`, `<<`, `<c` and `<a` use it. Without a selection
+the stop shows its default.
+
+**In the search fields.** Tab in *Find* or *Replace* expands a trigger there too, as plain text: stops show their
+default and nothing jumps.
+
+Edit menu → **Manage Snippets** adds your own: name, trigger, files it applies to and text. The **Test** box expands the
+snippet in a scratch box (with sample selected text), so you see what you get before saving. The buttons in the title bar
+import and export your snippets as a JSON file to share them. A snippet of yours with the same trigger replaces a
+built-in one. They are stored as `snippets.json` next to the settings. The same dialog lists your **templates for new
+files** (XHTML or CSS; `{title}` is replaced by the name), the ones Files → **New File** offers.
+
+### Editor preferences
+
+**Preferences → Editor** (also *Editor Preferences* in the editor's command palette, ++ctrl+shift+p++) sets
+how the code looks and behaves; every open editor window follows at once.
+
+- **Code**: font and size, tab width, spaces or tabs, line numbers, highlight of the current line, a right margin guide
+  at a column, wrapping, showing spaces and tabs, the overview map.
+- **Colour scheme**: a list of the available schemes with a preview of each, or *Follow light and dark mode*. Your own
+  GtkSourceView schemes (`*.xml`) go into the `styles` folder of the Bookx configuration (the page has a button that
+  opens it) and appear in the list.
+- **Editing**: close tags automatically (typing `>` after `<p` adds `</p>`), suggest completions while typing (or only
+  on ++ctrl+space++), paint colour codes such as `#1a2b3c` in style sheets in that colour, underline misspelled words,
+  turn typed entities into characters.
+- **Preview**: font, smallest text size, whether the preview follows the cursor, whether scrolling the preview scrolls
+  the code.
+
+The cursor's width and blinking follow your desktop settings. Keyboard shortcuts of the editor are under
+**Preferences → Keyboard Shortcuts → Editor**.
 
 ## Files and tabs
 
@@ -114,6 +149,36 @@ Every change that touches the whole book first takes a checkpoint named "Before:
 - Saved searches, search history, and the full description of every mode: see [Search and replace](search-and-replace.md).
 - *Go to line* (++ctrl+l++) and *Mark selected text* (++ctrl+shift+m++).
 
+### Jumping to definitions
+
+Hold ++ctrl++ and click (or press ++f12++, *Go to Definition*, with the caret there):
+
+- a **file name** in `href`, `src`, `poster`, CSS `url()` or `@import` opens that file; with `#anchor` the caret goes to
+  the element that has the id;
+- a **class name** in a page goes to its first rule in the style sheets (the ones the page links come first) and selects
+  it; a **class selector** in a style sheet goes to the first page that uses the class. The same works for `id` and `#id`.
+
+A web address only shows a message; nothing is opened from the editor. Right-click a class name for **Rename Class**:
+type the new name, look at the list of files and changed lines, and press *Rename*. Bookx takes a checkpoint first, then
+renames every use in the pages, the style sheets and `<style>` blocks (whole class names only); each file keeps its own
+undo history. Right-click a tag, an attribute or a CSS property for **Help for …**, which opens the MDN page in your
+browser.
+
+### Underlines and colours
+
+These are drawn while you type and can be switched off in the **View** part of the Markup menu:
+
+- **Invalid markup** has a red squiggle (unclosed or stray tags, duplicate or unquoted attributes, a bare `&`, unbalanced
+  braces in CSS); hover for the reason. Tools → *Check Book* does the full validation.
+- **Link targets** are underlined; a link to a file or anchor that does not exist is underlined in red, with a tooltip.
+- **Colour swatches** sit behind `#rgb`, `rgb()`, `hsl()` and colour names in style sheets, `<style>` blocks and `style`
+  attributes, with black or white text, whichever is easier to read.
+- **Draw Bold and Italic Text** (off by default) draws the text inside `<b>`, `<i>`, `<em>`, `<strong>` and headings
+  that way.
+
+Files over about 1.5 MB are not decorated. **Close Tags When Typing `</`** (on by default) completes the name of the
+open element when you type `</`; typing the rest of the closing tag yourself works as usual.
+
 ## Tag actions
 
 The `<>` button opens the **Markup menu**:
@@ -123,18 +188,26 @@ The `<>` button opens the **Markup menu**:
 | Select to the matching tag | ++ctrl+alt+k++ |
 | Jump to the matching tag | ++ctrl+alt+j++ |
 | Close the open tag | ++ctrl+alt+period++ |
-| Wrap the selection in a tag | ++ctrl+alt+w++ |
-| Remove the surrounding tag | ++ctrl+alt+u++ |
+| Wrap the selection in a tag | ++ctrl+alt+w++ or ++ctrl+less++ |
+| Remove the surrounding tag | ++ctrl+alt+u++ or ++ctrl+greater++ |
+| Split the tag at the caret (a paragraph is cut in two there) | ++ctrl+alt+greater++ |
+| Bold / italic / underline | ++ctrl+b++ / ++ctrl+i++ / ++ctrl+u++ |
+| Strikethrough, superscript, subscript, code | Format submenu; set keys in Preferences |
+| Insert hyperlink / insert image | ++ctrl+k++ / ++ctrl+alt+m++ |
+| Go to definition | ++f12++ or ++ctrl++ + click |
+| Sort CSS rules | menu only |
 | Rename a tag | ++ctrl+alt+r++ |
 | Toggle a comment | ++ctrl+slash++ |
 | Change a block to a paragraph / heading 1-6 | ++ctrl+0++ … ++ctrl+6++ |
 | Change case | menu only |
 
-## Table of contents
-
-The contents editor renames, indents, reorders and links entries, and writes both `toc.ncx` and `nav.xhtml`.
-Selecting an entry opens its file at the anchor. *Generate* builds a contents from the headings (levels 1-6), from
-the links of a contents page, or one entry per file, replacing the current one or adding to it.
+The format actions put the right tag around the selection and take it off again when the selection is exactly that
+element (or inside it: the element is closed and reopened around your selection). A selection that cuts through tags is
+refused with a hint. **Insert Hyperlink** and **Insert Image** open a dialog: type a few letters of a file name to filter
+(abbreviations work), pick an anchor inside a page, set the link text, title or alt text, and read the markup that will be
+inserted before you press *Insert* (++enter++). With the caret inside a link, the dialog changes that link's address
+instead of adding a second one. **Sort CSS Rules** orders the plain rules by selector; at-rules and comments stay with
+their place.
 
 ## Checking the book
 
@@ -202,63 +275,42 @@ Completion pops up while you type, or press ++ctrl+space++.
 
 A snippet is a short word that expands into text with tab stops. Type the word and press ++tab++. Tab moves to the next
 stop, `${1:text}` stops hold a default, and the caret ends where `$0` is. Built in: `p` (paragraph), `h` (heading),
-`img`, `link`, `sec` (a section with `epub:type`), `fn` (footnote reference), `aside` (footnote) and, in stylesheets,
-`rule`. Markup menu → **Manage Snippets** adds your own (trigger, files it applies to, text). A snippet of yours with
-the same trigger replaces a built-in one. They are stored as `snippets.json` next to the settings.
+`img`, `link`, `sec` (a section with `epub:type`), `fn` (footnote reference), `aside` (footnote), `Lorem` (three filler
+paragraphs), `<>` (self-closing tag), `<a` (link), `<i` (image), `<<` (any tag) and `<c` (tag with a class) and, in
+stylesheets, `rule`. Triggers may start with `<`: type `<a` and press ++tab++.
 
-## Files and tabs
+**Wrapping the selection.** A stop written `${2*}` (or `${2*:default}`) takes the text that was selected when you expand
+the snippet: select a word, type nothing, and press ++ctrl+j++ (**Insert Snippet**, a searchable list), or type the
+trigger just before the selection and press ++tab++. `p`, `h`, `link`, `<<`, `<c` and `<a` use it. Without a selection
+the stop shows its default.
 
-Files are grouped by type, with reading-order numbers.
+**In the search fields.** Tab in *Find* or *Replace* expands a trigger there too, as plain text: stops show their
+default and nothing jumps.
 
-- Select several with Ctrl/Shift-click.
-- **Rename** with ++f2++. Every `href`, `src`, CSS `url()` and `#fragment` that points at the file is repaired; other
-  files with similar names are left alone.
-- **Delete** with ++delete++. Reorder the spine by moving files up or down.
-- From the `⋯` menu or a right-click: *New File* (templates, optional stylesheet links, ++ctrl+n++),
-  *Merge Selected*, *Bulk Rename*, *Link Stylesheets* and *Export Selected*.
-- Files you open get **tabs**. ++ctrl+w++ closes one, ++ctrl+alt+down++ / ++ctrl+alt+up++ step through the reading
-  order.
-- **Quick open** with ++ctrl+p++.
-- The **command palette** (++ctrl+shift+p++) lists the editor's commands (save, find, check, go to line …), every
-  item of the Tools, Markup and Files menus and the files of the book. Type a few letters and press ++enter++.
+Edit menu → **Manage Snippets** adds your own: name, trigger, files it applies to and text. The **Test** box expands the
+snippet in a scratch box (with sample selected text), so you see what you get before saving. The buttons in the title bar
+import and export your snippets as a JSON file to share them. A snippet of yours with the same trigger replaces a
+built-in one. They are stored as `snippets.json` next to the settings. The same dialog lists your **templates for new
+files** (XHTML or CSS; `{title}` is replaced by the name), the ones Files → **New File** offers.
 
-![The editor's command palette](assets/editor-palette-light.png#only-light)
-![The editor's command palette](assets/editor-palette-dark.png#only-dark)
+### Editor preferences
 
-Every change that touches the whole book first takes a checkpoint named "Before: …".
+**Preferences → Editor** (also *Editor Preferences* in the editor's command palette, ++ctrl+shift+p++) sets
+how the code looks and behaves; every open editor window follows at once.
 
-## Search and replace
+- **Code**: font and size, tab width, spaces or tabs, line numbers, highlight of the current line, a right margin guide
+  at a column, wrapping, showing spaces and tabs, the overview map.
+- **Colour scheme**: a list of the available schemes with a preview of each, or *Follow light and dark mode*. Your own
+  GtkSourceView schemes (`*.xml`) go into the `styles` folder of the Bookx configuration (the page has a button that
+  opens it) and appear in the list.
+- **Editing**: close tags automatically (typing `>` after `<p` adds `</p>`), suggest completions while typing (or only
+  on ++ctrl+space++), paint colour codes such as `#1a2b3c` in style sheets in that colour, underline misspelled words,
+  turn typed entities into characters.
+- **Preview**: font, smallest text size, whether the preview follows the cursor, whether scrolling the preview scrolls
+  the code.
 
-++ctrl+h++ or ++ctrl+f++ opens find and replace.
-
-![Find and replace in the editor](assets/editor-find-light.png#only-light)
-![Find and replace in the editor](assets/editor-find-dark.png#only-dark)
-*Real screenshot.*
-
-- Modes: text, regular expression (look-around, `\1` back-references), **function mode** (a script decides each
-  replacement), and **tag search** (elements and attributes). Searching **ignoring HTML markup** finds a phrase that is
-  split by `<i>` or `<b>`.
-- Scopes: this file, text files, style files, all files, selected files, open files, or marked text.
-- **All matches in the open file are highlighted** in the text as you type, with a live "n of m in this file" count
-  (also in the minimap). *Find All* lists the matches of every file in the scope, *Count* counts them all.
-- Saved searches, search history, and the full description of every mode: see [Search and replace](search-and-replace.md).
-- *Go to line* (++ctrl+l++) and *Mark selected text* (++ctrl+shift+m++).
-
-## Tag actions
-
-The `<>` button opens the **Markup menu**:
-
-| Action | Shortcut |
-|---|---|
-| Select to the matching tag | ++ctrl+alt+k++ |
-| Jump to the matching tag | ++ctrl+alt+j++ |
-| Close the open tag | ++ctrl+alt+period++ |
-| Wrap the selection in a tag | ++ctrl+alt+w++ |
-| Remove the surrounding tag | ++ctrl+alt+u++ |
-| Rename a tag | ++ctrl+alt+r++ |
-| Toggle a comment | ++ctrl+slash++ |
-| Change a block to a paragraph / heading 1-6 | ++ctrl+0++ … ++ctrl+6++ |
-| Change case | menu only |
+The cursor's width and blinking follow your desktop settings. Keyboard shortcuts of the editor are under
+**Preferences → Keyboard Shortcuts → Editor**.
 
 ## Table of contents
 
@@ -266,15 +318,18 @@ The contents editor renames, indents, reorders and links entries, and writes bot
 Selecting an entry opens its file at the anchor. *Generate* builds a contents from the headings (levels 1-6), from
 the links of a contents page, or one entry per file, replacing the current one or adding to it.
 
+**Moving entries.** Drag the grip at the left of an entry onto another entry. Where you let go on the row decides:
+the top quarter puts the entry *before* it, the bottom quarter *after* it (and after its sub-entries), the middle
+makes it the *last sub-entry*. An entry always moves with its sub-entries, and nothing can be dropped into itself.
+The same moves work from the keyboard: ++alt+up++ / ++alt+down++ move the selected entry among its siblings,
+++alt+right++ makes it a sub-entry of the entry above, ++alt+left++ moves it out, after its parent. *Delete* keeps
+the sub-entries of the deleted entry (they move up a level). *Add* puts a new entry after the selected one; when the
+caret of the open page is in or after an element with an `id`, the entry points at that element and takes its
+heading text as the title. Everything is written to `nav.xhtml` and `toc.ncx` when you save.
+
 To point an entry at an exact place, select it and press the *Point the entry at a place you click in the preview*
 button in the Contents toolbar, then click where it should lead in the preview. A green line shows the place under
 the pointer. Bookx adds an `id` to the element if it has none and sets the entry to `file#id`.
-
-## Checking the book
-
-Press ++f7++ or use the check button. The checker reports XML errors, missing and unmanifested files, duplicate ids,
-spine problems, broken links and anchors, and missing metadata. It also runs an EPUB validator with 87 rules, using
-ids such as `[OPF-003]`. Results are listed; click one to go there.
 
 ## Spelling
 
@@ -418,6 +473,7 @@ brings the old state back.
 | Entry | What it does |
 |---|---|
 | Transform Styles | a rule builder: *If a property has a value, change it* (`color` is `red` → `green`), *Set a property everywhere*, *Remove a property* (`margin*` works), *Remove a property when it has a value*, *Multiply all font sizes*, *Make a font family italic*, *Rename a font family*, *Change one colour into another*. Rules apply in order to stylesheets, `<style>` blocks and style attributes. Save a list of rules under a name and load it later (also in other books) |
+| Transform HTML | a rule builder for the pages, like *Transform Styles*: *rename a tag* (`b` → `strong`), *remove a tag but keep its content*, *remove an element and its content*, *set*, *remove* or *replace text in an attribute*, *wrap in a new element*, *add*, *remove* or *change a class*. Name the elements with a selector (`p`, `div.note`, `#id`, `//section/p`). Choose all pages or only the open one, press *Preview* to see which pages change, save rule sets under a name. Only the tags you name change: entities, comments, quotes and prefixes such as `epub:type` stay as written. Pages that are not well-formed are skipped and listed |
 | Remove Unused CSS Rules | deletes the rules that match nothing in the book (`@font-face` and other @-rules stay) |
 | Filter Style Information | removes the ticked properties (with how often they are used) everywhere |
 
@@ -425,7 +481,9 @@ brings the old state back.
 
 | Entry | What it does |
 |---|---|
-| Delete Unused Media | lists images, fonts, audio and video that nothing uses, with sizes; the cover is never listed |
+| Delete Unused Media | lists images, fonts, audio and video that nothing uses, with sizes; the cover is never listed. Unused images are listed and deleted here too |
+| Manage Fonts | the fonts embedded in the book with family, style, size, how many characters use them and the licence flag. Open a font to *rename its family* (every `@font-face`, `font-family` and `font` rule and style attribute follows), *remove* it with its `@font-face` rules, or see a **sample** of its real glyphs (edit the sample text). *Embed Fonts from this Computer* opens Embed Referenced Fonts |
+| Set Cover | choose an image of the book, a file from the computer or a cover drawn from the title and author; *crop* it to 2:3 or 3:4 and *limit the size* with a live preview. Bookx writes the cover page (or updates the one that exists), marks the image as the cover in the package, the guide and the landmarks, and deletes the old cover image when nothing uses it. *Remove Cover* undoes it. Only PNG, JPEG, GIF and WebP up to 40 MB and 64 megapixels are accepted |
 | Embed Referenced Fonts | finds the fonts the pages ask for but the book does not carry among the fonts installed on this computer and embeds them. A font whose licence forbids embedding cannot be ticked; fonts that do not say are marked with a warning. Optionally keeps only the characters the book uses |
 | Download External Resources | copies images, stylesheets and media that pages load from the web into the book. Needs a network connection; check the licences |
 
@@ -434,6 +492,8 @@ brings the old state back.
 | Entry | What it does |
 |---|---|
 | Set Semantics | says which page is the cover, title page, table of contents, foreword, dedication, index and so on (guide and, in EPUB 3, landmarks) |
+| Accessibility Metadata | a form for the EPUB 3 accessibility metadata: summary, access modes, sufficient modes, features, hazards, conformance statement and the certifier (name, credential, report address). Start from a preset or press *Suggest from the Book*, which looks at the images and their descriptions, audio, MathML, headings and contents. The values are checked against the vocabulary as you type (errors stop *Apply*, warnings do not) and against the book: claiming *alternativeText* while images have no description, or *MathML* without any, is reported. Hazards such as flashing cannot be detected: confirm them yourself |
+| Book Jacket | adds, updates or removes a page after the cover that lists the title, authors, series, rating, tags and comments (and optionally the cover and publisher) from the metadata. The page is marked, so Bookx updates it when you change the metadata in the editor and *Remove the jacket* takes it away without a trace |
 | Accessibility | three tabs: the book’s *Language*; *Image descriptions* (a text per image, *Decorative* for images a screen reader should skip, one text for every use of an image); *Accessibility metadata* (summary, access modes, features, hazards, conformance; EPUB 3) |
 
 ### Links
@@ -461,6 +521,8 @@ brings the old state back.
 | Check Spelling | the spelling panel, see [Spelling](#spelling) |
 | Reports | the reports window, see [Reports](#reports) |
 | *name* (plugin) | transforms from [plugins](plugins-and-patches.md) |
+| Plugins › *action* | actions of editor plugins, see [plugins](plugins-and-patches.md); one checkpoint each |
+| Add Narration / Remove Narration | reads the book aloud into the EPUB as a media overlay, see [Read aloud](read-aloud.md#narrating-a-book-media-overlays) |
 | Checkpoints / Create / Restore / Compare Checkpoint | see [Compare and checkpoints](#compare-and-checkpoints) |
 | Compare with Another Book | see above |
 
@@ -473,6 +535,9 @@ brings the old state back.
   reading order, pages listed twice and pages that are not part of the main reading order.
 - **Reorder by dragging.** Drag a page row onto another: a line shows whether it lands above or below. The buttons
   below the list still move a page one place.
+- **Merge by dragging.** Drop a page onto the *middle* of another page (the row is highlighted instead of a line): Bookx
+  asks, then adds the dragged page to the end of the other one, repairs the links to it and removes it. It runs on a
+  checkpoint, so it can be undone. Only pages can be merged this way.
 - **Files menu (⋯ or right-click).** *Select* all text files, stylesheets, images or fonts, or none. *Use as Cover
   Image*, *Cover Page*, *Title Page* or *Table of Contents*. *Toggle Not in Main Reading Order*. *Change Extension*.
   *Move to Folder*. *Replace with File* (links follow when you change the name). *Open With* opens the file in
@@ -491,6 +556,7 @@ The ☰ button at the left of the header bar.
 | Save a Copy and Edit It | ++ctrl+alt+shift+s++ | the same, adds the copy to the library and continues editing the copy |
 | Open Another Book | ++ctrl+o++ | shows another book of the library in this window |
 | Open an Unzipped Folder | | opens a folder with an unzipped EPUB as a book (added to the library) |
+| Open a Book of Another Format to Edit | | opens an AZW3, MOBI, KEPUB, FB2, FBZ, DOCX, ODT, RTF, HTMLZ or TXTZ file: it is converted to a temporary EPUB in memory (a KEPUB is edited as it is, with its Kobo markup) and is not added to the library. *Save* asks whether to **save as an EPUB** or to **convert back** into the original format; the old file is kept next to it as a backup (`book.azw3.bak`). A warning names what may be lost in the round trip. Formats Bookx cannot write (ODT, FBZ) can only be saved as EPUB |
 | New Book | | a book with one empty chapter |
 | Import HTML, DOCX or Text as a New Book | | adds the file to the library and opens it |
 | Revert to Before the Last Change / Revert to After | ++ctrl+alt+z++ / ++ctrl+alt+shift+z++ | walks back and forth over the checkpoints (a new change ends the redo list) |
@@ -504,8 +570,9 @@ Opening a book in the editor from a terminal: `bookx --edit book.epub OEBPS/ch1.
 there; the named files open in tabs and the text is selected in the last one.
 
 !!! note "Limitations"
-    - The editor works on EPUB. Other formats are converted to EPUB first.
-    - Fonts are searched in the system font folders and `~/.local/share/fonts`; font files over 12 MB are skipped.
+    - The editor works on EPUB. Other formats are converted to EPUB first; see *Open a Book of Another Format to Edit* for the way back.
+    - Converting back is a conversion: styling, layout and format-specific features can be lost. Keep the backup until you have checked the result.
+    - Fonts are searched in the background in the system font folders and `~/.local/share/fonts`; font files over 12 MB are skipped.
     - Link checking and downloading use plain web requests, one at a time; some sites refuse them.
     - Check Spelling and the underlines in the code view need system Hunspell dictionaries; none are bundled.
     - The EPUB validator is Bookx's own rule set, in pure Rust. It is compared with the `epubveri` validator in

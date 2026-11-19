@@ -129,6 +129,9 @@ fn external_registrations() {
     super::dict_settings::register();
     super::shortcuts_dialog::register();
     super::mcp_settings::register();
+    super::editor::prefs_page::register();
+    super::privacy_settings::register();
+    super::reading_ruler::register();
 }
 
 fn ensure_registry() {
@@ -201,7 +204,11 @@ pub fn dev(arg: &str) {
         eprintln!("prefs: not open");
         return;
     };
-    if let Some(f) = arg.strip_prefix("dict-") {
+    if let Some(f) = arg.strip_prefix("ruler-") {
+        super::reading_ruler::dev_prefs(f);
+    } else if let Some(f) = arg.strip_prefix("privacy-") {
+        super::privacy_settings::dev(f);
+    } else if let Some(f) = arg.strip_prefix("dict-") {
         super::dict_settings::dev(f);
     } else if let Some(f) = arg.strip_prefix("footer-") {
         super::reader_footer::dev(f);
@@ -933,11 +940,21 @@ fn build_sections(
             .unwrap_or_default();
         let sub = match &st.error {
             Some(e) => trf("Problem: {}", &[&e]),
-            None => format!(
-                "{kind} · {}\n{}",
-                st.description,
-                crate::plugins::permission_summary(&st.permissions)
-            ),
+            None => {
+                let mut t = format!(
+                    "{kind} · {}\n{}",
+                    st.description,
+                    crate::plugins::permission_summary(&st.permissions)
+                );
+                if !st.actions.is_empty() {
+                    t.push('\n');
+                    t.push_str(&trf(
+                        "Actions (suggested shortcut in brackets): {}",
+                        &[&st.actions.join(", ")],
+                    ));
+                }
+                t
+            }
         };
         row.set_subtitle(&relm4::gtk::glib::markup_escape_text(&sub));
         row.set_active(st.enabled);

@@ -200,13 +200,6 @@ msgstr "Aus dem Web hinzufügen"
 msgid "Add one above to restore from it. You can also restore from a backup file."
 msgstr "Fügen Sie oben einen hinzu, um daraus wiederherzustellen. Sie können auch aus einer Sicherungsdatei wiederherstellen."
 
-msgid ""
-"Add some books to start your library.\n"
-"EPUB, plain text, Markdown and HTML files are supported — drop them here."
-msgstr ""
-"Fügen Sie ein paar Bücher hinzu, um Ihre Bibliothek zu starten.\n"
-"EPUB-, Nur-Text-, Markdown- und HTML-Dateien werden unterstützt – legen Sie sie hier ab."
-
 msgid "Add some rules and give the set a name first"
 msgstr "Fügen Sie zuerst einige Regeln hinzu und geben Sie dem Satz einen Namen"
 
@@ -557,17 +550,6 @@ msgstr "Kalender der Tage, an denen Sie dieses Jahr gelesen haben"
 
 msgid "Calibre import failed: {}"
 msgstr "Calibre-Import fehlgeschlagen: {}"
-
-msgid ""
-"Calibre-style search:\n"
-"  title: author: tag: series: publisher: language: rating: status: format: identifier:\n"
-"  = exact, >= <= comparison, - to exclude, OR to combine\n"
-"  text:word searches the contents of the books"
-msgstr ""
-"Suche im Calibre-Stil:\n"
-"  title: author: tag: series: publisher: language: rating: status: format: identifier:\n"
-"  = exakt, >= <= Vergleich, - zum Ausschließen, OR zum Kombinieren\n"
-"  text:Wort durchsucht den Inhalt der Bücher"
 
 msgid "Can write to {}{}"
 msgstr "Schreiben möglich in {}{}"
@@ -1174,17 +1156,6 @@ msgstr "Das Inhaltsverzeichnis konnte nicht geschrieben werden: {}"
 
 msgid "Could not write the temporary file"
 msgstr "Die temporäre Datei konnte nicht geschrieben werden"
-
-msgid ""
-"Couldn't load a summary.\n"
-"{}\n"
-"\n"
-"Use “Open Wikipedia” to search in the browser."
-msgstr ""
-"Eine Zusammenfassung konnte nicht geladen werden.\n"
-"{}\n"
-"\n"
-"Mit „Wikipedia öffnen“ suchen Sie im Browser."
 
 msgid "Couldn't translate this text.\n{}"
 msgstr ""
@@ -2640,17 +2611,6 @@ msgstr "Noch keine Prüfpunkte"
 
 msgid "No dictionaries installed"
 msgstr "Keine Wörterbücher installiert"
-
-msgid ""
-"No dictionaries installed.\n"
-"\n"
-"Copy StarDict dictionaries (folders with .ifo, .idx and .dict files) into:\n"
-"{}"
-msgstr ""
-"Keine Wörterbücher installiert.\n"
-"\n"
-"Kopieren Sie StarDict-Wörterbücher (Ordner mit .ifo-, .idx- und .dict-Dateien) nach:\n"
-"{}"
 
 msgid "No differences from “{}”"
 msgstr "Keine Unterschiede zu „{}“"
@@ -4500,9 +4460,6 @@ msgstr "Der Text hat sich geändert; versuchen Sie es erneut"
 msgid "The trash is empty"
 msgstr "Der Papierkorb ist leer"
 
-msgid "The trigger may only contain letters, digits and underscores"
-msgstr "Das Kürzel darf nur Buchstaben, Ziffern und Unterstriche enthalten"
-
 msgid "The trigger word is empty"
 msgstr "Das Kürzelwort ist leer"
 
@@ -5845,9 +5802,6 @@ msgstr "Weiterlesen"
 msgid "Also reading"
 msgstr "Außerdem in Lektüre"
 
-msgid "Continue reading {}"
-msgstr "{} weiterlesen"
-
 msgid "AI Assistants (MCP)"
 msgstr "KI-Assistenten (MCP)"
 
@@ -6015,3 +5969,1135 @@ msgstr "Deine eigenen Wörterbücher"
 
 msgid "Download dictionary"
 msgstr "Wörterbuch herunterladen"
+
+msgid "Could not start the program"
+msgstr "Das Programm konnte nicht gestartet werden"
+
+msgid "Searching the installed fonts"
+msgstr "Installierte Schriften werden gesucht"
+
+msgid "Still searching the installed fonts, try again in a moment"
+msgstr "Die installierten Schriften werden noch gesucht; versuchen Sie es gleich noch einmal"
+
+msgid "Searching the installed fonts: {} of {}"
+msgstr "Installierte Schriften werden gesucht: {} von {}"
+
+msgid "Importing"
+msgstr "Wird importiert"
+
+msgid "Converting"
+msgstr "Wird konvertiert"
+
+msgid "Sending"
+msgstr "Wird gesendet"
+
+msgid "Looking up metadata"
+msgstr "Metadaten werden gesucht"
+
+msgid "Backing up"
+msgstr "Sicherung läuft"
+
+msgid "Downloading news"
+msgstr "Nachrichten werden geladen"
+
+msgid "Downloading"
+msgstr "Wird heruntergeladen"
+
+msgid "Failed"
+msgstr "Fehlgeschlagen"
+
+msgid "Took {}"
+msgstr "Dauer: {}"
+
+msgid "After {}"
+msgstr "Nach {}"
+
+msgid "Retry"
+msgstr "Wiederholen"
+
+msgid "Retry {}"
+msgstr "{} wiederholen"
+
+msgid "Done"
+msgstr "Fertig"
+
+msgid "No messages"
+msgstr "Keine Meldungen"
+
+msgid "Nothing is running. Imports, conversions, sends and downloads show up here."
+msgstr "Es läuft nichts. Importe, Konvertierungen, Sendungen und Downloads erscheinen hier."
+
+msgid "Export Citations"
+msgstr "Zitate exportieren"
+
+msgid "Fetch Metadata and covers"
+msgstr "Metadaten und Cover abrufen"
+
+msgid "Wikipedia look-up in the reader"
+msgstr "Wikipedia-Abfrage im Leser"
+
+msgid "Translate in the reader"
+msgstr "Übersetzen im Leser"
+
+msgid "Online catalogues"
+msgstr "Online-Kataloge"
+
+msgid "Add from the Web and news subscriptions"
+msgstr "Aus dem Web hinzufügen und Nachrichten-Abos"
+
+msgid "Check Links in the editor"
+msgstr "Links im Editor prüfen"
+
+msgid "Dictionary downloads"
+msgstr "Wörterbuch-Downloads"
+
+msgid "Voice and model downloads"
+msgstr "Stimmen- und Modell-Downloads"
+
+msgid "Read aloud with a voice server"
+msgstr "Vorlesen mit einem Sprachserver"
+
+msgid "Send by e-mail"
+msgstr "Per E-Mail senden"
+
+msgid "Cloud folders (WebDAV) for devices and backups"
+msgstr "Cloud-Ordner (WebDAV) für Geräte und Sicherungen"
+
+msgid "Reading position sync (KOSync)"
+msgstr "Synchronisierung der Leseposition (KOSync)"
+
+msgid "Readwise upload"
+msgstr "Readwise-Upload"
+
+msgid "A bibliography from the title, authors, publisher, date and ISBN of your books, for a reference manager or a paper."
+msgstr "Eine Bibliografie aus Titel, Autoren, Verlag, Datum und ISBN deiner Bücher, für eine Literaturverwaltung oder eine Arbeit."
+
+msgid "Bibliography preview"
+msgstr "Vorschau der Bibliografie"
+
+msgid "Copied the bibliography"
+msgstr "Bibliografie kopiert"
+
+msgid "All books ({})"
+msgstr "Alle Bücher ({})"
+
+msgid "The current search ({})"
+msgstr "Die aktuelle Suche ({})"
+
+msgid "{} references"
+msgstr "{} Literaturangaben"
+
+msgid "Not a Duplicate"
+msgstr "Kein Duplikat"
+
+msgid "These books are different; do not suggest them as copies again"
+msgstr "Diese Bücher sind verschieden; nicht erneut als Kopien vorschlagen"
+
+msgid "Kept apart: these books will not be suggested as copies again"
+msgstr "Getrennt: Diese Bücher werden nicht mehr als Kopien vorgeschlagen"
+
+msgid "No covers to look at"
+msgstr "Keine Cover zu prüfen"
+
+msgid "Never verified"
+msgstr "Nie überprüft"
+
+msgid "The check did not finish"
+msgstr "Die Prüfung wurde nicht beendet"
+
+msgid "The content changed but the date and size did not: a failing disk or a bad sync. Restore this book from a backup, or accept it as correct."
+msgstr "Der Inhalt hat sich geändert, Datum und Größe aber nicht: ein defekter Datenträger oder eine fehlerhafte Synchronisierung. Stelle dieses Buch aus einer Sicherung wieder her oder übernimm es als korrekt."
+
+msgid "Accept"
+msgstr "Übernehmen"
+
+msgid "This file is gone. Library check can remove the entry or you can restore a backup."
+msgstr "Diese Datei fehlt. Die Bibliotheksprüfung kann den Eintrag entfernen oder du stellst eine Sicherung wieder her."
+
+msgid "Looking at the covers…"
+msgstr "Cover werden geprüft…"
+
+msgid "File integrity"
+msgstr "Dateiintegrität"
+
+msgid "Bookx remembers a SHA-256 checksum of every book file and tells you when a file changed without being edited, which is what a failing disk or a bad sync looks like."
+msgstr "Bookx merkt sich eine SHA-256-Prüfsumme jeder Buchdatei und warnt, wenn sich eine Datei ohne Bearbeitung ändert, wie bei einem defekten Datenträger oder einer fehlerhaften Synchronisierung."
+
+msgid "Verify book files"
+msgstr "Buchdateien prüfen"
+
+msgid "Verify Files"
+msgstr "Dateien prüfen"
+
+msgid "Finds covers that are small or blurry. The lookup proposes a larger one; you choose what to keep."
+msgstr "Findet kleine oder unscharfe Cover. Die Suche schlägt ein größeres vor; du entscheidest, was bleibt."
+
+msgid "Find small covers"
+msgstr "Kleine Cover finden"
+
+msgid "Scan Covers"
+msgstr "Cover prüfen"
+
+msgid "Look Up Better Covers"
+msgstr "Bessere Cover suchen"
+
+msgid "Not scanned yet"
+msgstr "Noch nicht geprüft"
+
+msgid "All {} covers are good"
+msgstr "Alle {} Cover sind gut"
+
+msgid "{} of {} covers are small"
+msgstr "{} von {} Covern sind klein"
+
+msgid "Last verified {}"
+msgstr "Zuletzt geprüft: {}"
+
+msgid "Accepted {}"
+msgstr "Übernommen: {}"
+
+msgid "Privacy"
+msgstr "Datenschutz"
+
+msgid "Network"
+msgstr "Netzwerk"
+
+msgid "Bookx has no telemetry, no account and no update check. It only connects when you use a feature that needs it."
+msgstr "Bookx hat keine Telemetrie, kein Konto und keine Update-Prüfung. Es verbindet sich nur, wenn du eine Funktion nutzt, die das braucht."
+
+msgid "Offline mode"
+msgstr "Offline-Modus"
+
+msgid "Refuse online look-ups and downloads: metadata, covers, Wikipedia, translation, catalogues, web articles, news, dictionaries and voices. Servers you set up yourself (mail, WebDAV, sync) are not affected."
+msgstr "Lehnt Online-Abfragen und Downloads ab: Metadaten, Cover, Wikipedia, Übersetzung, Kataloge, Webartikel, Nachrichten, Wörterbücher und Stimmen. Selbst eingerichtete Server (Mail, WebDAV, Synchronisierung) sind nicht betroffen."
+
+msgid "What Bookx can connect to"
+msgstr "Womit sich Bookx verbinden kann"
+
+msgid "Only when you use the feature. The same list is on the wiki page Privacy."
+msgstr "Nur wenn du die Funktion nutzt. Dieselbe Liste steht auf der Wiki-Seite Datenschutz."
+
+msgid "Reading Ruler"
+msgstr "Leselineal"
+
+msgid "Reading ruler"
+msgstr "Leselineal"
+
+msgid "Dims the page except for a band that follows the pointer, or moves with Alt+Up and Alt+Down. It helps to keep your place."
+msgstr "Dunkelt die Seite bis auf ein Band ab, das dem Zeiger folgt oder sich mit Alt+Hoch und Alt+Runter bewegt. Es hilft, die Zeile nicht zu verlieren."
+
+msgid "Show the reading ruler"
+msgstr "Leselineal anzeigen"
+
+msgid "Lines in the band"
+msgstr "Zeilen im Band"
+
+msgid "Dimming (percent)"
+msgstr "Abdunkelung (Prozent)"
+
+msgid "You can cancel at any time: finished chapters are kept and running this again continues with the rest. Everything can be undone with Restore Checkpoint."
+msgstr "Du kannst jederzeit abbrechen: fertige Kapitel bleiben erhalten, und ein erneuter Start macht mit dem Rest weiter. Alles lässt sich mit „Prüfpunkt wiederherstellen“ rückgängig machen."
+
+msgid "Nothing was narrated"
+msgstr "Es wurde nichts vertont"
+
+msgid "{} h {} min"
+msgstr "{} Std. {} Min."
+
+msgid "{} min"
+msgstr "{} Min."
+
+msgid "{} chapters will be read aloud with the voice chosen in Preferences → Text to Speech and saved inside the book as audio (WAV). The audio is about {} long and takes about {} of disk space; synthesizing it can take much longer than listening."
+msgstr "{} Kapitel werden mit der in den Einstellungen unter „Text zu Sprache“ gewählten Stimme vorgelesen und als Audio (WAV) im Buch gespeichert. Das Audio dauert etwa {} und belegt etwa {} Speicherplatz; das Erzeugen kann viel länger dauern als das Zuhören."
+
+msgid "Narrated {} chapters ({})"
+msgstr "{} Kapitel vertont ({})"
+
+msgid "Cancelled: kept {} narrated chapters ({}); run it again to continue"
+msgstr "Abgebrochen: {} vertonte Kapitel bleiben erhalten ({}); starte erneut, um fortzufahren"
+
+msgid "Permissions: may read and change the book open in the editor. Every action is one checkpoint you can restore. It cannot reach other files or the network."
+msgstr "Berechtigungen: darf das im Editor geöffnete Buch lesen und ändern. Jede Aktion ist ein Prüfpunkt, den du wiederherstellen kannst. Auf andere Dateien oder das Netzwerk hat sie keinen Zugriff."
+
+msgid "Permissions: may read the book open in the editor. It cannot change anything, reach other files or the network."
+msgstr "Berechtigungen: darf das im Editor geöffnete Buch lesen. Es kann nichts ändern und hat keinen Zugriff auf andere Dateien oder das Netzwerk."
+
+msgid "No voice is installed. Download one in Preferences → Text to Speech, then try again."
+msgstr "Es ist keine Stimme installiert. Lade in den Einstellungen unter „Text zu Sprache“ eine herunter und versuche es erneut."
+
+msgid "The voice needs espeak-ng, which is not installed. See Preferences → Text to Speech."
+msgstr "Die Stimme benötigt espeak-ng, das nicht installiert ist. Siehe Einstellungen → Text zu Sprache."
+
+msgid "Narration needs an EPUB 3 book. Use Tools → Upgrade to EPUB 3 first."
+msgstr "Die Vertonung braucht ein EPUB-3-Buch. Nutze zuerst Werkzeuge → Auf EPUB 3 aktualisieren."
+
+msgid "Every chapter is narrated already, or there is no text to read."
+msgstr "Alle Kapitel sind bereits vertont oder es gibt keinen Text zum Vorlesen."
+
+msgid "Add Narration?"
+msgstr "Vertonung hinzufügen?"
+
+msgid "Adding narration"
+msgstr "Vertonung wird hinzugefügt"
+
+msgid "Finished chapters are kept if you cancel. You can restore the checkpoint to undo."
+msgstr "Fertige Kapitel bleiben beim Abbrechen erhalten. Mit dem Prüfpunkt lässt sich alles rückgängig machen."
+
+msgid "Add Narration"
+msgstr "Vertonung hinzufügen"
+
+msgid "Cancelled: nothing was narrated"
+msgstr "Abgebrochen: es wurde nichts vertont"
+
+msgid "This book has no narration."
+msgstr "Dieses Buch hat keine Vertonung."
+
+msgid "Remove Narration"
+msgstr "Vertonung entfernen"
+
+msgid "Narration stopped: {}"
+msgstr "Vertonung angehalten: {}"
+
+msgid "Narrating {}"
+msgstr "{} wird vertont"
+
+msgid "Chapter {} of {}: sentence {} of {}"
+msgstr "Kapitel {} von {}: Satz {} von {}"
+
+msgid "Removed the narration of {} chapters ({} files)"
+msgstr "Vertonung von {} Kapiteln entfernt ({} Dateien)"
+
+msgid "The plugin {} is not enabled"
+msgstr "Das Plugin {} ist nicht aktiviert"
+
+msgid "Actions (suggested shortcut in brackets): {}"
+msgstr "Aktionen (vorgeschlagenes Kürzel in Klammern): {}"
+
+msgid "Find next"
+msgstr "Weitersuchen"
+
+msgid "Open a file"
+msgstr "Datei öffnen"
+
+msgid "Mark selected text"
+msgstr "Ausgewählten Text markieren"
+
+msgid "Insert a snippet"
+msgstr "Textbaustein einfügen"
+
+msgid "Editor Preferences"
+msgstr "Editor-Einstellungen"
+
+msgid "Find Next"
+msgstr "Weitersuchen"
+
+msgid "Find Previous"
+msgstr "Rückwärts suchen"
+
+msgid "Replace and Find Next"
+msgstr "Ersetzen und weitersuchen"
+
+msgid "Replace and Find Previous"
+msgstr "Ersetzen und rückwärts suchen"
+
+msgid "Clear Marked Text"
+msgstr "Markierten Text löschen"
+
+msgid "Insert Snippet"
+msgstr "Textbaustein einfügen"
+
+msgid "Select Matching Tag"
+msgstr "Passendes Tag auswählen"
+
+msgid "Close Current Tag"
+msgstr "Aktuelles Tag schließen"
+
+msgid "Split Tag at Caret"
+msgstr "Tag an der Einfügemarke teilen"
+
+msgid "Bold"
+msgstr "Fett"
+
+msgid "Italic"
+msgstr "Kursiv"
+
+msgid "Superscript"
+msgstr "Hochgestellt"
+
+msgid "Subscript"
+msgstr "Tiefgestellt"
+
+msgid "Code"
+msgstr "Code"
+
+msgid "Go to Definition"
+msgstr "Zur Definition springen"
+
+msgid "Sort CSS Rules"
+msgstr "CSS-Regeln sortieren"
+
+msgid "Make Paragraph"
+msgstr "Absatz erstellen"
+
+msgid "Make Heading 1"
+msgstr "Überschrift 1 erstellen"
+
+msgid "Make Heading 2"
+msgstr "Überschrift 2 erstellen"
+
+msgid "Make Heading 3"
+msgstr "Überschrift 3 erstellen"
+
+msgid "Make Heading 4"
+msgstr "Überschrift 4 erstellen"
+
+msgid "Make Heading 5"
+msgstr "Überschrift 5 erstellen"
+
+msgid "Make Heading 6"
+msgstr "Überschrift 6 erstellen"
+
+msgid "Next Misspelled Word"
+msgstr "Nächstes falsch geschriebenes Wort"
+
+msgid "Previous Misspelled Word"
+msgstr "Vorheriges falsch geschriebenes Wort"
+
+msgid "Undo to the Previous Checkpoint"
+msgstr "Zum vorherigen Prüfpunkt zurückgehen"
+
+msgid "Redo to the Next Checkpoint"
+msgstr "Zum nächsten Prüfpunkt vorgehen"
+
+msgid "Editor Help"
+msgstr "Editor-Hilfe"
+
+msgid "Refresh the Preview"
+msgstr "Vorschau aktualisieren"
+
+msgid "Copy the Selection of the Preview"
+msgstr "Auswahl der Vorschau kopieren"
+
+msgid "The trigger may only contain letters, digits and underscores (a leading < is allowed, and <> or <<)"
+msgstr "Das Kürzel darf nur Buchstaben, Ziffern und Unterstriche enthalten (ein führendes < ist erlaubt, ebenso <> oder <<)"
+
+msgid "This file is not a list of snippets"
+msgstr "Diese Datei ist keine Liste von Textbausteinen"
+
+msgid "The template name may not be empty or contain / \\ or a dot"
+msgstr "Der Vorlagenname darf nicht leer sein und weder / \\ noch einen Punkt enthalten"
+
+msgid "Templates are XHTML, HTML or CSS files"
+msgstr "Vorlagen sind XHTML-, HTML- oder CSS-Dateien"
+
+msgid "{}: {} changes"
+msgstr "{}: {} Änderungen"
+
+msgid "{} was skipped: {}"
+msgstr "{} wurde übersprungen: {}"
+
+msgid "Cover image: {}"
+msgstr "Titelbild: {}"
+
+msgid "Cover page: {}"
+msgstr "Titelseite: {}"
+
+msgid "Removed the old cover {}"
+msgstr "Altes Titelbild {} entfernt"
+
+msgid "Cover set to {}"
+msgstr "Titelbild gesetzt: {}"
+
+msgid "Added the book jacket {}"
+msgstr "Schutzumschlag {} hinzugefügt"
+
+msgid "Updated the book jacket {}"
+msgstr "Schutzumschlag {} aktualisiert"
+
+msgid "Removed the book jacket {}"
+msgstr "Schutzumschlag {} entfernt"
+
+msgid "Renamed {} to {}"
+msgstr "{} in {} umbenannt"
+
+msgid "Nothing used the name {}"
+msgstr "Nichts verwendete den Namen {}"
+
+msgid "Removed {} and {}"
+msgstr "{} und {} entfernt"
+
+msgid "{} element"
+msgid_plural "{} elements"
+msgstr[0] "{} Element"
+msgstr[1] "{} Elemente"
+
+msgid "{} page"
+msgid_plural "{} pages"
+msgstr[0] "{} Seite"
+msgstr[1] "{} Seiten"
+
+msgid "{} font"
+msgid_plural "{} fonts"
+msgstr[0] "{} Schrift"
+msgstr[1] "{} Schriften"
+
+msgid "The metadata is complete and matches the book."
+msgstr "Die Metadaten sind vollständig und passen zum Buch."
+
+msgid "Accessibility metadata is part of EPUB 3. Use Tools → Upgrade to EPUB 3 first."
+msgstr "Barrierefreiheits-Metadaten gehören zu EPUB 3. Nutze zuerst Werkzeuge → Auf EPUB 3 aktualisieren."
+
+msgid "Checks of the accessibility metadata"
+msgstr "Prüfungen der Barrierefreiheits-Metadaten"
+
+msgid "(not stated)"
+msgstr "(nicht angegeben)"
+
+msgid "Sufficient modes, sets separated by ; (for example textual; textual,visual)"
+msgstr "Ausreichende Modi, Gruppen durch ; getrennt (zum Beispiel textual; textual,visual)"
+
+msgid "Access modes"
+msgstr "Zugriffsmodi"
+
+msgid "Features"
+msgstr "Merkmale"
+
+msgid "Hazards"
+msgstr "Gefahren"
+
+msgid "Certified by"
+msgstr "Zertifiziert von"
+
+msgid "Certifier credential"
+msgstr "Nachweis des Zertifizierers"
+
+msgid "Certifier report (address)"
+msgstr "Bericht des Zertifizierers (Adresse)"
+
+msgid "(choose a preset)"
+msgstr "(Vorgabe wählen)"
+
+msgid "Start from a preset"
+msgstr "Mit einer Vorgabe beginnen"
+
+msgid "Suggest from the Book"
+msgstr "Aus dem Buch vorschlagen"
+
+msgid "Look at the book"
+msgstr "Buch untersuchen"
+
+msgid "Fills the form from the images, audio, MathML, headings and contents it finds"
+msgstr "Füllt das Formular anhand der gefundenen Bilder, Audios, MathML, Überschriften und des Inhaltsverzeichnisses aus"
+
+msgid "Certifier"
+msgstr "Zertifizierer"
+
+msgid "Checks"
+msgstr "Prüfungen"
+
+msgid "What stores, libraries and screen readers are told about the book: how it can be read, which features it has and which hazards. Values are checked against the EPUB accessibility vocabulary and against the book."
+msgstr "Was Shops, Bibliotheken und Screenreader über das Buch erfahren: wie es gelesen werden kann, welche Merkmale es hat und welche Gefahren. Die Werte werden anhand des EPUB-Barrierefreiheits-Vokabulars und des Buches geprüft."
+
+msgid "Set Cover"
+msgstr "Titelbild festlegen"
+
+msgid "Cover preview"
+msgstr "Vorschau des Titelbilds"
+
+msgid "(choose an image)"
+msgstr "(Bild wählen)"
+
+msgid "Image of the book"
+msgstr "Bild des Buches"
+
+msgid "Choose a File"
+msgstr "Datei wählen"
+
+msgid "Draw from Title and Author"
+msgstr "Aus Titel und Autor erzeugen"
+
+msgid "Or use"
+msgstr "Oder verwenden"
+
+msgid "Crop"
+msgstr "Zuschneiden"
+
+msgid "Size"
+msgstr "Größe"
+
+msgid "Make a cover page"
+msgstr "Titelseite erstellen"
+
+msgid "A first page that shows the cover, listed as the cover in the guide and landmarks"
+msgstr "Eine erste Seite mit dem Titelbild, in Guide und Landmarks als Titelbild eingetragen"
+
+msgid "Delete the old cover image"
+msgstr "Altes Titelbild löschen"
+
+msgid "Only when no page uses it any more"
+msgstr "Nur wenn keine Seite es mehr verwendet"
+
+msgid "Choose the image to use as the cover."
+msgstr "Wähle das Bild, das als Titelbild dienen soll."
+
+msgid "Choose a Cover Image"
+msgstr "Titelbild wählen"
+
+msgid "{} × {} pixels, {} KB"
+msgstr "{} × {} Pixel, {} KB"
+
+msgid "not used by any text"
+msgstr "von keinem Text verwendet"
+
+msgid "Manage Fonts"
+msgstr "Schriften verwalten"
+
+msgid "Sample text"
+msgstr "Beispieltext"
+
+msgid "Sample of the selected font"
+msgstr "Beispiel der gewählten Schrift"
+
+msgid "Open a font below to see a sample."
+msgstr "Öffne unten eine Schrift, um ein Beispiel zu sehen."
+
+msgid "No sample: the font has none of the characters of the sample text."
+msgstr "Kein Beispiel: Die Schrift enthält keines der Zeichen des Beispieltexts."
+
+msgid "Fonts in this book"
+msgstr "Schriften in diesem Buch"
+
+msgid "This book has no embedded fonts"
+msgstr "Dieses Buch enthält keine eingebetteten Schriften"
+
+msgid "Use Tools → Embed Referenced Fonts to add fonts from this computer."
+msgstr "Nutze Werkzeuge → Referenzierte Schriften einbetten, um Schriften von diesem Computer hinzuzufügen."
+
+msgid "Family name in the book"
+msgstr "Familienname im Buch"
+
+msgid "Remove this font"
+msgstr "Diese Schrift entfernen"
+
+msgid "Deletes the file and its @font-face rules; the text falls back to the next font of its list"
+msgstr "Löscht die Datei und ihre @font-face-Regeln; der Text fällt auf die nächste Schrift seiner Liste zurück"
+
+msgid "Embed Fonts from this Computer"
+msgstr "Schriften von diesem Computer einbetten"
+
+msgid "Sample"
+msgstr "Beispiel"
+
+msgid "{} characters used"
+msgstr "{} verwendete Zeichen"
+
+msgid "{} used characters missing"
+msgstr "{} verwendete Zeichen fehlen"
+
+msgid "Sample in {}"
+msgstr "Beispiel in {}"
+
+msgid "Formatting works in HTML pages"
+msgstr "Formatierung funktioniert in HTML-Seiten"
+
+msgid "The selection cuts through tags; select whole elements or plain text"
+msgstr "Die Auswahl schneidet durch Tags; wähle ganze Elemente oder reinen Text"
+
+msgid "The cursor is inside a tag or comment"
+msgstr "Die Einfügemarke steht in einem Tag oder Kommentar"
+
+msgid "The cursor is not inside an element"
+msgstr "Die Einfügemarke steht in keinem Element"
+
+msgid "Open a style sheet to sort its rules"
+msgstr "Öffne ein Stylesheet, um dessen Regeln zu sortieren"
+
+msgid "The rules are already in order"
+msgstr "Die Regeln sind bereits sortiert"
+
+msgid "Sorted {} rules by selector"
+msgstr "{} Regeln nach Selektor sortiert"
+
+msgid "Elements (for example p.note, //div/p, #id)"
+msgstr "Elemente (zum Beispiel p.note, //div/p, #id)"
+
+msgid "for example"
+msgstr "zum Beispiel"
+
+msgid "(choose a saved set)"
+msgstr "(gespeicherten Satz wählen)"
+
+msgid "All pages"
+msgstr "Alle Seiten"
+
+msgid "The open page only"
+msgstr "Nur die geöffnete Seite"
+
+msgid "Unknown rule"
+msgstr "Unbekannte Regel"
+
+msgid "Add at least one rule"
+msgstr "Füge mindestens eine Regel hinzu"
+
+msgid "Insert"
+msgstr "Einfügen"
+
+msgid "Markup that will be inserted"
+msgstr "Markup, das eingefügt wird"
+
+msgid "Files of the book"
+msgstr "Dateien des Buches"
+
+msgid "Open an HTML page to insert into"
+msgstr "Öffne eine HTML-Seite zum Einfügen"
+
+msgid "The book has no images yet; add some with Add Files"
+msgstr "Das Buch hat noch keine Bilder; füge welche mit „Dateien hinzufügen“ hinzu"
+
+msgid "Insert Image"
+msgstr "Bild einfügen"
+
+msgid "Filter images (c2 finds cover-2.jpg)"
+msgstr "Bilder filtern (c2 findet cover-2.jpg)"
+
+msgid "Alternative text (leave empty for a decorative image)"
+msgstr "Alternativtext (für ein dekoratives Bild leer lassen)"
+
+msgid "Alternative text"
+msgstr "Alternativtext"
+
+msgid "Title (optional)"
+msgstr "Titel (optional)"
+
+msgid "Insert Hyperlink"
+msgstr "Hyperlink einfügen"
+
+msgid "Filter files (ch3 finds chapter-3.xhtml)"
+msgstr "Dateien filtern (ch3 findet chapter-3.xhtml)"
+
+msgid "Anchor in the page"
+msgstr "Anker in der Seite"
+
+msgid "Address (a file, #anchor or a web address)"
+msgstr "Adresse (eine Datei, #Anker oder eine Webadresse)"
+
+msgid "Link text"
+msgstr "Linktext"
+
+msgid "(the page itself)"
+msgstr "(die Seite selbst)"
+
+msgid "The cursor is inside a tag; move it into the text"
+msgstr "Die Einfügemarke steht in einem Tag; setze sie in den Text"
+
+msgid "Remove the jacket"
+msgstr "Schutzumschlag entfernen"
+
+msgid "A page after the cover that lists the title, authors, series, tags, rating and comments from the book's metadata. It is marked, so it can be updated when the metadata changes and removed without a trace."
+msgstr "Eine Seite nach dem Titelbild, die Titel, Autoren, Reihe, Tags, Bewertung und Kommentare aus den Metadaten des Buches auflistet. Sie ist markiert, lässt sich also bei geänderten Metadaten aktualisieren und spurlos entfernen."
+
+msgid "Could not update the book jacket: {}"
+msgstr "Der Schutzumschlag konnte nicht aktualisiert werden: {}"
+
+msgid "This tag has no closing >"
+msgstr "Diesem Tag fehlt das schließende >"
+
+msgid "& must be written as &amp;"
+msgstr "& muss als &amp; geschrieben werden"
+
+msgid "} without a matching {"
+msgstr "} ohne passendes {"
+
+msgid "{ is never closed"
+msgstr "{ wird nie geschlossen"
+
+msgid "This comment is never closed"
+msgstr "Dieser Kommentar wird nie geschlossen"
+
+msgid "Close Tags When Typing </"
+msgstr "Tags beim Tippen von </ schließen"
+
+msgid "Underline Invalid Markup"
+msgstr "Ungültiges Markup unterstreichen"
+
+msgid "Mark Link Targets"
+msgstr "Linkziele markieren"
+
+msgid "Show Colour Swatches"
+msgstr "Farbmuster anzeigen"
+
+msgid "Draw Bold and Italic Text"
+msgstr "Fett und kursiv darstellen"
+
+msgid "<{}> is never closed"
+msgstr "<{}> wird nie geschlossen"
+
+msgid "</{}> has no matching start tag"
+msgstr "</{}> hat kein passendes Start-Tag"
+
+msgid "The attribute {} appears twice"
+msgstr "Das Attribut {} kommt zweimal vor"
+
+msgid "The value of {} needs quotes"
+msgstr "Der Wert von {} braucht Anführungszeichen"
+
+msgid "There is no such file or anchor: {}"
+msgstr "Diese Datei oder dieser Anker existiert nicht: {}"
+
+msgid "There is nothing to jump to here"
+msgstr "Hier gibt es nichts, wohin man springen könnte"
+
+msgid "Rename Class"
+msgstr "Klasse umbenennen"
+
+msgid "New class name"
+msgstr "Neuer Klassenname"
+
+msgid "Files that change"
+msgstr "Dateien, die sich ändern"
+
+msgid "Type the new name"
+msgstr "Neuen Namen eingeben"
+
+msgid "A class name starts with a letter or _ and has no spaces"
+msgstr "Ein Klassenname beginnt mit einem Buchstaben oder _ und enthält keine Leerzeichen"
+
+msgid "That is not a valid class name"
+msgstr "Das ist kein gültiger Klassenname"
+
+msgid "The class is not used"
+msgstr "Die Klasse wird nicht verwendet"
+
+msgid "Help for {}"
+msgstr "Hilfe zu {}"
+
+msgid "Nothing found for {}"
+msgstr "Nichts gefunden für {}"
+
+msgid "{} is a web address; it is not opened from the editor"
+msgstr "{} ist eine Webadresse; sie wird nicht im Editor geöffnet"
+
+msgid "Every use of “{}” in the pages and style sheets of the book is renamed. A checkpoint is taken first."
+msgstr "Jede Verwendung von „{}“ in den Seiten und Stylesheets des Buches wird umbenannt. Vorher wird ein Prüfpunkt angelegt."
+
+msgid "{} changes in {} files"
+msgstr "{} Änderungen in {} Dateien"
+
+msgid "“{}” exists already; the two classes will merge"
+msgstr "„{}“ existiert bereits; die beiden Klassen werden zusammengeführt"
+
+msgid "Renamed {} uses in {} files (a checkpoint was taken)"
+msgstr "{} Verwendungen in {} Dateien umbenannt (ein Prüfpunkt wurde angelegt)"
+
+msgid "Nothing is marked"
+msgstr "Nichts ist markiert"
+
+msgid "Nothing is marked, so the final output was not added"
+msgstr "Nichts ist markiert, daher wurde die endgültige Ausgabe nicht hinzugefügt"
+
+msgid "The final output was added after the marked text"
+msgstr "Die endgültige Ausgabe wurde nach dem markierten Text hinzugefügt"
+
+msgid "Use the default font"
+msgstr "Standardschrift verwenden"
+
+msgid "How the text of the editor looks. Changes apply to every open editor window."
+msgstr "Wie der Text im Editor aussieht. Änderungen gelten für alle geöffneten Editorfenster."
+
+msgid "Tab width"
+msgstr "Tabulatorbreite"
+
+msgid "Insert spaces instead of tabs"
+msgstr "Leerzeichen statt Tabulatoren einfügen"
+
+msgid "Highlight the current line"
+msgstr "Aktuelle Zeile hervorheben"
+
+msgid "Right margin guide"
+msgstr "Hilfslinie für den rechten Rand"
+
+msgid "A vertical line at a column, to keep lines short"
+msgstr "Eine senkrechte Linie bei einer Spalte, damit die Zeilen kurz bleiben"
+
+msgid "Right margin column"
+msgstr "Spalte des rechten Rands"
+
+msgid "Wrap long lines"
+msgstr "Lange Zeilen umbrechen"
+
+msgid "Show spaces and tabs"
+msgstr "Leerzeichen und Tabulatoren anzeigen"
+
+msgid "Overview map at the right edge"
+msgstr "Übersichtskarte am rechten Rand"
+
+msgid "Colour scheme"
+msgstr "Farbschema"
+
+msgid "Your own schemes (GtkSourceView .xml files) go into the styles folder of the Bookx configuration."
+msgstr "Eigene Schemata (GtkSourceView-.xml-Dateien) gehören in den Ordner styles der Bookx-Konfiguration."
+
+msgid "Follow light and dark mode"
+msgstr "Hell- und Dunkelmodus folgen"
+
+msgid "Pick a scheme that fits the system style, black on white for e-ink"
+msgstr "Wähle ein zum Systemstil passendes Schema, Schwarz auf Weiß für E-Ink"
+
+msgid "Colour schemes"
+msgstr "Farbschemata"
+
+msgid "Open the styles folder"
+msgstr "Ordner mit den Stilen öffnen"
+
+msgid "Editing"
+msgstr "Bearbeiten"
+
+msgid "Keyboard shortcuts of the editor are under Keyboard Shortcuts."
+msgstr "Die Tastenkürzel des Editors stehen unter Tastenkürzel."
+
+msgid "Close tags automatically"
+msgstr "Tags automatisch schließen"
+
+msgid "Typing > after an opening tag adds the closing tag"
+msgstr "Das Tippen von > nach einem öffnenden Tag fügt das schließende Tag hinzu"
+
+msgid "Suggest completions while typing"
+msgstr "Beim Tippen Vervollständigungen vorschlagen"
+
+msgid "Off: completions open with Ctrl+Space"
+msgstr "Aus: Vorschläge öffnen sich mit Strg+Leertaste"
+
+msgid "Show colours in style sheets"
+msgstr "Farben in Stylesheets anzeigen"
+
+msgid "Colour codes like #1a2b3c are painted in their colour"
+msgstr "Farbcodes wie #1a2b3c werden in ihrer Farbe dargestellt"
+
+msgid "Underline misspelled words"
+msgstr "Falsch geschriebene Wörter unterstreichen"
+
+msgid "Words that are not in the dictionary get a wavy red line"
+msgstr "Wörter, die nicht im Wörterbuch stehen, erhalten eine rote Wellenlinie"
+
+msgid "Turn typed entities into characters"
+msgstr "Getippte Entitäten in Zeichen umwandeln"
+
+msgid "Typing ; after &name; inserts the character"
+msgstr "Das Tippen von ; nach &name; fügt das Zeichen ein"
+
+msgid "The live preview next to the code."
+msgstr "Die Live-Vorschau neben dem Code."
+
+msgid "Text font"
+msgstr "Textschrift"
+
+msgid "Smallest text size"
+msgstr "Kleinste Textgröße"
+
+msgid "Follow the cursor"
+msgstr "Dem Cursor folgen"
+
+msgid "The preview scrolls to the element at the cursor when the editor opens"
+msgstr "Die Vorschau scrollt beim Öffnen des Editors zum Element an der Einfügemarke"
+
+msgid "Scrolling the preview scrolls the code"
+msgstr "Scrollen der Vorschau scrollt den Code"
+
+msgid "Use the default {}"
+msgstr "Standard-{} verwenden"
+
+msgid "Templates for new files"
+msgstr "Vorlagen für neue Dateien"
+
+msgid "Type a trigger word and press Tab to expand it. $1, $2… are tab stops, ${1:text} has a default, ${2*} takes the selected text, $0 is where the caret ends."
+msgstr "Tippe ein Kürzel und drücke Tab, um es zu erweitern. $1, $2 … sind Tabstopps, ${1:Text} hat einen Vorgabewert, ${2*} übernimmt den markierten Text und $0 ist die Endposition der Einfügemarke."
+
+msgid "Offered by Files → New File. {title} in the text is replaced by the name of the new file."
+msgstr "Wird unter Dateien → Neue Datei angeboten. {title} im Text wird durch den Namen der neuen Datei ersetzt."
+
+msgid "Add Template"
+msgstr "Vorlage hinzufügen"
+
+msgid "Import snippets from a file"
+msgstr "Textbausteine aus einer Datei importieren"
+
+msgid "Import snippets"
+msgstr "Textbausteine importieren"
+
+msgid "Export your snippets to a file"
+msgstr "Deine Textbausteine in eine Datei exportieren"
+
+msgid "Export snippets"
+msgstr "Textbausteine exportieren"
+
+msgid "No templates yet"
+msgstr "Noch keine Vorlagen"
+
+msgid "Name, for example Chapter"
+msgstr "Name, zum Beispiel Kapitel"
+
+msgid "Template name"
+msgstr "Vorlagenname"
+
+msgid "Template file type"
+msgstr "Dateityp der Vorlage"
+
+msgid "Template text"
+msgstr "Vorlagentext"
+
+msgid "Edit Template"
+msgstr "Vorlage bearbeiten"
+
+msgid "New Template"
+msgstr "Neue Vorlage"
+
+msgid "Selected text to try, for ${2*} stops (optional)"
+msgstr "Probetext als Auswahl, für ${2*}-Stopps (optional)"
+
+msgid "Sample selected text"
+msgstr "Beispiel für markierten Text"
+
+msgid "Snippet test result"
+msgstr "Ergebnis des Textbaustein-Tests"
+
+msgid "Expand the snippet in the box below"
+msgstr "Erweitere den Textbaustein im Feld unten"
+
+msgid "Imported {} snippets"
+msgstr "{} Textbausteine importiert"
+
+msgid "Imported {} snippets, skipped {}: {}"
+msgstr "{} Textbausteine importiert, {} übersprungen: {}"
+
+msgid "Exported {} snippets"
+msgstr "{} Textbausteine exportiert"
+
+msgid "Search snippets"
+msgstr "Textbausteine suchen"
+
+msgid "Only pages can be merged"
+msgstr "Nur Seiten können zusammengeführt werden"
+
+msgid "Merge these pages?"
+msgstr "Diese Seiten zusammenführen?"
+
+msgid "A checkpoint is taken first, so you can undo it."
+msgstr "Vorher wird ein Prüfpunkt angelegt, du kannst es also rückgängig machen."
+
+msgid "{} is added to the end of {}. Links to it are repaired and it is removed from the book."
+msgstr "{} wird an das Ende von {} angehängt. Links darauf werden repariert und die Seite wird aus dem Buch entfernt."
+
+msgid "Drag to move this entry"
+msgstr "Ziehen, um diesen Eintrag zu verschieben"
+
+msgid "That entry cannot go there"
+msgstr "Dieser Eintrag kann nicht dorthin"
+
+msgid "Transform HTML"
+msgstr "HTML umwandeln"
+
+msgid "Accessibility Metadata"
+msgstr "Barrierefreiheits-Metadaten"
+
+msgid "Book Jacket"
+msgstr "Schutzumschlag"
+
+msgid "Discard Unsaved Changes?"
+msgstr "Ungespeicherte Änderungen verwerfen?"
+
+msgid "This window will show another book. Save first if you want to keep your changes."
+msgstr "Dieses Fenster zeigt ein anderes Buch. Speichere zuvor, wenn du deine Änderungen behalten willst."
+
+msgid "Discard and Continue"
+msgstr "Verwerfen und fortfahren"
+
+msgid "Books to edit"
+msgstr "Bücher zum Bearbeiten"
+
+msgid "Open a Book of Another Format to Edit"
+msgstr "Ein Buch in einem anderen Format zum Bearbeiten öffnen"
+
+msgid "Bookx cannot write this format, so the book can only be saved as an EPUB."
+msgstr "Bookx kann dieses Format nicht schreiben, das Buch lässt sich daher nur als EPUB speichern."
+
+msgid "Save as EPUB"
+msgstr "Als EPUB speichern"
+
+msgid "Unknown foreign-save command"
+msgstr "Unbekannter Befehl zum Speichern in Fremdformaten"
+
+msgid "Editing a {} book through a temporary EPUB. {}"
+msgstr "Ein {}-Buch wird über ein temporäres EPUB bearbeitet. {}"
+
+msgid "Could not open that book: {}"
+msgstr "Das Buch konnte nicht geöffnet werden: {}"
+
+msgid "Converting back replaces {} and keeps the old file next to it as a backup."
+msgstr "Beim Zurückkonvertieren wird {} ersetzt, die alte Datei bleibt daneben als Sicherung erhalten."
+
+msgid "Save “{}”"
+msgstr "„{}“ speichern"
+
+msgid "Convert Back to {}"
+msgstr "Zurück nach {} konvertieren"
+
+msgid "Saved an EPUB to {}"
+msgstr "EPUB in {} gespeichert"
+
+msgid "Saved {}; the old file is kept as {}"
+msgstr "{} gespeichert; die alte Datei bleibt als {} erhalten"
+
+msgid "Could not convert back: {}"
+msgstr "Zurückkonvertieren fehlgeschlagen: {}"
+
+msgid "Connected device"
+msgstr "Verbundenes Gerät"
+
+msgid "Continue reading {}, {}"
+msgstr "{} weiterlesen, {}"
+
+msgid ""
+"Add some books to start your library.\n"
+"EPUB, plain text, Markdown and HTML files are supported — drop them here."
+msgstr ""
+"Fügen Sie ein paar Bücher hinzu, um Ihre Bibliothek zu starten.\n"
+"EPUB-, Nur-Text-, Markdown- und HTML-Dateien werden unterstützt – legen Sie sie hier ab."
+
+msgid ""
+"Calibre-style search:\n"
+"  title: author: tag: series: publisher: language: rating: status: format: identifier:\n"
+"  = exact, >= <= comparison, - to exclude, OR to combine\n"
+"  text:word searches the contents of the books"
+msgstr ""
+"Suche im Calibre-Stil:\n"
+"  title: author: tag: series: publisher: language: rating: status: format: identifier:\n"
+"  = exakt, >= <= Vergleich, - zum Ausschließen, OR zum Kombinieren\n"
+"  text:Wort durchsucht den Inhalt der Bücher"
+
+msgid ""
+"Couldn't load a summary.\n"
+"{}\n"
+"\n"
+"Use “Open Wikipedia” to search in the browser."
+msgstr ""
+"Eine Zusammenfassung konnte nicht geladen werden.\n"
+"{}\n"
+"\n"
+"Mit „Wikipedia öffnen“ suchen Sie im Browser."
+
+msgid ""
+"No dictionaries installed.\n"
+"\n"
+"Copy StarDict dictionaries (folders with .ifo, .idx and .dict files) into:\n"
+"{}"
+msgstr ""
+"Keine Wörterbücher installiert.\n"
+"\n"
+"Kopieren Sie StarDict-Wörterbücher (Ordner mit .ifo-, .idx- und .dict-Dateien) nach:\n"
+"{}"
+
+msgid "Rename Class “{}”"
+msgstr "Klasse „{}“ umbenennen"
+
+msgid "Colour scheme preview"
+msgstr "Vorschau des Farbschemas"

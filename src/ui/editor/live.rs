@@ -80,7 +80,9 @@ impl Editor {
         self.update_spelling(&path, &buf, &text);
         self.update_marks(&path, &buf, &text);
         codeview::mark_hidden_chars(buf.upcast_ref(), self.prefs.show_whitespace);
+        prefs_page::mark_css_colors(&buf, crate::editor_prefs::look().css_colors);
         self.update_completion_data(&path, &text);
+        self.update_hints(&path, &buf, &text);
         self.update_pair_highlight();
     }
 
@@ -317,6 +319,12 @@ impl Editor {
         };
         d.edited_ids
             .insert(path.to_string(), bookx_editing::markup::defined_ids(text));
+        if is_spelled_path(path) && text.len() <= LIVE_MAX {
+            d.edited_snips.insert(
+                path.to_string(),
+                bookx_editing::code_marks::anchor_snippets(text),
+            );
+        }
     }
 
     // ---- tag pair under the caret ----------------------------------------------------
@@ -494,6 +502,7 @@ pub(super) fn install_spell_menu(
         let text = buffer_text(&buf);
         let at = char_to_byte_idx(&text, iter.offset() as usize);
         build_spell_menu(&menu, &spell, &text, at);
+        super::navigate::append_code_section(&menu, &v, &text, at, iter.offset());
     });
     view.add_controller(click);
 }

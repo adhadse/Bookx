@@ -121,7 +121,10 @@ pub fn find_status(count: i32, position: i32) -> String {
 
 pub fn init() {
     static ONCE: std::sync::Once = std::sync::Once::new();
-    ONCE.call_once(sv::init);
+    ONCE.call_once(|| {
+        sv::init();
+        super::prefs_page::add_scheme_dir();
+    });
 }
 
 /// Names of the extra text tags every buffer carries.
@@ -155,12 +158,14 @@ fn add_extra_tags(table: &gtk::TextTagTable, dark: bool) {
         let t = gtk::TextTag::new(Some(TAG_HIDDEN));
         table.add(&t);
     }
+    super::markup_hints::add_tags(table);
     recolor(table, dark);
 }
 
 /// Colours of the tags that depend on the brightness.
 pub fn recolor(table: &gtk::TextTagTable, dark: bool) {
     syntax::update_colors(table, dark);
+    super::markup_hints::recolor(table, dark);
     if let Some(t) = table.lookup(TAG_SPELL) {
         t.set_underline_rgba(
             gtk::gdk::RGBA::parse(if dark { "#ff7b63" } else { "#e01b24" })
@@ -223,7 +228,12 @@ pub fn available_schemes() -> Vec<String> {
 /// Applies the scheme that matches the app's brightness and e-ink mode.
 pub fn apply_scheme(buf: &sv::Buffer, dark: bool, eink: bool) {
     let mgr = sv::StyleSchemeManager::default();
-    let id = pick_scheme(&available_schemes(), dark, eink);
+    let chosen = crate::editor_prefs::look().scheme;
+    let id = if !chosen.is_empty() && mgr.scheme(&chosen).is_some() {
+        Some(chosen)
+    } else {
+        pick_scheme(&available_schemes(), dark, eink)
+    };
     buf.set_style_scheme(id.and_then(|i| mgr.scheme(&i)).as_ref());
 }
 

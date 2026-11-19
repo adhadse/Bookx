@@ -139,6 +139,10 @@ class Ctx:
             env["WAYLAND_DEBUG"] = os.environ["WAYLAND_DEBUG"]
         # automatic dictionary downloads never go to the network by themselves in the tests
         env["BOOKX_DICT_AUTO"] = "off"
+        # GTK 4.24's Vulkan renderer makes a re-shown popup (the completion list hides and shows again
+        # while typing) reuse a wl_surface that still has a buffer: mutter kills the app with
+        # "wl_surface already has a buffer committed" (Wayland protocol error 71). The GL renderer is fine.
+        env.setdefault("GSK_RENDERER", os.environ.get("GSK_RENDERER", "ngl"))
         env.update(extra_env or {})
         cmd = [self.bin]
         if os.environ.get("GDB") == "1":  # debugging aid: a backtrace of a crash lands in app.log

@@ -259,11 +259,17 @@ impl Thumbs {
         if let Some(t) = self.cached(page) {
             return Some(t);
         }
-        let t0 = Instant::now();
         if let Some(t) = self.load_disk(page) {
             self.cache.borrow_mut().insert(page, t.clone());
             return Some(t);
         }
+        self.render_laid(page)
+    }
+
+    /// Makes the thumbnail by laying the chapter out, ignoring the memory and disk caches
+    /// (the dev hooks compare it with the reader's own page).
+    pub fn render_laid(&self, page: usize) -> Option<Thumb> {
+        let t0 = Instant::now();
         let (spine, local) = locate(&self.src.weights, self.src.total, page);
         let (idx, laid) = {
             let before = Instant::now();

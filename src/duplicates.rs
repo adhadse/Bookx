@@ -1,7 +1,8 @@
 //! Finding and merging duplicate books (roadmap L7), on top of `bookx-sources::dedup`.
 //! No GTK in here, so it is unit tested.
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
+use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Result};
 use bookx_sources::dedup::{find_duplicates, merge_metadata};
@@ -48,6 +49,75 @@ pub fn find(books: &[Book]) -> Vec<Group> {
         .collect();
     groups.sort_by_key(|g| g.ids[0]);
     groups
+}
+
+/// Pairs of books the user said are *not* the same book (roadmap PP-G-4: a "not a duplicate"
+/// memory). Kept in `<library>/.bookx/not-duplicates.json`; a damaged or missing file means none.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Apart {
+    #[serde(default)]
+    pairs: BTreeSet<(u64, u64)>,
+}
+
+fn pair(a: u64, b: u64) -> (u64, u64) {
+    (a.min(b), a.max(b))
+}
+
+pub fn apart_path(root: &Path) -> PathBuf {
+    root.join(crate::core::history::STATE_DIR)
+        .join("not-duplicates.json")
+}
+
+impl Apart {
+    pub fn load(root: &Path) -> Apart {
+        std::fs::read(apart_path(root))
+            .ok()
+            .and_then(|b| serde_json::from_slice(&b).ok())
+            .unwrap_or_default()
+    }
+
+    pub fn save(&self, root: &Path) -> Result<()> {
+        let p = apart_path(root);
+        if let Some(d) = p.parent() {
+            std::fs::create_dir_all(d)?;
+        }
+        let tmp = p.with_extension("json.tmp");
+        std::fs::write(&tmp, serde_json::to_vec_pretty(self)?)?;
+        std::fs::rename(&tmp, &p)?;
+        Ok(())
+    }
+
+    /// Remembers that none of `ids` is a copy of another.
+    pub fn keep_apart(&mut self, ids: &[u64]) {
+        for (i, a) in ids.iter().enumerate() {
+            for b in &ids[i + 1..] {
+                if a != b {
+                    self.pairs.insert(pair(*a, *b));
+                }
+            }
+        }
+    }
+
+    pub fn is_apart(&self, a: u64, b: u64) -> bool {
+        self.pairs.contains(&pair(a, b))
+    }
+
+    /// Hides the groups whose every pair was declared different. A group in which some pair is still
+    /// open stays whole: showing a copy too many is better than hiding a real one.
+    pub fn hide(&self, groups: Vec<Group>) -> Vec<Group> {
+        if self.pairs.is_empty() {
+            return groups;
+        }
+        groups
+            .into_iter()
+            .filter(|g| {
+                !g.ids
+                    .iter()
+                    .enumerate()
+                    .all(|(i, a)| g.ids[i + 1..].iter().all(|b| self.is_apart(*a, *b)))
+            })
+            .collect()
+    }
 }
 
 impl Group {
@@ -252,6 +322,40 @@ mod tests {
         );
         assert!(find(&lib.books).is_empty());
         let _ = std::fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn declared_apart_books_leave_the_group_and_the_memory_is_saved() {
+        let g = |ids: &[u64]| Group {
+            ids: ids.to_vec(),
+            keep: ids[0],
+        };
+        let mut a = Apart::default();
+        assert_eq!(
+            a.hide(vec![g(&[1, 2])]),
+            vec![g(&[1, 2])],
+            "nothing remembered"
+        );
+        a.keep_apart(&[1, 2]);
+        assert!(a.is_apart(2, 1) && !a.is_apart(1, 3));
+        assert!(
+            a.hide(vec![g(&[1, 2])]).is_empty(),
+            "a pair that was declared apart is gone"
+        );
+        // of three copies, one open pair keeps the group on screen
+        assert_eq!(a.hide(vec![g(&[1, 2, 3])]), vec![g(&[1, 2, 3])]);
+        a.keep_apart(&[1, 2, 3]);
+        assert!(a.hide(vec![g(&[1, 2, 3])]).is_empty());
+        let dir = tmp();
+        a.save(&dir).unwrap();
+        assert_eq!(Apart::load(&dir), a);
+        std::fs::write(apart_path(&dir), "garbage").unwrap();
+        assert_eq!(
+            Apart::load(&dir),
+            Apart::default(),
+            "a damaged file means none"
+        );
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

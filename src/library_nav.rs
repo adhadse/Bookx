@@ -25,6 +25,73 @@ pub struct HeroSession {
 }
 
 /// After this long without the hero the next visit gets it again.
+/// Where a click in the sidebar goes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NavTarget<'a> {
+    /// Home, Recent, Favourites, Notes & Highlights: all the books of that view.
+    View(View),
+    /// A filter row (an author, tag, series, shelf, saved search…): the search it stands for.
+    Filter(&'a str),
+}
+
+/// What the search bar shows after a sidebar click.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SearchState {
+    pub open: bool,
+    pub query: String,
+}
+
+/// A filter row opens the search bar with its query, so it is clear a filter is active; a view
+/// closes the bar and clears the query (whatever was typed by hand too).
+pub fn search_for(target: NavTarget) -> SearchState {
+    match target {
+        NavTarget::Filter(q) if !q.trim().is_empty() => SearchState {
+            open: true,
+            query: q.to_string(),
+        },
+        _ => SearchState {
+            open: false,
+            query: String::new(),
+        },
+    }
+}
+
+/// The smallest library window (the narrow layout: sidebar as overlay, minimal header).
+pub const MIN_WIDTH: i32 = 360;
+pub const MIN_HEIGHT: i32 = 294;
+/// The narrowest the sidebar is when docked, and how wide the sidebar and the details panel get
+/// (the split views size them as a share of the window, up to these).
+pub const SIDEBAR_MIN: i32 = 250;
+pub const SIDEBAR_MAX: i32 = 320;
+pub const DETAILS_MAX: i32 = 380;
+/// The room the books need next to the sidebar, and next to the sidebar and the details panel.
+pub const CONTENT_MIN: i32 = 670;
+pub const GRID_MIN: i32 = 470;
+/// Up to this window width (in sp) the sidebar is an overlay.
+pub const SIDEBAR_COLLAPSE_AT: f64 = (SIDEBAR_MIN + CONTENT_MIN) as f64;
+/// Up to this width the details panel is an overlay (the widest sidebar and panel and a grid of
+/// `GRID_MIN` do not fit).
+pub const DETAILS_COLLAPSE_AT: f64 = (SIDEBAR_MAX + DETAILS_MAX + GRID_MIN) as f64;
+/// Below this width the header drops its optional buttons into the view options.
+pub const HEADER_COMPACT_AT: f64 = 600.0;
+
+/// How the library window is laid out at a width (in sp).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WindowLayout {
+    pub sidebar_overlay: bool,
+    pub details_overlay: bool,
+    pub header_compact: bool,
+}
+
+pub fn window_layout(width: i32) -> WindowLayout {
+    let w = width as f64;
+    WindowLayout {
+        sidebar_overlay: w <= SIDEBAR_COLLAPSE_AT,
+        details_overlay: w <= DETAILS_COLLAPSE_AT || w <= SIDEBAR_COLLAPSE_AT,
+        header_compact: w <= HEADER_COMPACT_AT,
+    }
+}
+
 pub const HERO_AWAY_SECS: i64 = 30 * 60;
 
 /// Which banner a visit to Home gets: the hero on a cold start, while its visit goes on and after
@@ -756,5 +823,49 @@ mod tests {
             }
         }
         assert!(bad.is_empty(), "labels ending in an ellipsis: {bad:#?}");
+    }
+
+    #[test]
+    fn the_panels_become_overlays_before_the_books_get_squeezed() {
+        for w in [360, 700, 800, 900, 920] {
+            assert!(window_layout(w).sidebar_overlay, "{w}");
+        }
+        // 1100: the sidebar stays and the books keep 800, but the details panel would squeeze them
+        let l = window_layout(1100);
+        assert!(!l.sidebar_overlay && l.details_overlay);
+        let l = window_layout(1400);
+        assert!(!l.sidebar_overlay && !l.details_overlay && !l.header_compact);
+        // whatever is docked leaves the books enough room
+        for w in 360..2000 {
+            let l = window_layout(w);
+            let mut room = w;
+            if !l.sidebar_overlay {
+                room -= SIDEBAR_MIN;
+                assert!(room >= CONTENT_MIN, "{w}");
+            }
+            if !l.details_overlay {
+                room -= DETAILS_MAX;
+                assert!(room >= GRID_MIN, "{w}");
+            }
+        }
+        assert!(window_layout(MIN_WIDTH).header_compact && !window_layout(1100).header_compact);
+    }
+
+    #[test]
+    fn filter_rows_open_the_search_and_views_clear_it() {
+        let s = search_for(NavTarget::Filter("author:=\"Ian Miell\""));
+        assert!(s.open);
+        assert_eq!(s.query, "author:=\"Ian Miell\"");
+        for v in View::ALL {
+            assert_eq!(
+                search_for(NavTarget::View(v)),
+                SearchState {
+                    open: false,
+                    query: String::new()
+                }
+            );
+        }
+        // an empty filter is no filter
+        assert!(!search_for(NavTarget::Filter("  ")).open);
     }
 }

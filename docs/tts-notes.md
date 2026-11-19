@@ -232,3 +232,33 @@ and compare `kokoro-int8` and `kokoro-fp32`, and judge the espeak-based English 
   crate cannot load it, and it needs conda's own `libprotobuf.so.35`, `libre2.so.11`, `libabsl_*.so.2608`. The package that has the C
   library, `onnxruntime-cpp`, has the same conda-only dependencies. A conda origin would therefore not install a working runtime, so it was
   **not added** (no dead `.conda`/zstd code). Faster origin in place: NuGet (5.7 s vs 52 s for GitHub here), see above.
+
+
+## Narration of EPUB 3 (media overlays), wave 5 (CE-422)
+
+* Editor: Tools → Add Narration (`src/ui/editor/narration.rs`, glue `src/narration.rs`). Logic in `bookx-editing`
+  (`media_overlay.rs` sentence wrapping, clocks, SMIL build/parse with limits; `media_overlay_opf.rs` package edits;
+  `media_overlay_narrate.rs` per-chapter pipeline behind the `SentenceSynth` trait; `media_overlay_check.rs` rules
+  `MED-001..012`, called by `validate()`). The engine comes from `bookx_tts::factory::open_synthesizer` (so also the voice
+  server and the `BOOKX_TTS_MOCK` tone used by the UI tests).
+* The worker narrates a copy of the book chapter by chapter; the book is consistent after every chapter. Cancel (dialog or
+  Jobs panel) drops the chapter in progress and keeps the finished ones; running again continues with chapters that have no
+  `media-overlay` yet. The result replaces the book inside `run_op`: one checkpoint "Before: Add Narration".
+* **Audio is WAV** (16-bit mono, 24 kHz for Kokoro: about 48 KB per second, roughly 1.7 GB for ten hours). No pure-Rust encoder
+  for Opus, MP3 or AAC exists in the workspace or the offline registry cache (checked), WAV and FLAC are not EPUB 3 core media
+  types, and spawning ffmpeg is excluded by the security rules; so `MED-011` tells the user some reading systems cannot play it.
+  Adding an encoder later only touches `media_overlay_narrate::wav_bytes` and the media type.
+* Reader: `src/overlay_play.rs`. A book with overlays is read by `PipelineEngine` with `OverlaySynth` instead of a voice: each
+  sentence the player asks for is matched (normalized text) to the clip(s) of the overlay, so the card, highlight, previous/next
+  sentence, speed and sleep timer need no change. Sentences the reader splits finer than the narration are played whole once;
+  merged ones play the clips in a row. Only 16-bit PCM WAV is decoded. Audio is copied into memory (capped at 1.5 GB).
+  With `BOOKX_TTS_MOCK` the sink is silent but real-time. Not heard on a real sound card.
+* Measured (Kokoro int8, this machine, `cargo test --release ... narration::tests::live`, 3 sentences): 8.3 s of audio in 0.9 s,
+  real-time factor 0.11. Nobody listened to the result.
+* Known limits: sentences are split at inline tags (`<i>`); drop caps or `:first-child` CSS on spans may differ; Chapters
+  with only symbols get no narration; a partially narrated chapter is dropped on cancel (no per-sentence resume); no audio
+  normalisation; the Jobs panel shows the run as a "Conversion" (no own job kind, to keep `jobs.rs` untouched).
+* Tests: about 50 unit tests in `bookx-editing` (wrap/unwrap round trip, rendering unchanged, clocks, hostile and malformed SMIL,
+  size/depth/count limits, resume after cancel, engine error keeps finished chapters, removal restores the original book,
+  every `MED-` rule), `overlay_play` and `narration` unit tests, scenarios `editor_narration`, `reader_narration`, live
+  `narration::tests::live_a_short_chapter_with_kokoro` (`BOOKX_TTS_LIVE=1 BOOKX_TTS_DIR=~/.cache/bookx-tts`).

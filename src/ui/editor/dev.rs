@@ -8,7 +8,11 @@ impl Editor {
             self.problems_dev(r);
             return;
         }
-        if self.dev_spelling(&c) || self.dev_reports(&c) || self.dev_chars(&c) {
+        if self.dev_spelling(&c) || self.dev_reports(&c) || self.dev_chars(&c) || self.dev_code(&c)
+        {
+            return;
+        }
+        if self.prefs_dev(&c) || self.snippets_dev(&c) {
             return;
         }
         if self.pv_dev(&c, sender) {
@@ -16,6 +20,8 @@ impl Editor {
         }
         if let Some(x) = c.strip_prefix("x:") {
             self.ext_dev(x);
+        } else if let Some(x) = c.strip_prefix("mo:") {
+            self.mo_dev(x);
         } else if let Some(p) = c.strip_prefix("delete=") {
             self.delete_files(p.split('|').map(str::to_string).collect());
         } else if let Some(p) = c.strip_prefix("select-files=") {
@@ -406,7 +412,18 @@ impl Editor {
                 items
                     .iter()
                     .take(12)
-                    .map(|i| format!("{}[{}:{}]", i.label, i.kind, i.replace_len))
+                    .map(|i| {
+                        format!(
+                            "{}[{}:{}]{}",
+                            i.label,
+                            i.kind,
+                            i.replace_len,
+                            i.detail
+                                .as_ref()
+                                .map(|d| format!("«{d}»"))
+                                .unwrap_or_default()
+                        )
+                    })
                     .collect::<Vec<_>>()
                     .join(" ")
             );

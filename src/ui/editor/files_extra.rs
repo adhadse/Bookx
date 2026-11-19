@@ -174,28 +174,46 @@ impl Editor {
         };
         {
             let row = row.clone();
+            let merge_ok = bookx_editing::markup::is_markup_path(path);
             target.connect_motion(move |_, _, y| {
                 let after = y > row.height() as f64 / 2.0;
                 row.remove_css_class("drop-before");
                 row.remove_css_class("drop-after");
-                row.add_css_class(if after { "drop-after" } else { "drop-before" });
+                row.remove_css_class("toc-drop-into");
+                if merge_ok && super::struct_hub::is_merge_zone(y, row.height()) {
+                    super::toc_dnd::install_css();
+                    row.add_css_class("toc-drop-into");
+                } else {
+                    row.add_css_class(if after { "drop-after" } else { "drop-before" });
+                }
                 gdk::DragAction::MOVE
             });
         }
         {
             let row = row.clone();
-            target.connect_leave(move |_| clear(row.upcast_ref()));
+            target.connect_leave(move |_| {
+                clear(row.upcast_ref());
+                row.remove_css_class("toc-drop-into");
+            });
         }
         {
             let row = row.clone();
             let onto = path.to_string();
             let tx = self.sender.input_sender().clone();
+            let merge_ok = bookx_editing::markup::is_markup_path(path);
             target.connect_drop(move |_, v, _, y| {
                 row.remove_css_class("drop-before");
                 row.remove_css_class("drop-after");
+                row.remove_css_class("toc-drop-into");
                 let Ok(from) = v.get::<String>() else {
                     return false;
                 };
+                if merge_ok && super::struct_hub::is_merge_zone(y, row.height()) {
+                    tx.emit(Input::Ext(Cmd::Struct(
+                        super::struct_hub::StructCmd::DropMerge(from, onto.clone()),
+                    )));
+                    return true;
+                }
                 tx.emit(Input::Ext(Cmd::DropRow(
                     from,
                     onto.clone(),
@@ -419,6 +437,22 @@ impl Editor {
             });
             self.ext.monitors.borrow_mut().push(mon);
         }
+        // Tests name a program (an absolute path, started without a shell) instead of the system chooser.
+        if let Some(prog) = std::env::var_os("BOOKX_OPEN_WITH_PROGRAM")
+            .map(std::path::PathBuf::from)
+            .filter(|p| p.is_absolute())
+        {
+            let started = std::process::Command::new(prog).arg(&tmp).spawn().is_ok();
+            self.toast(&if started {
+                trf(
+                    "Opened {} in another program; the book updates when you save it there",
+                    &[&file_name(&p)],
+                )
+            } else {
+                tr("Could not start the program")
+            });
+            return;
+        }
         let launcher = gtk::FileLauncher::new(Some(&file));
         launcher.set_always_ask(true);
         let tx = self.sender.input_sender().clone();
@@ -445,6 +479,7 @@ impl Editor {
         }
         let (tx, path2) = (self.sender.input_sender().clone(), path.to_string());
         let tmp = tmp.to_path_buf();
+        *self.ext.pending_external.borrow_mut() = Some((path.to_string(), tmp.clone()));
         alert(
             &self.w.win,
             "Update the File?",
@@ -596,8 +631,9 @@ impl Editor {
         }
         let dialog = adw::Dialog::new();
         dialog.set_title(&tr("Images"));
-        dialog.set_content_width(760);
-        dialog.set_content_height(560);
+        let (w, h) = fit_dialog(&self.w.win, 760, 560);
+        dialog.set_content_width(w);
+        dialog.set_content_height(h);
         let open = gtk::Button::with_label(&tr("Open"));
         let delete = gtk::Button::with_label(&tr("Delete Selected"));
         delete.add_css_class("destructive-action");

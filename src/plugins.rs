@@ -31,8 +31,17 @@ pub struct Loaded {
     pub writers: Registry<dyn FormatWriter>,
     pub transforms: Registry<dyn Transform>,
     pub devices: Registry<dyn DeviceDriver>,
+    /// Actions of the enabled `editor-action` plugins (Tools → Plugins, command palette).
+    pub editor_actions: Vec<EditorEntry>,
     /// `plugin id -> display name` of every installed plugin.
     pub names: HashMap<String, String>,
+}
+
+/// One action of an editor plugin.
+#[derive(Clone)]
+pub struct EditorEntry {
+    pub plugin: Arc<bookx_plugin::Plugin>,
+    pub action: bookx_plugin::Action,
 }
 
 static CURRENT: Mutex<Option<Arc<Loaded>>> = Mutex::new(None);
@@ -101,6 +110,16 @@ pub fn build(mgr: &mut PluginManager) -> (Loaded, Vec<(String, String)>) {
         &mut loaded.devices,
         Arc::new(crate::devices::candidate_mounts),
     ));
+    let (editor, editor_errors) = mgr.editor_plugins();
+    errors.extend(editor_errors);
+    for plugin in editor {
+        for action in plugin.manifest().actions.clone() {
+            loaded.editor_actions.push(EditorEntry {
+                plugin: plugin.clone(),
+                action,
+            });
+        }
+    }
     loaded.names = mgr.list().into_iter().map(|p| (p.id, p.name)).collect();
     (loaded, errors)
 }
@@ -477,6 +496,13 @@ pub fn convert_with(
 /// What a plugin may do, in words for the Preferences list. `permissions` are the manifest's
 /// strings (`network:<host>`).
 pub fn permission_summary(permissions: &[String]) -> String {
+    let has = |p: &str| permissions.iter().any(|x| x == p);
+    if has("editor.write") {
+        return tr("Permissions: may read and change the book open in the editor. Every action is one checkpoint you can restore. It cannot reach other files or the network.");
+    }
+    if has("editor.read") {
+        return tr("Permissions: may read the book open in the editor. It cannot change anything, reach other files or the network.");
+    }
     let hosts: Vec<&str> = permissions
         .iter()
         .filter_map(|p| p.strip_prefix("network:"))
@@ -500,6 +526,7 @@ pub fn kind_summary(kind: bookx_plugin::PluginKind) -> &'static str {
         Transform => "Transform (Convert To, library and editor tools)",
         FormatWriter => "Output format (Convert To)",
         Device => "Device (Send to)",
+        EditorAction => "Editor action (Tools → Plugins)",
     }
 }
 
@@ -812,6 +839,58 @@ mod tests {
         let s = permission_summary(&["network:openlibrary.org".into(), "network:a.b".into()]);
         assert!(s.contains("openlibrary.org, a.b") && s.contains("cannot read your files"));
         assert!(kind_summary(bookx_plugin::PluginKind::FormatWriter).contains("Convert To"));
+        let r = permission_summary(&["editor.read".into()]);
+        assert!(r.contains("read the book") && r.contains("cannot change anything"));
+        let w = permission_summary(&["editor.read".into(), "editor.write".into()]);
+        assert!(w.contains("change the book") && w.contains("checkpoint"));
+        assert!(kind_summary(bookx_plugin::PluginKind::EditorAction).contains("Tools"));
+    }
+
+    #[test]
+    fn editor_plugins_are_disabled_until_switched_on_and_then_offer_their_actions() {
+        let d = ts::tmp("editor-actions");
+        let example = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("examples/plugins/trim-whitespace");
+        let dest = d.join("trim");
+        std::fs::create_dir_all(&dest).unwrap();
+        for f in ["plugin.toml", "plugin.wasm"] {
+            std::fs::copy(example.join(f), dest.join(f)).unwrap();
+        }
+        let mut m = ts::manager(&d);
+        let (loaded, errors) = build(&mut m);
+        assert!(
+            errors.is_empty() && loaded.editor_actions.is_empty(),
+            "off by default"
+        );
+        let st = m.list().into_iter().next().unwrap();
+        assert_eq!(st.kind, Some(bookx_plugin::PluginKind::EditorAction));
+        assert_eq!(st.permissions, vec!["editor.read", "editor.write"]);
+        m.set_enabled(&st.id, true).unwrap();
+        let (loaded, errors) = build(&mut m);
+        assert!(errors.is_empty(), "{errors:?}");
+        assert_eq!(loaded.editor_actions.len(), 1);
+        assert_eq!(loaded.editor_actions[0].action.id, "trim");
+        // run it on a book through the same adapter the editor uses
+        let mut a = crate::core::archive::Archive::default();
+        a.set_string("OEBPS/a.xhtml", "<p>x</p>   \n");
+        let copy = crate::ui::editor::plugin_host::for_tests::new_copy(a);
+        let session = bookx_plugin::EditorSession::new(
+            Box::new(crate::ui::editor::plugin_host::for_tests::adapter(
+                copy.clone(),
+            )),
+            &loaded.editor_actions[0].plugin.manifest().permissions,
+            "Trim",
+            bookx_plugin::EditorLimits::default(),
+        );
+        let r = loaded.editor_actions[0]
+            .plugin
+            .run_editor_action("trim", &session)
+            .unwrap();
+        assert_eq!(r.changes, 1);
+        let c = copy.lock().unwrap();
+        assert!(c.changed);
+        assert_eq!(c.archive.get_string("OEBPS/a.xhtml").unwrap(), "<p>x</p>\n");
+        let _ = std::fs::remove_dir_all(d);
     }
 
     #[test]

@@ -252,3 +252,23 @@ written into non-EPUB formats (`update_metadata` fails for them and nothing chan
   place changes.
 * **Not done:** a PDF thumbnail (the PDF reader has no book map), the windowed layout (see `docs/perf.md`), the
   unsliceable chapter layout. Fixed layout EPUBs use the same canvas style but have no screenshot test.
+
+
+## Wave 5 (library responsiveness, Also-reading covers, filter search)
+
+- **Breakpoints** (`library_nav::window_layout`, constants there): sidebar overlay up to 920 sp (250 sidebar + 670 content),
+  details overlay up to 1170 sp (320 + 380 + 470 grid; the split views size the panels as a share of the window, so the
+  widest sizes are used), compact header up to 600 sp (device button into the view options; the selection bar drops its
+  label and *Edit Metadata*). `AdwBreakpointBin` applies only the narrowest matching breakpoint, so each one repeats
+  the setters of the wider ones. Minimum window 360 × 294: the empty-library buttons wrap (FlowBox), the sidebar scrolls.
+- Broadway cannot make a window narrower than its window controls need (it shows three buttons, 168 px) and caps it at
+  1024 px; the 360 px proofs are in the real session (`library_resp_*`). `header_fits_*` runs the header report at the sizes
+  in light mode and German.
+- **Also reading** chips are 72 × 108 with 8 px padding and a 3 px progress bar (`CHIP_*` in `library_banner.rs`); the
+  tallest column (about 163 px) fits the smallest hero (232 px footprint). Books without a cover show their title on the
+  grid's placeholder colour. Real-session `library_chips_*` at 1920 × 1080 and 2400 × 1300, light and dark.
+- **Filter search**: `Input::GoFilter` (sidebar filter rows, shelves, saved searches) and `Input::SetNav` use
+  `library_nav::search_for`; any non-empty query also opens the bar (`Input::Search`), keeping the focus where it was.
+  Tests: `search_for` unit test, Broadway `sidebar_filter_search`, real-session `library_filter_light/dark`.
+- Caveats: the `no_label_in_the_sources_ends_in_an_ellipsis` test fails on labels added by the editor agents (not fixed
+  by this change); `a11y_audit_library` fails on the editor colour-scheme previews (GtkSourceView text views without names).

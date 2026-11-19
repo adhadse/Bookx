@@ -180,5 +180,10 @@ impl Editor {
         self.ask(title, hint, &entry, "Apply", move || {
             tx.emit(Input::Tag(action, Some(e.text().to_string())))
         });
+        // type right away: the entry takes the focus once the dialog is up
+        let focus = entry.clone();
+        glib::idle_add_local_once(move || {
+            focus.grab_focus();
+        });
     }
 }

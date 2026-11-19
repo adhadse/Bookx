@@ -14,7 +14,7 @@ scenario shortcuts_rebind 'prefs:,wait:600,keys:open,keys:dump=app.palette,keys:
     sed -n 5p <<<"$K" | grep -q "app.quit effective=\[\].*gtk=\[\]"; check "the action that lost its key has no accelerator" $?
     sed -n 6p <<<"$K" | grep -q "app.about effective=\[\"<Control>q\"\]"; check "the new owner has it" $?
     has "^keys: press lib.select-all a -> needs-modifier"; check "a plain letter is refused for a library action" $?
-    has "^keys: filter=\"ctrl\+b\" shown=1 "; check "the filter finds the action by its keys" $?
+    has "^keys: filter=\"ctrl\+b\" shown=[1-9][0-9]* "; check "the filter finds the action by its keys" $?
     has "^keys: filter=\"\" shown=([2-9][0-9]|[1-9][0-9][0-9]) of="; check "an empty filter shows every action" $?
     [ -s "$d/cfg/bookx/shortcuts.json" ] && grep -q "app.quit" "$d/cfg/bookx/shortcuts.json"; check "the choices are saved in the config folder" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
@@ -92,7 +92,7 @@ scenario jobs_panel 'jobs:dump,jobs:start=convert|Convert Book|cancel,jobs:start
     J2=$(grep "^jobs: running=" <<<"$OUT")
     has "^jobs: running=1 .*2\|Conversion\|Cancelled\|0.40"; check "a cancelled job ends as Cancelled" $?
     has "^jobs: running=1 .*3\|Send\|Failed: boom"; check "a failed job shows the reason" $?
-    has "^jobs: rows .*Still going / Running · half"; check "the open panel lists the running job with its step" $?
+    has "^jobs: rows .*Still going / Downloading news · half"; check "the open panel lists the running job with its step" $?
     has "^jobs: rows .*Send Other / Failed: boom"; check "and the failed one" $?
     has "^jobs: running=1 4\|News\|Running\|0.50\|Still going"; check "clearing keeps what is still running" $?
     ! grep "^jobs: running=1 4" <<<"$OUT" | grep -q "Convert Book"; check "and removes the finished jobs" $?
@@ -292,3 +292,60 @@ scenario map_thumb_perf "library:import=$ROOT/alicebook/lib,wait:4000,read:3,wai
     [ "$(num "$S2" layouts)" -le 3 ]; check "and lays out at most three chapters again (pages that were not made the first time)" $?
     [ "$(num "$(sed -n 6p <<<"$M")" ms)" -le $((15 * '$PF')) ]; check "a page from the disk cache is there in $(num "$(sed -n 6p <<<"$M")" ms) ms (budget $((15 * '$PF')) ms)" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# the Background Jobs panel: rows that fit the popover at any text length, rings, clear status lines
+LONG="A very long title of a background job that goes on and on and on and on and on and on and on until nothing fits any more at all"
+scenario jobs_layout "jobs:start=voice|$LONG|cancel,jobs:progress=2|0.98|130 MB of 132 MB · 1.4 MB/s · 2 s left,jobs:start=import|$LONG|cancel,jobs:start=send|$LONG|no,jobs:finish=4|$LONG $LONG,jobs:retryable=4,jobs:start=backup|Short|no,jobs:finish=5|ok,jobs:open,wait:900,jobs:overflow,jobs:rows,jobs:rings,jobs:retry=4,jobs:retry=99,jobs:close,quit" '
+    O=$(grep "^jobs: overflow" <<<"$OUT")
+    U=$(sed "s/.*upper=\([0-9]*\) .*/\1/" <<<"$O"); P=$(sed "s/.*page=\([0-9]*\) .*/\1/" <<<"$O")
+    [ -n "$U" ] && [ "$U" = "$P" ]; check "no sideways scrolling: the content is exactly as wide as the list ($U of $P px)" $?
+    B=$(sed "s/.*body=\([0-9]*\) .*/\1/" <<<"$O"); PW=$(sed "s/.*popover=\([0-9]*\) .*/\1/" <<<"$O")
+    [ "$B" -le "$PW" ] && [ "$B" -ge 240 ] && [ "$B" -le 380 ]; check "the body is within the popover and at most 380 px wide ($B of $PW)" $?
+    RW=$(sed "s/.*rows_w=\([0-9]*\).*/\1/" <<<"$O")
+    [ "$RW" -le "$P" ]; check "a job row is not wider than the list ($RW of $P px)" $?
+    R=$(grep "^jobs: rows" <<<"$OUT")
+    grep -q "Downloading · 130 of 132 MB · 1.4 MB/s / about 2 s left" <<<"$R"; check "the status is on two clear lines: what it does, then the time left (no elapsed time while it runs)" $?
+    ! grep -q "Running ·" <<<"$R"; check "no more mixed Running / elapsed text" $?
+    grep -q "Failed: .*… / After" <<<"$R"; check "a failed job shows a cut reason and how long it took" $?
+    grep -q "Short / Done / Took" <<<"$R"; check "a finished job shows the result and how long it took" $?
+    G=$(grep "^jobs: rings" <<<"$OUT")
+    grep -q "header=fraction" <<<"$G"; check "the header button shows a ring with the overall progress ($(sed "s/.*header=\([a-z0-9% ]*\) rows.*/\1/" <<<"$G"))" $?
+    grep -q "2=fraction 98%" <<<"$G"; check "a row ring shows the percent of a job that knows it" $?
+    grep -qE "3=busy (static|turning)" <<<"$G"; check "a job that does not know shows a turning (or, with reduced motion, static) arc" $?
+    grep -q "5=idle" <<<"$G"; check "a finished job has no arc, a check icon instead" $?
+    has "^jobs: retry 4 ran=true"; check "a failed job that can retry has its Retry" $?
+    has "^jobs: retry 99 ran=false"; check "and one that cannot has none" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# the library header never clips at small sizes: every button is fully inside it (also in German)
+for SZ in 900x600 800x600 700x500 360x294 1400x900; do
+ for L in "" _de; do
+  scenario header_fits_$SZ$L 'library:sidebar,wait:800,library:header,library:selectall,wait:600,library:header,quit' '
+    H=$(grep "^header:" <<<"$OUT"); N=$(grep "^layout:" <<<"$OUT")
+    for i in 1 2; do
+        sed -n ${i}p <<<"$H" | grep -q "clipped=\[\]"; check "nothing sticks out of the header (report $i: $(sed -n ${i}p <<<"$H" | sed "s/header: //"))" $?
+        [ "$(sed -n ${i}p <<<"$H" | sed "s/.*children=\([0-9]*\) .*/\1/")" -ge 4 ]; check "the view options, the title and the window buttons are all there" $?
+    done
+    W=$(sed -n 1p <<<"$N" | sed "s/layout: window=\([0-9]*\) .*/\1/")
+    if [ "$W" -le 920 ]; then
+        sed -n 1p <<<"$N" | grep -q "sidebar_overlay=true details_overlay=true expected=true/true"; check "a window of $W px has both panels as overlays" $?
+    else
+        sed -n 1p <<<"$N" | grep -q "sidebar_overlay=false .*expected=false/"; check "a window of $W px keeps the sidebar docked" $?
+        sed -n 1p <<<"$N" | grep -Eq "sidebar_overlay=false details_overlay=(true|false) expected=false/\1"; check "and the panels are what the layout rule says" $?
+    fi
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+ done
+done
+
+# a sidebar filter row opens the search bar with its query; Home (and the other views) clear it, also a typed search
+scenario sidebar_filter_search 'library:searchstate,library:go=author:=Nobody Here,wait:700,library:searchstate,library:nav=recent,wait:700,library:searchstate,library:go=author:=Nobody Here,wait:500,library:nav=home,wait:700,library:searchstate,library:search=zzz,wait:600,library:searchstate,library:nav=home,wait:700,library:searchstate,library:search=zzz,wait:600,library:go=tag:=none,wait:600,library:searchstate,quit' '
+    S=$(grep "^searchstate:" <<<"$OUT")
+    s() { sed -n "$1p" <<<"$S"; }
+    s 1 | grep -q "bar=false text=\"\" books=2"; check "at the start the search bar is closed and all books show ($(s 1))" $?
+    s 2 | grep -q "bar=true text=\"author:=Nobody Here\" books=0 view=home"; check "a filter row opens the bar with its query and filters the books ($(s 2))" $?
+    s 3 | grep -q "bar=false text=\"\" books=2 view=recent"; check "Recent closes the bar, clears the query and shows all books of the view ($(s 3))" $?
+    s 4 | grep -q "bar=false text=\"\" books=2 view=home"; check "Home clears the filter (bar closed, empty entry, all books) ($(s 4))" $?
+    s 5 | grep -q "bar=true text=\"zzz\" books=0"; check "a typed search shows the bar ($(s 5))" $?
+    s 6 | grep -q "bar=false text=\"\" books=2 view=home"; check "Home clears a typed search too ($(s 6))" $?
+    s 7 | grep -q "bar=true text=\"tag:=none\" books=0"; check "a second filter replaces the first and the bar stays open ($(s 7))" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'

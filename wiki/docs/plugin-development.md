@@ -6,7 +6,7 @@ and both **sandboxed**:
 | | Plugins | Patches |
 |---|---|---|
 | What | WebAssembly modules (any language) | small TOML files with regex / CSS rules |
-| Adds | metadata sources, file readers, output formats, transforms, device drivers | text and style fixes at fixed moments |
+| Adds | metadata sources, file readers, output formats, transforms, device drivers, editor actions | text and style fixes at fixed moments |
 | Where | `~/.local/share/bookx/plugins/<folder>/` (`$BOOKX_PLUGINS`) | `~/.local/share/bookx/patches/*.toml` (`$BOOKX_PATCHES`) |
 | Code | `crates/bookx-plugin` (`adapters`, `manager`, `runtime`) | `crates/bookx-plugin/src/patch.rs` |
 
@@ -31,7 +31,7 @@ id = "org.example.rawcopy"        # lower case letters, digits . _ -  (max 64)
 name = "EPUB copy"
 version = "1.0.0"                 # digits and dots
 api_version = 1                   # the ABI below
-kind = "format-writer"            # metadata-source | format-reader | transform | format-writer | device
+kind = "format-writer"            # metadata-source | format-reader | transform | format-writer | device | editor-action
 description = "…"
 permissions = []                  # ["network:openlibrary.org"]; fs:* is never granted in v1
 extension  = "epubcopy"           # format-writer: extension of the file written
@@ -62,6 +62,61 @@ permission), `now_ms() -> i64`. Full details and error codes: the crate document
 
 Limits: memory is capped at `memory_pages`, instructions at `fuel` (the timeout is also turned into fuel),
 replies at 16 MiB, 16 HTTP requests per call. Traps and garbage replies are errors in the app, never crashes.
+
+### Editor plugins (ABI v2)
+
+An `editor-action` plugin acts on the book that is open in the editor. It needs `api_version = 2`, at least one
+`[[action]]` and the permissions it uses; everything else (limits, layout, ABI v1 exports) is as above, and v1 plugins
+are not affected.
+
+```toml
+id = "org.example.trim"
+name = "Trim trailing whitespace"
+version = "1.0.0"
+api_version = 2
+kind = "editor-action"
+permissions = ["editor.read", "editor.write"]   # editor.read: look at the book; editor.write: change it
+
+[[action]]
+id = "trim"                        # passed to the plugin as {"action": "trim"}
+label = "Trim Trailing Whitespace" # the menu entry (max 80 characters)
+group = "Cleanup"                  # optional
+shortcut = "<Ctrl><Alt>t"          # optional suggestion, never bound by itself
+```
+
+The plugin gets one more export of the usual kind: `bookx_call("run_action", {"action": "<id>"})`, reply `{"ok": null}`
+or `{"ok": "message shown to the user"}` or `{"err": "…"}`. And one more host import, `bookx_host::editor_call(op_ptr,
+op_len, in_ptr, in_len, out) -> i32`: the operation name and a JSON object go in; the host allocates the reply in the
+plugin through its `alloc` and writes `ptr` and `len` (two little-endian `u32`) at `out`. The reply is `{"ok": …}` or
+`{"err": "…"}`. Return codes: `0` ok, `-1` bad arguments or unknown operation, `-2` permission not granted, `-3` limit
+reached, `-4` the operation failed, `-5` the plugin could not take the reply, `-6` called outside an action, `-7`
+timed out.
+
+| operation | needs | input | `ok` |
+|---|---|---|---|
+| `list_files` | `editor.read` | `{}` | `["OEBPS/ch1.xhtml", …]` |
+| `read_file` | `editor.read` | `{"path"}` | `{"text"}` or, for binary files, `{"b64"}` |
+| `current_file` | `editor.read` | `{}` | path or `null` |
+| `get_selection` | `editor.read` | `{}` | `{"file","text"}` or `null` |
+| `get_metadata` | `editor.read` | `{}` | title, authors, language, … |
+| `write_file` | `editor.write` | `{"path","text"}` or `{"path","b64"}` | the file must exist |
+| `add_file` | `editor.write` | same | the file must not exist |
+| `rename_file` | `editor.write` | `{"from","to"}` | links to the file are updated; `{"references_updated": n}` |
+| `replace_selection` | `editor.write` | `{"text"}` | replaces the selected text of the open file |
+| `insert_at_cursor` | `editor.write` | `{"text"}` | |
+| `set_metadata` | `editor.write` | the fields to change | |
+| `add_checkpoint` | `editor.write` | `{"name"}` | an extra named checkpoint |
+| `show_message` | nothing | `{"text"}` | shown in the editor |
+
+Rules the host enforces, whatever the plugin does: paths are inside the book (no absolute paths, no `..`, no
+backslashes); `mimetype` and `META-INF/` are read-only; a file is at most 16 MiB; at most 5000 host calls, 2000
+writes, 100 new files and 20 messages per action, and the usual fuel, memory and time limits. There is no file system,
+no network and no clock beyond `now_ms`. Before the first change Bookx takes the checkpoint "Before: \<action label\>"; a
+plugin that fails changes nothing, and *Tools → Restore Checkpoint* undoes one that succeeded.
+
+A complete example in Rust (no dependencies, about 150 lines) is `examples/plugins/trim-whitespace/`. Build it with
+`cargo build --release --target wasm32-unknown-unknown` and copy the `.wasm` as `plugin.wasm` next to `plugin.toml`
+(a prebuilt `plugin.wasm` is included).
 
 ### Operations per kind
 

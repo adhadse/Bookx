@@ -77,8 +77,8 @@ pub(super) struct PvState {
     banner: gtk::Box,
     banner_label: gtk::Label,
     refresh_btn: gtk::Button,
-    find_rev: gtk::Revealer,
-    find_entry: gtk::SearchEntry,
+    pub(super) find_rev: gtk::Revealer,
+    pub(super) find_entry: gtk::SearchEntry,
     find_hits: RefCell<Vec<(i32, i32)>>,
     find_at: Cell<usize>,
     pub cmp: super::compare::CmpUi,
@@ -205,7 +205,7 @@ impl PvState {
         let follow_btn = toggle(
             "find-location-symbolic",
             "Follow the cursor: the preview scrolls to the element at the cursor",
-            true,
+            crate::editor_prefs::look().preview_follow,
         );
         let auto_btn = toggle(
             "media-playlist-repeat-symbolic",
@@ -453,7 +453,7 @@ impl PvState {
         }
 
         PvState {
-            follow: Cell::new(true),
+            follow: Cell::new(crate::editor_prefs::look().preview_follow),
             auto: Cell::new(true),
             stale: Cell::new(false),
             map: RefCell::new(SourceMap::default()),

@@ -8,6 +8,7 @@
 
 mod catalogue;
 mod device_check;
+mod extras;
 mod libtools;
 mod mcp;
 
@@ -284,6 +285,8 @@ enum LibCmd {
     Tools(libtools::ToolsCmd),
     #[command(flatten)]
     Catalogue(catalogue::CatalogueCmd),
+    #[command(flatten)]
+    Extras(extras::ExtrasCmd),
 }
 
 #[derive(clap::Args, Debug)]
@@ -1156,6 +1159,7 @@ fn library(cmd: LibCmd, root: &Path, out: &mut dyn Write, err: &mut dyn Write) -
         }
         LibCmd::Tools(t) => libtools::run(t, root, out, err),
         LibCmd::Catalogue(c) => catalogue::run(c, root, out),
+        LibCmd::Extras(c) => extras::run(c, root, out),
         LibCmd::Export { id, dest } => {
             let lib = existing_library(root)?;
             if lib.get(id).is_none() {

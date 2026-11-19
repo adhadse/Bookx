@@ -30,36 +30,54 @@ use bookx_editing::tags::CaseChange;
 use bookx_editing::toc_gen::TocOptions;
 use tags::TagAction;
 
+mod a11y_form;
 mod check_panel;
 mod codeview;
 mod compare;
 mod completion;
+mod cover_dialog;
 mod css_transform_ui;
 mod dev;
 mod ext_dev;
 mod files;
 mod files_extra;
+mod fonts_manager;
+mod format_actions;
 mod gutter;
+mod html_transform_ui;
+mod insert_dialogs;
+mod jacket;
+mod keymap;
 mod live;
 mod live_css;
+mod markup_hints;
 mod meta;
+mod narration;
 mod nav;
+mod navigate;
 mod palette;
+pub(crate) mod plugin_host;
+pub mod prefs_page;
 mod preview;
+mod preview_find;
 mod reports;
 mod search;
 mod search_bar;
 mod search_fn;
 mod search_saved;
 mod snippets;
+mod snippets_ui;
 mod special_chars;
 mod spelling;
 mod spelling_dicts;
 mod split;
+mod struct_hub;
 mod tags;
+mod toc_dnd;
 mod toc_tab;
 mod tools;
 mod tools_ui;
+mod unpack_repack;
 mod window_features;
 
 #[derive(Debug, Clone, Copy)]
@@ -150,6 +168,8 @@ pub enum Input {
     CloseTab,
     TabsEmpty,
     Tag(TagAction, Option<String>),
+    /// Code-editing helpers: format, insert, jump, rename class (`format_actions.rs`).
+    Code(format_actions::CodeMsg),
     DeleteFiles(Vec<String>),
     MergeFiles(Vec<String>),
     BulkRename(String, u32),
@@ -164,6 +184,8 @@ pub enum Input {
     PromptTocGenerate,
     GenerateToc(TocOptions),
     Dev(String),
+    /// Editor preferences, marks and the snippet list (`prefs_page.rs`).
+    Prefs(prefs_page::PrefsAct),
     /// Preview sync, splitting, compare view, checkpoints dialog, Live CSS (`preview.rs`).
     Pv(preview::PvMsg),
     /// Tool dialogs, file browser extras and window features (`tools_ui.rs`).
@@ -273,6 +295,7 @@ pub struct Editor {
     tabs_guard: Rc<Cell<bool>>,
     pv: preview::PvState,
     ext: window_features::State,
+    hints: Rc<markup_hints::Hints>,
 }
 
 fn is_text_path(path: &str) -> bool {
@@ -369,6 +392,7 @@ impl Editor {
         let buf = codeview::new_buffer(system_is_dark());
         codeview::apply_language(&buf, path);
         codeview::apply_scheme(&buf, system_is_dark(), crate::eink::is_active());
+        prefs_page::apply_buffer(&buf);
         let text = self
             .book
             .borrow()
@@ -422,6 +446,7 @@ impl Editor {
                 .unwrap_or_default();
             if buffer_text(&b) != text {
                 self.comp.borrow_mut().edited_ids.remove(path);
+                self.comp.borrow_mut().edited_snips.remove(path);
                 set_text_irreversible(&b, &text);
                 self.modified.remove(path);
                 if self.current.as_deref() == Some(path) {
@@ -555,6 +580,7 @@ impl Editor {
         self.contexts.clear();
         self.issue_marks.clear();
         self.comp.borrow_mut().edited_ids.clear();
+        self.comp.borrow_mut().edited_snips.clear();
         self.modified.clear();
         self.structure_dirty = true;
         let keep = self.current.take();
@@ -602,6 +628,10 @@ impl Editor {
     fn save(&mut self) -> bool {
         self.flush();
         if !self.commit_toc() {
+            return false;
+        }
+        if self.ext.structure.origin.borrow().is_some() {
+            self.prompt_save_foreign();
             return false;
         }
         let res = {
@@ -678,6 +708,8 @@ impl SimpleComponent for Editor {
         let marks: gutter::SharedMarks = Rc::default();
         let marks_renderer = gutter::install(&view, marks.clone());
         codeview::set_whitespace(&view, prefs.show_whitespace);
+        prefs_page::apply_view(&view, &crate::editor_prefs::look());
+        prefs_page::install_typing(&view);
         let spell: Rc<RefCell<live::SpellShared>> = Rc::default();
         live::install_spell_menu(&view, spell.clone(), sender.input_sender().clone());
         let chars_state = special_chars::State::new(prefs.convert_entities);
@@ -689,12 +721,17 @@ impl SimpleComponent for Editor {
             classes: Vec::new(),
             words: Vec::new(),
             edited_ids: HashMap::new(),
+            edited_snips: HashMap::new(),
             book: book.clone(),
             snippets: crate::editor_snippets::merged(&crate::editor_snippets::load()),
             region: Rc::default(),
             populated: (0, 0),
         }));
         completion::install(&view, comp.clone());
+        let hints = markup_hints::Hints::new();
+        markup_hints::install_tooltips(&view, hints.clone());
+        navigate::install(&view, sender.input_sender().clone());
+        format_actions::install_keys(&view, sender.input_sender().clone(), hints.clone());
         {
             // Tab expands a snippet trigger before the caret (and keeps moving between tab stops
             // while the caret is inside an expanded snippet)
@@ -779,7 +816,7 @@ impl SimpleComponent for Editor {
             let mut st: CanvasStyle = shared.cfg.borrow().reader.canvas_style(dark);
             st.layout = LayoutMode::Scroll;
             st.margin = 24.0;
-            preview.set_style(st);
+            preview.set_style(prefs_page::preview_style(st, &crate::editor_prefs::look()));
         }
         let preview_title = gtk::Label::new(Some(&tr("Preview")));
         preview_title.add_css_class("caption-heading");
@@ -1279,6 +1316,10 @@ impl SimpleComponent for Editor {
             if plugin_tools.n_items() > 0 {
                 tools_menu.append_section(None, &plugin_tools);
             }
+            tools_menu.append_section(None, &narration::menu_section());
+            if let Some(section) = plugin_host::menu_section(&loaded) {
+                tools_menu.append_section(None, &section);
+            }
             let cp = gio::Menu::new();
             cp.append(Some(&tr("Create Checkpoint")), Some("tools.checkpoint"));
             cp.append_submenu(Some(&tr("Restore Checkpoint")), &restore_menu);
@@ -1324,6 +1365,23 @@ impl SimpleComponent for Editor {
             c.append_item(&item(&tr("Title Case"), TagAction::Case(CaseChange::Title)));
             c.append_item(&item(&tr("sWAP cASE"), TagAction::Case(CaseChange::Swap)));
             edit_menu.append_submenu(Some(&tr("Change Case")), &c);
+            let code_item = |label: &str, id: &str| {
+                let it = gio::MenuItem::new(Some(label), None);
+                it.set_action_and_target_value(Some("edit.code"), Some(&id.to_variant()));
+                it
+            };
+            let fm = gio::Menu::new();
+            for f in bookx_editing::code_format::Format::ALL {
+                fm.append_item(&code_item(&format_actions::format_label(f), f.id()));
+            }
+            edit_menu.append_submenu(Some(&tr("Format")), &fm);
+            let ins = gio::Menu::new();
+            ins.append_item(&code_item(&tr("Insert Hyperlink"), "link"));
+            ins.append_item(&code_item(&tr("Insert Image"), "image"));
+            ins.append_item(&code_item(&tr("Split Tag at Caret"), "split"));
+            ins.append_item(&code_item(&tr("Go to Definition"), "goto"));
+            ins.append_item(&code_item(&tr("Sort CSS Rules"), "sort-css"));
+            edit_menu.append_section(None, &ins);
         }
         {
             let v = gio::Menu::new();
@@ -1332,6 +1390,7 @@ impl SimpleComponent for Editor {
             v.append(Some(&tr("Manage Snippets")), Some("view.snippets"));
             v.append(Some(&tr("Insert Special Character")), Some("view.special"));
             v.append(Some(&tr("Convert Typed Entities")), Some("view.entities"));
+            markup_hints::append_view_menu(&v);
             edit_menu.append_section(None, &v);
         }
         let edit_btn = gtk::MenuButton::new();
@@ -1435,6 +1494,8 @@ impl SimpleComponent for Editor {
                     tx.emit(Input::RunTool(t));
                 } else if let Some(pid) = id.and_then(|i| i.strip_prefix("plugin:")) {
                     tx.emit(Input::RunPluginTool(pid.to_string()));
+                } else if let Some(n) = id.filter(|i| i.starts_with("narration:")) {
+                    tx.emit(Input::RunPluginTool(n.to_string()));
                 }
             });
             tools.add_action(&run);
@@ -1500,6 +1561,17 @@ impl SimpleComponent for Editor {
                 }
             });
             edit.add_action(&tag);
+            let code = gio::SimpleAction::new("code", Some(glib::VariantTy::STRING));
+            let tx = sender.input_sender().clone();
+            code.connect_activate(move |_, p| {
+                if let Some(m) = p
+                    .and_then(|v| v.str())
+                    .and_then(format_actions::code_msg_for)
+                {
+                    tx.emit(Input::Code(m));
+                }
+            });
+            edit.add_action(&code);
             win.insert_action_group("edit", Some(&edit));
             let view_actions = gio::SimpleActionGroup::new();
             for (name, opt, on) in [
@@ -1539,6 +1611,7 @@ impl SimpleComponent for Editor {
                 tx.emit(Input::Chars(special_chars::Msg::ConvertEntities(now)));
             });
             view_actions.add_action(&entities);
+            markup_hints::view_actions(&view_actions, sender.input_sender(), &hints);
             win.insert_action_group("view", Some(&view_actions));
             let fl = gio::SimpleActionGroup::new();
             for (name, make) in [
@@ -1572,85 +1645,10 @@ impl SimpleComponent for Editor {
             });
         }
 
-        // shortcuts
-        let sc = gtk::ShortcutController::new();
-        sc.set_scope(gtk::ShortcutScope::Local);
-        let add_sc = |accel: &str, input: fn() -> Input| {
-            let tx = sender.input_sender().clone();
-            if let Some(t) = gtk::ShortcutTrigger::parse_string(accel) {
-                sc.add_shortcut(gtk::Shortcut::new(
-                    Some(t),
-                    Some(gtk::CallbackAction::new(move |_, _| {
-                        tx.emit(input());
-                        glib::Propagation::Stop
-                    })),
-                ));
-            }
-        };
-        add_sc("<Control>s", || Input::Save);
-        add_sc("<Control>h", || Input::ToggleFind);
-        add_sc("<Control>f", || Input::ToggleFind);
-        add_sc("<Control>l", || Input::PromptLine);
-        add_sc("<Control><Shift>m", || Input::MarkSelection);
-        add_sc("<Control><Alt>j", || {
-            Input::Tag(TagAction::JumpMatching, None)
-        });
-        add_sc("<Control><Alt>k", || {
-            Input::Tag(TagAction::SelectMatching, None)
-        });
-        add_sc("<Control><Alt>period", || {
-            Input::Tag(TagAction::CloseTag, None)
-        });
-        add_sc("<Control><Alt>w", || Input::Tag(TagAction::Wrap, None));
-        add_sc("<Control><Alt>u", || Input::Tag(TagAction::Unwrap, None));
-        add_sc("<Control><Alt>r", || Input::Tag(TagAction::Rename, None));
-        add_sc("<Control>slash", || Input::Tag(TagAction::Comment, None));
-        add_sc("<Control>0", || Input::Tag(TagAction::Heading(0), None));
-        add_sc("<Control>1", || Input::Tag(TagAction::Heading(1), None));
-        add_sc("<Control>2", || Input::Tag(TagAction::Heading(2), None));
-        add_sc("<Control>3", || Input::Tag(TagAction::Heading(3), None));
-        add_sc("<Control>4", || Input::Tag(TagAction::Heading(4), None));
-        add_sc("<Control>5", || Input::Tag(TagAction::Heading(5), None));
-        add_sc("<Control>6", || Input::Tag(TagAction::Heading(6), None));
-        add_sc("<Control>n", || Input::PromptNewFile);
-        add_sc("<Control>p", || Input::QuickOpen);
-        add_sc("<Control><Shift>p", || Input::Palette);
-        add_sc("<Control>w", || Input::CloseTab);
-        add_sc("<Control><Alt>Down", || Input::StepFile(1));
-        add_sc("<Control><Alt>Up", || Input::StepFile(-1));
-        add_sc("<Control>F8", || Input::SpellNext(true));
-        add_sc("<Control><Shift>F8", || Input::SpellNext(false));
-        add_sc("<Control><Shift>r", || Input::ShowReport);
-        add_sc("<Control><Alt>i", || Input::Chars(special_chars::Msg::Open));
-        add_sc("F3", || Input::FindNext(true));
-        add_sc("<Control>g", || Input::FindNext(true));
-        add_sc("<Control><Shift>g", || Input::FindNext(false));
-        add_sc("<Control>bracketright", || Input::Replace(true));
-        add_sc("<Control>r", || Input::Replace(true));
-        add_sc("<Control>bracketleft", || Input::Replace(false));
-        add_sc("<Shift>F3", || Input::FindNext(false));
-        win.add_controller(sc);
-        // F7/F8 must also work while the code view has the focus (it swallows them in the bubble phase)
-        let sc_fn = gtk::ShortcutController::new();
-        sc_fn.set_scope(gtk::ShortcutScope::Local);
-        sc_fn.set_propagation_phase(gtk::PropagationPhase::Capture);
-        for (accel, make) in [
-            ("F7", (|| Input::Check) as fn() -> Input),
-            ("F8", || Input::Problems(check_panel::Act::Next)),
-            ("<Shift>F8", || Input::Problems(check_panel::Act::Prev)),
-        ] {
-            let tx = sender.input_sender().clone();
-            if let Some(t) = gtk::ShortcutTrigger::parse_string(accel) {
-                sc_fn.add_shortcut(gtk::Shortcut::new(
-                    Some(t),
-                    Some(gtk::CallbackAction::new(move |_, _| {
-                        tx.emit(make());
-                        glib::Propagation::Stop
-                    })),
-                ));
-            }
-        }
-        win.add_controller(sc_fn);
+        // shortcuts: every editor action is in the shortcut registry (group Editor)
+        keymap::install(&win, sender.input_sender().clone());
+        snippets_ui::install_entry(&find_entry, comp.clone());
+        snippets_ui::install_entry(&replace_entry, comp.clone());
 
         let pv = preview::PvState::new(preview::PvInit {
             sender: &sender,
@@ -1726,6 +1724,15 @@ impl SimpleComponent for Editor {
             });
         }
 
+        {
+            let tx = sender.input_sender().clone();
+            let sub = crate::settings_bus::editor()
+                .subscribe(move || tx.emit(Input::Prefs(prefs_page::PrefsAct::Changed)));
+            let sub = RefCell::new(Some(sub));
+            win.connect_destroy(move |_| {
+                sub.borrow_mut().take();
+            });
+        }
         let mut model = Editor {
             shared,
             book_id,
@@ -1765,6 +1772,7 @@ impl SimpleComponent for Editor {
             tabs_guard,
             pv,
             ext: window_features::State::new(),
+            hints: hints.clone(),
         };
         model.rebuild_files();
         model.rebuild_toc();
@@ -1827,6 +1835,7 @@ impl SimpleComponent for Editor {
                 self.pv_cursor_moved();
             }
             Input::Pv(m) => self.pv_msg(m),
+            Input::Prefs(a) => self.prefs_update(a),
             Input::Ext(c) => self.ext_update(c),
             Input::Live => self.run_live(),
             Input::Spell(a) => self.spell_act(a),
@@ -1891,6 +1900,9 @@ impl SimpleComponent for Editor {
                 }
             }
             Input::ToggleFind => {
+                if self.find_in_preview_if_focused() {
+                    return;
+                }
                 let show = !self.w.find_rev.reveals_child();
                 self.w.find_rev.set_reveal_child(show);
                 if show {
@@ -1954,7 +1966,9 @@ impl SimpleComponent for Editor {
                     .canvas_style(system_is_dark());
                 st.layout = LayoutMode::Scroll;
                 st.margin = 24.0;
-                self.w.preview.set_style(st);
+                self.w
+                    .preview
+                    .set_style(prefs_page::preview_style(st, &crate::editor_prefs::look()));
                 self.refresh_preview_now();
             }
             Input::CreateCheckpoint => {
@@ -2066,6 +2080,7 @@ impl SimpleComponent for Editor {
             Input::PromptTocGenerate => self.prompt_toc_generate(),
             Input::GenerateToc(o) => self.generate_toc(&o),
             Input::Tag(a, arg) => self.tag_action(a, arg),
+            Input::Code(m) => self.code_msg(m),
             Input::QuickOpen => self.quick_open(),
             Input::Palette => self.show_palette(),
             Input::StepFile(n) => self.step_file(n),
@@ -2169,6 +2184,7 @@ impl SimpleComponent for Editor {
                             chrono::Utc::now().timestamp(),
                         );
                         self.structure_dirty = true;
+                        self.struct_after_metadata();
                         self.reload_package_buffers();
                         self.rebuild_files();
                         self.rebuild_meta();

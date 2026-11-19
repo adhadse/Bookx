@@ -33,6 +33,8 @@ groups. In the *Replace with* box use `\1`, `\g<name>` or `$1` for groups, `\n` 
 
 **Function** is a regular expression whose replacement is computed by a function; see [Function mode](#function-mode).
 
+**Fuzzy** finds text that is *almost* what you typed: a missing, extra or different letter still matches (`recieve` is found by `receive`). Short words (up to 3 letters) must match exactly; the allowed mistakes grow with the length (one up to 6 letters, then one more per 4). Case, whole word, the marked-text scope and Replace All work as in the other text modes; the replacement is inserted as typed.
+
 **Tag** finds start tags by element name and attributes (see below).
 
 ### Ignore HTML markup
@@ -91,7 +93,7 @@ Example: `a[href^=http://]` with `=https://` turns every `http://` link into an 
 | All files | every text file: XHTML, CSS, XML, OPF, NCX, SVG |
 | Selected files | the files selected in the file list (hold ++ctrl++ or ++shift++ to select several) |
 | Open files | the files that have a tab |
-| Marked text | only the regions you marked with ++ctrl+shift+m++ |
+| Marked text | only the regions you marked with ++ctrl+shift+m++; **Clear Marked Text** (command palette) removes the marks of all files; ++ctrl+shift+m++ with nothing selected clears the open file. Marks are tinted in the text and in the overview map and stay when you switch tabs |
 
 ## Saved searches
 
@@ -133,6 +135,17 @@ fn replace(m, number, file, meta, data) {
 
 Return the replacement text. Return `()` to leave the match as it is. A number is turned into text.
 
+**Calling other functions.** Give `replace` a sixth parameter, `functions`, to use your other saved functions:
+
+```rhai
+fn replace(m, number, file, meta, data, functions) {
+    functions["Title Case"].invoke(m, number, file, meta, data) + "!"
+}
+```
+
+`invoke` takes the same five values as `replace` and returns what that function returns; both share `data`. A function
+that is called this way cannot call further functions. An unknown name stops the run with a message.
+
 Helpers: `print(x)` (see *Debug output*), `dict_recognized(word)` (is the word in the book's spelling dictionary, the one
 used by Check Spelling), `text_upper(s)`, `text_lower(s)`, `text_capitalize(s)`, `text_swap_case(s)`,
 `text_title(s)` (these leave tags alone), `smarten_hyphens(s)`, `strip_tags(s)`, `escape_html(s)`.
@@ -143,6 +156,8 @@ used by Check Spelling), `text_upper(s)`, `text_lower(s)`, `text_capitalize(s)`,
 // @file_order spine           (or spine-reverse) visit the files in reading order instead of the file list's
 // @call_after_last_match      call the function once more after the last match, with m = ()
 // @suppress_result_dialog     do not show the results window after the run
+// @append_final_output_to_marked   add the final output on a new line after the marked text and mark it
+// @persistent_data            keep `data` between runs (kept per library)
 ```
 
 The extra call returns a text that is shown as *Final output* in the results window, with a button to copy it.

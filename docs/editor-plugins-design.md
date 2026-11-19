@@ -1,27 +1,39 @@
-# Editor plugins (CE-019): design
+# Editor plugins (CE-019)
 
-Status: design only. Not implemented.
+Status: **implemented** (wave 5). User guide: `wiki/docs/plugins-and-patches.md`; developer guide:
+`docs/plugin-development.md` ("Editor plugins (ABI v2)"); code: `crates/bookx-plugin/src/editor.rs` (the host calls,
+permissions, limits), `manifest.rs` (kind, actions), `runtime.rs` (the `editor_call` import), `src/ui/editor/plugin_host.rs`
+(the editor side), `examples/plugins/trim-whitespace` (an example in Rust).
 
-**Why not now.** `bookx-plugin` ABI v1 passes bytes in and out of a sandboxed wasm module for stateless adapters
-(metadata sources, file readers, output formats, transforms, device drivers). An editor plugin needs the opposite: to
-read and change the *open* book, create a checkpoint around its change, and add its own menu entry. That is a new
-host-call surface, not a small additive change to v1, and it must be decided together with the permission model.
+## What was decided
 
-## Proposed ABI v2 (editor hooks)
+* **ABI v2 is additive.** `api_version = 2` is accepted next to 1; `kind = "editor-action"` requires 2. Plugins of the
+  other kinds, and their imports and exports, are unchanged. The one new import is `bookx_host::editor_call(op, input,
+  out) -> i32` with JSON in and out (one door instead of a dozen imports: every call goes through the same permission,
+  path, size and call-count checks in `EditorSession::dispatch`). It is refused at load time for other kinds.
+* **Capabilities.** `editor.read` (list/read files, selection, current file, metadata) and `editor.write` (write, add,
+  rename, selection edits, metadata, extra checkpoints). `show_message` needs nothing. The manifest lists them, the
+  Preferences row words them ("may read and change the book open in the editor"), plugins stay switched off until the
+  user opts in (D5). `network:` is refused for editor plugins, `fs:*` is never granted.
+* **Safety.** Paths are book-relative and checked (no absolute, `..`, backslash, control characters, `:`); `mimetype` and
+  `META-INF/` are read-only; a file is at most 16 MiB, an action may make 5000 host calls, 2000 writes, 100 new files, 20
+  messages and read/write 128/64 MiB; on top of that the usual fuel, memory and time limits and a fresh instance per
+  action. A write is always preceded by the automatic checkpoint "Before: <label>".
+* **Where the changes land.** The action runs on a **copy** of the archive (`BookCopy`). Only when the plugin returns
+  success does `Editor::run_op` replace the book with the copy, so the whole action is one checkpoint and *Restore
+  Checkpoint* is the undo; an error or a trap leaves the book untouched (and removes the checkpoint). Extra
+  checkpoints the plugin asks for are snapshots of the copy at that moment, created after the run.
+* **Selection.** The editor hands over the selection and cursor as character offsets in the open file (buffers are
+  flushed first). `replace_selection` / `insert_at_cursor` edit that text in the copy, so they are part of the same
+  checkpoint rather than separate GTK undo steps. After `write_file` on the open file the offsets are stale and the
+  selection calls fail with a message.
+* **UI.** Tools → Plugins (one submenu) and the command palette (the palette walks the Tools menu). The shortcut of an
+  action is only a suggestion shown in Preferences; nothing is bound automatically.
+* **Preview** is not offered: a plugin action is not side-effect free in principle (it could be, since it works on a
+  copy, but the generic dialog preview needs a result list that plugins do not produce yet).
 
-* Manifest: `kind = "editor-action"` with `[[action]] id, label, group, shortcut?`.
-* Host calls (all synchronous, run on a copy of the book; the host writes the result back through the same
-  `Editor::run_op` as the built-in tools, so every plugin action is one checkpoint "Before: <label>" and one toast):
-  * `book_list() -> [path]`, `book_read(path) -> bytes`, `book_write(path, bytes)`, `book_delete(path)`,
-    `book_rename(from, to)` (references follow, as `markup::rename_paths`);
-  * `book_metadata() -> json`, `current_file() -> path?`, `selected_text() -> string?`;
-  * `log(line)` shown in the results panel.
-* No network, no file system, no clock (same sandbox as v1). Fuel limit per call.
-* The action list is added to the Tools menu under "Plugins" and to the command palette; the existing transform
-  plugins already appear there, so the UI side is the `ext.tool` action with a `plugin-action:<id>` target.
+## Not done
 
-## Open questions
-
-* Whether actions may also run on the *selection* (needs a text-range host call and undo grouping in the buffer).
-* Preview of a plugin action: the generic dialog preview (`editor_tools::preview_report`) works unchanged, since it
-  only needs an operation that can run on a copy of the book.
+* Plugin-defined dialogs or panels, a plugin store, signing. Running one action on every book of the library.
+* Binding the suggested shortcuts (needs the keymap editor of another track).
+* The wasm host has no `now_ms`-free determinism guarantee beyond the existing limits.

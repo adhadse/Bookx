@@ -258,6 +258,17 @@ fn part_path(dest: &Path) -> PathBuf {
     PathBuf::from(s)
 }
 
+static OFFLINE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Offline mode: while on, nothing new is downloaded (files already complete are still accepted).
+pub fn set_offline(on: bool) {
+    OFFLINE.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub fn is_offline() -> bool {
+    OFFLINE.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 /// Fetches `url` to `dest`, checks size and SHA-256. `on_bytes` gets the bytes received.
 pub fn download_file(
     url: &str,
@@ -300,6 +311,9 @@ pub fn download_file_tuned(
             return Ok(());
         }
         let _ = fs::remove_file(dest);
+    }
+    if is_offline() {
+        bail!("Offline mode is on (Preferences → Privacy): nothing is downloaded");
     }
     let part = part_path(dest);
     if tuning.segments > 1 && size >= tuning.min_parallel_bytes.max(2 * tuning.min_segment_bytes) {

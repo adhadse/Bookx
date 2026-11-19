@@ -10,6 +10,7 @@ pub mod convert;
 pub mod doc;
 pub mod drm;
 pub mod files;
+pub mod fixity;
 pub mod format;
 pub mod formats;
 pub mod fsops;

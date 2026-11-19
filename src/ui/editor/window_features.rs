@@ -20,8 +20,12 @@ pub struct State {
     pub monitors: RefCell<Vec<gio::FileMonitor>>,
     /// The buttons and preview text of the tool dialog opened last (the dev hooks click them).
     pub last_dialog: RefCell<Option<(gtk::Button, gtk::Button, gtk::Label)>>,
+    /// A file changed by another program that waits for the user's answer (path in the book, temporary file).
+    pub pending_external: RefCell<Option<(String, std::path::PathBuf)>>,
     /// The tab a context menu was opened on.
     pub menu_page: Rc<RefCell<Option<adw::TabPage>>>,
+    /// The structure tools (`struct_hub.rs`).
+    pub structure: Rc<super::struct_hub::State>,
 }
 
 impl State {
@@ -31,7 +35,9 @@ impl State {
             redo: RefCell::new(Vec::new()),
             monitors: RefCell::new(Vec::new()),
             last_dialog: RefCell::new(None),
+            pending_external: RefCell::new(None),
             menu_page: Rc::new(RefCell::new(None)),
+            structure: Rc::new(super::struct_hub::State::default()),
         }
     }
 }
@@ -69,6 +75,11 @@ fn book_menu() -> gio::Menu {
     let books = gio::Menu::new();
     books.append_item(&item(&tr("Open Another Book"), "open-book"));
     books.append_item(&item(&tr("Open an Unzipped Folder"), "open-folder"));
+    books.append_item(&menu_item(
+        &tr("Open a Book of Another Format to Edit"),
+        "ext.tool",
+        "open-foreign",
+    ));
     books.append_item(&item(&tr("New Book"), "new-book"));
     books.append_item(&item(
         &tr("Import HTML, DOCX or Text as a New Book"),
@@ -130,6 +141,7 @@ impl Editor {
             Cmd::Files("full-paths".into())
         }));
         self.w.win.insert_action_group("ext", Some(&group));
+        self.struct_install();
 
         if let Some(m) = find_menu(self, "Tools") {
             extend_tools_menu(&m);
@@ -399,10 +411,11 @@ impl Editor {
                 return;
             }
         };
+        *self.ext.structure.origin.borrow_mut() = None;
         self.install_book(id, book);
     }
 
-    fn install_book(&mut self, id: u64, book: OpenBook) {
+    pub(super) fn install_book(&mut self, id: u64, book: OpenBook) {
         self.save_state();
         *self.book.borrow_mut() = book;
         self.book_id = id;
@@ -431,8 +444,9 @@ impl Editor {
     fn pick_library_book(&self) {
         let dialog = adw::Dialog::new();
         dialog.set_title(&tr("Open Another Book"));
-        dialog.set_content_width(480);
-        dialog.set_content_height(520);
+        let (w, h) = fit_dialog(&self.w.win, 480, 520);
+        dialog.set_content_width(w);
+        dialog.set_content_height(h);
         let search = gtk::SearchEntry::new();
         search.set_placeholder_text(Some(&tr("Search the library")));
         crate::ui::audit::label(&search, &tr("Search the library"));

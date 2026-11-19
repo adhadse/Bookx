@@ -50,6 +50,12 @@
 //!   injected [`HostNetwork`] trait.
 //! * `now_ms() -> i64`: Unix time in milliseconds.
 //!
+//! # ABI v2 (editor plugins)
+//!
+//! Additive: `api_version = 2` and `kind = "editor-action"` unlock the `bookx_host::editor_call`
+//! import (see [`editor`] for the operations, permissions `editor.read` / `editor.write`, limits
+//! and codes). v1 plugins and imports are unchanged; `editor_call` is refused for other kinds.
+//!
 //! # Sandbox guarantees
 //!
 //! * Every call runs in a **fresh instance** (fresh memory, globals, tables): no state survives and
@@ -109,6 +115,7 @@
 //! is `docs/plugin-development.md`; user patches (TOML, no WebAssembly) are in [`patch`].
 
 pub mod adapters;
+pub mod editor;
 pub mod manager;
 pub mod manifest;
 pub mod patch;
@@ -118,7 +125,10 @@ pub use adapters::{
     MountProvider, PluginDevice, PluginMetadataSource, PluginReader, PluginTransform, PluginWriter,
     SNIFF_BYTES,
 };
+pub use editor::{ActionResult, EditorApi, EditorLimits, EditorSession, MemBook, SharedSession};
 pub use manager::{PluginManager, PluginStatus};
-pub use manifest::{Limits, Manifest, Permission, PluginKind, API_VERSION};
+pub use manifest::{
+    Action, Limits, Manifest, Permission, PluginKind, API_VERSION, API_VERSION_EDITOR,
+};
 pub use patch::{Hook, Patch, PatchManager, PatchReport, PatchSet, PatchStatus};
 pub use runtime::{CallStats, Host, HostLog, HostNetwork, NoNetwork, NullLog, Plugin};

@@ -167,8 +167,8 @@ list with its menu and context menu, tag actions, Contents navigation and the ge
 Tabs, next/previous file and quick open (CE-009..CE-011) are implemented too.
 
 Not implemented: command palette, outline/search as separate sidebar
-panels, gutter marks, spelling underlines, cursor-following preview, drag and drop in the file list and the
-Contents (GTK drag sources on `ListBox` rows would need position feedback that cannot be tested headless).
+panels, gutter marks, spelling underlines, cursor-following preview. (Drag and drop in the file list and the
+Contents was left out here at first; both exist now, see sections 9 and 10.)
 
 ## 9. Tools dialogs, file browser extras, Book menu (added)
 
@@ -186,6 +186,35 @@ Source: `src/ui/editor/{tools_ui,css_transform_ui,files_extra,window_features,ex
 * Revert to before/after keeps its redo points as checkpoints named `After: …`; see `editor_state::undo_target`.
 * Remembered per book: `editor-state.json` (tabs, caret). Window preferences: `editor-window.json`. User templates:
   `editor-templates/`. Rule sets: `editor-css-rules/`.
-* Caveats: font search reads every font file under the font folders (files over 12 MB skipped) on the main thread when
-  the Embed dialog opens; the HTML5 rebuild writes attributes in sorted order; `bookx --edit` is unit tested but has
-  no Broadway scenario (the harness starts the app without arguments).
+* Caveats: font search runs on a worker thread with a progress label (files over 12 MB skipped); the HTML5 rebuild writes attributes in sorted order; `bookx --edit` has the scenario `editor_x_edit_cli` through the `edit-file:` dev hook. Tool dialogs are sized
+  to the window (`fit_dialog`) so Preview and Apply stay visible at 900x600; real-session smoke scenarios
+  `editor_tools_smoke_1280` / `_900` open every dialog through the command palette.
+
+## 10. Structure tools: Contents drag and drop, cover, fonts, HTML rules, jacket, accessibility form, other formats
+
+Source: `src/ui/editor/{struct_hub,toc_dnd,cover_dialog,fonts_manager,html_transform_ui,jacket,a11y_form,unpack_repack}.rs`,
+glue in `src/editor_structure.rs`, logic in `bookx_editing::{toc_ops,cover,fonts_manage,transform_html,jacket,a11y_meta}`.
+Roadmap rows CE-028, CE-120, CE-129, CE-420, CE-421, CE-423, CE-426, CE-427, CE-429.
+
+* **Contents drag and drop.** Each row has a grip (`list-drag-handle-symbolic`) that is the `DragSource` (a drag on
+  the title entry would fight with text selection); the row is the `DropTarget` for a `u32` (the index). The pointer's
+  place on the row picks `toc_ops::DropPos` (top quarter before, bottom quarter after, middle into). The handler is
+  `Editor::toc_drop`, also called by the dev hook `x:toc-drop=<from>|<target>|before|after|into`. Alt+arrows are a capture
+  phase key controller on the list (the entries would otherwise take the keys) that emits the same `TocOp`s as the
+  buttons; after a keyboard move the focus returns to the entry of the moved item (`State::toc_refocus`). The class
+  names `toc-drop-before/after/into` are installed once as a display-wide CSS provider.
+* **Merge by dragging.** In `files_extra::make_draggable` the middle 40% of a page row (`struct_hub::is_merge_zone`) is
+  "merge": the row gets `toc-drop-into`, the drop sends `StructCmd::DropMerge` and `prompt_drop_merge` asks, then
+  `Input::MergeFiles([target, dragged])` runs the existing merge on a checkpoint. `x:drop-merge=<from>|<onto>` asks,
+  `x:drop-merge-accept` answers yes (`x:drop-merge-pending` shows what waits).
+* **Dialogs.** Transform HTML and Book Jacket use `tool_dialog` (Preview = a dry run on a copy). Set Cover, Manage
+  Fonts and Accessibility Metadata have their own layouts; the accessibility form validates on every change and
+  Apply refuses errors. All have dev hooks (`x:cover=`, `x:fonts-manage=`, `x:html-rules=`, `x:html-ruleset=`,
+  `x:jacket=`, `x:a11y-form=`, `x:foreign-open=`, `x:foreign-save=`; `x:win-size=WxH`, `x:dialog-close`), see
+  `src/ui/editor/struct_hub.rs` and `build-aux/ui-tests-editor-struct.sh`.
+* **Other formats (CE-429).** `State::origin` holds the file a book came from. `Editor::save` is intercepted when it is
+  set: `prompt_save_foreign` offers Save as EPUB / Convert Back. A foreign session uses `book_id` 0 and never touches the
+  library. Per-book editor preferences (spelling dictionaries, check panel) are kept under the key `0` for these.
+* **Screenshots.** Broadway cannot draw an `AdwDialog` into the window snapshot (the child widget is not mapped for
+  `WidgetPaintable`), so dialog screenshots come from the real-session harness
+  (`build-aux/session/scenarios_editor_struct.py`: `editor_struct_dialogs_1280`, `_900`).

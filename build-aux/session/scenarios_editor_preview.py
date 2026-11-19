@@ -63,6 +63,12 @@ def editor_split_at_cursor(c):
     # menu items have no accessible names here: Split at Cursor is the third from the end
     items = c.wait(lambda: [n for n in c.find("menu item") if n.showing and n.box[2] > 0] or None, 5)
     items = sorted(items or [], key=lambda n: n.box[1])
+    if items:
+        # the menu is taller than a small screen: scroll its end into view with the real wheel
+        wx, wy = items[3].center()
+        c.sb.scroll(25, wx, wy)
+        time.sleep(0.8)
+        items = sorted([n for n in c.find("menu item") if n.showing and n.box[2] > 0], key=lambda n: n.box[1])
     c.note(f"menu items by position: {[n.box[1] for n in items]}")
     c.shot("markup-menu")
     item = items[-3] if len(items) >= 17 else None

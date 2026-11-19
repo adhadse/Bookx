@@ -14,7 +14,8 @@ use wasmi::{
     StoreLimits, StoreLimitsBuilder, TrapCode, ValType,
 };
 
-use crate::manifest::{Manifest, Permission};
+use crate::editor::{self, ActionResult, SharedSession};
+use crate::manifest::{Manifest, PluginKind};
 
 /// Largest reply a plugin may return (bytes). Anything bigger is an error.
 pub const MAX_REPLY_BYTES: usize = 64 * 1024 * 1024;
@@ -114,6 +115,7 @@ struct State {
     deadline: Instant,
     http_calls: u32,
     log_lines: u32,
+    editor: Option<SharedSession>,
 }
 
 /// A loaded plugin: compiled module + manifest + host services.
@@ -145,6 +147,7 @@ fn host_signature(name: &str) -> Option<FuncType> {
         "log" => Some(func_sig(&[I32, I32, I32], &[])),
         "http_get" => Some(func_sig(&[I32, I32, I32], &[I32])),
         "now_ms" => Some(func_sig(&[], &[I64])),
+        "editor_call" => Some(func_sig(&[I32, I32, I32, I32, I32], &[I32])),
         _ => None,
     }
 }
@@ -238,7 +241,83 @@ fn build_linker(engine: &Engine) -> Result<Linker<State>> {
             },
         )
         .map_err(|e| anyhow!("{e}"))?;
+    linker
+        .func_wrap(
+            "bookx_host",
+            "editor_call",
+            |mut caller: Caller<'_, State>,
+             op_ptr: i32,
+             op_len: i32,
+             in_ptr: i32,
+             in_len: i32,
+             out: i32|
+             -> i32 { editor_call(&mut caller, op_ptr, op_len, in_ptr, in_len, out) },
+        )
+        .map_err(|e| anyhow!("{e}"))?;
     Ok(linker)
+}
+
+/// Longest input of one `editor_call` (bytes).
+pub const MAX_EDITOR_INPUT: i32 = 32 * 1024 * 1024;
+
+/// Copies `body` into guest memory through the guest's `alloc` and writes `ptr`, `len` at `out`.
+fn give_to_guest(caller: &mut Caller<'_, State>, body: &[u8], out: i32) -> bool {
+    let Some(alloc) = caller
+        .get_export("alloc")
+        .and_then(Extern::into_func)
+        .and_then(|f| f.typed::<i32, i32>(&*caller).ok())
+    else {
+        return false;
+    };
+    let Ok(ptr) = alloc.call(&mut *caller, body.len() as i32) else {
+        return false;
+    };
+    let Some(mem) = guest_memory(caller) else {
+        return false;
+    };
+    if ptr < 0 || mem.write(&mut *caller, ptr as usize, body).is_err() {
+        return false;
+    }
+    let mut cell = [0u8; 8];
+    cell[..4].copy_from_slice(&(ptr as u32).to_le_bytes());
+    cell[4..].copy_from_slice(&(body.len() as u32).to_le_bytes());
+    out >= 0 && mem.write(&mut *caller, out as usize, &cell).is_ok()
+}
+
+/// `editor_call` result codes: see [`crate::editor`].
+fn editor_call(
+    caller: &mut Caller<'_, State>,
+    op_ptr: i32,
+    op_len: i32,
+    in_ptr: i32,
+    in_len: i32,
+    out: i32,
+) -> i32 {
+    if !(0..=64).contains(&op_len) || !(0..=MAX_EDITOR_INPUT).contains(&in_len) {
+        return editor::BAD;
+    }
+    let Some(session) = caller.data().editor.clone() else {
+        return -6;
+    };
+    if Instant::now() >= caller.data().deadline {
+        return -7;
+    }
+    let Some(op) = read_guest(caller, op_ptr, op_len).and_then(|b| String::from_utf8(b).ok())
+    else {
+        return editor::BAD;
+    };
+    let Some(input) = read_guest(caller, in_ptr, in_len) else {
+        return editor::BAD;
+    };
+    let (code, reply) = session
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .dispatch(&op, &input);
+    let body = serde_json::to_vec(&reply).unwrap_or_default();
+    if !give_to_guest(caller, &body, out) {
+        return -5;
+    }
+    code
 }
 
 /// `http_get` result codes: 0 ok, -1 bad arguments / url, -2 host not permitted, -3 network failure,
@@ -340,6 +419,11 @@ impl Plugin {
                 _ => bail!("export `bookx_info` has the wrong signature"),
             }
         }
+        for imp in module.imports() {
+            if imp.name() == "editor_call" && manifest.kind != PluginKind::EditorAction {
+                bail!("import `bookx_host::editor_call` is only for editor-action plugins");
+            }
+        }
         let linker = build_linker(&engine)?;
         Ok(Plugin {
             manifest,
@@ -372,7 +456,7 @@ impl Plugin {
         &self.manifest.id
     }
 
-    fn new_store(&self) -> Result<(Store<State>, Instant, u64)> {
+    fn new_store(&self, editor: Option<SharedSession>) -> Result<(Store<State>, Instant, u64)> {
         let lim = self.manifest.limits;
         let by_time = lim.timeout_ms.saturating_mul(FUEL_PER_MS);
         let fuel = lim.fuel.min(by_time).max(1);
@@ -382,9 +466,9 @@ impl Plugin {
             plugin_id: self.manifest.id.clone(),
             hosts: self
                 .manifest
-                .permissions
-                .iter()
-                .map(|Permission::Network(h)| h.clone())
+                .allowed_hosts()
+                .into_iter()
+                .map(str::to_string)
                 .collect(),
             host: self.host.clone(),
             limits: StoreLimitsBuilder::new()
@@ -398,6 +482,7 @@ impl Plugin {
             deadline,
             http_calls: 0,
             log_lines: 0,
+            editor,
         };
         let mut store = Store::new(&self.engine, state);
         store.limiter(|s| &mut s.limits);
@@ -421,8 +506,41 @@ impl Plugin {
 
     /// Runs `bookx_call(op, input)` in a fresh instance and returns the raw reply bytes.
     pub fn call_raw(&self, op: &str, input: &[u8]) -> Result<(Vec<u8>, CallStats)> {
+        self.call_raw_with(op, input, None)
+    }
+
+    /// Runs one editor action (`kind = "editor-action"`, ABI v2) against the book behind
+    /// `session`. Permissions and limits are the ones the session was built with; the caller
+    /// takes the book back out of the session afterwards, also when this fails.
+    pub fn run_editor_action(&self, action: &str, session: &SharedSession) -> Result<ActionResult> {
+        if self.manifest.kind != PluginKind::EditorAction {
+            bail!(
+                "plugin `{}` is not an editor-action plugin",
+                self.manifest.id
+            );
+        }
+        if !self.manifest.actions.iter().any(|a| a.id == action) {
+            bail!(
+                "plugin `{}` declares no action `{action}`",
+                self.manifest.id
+            );
+        }
+        let input = serde_json::to_vec(&serde_json::json!({ "action": action }))?;
+        let (reply, _) = self.call_raw_with("run_action", &input, Some(session.clone()))?;
+        let value = parse_envelope(&self.manifest.id, &reply)?;
+        let guard = session.lock().unwrap_or_else(|e| e.into_inner());
+        editor::action_result(value, &guard)
+            .map_err(|e| anyhow!("plugin `{}`: {e}", self.manifest.id))
+    }
+
+    fn call_raw_with(
+        &self,
+        op: &str,
+        input: &[u8],
+        editor: Option<SharedSession>,
+    ) -> Result<(Vec<u8>, CallStats)> {
         let id = &self.manifest.id;
-        let (mut store, deadline, fuel0) = self.new_store()?;
+        let (mut store, deadline, fuel0) = self.new_store(editor)?;
         let instance = self
             .linker
             .instantiate_and_start(&mut store, &self.module)
@@ -514,7 +632,7 @@ impl Plugin {
             return Ok(None);
         }
         let id = &self.manifest.id;
-        let (mut store, _, _) = self.new_store()?;
+        let (mut store, _, _) = self.new_store(None)?;
         let instance = self
             .linker
             .instantiate_and_start(&mut store, &self.module)
@@ -609,6 +727,7 @@ mod tests {
         assert!(host_signature("log").is_some());
         assert!(host_signature("http_get").is_some());
         assert!(host_signature("now_ms").is_some());
+        assert!(host_signature("editor_call").is_some());
         assert!(host_signature("fd_write").is_none());
     }
 

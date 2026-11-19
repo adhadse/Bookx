@@ -5,7 +5,7 @@ Bookx can be extended in two ways. Both are **off until you switch them on** and
 | | Plugins | Patches |
 |---|---|---|
 | What | WebAssembly modules, written in any language | small TOML files with regex and CSS rules |
-| Adds | metadata sources, file readers, output formats, transforms, device drivers | text and style fixes at fixed moments |
+| Adds | metadata sources, file readers, output formats, transforms, device drivers, editor actions | text and style fixes at fixed moments |
 | Folder | `~/.local/share/bookx/plugins/<name>/` | `~/.local/share/bookx/patches/*.toml` |
 
 The folders can also be set with the `BOOKX_PLUGINS` and `BOOKX_PATCHES` environment variables.
@@ -25,6 +25,7 @@ What a plugin adds shows up in the app:
 | output format | library → *Convert To*, entry "name (.ext, plugin)", and *Send to* |
 | transform | library → *Convert To* → "Apply name (new EPUB)", the editor's Tools menu, and optionally every conversion |
 | device driver | *Send to \<name\>* |
+| editor action | the editor's *Tools → Plugins* menu and the command palette |
 
 A transform can be added to every conversion with the switch "Run … in every conversion" in Preferences. It then
 runs after Bookx's own steps in *Convert To* and *Send to*.
@@ -35,6 +36,13 @@ Preferences shows what every plugin may do, for example "Permissions: none. It c
 network." or "may connect to openlibrary.org". A plugin gets only what its manifest asks for, and it has no file
 access at all: for a device driver, Bookx does the reading and writing. A plugin with a broken file is listed with
 its error and cannot be switched on.
+
+An **editor action** plugin can read and change the book you have open in the editor, nothing else. Preferences says
+so: "may read and change the book open in the editor" (permission `editor.write`) or "may read the book open in the
+editor" (`editor.read`). Every action first takes a checkpoint called "Before: \<action\>", all its changes are one
+step, and *Tools → Restore Checkpoint* undoes them; an action that fails leaves the book as it was. A plugin cannot
+touch `mimetype` or `META-INF/`, other files on your computer or the network. The actions appear in *Tools → Plugins* and
+in the command palette (Ctrl+Shift+P); a plugin may suggest a keyboard shortcut, but Bookx never binds one by itself.
 
 Plugins run in an interpreter with limits on memory, instructions and time. A crashing or misbehaving plugin
 becomes an error message in the app, never a crash.
@@ -64,5 +72,5 @@ See the [plugin and patch developer guide](plugin-development.md).
 
 !!! note "Limitations"
     - There is no plugin store or browser. Plugins are folders you place yourself.
-    - Only the API version 1 exists. File-system permissions (`fs:*`) are never granted.
+    - API versions 1 and 2 exist (2 adds editor actions). File-system permissions (`fs:*`) are never granted.
     - Plugin and patch support is tested with sample plugins built for the tests; few real-world plugins exist yet.

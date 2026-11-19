@@ -1230,6 +1230,9 @@ pub fn show_tab(
     for g in [&calibre, &inbox_group, &inbox.group, &names, &series.group] {
         page_health.add(g);
     }
+    for g in super::health_extra::groups(shared, links.fetch.clone(), ctx.notify.clone()) {
+        page_health.add(&g);
+    }
     let mut groups: Vec<&adw::PreferencesGroup> = vec![&backups];
     groups.extend(panel_groups.iter().take(2));
     groups.push(&snapshots.group);
@@ -1618,6 +1621,7 @@ pub fn dev(parent: &gtk::Widget, shared: &SharedRef, notify: Notify, cmd: &str) 
                 if !panel.is_some_and(|p| p.dev(other)) {
                     eprintln!("health: unknown command {other}");
                 }
+            } else if super::health_extra::dev(other) {
             } else if let Some(n) = other.strip_prefix("keep=") {
                 ctx.keep_spin.set_value(n.parse().unwrap_or(5.0));
             } else {

@@ -1,0 +1,20 @@
+[package]
+name = "bookx-example-trim-whitespace"
+version = "1.0.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-or-later"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+
+[profile.release]
+opt-level = "s"
+lto = true
+panic = "abort"
+
+# not a member of the Bookx workspace: build it with
+#   cargo build --release --target wasm32-unknown-unknown
+[workspace]

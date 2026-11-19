@@ -103,6 +103,28 @@ one numbered file per chapter (`03 - Title.wav`). A progress window with **Cance
 leaves no half-written file. WAV files are large (about 3 MB per minute with Kokoro); convert them with
 `ffmpeg -i chapter.wav chapter.mp3` if you want MP3 or OGG.
 
+## Narrating a book (media overlays)
+
+*Tools → Add Narration* in the editor reads the whole book with your voice and stores the audio **inside the EPUB** as
+an EPUB 3 *media overlay*: one audio file per chapter, a SMIL file that says which sentence is spoken when, and the
+sentences wrapped in invisible `<span id>` tags (the page looks the same). Reading systems with overlay support, such as
+Thorium, then play the book with the sentence highlighted.
+
+* The book must be EPUB 3 (*Tools → Upgrade to EPUB 3* first). Bookx shows how many chapters it will read and how
+  large the audio will be before you start.
+* It uses the voice of *Preferences → Text to Speech*. Without a downloaded voice it says so; download one there first.
+* A dialog shows the chapter and sentence; the run is also listed in the Jobs panel. **Cancel** keeps the chapters that
+  are finished. Run *Add Narration* again to continue with the others.
+* One checkpoint "Before: Add Narration" is taken, so *Tools → Restore Checkpoint* undoes it. *Tools → Remove Narration*
+  takes the audio, the SMIL files and the sentence tags out again.
+* *Check Book* (F7) checks the overlay: missing audio or text targets, wrong durations, unreadable SMIL files.
+
+Limits: the audio is **WAV** (about 48 KB per second, so a ten-hour book is roughly 1.7 GB). WAV is not one of the audio
+formats every EPUB reader must support (MP3, AAC and Opus are), and no encoder for those is part of Bookx, so some
+reading systems will not play it. Check Book reports this as a usage note. A sentence that contains an inline tag
+(for example italics) is split at the tag. Chapters made only of images or symbols get no narration. Making the audio
+takes a few times longer than listening on a slow computer.
+
 ## Settings
 
 **Preferences → Text to Speech**:

@@ -92,6 +92,9 @@ bookx-cli library trash list                # also: trash restore ID, trash empt
 bookx-cli library history
 bookx-cli library undo
 bookx-cli library tidy --apply              # one spelling per author and series
+bookx-cli library cite --style bibtex -o refs.bib "author:herbert"   # bibtex, ris, csl-json or apa
+bookx-cli library fixity                    # SHA-256 check of the book files; exit 1 when one is damaged
+bookx-cli library covers --json             # small or odd covers (--all: every cover with its size)
 bookx-cli library inbox set ~/Downloads/books   # then: inbox scan | add-all | dismiss-all
 ```
 

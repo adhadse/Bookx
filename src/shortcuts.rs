@@ -20,6 +20,8 @@ pub enum Group {
     Application,
     Library,
     Reader,
+    /// The book editor window (CE-403): its keys never meet the library's or the reader's.
+    Editor,
 }
 
 impl Group {
@@ -28,11 +30,15 @@ impl Group {
             Group::Application => "Application",
             Group::Library => "Library",
             Group::Reader => "Reader",
+            Group::Editor => "Editor",
         }
     }
 
     /// True when two actions of these groups can be triggered by the same key press.
     pub fn overlaps(self, other: Group) -> bool {
+        if self == Group::Editor || other == Group::Editor {
+            return self == other;
+        }
         self == other || self == Group::Application || other == Group::Application
     }
 }
@@ -128,6 +134,15 @@ pub fn registry() -> Vec<Action> {
                 keywords: String::new(),
             });
         }
+    }
+    for c in crate::editor_keymap::COMMANDS {
+        out.push(Action {
+            action: c.id.to_string(),
+            title: crate::i18n::tr(c.title),
+            group: Group::Editor,
+            defaults: c.defaults.iter().filter_map(|k| canonical(k)).collect(),
+            keywords: c.keywords.to_string(),
+        });
     }
     out.sort_by_key(|a| a.group);
     out

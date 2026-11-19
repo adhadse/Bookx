@@ -413,17 +413,28 @@ def _faithful(c, scheme, reader_theme, book, title_rx, pages_frac=(0.18, 0.5, 0.
             c.check("the map opens", False)
             return
         d = ""
-        for _ in range(20):
+        last, same = None, 0
+        for _ in range(40):
             time.sleep(0.4)
             d = _desc(c)
-            if _grid(d):
+            # the map's area is still settling (it moves while it opens): wait until it holds still
+            rect = _rect(d, "areawin") if _grid(d) else None
+            same = same + 1 if rect and rect == last else 0
+            if same >= 3:
                 break
+            last = rect
         g = _grid(d)
         visible = g[0] * g[1] * g[3]
         page = max(1, min(g[5] - 1, int(min(visible, g[5]) * frac)))
-        px, py = _cell_point(d, page)
-        c.sb.move_to(px, py)
-        time.sleep(0.5)
+        # aim from a fresh reading of the geometry; when the map moved meanwhile (it settles while it opens), aim again
+        for _ in range(4):
+            d = _desc(c) or d
+            px, py = _cell_point(d, page)
+            c.sb.move_to(px, py)
+            time.sleep(0.5)
+            m = re.search(r"cursor (\d+)", _desc(c))
+            if m and int(m.group(1)) == page:
+                break
         c.check(f"page {page}: the pointer is on its block before the click", re.search(r"cursor (\d+)", _desc(c)) and int(re.search(r"cursor (\d+)", _desc(c)).group(1)) == page,
                 re.search(r"cursor (\d+)", _desc(c)).group(0) if re.search(r"cursor (\d+)", _desc(c)) else "")
         c.sb.click()  # goes to that page and closes the map

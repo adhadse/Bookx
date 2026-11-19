@@ -88,7 +88,7 @@ each network listener, and every `Command::new`. Bookx has no setuid component a
 | XML without entity expansion | `roxmltree` (no external/internal entity expansion); DTDs are parsed, never fetched. |
 | Server hardening | Loopback bind by default, optional basic auth with constant-time compare, per-peer failed-auth throttle, request/body/connection limits, range parsing (`crates/bookx-serve/src/server.rs`, `net.rs`). MCP adds a ≥16-char bearer token, origin allowlist and throttling (`crates/bookx-mcp/src/http.rs`). |
 | Secrets at rest | Secret Service via `oo7`, plaintext migration on load, memory backend in tests (`bookx-secrets`, `src/secrets.rs`). SMTP refuses to send a password in clear text (`crates/bookx-serve/src/mail.rs:365`). |
-| Plugin sandbox | `wasmi` interpreter with fuel, memory pages and wall-clock timeout; capabilities limited to `network:<host>`, no filesystem (`crates/bookx-plugin/src/runtime.rs`, `manifest.rs`). |
+| Plugin sandbox | `wasmi` interpreter with fuel, memory pages and wall-clock timeout; capabilities limited to `network:<host>` and, for `editor-action` plugins (ABI v2), `editor.read` / `editor.write` on the open book only (path rules, protected `mimetype`/`META-INF`, call and size limits, copy of the book, checkpoint; `crates/bookx-plugin/src/editor.rs`), no filesystem (`crates/bookx-plugin/src/runtime.rs`, `manifest.rs`). |
 | Device safety | Library guard refuses removable/network mount points for the catalogue (`bookx-store/src/guard.rs`). |
 | Book checker | Structural checks that also flag remote resources, scripts and unsafe names (`crates/bookx-editing/src/validate/`). |
 
@@ -255,3 +255,18 @@ process, a secret or a dependency.
 - No fix without a failing test; no "Fix Released" that only means "committed".
 - No silent security fix: if it crosses a trust boundary, it gets an advisory.
 - No telemetry, no install UUID, no phone-home. Bookx collects nothing to leak.
+
+## 10. Change records
+
+### 2026-11-20: editor plugin API (ABI v2) and EPUB 3 narration (CE-019, CE-422)
+
+* Untrusted bytes: SMIL documents of a book are parsed by `bookx_editing::media_overlay::parse_smil` (16 MiB, 200 000 `par`,
+  depth 32, DTD refused, clock values bounded; references to other schemes, absolute paths and paths that leave the book are dropped,
+  never followed). WAV headers are bounds-checked in `overlay_play::wav_info`; clips are cut to 10 minutes; audio in memory is capped.
+  Tests: `hostile_references_are_dropped`, `malformed_smil_is_an_error_not_a_panic`, `size_depth_and_count_limits`,
+  `a_hostile_smil_is_survived`, `wav_headers_are_checked`.
+* Path from a file: plugin paths go through `editor::valid_book_path` / `is_protected` before the host touches the archive; tests
+  `escape_attempts_never_reach_the_book` (Rust and through a real wasm module).
+* Executes something: no. Listener / URL: no. New dependency: none. Secret: none.
+* Widens a capability: yes, plugins of the new kind `editor-action` may read and change the open book after the user switched them
+  on and read the permission text; the capability statement above is updated. Needs a second reviewer.

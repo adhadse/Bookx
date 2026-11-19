@@ -55,8 +55,9 @@ buffer are gone. `Lang::for_path` is still used for "Reformat" and the preview.
   fast typist sees stale underlines for that long.
 * Spelling: only the book's language (not per-element `lang`), only XHTML/HTML files, only files up to
   700 kB, only the window plus 40 lines.
-* Completion: prefix matching only; no fuzzy matching; no anchor text previews (CE-346), no
-  insert-image/link dialogs (CE-354). Accepting a proposal is GtkSourceView's default (Enter, or click).
+* Completion: file names are ranked by subsequence (`bookx_editing::fuzzy`, CE-345), anchors show the start of their
+  text (CE-346). Accepting a proposal is GtkSourceView's default (Enter, Tab, or click; Tab verified with real keys in
+  `editor_code_complete_keys`). Insert Image / Insert Hyperlink are dialogs (`insert_dialogs.rs`, CE-354).
 * Snippets: no `${2*}` selected-text placeholder (not in GtkSourceView); the Tab handling is a capture
   phase key controller on the view that checks the word before the caret and an "inside the last
   expanded snippet" region (two `TextMark`s), because GtkSourceView offers no query for an active
@@ -71,6 +72,30 @@ buffer are gone. `Lang::for_path` is still used for "Reformat" and the preview.
   `gtk_text_buffer_get_text` when switching files with an expanded snippet pending). The provider now
   builds a fresh iterator from the buffer's insert mark.
 
+## Code-editing helpers (wave 5, `ed-code`)
+
+| Piece | File | Notes |
+|---|---|---|
+| hit test, jumps, class rename, sort rules, MDN URLs | `crates/bookx-editing/src/code_nav.rs` | `hit_at` (link / class / id under a byte offset, in markup, `<style>` and CSS), `plan_jump`, `rename_class`, `sort_css_rules`, `help_topic_at` + `mdn_url`; `css_rules` is a small tolerant rule scanner (comments, strings, `@media`) |
+| decorations | `crates/bookx-editing/src/code_marks.rs` | `markup_errors`, `css_errors`, `link_marks`, `emphasis_spans`, `css_colors` + `parse_css_color` + `readable_text`, `anchor_snippets`; every scan returns at most `MAX_MARKS` (5000) ranges |
+| format, split, insert, auto-close | `crates/bookx-editing/src/code_format.rs` | `toggle_format`, `split_tag`, `insert_link`, `insert_image`, `auto_close`, `type_over` |
+| subsequence matcher | `crates/bookx-editing/src/fuzzy.rs` | shared by the completion and the two insert dialogs |
+| Ctrl+click, F12, rename dialog, context menu entries | `src/ui/editor/navigate.rs` | the entries are appended by the spelling click handler (`live::install_spell_menu`) after it filled the menu, because a second gesture's section was wiped by its `remove_all` |
+| text tags and tooltips | `src/ui/editor/markup_hints.rs` | `Hints` (shared state) remembers what it applied per file and skips identical passes (a fingerprint of the text and the options), so scrolling and typing elsewhere cause no scans and no flicker; options in `editor-markup.json` (own file, not `editor.json` / `editor-look.json`) |
+| format / split / sort / auto-close glue, `Input::Code(CodeMsg)` | `src/ui/editor/format_actions.rs` | `install_keys` is the capture-phase controller for `/` after `<` and the type-over of what `</` completed |
+| Insert Image / Insert Hyperlink | `src/ui/editor/insert_dialogs.rs` | `adw::Dialog`; thumbnails decoded one per idle tick |
+
+Shortcuts are rows of `editor_keymap::COMMANDS` (Ctrl+B/I/U, Ctrl+K, Ctrl+Alt+M, F12, Ctrl+< / Ctrl+> / Ctrl+Alt+>).
+Dev hooks: `editor:code:*` (see `_developer/docs.md`). Perf budgets: `crates/bookx-editing/tests/perf_budgets.rs`
+(`code_view_marks_on_a_1mb_chapter`, `code_view_whole_pass_on_a_1mb_chapter`, `rename_class_across_200_files`); one
+live pass of all scans on a 1 MB page takes about 20 ms in release.
+
+Caveats: no pointer cursor / underline while Ctrl is held over a link; the auto-close of `</` listens to the `/` key
+(not to input-method commits); typing `>` also adds the closing tag when the Preferences option for that is on, and
+`</` then adds nothing because that tag follows already; bold/italic drawing is off by default because proportional
+weights change the monospace columns; invalid-markup checks are structural (not a schema); a white swatch is invisible
+on the light scheme.
+
 ## Tests
 
 * Rust: `editor_complete` (6), `editor_snippets` (4), `editor_prefs` (1), `editor_marks` (3),
@@ -78,7 +103,12 @@ buffer are gone. `Lang::for_path` is still used for "Reformat" and the preview.
   `tags::highlight_pair`.
 * UI scenarios (`build-aux/ui-tests.sh`): `editor_view`, `editor_search_context`, `editor_live_marks`,
   `editor_live_spell`, `editor_live_pairs`, `editor_live_hidden`, `editor_live_complete`,
-  `editor_live_snippets`, plus all the older `editor_*` scenarios on the new widget.
+  `editor_live_snippets`, plus all the older `editor_*` scenarios on the new widget. Code-editing helpers:
+  `editor_code_nav`, `editor_code_rename`, `editor_code_format`, `editor_code_hints`, `editor_code_insert`,
+  `editor_code_complete` (`build-aux/ui-tests-editor-code.sh`) and, with real input in a GNOME session,
+  `editor_code_ctrl_click`, `editor_code_context_menu`, `editor_code_format_keys`, `editor_code_complete_keys`,
+  `editor_code_insert_dialogs`, `editor_code_dialogs_small`, `editor_code_rename_class_dialog`,
+  `editor_code_marks_visual`, `editor_code_tag_keys` (`build-aux/session/scenarios_editor_code.py`).
 * Visual check (by hand, Broadway + a browser): the minimap, change bars, error icon, misspelled counts,
   squiggles, tag pair highlight, match highlight and the hidden-character dots were looked at in
   screenshots (the wiki screenshots `editor.png` and `editor-find.png` are from that).

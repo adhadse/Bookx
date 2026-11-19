@@ -491,6 +491,22 @@ impl Editor {
             "open-with-export" => {
                 self.files_action("open-with");
             }
+            "external-accept" => {
+                let pending = self.ext.pending_external.borrow_mut().take();
+                match pending {
+                    Some((p, t)) => self.replace_from_disk(&p, "", &t),
+                    None => out("external", "nothing pending"),
+                }
+            }
+            "external-pending" => out(
+                "external",
+                self.ext
+                    .pending_external
+                    .borrow()
+                    .as_ref()
+                    .map(|(p, _)| p.clone())
+                    .unwrap_or_default(),
+            ),
             "external-changed" => {
                 if let Some((p, t)) = arg.split_once('|') {
                     self.replace_from_disk(p, "", std::path::Path::new(t));
@@ -565,7 +581,11 @@ impl Editor {
                     self.current.clone().unwrap_or_default()
                 ),
             ),
-            other => self.toast(&format!("Unknown dev command x:{other}")),
+            other => {
+                if !self.struct_dev(other, arg) {
+                    self.toast(&format!("Unknown dev command x:{other}"));
+                }
+            }
         }
     }
 }

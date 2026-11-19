@@ -58,6 +58,7 @@ Preferences. See [Accessibility](accessibility.md#command-palette) for the detai
 | Go to a page, percent, location or chapter | ++ctrl+g++ |
 | Back to the previous place / forward again | ++alt+left++ / ++alt+right++ |
 | Book map | ++m++ |
+| Move the reading ruler up / down (turns it on) | ++alt+up++ / ++alt+down++ |
 | Next theme (light, sepia, dark, black) | ++t++ (with text selected, ++t++ translates) |
 | Read aloud (play / pause) | ++r++ |
 | Larger text | ++ctrl+plus++ (also ++ctrl+equal++) |
@@ -79,6 +80,8 @@ The mouse wheel turns pages; ++ctrl++ + wheel or a pinch zooms; double-click the
 wheel scrolls the map and ++ctrl++ + wheel changes how much of the book it shows.
 
 ## Book editor
+
+These are the defaults; every one of them can be changed under [Changing shortcuts](#changing-shortcuts).
 
 | Action | Shortcut |
 |---|---|
@@ -108,18 +111,24 @@ wheel scrolls the map and ++ctrl++ + wheel changes how much of the book it shows
 | Select to matching tag | ++ctrl+alt+k++ |
 | Jump to matching tag | ++ctrl+alt+j++ |
 | Close the open tag | ++ctrl+alt+period++ |
-| Wrap selection in a tag | ++ctrl+alt+w++ |
-| Remove the surrounding tag | ++ctrl+alt+u++ |
+| Wrap selection in a tag | ++ctrl+alt+w++ or ++ctrl+less++ |
+| Remove the surrounding tag | ++ctrl+alt+u++ or ++ctrl+greater++ |
+| Split the tag at the caret | ++ctrl+alt+greater++ |
+| Bold / italic / underline | ++ctrl+b++ / ++ctrl+i++ / ++ctrl+u++ |
+| Insert hyperlink / insert image | ++ctrl+k++ / ++ctrl+alt+m++ |
+| Go to definition (also ++ctrl++ + click) | ++f12++ |
 | Rename a tag | ++ctrl+alt+r++ |
 | Toggle comment | ++ctrl+slash++ |
 | Paragraph / heading 1-6 | ++ctrl+0++ … ++ctrl+6++ |
 | Expand a snippet / next tab stop | ++tab++ |
+| Insert a snippet (wraps the selection) | ++ctrl+j++ |
+| Check spelling | ++ctrl+shift+f7++ |
 | Show completion | ++ctrl+space++ |
 | Smart *Home* / *End* | ++home++ / ++end++ (first press goes to the first character of the line) |
 
 ## Changing shortcuts
 
-Open **Preferences → Keyboard Shortcuts**. Every action of the library and the reader (and the application-wide ones)
+Open **Preferences → Keyboard Shortcuts**. Every action of the library, the reader and the book editor (and the application-wide ones)
 is listed with its keys.
 
 - **Find** an action with the *Filter shortcuts* field: type part of its name or of its keys (`bookmark`, `ctrl+b`).
@@ -129,6 +138,9 @@ is listed with its keys.
   you replaced), **Take It Away** (the other action loses them) or **Cancel**. Library and reader actions may share
   keys, because they never work in the same window; application-wide actions (Preferences, Quit, the command palette)
   must differ from both.
+- The book editor has its own section, **Editor**: its keys only work in the editor window, so they may repeat keys of
+  the library or the reader, but two editor actions cannot share a key. Changes apply to every open editor window at
+  once and to the shortcut shown in the editor's command palette.
 - A plain letter or digit is refused for the library (it would stop you typing in the search field). In the reader a
   plain key is allowed.
 - The arrow button on a row **resets** that action; the eraser button **removes** its shortcut; **Reset All** brings
@@ -141,8 +153,9 @@ Changes apply at once to the menus, the [command palette](accessibility.md#comma
 window. They are kept in `shortcuts.json` next to the settings file.
 
 !!! note "Limitations"
-    - The book editor's own shortcuts, and the reader keys that act on a selection (++d++, ++w++, ++t++, ++h++, ++n++,
-      ++enter++, ++shift+arrows++), are fixed.
+    - The reader keys that act on a selection (++d++, ++w++, ++t++, ++h++, ++n++, ++enter++, ++shift+arrows++), the
+      keys of the editor's file list (++f2++, ++delete++) and the keys the code view itself provides (++ctrl+z++,
+      clipboard, ++tab++) are fixed.
     - When the reader's keys for turning pages are changed, the right-to-left mirroring of ++left++ / ++right++ no longer
       applies to the new keys.
     - ++ctrl+r++ in the reader reloads the book; it is not the library refresh.

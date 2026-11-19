@@ -10,14 +10,16 @@ settings of the chosen section on the right.
 |---|---|
 | General | Colour scheme and the [interface language](#language) |
 | Library | Where the books are kept, the **Continue reading banner** (Adaptive, Large, Compact or Hidden; see [the library](library.md#views)), library health, [backups of the catalogue](backup-and-restore.md) and [metadata lookup](library.md#fetch-metadata-for-new-books) (fetch for new books, the source cache) |
-| Reading | Reader defaults: theme, layout, font size, justification, hyphenation, e-ink mode, tap zones, touch controls, footnote popups, the statistics in the footer (items, order, preset, position) |
+| Reading | Reader defaults: theme, layout, font size, justification, hyphenation, e-ink mode, tap zones, touch controls, footnote popups, the statistics in the footer (items, order, preset, position), the [reading ruler](accessibility.md#reading-ruler) |
 | Devices and Sharing | What happens when an e-reader is connected, sending notes with books, sharing the library |
 | E-mail | Mail server and addresses for *Send by E-mail* |
 | Sync | Reading position sync with KOReader (KOSync) |
 | Extensions | Plugins and the transforms they add to conversions |
 | Patches | Small rule files that fix books when they are imported or opened |
 | AI Assistants (MCP) | The server that lets [AI assistants](ai-assistants.md) search and read the library: switch, port, access token, whether they may change the library, ready-made settings for Claude, Cursor and opencode |
-| Keyboard Shortcuts | Every action with its keys: [change, reset, export and import them](shortcuts.md#changing-shortcuts) |
+| Privacy | [Offline mode](privacy.md#offline-mode) and the list of everything Bookx can connect to |
+| Editor | How the [book editor](editing.md#editor-preferences) looks and behaves: code font, tab width, margins, colour scheme (with your own schemes), automatic closing tags, completion, preview font |
+| Keyboard Shortcuts | Every action of the library, the reader and the book editor with its keys: [change, reset, export and import them](shortcuts.md#changing-shortcuts) |
 
 Other features add their own sections or rows here when they are available, for example backup. **Text to Speech** holds
 the voice engine, speed, model downloads and the voice server: see [Read aloud](read-aloud.md).

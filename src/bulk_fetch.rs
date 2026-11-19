@@ -12,6 +12,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use anyhow::Result;
+use bookx_sources::cover_quality as cq;
 use bookx_sources::fetch::Fetcher;
 use bookx_store::SqliteStore;
 
@@ -65,6 +66,8 @@ pub struct BookResult {
     pub title: String,
     pub current: Metadata,
     pub has_cover: bool,
+    /// Size of the cover the book has now, when it is known (see `bookx_sources::cover_quality`).
+    pub cover_px: Option<(u32, u32)>,
     pub found: Option<Fetched>,
     pub error: Option<String>,
 }
@@ -119,6 +122,18 @@ pub fn show_field(m: &Metadata, field: &str) -> String {
     }
 }
 
+/// What the review table shows for the cover now, and whether the cover is missing (so a new one
+/// is safe to take).
+pub fn cover_row(has_cover: bool, current: Option<(u32, u32)>) -> (String, bool) {
+    if !has_cover {
+        return (String::new(), true);
+    }
+    match current {
+        Some(s) => (format!("has a cover ({})", cq::describe_quality(s)), false),
+        None => ("has a cover".into(), false),
+    }
+}
+
 /// The proposals for one book. A field is *safe* when the book has nothing there yet.
 pub fn rows_for(r: &BookResult) -> Vec<Row> {
     let Some(f) = &r.found else {
@@ -149,15 +164,28 @@ pub fn rows_for(r: &BookResult) -> Vec<Row> {
         })
         .collect();
     if let Some(c) = &f.cover {
+        let candidate = cq::size_of(c);
+        let (current, safe) = cover_row(r.has_cover, r.cover_px);
+        let proposed = match candidate {
+            Some(s) => format!(
+                "new cover ({}, {} KB)",
+                cq::describe(s),
+                c.len().div_ceil(1024)
+            ),
+            None => format!("new cover ({} KB)", c.len().div_ceil(1024)),
+        };
+        // a clearly better cover also replaces a poor one without asking twice
+        let upgrade = r.has_cover
+            && matches!((r.cover_px, candidate), (Some(cur), Some(new)) if cq::grade(cur) < cq::Grade::Good && cq::is_upgrade(cur, new));
         rows.push(Row {
             book: r.book,
             book_title: r.title.clone(),
             field: "cover",
-            current: if r.has_cover { "has a cover" } else { "" }.into(),
-            proposed: format!("new cover ({} KB)", c.len().div_ceil(1024)),
+            current,
+            proposed,
             source: source_of("cover"),
             confidence: f.confidence,
-            safe: !r.has_cover,
+            safe: safe || upgrade,
             accepted: false,
         });
     }
@@ -415,6 +443,7 @@ pub fn run_batch(
             title: md.title.clone(),
             current: md,
             has_cover,
+            cover_px: None,
             found,
             error,
         });
@@ -482,9 +511,51 @@ mod tests {
             title: current.title.clone(),
             current,
             has_cover: false,
+            cover_px: None,
             found: f,
             error: None,
         }
+    }
+
+    fn png(w: u32, h: u32) -> Vec<u8> {
+        bookx_sources::cover::generate_cover("Dune", "Frank Herbert", "", w, h).unwrap()
+    }
+
+    fn cover_row_of(has: bool, now: Option<(u32, u32)>, new: Option<(u32, u32)>) -> Row {
+        let mut f = found(0.9);
+        f.cover = new.map(|(w, h)| png(w, h));
+        let mut r = result(1, weak("Dune"), Some(f));
+        r.has_cover = has;
+        r.cover_px = now;
+        rows_for(&r)
+            .into_iter()
+            .find(|r| r.field == "cover")
+            .unwrap()
+    }
+
+    #[test]
+    fn a_much_larger_cover_replaces_a_poor_one_as_a_safe_change() {
+        // PP-G-28: the book has a 150x200 cover, the source offers 800x1200
+        let r = cover_row_of(true, Some((150, 200)), Some((800, 1200)));
+        assert!(r.safe, "an upgrade of a low-resolution cover is safe");
+        assert!(
+            r.current.contains("150 × 200 px") && r.current.contains("very small"),
+            "{}",
+            r.current
+        );
+        assert!(r.proposed.contains("800 × 1200 px"), "{}", r.proposed);
+    }
+
+    #[test]
+    fn a_good_cover_is_never_replaced_silently() {
+        let r = cover_row_of(true, Some((800, 1200)), Some((1600, 2400)));
+        assert!(!r.safe, "a cover that is already good needs a decision");
+        let r = cover_row_of(true, Some((400, 500)), Some((410, 520)));
+        assert!(!r.safe, "barely bigger is no upgrade");
+        let r = cover_row_of(true, None, Some((800, 1200)));
+        assert!(!r.safe && r.current == "has a cover");
+        let r = cover_row_of(false, None, Some((800, 1200)));
+        assert!(r.safe, "no cover yet: fill it");
     }
 
     fn weak(title: &str) -> Metadata {
