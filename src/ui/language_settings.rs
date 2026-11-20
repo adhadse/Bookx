@@ -6,6 +6,20 @@ use relm4::gtk;
 use super::preferences::{register_group, PrefCtx};
 use crate::i18n::{self, tr};
 
+thread_local! {
+    static LISTENERS: std::cell::RefCell<Vec<Box<dyn Fn()>>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Runs `f` whenever the interface language is changed while the app runs (the library window
+/// re-translates its title and subtitle).
+pub fn on_change(f: impl Fn() + 'static) {
+    LISTENERS.with(|l| l.borrow_mut().push(Box::new(f)));
+}
+
+fn changed() {
+    LISTENERS.with(|l| l.borrow().iter().for_each(|f| f()));
+}
+
 pub fn register() {
     register_group("general", 30, group);
 }
@@ -48,6 +62,7 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
         shared.cfg.borrow().save();
         i18n::set_language(code);
         apply_direction();
+        changed();
     });
     g.add(&row);
     g
@@ -58,5 +73,6 @@ pub fn dev_set(shared: &super::SharedRef, code: &str) {
     shared.cfg.borrow_mut().language = code.to_string();
     shared.cfg.borrow().save();
     i18n::set_language(code);
+    changed();
     eprintln!("language: {} | {}", code, i18n::current());
 }

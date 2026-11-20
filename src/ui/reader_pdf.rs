@@ -1902,13 +1902,18 @@ impl SimpleComponent for ReaderPdf {
             );
             note_btn.connect_clicked(move |_| {
                 // the note box needs the keyboard: a modal popover, re-opened for it
+                // closed and opened again a moment later, not in the same breath: a popup that is re-shown at
+                // once reuses a Wayland surface that still has its buffer (protocol error 71, see reader.rs `repopup`)
                 sw.set(true);
                 pop.popdown();
                 pop.set_autohide(true);
                 s.set_visible_child_name("note");
-                pop.popup();
-                sw.set(false);
-                nv.grab_focus();
+                let (pop, sw, nv) = (pop.clone(), sw.clone(), nv.clone());
+                glib::timeout_add_local_once(std::time::Duration::from_millis(80), move || {
+                    pop.popup();
+                    sw.set(false);
+                    nv.grab_focus();
+                });
             });
             let (s, pop, sw) = (sel_stack.clone(), sel_pop.clone(), switching.clone());
             note_back.connect_clicked(move |_| {
@@ -1916,8 +1921,11 @@ impl SimpleComponent for ReaderPdf {
                 pop.popdown();
                 pop.set_autohide(false);
                 s.set_visible_child_name("actions");
-                pop.popup();
-                sw.set(false);
+                let (pop, sw) = (pop.clone(), sw.clone());
+                glib::timeout_add_local_once(std::time::Duration::from_millis(80), move || {
+                    pop.popup();
+                    sw.set(false);
+                });
             });
             let (tx, sw) = (sender.input_sender().clone(), switching.clone());
             sel_pop.connect_closed(move |_| {

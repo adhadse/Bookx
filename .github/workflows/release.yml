@@ -1,7 +1,8 @@
 name: Release
 
-# Push a tag like v0.2.0: builds the release binaries, a source-and-binary tarball with
-# checksums and a Flatpak bundle, and attaches them to a GitHub release.
+# Push a tag like v0.2.0: checks that the tag, Cargo.toml, the metainfo and CHANGELOG.md agree, builds the release
+# binaries, a tarball, a .deb, an .rpm and a Flatpak bundle, and attaches them with SHA256SUMS to a GitHub release.
+# Nothing here creates or pushes a tag. This workflow has never run on GitHub: it was only parsed locally.
 
 on:
   push:
@@ -25,7 +26,13 @@ jobs:
         run: |
           dnf install -y gcc gcc-c++ make pkgconf-pkg-config rust cargo \
             gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
-            gdk-pixbuf2-devel openssl-devel gettext tar gzip
+            gdk-pixbuf2-devel openssl-devel gettext tar gzip git python3 python3-pyyaml \
+            desktop-file-utils appstream libxml2
+      - name: Release check (versions, changelog, metainfo, Flatpak sources, golden plugins)
+        run: |
+          git config --global --add safe.directory "$PWD"
+          case "$GITHUB_REF" in refs/tags/*) tag="$GITHUB_REF_NAME" ;; *) tag="" ;; esac
+          build-aux/release-check.sh $tag
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -37,26 +44,18 @@ jobs:
           key: cargo-release-${{ hashFiles('**/Cargo.lock') }}
       - name: Build
         run: cargo build --release --locked -p bookx -p bookx-cli
-      - name: Check that the tag matches the version
+      - name: Tarball
+        run: build-aux/tarball.sh dist
+      - name: Debian and RPM packages
         run: |
-          version=$(cargo pkgid -p bookx | sed 's/.*[#@]//')
-          tag="${GITHUB_REF_NAME:-v$version}"
-          [ "${tag#v}" = "$version" ] || { echo "tag $tag does not match Cargo version $version" >&2; exit 1; }
-      - name: Stage and pack
-        run: |
-          version=$(cargo pkgid -p bookx | sed 's/.*[#@]//')
-          name="bookx-$version-linux-x86_64"
-          make install-flatpak DESTDIR="$PWD/stage/$name" PREFIX=/usr
-          cp README.md LICENSE NOTICE.md "stage/$name/"
-          tar -C stage -czf "$name.tar.gz" "$name"
-          sha256sum "$name.tar.gz" > "$name.tar.gz.sha256"
-          cat "$name.tar.gz.sha256"
+          cargo install --locked cargo-deb cargo-generate-rpm
+          cargo deb --no-build -p bookx --output dist/
+          cargo generate-rpm -p . -o dist/
       - uses: actions/upload-artifact@v4
         with:
           name: tarball
           path: |
-            bookx-*.tar.gz
-            bookx-*.tar.gz.sha256
+            dist/*
 
   flatpak:
     name: Flatpak bundle
@@ -95,7 +94,7 @@ jobs:
       - name: Checksums of everything
         run: |
           cd dist
-          sha256sum bookx-*.tar.gz bookx.flatpak > SHA256SUMS
+          sha256sum $(ls | grep -v -e '\.sha256$' -e '^SHA256SUMS$') > SHA256SUMS
           cat SHA256SUMS
       - uses: softprops/action-gh-release@v2
         with:

@@ -377,3 +377,40 @@ fn copying_a_calibre_import_makes_the_library_stand_alone() {
     let (code, out, _) = s.cli(&["library", "check"]);
     assert_eq!(code, 0, "{out}");
 }
+
+#[test]
+fn a_library_is_exported_as_a_calibre_library_and_imports_back() {
+    let s = Sandbox::new();
+    s.add("Dune", "Frank Herbert");
+    s.add("Emma", "Jane Austen");
+    let (_, before, _) = s.cli(&["library", "list", "--json"]);
+    let target = s.dir.join("calibre-out");
+    let (code, out, err) = s.cli(&["library", "export-calibre", target.to_str().unwrap()]);
+    assert_eq!(code, 0, "{out} {err}");
+    assert!(out.contains("2 book(s)"), "{out}");
+    assert!(err.contains("exporting: 2/2"), "progress on stderr: {err}");
+    assert!(target.join("metadata.db").is_file());
+    assert!(target.join("Frank Herbert/Dune (1)/metadata.opf").is_file());
+
+    // the library itself did not change, and a second export into the same folder is refused
+    let (_, after, _) = s.cli(&["library", "list", "--json"]);
+    assert_eq!(before, after);
+    let (code, _, err) = s.cli(&["library", "export-calibre", target.to_str().unwrap()]);
+    assert_eq!(code, 2);
+    assert!(err.contains("not empty"), "{err}");
+    let (code, _, err) = s.cli(&[
+        "library",
+        "export-calibre",
+        s.lib().join("inside").to_str().unwrap(),
+    ]);
+    assert_eq!(code, 2);
+    assert!(err.contains("inside"), "{err}");
+
+    // and Bookx reads the result as a Calibre library
+    let other = Sandbox::new();
+    let (code, out, err) = other.cli(&["library", "import-calibre", target.to_str().unwrap()]);
+    assert_eq!(code, 0, "{out} {err}");
+    assert!(out.contains("2 book(s) imported"), "{out}");
+    let (_, list, _) = other.cli(&["library", "list"]);
+    assert!(list.contains("Dune") && list.contains("Emma"), "{list}");
+}

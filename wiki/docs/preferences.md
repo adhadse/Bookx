@@ -11,9 +11,8 @@ settings of the chosen section on the right.
 | General | Colour scheme and the [interface language](#language) |
 | Library | Where the books are kept, the **Continue reading banner** (Adaptive, Large, Compact or Hidden; see [the library](library.md#views)), library health, [backups of the catalogue](backup-and-restore.md) and [metadata lookup](library.md#fetch-metadata-for-new-books) (fetch for new books, the source cache) |
 | Reading | Reader defaults: theme, layout, font size, justification, hyphenation, e-ink mode, tap zones, touch controls, footnote popups, the statistics in the footer (items, order, preset, position), the [reading ruler](accessibility.md#reading-ruler) |
-| Devices and Sharing | What happens when an e-reader is connected, sending notes with books, sharing the library |
 | E-mail | Mail server and addresses for *Send by E-mail* |
-| Sync | Reading position sync with KOReader (KOSync) |
+| Sync | The one place for everything that syncs: a setup checklist for [Bookx sync](progress-sync.md) (server, account, plugin, test), what it does, USB device sync, the library server (OPDS), and a collapsed **Advanced** row with every technical setting (server address, port and firewall, HTTPS, book matching, privacy and offline mode, reverse proxy, requirements). It was “Devices and Sharing” and “Sync” before; searching either name finds it |
 | Extensions | Plugins and the transforms they add to conversions |
 | Patches | Small rule files that fix books when they are imported or opened |
 | AI Assistants (MCP) | The server that lets [AI assistants](ai-assistants.md) search and read the library: switch, port, access token, whether they may change the library, ready-made settings for Claude, Cursor and opencode |
@@ -23,6 +22,74 @@ settings of the chosen section on the right.
 
 Other features add their own sections or rows here when they are available, for example backup. **Text to Speech** holds
 the voice engine, speed, model downloads and the voice server: see [Read aloud](read-aloud.md).
+
+## Section by section
+
+Each section is one page of the window; these are the ones that have no page of their own.
+
+### General
+
+<figure markdown="1">
+![Preferences, General](assets/preferences-general-light.png#only-light)
+![Preferences, General](assets/preferences-general-dark.png#only-dark)
+<figcaption markdown="1">Preferences → General: colour scheme and language.</figcaption>
+</figure>
+
+### Library
+
+<figure markdown="1">
+![Preferences, Library](assets/preferences-library-light.png#only-light)
+![Preferences, Library](assets/preferences-library-dark.png#only-dark)
+<figcaption markdown="1">Preferences → Library: the library folder, the banner, where books are kept, and metadata lookup.</figcaption>
+</figure>
+
+<figure markdown="1">
+![The Continue reading banner setting](assets/prefs-banner-setting-light.png#only-light)
+![The Continue reading banner setting](assets/prefs-banner-setting-dark.png#only-dark)
+<figcaption markdown="1">The *Continue reading banner* row: automatic, large, compact or hidden.</figcaption>
+</figure>
+
+### Reading
+
+<figure markdown="1">
+![Preferences, Reading](assets/preferences-reading-light.png#only-light)
+![Preferences, Reading](assets/preferences-reading-dark.png#only-dark)
+<figcaption markdown="1">Preferences → Reading: the defaults of the reader (theme, layout, font size, hyphenation, tap zones).</figcaption>
+</figure>
+
+### Sync
+
+<figure markdown="1">
+![Preferences, Sync](assets/preferences-sync-light.png#only-light)
+![Preferences, Sync](assets/preferences-sync-dark.png#only-dark)
+<figcaption markdown="1">Preferences → Sync: the setup checklist first; everything technical is under Advanced.</figcaption>
+</figure>
+
+The page starts with a **Setup checklist**, a stepper of four numbered steps (turn on the Bookx sync server, create your sync
+account, install the plugin on KOReader, test on the device), then *What Bookx sync does*, *USB device sync* and *Library servers (OPDS)*. The last
+row, **Advanced**, is collapsed; open it for the server address, port and firewall, HTTPS and certificates, how books
+are matched, the status lines, the request limits, the link to the reverse-proxy guide, the Requirements table (which
+device needs what, over which connection) and the link to Privacy and offline mode. Main menu → **Sync** shows the same
+state and follows these switches at once. See [Bookx sync](progress-sync.md) and
+[Which sync do I need?](devices-and-sharing.md#which-sync-do-i-need).
+
+### Editor
+
+<figure markdown="1">
+![Preferences, Editor](assets/preferences-editor-light.png#only-light)
+![Preferences, Editor](assets/preferences-editor-dark.png#only-dark)
+<figcaption markdown="1">Preferences → Editor: how the code view looks and behaves.</figcaption>
+</figure>
+
+### Keyboard Shortcuts
+
+<figure markdown="1">
+![Preferences, Keyboard Shortcuts](assets/preferences-shortcuts-light.png#only-light)
+![Preferences, Keyboard Shortcuts](assets/preferences-shortcuts-dark.png#only-dark)
+<figcaption markdown="1">Preferences → Keyboard Shortcuts: click a row to change its shortcut.</figcaption>
+</figure>
+
+The other sections are shown where their feature is described: [E-mail](devices-and-sharing.md#e-mail-and-kindle), [Extensions](plugins-and-patches.md#using-plugins), [Patches](plugins-and-patches.md#using-patches), [Text to Speech](read-aloud.md#settings), [Privacy](privacy.md#offline-mode) and [AI Assistants (MCP)](ai-assistants.md#setting-up-from-preferences).
 
 ## Language
 

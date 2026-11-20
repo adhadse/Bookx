@@ -58,6 +58,11 @@ pub fn collect(dir: &Path, recursive: bool, out: &mut Vec<PathBuf>) {
 
 /// Reads any supported file into a ready-to-add book. Safe to call from worker threads.
 pub fn prepare(path: &Path) -> Result<Prepared> {
+    // audio (a file, a folder, a zip of parts) is an audiobook, not a book to convert
+    if !is_supported(path) && crate::audiobook::is_audio_source(path) {
+        let data = crate::audiobook::data_dir().context("no settings folder")?;
+        return crate::audiobook::prepare(path, &data);
+    }
     let mut raw = prepare_unpatched(path)?;
     raw.source_file = Some(path.to_path_buf());
     let before = raw.meta.clone();

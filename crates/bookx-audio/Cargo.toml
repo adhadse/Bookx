@@ -1,0 +1,18 @@
+[package]
+name = "bookx-audio"
+version = "0.2.0"
+authors = ["Anurag Dhadse <hello@adhadse.com>"]
+edition = "2021"
+rust-version = "1.85"
+description = "Audiobooks for Bookx: tags, chapters and covers of MP3/M4A/M4B/OGG/FLAC/WAV, folders and zips of parts, decoding, time stretching and a player engine. GTK-free"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+symphonia = { version = "0.5", default-features = false, features = ["mp3", "aac", "isomp4", "ogg", "vorbis", "flac", "wav", "pcm", "alac", "adpcm"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+uuid = { version = "1", features = ["v4"] }

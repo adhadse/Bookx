@@ -98,3 +98,56 @@ scenario editor_code_complete "edit:1,wait:3000,editor:x:put=OEBPS/chapter-2.xht
     sed -n 4p <<<"$C" | grep -q "sub\[anchor:2\]«The second" && ! sed -n 4p <<<"$C" | grep -q "sec\["; check "typing after # narrows the anchors" $?
     sed -n 5p <<<"$C" | grep -q "n=0 "; check "nothing is offered when no file matches" $?
     ! has "panicked|CRITICAL|Gtk-WARNING|GLib-GObject"; check "completion runs without errors or GTK warnings" $?'
+
+# Text colour, background colour and alignment (CE-350): spans and `text-align`, toggled off by the same value, with
+# CSS classes (and the rule in the style sheet) when View > Use CSS Classes is on.
+scenario editor_code_style "edit:1,wait:3000,editor:x:put=OEBPS/chapter-1.xhtml|<html><body><p>one two three</p><p>four five six</p><p style=\"margin:0\">seven</p></body></html>,editor:x:put=OEBPS/style.css|p { color: black }\n,editor:open=OEBPS/chapter-1.xhtml,wait:400,editor:find-in-text=two|sel,editor:code:colour=text|#ff0000,editor:code:colour=text|#ff0000,editor:find-in-text=three|sel,editor:code:colour=background|yellow,editor:code:colour=text|red;x,editor:code:colour=text|off,editor:find-in-text=five,editor:code:align=center,editor:code:align=center,editor:code:align=right,editor:code:align=off,editor:find-in-text=seven,editor:code:align=justify,editor:code:colour-classes=on,editor:find-in-text=six|sel,editor:code:colour=text|#00F,editor:find-in-text=four,editor:code:align=center,editor:cat=OEBPS/style.css,editor:open=OEBPS/style.css,wait:200,editor:code:align=left,quit" '
+    S=$(grep "^editor_code: style" <<<"$OUT")
+    sed -n 1p <<<"$S" | grep -q "<p>one <span style=\"color:#ff0000\">⟦two⟧</span> three</p>"; check "Text Colour wraps the selection in a span with the colour" $?
+    sed -n 2p <<<"$S" | grep -q "<p>one ⟦two⟧ three</p>"; check "the same colour again takes the span off" $?
+    sed -n 3p <<<"$S" | grep -q "<span style=\"background-color:yellow\">⟦three⟧</span>"; check "Background Colour writes background-color" $?
+    sed -n 4p <<<"$S" | grep -q "toast=That is not a colour"; check "a value that is not a colour is refused" $?
+    sed -n 5p <<<"$S" | grep -q "toast=There is no colour here to remove" && sed -n 5p <<<"$S" | grep -q "<span style=\"background-color:yellow\">⟦three⟧</span>"; check "Remove Text Colour where there is none says so and leaves the page alone" $?
+    sed -n 6p <<<"$S" | grep -q "<p style=\"text-align:center\">|four five six</p>\|<p style=\"text-align:center\">four |five six</p>"; check "Align Centre sets text-align on the block around the caret" $?
+    sed -n 7p <<<"$S" | grep -q "<p>four five six</p>\|<p>.*four.*five six</p>" && ! sed -n 7p <<<"$S" | grep -q "text-align"; check "the same alignment again takes it off" $?
+    sed -n 8p <<<"$S" | grep -q "text-align:right"; check "another alignment replaces it" $?
+    ! sed -n 9p <<<"$S" | grep -q "text-align"; check "Remove Alignment takes it off" $?
+    sed -n 10p <<<"$S" | grep -q "<p style=\"margin:0;text-align:justify\">"; check "other style declarations of the block are kept" $?
+    sed -n 11p <<<"$S" | grep -q "<span class=\"color-00f\">⟦six⟧</span>"; check "with CSS classes on, the colour is written as a class" $?
+    sed -n 12p <<<"$S" | grep -q "<p class=\"align-center\">"; check "and the alignment as an align- class" $?
+    sed -n 13p <<<"$S" | grep -q "p { color: black }.n.color-00f { color: #00F; }.n.align-center { text-align: center; }.n| toast=Colours and alignment work in HTML pages"; check "the rules of both classes are added to the style sheet, and style sheets are not styled" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING|GLib-GObject"; check "styling runs without errors or GTK warnings" $?'
+
+# The Markup menu is split into short pages and shows the keys of the registry, also after a rebinding.
+scenario editor_markup_menu "edit:1,wait:3000,editor:code:menu,editor:code:rebind=editor.format-bold|<Control><Alt>x,wait:300,editor:code:menu,quit" '
+    M=$(grep "^editor_menu: " <<<"$OUT")
+    sed -n 1p <<<"$M" | grep -q "^editor_menu: top=Format,Insert,Structure,View "; check "the Markup menu starts with Format, Insert and Structure submenus" $?
+    sed -n 1p <<<"$M" | sed -E "s/.*biggest_page=([0-9]+).*/\1/" | { read n; [ "$n" -le 12 ]; }; check "no page of the Markup menu is longer than 12 rows (fits 900x600)" $?
+    has "^editor_menu_accel: Bold=<Control>b"; check "Bold shows Ctrl+B from the registry" $?
+    has "^editor_menu_accel: Insert Hyperlink=<Control>k"; check "Insert Hyperlink shows its key" $?
+    has "^editor_menu_accel: Go to Definition=F12"; check "Go to Definition shows F12" $?
+    has "^editor_menu_accel: Bold=<Control><Alt>x"; check "after rebinding Bold the menu shows the new key" $?
+    [ "$(grep -c "^editor_menu_accel: Bold=<Control>b$" <<<"$OUT")" = 1 ]; check "and the old key is only in the first listing" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING|GLib-GObject"; check "the menu builds without errors or GTK warnings" $?'
+
+# The completion popup answers only after a short pause (one popup, no hide-and-show in the same iteration).
+scenario editor_completion_debounce "edit:1,wait:3000,editor:open=OEBPS/chapter-1.xhtml,wait:500,editor:complete-show,wait:700,editor:complete-show,wait:700,editor:complete-waits,quit" '
+    has "^editor_popup_waits: answers=[1-9][0-9]* shortest_ms=(9[0-9]|[1-9][0-9][0-9]+) debounced=true"; check "every answer of the completion popup came after the debounce" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING|GLib-GObject"; check "the popup opens without errors or GTK warnings" $?'
+
+# `</` closes the tag when the `/` comes from an input method commit (no key press), not only from the key.
+scenario editor_code_im_commit "edit:1,wait:3000,editor:x:put=OEBPS/chapter-1.xhtml|<html><body></body></html>,editor:open=OEBPS/chapter-1.xhtml,wait:400,editor:find-in-text=</body>,editor:code:commit=<p>x</,wait:400,editor:code:dump,editor:code:commit=/,wait:400,editor:code:dump,quit" '
+    D=$(grep "^editor_code: dump" <<<"$OUT")
+    sed -n 1p <<<"$D" | grep -q "<body><p>x</p>|</body>"; check "a / committed by an input method after < closes the open tag" $?
+    sed -n 2p <<<"$D" | grep -q "<body><p>x</p>|/</body>\|<body><p>x</p>/|</body>"; check "a / that does not follow < is just a slash" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING|GLib-GObject"; check "committing text runs without errors or GTK warnings" $?'
+
+# Ctrl held over a link target or a class name: underlined with the hand pointer, nothing elsewhere.
+scenario editor_code_ctrl_hover "edit:1,wait:3000,editor:x:put=OEBPS/chapter-1.xhtml|$CH1,editor:open=OEBPS/chapter-1.xhtml,wait:400,editor:code:hover=chapter-2.xhtml#sec|3,editor:code:hover=note big|1,editor:code:hover=See |1,editor:code:hover=id=\"top\"|5,editor:code:hover=none,quit" '
+    H=$(grep "^editor_code: hover" <<<"$OUT")
+    sed -n 1p <<<"$H" | grep -q "target=\[chapter-2.xhtml#sec\] underlined=[0-9]*\.\.[0-9]* cursor=pointer"; check "Ctrl over a link target underlines it and shows the hand" $?
+    sed -n 2p <<<"$H" | grep -q "target=\[note\] .*cursor=pointer"; check "Ctrl over a class name underlines that class" $?
+    sed -n 3p <<<"$H" | grep -q "target=\[\] underlined= cursor=text"; check "plain text has no hover" $?
+    sed -n 4p <<<"$H" | grep -q "target=\[top\] .*cursor=pointer"; check "an id counts too" $?
+    sed -n 5p <<<"$H" | grep -q "underlined= "; check "leaving takes the underline away" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING|GLib-GObject"; check "hovering runs without errors or GTK warnings" $?'

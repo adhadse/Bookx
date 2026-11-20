@@ -114,7 +114,7 @@ pub fn is_balanced(s: &str) -> bool {
     stack.is_empty()
 }
 
-fn inside_markup(src: &str, pos: usize) -> bool {
+pub(crate) fn inside_markup(src: &str, pos: usize) -> bool {
     scan(src).into_iter().any(|e| match e {
         Event::Open { range, .. } | Event::Close { range, .. } | Event::Other(range) => {
             pos > range.start && pos < range.end

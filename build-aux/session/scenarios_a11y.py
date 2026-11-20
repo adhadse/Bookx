@@ -322,8 +322,8 @@ def a11y_prefs_search(c):
     d = c.wait_node("dialog", "Preferences", timeout=6)
     if not c.check("Ctrl+, opens Preferences", d):
         return
-    c.check("the sidebar lists the sections", len(c.find(None, rx="^(Reading|Extensions|Devices and Sharing|Library|E-mail)$")) >= 3,
-            str([n.name for n in c.find(None, rx="^(Reading|Extensions|Devices and Sharing|Library|E-mail)$")]))
+    c.check("the sidebar lists the sections", len(c.find(None, rx="^(Reading|Extensions|Sync|Library|E-mail)$")) >= 3,
+            str([n.name for n in c.find(None, rx="^(Reading|Extensions|Sync|Library|E-mail)$")]))
     c.check("the search entry is named", c.find(None, "Search settings"))
     c.sb.key("f", ("Control",))
     time.sleep(0.6)
@@ -338,7 +338,7 @@ def a11y_prefs_search(c):
     c.sb.type("mail server")
     time.sleep(1.0)
     c.shot("prefs-search-mail")
-    c.check("a search finds a setting on another page (the E-mail section of Devices and Sharing)", c.find(None, rx="(?i)mail server"))
+    c.check("a search finds a setting on another page (the E-mail section)", c.find(None, rx="(?i)mail server"))
     c.check("the first search result is gone", not c.find(None, "Hyphenate words"))
 
 

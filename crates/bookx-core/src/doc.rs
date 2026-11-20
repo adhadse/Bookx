@@ -154,6 +154,53 @@ impl Doc {
             .sum()
     }
 
+    /// The chapter's text **as the reader numbers its characters**: the coordinate system of every
+    /// highlight offset (`Highlight::start`/`end`). Paragraphs (and the pieces of a paragraph
+    /// that an image splits) are joined by one `\n`; a list marker and its tab belong to the item;
+    /// headings keep their case; rules, pictures and empty blocks have no text; soft hyphens do
+    /// not count. [`Doc::to_text`] is a *different* text (blank lines, upper-cased headings,
+    /// indents, `* * *`) meant for export: never use its offsets for highlights.
+    /// `crate::ui::canvas` builds the same text from the laid-out chapter (a scenario checks it).
+    pub fn reader_text(&self) -> String {
+        use bookx_text::paragraph::{canonical_chars, sanitize};
+        let mut pieces: Vec<String> = Vec::new();
+        for b in &self.blocks {
+            if b.kind == BlockKind::Rule {
+                continue;
+            }
+            let mut cur = String::new();
+            if let Some(m) = &b.marker {
+                cur.push_str(m);
+                cur.push('\t');
+            }
+            for sp in &b.spans {
+                match sp {
+                    Span::Text { text, .. } => cur.push_str(&sanitize(text)),
+                    Span::Break => cur.push('\n'),
+                    Span::Image { .. } => {
+                        if !cur.trim().is_empty() {
+                            pieces.push(std::mem::take(&mut cur));
+                        } else {
+                            cur.clear();
+                        }
+                    }
+                    Span::Anchor(_) => {}
+                }
+            }
+            if !cur.trim().is_empty() {
+                pieces.push(cur);
+            }
+        }
+        let mut out = String::new();
+        for (i, p) in pieces.iter().enumerate() {
+            if i > 0 {
+                out.push('\n');
+            }
+            out.extend(canonical_chars(p).map(|(_, c)| c));
+        }
+        out
+    }
+
     pub fn to_text(&self) -> String {
         let mut out = String::new();
         for b in &self.blocks {

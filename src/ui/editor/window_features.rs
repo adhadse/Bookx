@@ -21,7 +21,7 @@ pub struct State {
     /// The buttons and preview text of the tool dialog opened last (the dev hooks click them).
     pub last_dialog: RefCell<Option<(gtk::Button, gtk::Button, gtk::Label)>>,
     /// A file changed by another program that waits for the user's answer (path in the book, temporary file).
-    pub pending_external: RefCell<Option<(String, std::path::PathBuf)>>,
+    pub pending_external: Rc<RefCell<Option<(String, std::path::PathBuf)>>>,
     /// The tab a context menu was opened on.
     pub menu_page: Rc<RefCell<Option<adw::TabPage>>>,
     /// The structure tools (`struct_hub.rs`).
@@ -35,7 +35,7 @@ impl State {
             redo: RefCell::new(Vec::new()),
             monitors: RefCell::new(Vec::new()),
             last_dialog: RefCell::new(None),
-            pending_external: RefCell::new(None),
+            pending_external: Rc::new(RefCell::new(None)),
             menu_page: Rc::new(RefCell::new(None)),
             structure: Rc::new(super::struct_hub::State::default()),
         }

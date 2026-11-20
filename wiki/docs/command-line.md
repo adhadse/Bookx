@@ -30,7 +30,7 @@ Bookx has it open.
 | `device-check MOUNT` | validate the folder layout of a mounted e-reader and its books (`--kind`, `--book`, `--all`, `--json`); read-only, for a Kobo it also shows model, firmware and database facts |
 | `library …` | manage the library, see below |
 | `search QUERY` | search the library with the [query language](library.md#search) (`--sort`, `--desc`, `--json`) |
-| `serve` | serve the library over OPDS and the web, with optional KOSync |
+| `serve` | serve the library over OPDS and the web, with optional Bookx sync accounts |
 
 ### convert
 
@@ -87,6 +87,7 @@ bookx-cli library restore latest
 bookx-cli library backup --to /mnt/nas/bookx --encrypt   # also: --from on snapshots/restore; see Backup and restore
 bookx-cli library check --drift             # database, files, covers, file vs catalogue; --fix applies fixes
 bookx-cli library import-calibre ~/Calibre\ Library --copy
+bookx-cli library export-calibre ~/Exports/calibre   # a Calibre library Calibre can open; the folder must be empty
 bookx-cli library layout flat --dry-run     # tree | flat | template --template '{author}/{title}' | linked
 bookx-cli library trash list                # also: trash restore ID, trash empty
 bookx-cli library history
@@ -98,7 +99,10 @@ bookx-cli library covers --json             # small or odd covers (--all: every 
 bookx-cli library inbox set ~/Downloads/books   # then: inbox scan | add-all | dismiss-all
 ```
 
-`import-calibre` keeps the files in the Calibre folder unless you pass `--copy`.
+`import-calibre` keeps the files in the Calibre folder unless you pass `--copy`. `export-calibre` writes
+`Author/Title (id)/` folders with the book files, `cover.jpg` and `metadata.opf`, plus a `metadata.db`, into a
+folder that does not exist yet or is empty (it refuses anything else, and a folder inside the library). It only reads
+your library, prints its progress on standard error and exits with 1 when some files could not be copied.
 
 ### edit
 
@@ -119,6 +123,8 @@ bookx-cli serve --tls-cert cert.pem --tls-key key.pem        # HTTPS
 
 It binds to `127.0.0.1` by default; use `--bind 0.0.0.0` to reach it from other devices. Without `--user` access is
 open, so always set a user when you bind beyond your own computer. `--read-only` and `--title` are also available.
+To publish it (or `mcp --http`) under a name such as `https://bookx.lan/bookx`, see
+[Put Bookx behind a reverse proxy](reverse-proxy.md).
 
 ### mcp
 

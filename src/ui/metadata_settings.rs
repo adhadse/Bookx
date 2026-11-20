@@ -16,9 +16,9 @@ pub fn register() {
 fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     let g = adw::PreferencesGroup::new();
     g.set_title(&tr("Metadata lookup"));
-    g.set_description(Some(
+    g.set_description(Some(&tr(
         "Open Library and Google Books are asked only when you ask, or after an import if you switch this on.",
-    ));
+    )));
     let on = adw::SwitchRow::new();
     on.set_title(&tr("Fetch metadata for new books"));
     on.set_subtitle(&tr("After an import, fill in the fields a new book has nothing in. Fields that already have a value are never changed."));

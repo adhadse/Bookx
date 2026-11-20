@@ -56,6 +56,11 @@ jobs:
           xmllint --noout data/com.adhadse.Bookx.mime.xml
       - name: Translations are in step with the code
         run: "cargo test -p bookx --locked --quiet i18n::"
+      - name: Release check (versions, changelog, metainfo, golden plugins)
+        run: |
+          dnf install -y python3-pyyaml git
+          git config --global --add safe.directory "$PWD"
+          build-aux/release-check.sh
       - name: Flatpak sources match Cargo.lock
         run: python3 build-aux/flatpak-cargo-sources.py --check
       - name: mockups still render
@@ -85,3 +90,12 @@ jobs:
           bundle: bookx.flatpak
           manifest-path: build-aux/com.adhadse.Bookx.json
           cache-key: flatpak-builder-${{ hashFiles('Cargo.lock', 'build-aux/com.adhadse.Bookx.json') }}
+
+  deny:
+    name: Dependency advisories, licences, sources (cargo-deny)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check advisories bans licenses sources

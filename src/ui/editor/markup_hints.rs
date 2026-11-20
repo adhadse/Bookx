@@ -32,6 +32,8 @@ pub struct HintPrefs {
     pub color_swatches: bool,
     /// Text inside `<b>`, `<i>`, headings... is drawn bold/italic (CE-333).
     pub emphasis: bool,
+    /// Colours and alignment are written as CSS classes (rules added to the style sheet), not `style` attributes.
+    pub colour_classes: bool,
 }
 
 impl Default for HintPrefs {
@@ -42,6 +44,7 @@ impl Default for HintPrefs {
             link_targets: true,
             color_swatches: true,
             emphasis: false,
+            colour_classes: false,
         }
     }
 }
@@ -76,6 +79,7 @@ impl HintPrefs {
             HintOpt::Links => self.link_targets,
             HintOpt::Colors => self.color_swatches,
             HintOpt::Emphasis => self.emphasis,
+            HintOpt::ColourClasses => self.colour_classes,
         }
     }
 
@@ -86,6 +90,7 @@ impl HintPrefs {
             HintOpt::Links => self.link_targets = on,
             HintOpt::Colors => self.color_swatches = on,
             HintOpt::Emphasis => self.emphasis = on,
+            HintOpt::ColourClasses => self.colour_classes = on,
         }
     }
 }
@@ -97,15 +102,17 @@ pub enum HintOpt {
     Links,
     Colors,
     Emphasis,
+    ColourClasses,
 }
 
 impl HintOpt {
-    pub const ALL: [(HintOpt, &'static str); 5] = [
+    pub const ALL: [(HintOpt, &'static str); 6] = [
         (HintOpt::AutoClose, "auto-close"),
         (HintOpt::Invalid, "invalid"),
         (HintOpt::Links, "links"),
         (HintOpt::Colors, "colors"),
         (HintOpt::Emphasis, "emphasis"),
+        (HintOpt::ColourClasses, "colour-classes"),
     ];
 
     pub fn from_name(n: &str) -> Option<HintOpt> {
@@ -252,6 +259,7 @@ impl HintPrefs {
             | (self.link_targets as u8) << 2
             | (self.color_swatches as u8) << 3
             | (self.emphasis as u8) << 4
+            | (self.colour_classes as u8) << 5
     }
 }
 
@@ -286,7 +294,9 @@ impl Editor {
         let markup = is_xml_strict(path).is_some();
         let mut applied_map = hints.applied.borrow_mut();
         let ap = applied_map.entry(path.to_string()).or_default();
-        if text.len() > HINT_MAX || (!css && !markup) {
+        // a buffer with one huge line (no colouring) gets no hints either: every tag applied to such a line
+        // splits it again, 20 000 links take half a minute
+        if text.len() > HINT_MAX || (!css && !markup) || super::codeview::is_plain(buf) {
             clear_all(buf, ap);
             hints.tips.borrow_mut().list.clear();
             *hints.last.borrow_mut() = "skipped".into();
@@ -522,6 +532,10 @@ pub(super) fn append_view_menu(menu: &gio::Menu) {
     menu.append(
         Some(&tr("Draw Bold and Italic Text")),
         Some("view.hint-emphasis"),
+    );
+    menu.append(
+        Some(&tr("Use CSS Classes for Colours and Alignment")),
+        Some("view.hint-colour-classes"),
     );
 }
 

@@ -186,7 +186,10 @@ fn tools_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
         b.set_valign(gtk::Align::Center);
         buttons.add_suffix(b);
     }
-    buttons.set_subtitle(&tr("Save your shortcuts to a file or load them from one"));
+    // a subtitle here is squeezed into a narrow column by the three buttons (German at 900 px): tooltip instead
+    buttons.set_tooltip_text(Some(&tr(
+        "Save your shortcuts to a file or load them from one",
+    )));
     let parent = ctx.parent.clone();
     {
         let parent = parent.clone();
@@ -204,7 +207,7 @@ fn tools_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
 
 fn actions_group(ctx: &PrefCtx, group: Group) -> adw::PreferencesGroup {
     let g = adw::PreferencesGroup::builder()
-        .title(group.title())
+        .title(group.label())
         .build();
     let cur = shortcuts::current();
     for a in shortcuts::registry()
@@ -253,7 +256,7 @@ fn action_row(ctx: &PrefCtx, a: &Action, cur: &Shortcuts) -> adw::ActionRow {
         "{} {} {} {}",
         a.title,
         a.keywords,
-        a.group.title(),
+        a.group.label(),
         cur.display(&a.action)
     )
     .to_lowercase();
@@ -281,7 +284,7 @@ fn paint_row(
 ) {
     let effective = cur.effective(&a.action);
     keys.set_text(&if effective.is_empty() {
-        "Not set".to_string()
+        tr("Not set")
     } else {
         cur.display(&a.action)
     });
@@ -420,7 +423,7 @@ pub fn request(parent: &gtk::Widget, action: &str, accel: &str) {
             say("conflict");
             let names: Vec<String> = others
                 .iter()
-                .map(|o| format!("“{}” ({})", o.title, o.group.title()))
+                .map(|o| format!("“{}” ({})", o.title, o.group.label()))
                 .collect();
             let d = adw::AlertDialog::new(
                 Some(&tr("Shortcut already in use")),

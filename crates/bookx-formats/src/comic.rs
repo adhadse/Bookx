@@ -189,6 +189,7 @@ struct ComicInfo {
     md: Metadata,
     rtl: bool,
     cover_index: Option<usize>,
+    pages: bookx_comic::meta::PageInfo,
 }
 
 fn parse_comic_info(text: &str) -> Option<ComicInfo> {
@@ -218,8 +219,17 @@ fn parse_comic_info(text: &str) -> Option<ComicInfo> {
             "manga" => ci.rtl = t.eq_ignore_ascii_case("YesAndRightToLeft"),
             "pages" => {
                 for p in n.children().filter(|p| p.is_element()) {
-                    if attr(p, "Type").is_some_and(|t| t.eq_ignore_ascii_case("FrontCover")) {
-                        ci.cover_index = attr(p, "Image").and_then(|i| i.parse().ok());
+                    let image: Option<usize> = attr(p, "Image").and_then(|i| i.parse().ok());
+                    let kind = attr(p, "Type").unwrap_or("");
+                    if kind.eq_ignore_ascii_case("FrontCover") {
+                        ci.cover_index = image;
+                    }
+                    let Some(i) = image else { continue };
+                    if attr(p, "DoublePage").is_some_and(|d| d.eq_ignore_ascii_case("true")) {
+                        ci.pages.double.push(i);
+                    }
+                    if !kind.is_empty() && !kind.eq_ignore_ascii_case("Story") {
+                        ci.pages.types.push((i, kind.to_string()));
                     }
                 }
             }
@@ -266,7 +276,9 @@ pub fn convert_files(files: Vec<(String, Vec<u8>)>) -> Result<Archive> {
 
     let mut pages: Vec<(String, Vec<u8>)> = files
         .into_iter()
-        .filter(|(n, d)| is_page_name(n) && image_ext(d).is_some())
+        .filter(|(n, d)| {
+            is_page_name(n) && image_ext(d).is_some() && !bookx_comic::decode::is_bomb(d)
+        })
         .collect();
     if pages.is_empty() {
         bail!("the archive contains no images");
@@ -294,7 +306,7 @@ pub fn convert_files(files: Vec<(String, Vec<u8>)>) -> Result<Archive> {
     let cover_data = pages[cover_idx].1.clone();
     let cover_ext = image_ext(&cover_data).unwrap_or("jpg").to_string();
 
-    let mut md = info.md;
+    let mut md = info.md.clone();
     if md.title.is_empty() {
         md.title = "Untitled".into();
     }
@@ -305,7 +317,7 @@ pub fn convert_files(files: Vec<(String, Vec<u8>)>) -> Result<Archive> {
         media,
         rtl: info.rtl,
         css: CSS.into(),
-        opf_meta: String::new(),
+        opf_meta: bookx_comic::meta::opf_meta(&info.pages),
     })
 }
 
@@ -634,5 +646,61 @@ pub(crate) mod tests {
         let arc = CbzReader.read(&make_zip(&refs)).unwrap();
         assert_eq!(validate(&arc).spine_paths().len(), 400);
         assert!(t.elapsed().as_secs() < 30);
+    }
+
+    #[test]
+    fn page_types_and_double_pages_are_kept_for_the_reader() {
+        let info = r#"<ComicInfo><Series>S</Series><Pages><Page Image="0" Type="FrontCover"/><Page Image="1" Type="Story"/><Page Image="2" DoublePage="true"/><Page Image="3" Type="Deleted"/></Pages></ComicInfo>"#;
+        let z = make_zip(&[
+            ("ComicInfo.xml", info.as_bytes()),
+            ("1.jpg", &img(1, "jpg")),
+            ("2.jpg", &img(2, "jpg")),
+            ("3.jpg", &img(3, "jpg")),
+            ("4.jpg", &img(4, "jpg")),
+        ]);
+        let arc = CbzReader.read(&z).unwrap();
+        let opf = arc.get_string("OEBPS/content.opf").unwrap();
+        let pi = bookx_comic::meta::read_opf(&opf).expect("the comic marker");
+        assert_eq!(pi.double, vec![2]);
+        assert_eq!(
+            pi.types,
+            vec![(0, "FrontCover".to_string()), (3, "Deleted".to_string())]
+        );
+        // a comic without ComicInfo is a comic too
+        let z = make_zip(&[("a.jpg", &img(1, "jpg"))]);
+        let opf = CbzReader
+            .read(&z)
+            .unwrap()
+            .get_string("OEBPS/content.opf")
+            .unwrap();
+        assert_eq!(bookx_comic::meta::read_opf(&opf), Some(Default::default()));
+    }
+
+    #[test]
+    fn an_image_bomb_page_is_left_out() {
+        let bomb = bookx_comic::testgen::bomb_png(40_000, 40_000);
+        let z = make_zip(&[("1.png", &bomb), ("2.jpg", &img(2, "jpg"))]);
+        let arc = CbzReader.read(&z).unwrap();
+        assert_eq!(validate(&arc).spine_paths().len(), 1);
+        let z = make_zip(&[("1.png", &bomb)]);
+        assert!(CbzReader.read(&z).is_err(), "nothing readable is left");
+    }
+
+    #[test]
+    fn archive_entry_names_cannot_reach_outside_the_book() {
+        let z = make_zip(&[
+            ("../../evil/1.jpg", &img(9, "jpg")),
+            ("a/../../2.jpg", &img(8, "jpg")),
+            ("/abs/3.jpg", &img(7, "jpg")),
+            ("ok.jpg", &img(1, "jpg")),
+        ]);
+        let arc = CbzReader.read(&z).unwrap();
+        for n in arc.names() {
+            assert!(!n.contains(".."), "{n}");
+            assert!(!n.starts_with('/'), "{n}");
+        }
+        let pages = bookx_comic::meta::page_paths(arc.names());
+        assert!(pages.iter().all(|p| p.starts_with("OEBPS/images/page-")));
+        assert!(pages.len() <= 2);
     }
 }

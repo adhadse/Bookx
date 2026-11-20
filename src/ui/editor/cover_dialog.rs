@@ -9,16 +9,16 @@ use super::tools_ui::*;
 use super::*;
 
 const CROPS: [(&str, Option<f64>); 3] = [
-    ("Keep the whole image", None),
-    ("Crop to 2:3 (centered)", Some(2.0 / 3.0)),
-    ("Crop to 3:4 (centered)", Some(3.0 / 4.0)),
+    (crate::i18n::N_("Keep the whole image"), None),
+    (crate::i18n::N_("Crop to 2:3 (centered)"), Some(2.0 / 3.0)),
+    (crate::i18n::N_("Crop to 3:4 (centered)"), Some(3.0 / 4.0)),
 ];
 
 const SIZES: [(&str, Option<u32>); 4] = [
-    ("Keep the size", None),
-    ("At most 1600 pixels high", Some(1600)),
-    ("At most 1200 pixels high", Some(1200)),
-    ("At most 800 pixels high", Some(800)),
+    (crate::i18n::N_("Keep the size"), None),
+    (crate::i18n::N_("At most 1600 pixels high"), Some(1600)),
+    (crate::i18n::N_("At most 1200 pixels high"), Some(1200)),
+    (crate::i18n::N_("At most 800 pixels high"), Some(800)),
 ];
 
 /// The images of the book a cover can be made from.

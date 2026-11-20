@@ -50,9 +50,48 @@
   gap: 0.8rem;
 }
 
+/* ---- screenshots and their captions: one centred column; the caption sits under the visible variant ----
+   Pages write a screenshot as <figure markdown="1"> light image, dark image, <figcaption>; one image of the pair
+   is display:none (see below), so the figure holds exactly one visible picture. */
+.md-typeset figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 1.2em auto;
+  max-width: 100%;
+  text-align: center;
+}
+
+.md-typeset figure > p {
+  margin: 0;
+  max-width: 100%;
+  text-align: center;
+}
+
+.md-typeset figure img {
+  display: block;
+  margin: 0 auto;
+}
+
 .md-typeset figure figcaption {
   font-size: 0.7rem;
   opacity: 0.8;
+  max-width: 40rem;
+  margin: 0.6em auto 0;
+  text-align: center;
+}
+
+.md-typeset figure figcaption p {
+  margin: 0;
+}
+
+/* a screenshot without a caption: the paragraph that holds the pair is centred too */
+.md-typeset p:has(> img[src*="-light."]) {
+  text-align: center;
+}
+
+.md-typeset p:has(> img[src*="-light."]) img {
+  margin-inline: auto;
 }
 
 /* ---- screenshots: light and dark variants, the window shadow is part of the picture ---- */
@@ -62,7 +101,9 @@ img.only-dark {
 }
 
 [data-md-color-scheme="slate"] img.only-light,
-[data-md-color-scheme="default"] img.only-dark {
+[data-md-color-scheme="default"] img.only-dark,
+[data-md-color-scheme="slate"] .md-typeset figure img[src$="#only-light"],
+[data-md-color-scheme="default"] .md-typeset figure img[src$="#only-dark"] {
   display: none;
 }
 

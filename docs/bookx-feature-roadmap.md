@@ -1,6 +1,6 @@
 # Bookx Feature Roadmap
 
-Audit trail document. Part 1 is the original draft (v0.1), kept verbatim. Part 2 records the owner's decisions (D1-D9) and what they change. Part 3 is the extended appendix built from the official KOReader user guide and wiki index, the Calibre manual, and the Foliate/KOReader/Calibre READMEs. Agents: read Part 2 before Part 1, because Part 2 overrides the draft where they differ.
+Audit trail document. Part 1 is the original draft (v0.1), kept verbatim. Part 2 records the owner's decisions (D1-D10) and what they change. Part 3 is the extended appendix built from the official KOReader user guide and wiki index, the Calibre manual, and the Foliate/KOReader/Calibre READMEs. Agents: read Part 2 before Part 1, because Part 2 overrides the draft where they differ.
 
 Date written: 2026-11-12. Status: see PART 4 (progress log) at the end of this file. Parts 1-3 are the plan and are not edited when work lands; Part 4 is.
 
@@ -68,7 +68,7 @@ Each row has an ID so you can reply "R1 yes, C4 no". Status is relative to Bookx
 | L7 | Duplicate detection and merge books | partial | M | Only a naive title and author check today |
 | L8 | Series management, auto-numbering | partial | S | |
 | L9 | Library checks, backups, restore from a folder | missing | S | |
-| L10 | Calibre library import/migration (read `metadata.db`) and export back | missing | L | Fastest on-ramp for Calibre users |
+| L10 | Calibre library import/migration (read `metadata.db`) and export back | done (import; export wave 6) | L | Fastest on-ramp for Calibre users |
 | L11 | Multiple libraries, switcher | missing | S | |
 | L12 | Parallel, incremental folder watcher ("drop books in a folder") | missing | S | `notify` crate |
 | L13 | Cover tools: generate cover, crop, extract from PDF | missing | M | |
@@ -214,6 +214,7 @@ One caveat: the KOReader and Calibre feature lists come from my memory, not from
 | D7 | **CLI and headless server: YES, first-class.** | X2, P4, P8 are first-class products, not afterthoughts. CLI must reach parity with `ebook-convert`, `ebook-meta`, `calibredb`, `calibre-server` basics. |
 | D8 | **E-ink/tablet mode: nice to have, but must come after R13.** | R13 (gestures/touch/tablet) first, then e-ink mode (R14 e-ink part, new items K-series below). |
 | D9 | **No exclusions.** | Everything in Part 3 is a candidate. **Amended 2026-11-12 (owner): LIT (Microsoft Reader) is excluded** because Microsoft discontinued the format. Bookx only recognises a `.lit` file and rejects it with a clear message; no decoder is to be written. |
+| D10 | **Wireless sync is supported only for KOReader** (any device that runs it). No wireless sync for stock Kobo/Kindle firmware or other devices; they use USB. (2026-11-20) | Calibre wireless protocol (P5/P13) stays deferred. Highlights and notes sync over Wi-Fi through the Bookx plugin for KOReader and the built-in server (`docs/koreader-annotation-sync.md`, wiki "KOReader highlights and notes"). |
 
 Standing rules from the project (`AGENTS.md`): every change ships with tests; UI tests run in parallel, concurrency configurable (`JOBS`, `RUST_TEST_THREADS`); Rust-only application code; no debug output in committed code.
 

@@ -14,8 +14,15 @@
 #   SKIP_BUILD=1 build-aux/wiki-screenshots.sh          # use the binaries that are already built
 #   SCHEMES=dark build-aux/wiki-screenshots.sh          # one style only
 #   SCENARIOS='_wiki_library _wiki_map' build-aux/wiki-screenshots.sh   # a subset
+#   KEEP=1 SCENARIOS='_wiki_ed_dialogs2' ...           # add scenes to the previous run instead of starting over
+#   FRAME_ONLY=1 KEEP=1 ...                              # only the framing step again, on the captures of the last run
 #   DRY=1 build-aux/wiki-screenshots.sh                 # shoot into $RESULTS only, leave wiki/docs/assets alone
 #   JOBS=2                                              # sessions at a time (default 2; each uses ~15 inotify instances)
+#
+# Details and usage steps (a menu, a popover, a dialog, one panel) are crops of the same kind of capture: a scene calls
+# wshot(c, name, crop=NODE | [NODES] | (x0, y0, x1, y1), pad=..., scale=..., minsize=(w, h)) or dialog_shot / popover_shot
+# (they find the popup by what it changes on the screen). Such a picture gets a `.detail` marker next to the raw capture and is
+# framed with a small shadow (screenshot-frame.py --detail). Which picture belongs on which page: build-aux/wiki-pictures.txt.
 #
 # Needs what session-tests.sh needs (gnome-shell, AT-SPI, python3 with PyGObject and Pillow) and ~/.cache/bookx-testbooks.
 set -uo pipefail
@@ -23,31 +30,59 @@ cd "$(dirname "$(readlink -f "$0")")/.."
 ROOT=$PWD
 BASE=${RESULTS:-${CARGO_TARGET_DIR:-$ROOT/target}/wiki-screenshots}
 SCHEMES=${SCHEMES:-"light dark"}
-ALL_SCENARIOS="_wiki_shots _wiki_hero _wiki_reading _wiki_strip _wiki_library _wiki_favourites _wiki_table _wiki_reader_ux _wiki_map _wiki_tts _wiki_editor _wiki_vertical _wiki_eink"
+# whole windows (scenarios_wiki.py) and details / usage steps (scenarios_wiki_ext.py: pictures made with wshot(crop=...))
+ALL_SCENARIOS="_wiki_shots _wiki_hero _wiki_reading _wiki_strip _wiki_library _wiki_favourites _wiki_table _wiki_reader_ux _wiki_map _wiki_tts _wiki_editor _wiki_vertical _wiki_eink
+    _wiki_lib_steps _wiki_lib_dialogs _wiki_lib_banner _wiki_lib_banner_strip _wiki_lib_shelves _wiki_lib_jobs _wiki_lib_health _wiki_lib_empty
+    _wiki_lib_details _wiki_lib_menus_misc _wiki_lib_device _wiki_prefs_pages _wiki_prefs_details
+    _wiki_reader_steps _wiki_reader_ruler _wiki_reader_words _wiki_reader_cards _wiki_reader_theme_light _wiki_reader_theme_sepia _wiki_reader_theme_dark
+    _wiki_reader_notes _wiki_reader_aloud _wiki_reader_vocab _wiki_reader_pdf _wiki_reader_comic _wiki_map_detail _wiki_vertical_detail
+    _wiki_ed_code _wiki_ed_menus _wiki_ed_dialogs _wiki_ed_dialogs2 _wiki_ed_panels
+    _wiki_lib_works _wiki_audiobook _wiki_vocab_own _wiki_reader_comic2"
+ALL_SCENARIOS=$(echo $ALL_SCENARIOS)
 SCENARIOS=${SCENARIOS:-$ALL_SCENARIOS}
-PICTURES="library-device device-window preferences preferences-search command-palette reader reader-contents editor editor-find editor-palette
-    library-banner-hero library-banner-strip library-details library-notes library-favourites library-properties library-table reader-sidebar-contents reader-sidebar-notes reader-handles
-    reader-wikipedia reader-footer-settings book-map read-aloud-popover read-aloud-reading read-aloud-settings editor-preview editor-split-menu
-    reader-vertical reader-eink"
+# the pictures the pages use: build-aux/wiki-pictures.txt ("<page.md>: <name> ..."); a missing one fails the run
+PICTURES=$(grep -v '^#' build-aux/wiki-pictures.txt | cut -d: -f2- | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')
 PY=/usr/bin/python3; [ -x "$PY" ] || PY=$(command -v python3)
-rm -rf "$BASE"
+# the comic pictures show a real public-domain comic ("Little Nemo in Slumberland", Winsor McCay, 1905; see docs/test-books.md);
+# it is downloaded once into the test-book cache. Offline (NET=0) and without a cache the synthetic comic is used instead.
+BOOKS=${BOOKX_TESTBOOKS:-${REAL_HOME:-$HOME}/.cache/bookx-testbooks}
+mkdir -p "$BOOKS/comics"
+if [ -z "${WIKI_REAL_COMIC:-}" ]; then
+    if "$PY" build-aux/make-real-comic.py "$BOOKS/comics/little-nemo.cbz" "$BOOKS/real-comic" >/dev/null; then
+        export WIKI_REAL_COMIC=$BOOKS/comics/little-nemo.cbz
+        echo "==> comic pictures: the real public-domain comic $WIKI_REAL_COMIC"
+    else
+        echo "==> comic pictures: the real comic is not available (NET=0 or offline); using the synthetic comic. Do not commit these pictures."
+    fi
+fi
+[ "${KEEP:-0}" = 1 ] || rm -rf "$BASE"   # KEEP=1 with SCENARIOS=... adds scenes to an earlier run
 for scheme in $SCHEMES; do
-    export RESULTS=$BASE/$scheme WIKI_SCHEME=$scheme
+    [ "${FRAME_ONLY:-0}" = 1 ] && continue   # FRAME_ONLY=1 KEEP=1: frame the captures of the last run again
+    export WIKI_SCHEME=$scheme
+    RESULTS=$BASE/$scheme
     mkdir -p "$RESULTS"
-    echo "==> $scheme style: $SCENARIOS"
-    # other session runs on this machine can use up the inotify instances for a while: try again a few times
+    todo=$SCENARIOS
+    echo "==> $scheme style: $(echo $todo | wc -w) scenes"
+    # other session runs on this machine can use up the inotify instances or file descriptors for a while (a scene then fails
+    # without a result): only the scenes that failed are run again, up to three times
     for attempt in 1 2 3; do
-        ONLY="$SCENARIOS" JOBS=${JOBS:-2} build-aux/session-tests.sh && break
-        [ "$attempt" = 3 ] && { echo "the $scheme screenshot session failed (see $RESULTS)"; exit 1; }
-        echo "the $scheme session failed, trying again in 90 s (attempt $attempt of 3)"
-        sleep 90
-        rm -rf "$RESULTS"; mkdir -p "$RESULTS"
+        try=$BASE/$scheme.try
+        rm -rf "$try"
+        out=$(RESULTS=$try ONLY="$todo" JOBS=${JOBS:-2} build-aux/session-tests.sh 2>&1)
+        echo "$out" | grep -v '^\.\|^---\|^Ran\|^OK$\|^$'
+        cp -f "$try"/* "$RESULTS"/ 2>/dev/null
+        todo=$(echo "$out" | sed -n 's/^FAIL  \([^ ]*\).*/\1/p' | tr '\n' ' ')
+        [ -z "$todo" ] && break
+        [ "$attempt" = 3 ] && { echo "these scenes failed in the $scheme style (see $RESULTS): $todo"; exit 1; }
+        echo "trying again in 60 s: $todo (attempt $attempt of 3)"
+        sleep 60
     done
+    rm -rf "$BASE/$scheme.try"
     SKIP_BUILD=1
     export SKIP_BUILD
 done
 # a scenario that skips a step still "passes": make sure every picture the pages use was really taken
-if [ "$SCENARIOS" = "$ALL_SCENARIOS" ]; then
+if [ "$SCENARIOS" = "$ALL_SCENARIOS" ] || [ "${KEEP:-0}" = 1 ]; then
     missing=0
     for scheme in $SCHEMES; do
         for name in $PICTURES; do
@@ -67,9 +102,10 @@ for scheme in $SCHEMES; do
         b=$(basename "$f" .png)   # _wiki_shots-library-grid
         name=${b#*-}
         out=$ROOT/wiki/docs/assets/$name-$scheme.png
-        "$PY" build-aux/screenshot-frame.py --scheme "$scheme" "$f" "$out" || exit 1
+        detail=""; [ -e "${f%.png}.detail" ] && detail="--detail"   # a crop of a widget, not a whole window
+        "$PY" build-aux/screenshot-frame.py --scheme "$scheme" $detail "$f" "$out" || exit 1
         echo "wrote $out"
         n=$((n + 1))
     done
 done
-echo "$n pictures"
+echo "$n pictures ($(du -sm "$ROOT/wiki/docs/assets" | cut -f1) MB in wiki/docs/assets)"

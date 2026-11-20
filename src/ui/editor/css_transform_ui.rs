@@ -52,7 +52,8 @@ impl Editor {
         rebuild_list(&list, &rules);
 
         // the form for one new rule
-        let kinds: Vec<&str> = RuleKind::ALL.iter().map(|k| k.label()).collect();
+        let kinds_owned: Vec<String> = RuleKind::ALL.iter().map(|k| tr(k.label())).collect();
+        let kinds: Vec<&str> = kinds_owned.iter().map(String::as_str).collect();
         let kind = combo_row(&tr("New rule"), &kinds, 0);
         let fields: Vec<adw::EntryRow> = (0..3).map(|_| entry_row("", "")).collect();
         let add = gtk::Button::with_label(&tr("Add Rule"));
@@ -232,9 +233,9 @@ impl Editor {
             Spec {
                 height: 760,
                 ..Spec::new(
-                    "Transform Styles",
-                    "Change how the book looks without editing every stylesheet by hand. The rules apply to stylesheets, <style> blocks and style attributes.",
-                    "Apply",
+                    crate::i18n::N_("Transform Styles"),
+                    crate::i18n::N_("Change how the book looks without editing every stylesheet by hand. The rules apply to stylesheets, <style> blocks and style attributes."),
+                    crate::i18n::N_("Apply"),
                 )
             },
             Some(bx.upcast()),

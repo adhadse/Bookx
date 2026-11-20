@@ -8,19 +8,28 @@
 
 ## The Device button
 
+<figure markdown="1">
+![The banner that asks about a connected e-reader](assets/library-device-banner-light.png#only-light)
+![The banner that asks about a connected e-reader](assets/library-device-banner-dark.png#only-dark)
+<figcaption markdown="1">Plug in an e-reader and the library asks what to do: *Sync*, *Always* or *Not now*.</figcaption>
+</figure>
+
+
 While a Kobo, Kindle, other e-reader or a phone is connected, a **Device** button with the device's name appears in
 the library's header bar (it is hidden when nothing is connected). It opens the Device window. The book's right-click
 menu has one device entry, **Send to Device**: it opens the Device window with the books you selected already in its
 *Books to send* list. It is always there; without a device it is greyed out, with the hint “No device connected”.
 
+<figure markdown="1">
 ![A connected device: the Device button and the banner](assets/library-device-light.png#only-light)
 ![A connected device: the Device button and the banner](assets/library-device-dark.png#only-dark)
-*The Device button and the connect banner.*
+<figcaption markdown="1">The Device button and the connect banner.</figcaption>
+</figure>
 
 When a device connects, a banner asks **“Kobo Libra connected — Sync reading progress and notes?”** with three
 answers:
 
-- **Sync** shows what will happen, then syncs.
+- **Sync** shows what will happen, then syncs. Highlights come with the colour and style they have on the device (see *Colours and styles from your e-reader* in [Annotations](annotations.md)).
 - **Always** turns on automatic sync (see below) and syncs now.
 - **Not now** hides the banner until the device is connected again.
 
@@ -45,7 +54,7 @@ the device and is reported in the summary. Highlights go to the device as a KORe
 and only when the device copy has none: **a notes file that is already there is never touched**. The summary says
 how many highlights stay in Bookx for that reason. Reading progress is never written to the device.
 
-*Preferences → Devices and Sharing* (and the Device window) has **Sync automatically when a device connects**, off by default.
+*Preferences → Sync → USB device sync* (and the Device window) has **Sync automatically when a device connects**, off by default.
 With it on, syncing starts as soon as a device appears, without asking, and a message tells you what was done.
 
 ## Send to device
@@ -67,19 +76,28 @@ format the device opens is tried.
 **Your notes go along.** A book that has highlights, notes or bookmarks is sent with them: the copy **on the device**
 gets an extra “My notes” section at the end (readable in any e-reader app), and for EPUB and KEPUB readers a KOReader
 notes file is written next to it, so KOReader lists them too (as bookmarks and notes; KOReader keeps jump targets at
-chapter level, so they jump to the start of the chapter). Your library copy is not changed. Switch **Add my notes to
-the copy sent to the device** off (Device window or *Preferences → Devices and Sharing*) to send books without them.
+chapter level, so they jump to the start of the chapter; Bookx never writes a position inside the chapter that it cannot work out, so nothing can end up at the wrong words). Your library copy is not changed. Switch **Add my notes to
+the copy sent to the device** off (Device window or *Preferences → Sync → USB device sync*) to send books without them.
 
 This is **one-way, library → device**. The merge in both directions is the sync that runs when a device connects
 (above); sending never reads anything back.
 
 ## The Device window
 
+<figure markdown="1">
+![The Device window](assets/device-window-detail-light.png#only-light)
+![The Device window](assets/device-window-detail-dark.png#only-dark)
+<figcaption markdown="1">The Device window: the books on the device, what would be sent, and the sync options.</figcaption>
+</figure>
+
+
 Open it with the **Device** button in the header bar, or menu → *Device*:
 
+<figure markdown="1">
 ![The Device window with covers](assets/device-window-light.png#only-light)
 ![The Device window with covers](assets/device-window-dark.png#only-dark)
-*The Device window, with a simulated e-reader.*
+<figcaption markdown="1">The Device window, with a simulated e-reader.</figcaption>
+</figure>
 
 - the books on the device **with their covers**, as a grid or a list (the choice is remembered). Covers are taken
   from the book files (EPUB and KEPUB; other formats show a coloured placeholder) and cached, so the next visit is
@@ -131,38 +149,45 @@ behaves like a device. Sending never overwrites an existing file. The password i
 
 ## Which sync do I need?
 
-There are several different things that are easy to mix up:
+Everything that moves books, progress, highlights or notes between Bookx and another device is under one name,
+**Sync**: **main menu → Sync** answers *what should I use, when* with a status card and three choices; **Preferences →
+Sync** holds the setup.
 
-| | **Sync when a device connects** | **KOReader progress sync (server)** | **Bookx as a KOSync client** | **Notes sent with a book** | **Import Highlights** |
-|---|---|---|---|---|---|
-| Where | Device window, *Preferences → Devices and Sharing* | Share Library | *Preferences → Sync* | Device window, *Send to Device* | Main menu |
-| How it connects | USB cable (or a phone mounted in Files) | Wi-Fi, KOReader to Bookx's built-in server | Wi-Fi, Bookx's reader to any KOSync server | USB, when you send a book | a file or folder you pick |
-| Direction | both ways: device ↔ library (a merge) | KOReader ↔ KOReader, Bookx only stores the position | Bookx reader ↔ server ↔ KOReader | one way: library → device | one way: file → library |
-| What moves | reading progress, highlights and notes | reading position only | reading position only | your highlights and notes, as a “My notes” section and a KOReader notes file | highlights and notes (Kindle, KOReader, Kobo, calibre) |
-| Needs KOReader? | No on a Kobo (its own reading state is read); a Kindle's own state cannot be read, only KOReader's files | Yes, on every device that should use it | On the other devices, yes (or any app that speaks KOSync) | No for the section; the notes file is for KOReader | No |
-| Rules | progress only moves forward, notes are united, nothing is deleted | the last position a device stored | asks before moving you forward, never moves you back silently | your library copy is never changed | only adds; no duplicates; your notes are never overwritten |
+| Use this when… | **Bookx sync with KOReader (Wi-Fi)** | **USB device** | **Share books (OPDS)** |
+|---|---|---|---|
+| Your e-reader… | runs KOReader (Kobo, Kindle, Android, PocketBook …) | is connected by a cable, with or without KOReader | is an app or reader that browses an OPDS catalogue |
+| Connection | Wi-Fi or your home network | USB cable (or a phone mounted in Files) | Wi-Fi or your home network |
+| What moves | reading position; with the Bookx plugin also highlights, notes and bookmarks | reading progress, highlights and notes, both ways (a merge); books you send | books and the catalogue only |
+| Bookx needs | the server on and a sync account (Register) | nothing to switch on | the library server on |
+| The e-reader needs | KOReader, Progress sync or the Bookx plugin set to Bookx’s `/bookx` address | to be mounted | an app that opens the address |
 
-**Sync when a device connects** (cable): Bookx reads the progress and the highlights and notes the device keeps, from
-the Kobo's own database or from KOReader's `.sdr` files if KOReader is installed on it, and merges them with the
-library. Without any readable state nothing happens. Reading progress is never written to the device.
+**Stock Kobo and Kindle Wi-Fi sync is not supported**: readers on their own firmware sync over the USB cable only.
+Over Wi-Fi Bookx syncs with KOReader.
 
-**KOReader progress sync** (Wi-Fi): Bookx's built-in server also speaks KOReader's *Progress sync* protocol. In Share
-Library, switch it on; the window shows the address to type into KOReader (with a copy button). In KOReader open
-*Tools → Progress sync → Custom sync server*, enter that address, then *Register* with a user name and password of
-your choice (these are separate from the Share password; Bookx keeps them only to tell KOReader accounts apart).
-After that the reading position follows you between your KOReader devices (Kobo, Kindle, Android, PocketBook). It is
-independent of the USB sync and of the Device window, it carries the position only, and Bookx does not copy it into
-the progress shown in your library. Anyone who can reach the port can register such an account, so only use it on a
-network you trust.
+**Bookx sync with KOReader (Wi-Fi)** is described in [Bookx sync (extended KOSync)](progress-sync.md) (the setup
+checklist, the account, how books are matched) and [KOReader highlights and notes](koreader-sync.md) (the plugin).
+Bookx’s own reader uses the same account: it asks “Continue from *Kobo Libra* at 63%?” when you open a book that was read
+further elsewhere.
 
-**Bookx as a KOSync client** (Wi-Fi): the other direction: Bookx’s own reader keeps its position on a KOSync server
-(this one, `sync.koreader.rocks` or a self-hosted one) and asks “Continue from *Kobo Libra* at 63%?” when you open a
-book that was read further elsewhere. See [Sync your reading position](progress-sync.md).
+**USB device** (cable): Bookx reads the progress and the highlights and notes the device keeps, from the Kobo’s own
+database or from KOReader’s `.sdr` files if KOReader is installed on it, and merges them with the library. Without any
+readable state nothing happens. Progress only moves forward, notes are united, nothing is deleted, and reading progress
+is never written to the device. *Notes sent with a book* (Device window, *Send to Device*) add your highlights and notes
+to the copy on the device as a “My notes” section and a KOReader notes file; your library copy is never changed.
+
+**Share books (OPDS)** is the library server: see [Library server](#library-server).
 
 **Import Highlights** brings the highlights from a Kindle’s `My Clippings.txt`, KOReader’s notes, a Kobo database or
 calibre into the library; see [Highlights and notes](annotations.md).
 
 ## E-mail and Kindle
+
+<figure markdown="1">
+![Preferences, E-mail](assets/preferences-email-light.png#only-light)
+![Preferences, E-mail](assets/preferences-email-dark.png#only-dark)
+<figcaption markdown="1">E-mail: server, account and the address books are sent to. The password goes to the system keyring.</figcaption>
+</figure>
+
 
 Fill in *Preferences → E-mail* (mail server, port, encryption STARTTLS or TLS, user name, password, your address and the
 address to send to, for example your Send-to-Kindle address). Then right-click a book → *Send by E-mail*. Bookx checks the
@@ -170,18 +195,29 @@ address to send to, for example your Send-to-Kindle address). Then right-click a
 
 The password is kept in the system keyring (see [Backup and restore → Passwords](backup-and-restore.md#passwords)). Use an app password.
 
-## Share Library
+## Library server { #library-server }
 
-Menu → *Share Library* serves the library to other devices on your network:
+<figure markdown="1">
+![The Sync window](assets/library-share-light.png#only-light)
+![The Sync window](assets/library-share-dark.png#only-dark)
+<figcaption markdown="1">Main menu → Sync: a status card with one main button, and three choices (Bookx sync with KOReader, USB device, Share books). Off by default.</figcaption>
+</figure>
+
+Main menu → **Sync** → **Share books (OPDS)** → **Start library server** serves the library to other devices on your
+network; **Preferences → Sync → Library servers (OPDS)** has the same switch and the address with a copy button:
 
 - **OPDS** catalogue and a **web page** to browse and download books. Any OPDS reader app can use it.
-- A **password is required** before other devices can connect. The user name is `bookx`.
-- **KOReader progress sync** (KOSync): KOReader on any device can keep its reading position on your Bookx, over Wi-Fi. See [Which sync do I need?](#which-sync-do-i-need).
+- A **password is required** before other devices can connect. The user name is `bookx`. Under **Advanced** you find
+  *Allow other devices on my network*, the library password, the **port** (allow it in your firewall) and **HTTPS**.
+- **Bookx sync** shares the server: the setup checklist turns on network access for you and makes the library password
+  if there is none. See [Bookx sync (extended KOSync)](progress-sync.md).
 - **HTTPS**: use your own certificate and key (PEM files) or let Bookx make a self-signed one. Clients must trust a
   self-signed certificate themselves. A button creates a new one.
-- *Copy address* gives the address to type into the other device.
 
-The same server runs without the app: `bookx-cli serve --port 8080 --user me:secret --kosync kosync.json`.
+The same server runs without the app: `bookx-cli serve --port 8080 --user me:secret --kosync kosync.json` (the `--kosync` file keeps the Bookx sync accounts).
+
+To reach the server by a name, with proper HTTPS, or from outside the house, keep Bookx on your own computer and put a
+reverse proxy in front of it: [Put Bookx behind a reverse proxy](reverse-proxy.md).
 
 !!! note "Limitations"
     - Only the Kobo Libra Colour mentioned above has been tried on real hardware; the rest is untested.

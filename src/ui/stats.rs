@@ -91,6 +91,10 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
         page.add(&top);
     }
 
+    if let Some(g) = super::audiobook_player::listening_group(shared) {
+        page.add(&g);
+    }
+
     if let Some(cal) =
         crate::goals::year_calendar(&shared.stats.borrow().store, now, &chrono::Local)
     {

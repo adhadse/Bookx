@@ -162,3 +162,24 @@ typing the rest of the tag is not doubled), `editor_code_complete_keys` (file po
 * Findings: the context menu entries of a second right-click gesture were wiped by the spelling handler (`remove_all`), so the code
   entries are appended from that handler; the *Wrap in Tag* prompt did not take the keyboard focus (fixed); `</` completion
   doubled the closing tag when it was typed in full (fixed with the type-over of what was inserted).
+
+### Grouped editions with real input (`build-aux/session/scenarios_works.py`, PP-G-5)
+
+`works_editions_light_wide` (a second edition of Alice is seeded through `Ctx.start(seed=...)`, the setting is on: the badge `2 editions: show the list` is found through AT-SPI and clicked, the list has one Open / Send / Open first / Unlink button per edition with its own accessible name, a real click on *Open first* is saved as a link with one preferred edition, the card selects, the details panel lists the editions, *Unlink* splits the card and is remembered in `work_apart`), `works_editions_dark_wide`, `works_editions_light_small` and `works_editions_dark_small` (900x600: the window is centred, so clicks use the window origin; screenshots `works_editions_*-grid|editions|details.png` in the results folder), `works_editions_keyboard` (the list takes the focus, Tab reaches *Open first*, Enter chooses the edition).
+
+* The popover is parented to the grid view, not to the card: a popover on a recycled grid item is not in the AT-SPI tree of the app, one on a stable widget is.
+* A text button made with `Button::with_label` ignores the accessible label set afterwards (the name stays "Open", twice in a list); a button with a child `Label` takes it. The edition badge and the Open buttons are built that way.
+* Not checked in a real session: e-ink styling (CSS only: `window.eink .edition-badge`), the Send button with a real device (disabled without one; the Broadway scenarios cover the action wiring only), the table view with real clicks.
+
+### Comic reader (`build-aux/session/scenarios_comics.py`, `build-aux/ui-tests-comics.sh`, `docs/comic-notes.md`)
+
+Real session: `comic_smart_zoom` (real double-click on a panel zooms to it and the lower panels leave the screenshot, a second one goes
+back, a double-click on the bottom right panel, `g` then Space three times is the bottom left panel, Space past the last panel turns the
+page, Shift+Space goes back to the last panel), `comic_manga` (a right-to-left comic: Left goes forward, a real click near the left edge
+goes forward, a real swipe goes back and must **not** also hide the bars, `r` turns the direction, the choice survives a restart of the app),
+`comic_modes_input` (M cycles the layout, the real wheel scrolls the webtoon strip, F9 and a click on a thumbnail, Home). The generated
+comics give every panel its own tint (red, green, blue, yellow in reading order), so the scenarios count coloured pixels in the screenshot
+of the page area (the page area has no AT-SPI node; it is the window between the subtitle and the footer label). Screenshots:
+`comic_smart_zoom-grid.png`, `-panel-red.png`, `-guided-3.png`, `comic_manga-manga-page2.png`, `comic_modes_input-thumbs.png` …
+Run: `SKIP_BUILD=1 ONLY='comic_smart_zoom comic_manga comic_modes_input' NET=0 build-aux/session-tests.sh`. Broadway scenarios (`comic_*`,
+28 s for all) cannot see animation: Broadway's frame clock runs at a few frames per second, so they switch animations off.

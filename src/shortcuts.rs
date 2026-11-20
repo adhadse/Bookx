@@ -27,11 +27,16 @@ pub enum Group {
 impl Group {
     pub fn title(self) -> &'static str {
         match self {
-            Group::Application => "Application",
-            Group::Library => "Library",
-            Group::Reader => "Reader",
-            Group::Editor => "Editor",
+            Group::Application => crate::i18n::N_("Application"),
+            Group::Library => crate::i18n::N_("Library"),
+            Group::Reader => crate::i18n::N_("Reader"),
+            Group::Editor => crate::i18n::N_("Editor"),
         }
+    }
+
+    /// The title in the language of the interface.
+    pub fn label(self) -> String {
+        crate::i18n::tr(self.title())
     }
 
     /// True when two actions of these groups can be triggered by the same key press.
@@ -56,31 +61,31 @@ pub struct Action {
 const EXTRA: &[(&str, &str, Group, &[&str])] = &[
     (
         "app.palette",
-        "Command Palette",
+        crate::i18n::N_("Command Palette"),
         Group::Application,
         &["<Control><Shift>p", "<Control>k"],
     ),
     (
         "book.edit-meta",
-        "Edit Metadata",
+        crate::i18n::N_("Edit Metadata"),
         Group::Library,
         &["<Control>e"],
     ),
     (
         "book.delete",
-        "Remove Selected Books",
+        crate::i18n::N_("Remove Selected Books"),
         Group::Library,
         &["Delete"],
     ),
     (
         "book.edit-book",
-        "Edit Book",
+        crate::i18n::N_("Edit Book"),
         Group::Library,
         &["<Control><Shift>e"],
     ),
     (
         "book.properties",
-        "Book Properties",
+        crate::i18n::N_("Book Properties"),
         Group::Library,
         &["<Control>i"],
     ),
@@ -110,7 +115,7 @@ pub fn registry() -> Vec<Action> {
         };
         out.push(Action {
             action: c.action.to_string(),
-            title: c.title.to_string(),
+            title: crate::i18n::tr(c.title),
             group,
             defaults: canonical(c.accel)
                 .into_iter()
@@ -128,7 +133,7 @@ pub fn registry() -> Vec<Action> {
         if !out.iter().any(|x| x.action == *a) {
             out.push(Action {
                 action: a.to_string(),
-                title: t.to_string(),
+                title: crate::i18n::tr(t),
                 group: *g,
                 defaults: d.iter().filter_map(|s| canonical(s)).collect(),
                 keywords: String::new(),

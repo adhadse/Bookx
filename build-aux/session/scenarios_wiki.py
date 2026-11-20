@@ -36,15 +36,72 @@ def no_rings():
         f.write(NO_RINGS_CSS)
 
 
-def wshot(c, label, park=True):
+def _crop_box(c, crop, pad, size, minsize=(0, 0)):
+    """A screen rectangle (x0, y0, x1, y1) for `crop`: an AT-SPI node, a list of nodes (their union) or a literal
+    (x0, y0, x1, y1) in screen pixels; padded and clamped to the screen. Pure geometry besides the node boxes."""
+    if isinstance(crop, tuple) and len(crop) == 4 and all(isinstance(v, (int, float)) for v in crop):
+        x0, y0, x1, y1 = crop
+    else:
+        nodes = crop if isinstance(crop, (list, tuple)) else [crop]
+        boxes = [c.screen_box(n) for n in nodes if n is not None and n.box[2] > 0 and n.box[3] > 0]
+        if not boxes:
+            return None
+        x0 = min(b[0] for b in boxes)
+        y0 = min(b[1] for b in boxes)
+        x1 = max(b[2] for b in boxes)
+        y1 = max(b[3] for b in boxes)
+    return centred_box((x0, y0, x1, y1), pad, size, minsize)
+
+
+def centred_box(box, pad, size, minsize=(0, 0), top=36):
+    """`box` grown by `pad` (and to `minsize`) on every side, but never more than the screen allows on the tighter
+    side of each axis, so the cut-out stays centred on `box`: the padding left and right (and above and below) is equal.
+    A dialog near a screen edge used to get its full padding on one side and none on the other, which showed up as an
+    off-centre picture on the page. `top` is the screen's top bar, which a picture never includes."""
+    x0, y0, x1, y1 = box
+    w, h = size
+    out = []
+    for lo, hi, limit_lo, limit_hi, want, least in ((x0, x1, 0, w, pad, minsize[0]), (y0, y1, top, h, pad, minsize[1])):
+        lo, hi = max(lo, limit_lo), min(hi, limit_hi)
+        grow = max(want, (least - (hi - lo)) / 2)
+        grow = max(0, min(grow, lo - limit_lo, limit_hi - hi))
+        out += [int(lo - grow), int(hi + grow)]
+    return (out[0], out[2], out[1], out[3])
+
+
+def wshot(c, label, park=True, crop=None, pad=16, scale=1.0, minsize=(0, 0)):
     """A screenshot without the mouse pointer (cursor=false), saved as <scenario>-<label>.png in the results folder. The
     pointer is parked on the shell's top bar first, so no row or button is drawn hovered (park=False for pictures that need
-    the pointer, like the book map's hover card)."""
+    the pointer, like the book map's hover card).
+
+    `crop` makes a detail picture: a node, a list of nodes or a screen rectangle, taken from the same capture and cut out
+    with `pad` pixels around it (grown to `minsize` so the details of one page have similar sizes) and magnified by `scale`.
+    A detail gets a `.detail` marker next to it; wiki-screenshots.sh frames it with a small shadow, without the top bar cut."""
     if park:
         c.sb.move_to(c.sb.w // 2, 10)
         time.sleep(0.4)
     path = os.path.join(c.results, f"{c.name}-{label}.png")
     c.sb.screenshot_to(path, cursor=False)
+    if crop is not None:
+        from PIL import Image
+        if os.environ.get("WIKI_FULL"):  # debugging a crop: the whole screen next to the results, in full/
+            import shutil
+            os.makedirs(os.path.join(c.results, "full"), exist_ok=True)
+            shutil.copy(path, os.path.join(c.results, "full", f"{c.name}-{label}.png"))
+        img = Image.open(path).convert("RGB")
+        box = _crop_box(c, crop, pad, img.size, minsize)
+        if box is None:
+            c.note(f"{label}: nothing to crop to; the whole screen was kept")
+            return path
+        x0, y0, x1, y1 = box
+        if x1 - x0 < 40 or y1 - y0 < 40:
+            c.note(f"{label}: the crop {box} is empty; the whole screen was kept")
+            return path
+        out = img.crop((x0, y0, x1, y1))
+        if scale != 1.0:
+            out = out.resize((int(out.width * scale), int(out.height * scale)), Image.LANCZOS)
+        out.save(path)
+        open(path[:-4] + ".detail", "w").write("")
     return path
 
 

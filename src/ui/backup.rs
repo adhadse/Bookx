@@ -118,7 +118,7 @@ impl Panel {
         drop(cfg);
         let pass_note = row(
             &tr("If you forget this passphrase, encrypted backups cannot be opened"),
-            crate::secrets::caption_now(),
+            &crate::secrets::caption_now(),
         );
         schedule_group.add(&exit_switch);
         schedule_group.add(&daily_switch);
@@ -927,7 +927,7 @@ impl Panel {
         let dav_folder = adw::EntryRow::new();
         dav_folder.set_title(&tr("Folder on the server"));
         dav_folder.set_text(&d0.folder);
-        let dav_note = row("", crate::secrets::caption_now());
+        let dav_note = row("", &crate::secrets::caption_now());
         dav_group.add(&url);
         dav_group.add(&user);
         dav_group.add(&pass);

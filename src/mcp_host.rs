@@ -208,7 +208,7 @@ pub fn clients() -> Vec<(String, u64, i64)> {
 /// How the assistant list reads.
 pub fn clients_text(list: &[(String, u64, i64)]) -> String {
     if list.is_empty() {
-        return "No assistant has connected recently.".into();
+        return crate::i18n::tr("No assistant has connected recently.");
     }
     list.iter()
         .map(|(n, calls, idle)| {

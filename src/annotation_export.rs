@@ -70,6 +70,7 @@ pub fn style_of(s: &str) -> HighlightStyle {
         "underline" => HighlightStyle::Underline,
         "strikethrough" => HighlightStyle::Strikeout,
         "squiggly" => HighlightStyle::Squiggly,
+        "invert" => HighlightStyle::Invert,
         _ => HighlightStyle::Highlight,
     }
 }

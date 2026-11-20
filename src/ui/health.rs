@@ -1376,10 +1376,11 @@ pub fn preferences_group(
 ) -> adw::PreferencesGroup {
     let group = adw::PreferencesGroup::new();
     group.set_title(&tr("Library files"));
-    group.set_description(Some(
+    group.set_description(Some(&tr(
         "Where Bookx keeps the book files. Changing it moves them (with a preview), all or nothing.",
-    ));
-    let names: Vec<&str> = lh::layout_choices().iter().map(|c| c.1).collect();
+    )));
+    let names_owned: Vec<String> = lh::layout_choices().iter().map(|c| tr(c.1)).collect();
+    let names: Vec<&str> = names_owned.iter().map(|s| s.as_str()).collect();
     let combo = adw::ComboRow::builder()
         .title(tr("Where books are kept"))
         .model(&gtk::StringList::new(&names))

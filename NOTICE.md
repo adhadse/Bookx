@@ -112,6 +112,8 @@ Nothing below is bundled or distributed with Bookx. The models and the runtime a
 
 `crates/bookx-convert/tests/fixtures/calibre-made/` (336 KB): files written by Calibre 9.15's `ebook-convert` (GPL-3.0) from the synthetic books of `tests/corpus/mod.rs`, which are our own text (CC0). No Calibre source or sample book is copied; only the program's output for our own content. Regenerate with `build-aux/convert-parity.sh --fixtures`.
 
+`crates/bookx-store/src/calibre_schema.sql` and `calibre_schema_post.sql`: the table, index, trigger and view definitions of a `metadata.db` as Calibre 9.15 (GPL-3.0) creates it, read back from the `sqlite_master` of a library `calibredb` made from our own test text. They are the file format Calibre expects to open (an interoperability requirement, user version 27), written to by `bookx-store::calibre_export`; no Calibre source code is copied.
+
 ## Packaging
 - The Flatpak (`build-aux/com.adhadse.Bookx.json`) builds **espeak-ng** 1.52.0 (GPL-3.0-or-later,
   <https://github.com/espeak-ng/espeak-ng>) as its own module and Bookx runs it as a separate program (see the
@@ -121,3 +123,33 @@ Nothing below is bundled or distributed with Bookx. The models and the runtime a
   that of `flatpak-cargo-generator`, no code copied).
 - `po/fr.po` and `po/hi.po` and the Spanish and German files are machine-assisted translations of our own strings (CC0 /
   GPL-3.0-or-later with the program); they need review by native speakers, see the headers.
+
+## Other direct dependencies
+
+The list above names the crates that need a note. For completeness, the remaining direct dependencies of the workspace
+(licences from `cargo metadata`, checked for the release): `anyhow`, `chrono`, `directories`, `regex`, `roxmltree`,
+`serde`, `uuid`, `relm4` (MIT OR Apache-2.0); `fancy-regex`, `pangocairo`, `pulldown-cmark`, `tracing`,
+`tracing-subscriber` (MIT); `ego-tree` (ISC).
+
+- `symphonia` 0.5 (MPL-2.0), with its `symphonia-*` codec and format crates, `extended` (MIT) and `bitflags` 1.3
+  (MIT/Apache-2.0): audio decoding and tags for audiobooks (`bookx-audio`, pure Rust, MP3, AAC, ALAC, FLAC, Vorbis,
+  WAV, M4B). MPL-2.0 is file-level: Bookx links the crates unmodified, so the licence text of each crate is the one in
+  its published package.
+
+- `koreader-plugin/bookx.koplugin/` (Lua): the Bookx Sync plugin for KOReader, original code under the MIT licence (its
+  own `LICENSE` file; the rest of the repository is GPL-3.0-or-later). It is written from Bookx's own protocol
+  (`docs/koreader-annotation-sync.md`); no code is copied from KOReader or from other plugins. At run time it uses
+  KOReader's own `socket.http` and `ltn12`; the one-way password hash is computed by the bundled original
+  `bookxmd5.lua` (MIT), so no KOReader FFI module is needed.
+
+- `crates/bookx-audio/tests/fixtures/` (about 50 KB): `tiny.mp3`, `tiny_cover.mp3`, `tiny_notag.mp3`, `tiny.m4b` (with
+  two chapters), `tiny.ogg`, `tiny.opus`, `tiny.flac`. Two seconds each of a sine tone made with FFmpeg's `lavfi` sine
+  generator and encoded with FFmpeg (LGPL/GPL tool; its output contains no FFmpeg code), plus a 32x32 red square as the
+  cover: our own synthetic test audio (CC0), no recording by anyone. The generated tones, WAV and FLAC files of the tests
+  are written by `crates/bookx-audio/src/testgen.rs`.
+
+- "Little Nemo in Slumberland" by Winsor McCay (five Sunday pages, 15 October to 19 November 1905; public domain: published before
+  1931, author died 1934). Not stored in this repository or in any release: `build-aux/make-real-comic.py` downloads the scans from
+  Wikimedia Commons (<https://commons.wikimedia.org/wiki/Category:Little_Nemo_in_Slumberland>, tagged "Public domain") into the
+  developer's cache (`~/.cache/bookx-testbooks`) so the comic pictures in the wiki can show a real comic. The pictures that show the
+  pages (`wiki/docs/assets/reader-comic-*.png`) are published with the wiki, with credit to Winsor McCay on the Reading page.

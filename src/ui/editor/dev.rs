@@ -79,6 +79,48 @@ impl Editor {
             sender.input(Input::TocGo(i.parse().unwrap_or(0)));
         } else if let Some(i) = c.strip_prefix("toc-select=") {
             sender.input(Input::TocSelect(i.parse().unwrap_or(0)));
+        } else if let Some(n) = c.strip_prefix("toc-row=") {
+            // a click on a row of the Contents list: the selection of the virtual list drives the editor
+            self.w.toc_sel.set_selected(n.parse().unwrap_or(0));
+        } else if c == "toc-rows" {
+            // the Contents list is virtual: entries in the model against the row widgets that exist
+            let alive = self
+                .ext
+                .structure
+                .toc_entries
+                .borrow()
+                .iter()
+                .filter(|(i, e)| i.upgrade().is_some() && e.upgrade().is_some())
+                .count();
+            eprintln!(
+                "editor_toc_rows: entries={} model={} widgets={} selected={} hint={}",
+                self.toc.len(),
+                self.w.toc_store.n_items(),
+                alive,
+                self.w.toc_sel.selected() as i64,
+                self.ext
+                    .structure
+                    .toc_hint
+                    .borrow()
+                    .as_ref()
+                    .is_some_and(|h| h.is_visible()),
+            );
+        } else if let Some(a) = c.strip_prefix("longline=") {
+            self.long_line_choose(a == "reformat");
+        } else if c == "syntax-state" {
+            // whether the open file is coloured: GtkSourceView language, its switch and the plain mark
+            let sb = self.current.as_ref().and_then(|p| self.buffers.get(p));
+            let b: gtk::TextBuffer =
+                sb.map_or_else(|| self.w.view.buffer(), |b| b.clone().upcast());
+            eprintln!(
+                "editor_syntax: file={} page={} chars={} language={} highlight={} plain={}",
+                self.current.clone().unwrap_or_default(),
+                self.w.center.visible_child_name().unwrap_or_default(),
+                b.char_count(),
+                sb.and_then(|b| b.language()).is_some(),
+                sb.is_some_and(|b| b.is_highlight_syntax()),
+                sb.is_some_and(codeview::is_plain),
+            );
         } else if c == "toc-dump" {
             eprintln!(
                 "editor_toc: entries={} dirty={} selected={:?} titles={}",
@@ -359,6 +401,15 @@ impl Editor {
             eprintln!(
                 "editor_popup: calls={} last={}",
                 d.populated.0, d.populated.1
+            );
+        } else if c == "complete-waits" {
+            // the popup answered every request only after the debounce (see `completion::POPUP_DELAY_MS`)
+            let w = self.comp.borrow().waits;
+            eprintln!(
+                "editor_popup_waits: answers={} shortest_ms={} debounced={}",
+                w.answers,
+                w.shortest_us.map_or(-1, |u| u / 1000),
+                w.debounced()
             );
         } else if c == "pair" {
             self.update_pair_highlight();

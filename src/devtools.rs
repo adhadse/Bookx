@@ -45,8 +45,35 @@ pub fn script() -> Vec<String> {
         .unwrap_or_default()
 }
 
+thread_local! {
+    static STALL_LABEL: RefCell<String> = const { RefCell::new(String::new()) };
+}
+
+/// `BOOKX_STALL_WATCH=MS`: reports every stretch longer than MS (default 100) in which the main loop did not
+/// run, with the dev command that was last started (`stall: 340 ms after library:sort=title`). Started by
+/// `run_script`; the numbers are of the build that runs (debug builds are several times slower than release).
+fn watch_stalls() {
+    let Some(limit) = std::env::var("BOOKX_STALL_WATCH")
+        .ok()
+        .map(|v| v.parse::<u128>().unwrap_or(100))
+    else {
+        return;
+    };
+    let last = std::rc::Rc::new(std::cell::Cell::new(std::time::Instant::now()));
+    glib::timeout_add_local(std::time::Duration::from_millis(10), move || {
+        let late = last.get().elapsed().as_millis().saturating_sub(10);
+        last.set(std::time::Instant::now());
+        if late >= limit {
+            let what = STALL_LABEL.with(|l| l.borrow().clone());
+            eprintln!("stall: {late} ms after {what}");
+        }
+        glib::ControlFlow::Continue
+    });
+}
+
 /// Calls `run` for each command, honouring `wait:<ms>` between them.
 pub fn run_script(cmds: Vec<String>, run: impl Fn(&str) + 'static) {
+    watch_stalls();
     fn step(mut cmds: std::collections::VecDeque<String>, run: std::rc::Rc<dyn Fn(&str)>) {
         while let Some(c) = cmds.pop_front() {
             if let Some(ms) = c.strip_prefix("wait:") {
@@ -64,6 +91,7 @@ pub fn run_script(cmds: Vec<String>, run: impl Fn(&str) + 'static) {
                 poll_until(name, ms, std::time::Instant::now(), cmds, run);
                 return;
             }
+            STALL_LABEL.with(|l| *l.borrow_mut() = c.clone());
             run(&c);
         }
     }

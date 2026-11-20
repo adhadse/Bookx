@@ -2,6 +2,13 @@
 
 ## Add from the Web
 
+<figure markdown="1">
+![The Add from the Web dialog](assets/library-add-web-light.png#only-light)
+![The Add from the Web dialog](assets/library-add-web-dark.png#only-dark)
+<figcaption markdown="1">Add from the Web: paste an address; Bookx makes an e-book of the page.</figcaption>
+</figure>
+
+
 Click **+** → *Add from the Web* and paste an address.
 
 - A **page address** becomes a readable book, to read later. Images are included.
@@ -10,6 +17,13 @@ Click **+** → *Add from the Web* and paste an address.
 The new book lands in your library like any other and can be read, edited and sent to a device.
 
 ## Online catalogues
+
+<figure markdown="1">
+![The Online Catalogues window](assets/library-catalogues-light.png#only-light)
+![The Online Catalogues window](assets/library-catalogues-dark.png#only-dark)
+<figcaption markdown="1">Online Catalogues: Project Gutenberg and Standard Ebooks are built in; add your own OPDS address with **+**.</figcaption>
+</figure>
+
 
 Menu → *Online Catalogues* browses OPDS catalogues. Project Gutenberg and Standard Ebooks are listed; the **+** button
 adds others, such as a Calibre server (`http://host:8080/opds`) or another Bookx that shares its library. A user
@@ -22,6 +36,13 @@ Long lists end with *Load more*. Limits: no sign-in pages other than basic authe
 (the DRM-protected ones are refused by the importer), and the built-in catalogues need network access.
 
 ## News subscriptions
+
+<figure markdown="1">
+![The News Subscriptions window](assets/library-news-light.png#only-light)
+![The News Subscriptions window](assets/library-news-dark.png#only-dark)
+<figcaption markdown="1">News Subscriptions: each feed with its schedule and how many issues to keep.</figcaption>
+</figure>
+
 
 Open **News Subscriptions** to have Bookx build a news book for you on a schedule. You find it in two places: the
 **+** menu and on the **welcome page** of an empty library.

@@ -5,6 +5,7 @@ use super::*;
 use crate::editor_keymap::{Cmd as KeyCmd, COMMANDS};
 use crate::shortcuts;
 use bookx_editing::code_format::Format;
+use bookx_editing::code_style::{Align, ColourKind};
 use format_actions::CodeMsg;
 use prefs_page::PrefsAct;
 
@@ -41,6 +42,12 @@ pub(super) fn input_for(id: &str) -> Option<Input> {
         "editor.format-sup" => Input::Code(CodeMsg::Format(Format::Superscript)),
         "editor.format-sub" => Input::Code(CodeMsg::Format(Format::Subscript)),
         "editor.format-code" => Input::Code(CodeMsg::Format(Format::Code)),
+        "editor.colour-text" => Input::Code(CodeMsg::ColourPick(ColourKind::Text)),
+        "editor.colour-background" => Input::Code(CodeMsg::ColourPick(ColourKind::Background)),
+        "editor.align-left" => Input::Code(CodeMsg::Align(Some(Align::Left))),
+        "editor.align-center" => Input::Code(CodeMsg::Align(Some(Align::Center))),
+        "editor.align-right" => Input::Code(CodeMsg::Align(Some(Align::Right))),
+        "editor.align-justify" => Input::Code(CodeMsg::Align(Some(Align::Justify))),
         "editor.split-tag" => Input::Code(CodeMsg::SplitTag),
         "editor.insert-image" => Input::Code(CodeMsg::InsertImage),
         "editor.insert-link" => Input::Code(CodeMsg::InsertLink),
@@ -149,6 +156,14 @@ pub(super) fn display_for_target(target: &str) -> String {
         .find(|c: &&KeyCmd| !c.palette.is_empty() && c.palette == target)
         .map(|c| shortcuts::display(c.id, ""))
         .unwrap_or_default()
+}
+
+/// The first current binding of the command a menu target stands for, in the GTK spelling (`<Control>b`).
+pub(super) fn accel_for_target(target: &str) -> Option<String> {
+    let c = COMMANDS
+        .iter()
+        .find(|c: &&KeyCmd| !c.palette.is_empty() && c.palette == target)?;
+    shortcuts::current().effective(c.id).into_iter().next()
 }
 
 #[cfg(test)]

@@ -1,63 +1,329 @@
-//! The sharing window: serve the library to other devices (OPDS, web page, KOReader sync).
+//! The library server behind Sync: OPDS, the web page and Bookx sync. The rows live in Preferences
+//! → Sync (`step_server_rows`, `opds_rows`, `advanced_rows`); the Sync window (`sync_window`)
+//! starts and stops the same server through [`set_server`], and both follow each other over the
+//! sync settings bus.
 
 use crate::i18n::{tr, trf};
 use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 
 use super::SharedRef;
 use crate::sharing::ShareSettings;
 
 thread_local! {
-    /// The KOReader address group of the open window (the UI tests read it).
-    static KO: RefCell<Option<(adw::PreferencesGroup, gtk::Label)>> = const { RefCell::new(None) };
+    /// The address row of step 1 in Preferences → Sync (the UI tests read it).
+    static KO_PREFS: RefCell<Option<adw::ActionRow>> = const { RefCell::new(None) };
+    /// The Bookx sync switch (step 1), the library server switch and the port of Preferences → Sync.
+    static SYNC_SW: RefCell<Option<adw::SwitchRow>> = const { RefCell::new(None) };
+    static OPDS_SW: RefCell<Option<adw::SwitchRow>> = const { RefCell::new(None) };
+    static PORT_SP: RefCell<Option<adw::SpinRow>> = const { RefCell::new(None) };
+    /// Why the server could not start, until the next change.
+    static LAST_ERROR: RefCell<String> = const { RefCell::new(String::new()) };
 }
 
-/// Test hook: what the KOReader part of the window shows.
-pub fn dev_dump() {
-    KO.with(|k| match &*k.borrow() {
-        Some((g, l)) => eprintln!("share_ko: visible={} address={}", g.is_visible(), l.text()),
-        None => eprintln!("share_ko: no window"),
+/// Dev hook `prefs:sync-server=on|off` (Bookx sync, step 1), `prefs:sync-opds=on|off`,
+/// `prefs:sync-port=N`, `prefs:sync-dump`: the rows of Preferences → Sync.
+pub fn dev_prefs(cmd: &str, shared: Option<&SharedRef>) {
+    let on = |v: &str| v != "off";
+    if let Some(v) = cmd.strip_prefix("server=") {
+        SYNC_SW.with(|s| s.borrow().as_ref().map(|s| s.set_active(on(v))));
+    } else if let Some(v) = cmd.strip_prefix("opds=") {
+        OPDS_SW.with(|s| s.borrow().as_ref().map(|s| s.set_active(on(v))));
+    } else if let Some(v) = cmd.strip_prefix("port=") {
+        PORT_SP.with(|s| {
+            s.borrow()
+                .as_ref()
+                .map(|s| s.set_value(v.parse().unwrap_or(8080.0)))
+        });
+    } else if cmd == "ko" {
+        dev_dump_prefs();
+    } else if cmd == "dump" {
+        let snap = shared.map(super::sync_prefs::current).unwrap_or_default();
+        let sync = SYNC_SW.with(|s| s.borrow().as_ref().map(|s| s.is_active()));
+        let opds = OPDS_SW.with(|s| s.borrow().as_ref().map(|s| s.is_active()));
+        match (sync, opds) {
+            (Some(a), Some(b)) => eprintln!("prefs_sync: server={a} opds={b} {}", snap.dump()),
+            _ => eprintln!("prefs_sync: no page"),
+        }
+    }
+}
+
+/// Test hook `share:kodump`: what the server says to type into KOReader (from the state, not a
+/// window).
+pub fn dev_dump(shared: &SharedRef) {
+    let urls = shared.sharing.borrow().urls();
+    let on = shared.cfg.borrow().share.kosync;
+    eprintln!(
+        "share_ko: visible={on} address={}",
+        crate::sharing::kosync_url(&urls).unwrap_or_default()
+    );
+}
+
+/// Test hook: the address row of step 1 in Preferences → Sync.
+pub fn dev_dump_prefs() {
+    KO_PREFS.with(|k| match &*k.borrow() {
+        Some(r) => eprintln!(
+            "prefs_share_ko: visible={} address={}",
+            r.is_visible(),
+            r.subtitle().unwrap_or_default()
+        ),
+        None => eprintln!("prefs_share_ko: no page"),
     });
 }
 
-/// Starts or stops the server according to `settings`. Returns what the window should say.
+fn stats_dir() -> std::path::PathBuf {
+    crate::config::stats_path()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+        .unwrap_or_else(std::env::temp_dir)
+}
+
+/// Starts or stops the server according to `settings`. Returns what the window should say. Every
+/// view of the server (Preferences, the Sync window) is told afterwards.
 pub fn apply(
     shared: &SharedRef,
     settings: &ShareSettings,
     on: bool,
 ) -> Result<Vec<String>, String> {
-    let mut sh = shared.sharing.borrow_mut();
-    if !on {
-        sh.stop();
-        return Ok(Vec::new());
-    }
-    let root = shared.lib.borrow().root.clone();
-    let data = crate::config::stats_path()
-        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
-        .unwrap_or_else(std::env::temp_dir);
-    sh.start(settings, &root, &data)
-        .map_err(|e| format!("{e:#}"))
+    let r = {
+        let mut sh = shared.sharing.borrow_mut();
+        if !on {
+            sh.stop();
+            Ok(Vec::new())
+        } else {
+            let root = shared.lib.borrow().root.clone();
+            sh.start(settings, &root, &stats_dir())
+                .map_err(|e| format!("{e:#}"))
+        }
+    };
+    LAST_ERROR.with(|e| *e.borrow_mut() = r.as_ref().err().cloned().unwrap_or_default());
+    crate::settings_bus::sync().notify();
+    r
 }
 
-pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
-    let dialog = adw::Dialog::new();
-    dialog.set_title(&tr("Share Library"));
-    dialog.set_content_width(460);
-    dialog.set_content_height(560);
+/// Why the server could not start (empty when it did, or was not asked to).
+pub fn last_error() -> String {
+    LAST_ERROR.with(|e| e.borrow().clone())
+}
 
-    let page = adw::PreferencesPage::new();
-    let group = adw::PreferencesGroup::new();
-    group.set_description(Some(
-        "Other apps and e-readers can browse and download your books over OPDS: KOReader, Moon+ Reader, Librera, Kybook and more.",
-    ));
-    let cfg = shared.cfg.borrow().share.clone();
+/// Step 1 of the setup: the server on, answering Bookx sync, reachable from the e-reader. Needs a
+/// password for the library pages when other devices connect; one is made when there is none.
+pub fn enable_bookx_sync(shared: &SharedRef) -> Result<Vec<String>, String> {
+    {
+        let mut c = shared.cfg.borrow_mut();
+        c.share.kosync = true;
+        c.share.lan = true;
+        if c.share.password.chars().count() < crate::sharing::MIN_PASSWORD {
+            c.share.password = uuid::Uuid::new_v4().simple().to_string()[..12].to_string();
+        }
+        c.save();
+    }
+    set_server(shared, true)
+}
 
-    let on = adw::SwitchRow::builder()
-        .title(tr("Share this library"))
+/// Restarts the running server with the saved settings (nothing happens while it is off).
+pub fn reapply(shared: &SharedRef) -> Option<Result<Vec<String>, String>> {
+    if !shared.sharing.borrow().running() {
+        crate::settings_bus::sync().notify();
+        return None;
+    }
+    let s = shared.cfg.borrow().share.clone();
+    Some(apply(shared, &s, true))
+}
+
+/// Switches the server on or off with the saved settings.
+pub fn set_server(shared: &SharedRef, on: bool) -> Result<Vec<String>, String> {
+    let s = shared.cfg.borrow().share.clone();
+    apply(shared, &s, on)
+}
+
+/// Keeps `f` called on every change of the sync settings while `w` exists.
+pub fn follow(w: &impl IsA<gtk::Widget>, f: impl Fn() + 'static) {
+    let sub = RefCell::new(Some(crate::settings_bus::sync().subscribe(f)));
+    w.connect_destroy(move |_| {
+        sub.borrow_mut().take();
+    });
+}
+
+fn window_of(w: &gtk::Widget) -> Option<gtk::Window> {
+    w.root().and_then(|r| r.downcast::<gtk::Window>().ok())
+}
+
+fn copy_button(label: &str) -> gtk::Button {
+    let b = gtk::Button::from_icon_name("edit-copy-symbolic");
+    b.set_valign(gtk::Align::Center);
+    b.add_css_class("flat");
+    b.set_tooltip_text(Some(label));
+    super::audit::label(&b, label);
+    b
+}
+
+/// An address row: the text to copy, and a copy button (it also follows the bus through `view`).
+fn address_row(title: &str) -> (adw::ActionRow, gtk::Button) {
+    let r = adw::ActionRow::builder().title(title).build();
+    r.set_subtitle_lines(0);
+    r.set_subtitle_selectable(true);
+    r.add_css_class("monospace-subtitle");
+    let b = copy_button(&tr("Copy address"));
+    r.add_suffix(&b);
+    (r, b)
+}
+
+/// A line that says why the server could not start; hidden while there is nothing to say. (A plain
+/// label under the rows: it is feedback for the step, not a row of its own.)
+pub fn error_label() -> gtk::Label {
+    let l = gtk::Label::new(None);
+    l.set_wrap(true);
+    l.set_xalign(0.0);
+    l.set_selectable(true);
+    l.add_css_class("error");
+    l.set_visible(false);
+    let ll = l.downgrade();
+    let show = move || {
+        if let Some(l) = ll.upgrade() {
+            let e = last_error();
+            l.set_visible(!e.is_empty());
+            l.set_label(&e);
+        }
+    };
+    follow(&l, show);
+    l
+}
+
+/// Step 1 of the setup: the Bookx sync switch and the address to type on the e-reader.
+pub fn step_server_rows(shared: &SharedRef) -> Vec<gtk::Widget> {
+    let sw = adw::SwitchRow::builder()
+        .title(tr("Bookx sync server"))
         .build();
-    on.set_active(shared.sharing.borrow().running());
+    let (addr, copy) = address_row(&tr("Address for the e-reader"));
+    let quiet = Rc::new(Cell::new(false));
+    let view = {
+        let (shared, sw, addr, copy, quiet) = (
+            shared.clone(),
+            sw.clone(),
+            addr.clone(),
+            copy.clone(),
+            quiet.clone(),
+        );
+        Rc::new(move || {
+            quiet.set(true);
+            let urls = shared.sharing.borrow().urls();
+            let on = shared.sharing.borrow().running() && shared.cfg.borrow().share.kosync;
+            if sw.is_active() != on {
+                sw.set_active(on);
+            }
+            match crate::sharing::kosync_url(&urls).filter(|_| on) {
+                Some(u) => {
+                    addr.set_subtitle(&relm4::gtk::glib::markup_escape_text(&u));
+                    copy.set_sensitive(true);
+                }
+                None => {
+                    addr.set_subtitle(&tr("Appears here when the server is on."));
+                    copy.set_sensitive(false);
+                }
+            }
+            quiet.set(false);
+        })
+    };
+    view();
+    follow(&sw, {
+        let v = view.clone();
+        move || v()
+    });
+    {
+        let (shared1, quiet) = (shared.clone(), quiet.clone());
+        sw.connect_active_notify(move |s| {
+            let shared = shared1.clone();
+            if quiet.get() {
+                return;
+            }
+            let running = shared.sharing.borrow().running() && shared.cfg.borrow().share.kosync;
+            if s.is_active() == running {
+                return;
+            }
+            let _ = if s.is_active() {
+                enable_bookx_sync(&shared)
+            } else {
+                set_server(&shared, false)
+            };
+        });
+        let shared = shared.clone();
+        copy.connect_clicked(move |b| {
+            if let Some(u) = crate::sharing::kosync_url(&shared.sharing.borrow().urls()) {
+                b.clipboard().set_text(&u);
+            }
+        });
+    }
+    SYNC_SW.with(|s| *s.borrow_mut() = Some(sw.clone()));
+    KO_PREFS.with(|k| *k.borrow_mut() = Some(addr.clone()));
+    vec![sw.upcast(), addr.upcast(), error_label().upcast()]
+}
+
+/// The library server (OPDS and web page) switch with its address, for Library servers.
+pub fn opds_rows(shared: &SharedRef) -> Vec<gtk::Widget> {
+    let sw = adw::SwitchRow::builder()
+        .title(tr("Share this library"))
+        .subtitle(tr(
+            "OPDS catalogue and web page for other apps and e-readers. Off until you switch it on.",
+        ))
+        .build();
+    let (addr, copy) = address_row(&tr("Address"));
+    let quiet = Rc::new(Cell::new(false));
+    let view = {
+        let (shared, sw, addr, copy, quiet) = (
+            shared.clone(),
+            sw.clone(),
+            addr.clone(),
+            copy.clone(),
+            quiet.clone(),
+        );
+        Rc::new(move || {
+            quiet.set(true);
+            let urls = shared.sharing.borrow().urls();
+            let running = shared.sharing.borrow().running();
+            if sw.is_active() != running {
+                sw.set_active(running);
+            }
+            if urls.is_empty() {
+                addr.set_subtitle(&tr("Sharing is off."));
+                copy.set_sensitive(false);
+            } else {
+                addr.set_subtitle(&relm4::gtk::glib::markup_escape_text(&urls.join("\n")));
+                copy.set_sensitive(true);
+            }
+            quiet.set(false);
+        })
+    };
+    view();
+    follow(&sw, {
+        let v = view.clone();
+        move || v()
+    });
+    {
+        let (shared1, quiet) = (shared.clone(), quiet.clone());
+        sw.connect_active_notify(move |s| {
+            let shared = shared1.clone();
+            if quiet.get() || shared.sharing.borrow().running() == s.is_active() {
+                return;
+            }
+            let _ = set_server(&shared, s.is_active());
+        });
+        let shared = shared.clone();
+        copy.connect_clicked(move |b| {
+            if let Some(u) = shared.sharing.borrow().urls().last() {
+                b.clipboard().set_text(u);
+            }
+        });
+    }
+    OPDS_SW.with(|s| *s.borrow_mut() = Some(sw.clone()));
+    vec![sw.upcast(), addr.upcast(), error_label().upcast()]
+}
+
+/// The technical server rows for Advanced: network access and password, port, HTTPS.
+pub fn advanced_rows(parent: &gtk::Widget, shared: &SharedRef) -> Vec<gtk::Widget> {
+    let cfg = shared.cfg.borrow().share.clone();
     let lan = adw::SwitchRow::builder()
         .title(tr("Allow other devices on my network"))
         .subtitle(trf(
@@ -67,41 +333,21 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
         .build();
     lan.set_active(cfg.lan);
     let password = adw::PasswordEntryRow::new();
-    password.set_title(&tr("Password (user name: bookx)"));
+    password.set_title(&tr("Library password (user name: bookx)"));
     password.set_text(&cfg.password);
-    password.set_visible(cfg.lan);
     let port = adw::SpinRow::with_range(1024.0, 65535.0, 1.0);
     port.set_title(&tr("Port"));
+    port.set_subtitle(&tr(
+        "Allow this port in your firewall for the e-reader to connect.",
+    ));
     port.set_value(if cfg.port == 0 {
         8080.0
     } else {
         cfg.port as f64
     });
-    let kosync = adw::SwitchRow::builder()
-        .title(tr("KOReader progress sync"))
-        .subtitle(crate::sharing::KOSYNC_SUBTITLE)
-        .build();
-    kosync.add_suffix(&super::help_button(crate::sharing::KOSYNC_HELP));
-    kosync.set_active(cfg.kosync);
-    for r in [
-        on.upcast_ref::<gtk::Widget>(),
-        lan.upcast_ref(),
-        password.upcast_ref(),
-        port.upcast_ref(),
-        kosync.upcast_ref(),
-    ] {
-        group.add(r);
-    }
-    page.add(&group);
-
-    let tls_group = adw::PreferencesGroup::new();
-    tls_group.set_title(&tr("Encryption (HTTPS)"));
-    tls_group.set_description(Some(
-        "Without your own certificate Bookx makes a self-signed one: the connection is encrypted, but browsers and readers warn until you trust it.",
-    ));
     let https = adw::SwitchRow::builder()
         .title(tr("Use HTTPS"))
-        .subtitle(tr("Encrypts the connection, including the password"))
+        .subtitle(tr("Encrypts the connection, including the password. Without your own certificate Bookx makes a self-signed one: browsers and readers warn until you trust it."))
         .build();
     https.set_active(cfg.https);
     let cert = adw::EntryRow::builder()
@@ -117,6 +363,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
         pick.set_valign(gtk::Align::Center);
         pick.add_css_class("flat");
         pick.set_tooltip_text(Some(&trf("Choose the {} file", &[&what])));
+        super::audit::label(&pick, &trf("Choose the {} file", &[&what]));
         let target = row.clone();
         let dialog_parent = parent.clone();
         pick.connect_clicked(move |_| {
@@ -125,7 +372,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
                 .build();
             let row = target.clone();
             dialog.open(
-                Some(&dialog_parent),
+                window_of(&dialog_parent).as_ref(),
                 relm4::gtk::gio::Cancellable::NONE,
                 move |res| {
                     if let Some(p) = res.ok().and_then(|f| f.path()) {
@@ -143,179 +390,118 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
         .activatable(true)
         .build();
     generate.add_suffix(&gtk::Image::from_icon_name("view-refresh-symbolic"));
-    for r in [
-        https.upcast_ref::<gtk::Widget>(),
-        cert.upcast_ref(),
-        key.upcast_ref(),
-        generate.upcast_ref(),
-    ] {
-        tls_group.add(r);
-    }
-    cert.set_visible(cfg.https);
-    key.set_visible(cfg.https);
-    generate.set_visible(cfg.https);
-    page.add(&tls_group);
+    let error = error_label();
+    let result = gtk::Label::new(None);
+    result.set_wrap(true);
+    result.set_xalign(0.0);
+    result.add_css_class("error");
+    result.set_visible(false);
 
-    let status = adw::PreferencesGroup::new();
-    let status_label = gtk::Label::new(None);
-    status_label.set_wrap(true);
-    status_label.set_selectable(true);
-    status_label.set_xalign(0.0);
-    status.add(&status_label);
-    let copy = gtk::Button::with_label(&tr("Copy address"));
-    copy.add_css_class("flat");
-    copy.set_halign(gtk::Align::Start);
-    copy.set_visible(false);
-    status.add(&copy);
-    page.add(&status);
-
-    // the address to type into KOReader, shown while the switch is on
-    let ko_group = adw::PreferencesGroup::new();
-    ko_group.set_title(&tr("KOReader progress sync"));
-    ko_group.set_description(Some(
-        "In KOReader: Tools → Progress sync → Custom sync server, type this address, then Register with a user name and password of your choice (not the Share password). Only the reading position is synced, not highlights or notes.",
-    ));
-    let ko_url = gtk::Label::new(None);
-    ko_url.set_wrap(true);
-    ko_url.set_selectable(true);
-    ko_url.set_xalign(0.0);
-    ko_url.add_css_class("monospace");
-    let ko_copy = gtk::Button::with_label(&tr("Copy KOReader address"));
-    ko_copy.add_css_class("flat");
-    ko_copy.set_halign(gtk::Align::Start);
-    ko_group.add(&ko_url);
-    ko_group.add(&ko_copy);
-    ko_group.set_visible(cfg.kosync);
-    page.add(&ko_group);
-    KO.with(|k| *k.borrow_mut() = Some((ko_group.clone(), ko_url.clone())));
-    {
-        let u = ko_url.clone();
-        ko_copy.connect_clicked(move |b| b.clipboard().set_text(&u.text()));
-    }
-    let show_ko_url = {
-        let (ko_group, ko_url, ko_copy, kosync) = (
-            ko_group.clone(),
-            ko_url.clone(),
-            ko_copy.clone(),
-            kosync.clone(),
-        );
-        std::rc::Rc::new(move |urls: &[String]| {
-            ko_group.set_visible(kosync.is_active());
-            match crate::sharing::kosync_url(urls) {
-                Some(u) => {
-                    ko_url.set_label(&u);
-                    ko_copy.set_sensitive(true);
-                }
-                None => {
-                    ko_url.set_label(&tr("Turn on “Share this library” to get the address."));
-                    ko_copy.set_sensitive(false);
-                }
-            }
-        })
-    };
-
-    let urls = std::rc::Rc::new(std::cell::RefCell::new(Vec::<String>::new()));
-    let refresh = {
-        let show_ko_url2 = show_ko_url.clone();
-        let (shared, on, lan, password, port, kosync, status_label, copy, urls) = (
+    let quiet = Rc::new(Cell::new(false));
+    let view = {
+        let (shared, lan, password, port, https, cert, key, generate) = (
             shared.clone(),
-            on.clone(),
             lan.clone(),
             password.clone(),
             port.clone(),
-            kosync.clone(),
-            status_label.clone(),
-            copy.clone(),
-            urls.clone(),
+            https.clone(),
+            cert.clone(),
+            key.clone(),
+            generate.clone(),
         );
-        let (https, cert, key, generate) =
-            (https.clone(), cert.clone(), key.clone(), generate.clone());
-        let busy = std::rc::Rc::new(std::cell::Cell::new(false));
-        std::rc::Rc::new(move || {
-            if busy.replace(true) {
-                return;
+        let quiet = quiet.clone();
+        Rc::new(move || {
+            quiet.set(true);
+            let cfg = shared.cfg.borrow().share.clone();
+            if lan.is_active() != cfg.lan {
+                lan.set_active(cfg.lan);
+            }
+            if https.is_active() != cfg.https {
+                https.set_active(cfg.https);
+            }
+            if password.text().as_str() != cfg.password {
+                password.set_text(&cfg.password);
+            }
+            if cfg.port != 0 && port.value() as u16 != cfg.port {
+                port.set_value(cfg.port as f64);
+            }
+            if cert.text().as_str() != cfg.cert_file {
+                cert.set_text(&cfg.cert_file);
+            }
+            if key.text().as_str() != cfg.key_file {
+                key.set_text(&cfg.key_file);
             }
             password.set_visible(lan.is_active());
             for w in [&cert, &key] {
                 w.set_visible(https.is_active());
             }
             generate.set_visible(https.is_active());
-            let settings = ShareSettings {
-                port: port.value() as u16,
-                lan: lan.is_active(),
-                password: password.text().to_string(),
-                kosync: kosync.is_active(),
-                https: https.is_active(),
-                cert_file: cert.text().trim().to_string(),
-                key_file: key.text().trim().to_string(),
-            };
-            {
-                let mut c = shared.cfg.borrow_mut();
-                c.share = settings.clone();
-                c.save();
-            }
-            match apply(&shared, &settings, on.is_active()) {
-                Ok(u) => {
-                    if u.is_empty() {
-                        status_label.set_label(&tr("Sharing is off."));
-                        copy.set_visible(false);
-                    } else {
-                        status_label.set_label(&trf("Sharing at:\n{}", &[&u.join("\n")]));
-                        copy.set_visible(true);
-                    }
-                    show_ko_url2(&u);
-                    *urls.borrow_mut() = u;
-                }
-                Err(e) => {
-                    on.set_active(false);
-                    show_ko_url2(&[]);
-                    status_label.set_label(&e);
-                    copy.set_visible(false);
-                }
-            }
-            busy.set(false);
+            quiet.set(false);
         })
     };
-    {
-        let u = urls.clone();
-        let c = copy.clone();
-        copy.connect_clicked(move |b| {
-            if let Some(first) = u.borrow().last() {
-                b.clipboard().set_text(first);
-                let _ = &c;
+    view();
+    follow(&lan, {
+        let v = view.clone();
+        move || v()
+    });
+    let refresh = {
+        let (shared, lan, password, port, https, cert, key) = (
+            shared.clone(),
+            lan.clone(),
+            password.clone(),
+            port.clone(),
+            https.clone(),
+            cert.clone(),
+            key.clone(),
+        );
+        let (quiet, view) = (quiet.clone(), view.clone());
+        Rc::new(move || {
+            if quiet.get() {
+                return;
             }
-        });
-    }
-    // show the current state
-    {
-        let u = shared.sharing.borrow().urls();
-        if u.is_empty() {
-            status_label.set_label(&tr("Sharing is off."));
-        } else {
-            status_label.set_label(&trf("Sharing at:\n{}", &[&u.join("\n")]));
-            copy.set_visible(true);
-        }
-        show_ko_url(&u);
-        *urls.borrow_mut() = u;
-    }
-    for sw in [&on, &lan, &kosync, &https] {
+            {
+                let mut c = shared.cfg.borrow_mut();
+                c.share = ShareSettings {
+                    port: port.value() as u16,
+                    lan: lan.is_active(),
+                    password: password.text().to_string(),
+                    https: https.is_active(),
+                    cert_file: cert.text().trim().to_string(),
+                    key_file: key.text().trim().to_string(),
+                    ..c.share.clone()
+                };
+                c.save();
+            }
+            // a running server restarts with the new settings; otherwise only the views follow
+            if reapply(&shared).is_none() {
+                view();
+            }
+        })
+    };
+    lan.connect_active_notify({
         let r = refresh.clone();
-        sw.connect_active_notify(move |_| r());
-    }
+        move |_| r()
+    });
+    https.connect_active_notify({
+        let r = refresh.clone();
+        move |_| r()
+    });
+    port.connect_value_notify({
+        let r = refresh.clone();
+        move |_| r()
+    });
     {
         let r = refresh.clone();
         password.connect_apply(move |_| r());
         let r = refresh.clone();
         password.connect_entry_activated(move |_| r());
-        let r = refresh.clone();
-        port.connect_value_notify(move |_| r());
         for e in [&cert, &key] {
             let r = refresh.clone();
             e.connect_apply(move |_| r());
             let r = refresh.clone();
             e.connect_entry_activated(move |_| r());
         }
-        let (shared2, status2, r) = (shared.clone(), status_label.clone(), refresh.clone());
+        let (shared2, result2, r) = (shared.clone(), result.clone(), refresh.clone());
         let (lan2, https2) = (lan.clone(), https.clone());
         generate.connect_activated(move |_| {
             let settings = {
@@ -324,22 +510,31 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
                 s.https = https2.is_active();
                 s
             };
-            let data = crate::config::stats_path()
-                .and_then(|p| p.parent().map(|d| d.to_path_buf()))
-                .unwrap_or_else(std::env::temp_dir);
-            match crate::sharing::generate_certificate(&settings, &data) {
-                Ok(_) => r(),
-                Err(e) => status2.set_label(&trf(
-                    "Could not make a certificate: {}",
-                    &[&format!("{:#}", e)],
-                )),
+            match crate::sharing::generate_certificate(&settings, &stats_dir()) {
+                Ok(_) => {
+                    result2.set_visible(false);
+                    r()
+                }
+                Err(e) => {
+                    result2.set_visible(true);
+                    result2.set_label(&trf(
+                        "Could not make a certificate: {}",
+                        &[&format!("{:#}", e)],
+                    ));
+                }
             }
         });
     }
-
-    let view = adw::ToolbarView::new();
-    view.add_top_bar(&adw::HeaderBar::new());
-    view.set_content(Some(&page));
-    dialog.set_child(Some(&view));
-    dialog.present(Some(parent));
+    PORT_SP.with(|s| *s.borrow_mut() = Some(port.clone()));
+    vec![
+        lan.upcast(),
+        password.upcast(),
+        port.upcast(),
+        https.upcast(),
+        cert.upcast(),
+        key.upcast(),
+        generate.upcast(),
+        result.upcast(),
+        error.upcast(),
+    ]
 }

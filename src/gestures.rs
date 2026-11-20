@@ -40,11 +40,11 @@ impl TapZones {
 
     pub fn label(self) -> &'static str {
         match self {
-            TapZones::Edges => "Edges (narrow strips)",
-            TapZones::Thirds => "Thirds (tablet)",
-            TapZones::LeftHanded => "Thirds, mirrored (left hand)",
-            TapZones::Wide => "Wide (no bar toggle)",
-            TapZones::Off => "Off (swipe or keys only)",
+            TapZones::Edges => crate::i18n::N_("Edges (narrow strips)"),
+            TapZones::Thirds => crate::i18n::N_("Thirds (tablet)"),
+            TapZones::LeftHanded => crate::i18n::N_("Thirds, mirrored (left hand)"),
+            TapZones::Wide => crate::i18n::N_("Wide (no bar toggle)"),
+            TapZones::Off => crate::i18n::N_("Off (swipe or keys only)"),
         }
     }
 
@@ -158,9 +158,9 @@ impl TouchUi {
 
     pub fn label(self) -> &'static str {
         match self {
-            TouchUi::Auto => "Automatic (touch screens)",
-            TouchUi::On => "Always on",
-            TouchUi::Off => "Off",
+            TouchUi::Auto => crate::i18n::N_("Automatic (touch screens)"),
+            TouchUi::On => crate::i18n::N_("Always on"),
+            TouchUi::Off => crate::i18n::N_("Off"),
         }
     }
 

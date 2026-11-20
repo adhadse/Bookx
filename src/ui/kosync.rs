@@ -376,8 +376,14 @@ pub fn close_book(shared: &SharedRef, book_id: u64) {
 
 // -- Preferences ---------------------------------------------------------------------------------
 
-/// "Register" or "Log in" with the saved settings; `report` gets the outcome in words.
-pub fn account_action(shared: &SharedRef, register: bool, report: Rc<dyn Fn(String)>) {
+/// "Register" or "Log in" with the saved settings; `report` gets the outcome in words and `ok` is
+/// called when the server accepted the account.
+pub fn account_action(
+    shared: &SharedRef,
+    register: bool,
+    report: Rc<dyn Fn(String)>,
+    ok: Rc<dyn Fn()>,
+) {
     let p = shared.cfg.borrow().kosync.clone();
     let client = match p.client() {
         Ok(c) => c,
@@ -387,13 +393,13 @@ pub fn account_action(shared: &SharedRef, register: bool, report: Rc<dyn Fn(Stri
         }
     };
     if p.password.is_empty() {
-        report("Enter the password".into());
+        report(tr("Enter the password"));
         return;
     }
     report(if register {
-        "Registering…".into()
+        tr("Registering…")
     } else {
-        "Logging in…".into()
+        tr("Logging in…")
     });
     let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
@@ -407,43 +413,246 @@ pub fn account_action(shared: &SharedRef, register: bool, report: Rc<dyn Fn(Stri
     poll(rx, move |r| {
         let msg = match r {
             Ok(()) if register => {
-                "Registered and logged in. Reading positions will sync.".to_string()
+                ok();
+                tr("Registered and logged in. Reading positions will sync.")
             }
-            Ok(()) => "Logged in. Reading positions will sync.".to_string(),
-            Err(e) => e,
+            Ok(()) => {
+                ok();
+                tr("Logged in. Reading positions will sync.")
+            }
+            Err(e) => crate::sync_model::account_hint(&e, register),
         };
         eprintln!("kosync_account: {msg}");
         report(msg);
     });
 }
 
-pub const TITLE: &str = "Sync reading position (KOSync)";
-pub fn description() -> String {
-    trf("Keeps your place in step with KOReader and other apps through a KOReader progress-sync server: Bookx’s own Share Library server (address ending in /kosync), a self-hosted kosync, or the public one at sync.koreader.rocks. Only the position is synced, not highlights. {}", &[&crate::secrets::caption_now()])
+/// What the reading-position switch says (Advanced).
+pub fn position_help() -> String {
+    trf("Keeps your place in step with KOReader and other apps through a sync server: your own Bookx server (the address ending in /bookx), a self-hosted one, or the public one at sync.koreader.rocks. {}", &[&crate::secrets::caption_now()])
 }
 
-/// The settings group; `devices_page.add(&group)` in Preferences.
-pub fn preferences_group(shared: &SharedRef) -> adw::PreferencesGroup {
-    let g = adw::PreferencesGroup::new();
-    g.set_title(TITLE);
-    g.set_description(Some(&description()));
+fn entry(title: &str, text: &str) -> adw::EntryRow {
+    let r = adw::EntryRow::new();
+    r.set_title(title);
+    r.set_text(text);
+    r
+}
+
+/// The address of Bookx’s own running server, the one the Sync window shows (ending in /bookx).
+fn own_server_url(shared: &SharedRef) -> Option<String> {
+    crate::sharing::kosync_url(&shared.sharing.borrow().urls())
+}
+
+struct Account {
+    server: adw::EntryRow,
+    user: adw::EntryRow,
+    pass: adw::PasswordEntryRow,
+    register: gtk::Button,
+    login: gtk::Button,
+    status: adw::ActionRow,
+}
+
+thread_local! {
+    static ACCOUNT: RefCell<Option<Account>> = const { RefCell::new(None) };
+}
+
+/// The server address row of the account (it sits under Advanced).
+pub fn server_row() -> Option<adw::EntryRow> {
+    ACCOUNT.with(|a| a.borrow().as_ref().map(|a| a.server.clone()))
+}
+
+/// Dev hook `prefs:sync-account…`: `=<user>;<password>[;<server>]` fills the fields, `-register` and
+/// `-login` press the buttons, `-dump` prints what the step shows.
+pub fn dev_account(cmd: &str) {
+    ACCOUNT.with(|a| {
+        let a = a.borrow();
+        let Some(a) = &*a else {
+            eprintln!("prefs_account: no page");
+            return;
+        };
+        if let Some(v) = cmd.strip_prefix('=') {
+            let p: Vec<&str> = v.split(';').collect();
+            a.user.set_text(p.first().unwrap_or(&""));
+            a.pass.set_text(p.get(1).unwrap_or(&""));
+            if let Some(s) = p.get(2) {
+                a.server.set_text(s);
+            }
+        } else if cmd == "-register" {
+            a.register.emit_clicked();
+        } else if cmd == "-login" {
+            a.login.emit_clicked();
+        } else if cmd == "-dump" {
+            eprintln!(
+                "prefs_account: server={:?} user={:?} register={} login={} status={:?}",
+                a.server.text(),
+                a.user.text(),
+                a.register.is_visible(),
+                a.login.is_visible(),
+                a.status.subtitle().unwrap_or_default()
+            );
+        }
+    });
+}
+
+/// The rows of step 2 (user name, password, Register / Log in with the result inline) and the
+/// server address row for Advanced. It is the Bookx sync account, not the Share Library password.
+pub fn account_rows(shared: &SharedRef) -> (Vec<gtk::Widget>, adw::EntryRow) {
+    let cur = shared.cfg.borrow().kosync.clone();
+    let server = entry(&tr("Server address"), &cur.server);
+    let user = entry(&tr("User name"), &cur.user);
+    let pass = adw::PasswordEntryRow::new();
+    pass.set_title(&tr("Password"));
+    pass.set_text(&cur.password);
+    let use_own = gtk::Button::with_label(&tr("Use Bookx server"));
+    use_own.set_valign(gtk::Align::Center);
+    use_own.set_tooltip_text(Some(&tr(
+        "Fill in the address of the library server that is running here (Sync shows the same)",
+    )));
+    super::audit::label(
+        &use_own,
+        &tr("Use the address of the Bookx server of this computer"),
+    );
+    server.add_suffix(&use_own);
+    server.set_title(&tr("Server address (Advanced)"));
+    let status = adw::ActionRow::new();
+    status.set_title(&tr("Account"));
+    status.set_subtitle(&tr(
+        "Register creates the account on the server; Log in checks it. The result shows here.",
+    ));
+    status.set_subtitle_lines(0);
+    let register = gtk::Button::with_label(&tr("Register"));
+    let login = gtk::Button::with_label(&tr("Log in"));
+    for b in [&register, &login] {
+        b.set_valign(gtk::Align::Center);
+        status.add_suffix(b);
+    }
+    register.add_css_class("suggested-action");
+    super::audit::label(
+        &register,
+        &tr("Register the user name and password on the server"),
+    );
+    super::audit::label(&login, &tr("Log in with the user name and password"));
+
+    let save = {
+        let shared = shared.clone();
+        let (server, user, pass) = (server.clone(), user.clone(), pass.clone());
+        Rc::new(move || {
+            let changed = {
+                let mut c = shared.cfg.borrow_mut();
+                let before = (c.kosync.user.clone(), c.kosync.password.is_empty());
+                c.kosync.server = server.text().trim().to_string();
+                c.kosync.user = user.text().trim().to_string();
+                c.kosync.password = pass.text().to_string();
+                c.save();
+                before != (c.kosync.user.clone(), c.kosync.password.is_empty())
+            };
+            // the Account step shows “Done” as soon as a user name and a password are there
+            if changed {
+                crate::settings_bus::sync().notify();
+            }
+        })
+    };
+    for r in [&server, &user] {
+        let f = save.clone();
+        r.connect_changed(move |_| f());
+    }
+    let f = save.clone();
+    pass.connect_changed(move |_| f());
+
+    // an empty address is filled from the server that runs here: the one the Sync window shows
+    let fill = {
+        let (shared, server) = (shared.clone(), server.clone());
+        Rc::new(move |force: bool| {
+            if force || server.text().trim().is_empty() {
+                if let Some(u) = own_server_url(&shared) {
+                    if server.text() != u {
+                        server.set_text(&u);
+                    }
+                }
+            }
+        })
+    };
+    fill(false);
+    {
+        let f1 = fill.clone();
+        use_own.connect_clicked(move |_| f1(true));
+        let f2 = fill.clone();
+        super::share::follow(&status, move || f2(false));
+    }
+    for (button, is_register) in [(&register, true), (&login, false)] {
+        let (shared, save, status, fill, server) = (
+            shared.clone(),
+            save.clone(),
+            status.clone(),
+            fill.clone(),
+            server.clone(),
+        );
+        button.connect_clicked(move |_| {
+            fill(false);
+            save();
+            let text = server.text().trim().to_string();
+            let own = own_server_url(&shared);
+            let say = |m: String| status.set_subtitle(&glib::markup_escape_text(&m));
+            if text.is_empty() {
+                say(tr(crate::sync_model::ACCOUNT_NO_SERVER));
+                return;
+            }
+            if own
+                .as_deref()
+                .is_some_and(|u| u == text.trim_end_matches('/'))
+                && !shared.cfg.borrow().share.kosync
+            {
+                say(tr(crate::sync_model::ACCOUNT_KOSYNC_OFF));
+                return;
+            }
+            let sh = shared.clone();
+            let st = status.clone();
+            account_action(
+                &shared,
+                is_register,
+                Rc::new(move |m| st.set_subtitle(&glib::markup_escape_text(&m))),
+                Rc::new(move || {
+                    // the account works: reading positions sync from now on
+                    let was = {
+                        let mut c = sh.cfg.borrow_mut();
+                        let was = c.kosync.enabled;
+                        c.kosync.enabled = true;
+                        c.save();
+                        was
+                    };
+                    if !was {
+                        crate::settings_bus::sync().notify();
+                    }
+                }),
+            );
+        });
+    }
+    ACCOUNT.with(|a| {
+        *a.borrow_mut() = Some(Account {
+            server: server.clone(),
+            user: user.clone(),
+            pass: pass.clone(),
+            register,
+            login,
+            status: status.clone(),
+        })
+    });
+    (
+        vec![user.upcast::<gtk::Widget>(), pass.upcast(), status.upcast()],
+        server,
+    )
+}
+
+/// The reading-position settings for Advanced (switch, matching, device name); the account rows
+/// are [`account_rows`].
+pub fn position_rows(shared: &SharedRef) -> Vec<gtk::Widget> {
     let cur = shared.cfg.borrow().kosync.clone();
     let on = adw::SwitchRow::builder()
         .title(tr("Sync the reading position"))
         .subtitle(tr("Asks “Continue from …?” when a book was read further on another device, and shares your place as you read."))
         .build();
     on.set_active(cur.enabled);
-    let entry = |title: &str, text: &str| {
-        let r = adw::EntryRow::new();
-        r.set_title(title);
-        r.set_text(text);
-        r
-    };
-    let server = entry(&tr("Server address"), &cur.server);
-    let user = entry(&tr("User name"), &cur.user);
-    let pass = adw::PasswordEntryRow::new();
-    pass.set_title(&tr("Password"));
-    pass.set_text(&cur.password);
     let method = adw::ComboRow::new();
     method.set_title(&tr("Match books by"));
     method.set_subtitle(&tr(
@@ -455,68 +664,41 @@ pub fn preferences_group(shared: &SharedRef) -> adw::PreferencesGroup {
     ])));
     method.set_selected(cur.by_filename as u32);
     let name = entry(&tr("This device is called"), &cur.device_name);
-    let status = adw::ActionRow::new();
-    status.set_title(&tr("Account"));
-    status.set_subtitle(&tr(
-        "Register creates the account on the server; Log in checks it.",
-    ));
-    let register = gtk::Button::with_label(&tr("Register"));
-    let login = gtk::Button::with_label(&tr("Log in"));
-    for b in [&register, &login] {
-        b.set_valign(gtk::Align::Center);
-        status.add_suffix(b);
-    }
-    g.add(&on);
-    g.add(&server);
-    g.add(&user);
-    g.add(&pass);
-    g.add(&method);
-    g.add(&name);
-    g.add(&status);
     let save = {
         let shared = shared.clone();
-        let (on, server, user, pass, method, name) = (
-            on.clone(),
-            server.clone(),
-            user.clone(),
-            pass.clone(),
-            method.clone(),
-            name.clone(),
-        );
+        let (on, method, name) = (on.clone(), method.clone(), name.clone());
         Rc::new(move || {
-            let mut c = shared.cfg.borrow_mut();
-            c.kosync.enabled = on.is_active();
-            c.kosync.server = server.text().trim().to_string();
-            c.kosync.user = user.text().trim().to_string();
-            c.kosync.password = pass.text().to_string();
-            c.kosync.by_filename = method.selected() == 1;
-            c.kosync.device_name = name.text().trim().to_string();
-            c.save();
+            let was = {
+                let mut c = shared.cfg.borrow_mut();
+                let was = c.kosync.enabled;
+                c.kosync.enabled = on.is_active();
+                c.kosync.by_filename = method.selected() == 1;
+                c.kosync.device_name = name.text().trim().to_string();
+                c.save();
+                was
+            };
+            if was != on.is_active() {
+                crate::settings_bus::sync().notify();
+            }
         })
     };
-    for r in [&server, &user, &name] {
-        let f = save.clone();
-        r.connect_changed(move |_| f());
-    }
     let f = save.clone();
-    pass.connect_changed(move |_| f());
+    name.connect_changed(move |_| f());
     let f = save.clone();
     on.connect_active_notify(move |_| f());
     let f = save.clone();
     method.connect_selected_notify(move |_| f());
-    for (button, is_register) in [(&register, true), (&login, false)] {
-        let (shared, save, status) = (shared.clone(), save.clone(), status.clone());
-        button.connect_clicked(move |_| {
-            save();
-            let status = status.clone();
-            account_action(
-                &shared,
-                is_register,
-                Rc::new(move |m| status.set_subtitle(&glib::markup_escape_text(&m))),
-            );
-        });
-    }
-    g
+    // a successful Register or Log in switches it on: follow
+    let (sh, on2) = (shared.clone(), on.downgrade());
+    super::share::follow(&on, move || {
+        if let Some(o) = on2.upgrade() {
+            let want = sh.cfg.borrow().kosync.enabled;
+            if o.is_active() != want {
+                o.set_active(want);
+            }
+        }
+    });
+    vec![on.upcast(), method.upcast(), name.upcast()]
 }
 
 // -- test hooks ---------------------------------------------------------------------------------------
@@ -537,7 +719,9 @@ pub fn dev_command(shared: &SharedRef, cmd: &str) {
         return;
     }
     match cmd {
-        "register" | "login" => account_action(shared, cmd == "register", Rc::new(|_| {})),
+        "register" | "login" => {
+            account_action(shared, cmd == "register", Rc::new(|_| {}), Rc::new(|| {}))
+        }
         "continue" | "stay" => match PENDING_PROMPT.with(|p| p.borrow_mut().take()) {
             Some(f) => f(cmd == "continue"),
             None => eprintln!("kosync_prompt: none"),

@@ -1,0 +1,23 @@
+# The pictures of the public wiki, per page: every one is taken by build-aux/wiki-screenshots.sh (scenes in
+# build-aux/session/scenarios_wiki*.py), as <name>-light.png and <name>-dark.png in wiki/docs/assets/.
+# build-aux/check-wiki-pictures.py (run by wiki.sh) checks that each is on its page and every page picture is listed here.
+# Format: <page.md>: <name> <name> ...
+accessibility.md: command-palette
+ai-assistants.md: preferences-mcp
+annotations.md: library-export-annotations library-import-highlights
+backup-and-restore.md: library-health-backups library-health-trash
+contributing.md: library-details
+devices-and-sharing.md: library-device device-window library-device-banner device-window-detail library-share preferences-email
+editing.md: editor editor-palette editor-find editor-preview editor-split-menu editor-code editor-completion editor-swatches editor-spelling editor-tools-menu editor-markup-menu editor-book-menu editor-problems editor-contents-tab editor-metadata-tab editor-set-cover editor-manage-fonts editor-transform-html editor-jacket editor-a11y-form editor-insert-link editor-snippets editor-preferences editor-rename-tag editor-bulk-rename editor-special-chars editor-checkpoints
+getting-started.md: library-welcome library-add-menu
+index.md: library-banner-hero library-details reader editor-preview read-aloud-reading library-notes device-window
+library.md: library-details library-banner-hero library-banner-strip library-table library-favourites library-properties library-sidebar library-search library-view-options library-main-menu library-book-menu library-new-shelf library-switch library-shelves library-shelf-open library-details-panel library-edit-metadata library-authors library-banner-also library-banner-chips library-jobs-panel library-health-checks library-health-duplicates library-health-editions library-health-attention library-citations library-saved-searches library-audiobooks library-notes library-works-badge library-works-editions library-trackers
+news-and-web.md: library-news library-add-web library-catalogues
+plugins-and-patches.md: preferences-extensions preferences-patches
+preferences.md: preferences preferences-search preferences-general preferences-library preferences-reading preferences-sync preferences-editor preferences-shortcuts prefs-banner-setting
+privacy.md: preferences-privacy privacy-offline
+progress-sync.md: preferences-sync
+read-aloud.md: read-aloud-reading read-aloud-popover read-aloud-settings read-aloud-menu read-aloud-card preferences-tts editor-narration
+reading.md: reader reader-contents reader-sidebar-contents reader-sidebar-notes book-map reader-footer-settings reader-handles reader-wikipedia reader-eink reader-vertical reader-text-settings reader-menu reader-theme-light reader-theme-sepia reader-theme-dark reader-search reader-ruler reader-goto reader-selection-popover reader-dictionary library-vocabulary-words library-statistics reader-speed-card book-map-detail reader-pdf reader-comic-page reader-vertical-detail reader-note-popover reader-vocab-add reader-comic-spread
+shortcuts.md: shortcuts-window shortcut-rebind
+audiobooks.md: audiobook-player

@@ -1,0 +1,4 @@
+dd57dd516516ed75fe14d33eb717dec44cde15fe87aaa0a53b3b885f4e8bce36  v1-rawcopy/plugin.wasm
+f61d8ddb995e4c997f4d7362da16d5f9272786ab5434a05372dd25241cfd7ce5  v2-trim-whitespace/plugin.wasm
+383b2ec0678b16755f848d5324997504ae5e127d13b3194aba95cd5b0aa27e80  v1-rawcopy/plugin.toml
+96d437309272c36beef852ca314c14416bb18505c34e3bf7596978e50ecda368  v2-trim-whitespace/plugin.toml

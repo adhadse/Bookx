@@ -152,12 +152,6 @@ msgstr "Détails"
 msgid "Device"
 msgstr "Appareil"
 
-msgid "Devices"
-msgstr "Appareils"
-
-msgid "Devices and Sharing"
-msgstr "Appareils et partage"
-
 msgid "Dictionary to add the word to"
 msgstr "Dictionnaire où ajouter le mot"
 
@@ -458,9 +452,6 @@ msgstr "Envoyer vers l'appareil"
 msgid "Series"
 msgstr "Série"
 
-msgid "Share Library"
-msgstr "Partager la bibliothèque"
-
 msgid "Share this library"
 msgstr "Partager cette bibliothèque"
 
@@ -596,3 +587,260 @@ msgstr "Recherche des polices installées : {} sur {}"
 
 msgid "Colour scheme preview"
 msgstr "Aperçu du jeu de couleurs"
+
+msgid "{} of {} books"
+msgstr "{} sur {} livres"
+
+msgid "{} of {} {}"
+msgstr "{} sur {} {}"
+
+msgid "about {} left"
+msgstr "environ {} restantes"
+
+msgid "Select at least two books to link"
+msgstr "Sélectionnez au moins deux livres à lier"
+
+msgid "Link as Editions"
+msgstr "Lier comme éditions"
+
+msgid "Show Editions"
+msgstr "Afficher les éditions"
+
+msgid "Unlink All Editions"
+msgstr "Délier toutes les éditions"
+
+msgid "Group editions of the same book"
+msgstr "Regrouper les éditions d’un même livre"
+
+msgid "Show editions and formats of one book as one card, with a list of the editions"
+msgstr "Affiche les éditions et formats d’un livre comme une seule carte, avec la liste des éditions"
+
+msgid "This edition opens first now"
+msgstr "Cette édition s’ouvre maintenant en premier"
+
+msgid "Took the edition out of its group"
+msgstr "L’édition a quitté son groupe"
+
+msgid "Could not change the editions: {}"
+msgstr "Impossible de modifier les éditions : {}"
+
+msgid "Linked {} books as editions of one work"
+msgstr "{} livres liés comme éditions d’une même œuvre"
+
+msgid "Took {} books out of their group"
+msgstr "{} livres ont quitté leur groupe"
+
+msgid "Opens first"
+msgstr "S’ouvre en premier"
+
+msgid "read last"
+msgstr "lue en dernier"
+
+msgid "Editions"
+msgstr "Éditions"
+
+msgid "{}: show the list"
+msgstr "{} : afficher la liste"
+
+msgid "Open {}"
+msgstr "Ouvrir {}"
+
+msgid "Send {}"
+msgstr "Envoyer {}"
+
+msgid "Open {} first"
+msgstr "Ouvrir {} en premier"
+
+msgid "Unlink {}"
+msgstr "Délier {}"
+
+msgid "Text Colour"
+msgstr "Couleur du texte"
+
+msgid "Background Colour"
+msgstr "Couleur d'arrière-plan"
+
+msgid "Align Left"
+msgstr "Aligner à gauche"
+
+msgid "Align Centre"
+msgstr "Centrer"
+
+msgid "Align Right"
+msgstr "Aligner à droite"
+
+msgid "Justify"
+msgstr "Justifier"
+
+msgid "Use CSS Classes for Colours and Alignment"
+msgstr "Utiliser des classes CSS pour les couleurs et l'alignement"
+
+msgid "Alignment"
+msgstr "Alignement"
+
+msgid "Structure"
+msgstr "Structure"
+
+
+
+msgid "Remove Text Colour"
+msgstr "Retirer la couleur du texte"
+
+msgid "Remove Background Colour"
+msgstr "Retirer la couleur d'arrière-plan"
+
+msgid "Remove Alignment"
+msgstr "Retirer l'alignement"
+
+msgid "Colours and alignment work in HTML pages"
+msgstr "Les couleurs et l'alignement fonctionnent dans les pages HTML"
+
+msgid "That is not a colour"
+msgstr "Ce n'est pas une couleur"
+
+msgid "There is no colour here to remove"
+msgstr "Il n'y a pas de couleur à retirer ici"
+
+msgid "The cursor is not inside a paragraph or other block"
+msgstr "Le curseur n'est pas dans un paragraphe ni un autre bloc"
+
+msgid "The book has no style sheet for the class"
+msgstr "Le livre n'a pas de feuille de style pour la classe"
+
+msgid "Added .{} to {}"
+msgstr "Ajout de .{} à {}"
+
+msgid "Exporting"
+msgstr "Exportation"
+
+msgid "Export as Calibre Library"
+msgstr "Exporter comme bibliothèque Calibre"
+
+msgid "Choose an empty folder for the Calibre library"
+msgstr "Choisissez un dossier vide pour la bibliothèque Calibre"
+
+msgid "Export cancelled; nothing was kept"
+msgstr "Exportation annulée ; rien n’a été conservé"
+
+msgid "Exporting {} to a Calibre library"
+msgstr "Exportation de {} livres vers une bibliothèque Calibre"
+
+msgid "Exported to {}: {}"
+msgstr "Exporté vers {} : {}"
+
+msgid "Comics"
+msgstr "Bandes dessinées"
+
+msgid "Next or previous page"
+msgstr "Page suivante ou précédente"
+
+msgid "Read on, or next panel in guided view"
+msgstr "Continuer, ou case suivante en vue guidée"
+
+msgid "Back, or previous panel in guided view"
+msgstr "Retour, ou case précédente en vue guidée"
+
+msgid "Zoom in, out, fit"
+msgstr "Zoom avant, arrière, ajuster"
+
+msgid "Guided view"
+msgstr "Vue guidée"
+
+msgid "Reading direction"
+msgstr "Sens de lecture"
+
+msgid "Layout: single, two pages, webtoon"
+msgstr "Mise en page : une page, deux pages, webtoon"
+
+msgid "Defaults for comic books (CBZ, CBT). Layout, fit and reading direction you choose inside a comic are remembered for that book."
+msgstr "Réglages par défaut des bandes dessinées (CBZ, CBT). La mise en page, l’ajustement et le sens de lecture choisis dans une BD sont mémorisés pour ce livre."
+
+msgid "How pages are shown in a comic you have not changed yet"
+msgstr "Comment les pages s’affichent dans une BD que vous n’avez pas encore modifiée"
+
+msgid "Single page"
+msgstr "Page seule"
+
+msgid "Two pages"
+msgstr "Deux pages"
+
+msgid "Vertical scroll (webtoon)"
+msgstr "Défilement vertical (webtoon)"
+
+msgid "Fit"
+msgstr "Ajustement"
+
+msgid "How large a page is shown"
+msgstr "Taille d’affichage d’une page"
+
+msgid "Fit page"
+msgstr "Ajuster la page"
+
+msgid "Fit width"
+msgstr "Ajuster à la largeur"
+
+msgid "Fit height"
+msgstr "Ajuster à la hauteur"
+
+msgid "Original size"
+msgstr "Taille d’origine"
+
+msgid "Cover on its own page"
+msgstr "Couverture sur sa propre page"
+
+msgid "In two-page layout the first page stands alone"
+msgstr "En mise en page à deux pages, la première page reste seule"
+
+msgid "Wide pages on their own"
+msgstr "Pages larges seules"
+
+msgid "In two-page layout a double-page picture takes the whole screen"
+msgstr "En mise en page à deux pages, une image double page occupe tout l’écran"
+
+msgid "Space steps through the panels of a page instead of scrolling"
+msgstr "Espace passe d’une case à l’autre au lieu de faire défiler"
+
+msgid "Grey pages"
+msgstr "Pages en gris"
+
+msgid "Show pages in grey (always on in e-ink mode)"
+msgstr "Afficher les pages en gris (toujours actif en mode e-ink)"
+
+msgid "Animate moves between panels"
+msgstr "Animer le passage d’une case à l’autre"
+
+msgid "Off when your system asks for reduced motion, and in e-ink mode"
+msgstr "Désactivé quand le système demande moins d’animations, et en mode e-ink"
+
+msgid "Page thumbnails (F9)"
+msgstr "Miniatures des pages (F9)"
+
+msgid "Right to left (manga)"
+msgstr "De droite à gauche (manga)"
+
+msgid "Guided view: Space goes panel by panel"
+msgstr "Vue guidée : Espace avance case par case"
+
+msgid "Use the defaults for this book"
+msgstr "Utiliser les réglages par défaut pour ce livre"
+
+msgid "View: layout, fit, direction"
+msgstr "Affichage : mise en page, ajustement, sens"
+
+msgid "Page {} cannot be shown"
+msgstr "La page {} ne peut pas être affichée"
+
+msgid "Page {} of {}"
+msgstr "Page {} sur {}"
+
+msgid "Pages {}–{} of {}"
+msgstr "Pages {}–{} sur {}"
+
+msgid "{}, comic pages"
+msgstr "{}, pages de la BD"
+
+msgid "Page {} ({})"
+msgstr "Page {} ({})"
+
+msgid "{}   ·   one very long line"
+msgstr "{}   ·   une seule très longue ligne"

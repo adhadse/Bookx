@@ -37,6 +37,7 @@ if [ "${1:-}" = serve ]; then
     exec "$VENV/bin/zensical" serve -f "$CONFIG" --dev-addr "127.0.0.1:8000"
 fi
 
+build-aux/check-sync-endpoint.sh || exit 1
 echo "==> Building the wiki"
 rm -rf "$SITE"
 "$VENV/bin/zensical" build -f "$CONFIG" --clean
@@ -48,6 +49,11 @@ done
 
 echo "==> Optimising pictures (WebP, lazy loading)"
 "$VENV/bin/python" build-aux/wiki-optimize.py "$SITE"
+
+echo "==> Checking the pictures against build-aux/wiki-pictures.txt (every picture exists, is on its page in both styles, has a scene; no orphans; size budget)"
+python3 build-aux/check-wiki-pictures.py || exit 1
+python3 build-aux/check-wiki-frames.py || exit 1
+python3 build-aux/check-wiki-centred.py || exit 1
 
 echo "==> Checking the screenshots for focus rings"
 "$VENV/bin/python" build-aux/check-screenshots.py wiki/docs/assets || exit 1

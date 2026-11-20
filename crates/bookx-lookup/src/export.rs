@@ -12,6 +12,7 @@ pub enum HighlightStyle {
     Underline,
     Strikeout,
     Squiggly,
+    Invert,
     Bookmark,
 }
 
@@ -22,6 +23,7 @@ impl HighlightStyle {
             Self::Underline => "underline",
             Self::Strikeout => "strikeout",
             Self::Squiggly => "squiggly",
+            Self::Invert => "invert",
             Self::Bookmark => "bookmark",
         }
     }
@@ -29,9 +31,10 @@ impl HighlightStyle {
     pub fn parse(s: &str) -> Option<Self> {
         match s.trim().to_ascii_lowercase().as_str() {
             "highlight" | "lighten" => Some(Self::Highlight),
-            "underline" => Some(Self::Underline),
+            "underline" | "underscore" => Some(Self::Underline),
             "strikeout" | "strikethrough" => Some(Self::Strikeout),
             "squiggly" => Some(Self::Squiggly),
+            "invert" => Some(Self::Invert),
             "bookmark" => Some(Self::Bookmark),
             _ => None,
         }
@@ -436,10 +439,20 @@ fn render_obsidian(
             let _ = write!(out, "## {}\n\n", one_line(c));
         }
         for it in group {
-            let label = match it.style {
+            // the style and, unless it is the usual yellow, the colour
+            let mut label = match it.style {
                 HighlightStyle::Highlight => String::new(),
                 s => format!(" {}", s.as_str()),
             };
+            if let Some(c) = it
+                .color
+                .as_deref()
+                .and_then(safe_color)
+                .filter(|c| !c.eq_ignore_ascii_case("yellow"))
+            {
+                label.push(' ');
+                label.push_str(c);
+            }
             let _ = writeln!(out, "> [!quote]{label}");
             if it.text.trim().is_empty() {
                 out.push_str(">\n");
@@ -931,7 +944,7 @@ Dune & Co\n- Your Note | Added on Friday, January 5, 2024 12:00:00 PM\n\njust a 
         let expected = "---\ntitle: \"Dune & Co\"\nauthor: \"Frank <Herbert>\"\ntags: [bookx, highlights]\nexported: 2026-11-12T08:30:00Z\nhighlights: 2\n---\n\n\
 # Dune & Co\n\n\
 ## Part 1\n\n\
-> [!quote]\n> Fear is the “mind-killer”.\n> I *must* not fear. <b>&</b>\n\n\
+> [!quote] #ffee00\n> Fear is the “mind-killer”.\n> I *must* not fear. <b>&</b>\n\n\
 > [!note]\n> Litany: `a` & b\n\n\
 ## Part 2\n\n\
 > [!quote] underline\n> 日本語 text\n\n";

@@ -14,7 +14,7 @@ where everything is, so another tool (or you, with a script) can read it, and ho
 | `.bookx/` | Small JSON state files: `oplog.json` (the undo log), `layout.json` (where books are filed), `inbox.json` (the watched import folder), `fixity.json` (file checksums), `not-duplicates.json` (pairs you said are different books), `cover-backups/` (covers replaced by a lookup). Safe to delete; you lose the undo history and these memories only. |
 | `.bookx-lock` | Which Bookx has the library open ([read-only mode](library.md#locking-and-read-only)). |
 
-## The catalogue (`bookx-library.db`, schema version 6)
+## The catalogue (`bookx-library.db`, schema version 7)
 
 Open it with any SQLite tool, **after closing Bookx or on a copy**. Do not write to it while Bookx runs. The schema
 version is in `PRAGMA user_version`; a newer database than the app knows is refused rather than damaged.
@@ -27,6 +27,8 @@ version is in `PRAGMA user_version`; a newer database than the app knows is refu
 | `collections`, `collection_books` | | Shelves and which books are on them. |
 | `provenance` | `book`, `field`, `source`, `at` | Where each field came from (a metadata source, the file, *you*). |
 | `author_aliases` | `alias`, `canonical` | Spellings and pen names of authors. |
+| `work_links` | `book`, `work`, `preferred` | Books linked as editions of one work (`work` is shared by the linked books); `preferred = 1` marks the edition that opens first. |
+| `work_apart` | `book` | Books taken out of the automatic grouping of editions. |
 | `text_stamps`, `fts_meta`, `fts_text` | | The search index. Rebuilt by Bookx when missing; ignore it. |
 | `meta` | `key`, `value` | Counters (`next_id`). |
 
@@ -40,4 +42,6 @@ version is in `PRAGMA user_version`; a newer database than the app knows is refu
   ([library](library.md#reading-trackers)).
 - **The files themselves** are in the library folder (or, with *Link in place*, where they always were).
 
-Bookx has no export to Calibre's `metadata.db` yet: you can import from Calibre, not back.
+- **Export as Calibre Library** (main menu, or `bookx-cli library export-calibre DIR`) writes the whole library as a
+  Calibre folder that Calibre opens, so there is always a way back; see
+  [Exporting to Calibre](library.md#exporting-as-a-calibre-library).

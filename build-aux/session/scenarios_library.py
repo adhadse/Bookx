@@ -72,6 +72,10 @@ def library_selection_clicks(c):
             menu and len(c.find("menu item")) >= 8 and _selected(c) == "one", _selected(c))
     c.sb.key("Escape")
     c.gone("menu", timeout=3)
+    # Closing a GTK popover does not restore a reliable keyboard focus in the virtual grid; click the
+    # card again so Ctrl+A reaches the library's action instead of the popover.
+    c.sb.click(*b.center())
+    c.wait(lambda: any(n.role == "table cell" and n.focused for n in c.find()), 3)
     c.sb.key("a", ("Control",))
     c.check("Ctrl+A selects every book", c.wait(lambda: _selected(c) == "2 Books Selected", 5), _selected(c))
     c.sb.key("Escape")
@@ -256,6 +260,9 @@ def _hero_case(c, name, settings):
             [v for _, v in results] != sorted(set(v for _, v in results)) or len(set(v for _, v in results)) >= 4,
             str(results))
     c.check("the app is still alive after all the resizes", c.is_alive())
+    log = open(os.path.join(c.dir, "app.log"), errors="replace").read()
+    c.check("no GTK allocation warning while the window changes size", "without a current allocation" not in log,
+            "".join(l for l in log.splitlines(True) if "WARNING" in l)[:200])
 
 
 @scenario

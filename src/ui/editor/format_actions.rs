@@ -40,6 +40,11 @@ pub enum CodeMsg {
     /// Open an MDN help page in the browser (the URL was built by `code_nav::mdn_url`).
     Help(String),
     Hint(markup_hints::HintOpt, bool),
+    /// Asks for a colour, then applies it (`ColourDo`).
+    ColourPick(bookx_editing::code_style::ColourKind),
+    /// Sets the colour (`None`: removes it) of the selection.
+    ColourDo(bookx_editing::code_style::ColourKind, Option<String>),
+    Align(Option<bookx_editing::code_style::Align>),
 }
 
 /// The message behind an `edit.code` menu target.
@@ -50,7 +55,10 @@ pub(super) fn code_msg_for(id: &str) -> Option<CodeMsg> {
         "split" => CodeMsg::SplitTag,
         "goto" => CodeMsg::GotoDef,
         "sort-css" => CodeMsg::SortCss,
-        f => CodeMsg::Format(Format::from_id(f)?),
+        f => match Format::from_id(f) {
+            Some(f) => CodeMsg::Format(f),
+            None => super::style_actions::style_msg_for(f)?,
+        },
     })
 }
 
@@ -87,6 +95,9 @@ impl Editor {
             CodeMsg::RenameDo { old, new } => self.do_rename_class(&old, &new),
             CodeMsg::Help(url) => self.open_url(&url),
             CodeMsg::Hint(o, on) => self.set_hint_option(o, on),
+            CodeMsg::ColourPick(k) => self.pick_colour(k),
+            CodeMsg::ColourDo(k, c) => self.apply_colour(k, c),
+            CodeMsg::Align(a) => self.align_block(a),
         }
     }
 
@@ -216,7 +227,7 @@ impl Editor {
                 buf.end_user_action();
                 let n = bookx_editing::code_nav::css_rules(&sorted)
                     .iter()
-                    .filter(|r| r.top && r.at.is_none())
+                    .filter(|r| r.at.is_none())
                     .count();
                 buf.place_cursor(&buf.iter_at_offset(cursor.min(buf.char_count())));
                 self.toast(&trf("Sorted {} rules by selector", &[&n]));
@@ -235,7 +246,12 @@ impl Editor {
         let Some(c) = c.strip_prefix("code:") else {
             return false;
         };
-        if self.dev_hints(c) || self.dev_navigate(c) || self.dev_inserts(c) {
+        if self.dev_hints(c)
+            || self.dev_navigate(c)
+            || self.dev_inserts(c)
+            || self.dev_style(c)
+            || self.dev_hover(c)
+        {
             return true;
         }
         if let Some(f) = c.strip_prefix("format=") {
@@ -272,6 +288,12 @@ impl Editor {
                 "editor_code: autoclose {}",
                 self.code_dump(&self.w.view.buffer())
             );
+        } else if let Some(t) = c.strip_prefix("commit=") {
+            // text as an input method commits it: inserted into the buffer without a key press
+            let buf = self.w.view.buffer();
+            for ch in t.replace("\\n", "\n").chars() {
+                buf.insert_interactive_at_cursor(&ch.to_string(), true);
+            }
         } else if let Some(k) = c.strip_prefix("type=") {
             // a typed character, as the key handler sees it
             let swallowed = try_type_over(&self.w.view, &self.hints, k.chars().next());
@@ -327,6 +349,20 @@ pub(super) fn try_type_over(
 ) -> bool {
     let caret = view.buffer().cursor_position().max(0) as usize;
     cf::type_over(&mut hints.pending.borrow_mut(), caret, typed)
+}
+
+/// `</` closes the tag however the `/` arrives: from a key press (`install_keys`) or from an input method commit
+/// (a compose sequence, an on-screen keyboard), which inserts the text without a key press the view sees. Asking
+/// twice is harmless: once the tag is closed the text no longer ends in `</`.
+pub(super) fn watch_slash(buf: &sv::Buffer, tx: relm4::Sender<Input>) {
+    buf.connect_insert_text(move |_, at, text| {
+        if text == "/" {
+            let mut before = *at;
+            if before.backward_char() && before.char() == '<' {
+                tx.emit(Input::Code(CodeMsg::AutoClose));
+            }
+        }
+    });
 }
 
 /// Keys of the code view: `/` after `<` closes the tag (CE-348).

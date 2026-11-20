@@ -152,12 +152,6 @@ msgstr "विवरण"
 msgid "Device"
 msgstr "डिवाइस"
 
-msgid "Devices"
-msgstr "डिवाइस"
-
-msgid "Devices and Sharing"
-msgstr "डिवाइस और साझा करना"
-
 msgid "Dictionary to add the word to"
 msgstr "शब्द जोड़ने के लिए शब्दकोश"
 
@@ -457,9 +451,6 @@ msgstr "डिवाइस पर भेजें"
 
 msgid "Series"
 msgstr "शृंखला"
-
-msgid "Share Library"
-msgstr "लाइब्रेरी साझा करें"
 
 msgid "Share this library"
 msgstr "इस लाइब्रेरी को साझा करें"

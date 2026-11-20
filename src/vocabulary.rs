@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use bookx_lookup::vocab::{VocabCounts, VocabStore};
+use bookx_lookup::vocab::{OwnTerm, VocabCounts, VocabStore};
 use chrono::{DateTime, Utc};
 
 /// Longest definition kept with a word, in characters.
@@ -13,6 +13,9 @@ const MAX_DEFINITION: usize = 300;
 pub struct VocabHub {
     pub store: VocabStore,
     path: Option<PathBuf>,
+    /// Counts every change of the vocabulary, so the page can tell when its marks are out of date.
+    rev: std::cell::Cell<u64>,
+    marks: std::cell::RefCell<crate::vocab_marks::MarkCache>,
 }
 
 impl VocabHub {
@@ -28,10 +31,68 @@ impl VocabHub {
             }
             None => VocabStore::default(),
         };
-        VocabHub { store, path }
+        VocabHub {
+            store,
+            path,
+            rev: std::cell::Cell::new(1),
+            marks: Default::default(),
+        }
+    }
+
+    /// Changes whenever the vocabulary is saved.
+    pub fn revision(&self) -> u64 {
+        self.rev.get()
+    }
+
+    /// The saved terms of this book found in `text`, as char ranges.
+    pub fn marks_for(&self, book_id: u64, series: &str, text: &str) -> Vec<(i32, i32)> {
+        let set =
+            self.marks
+                .borrow_mut()
+                .get(self.rev.get(), &self.store, &book_id.to_string(), series);
+        set.marks(text)
+    }
+
+    /// Whether any saved term is in force in this book (cheap: nothing is marked when none is).
+    pub fn has_terms_for(&self, book_id: u64, series: &str) -> bool {
+        !self
+            .store
+            .own_for_book(&book_id.to_string(), series)
+            .is_empty()
+    }
+
+    /// The word of the saved term whose text is `text` (what a click on a mark found).
+    pub fn word_for_mark(&self, book_id: u64, series: &str, text: &str) -> Option<String> {
+        let set =
+            self.marks
+                .borrow_mut()
+                .get(self.rev.get(), &self.store, &book_id.to_string(), series);
+        set.word_at(text).map(str::to_string)
+    }
+
+    /// Saves a term with the user's own definition. `true` when the term is new.
+    pub fn save_own(&mut self, t: &OwnTerm, now: DateTime<Utc>) -> Result<bool> {
+        let new = self.store.set_own(t, now)?;
+        self.save();
+        Ok(new)
+    }
+
+    /// Takes the user's own definition of a term away.
+    pub fn remove_own(&mut self, term: &str) -> bool {
+        let r = self.store.clear_own(term);
+        self.save();
+        r
+    }
+
+    /// Removes a word from the vocabulary altogether.
+    pub fn remove_word(&mut self, term: &str) -> bool {
+        let r = self.store.remove(term);
+        self.save();
+        r
     }
 
     pub fn save(&self) {
+        self.rev.set(self.rev.get() + 1);
         if let Some(p) = &self.path {
             let _ = self.store.save(p);
         }
@@ -213,5 +274,51 @@ mod tests {
         assert!(h.store.is_empty());
         assert!(path.with_extension("json.corrupt").exists());
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+}
+
+#[cfg(test)]
+mod own_tests {
+    use super::*;
+    use bookx_lookup::vocab::Scope;
+
+    fn own(term: &str) -> OwnTerm {
+        OwnTerm {
+            term: term.into(),
+            definition: "a made-up thing".into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn saving_a_term_persists_and_changes_the_revision() {
+        let d = std::env::temp_dir().join(format!("bookx-vocab-own-{}", uuid::Uuid::new_v4()));
+        let path = d.join("vocabulary.json");
+        let mut h = VocabHub::load(Some(path.clone()));
+        let r0 = h.revision();
+        assert!(h.save_own(&own("Zorb"), Utc::now()).unwrap());
+        assert!(h.revision() > r0);
+        let again = VocabHub::load(Some(path));
+        assert_eq!(
+            again.store.find("zorb").unwrap().own.as_deref(),
+            Some("a made-up thing")
+        );
+        assert!(h.remove_own("Zorb"));
+        assert!(h.store.find("zorb").is_none());
+        let _ = std::fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn marks_come_from_the_terms_of_the_book_and_follow_edits() {
+        let mut h = VocabHub::load(None);
+        h.save_own(&own("Zorb"), Utc::now()).unwrap();
+        let mut b = own("Quux");
+        b.scope = Scope::Book("2".into());
+        h.save_own(&b, Utc::now()).unwrap();
+        let text = "a zorb and a Quux";
+        assert_eq!(h.marks_for(1, "", text), [(2, 6)]);
+        assert_eq!(h.marks_for(2, "", text), [(2, 6), (13, 17)]);
+        h.remove_own("zorb");
+        assert_eq!(h.marks_for(2, "", text), [(13, 17)]);
     }
 }

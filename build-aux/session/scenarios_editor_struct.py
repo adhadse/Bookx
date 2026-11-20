@@ -101,6 +101,10 @@ def editor_toc_drag(c):
     time.sleep(0.4)
     c.sb.key("Down", ("Alt",))
     time.sleep(0.8)
+    # the virtual list keeps the moved row in view, which can put the unchanged first row just above it;
+    # scroll back so the assertion sees the whole head of the list, not only the visible window
+    c.sb.scroll(-6, x0 + 100, rows[0].center()[1])
+    time.sleep(0.4)
     after3 = titles(toc_entries(c))
     c.note(f"after Alt+Down: {after3[:5]}")
     c.check(
@@ -108,8 +112,14 @@ def editor_toc_drag(c):
         len(after3) >= 2 and after3[0][0] != first and any(t == first for t, _ in after3[1:3]),
         f"{after3[:4]}",
     )
+    # the wheel scroll moved the pointer focus; click the moved entry again before the next key
+    moved = next((n for n in toc_entries(c) if (n.get_text() if hasattr(n, "get_text") else n.name) == first), None)
+    if moved:
+        c.click_node(moved)
     c.sb.key("Right", ("Alt",))
     time.sleep(0.8)
+    c.sb.scroll(-6, x0 + 100, rows[0].center()[1])
+    time.sleep(0.4)
     after4 = titles(toc_entries(c))
     c.note(f"after Alt+Right: {after4[:5]}")
     c.check(

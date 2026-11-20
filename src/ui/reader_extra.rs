@@ -46,11 +46,16 @@ pub fn track_clicks(area: &impl IsA<gtk::Widget>) {
 
 /// Shows `text` in a popover at the last click; `go` runs when the user wants the note itself.
 pub fn show_footnote(area: &impl IsA<gtk::Widget>, text: &str, go: impl Fn() + 'static) {
-    LAST.with(|l| {
-        if let Some((_, old)) = l.borrow_mut().take() {
-            old.popdown();
-            old.unparent();
-        }
+    // a note popup that is replaced by another one: the new one opens a moment after the old one closed, not in
+    // the same breath (Wayland surface reuse, protocol error 71; see reader.rs `repopup`)
+    let had_old = LAST.with(|l| {
+        l.borrow_mut()
+            .take()
+            .map(|(_, old)| {
+                old.popdown();
+                old.unparent();
+            })
+            .is_some()
     });
     let pop = gtk::Popover::new();
     pop.set_parent(area);
@@ -82,7 +87,12 @@ pub fn show_footnote(area: &impl IsA<gtk::Widget>, text: &str, go: impl Fn() + '
     }
     body.append(&button);
     pop.set_child(Some(&body));
-    pop.popup();
+    if had_old {
+        let p = pop.clone();
+        gtk::glib::timeout_add_local_once(std::time::Duration::from_millis(80), move || p.popup());
+    } else {
+        pop.popup();
+    }
     LAST.with(|l| *l.borrow_mut() = Some((text.to_string(), pop)));
 }
 

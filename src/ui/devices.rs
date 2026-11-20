@@ -213,16 +213,16 @@ impl DevWin {
             .build();
         shelf_row.set_text(&settings.kobo_shelf);
         let notes_row = adw::SwitchRow::builder()
-            .title(crate::device_sync::NOTES_TITLE)
-            .subtitle(crate::device_sync::NOTES_SUBTITLE)
+            .title(tr(crate::device_sync::NOTES_TITLE))
+            .subtitle(tr(crate::device_sync::NOTES_SUBTITLE))
             .build();
         notes_row.set_active(shared.cfg.borrow().device_sync.include_notes);
         let auto_row = adw::SwitchRow::builder()
-            .title(crate::device_sync::AUTO_SYNC_TITLE)
-            .subtitle(crate::device_sync::AUTO_SYNC_SUBTITLE)
+            .title(tr(crate::device_sync::AUTO_SYNC_TITLE))
+            .subtitle(tr(crate::device_sync::AUTO_SYNC_SUBTITLE))
             .build();
         auto_row.set_active(shared.cfg.borrow().device_sync.auto_sync);
-        auto_row.add_suffix(&super::help_button(crate::device_sync::AUTO_SYNC_HELP));
+        auto_row.add_suffix(&super::help_button(&tr(crate::device_sync::AUTO_SYNC_HELP)));
         options_group.add(&format_row);
         options_group.add(&template_row);
         options_group.add(&shelf_row);
@@ -250,7 +250,7 @@ impl DevWin {
         dav_check.set_halign(gtk::Align::Start);
         let dav_status = gtk::Label::new(None);
         dav_status.set_xalign(0.0);
-        dav_status.set_text(crate::secrets::caption_now());
+        dav_status.set_text(&crate::secrets::caption_now());
         dav_status.set_wrap(true);
         for r in [
             dav_url.upcast_ref::<gtk::Widget>(),
@@ -350,17 +350,48 @@ impl DevWin {
             w.notes_row.connect_active_notify(move |r| {
                 {
                     let mut c = w2.shared.cfg.borrow_mut();
+                    if c.device_sync.include_notes == r.is_active() {
+                        return;
+                    }
                     c.device_sync.include_notes = r.is_active();
                     c.save();
                 }
                 w2.refresh_send_list();
+                crate::settings_bus::sync().notify();
             });
             let w2 = w.clone();
             w.auto_row.connect_active_notify(move |r| {
-                let mut c = w2.shared.cfg.borrow_mut();
-                c.device_sync.auto_sync = r.is_active();
-                c.save();
+                {
+                    let mut c = w2.shared.cfg.borrow_mut();
+                    if c.device_sync.auto_sync == r.is_active() {
+                        return;
+                    }
+                    c.device_sync.auto_sync = r.is_active();
+                    c.save();
+                }
+                crate::settings_bus::sync().notify();
             });
+            {
+                // Preferences → Sync shows the same two switches
+                let (shared, notes, auto) = (
+                    w.shared.clone(),
+                    w.notes_row.downgrade(),
+                    w.auto_row.downgrade(),
+                );
+                super::share::follow(&w.auto_row, move || {
+                    let d = shared.cfg.borrow().device_sync.clone();
+                    if let Some(r) = notes.upgrade() {
+                        if r.is_active() != d.include_notes {
+                            r.set_active(d.include_notes);
+                        }
+                    }
+                    if let Some(r) = auto.upgrade() {
+                        if r.is_active() != d.auto_sync {
+                            r.set_active(d.auto_sync);
+                        }
+                    }
+                });
+            }
             let w2 = w.clone();
             w.format_row
                 .connect_selected_notify(move |_| w2.save_send_settings());
@@ -1060,7 +1091,9 @@ pub fn start_sync(
     let settings = shared.cfg.borrow().device.clone();
     let (books, locator) = {
         let lib = shared.lib.borrow();
-        (ds::library_books(&lib.books), ds::book_locator(&lib))
+        let mut books = ds::library_books(&lib.books);
+        ds::attach_looks(&mut books, &lib.root);
+        (books, ds::book_locator(&lib))
     };
     let name = device.name.clone();
     let (tx, rx) = std::sync::mpsc::channel();

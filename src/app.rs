@@ -11,7 +11,7 @@ use relm4::prelude::*;
 
 use crate::config::{Config, Scheme, APP_ID, APP_NAME, VERSION};
 use crate::ui::preferences::{self, PrefChange};
-use crate::ui::{editor, library, notes, reader, reader_pdf, Shared, SharedRef};
+use crate::ui::{editor, library, notes, reader, reader_comic, reader_pdf, Shared, SharedRef};
 
 pub struct App {
     shared: SharedRef,
@@ -22,6 +22,7 @@ pub struct App {
     reader: Option<Controller<reader::Reader>>,
     /// The PDF page view, when the open book is shown from its PDF.
     pdf: Option<Controller<reader_pdf::ReaderPdf>>,
+    comic: Option<Controller<reader_comic::ReaderComic>>,
     /// The next `Read` opens the e-book (reflowed text) of a book that also has a PDF.
     force_epub: bool,
     reader_id: Option<u64>,
@@ -29,6 +30,8 @@ pub struct App {
     was_maximized: Option<bool>,
     pending_read: Option<u64>,
     editors: Rc<RefCell<Vec<(u64, Controller<editor::Editor>)>>>,
+    /// The audiobook player, while one is open.
+    audio: Option<crate::ui::audiobook_player::Page>,
 }
 
 /// An EPUB opened on a worker thread.
@@ -43,6 +46,9 @@ impl std::fmt::Debug for LoadedBook {
 #[derive(Debug)]
 pub enum Msg {
     Read(u64),
+    /// Play the audiobook of a book (an audiobook of its own, or the one linked to an e-book).
+    PlayAudio(u64),
+    AudioPopped,
     CloseReader,
     BookLoaded(u64, Result<LoadedBook, String>),
     /// A PDF read from disk, for the page view.
@@ -73,6 +79,7 @@ pub enum Msg {
     ShowShortcuts,
     ShowStats,
     ShowShare,
+    ShowSyncPrefs,
     /// The Device window.
     ShowDevices,
     /// Reading progress changed from outside the library view.
@@ -136,6 +143,7 @@ impl SimpleComponent for App {
         };
         let mut lib = lib;
         crate::annotation_ids::migrate_library(&mut lib);
+        let repaired = crate::highlight_repair::one_time_pass(&mut lib);
         let fulltext = crate::fulltext::FullText::new(guard.store.clone());
         let shared: SharedRef = Rc::new(Shared {
             lib: RefCell::new(lib),
@@ -159,6 +167,7 @@ impl SimpleComponent for App {
             guard: RefCell::new(guard),
         });
         shared.start_indexing();
+        crate::annotation_sync_ui::install(&shared);
         crate::ui::kosync::start_queue(&shared);
         {
             let root = shared.lib.borrow().root.clone();
@@ -182,6 +191,18 @@ impl SimpleComponent for App {
             let s2 = shared.clone();
             relm4::main_adw_application()
                 .connect_shutdown(move |_| crate::ui::health::on_exit(&s2));
+        }
+        if let Some(r) = repaired {
+            tracing::info!(
+                "re-checked highlights: {} moved, {} without a place",
+                r.moved,
+                r.unanchored
+            );
+            let tx = sender.input_sender().clone();
+            let msg = crate::highlight_repair::message(&r);
+            glib::timeout_add_local_once(std::time::Duration::from_millis(2400), move || {
+                tx.emit(Msg::Toast(msg));
+            });
         }
         if let Some(n) = migrated {
             tracing::info!("moved {n} books from bookx-library.json into the database");
@@ -210,6 +231,7 @@ impl SimpleComponent for App {
             .launch(shared.clone())
             .forward(sender.input_sender(), |out| match out {
                 library::Output::Read(id) => Msg::Read(id),
+                library::Output::PlayAudio(id) => Msg::PlayAudio(id),
                 library::Output::EditBook(id) => Msg::EditBook(id),
                 library::Output::Toast(t) => Msg::Toast(t),
                 library::Output::LibraryChanged => Msg::LibraryChanged,
@@ -223,6 +245,7 @@ impl SimpleComponent for App {
             nav.connect_popped(move |_, page| match page.tag().as_deref() {
                 Some("reader") => tx.emit(Msg::ReaderPopped),
                 Some("loading") => tx.emit(Msg::LoadingPopped),
+                Some(t) if t.starts_with("audiobook") => tx.emit(Msg::AudioPopped),
                 _ => {}
             });
         }
@@ -261,6 +284,10 @@ impl SimpleComponent for App {
             add_action("stats", Rc::new(move || tx.emit(Msg::ShowStats)));
             let tx = sender.input_sender().clone();
             add_action("share", Rc::new(move || tx.emit(Msg::ShowShare)));
+            let tx = sender.input_sender().clone();
+            add_action("sync", Rc::new(move || tx.emit(Msg::ShowShare)));
+            let tx = sender.input_sender().clone();
+            add_action("sync-prefs", Rc::new(move || tx.emit(Msg::ShowSyncPrefs)));
             let tx = sender.input_sender().clone();
             add_action("devices", Rc::new(move || tx.emit(Msg::ShowDevices)));
             let tx = sender.input_sender().clone();
@@ -352,12 +379,14 @@ impl SimpleComponent for App {
             library,
             reader: None,
             pdf: None,
+            comic: None,
             force_epub: false,
             reader_id: None,
             loading: None,
             was_maximized: None,
             pending_read: None,
             editors: Rc::new(RefCell::new(Vec::new())),
+            audio: None,
         };
         model.apply_touch_ui();
         model.apply_eink();
@@ -367,7 +396,22 @@ impl SimpleComponent for App {
     fn update(&mut self, msg: Msg, sender: ComponentSender<Self>) {
         match msg {
             Msg::Read(id) => {
-                if self.reader.is_some() || self.pdf.is_some() || self.loading.is_some() {
+                // an audiobook of its own has no pages: it opens the player
+                if self
+                    .shared
+                    .lib
+                    .borrow()
+                    .get(id)
+                    .is_some_and(crate::audiobook::is_own)
+                {
+                    sender.input(Msg::PlayAudio(id));
+                    return;
+                }
+                if self.reader.is_some()
+                    || self.pdf.is_some()
+                    || self.comic.is_some()
+                    || self.loading.is_some()
+                {
                     return;
                 }
                 let as_text = std::mem::take(&mut self.force_epub);
@@ -469,6 +513,24 @@ impl SimpleComponent for App {
                 self.loading = None;
                 match res {
                     Ok(book) => {
+                        let book = match crate::comic::open_comic(book.0) {
+                            Ok(comic) => {
+                                let ctl = reader_comic::ReaderComic::builder()
+                                    .launch((self.shared.clone(), id, comic))
+                                    .forward(sender.input_sender(), |out| match out {
+                                        reader_comic::Output::Close => Msg::CloseReader,
+                                        reader_comic::Output::Toast(t) => Msg::Toast(t),
+                                    });
+                                self.nav.replace(&[
+                                    self.library.widget().clone(),
+                                    ctl.widget().clone(),
+                                ]);
+                                self.comic = Some(ctl);
+                                self.reader_id = Some(id);
+                                return;
+                            }
+                            Err(b) => LoadedBook(*b),
+                        };
                         let from_pdf = book
                             .0
                             .archive
@@ -572,7 +634,7 @@ impl SimpleComponent for App {
                     Ok(AddOutcome::Added(id)) | Ok(AddOutcome::Duplicate(id)) => {
                         self.library.emit(library::Input::Refresh);
                         self.pending_read = Some(id);
-                        if self.reader.is_some() || self.pdf.is_some() {
+                        if self.reader.is_some() || self.pdf.is_some() || self.comic.is_some() {
                             self.nav.pop();
                         } else {
                             sender.input(Msg::Read(id));
@@ -585,9 +647,40 @@ impl SimpleComponent for App {
             Msg::CloseReader => {
                 self.nav.pop();
             }
+            Msg::PlayAudio(id) => {
+                if self.audio.is_some()
+                    || self.reader.is_some()
+                    || self.pdf.is_some()
+                    || self.comic.is_some()
+                    || self.loading.is_some()
+                {
+                    return;
+                }
+                let tx = sender.input_sender().clone();
+                let toast: Rc<dyn Fn(String)> = Rc::new(move |t| tx.emit(Msg::Toast(t)));
+                match crate::ui::audiobook_player::open(&self.shared, id, toast) {
+                    Ok(page) => {
+                        self.nav.push(&page.page);
+                        self.audio = Some(page);
+                    }
+                    Err(e) => sender.input(Msg::Toast(trf(
+                        "Could not play the audiobook: {}",
+                        &[&format!("{e:#}")],
+                    ))),
+                }
+            }
+            Msg::AudioPopped => {
+                if let Some(p) = self.audio.take() {
+                    p.close();
+                }
+                let _ = self.shared.lib.borrow().save();
+                // the library may already be gone when the window closes while the reader is open
+                let _ = self.library.sender().send(library::Input::Requery);
+            }
             Msg::ReaderPopped => {
                 self.reader = None;
                 self.pdf = None;
+                self.comic = None;
                 self.reader_id = None;
                 self.restore_window();
                 if let Some(id) = self.pending_read.take() {
@@ -595,7 +688,8 @@ impl SimpleComponent for App {
                 }
                 let _ = self.shared.lib.borrow().save();
                 self.window.set_fullscreened(false);
-                self.library.emit(library::Input::Requery);
+                // the library may already be gone when the window closes while the reader is open
+                let _ = self.library.sender().send(library::Input::Requery);
             }
             Msg::EditBook(id) => {
                 if let Some((_, c)) = self.editors.borrow().iter().find(|(i, _)| *i == id) {
@@ -693,7 +787,7 @@ impl SimpleComponent for App {
             }
             Msg::ShowPalette => self.show_palette(&sender),
             Msg::PaletteBook(id) => {
-                if self.reader.is_some() || self.pdf.is_some() {
+                if self.reader.is_some() || self.pdf.is_some() || self.comic.is_some() {
                     self.pending_read = Some(id);
                     self.nav.pop();
                 } else {
@@ -744,7 +838,17 @@ impl SimpleComponent for App {
             },
             Msg::ShowShortcuts => show_shortcuts(&self.window),
             Msg::ShowStats => crate::ui::stats::show(&self.window, &self.shared),
-            Msg::ShowShare => crate::ui::share::show(&self.window, &self.shared),
+            Msg::ShowShare => crate::ui::sync_window::show(&self.window, &self.shared),
+            Msg::ShowSyncPrefs => {
+                let tx = sender.input_sender().clone();
+                preferences::show_at(
+                    &self.window,
+                    &self.shared,
+                    Rc::new(move |c| tx.emit(Msg::Prefs(c))),
+                    None,
+                );
+                preferences::goto_page(crate::sync_model::PAGE_ID);
+            }
             Msg::ShowDevices => {
                 let tx = sender.input_sender().clone();
                 crate::ui::devices::show(
@@ -805,6 +909,47 @@ impl SimpleComponent for App {
                         }
                     }
                     "close" => sender.input(Msg::CloseReader),
+                    // `audio:add=PATH` imports an audiobook, `audio:open=ID` plays it, the rest drives the
+                    // player (see ui/audiobook_player.rs `dev`): `audio:dump` prints its state
+                    "audio" => {
+                        let (sub, val) = arg.split_once('=').unwrap_or((arg, ""));
+                        match sub {
+                            "add" => {
+                                let r = crate::audiobook::data_dir().map(|d| {
+                                    crate::audiobook::import_now(
+                                        &mut self.shared.lib.borrow_mut(),
+                                        std::path::Path::new(val),
+                                        &d,
+                                    )
+                                });
+                                match r {
+                                    Some(Ok(id)) => eprintln!("audio: added id={id}"),
+                                    Some(Err(e)) => eprintln!("audio: add failed: {e:#}"),
+                                    None => eprintln!("audio: no data folder"),
+                                }
+                                self.library.emit(library::Input::Refresh);
+                            }
+                            "open" => sender.input(Msg::PlayAudio(val.parse().unwrap_or(1))),
+                            "stats" => eprintln!(
+                                "{}",
+                                crate::ui::audiobook_player::dev_stats(&self.shared)
+                            ),
+                            "close" => {
+                                if self.audio.is_some() {
+                                    self.nav.pop();
+                                }
+                            }
+                            _ => match &self.audio {
+                                Some(p) => {
+                                    let out = p.dev(arg);
+                                    if !out.is_empty() {
+                                        eprintln!("{out}");
+                                    }
+                                }
+                                None => eprintln!("audio: no player"),
+                            },
+                        }
+                    }
                     // `share:start[:port]`, `share:stop`, `share:dump`: drive sharing without dialogs
                     "share" => {
                         let (sub, rest) = arg.split_once(':').unwrap_or((arg, ""));
@@ -853,7 +998,13 @@ impl SimpleComponent for App {
                                     Err(e) => eprintln!("share_error: {e}"),
                                 }
                             }
-                            "kodump" => crate::ui::share::dev_dump(),
+                            "kodump" => crate::ui::share::dev_dump(&self.shared),
+                            // `share:port0` serves on a free port from now on (parallel tests)
+                            "port0" => {
+                                let mut c = self.shared.cfg.borrow_mut();
+                                c.share.port = 0;
+                                c.save();
+                            }
                             "show" => sender.input(Msg::ShowShare),
                             // `share:https` serves HTTPS with the self-signed certificate,
                             // `share:httpsfiles:<cert>:<key>` with the given files
@@ -954,6 +1105,8 @@ impl SimpleComponent for App {
                             _ => {}
                         }
                     }
+                    // `koannot:<command>`: the KOReader highlight and note sync (see `annotation_sync_ui::dev_command`)
+                    "koannot" => crate::annotation_sync_ui::dev_command(&self.shared, arg),
                     // `kosync:<command>`: the reading-position sync (see `ui::kosync::dev_command`)
                     "kosync" => crate::ui::kosync::dev_command(&self.shared, arg),
                     // `devwin:<command>`: drive the Device window (see `ui::devices::dev_command`)
@@ -1107,6 +1260,54 @@ impl SimpleComponent for App {
                                     .collect();
                                 eprintln!("vocab_words: {}", words.join(" | "));
                             }
+                            "show-words" => {
+                                crate::ui::vocab::show_with(&self.window, &self.shared, true, None)
+                            }
+                            // your own definitions: `own=term|definition[|book]` saves one without the dialog
+                            a if a.starts_with("own=") => {
+                                let mut it = a[4..].splitn(3, '|');
+                                let (t, d) = (it.next().unwrap_or(""), it.next().unwrap_or(""));
+                                let scope = match it.next() {
+                                    Some(b) if !b.is_empty() => {
+                                        bookx_lookup::vocab::Scope::Book(b.to_string())
+                                    }
+                                    _ => bookx_lookup::vocab::Scope::All,
+                                };
+                                let r = self.shared.vocab.borrow_mut().save_own(
+                                    &bookx_lookup::vocab::OwnTerm {
+                                        term: t.into(),
+                                        definition: d.into(),
+                                        scope,
+                                        ..Default::default()
+                                    },
+                                    now,
+                                );
+                                crate::ui::vocab_settings::changed();
+                                eprintln!("vocab_own: {:?}", r.ok());
+                            }
+                            a if a.starts_with("list=") => {
+                                eprintln!("{}", crate::ui::vocab_list::dev(&a[5..]));
+                            }
+                            a if a.starts_with("dialog=") => {
+                                eprintln!("{}", crate::ui::vocab_own::dev(&a[7..]));
+                            }
+                            "own-dump" => {
+                                let hub = self.shared.vocab.borrow();
+                                let own: Vec<String> = hub
+                                    .store
+                                    .own_entries()
+                                    .iter()
+                                    .map(|e| {
+                                        format!(
+                                            "{}={}@{:?}",
+                                            e.word,
+                                            e.own.clone().unwrap_or_default(),
+                                            e.scope
+                                        )
+                                    })
+                                    .collect();
+                                eprintln!("vocab_own_entries: {}", own.join(" | "));
+                            }
                             a if a.starts_with("grade:") => {
                                 let q: u8 = a[6..].parse().unwrap_or(4);
                                 let r = self.shared.vocab.borrow_mut().grade_first_due(q, now);
@@ -1143,6 +1344,9 @@ impl SimpleComponent for App {
                         }
                         eprintln!("dialog: open={}", self.window.visible_dialog().is_some());
                     }
+                    // `sync:dump|server=on|kosync=on|notes=on|plugin|prefs|close`: the Sync window
+                    "sync" if arg == "prefs" => sender.input(Msg::ShowSyncPrefs),
+                    "sync" => crate::ui::sync_window::dev(arg, &self.shared),
                     "tts" => crate::ui::tts_settings::dev(arg),
                     "mcp" => crate::ui::mcp_settings::dev(arg),
                     "keys" => crate::ui::shortcuts_dialog::dev(arg),
@@ -1198,6 +1402,9 @@ impl SimpleComponent for App {
                         }
                         if let Some(r) = &self.pdf {
                             r.emit(reader_pdf::Input::Dev(arg.to_string()));
+                        }
+                        if let Some(r) = &self.comic {
+                            r.emit(reader_comic::Input::Dev(arg.to_string()));
                         }
                     }
                     "library" => self.library.emit(library::Input::Dev(arg.to_string())),
@@ -1441,6 +1648,7 @@ fn show_shortcuts(parent: &adw::ApplicationWindow) {
             (N_("Actions for the selection"), "Return"),
             (N_("Look up, Wikipedia, translate"), "d w t"),
             (N_("Highlight, add a note, copy"), "h n <Control>c"),
+            (N_("Add to Vocabulary"), "v <Control><Shift>v"),
             (N_("Command palette"), "@app.palette"),
             (N_("Search in book"), "@reader.search"),
             (N_("Contents"), "@reader.contents"),
@@ -1458,6 +1666,19 @@ fn show_shortcuts(parent: &adw::ApplicationWindow) {
             (N_("Book properties"), "@reader.properties"),
             (N_("Reload the book"), "@reader.reload"),
             (N_("Back to library"), "@reader.back"),
+        ],
+    ));
+    dialog.add(section(
+        &tr("Comics"),
+        &[
+            (N_("Next or previous page"), "Page_Down Page_Up"),
+            (N_("Read on, or next panel in guided view"), "space"),
+            (N_("Back, or previous panel in guided view"), "<Shift>space"),
+            (N_("Zoom in, out, fit"), "plus minus 0"),
+            (N_("Guided view"), "g"),
+            (N_("Reading direction"), "r"),
+            (N_("Layout: single, two pages, webtoon"), "m"),
+            (N_("Page thumbnails"), "F9"),
         ],
     ));
     dialog.add(section(

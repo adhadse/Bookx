@@ -22,6 +22,13 @@ The **command** way is the simplest: it is read-only and works whether Bookx is 
 
 ## Setting up from Preferences
 
+<figure markdown="1">
+![Preferences, AI Assistants (MCP)](assets/preferences-mcp-light.png#only-light)
+![Preferences, AI Assistants (MCP)](assets/preferences-mcp-dark.png#only-dark)
+<figcaption markdown="1">Preferences → AI Assistants: the switch, the port, the token and the write permission.</figcaption>
+</figure>
+
+
 Open **Preferences → AI Assistants (MCP)**.
 
 1. **Server inside Bookx** (off by default). Switch on *Let AI assistants connect* to start a server on
@@ -99,6 +106,7 @@ Without `--library` the default library is used, like every `bookx-cli` command.
 !!! note "Keep it on this computer"
     The HTTP server is meant for `127.0.0.1`. If you bind it to another address, anyone who gets the token
     can read your books. Use TLS (`--tls-cert`, `--tls-key`) and a long token, and do not expose it to the internet.
+    If other computers must reach it, put a proxy in front: [reverse proxy](reverse-proxy.md#mcp-behind-a-proxy).
 
 ## What assistants can do
 

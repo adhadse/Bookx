@@ -95,10 +95,12 @@ need a bigger screen press Super+Up). The shadow is tuned per variant, because a
 page: the dark variant has a stronger shadow and a light outline. `screenshot-frame.py --preview OUT.png A.png B.png` composites
 framed pictures on a light and a dark page to judge it.
 
-**Size.** The framed PNGs (about 1392 x 880, RGBA) are the sources in `wiki/docs/assets/`. `build-aux/wiki-optimize.py` runs
-on the built site: lossy WebP with a lossless alpha channel (4 to 5 times smaller; PNG quantisation was tried and rejected, it
-bands the cover gradients and destroys the shadow), `loading="lazy"` with width and height on every picture (a hidden variant is
-never fetched), PNGs dropped from the built site. It needs Pillow, which `wiki.sh` installs into the wiki venv.
+**Size.** The framed PNGs (about 1392 x 880, RGBA) are the sources in `wiki/docs/assets/`. Whole-window captures are saved
+with libimagequant's 256-colour palette (`screenshot-frame.py save_window`); it keeps the fully transparent margin and the
+alpha ramp of the shadow, which `build-aux/check-wiki-frames.py` checks, and keeps the sources under the 25 MB asset
+budget even with real comic and cover art. Detail crops keep their full RGBA colours. `build-aux/wiki-optimize.py` then runs
+on the built site: lossy WebP with a lossless alpha channel, `loading="lazy"` with width and height on every picture (a hidden
+variant is never fetched), PNGs dropped from the built site. It needs Pillow, which `wiki.sh` installs into the wiki venv.
 
 **Landing page.** `wiki/docs/index.md` is Markdown with HTML blocks (`md_in_html`), the classes are in
 `assets/extra.css`: hero (tagline, description, Install / Documentation / GitHub, the library with the Continue Reading card
@@ -130,6 +132,42 @@ Log: 2026-11-14: the shelf now uses real Standard Ebooks cover art (`make-wiki-b
 reading" picture is `_wiki_reading` (five highlights in four styles, the selection popover with a note and the Wikipedia
 look-up); the hero, reader, library, details, notes, strip and table pictures were retaken in both styles.
 
+## Detail pictures and the picture manifest (wave 6)
+
+Besides the whole-window pictures the wiki shows small details and usage steps (a menu, a popover, one dialog, one
+panel), all taken by `build-aux/wiki-screenshots.sh`; none is made by hand.
+
+- **Scenes:** `build-aux/session/scenarios_wiki_ext.py` (imported by `scenarios.py`). `scenarios_wiki.wshot(c, name, crop=...)`
+  takes the same capture as before and cuts out a node, a list of nodes (their union) or a screen rectangle, with `pad`,
+  `minsize` (similar sizes on one page) and `scale`. A crop writes a `.detail` marker next to the raw capture; the script then
+  frames it with `screenshot-frame.py --detail` (rounded 8 px corners, small shadow, top bar kept, at most 1600 px wide).
+  `WIKI_FULL=1` also keeps the whole screen of every crop in `<results>/full/` to debug a rectangle.
+- **Finding the widget:** popovers and menus have no usable AT-SPI box, so `snap()` + `popup_box(before, after)` take the
+  rectangle a popup changed; `dialog_box()` finds a modal dialog because the page behind it is dimmed by a constant factor
+  (`dialog_shot`, `popover_shot` wrap both). Menu items are unnamed, so scenes open dialogs with the command palettes
+  (Ctrl+K in the library, Ctrl+Shift+P in the editor) and the dev hooks only start a book or seed state.
+- **Manifest:** `build-aux/wiki-pictures.txt` lists the pictures of every page. `wiki-screenshots.sh` takes its `PICTURES`
+  list from it and fails when one was not taken; `build-aux/check-wiki-pictures.py` (run by `wiki.sh`) checks that every listed
+  picture exists in both styles, is on its page with alt text in both styles, that every picture a page shows is listed (so a
+  scene takes it), that no asset is orphaned, that each feature page has a minimum number of pictures, and that the assets stay
+  under 25 MB.
+- **Robustness:** the script runs only the scenes that failed again (up to three times, 60 s apart) because sessions fail
+  without a result when the machine is short of inotify instances or file descriptors. Use `NET=0` (the shelf's covers are
+  cached in `~/.cache/bookx-wiki-covers`; without it the run waits on the network).
+- **Size:** there is no `oxipng`/`pngquant` here; whole-window captures use libimagequant's 256-colour palette to fit the
+  25 MB budget (see the Size section above), detail crops stay lossless, and `wiki-optimize.py` makes WebP for the site.
+
+### Scenes to add when available / not covered
+
+- Ctrl+click jump to a definition in the code view (needs a modifier click; the existing dev hook is
+  `editor:code:ctrlclick=`): no picture yet.
+- Editor plugin menu (no plugin is installed in the sandbox) and the Preferences → Extensions page with a plugin listed
+  (`make_test_plugin` example): the page shows the empty state.
+- Convert To / Export and Send submenu (the submenu cannot be reached by keyboard in a popover menu), Export as Calibre dialog
+  (a file chooser), Import Calibre report.
+- The manga (right to left) comic mode and the comic settings popover; the speed reading card is shown paused.
+- Preferences pages are taller than the window: the lower rows are not in the picture (scroll the page in a scene to add more).
+
 ## Pages that are thin or need more screenshots
 
 Real screenshots cover the library (hero banner and strip, details, notes, table, device banner), Device window, Preferences, palette, reader
@@ -153,3 +191,36 @@ palette, split menu). Missing:
 Statements to re-check when the app changes: shortcut tables (`src/app.rs`, `src/ui/editor/mod.rs`,
 `src/ui/reader.rs`), the Tools menu labels (`src/editor_tools.rs`), the format table (`bookx-cli formats`), the Share
 Library dialog (`src/ui/share.rs`), the news dialog (`src/ui/news.rs`).
+
+
+## Scenes to add (own vocabulary, wave 6)
+
+For the screenshot agent. All hooks are dev-script commands (see `build-aux/ui-tests-vocab.sh` for the exact use); the real-session
+scenarios `vocab_own_*` in `build-aux/session/scenarios_vocab.py` already produce usable pictures (`<results>/vocab_*-*.png`, light/dark,
+1280x800 and 900x600): `…-popover` (selection popover with the new **+ Add to Vocabulary** button), `…-dialog-typed` (the dialog),
+`…-marked` (the dotted underline), `…-term-popover` (definition popover with Edit / Remove / Open in Vocabulary), `vocab_lookup-after`
+(look-up popover with *Your definition* first).
+
+| Picture | How to set it up |
+|---|---|
+| Add to Vocabulary dialog | `reader:select-text=<word>`, `reader:ui-vocab-add`, `reader:ui-vocab-dialog=def=<text>` (no commas in dev scripts), `reader:ui-vocab-dialog=note=<text>`; shoot; `reader:ui-vocab-dialog=save` |
+| Marked terms on a page | `vocab:own=<word>|<definition>` before `read:N` (or the dialog); the dotted underline is on every occurrence |
+| Definition popover of a marked term | after the marks: `reader:ui-vocab-click`, wait 700 ms (the popover waits 320 ms for a double click), shoot |
+| Look-up popover with Your definition | `reader:select-text=<word>`, `reader:ui-dict` after saving a term |
+| Vocabulary Words page | `vocab:own=…` a few times, `vocab:show-words`; `vocab:list=filter=mine` / `search=…` for the filtered variants; `vocab:list=paste-open` and `vocab:list=paste-text=a; one\nb; two` for the paste dialog |
+| Terms in this book | `reader:ui-vocab-terms` |
+| My Vocabulary row of the dictionaries | `prefs:`, `prefs:pick=Reading` (the first row of the Dictionaries group) |
+| Preferences switch | same page, group *Vocabulary* below *Dictionaries*; `prefs:vocab-marks=off|on` flips it |
+
+## Picture layout and the comic fixture (wave 6)
+
+- Measured: all 258 framed pictures in `wiki/docs/assets` have equal left and right transparent margins (the generator frames symmetrically).
+  The crooked look came from the markup: a picture pair followed directly by an italic caption line is one Markdown paragraph, so the caption
+  ran on after the (visible) image and wrapped unevenly, and nothing centred the images. Now: `<figure markdown="1">` with `<figcaption>`, CSS in
+  `extra.css`, `check-wiki-pictures.py` rejects the old pattern.
+- Real off-centre risk found and fixed in the generator: `wshot(crop=...)` clamped the padding to the screen on one side only, so a dialog near a
+  screen edge was off-centre inside its picture. `centred_box` now limits the padding on both sides to the nearer edge (the pictures made before
+  this change were not all re-taken; retake a scene to benefit).
+- `check-wiki-centred.py` is wired into `wiki.sh`; it can only see the framed window, not whether the content inside a crop is centred.
+- The comic pictures use "Little Nemo in Slumberland" (Winsor McCay, 1905, public domain) when `build-aux/make-real-comic.py` can fetch it;
+  see `docs/test-books.md`. Panel detection on the real pages was not evaluated here, only the screenshots were looked at by script (no image viewer).

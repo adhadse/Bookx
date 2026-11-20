@@ -37,6 +37,7 @@ mod compare;
 mod completion;
 mod cover_dialog;
 mod css_transform_ui;
+mod ctrl_hover;
 mod dev;
 mod ext_dev;
 mod files;
@@ -50,7 +51,9 @@ mod jacket;
 mod keymap;
 mod live;
 mod live_css;
+mod long_line;
 mod markup_hints;
+mod markup_menu;
 mod meta;
 mod narration;
 mod nav;
@@ -72,6 +75,7 @@ mod spelling;
 mod spelling_dicts;
 mod split;
 mod struct_hub;
+mod style_actions;
 mod tags;
 mod toc_dnd;
 mod toc_tab;
@@ -222,7 +226,9 @@ struct W {
     tabs: adw::TabView,
     sidebar_stack: adw::ViewStack,
     files: gtk::ListBox,
-    toc_list: gtk::ListBox,
+    toc_list: gtk::ListView,
+    toc_store: gio::ListStore,
+    toc_sel: gtk::SingleSelection,
     meta_box: gtk::Box,
     results: gtk::ListBox,
     results_rev: gtk::Revealer,
@@ -330,12 +336,12 @@ fn file_icon(path: &str) -> &'static str {
 
 fn group_of(path: &str) -> &'static str {
     match extension(path).as_str() {
-        "xhtml" | "html" | "htm" | "xht" => "Text",
-        "css" => "Styles",
-        "opf" | "ncx" | "xml" => "Package",
-        e if is_image_path(&format!("x.{e}")) => "Images",
-        "ttf" | "otf" | "woff" | "woff2" => "Fonts",
-        _ => "Other",
+        "xhtml" | "html" | "htm" | "xht" => crate::i18n::N_("Text"),
+        "css" => crate::i18n::N_("Styles"),
+        "opf" | "ncx" | "xml" => crate::i18n::N_("Package"),
+        e if is_image_path(&format!("x.{e}")) => crate::i18n::N_("Images"),
+        "ttf" | "otf" | "woff" | "woff2" => crate::i18n::N_("Fonts"),
+        _ => crate::i18n::N_("Other"),
     }
 }
 
@@ -399,8 +405,17 @@ impl Editor {
             .archive
             .get_string(path)
             .unwrap_or_default();
+        let plain = codeview::too_big_to_colour(&text);
+        if plain {
+            codeview::mark_plain(&buf);
+        }
         set_text_irreversible(&buf, &text);
         buf.set_enable_undo(true);
+        if plain {
+            self.toast(&tr(
+                "Syntax colouring is off for this file because it has very long lines",
+            ));
+        }
         self.original
             .entry(path.to_string())
             .or_insert_with(|| text.clone());
@@ -412,6 +427,7 @@ impl Editor {
         let tx = self.sender.input_sender().clone();
         let p = path.to_string();
         buf.connect_changed(move |_| tx.emit(Input::BufferChanged(p.clone())));
+        format_actions::watch_slash(&buf, self.sender.input_sender().clone());
         let tx = self.sender.input_sender().clone();
         buf.connect_mark_set(move |_, _, mark| {
             if mark.name().as_deref() == Some("insert") {
@@ -491,14 +507,11 @@ impl Editor {
         }
         if is_text_path(path) {
             let buf = self.buffer_for(path);
-            self.w.view.set_buffer(Some(&buf));
-            self.w.center.set_visible_child_name("code");
-            codeview::fallback_highlight(&buf, path);
-            self.focus_search_context();
-            self.refresh_find_status();
-            self.schedule_live();
-            self.update_cursor_status();
-            self.refresh_preview_now();
+            if self.long_line_gate(path, &buf) {
+                self.refresh_preview_now();
+            } else {
+                self.show_code(path, &buf);
+            }
         } else if is_image_path(path) {
             let data = self
                 .book
@@ -540,6 +553,18 @@ impl Editor {
             self.w.center.set_visible_child_name("image");
         }
         self.update_title();
+    }
+
+    /// Puts `buf` into the code view and shows it.
+    fn show_code(&mut self, path: &str, buf: &sv::Buffer) {
+        self.w.view.set_buffer(Some(buf));
+        self.w.center.set_visible_child_name("code");
+        codeview::fallback_highlight(buf, path);
+        self.focus_search_context();
+        self.refresh_find_status();
+        self.schedule_live();
+        self.update_cursor_status();
+        self.refresh_preview_now();
     }
 
     fn update_cursor_status(&self) {
@@ -726,10 +751,12 @@ impl SimpleComponent for Editor {
             snippets: crate::editor_snippets::merged(&crate::editor_snippets::load()),
             region: Rc::default(),
             populated: (0, 0),
+            waits: Default::default(),
         }));
         completion::install(&view, comp.clone());
         let hints = markup_hints::Hints::new();
         markup_hints::install_tooltips(&view, hints.clone());
+        ctrl_hover::install(&view);
         navigate::install(&view, sender.input_sender().clone());
         format_actions::install_keys(&view, sender.input_sender().clone(), hints.clone());
         {
@@ -802,10 +829,23 @@ impl SimpleComponent for Editor {
             ))
             .build();
 
+        let ext_state = window_features::State::new();
+        {
+            // A dev script can wait for the real file monitor instead of guessing how long an
+            // external editor takes on a loaded machine.
+            let pending = ext_state.pending_external.clone();
+            crate::devtools::probe("editor-external-pending", move || {
+                pending.borrow().is_some()
+            });
+        }
         let center = gtk::Stack::new();
         center.add_named(&empty, Some("empty"));
         center.add_named(&code_row, Some("code"));
         center.add_named(&image_page, Some("image"));
+        center.add_named(
+            &long_line::long_line_page(sender.input_sender().clone(), &ext_state.structure),
+            Some("longline"),
+        );
         center.set_visible_child_name("empty");
 
         // preview
@@ -824,9 +864,9 @@ impl SimpleComponent for Editor {
         preview_title.set_hexpand(true);
         let colors_btn = gtk::MenuButton::new();
         colors_btn.set_icon_name("applications-graphics-symbolic");
-        colors_btn.set_tooltip_text(Some(
+        colors_btn.set_tooltip_text(Some(&tr(
             "Preview colours: theme, the book's original colours, or your own",
-        ));
+        )));
         colors_btn.add_css_class("flat");
         {
             let cur = Rc::new(RefCell::new(shared.cfg.borrow().reader.clone()));
@@ -1007,7 +1047,7 @@ impl SimpleComponent for Editor {
         files.set_header_func(|row, before| {
             let g = row.widget_name();
             if before.map(|b| b.widget_name()) != Some(g.clone()) {
-                let l = gtk::Label::new(Some(g.as_str()));
+                let l = gtk::Label::new(Some(&tr(g.as_str())));
                 l.add_css_class("caption-heading");
                 l.add_css_class("dim-label");
                 l.set_xalign(0.0);
@@ -1098,9 +1138,9 @@ impl SimpleComponent for Editor {
         }
         let files_more = gtk::MenuButton::new();
         files_more.set_icon_name("view-more-symbolic");
-        files_more.set_tooltip_text(Some(
+        files_more.set_tooltip_text(Some(&tr(
             "More file actions: merge, bulk rename, link stylesheets, export",
-        ));
+        )));
         files_more.set_menu_model(Some(&files_menu));
         files_more.add_css_class("flat");
         {
@@ -1138,22 +1178,9 @@ impl SimpleComponent for Editor {
         files_page.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
         files_page.append(&files_bar);
 
-        let toc_list = gtk::ListBox::new();
-        toc_list.add_css_class("navigation-sidebar");
-        toc_list.set_selection_mode(gtk::SelectionMode::Single);
-        {
-            let tx = sender.input_sender().clone();
-            toc_list.connect_row_selected(move |_, r| {
-                if let Some(r) = r {
-                    tx.emit(Input::TocSelect(r.index() as usize));
-                }
-            });
-            let tx = sender.input_sender().clone();
-            toc_list.connect_row_activated(move |_, r| tx.emit(Input::TocGo(r.index() as usize)));
-        }
-        let toc_scroll = gtk::ScrolledWindow::new();
-        toc_scroll.set_vexpand(true);
-        toc_scroll.set_child(Some(&toc_list));
+        let toc_ui = toc_tab::toc_list_new(sender.input_sender().clone(), &ext_state.structure);
+        let (toc_list, toc_store, toc_sel, toc_scroll) =
+            (toc_ui.list, toc_ui.store, toc_ui.sel, toc_ui.root);
         let toc_bar = adw::WrapBox::new();
         toc_bar.set_margin_all(6);
         toc_bar.set_child_spacing(2);
@@ -1203,17 +1230,22 @@ impl SimpleComponent for Editor {
         let meta_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
         let sidebar_stack = adw::ViewStack::new();
-        sidebar_stack.add_titled_with_icon(&files_page, Some("files"), "Files", "folder-symbolic");
+        sidebar_stack.add_titled_with_icon(
+            &files_page,
+            Some("files"),
+            &tr("Files"),
+            "folder-symbolic",
+        );
         sidebar_stack.add_titled_with_icon(
             &toc_page,
             Some("toc"),
-            "Contents",
+            &tr("Contents"),
             "view-list-symbolic",
         );
         sidebar_stack.add_titled_with_icon(
             &meta_box,
             Some("meta"),
-            "Metadata",
+            &tr("Metadata"),
             "document-properties-symbolic",
         );
         let switcher = adw::ViewSwitcherBar::new();
@@ -1332,67 +1364,8 @@ impl SimpleComponent for Editor {
             "Tools: fix, upgrade, compress, report, checkpoints",
         )));
         tools_btn.set_menu_model(Some(&tools_menu));
-        let edit_menu = gio::Menu::new();
-        {
-            let item = |label: &str, a: TagAction| {
-                let it = gio::MenuItem::new(Some(label), None);
-                it.set_action_and_target_value(Some("edit.tag"), Some(&a.id().to_variant()));
-                it
-            };
-            let t = gio::Menu::new();
-            t.append_item(&item(
-                &tr("Select to Matching Tag"),
-                TagAction::SelectMatching,
-            ));
-            t.append_item(&item(&tr("Jump to Matching Tag"), TagAction::JumpMatching));
-            t.append_item(&item(&tr("Close the Open Tag"), TagAction::CloseTag));
-            edit_menu.append_section(None, &t);
-            let w = gio::Menu::new();
-            w.append_item(&item(&tr("Wrap Selection in Tag"), TagAction::Wrap));
-            w.append_item(&item(&tr("Remove Surrounding Tag"), TagAction::Unwrap));
-            w.append_item(&item(&tr("Rename Tag"), TagAction::Rename));
-            w.append_item(&item(&tr("Toggle Comment"), TagAction::Comment));
-            edit_menu.append_section(None, &w);
-            let h = gio::Menu::new();
-            h.append_item(&item(&tr("Paragraph"), TagAction::Heading(0)));
-            for n in 1..=6u8 {
-                h.append_item(&item(&trf("Heading {}", &[&n]), TagAction::Heading(n)));
-            }
-            edit_menu.append_submenu(Some(&tr("Change Block to")), &h);
-            let c = gio::Menu::new();
-            c.append_item(&item(&tr("UPPERCASE"), TagAction::Case(CaseChange::Upper)));
-            c.append_item(&item("lowercase", TagAction::Case(CaseChange::Lower)));
-            c.append_item(&item(&tr("Title Case"), TagAction::Case(CaseChange::Title)));
-            c.append_item(&item(&tr("sWAP cASE"), TagAction::Case(CaseChange::Swap)));
-            edit_menu.append_submenu(Some(&tr("Change Case")), &c);
-            let code_item = |label: &str, id: &str| {
-                let it = gio::MenuItem::new(Some(label), None);
-                it.set_action_and_target_value(Some("edit.code"), Some(&id.to_variant()));
-                it
-            };
-            let fm = gio::Menu::new();
-            for f in bookx_editing::code_format::Format::ALL {
-                fm.append_item(&code_item(&format_actions::format_label(f), f.id()));
-            }
-            edit_menu.append_submenu(Some(&tr("Format")), &fm);
-            let ins = gio::Menu::new();
-            ins.append_item(&code_item(&tr("Insert Hyperlink"), "link"));
-            ins.append_item(&code_item(&tr("Insert Image"), "image"));
-            ins.append_item(&code_item(&tr("Split Tag at Caret"), "split"));
-            ins.append_item(&code_item(&tr("Go to Definition"), "goto"));
-            ins.append_item(&code_item(&tr("Sort CSS Rules"), "sort-css"));
-            edit_menu.append_section(None, &ins);
-        }
-        {
-            let v = gio::Menu::new();
-            v.append(Some(&tr("Show Minimap")), Some("view.minimap"));
-            v.append(Some(&tr("Show Hidden Characters")), Some("view.whitespace"));
-            v.append(Some(&tr("Manage Snippets")), Some("view.snippets"));
-            v.append(Some(&tr("Insert Special Character")), Some("view.special"));
-            v.append(Some(&tr("Convert Typed Entities")), Some("view.entities"));
-            markup_hints::append_view_menu(&v);
-            edit_menu.append_section(None, &v);
-        }
+        let markup_built = markup_menu::build();
+        let edit_menu = markup_built.root.clone();
         let edit_btn = gtk::MenuButton::new();
         edit_btn.set_icon_name("format-text-markup-symbolic");
         edit_btn.set_tooltip_text(Some(&tr(
@@ -1656,7 +1629,7 @@ impl SimpleComponent for Editor {
             preview_head: &preview_head,
             win: &win,
             tools_menu: &tools_menu,
-            edit_menu: &edit_menu,
+            edit_menu: &markup_built.structure,
             sidebar_stack: &sidebar_stack,
             center: &center,
             toc_add: &|w| toc_bar.append(w),
@@ -1678,6 +1651,8 @@ impl SimpleComponent for Editor {
             sidebar_stack,
             files,
             toc_list,
+            toc_store,
+            toc_sel,
             meta_box,
             results,
             results_rev,
@@ -1771,13 +1746,19 @@ impl SimpleComponent for Editor {
             last_toast: RefCell::new(String::new()),
             tabs_guard,
             pv,
-            ext: window_features::State::new(),
+            ext: ext_state,
             hints: hints.clone(),
         };
         model.rebuild_files();
         model.rebuild_toc();
         model.rebuild_meta();
         model.update_title();
+        {
+            // the Markup and Tools menus show the keys of the registry (the preview and the tool sections are
+            // added to them above, so the labels go on once everything is in)
+            let menus = [edit_menu.clone(), tools_menu.clone()];
+            glib::idle_add_local_once(move || markup_menu::keep_accels(&menus));
+        }
         model.ext_install();
 
         // open the first chapter

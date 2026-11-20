@@ -43,15 +43,15 @@ impl Default for SyncPrefs {
 }
 
 /// Title and subtitle of the "add my notes" switch (Device window and Preferences).
-pub const NOTES_TITLE: &str = "Add my notes to the copy sent to the device";
-pub const NOTES_SUBTITLE: &str = "The copy on the device gets an extra “My notes” section at the end (readable in any e-reader app) and a KOReader notes file, so KOReader lists them too. Your library copy is not changed.";
+pub const NOTES_TITLE: &str = crate::i18n::N_("Add my notes to the copy sent to the device");
+pub const NOTES_SUBTITLE: &str = crate::i18n::N_("The copy on the device gets an extra “My notes” section at the end (readable in any e-reader app) and a KOReader notes file, so KOReader lists them too. Your library copy is not changed.");
 
 /// Title and subtitle of the automatic sync switch.
-pub const AUTO_SYNC_TITLE: &str = "Sync automatically when a device connects";
-pub const AUTO_SYNC_SUBTITLE: &str = "For e-readers plugged in with a cable. Bookx reads the progress, highlights and notes the device keeps and merges them with your library: progress only moves forward, notes are united, nothing is deleted.";
+pub const AUTO_SYNC_TITLE: &str = crate::i18n::N_("Sync automatically when a device connects");
+pub const AUTO_SYNC_SUBTITLE: &str = crate::i18n::N_("For e-readers plugged in with a cable. Bookx reads the progress, highlights and notes the device keeps and merges them with your library: progress only moves forward, notes are united, nothing is deleted.");
 
 /// The longer explanation behind the "?" button of the automatic sync switch.
-pub const AUTO_SYNC_HELP: &str = "This is about a device plugged in with a USB cable (or mounted in Files).\n\nWhen you plug in a Kobo, Kindle or similar reader, Bookx reads the reading progress and the highlights and notes the device keeps: from the Kobo’s own database, or from KOReader’s “.sdr” files if KOReader is installed on it. It merges them with your library. Progress only moves forward, highlights and notes are united, and nothing is deleted on either side.\n\nA Kobo needs no KOReader for this; its own reading state is read. A Kindle’s own state is not readable, only KOReader’s files. If the device has no readable state, nothing happens. Reading progress is never written to the device; notes go to it only as a new KOReader notes file where there is none.\n\nOff by default: you are asked first, with a summary of what will change.";
+pub const AUTO_SYNC_HELP: &str = crate::i18n::N_("This is about a device plugged in with a USB cable (or mounted in Files).\n\nWhen you plug in a Kobo, Kindle or similar reader, Bookx reads the reading progress and the highlights and notes the device keeps: from the Kobo’s own database, or from KOReader’s “.sdr” files if KOReader is installed on it. It merges them with your library. Progress only moves forward, highlights and notes are united, and nothing is deleted on either side.\n\nA Kobo needs no KOReader for this; its own reading state is read. A Kindle’s own state is not readable, only KOReader’s files. If the device has no readable state, nothing happens. Reading progress is never written to the device; notes go to it only as a new KOReader notes file where there is none.\n\nOff by default: you are asked first, with a summary of what will change.");
 
 /// A highlight or note as the device has it.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -61,6 +61,9 @@ pub struct DeviceNote {
     pub text: String,
     pub note: String,
     pub created: Option<DateTime<Utc>>,
+    /// Colour and style as stored words (`bookx_core::devstyle`); `None` when the device says nothing.
+    pub color: Option<String>,
+    pub style: Option<String>,
 }
 
 /// What a device knows about one of its books.
@@ -84,6 +87,8 @@ pub struct LibraryBook {
     /// Seconds since the epoch.
     pub last_read: Option<i64>,
     pub highlights: Vec<Highlight>,
+    /// What the devices said the look of highlights was the last time (`devstyle::DeviceLooks`).
+    pub looks: BTreeMap<String, crate::core::devstyle::Look>,
 }
 
 pub fn library_books(books: &[Book]) -> Vec<LibraryBook> {
@@ -102,13 +107,46 @@ pub fn library_books(books: &[Book]) -> Vec<LibraryBook> {
                 .filter(|h| !crate::pdf::is_pdf(h))
                 .cloned()
                 .collect(),
+            looks: BTreeMap::new(),
         })
         .collect()
+}
+
+/// Adds what the devices said about the look of highlights last time, so a re-read does not undo
+/// what the reader changed in Bookx since.
+pub fn attach_looks(books: &mut [LibraryBook], root: &Path) {
+    let ledger = crate::core::devstyle::DeviceLooks::load(root);
+    for b in books {
+        b.looks = ledger.of_book(b.id);
+    }
 }
 
 /// Finds where a quote sits in a book, as the position a library highlight is stored with.
 pub trait Locator {
     fn locate(&self, book_id: u64, text: &str) -> Option<(usize, i32, i32)>;
+
+    /// Like [`Locator::locate`] when the device named the chapter the quote is in (used to choose
+    /// between chapters that hold the same words).
+    fn locate_in(
+        &self,
+        book_id: u64,
+        text: &str,
+        _chapter: Option<&str>,
+    ) -> Option<(usize, i32, i32)> {
+        self.locate(book_id, text)
+    }
+
+    /// Like [`Locator::locate_in`] for a quote that is already highlighted at the places in `taken`
+    /// (`(spine, start, end)`): another place that holds the same words, if there is one.
+    fn locate_other(
+        &self,
+        _book_id: u64,
+        _text: &str,
+        _chapter: Option<&str>,
+        _taken: &[(usize, i32, i32)],
+    ) -> Option<(usize, i32, i32)> {
+        None
+    }
 }
 
 /// Receives the notes that go to the device.
@@ -179,9 +217,13 @@ pub struct BookPlan {
     /// The library is further along than the device; nothing is done about it.
     pub library_ahead: Option<(f64, f64)>,
     pub highlights_in: Vec<Incoming>,
+    /// The colour and style of highlights the library has and the device read says (see
+    /// `look_sync`).
+    pub looks_in: Vec<crate::look_sync::LookIn>,
     /// `(highlight id, note)`: the device has a note on a highlight the library has without one.
     pub notes_in: Vec<(String, String)>,
-    /// Device notes that could not be placed in the book (kept on the device, not imported).
+    /// Device notes whose text could not be found in the book: they are in `highlights_in` as
+    /// notes without a place (`start < 0`, see `bookx_core::anchor`), never at a guessed place.
     pub unplaced: usize,
     pub out: Vec<Outgoing>,
     /// Library highlights the device copy lacks but cannot take (it has a notes file of its own).
@@ -198,6 +240,7 @@ impl BookPlan {
     pub fn is_empty(&self) -> bool {
         self.progress.is_none()
             && self.highlights_in.is_empty()
+            && !self.looks_in.iter().any(|l| l.set.is_some())
             && self.notes_in.is_empty()
             && self.out.is_empty()
     }
@@ -373,14 +416,20 @@ pub fn plan(device: &[DeviceReading], library: &[LibraryBook], locator: &dyn Loc
                 continue;
             }
             let known = seen.entry(bid).or_default();
-            let key = syncplan::norm(&n.text);
+            let text_key = syncplan::norm(&n.text);
+            // the same words in another colour or style are another highlight
+            let key = format!(
+                "{text_key}|{}|{}",
+                n.color.as_deref().unwrap_or(""),
+                n.style.as_deref().unwrap_or("")
+            );
             if known.contains(&key) {
                 // a second device copy of the same quote: keep the one with the note
                 if !n.note.trim().is_empty() {
                     if let Some(i) = bp
                         .highlights_in
                         .iter_mut()
-                        .find(|h| syncplan::norm(&h.note.text) == key)
+                        .find(|h| syncplan::norm(&h.note.text) == text_key)
                     {
                         if i.note.note.trim().is_empty() {
                             i.note.note = n.note.clone();
@@ -397,7 +446,66 @@ pub fn plan(device: &[DeviceReading], library: &[LibraryBook], locator: &dyn Loc
                     start,
                     end,
                 }),
-                None => bp.unplaced += 1,
+                None => {
+                    // never at a guessed place: a note without a place, kept with its text
+                    let (spine, start, end) = crate::core::anchor::unplaced(0);
+                    bp.highlights_in.push(Incoming {
+                        note: n.clone(),
+                        spine,
+                        start,
+                        end,
+                    });
+                    bp.unplaced += 1;
+                }
+            }
+        }
+        // colour and style: which library highlight each device row is, what the device changed,
+        // and rows that are a second highlight of words the library has in another colour
+        let mut claimed = HashSet::new();
+        for n in &reading.notes {
+            if identity(&n.text).is_empty() {
+                continue;
+            }
+            if n.id
+                .as_ref()
+                .is_some_and(|id| book.highlights.iter().any(|h| h.id == *id))
+            {
+                // the device kept our own id: that is the highlight itself
+                claimed.extend(n.id.clone());
+                continue;
+            }
+            let want = crate::look_sync::want_of(&n.color, &n.style);
+            match crate::look_sync::pick(
+                &book.highlights,
+                &book.looks,
+                &mut claimed,
+                &n.text,
+                &want,
+            ) {
+                crate::look_sync::Pick::Existing(l) => {
+                    if !bp.looks_in.iter().any(|x| x.id == l.id) {
+                        bp.looks_in.push(l);
+                    }
+                }
+                crate::look_sync::Pick::New => {
+                    let represented = bp.highlights_in.iter().any(|i| {
+                        identity(&i.note.text) == identity(&n.text)
+                            && crate::look_sync::want_of(&i.note.color, &i.note.style) == want
+                    });
+                    if !represented {
+                        let (spine, start, end) =
+                            locator.locate(bid, &n.text).unwrap_or_else(|| {
+                                bp.unplaced += 1;
+                                crate::core::anchor::unplaced(0)
+                            });
+                        bp.highlights_in.push(Incoming {
+                            note: n.clone(),
+                            spine,
+                            start,
+                            end,
+                        });
+                    }
+                }
             }
         }
         // notes the library lacks on highlights it has
@@ -580,9 +688,10 @@ impl Summary {
         }
         if self.unplaced > 0 {
             v.push(format!(
-                "{} on the device could not be located in the book and {} on the device",
+                "{} on the device could not be located in the book and {} added as {} without a place (listed in the notes, not painted on the page)",
                 plural(self.unplaced, "highlight", "highlights"),
-                if self.unplaced == 1 { "stays" } else { "stay" },
+                if self.unplaced == 1 { "is" } else { "are" },
+                if self.unplaced == 1 { "a note" } else { "notes" },
             ));
         }
         if v.is_empty() {
@@ -645,6 +754,11 @@ pub struct Applied {
     pub progress: usize,
     pub highlights: usize,
     pub notes: usize,
+    /// Highlights that took a new colour or style from the device.
+    pub recolored: usize,
+    /// What the device said the look of highlights is: `(book id, highlight id, look)`, for the
+    /// ledger (`devstyle::DeviceLooks`).
+    pub ledger: Vec<(u64, String, crate::core::devstyle::Look)>,
 }
 
 /// Applies the library side of one book's plan. Progress never goes down, highlights are only
@@ -671,7 +785,12 @@ pub fn apply_book(book: &mut Book, plan: &BookPlan, now: DateTime<Utc>) -> Appli
         }
     }
     for i in &plan.highlights_in {
-        if book.highlights.iter().any(|h| same_note(h, &i.note)) {
+        let want = crate::look_sync::want_of(&i.note.color, &i.note.style);
+        if book
+            .highlights
+            .iter()
+            .any(|h| same_note(h, &i.note) && crate::look_sync::has_look(h, &want))
+        {
             continue;
         }
         let id = i
@@ -684,12 +803,20 @@ pub fn apply_book(book: &mut Book, plan: &BookPlan, now: DateTime<Utc>) -> Appli
             spine: i.spine,
             start: i.start,
             end: i.end,
-            color: "yellow".into(),
-            style: String::new(),
+            color: want.0.clone().unwrap_or_else(|| "yellow".into()),
+            style: want.1.clone().unwrap_or_default(),
             note: i.note.note.trim().to_string(),
             text: i.note.text.clone(),
             created: i.note.created.unwrap_or(now),
         });
+        if want.0.is_some() || want.1.is_some() {
+            let h = book.highlights.last().expect("just pushed");
+            done.ledger.push((
+                book.id,
+                h.id.clone(),
+                crate::core::devstyle::full_look(&h.color, &h.style),
+            ));
+        }
         done.highlights += 1;
     }
     done
@@ -698,15 +825,55 @@ pub fn apply_book(book: &mut Book, plan: &BookPlan, now: DateTime<Utc>) -> Appli
 pub fn apply_to_library(lib: &mut crate::core::library::Library, plan: &Plan) -> Applied {
     let now = Utc::now();
     let mut total = Applied::default();
+    let mut before = Vec::new();
     for b in &plan.books {
         if let Some(book) = lib.get_mut(b.book_id) {
             let a = apply_book(book, b, now);
             total.progress += a.progress;
             total.highlights += a.highlights;
             total.notes += a.notes;
+            total.ledger.extend(a.ledger);
+            let snapshot = book.highlights.clone();
+            let (n, ledger) = crate::look_sync::apply(&mut book.highlights, &b.looks_in);
+            total
+                .ledger
+                .extend(ledger.into_iter().map(|(id, l)| (b.book_id, id, l)));
+            if n > 0 {
+                total.recolored += n;
+                before.push((b.book_id, snapshot));
+            }
         }
     }
+    finish_looks(lib, &total, before);
     total
+}
+
+/// Remembers what the devices said about looks and logs colour changes taken from a device as one
+/// undoable step.
+pub fn finish_looks(
+    lib: &mut crate::core::library::Library,
+    total: &Applied,
+    before: Vec<(u64, Vec<Highlight>)>,
+) {
+    if !total.ledger.is_empty() {
+        let mut ledger = crate::core::devstyle::DeviceLooks::load(&lib.root);
+        for (book, id, look) in &total.ledger {
+            ledger.looks.insert(
+                crate::core::devstyle::DeviceLooks::key(*book, id),
+                look.clone(),
+            );
+        }
+        let _ = ledger.save(&lib.root);
+    }
+    if total.recolored > 0 {
+        lib.record_highlight_edit(
+            format!(
+                "Took the colour of {} highlights from the device",
+                total.recolored
+            ),
+            before,
+        );
+    }
 }
 
 /// Hands the outgoing notes to `sink`; returns how many were written and the problems.
@@ -755,10 +922,12 @@ pub fn banner_text(device: &str) -> String {
 
 /// Notes as the device reader (`bookx_serve::reading`) finds them: Kobo database, KOReader sidecars.
 fn note_of(n: &bookx_serve::reading::DeviceNote) -> DeviceNote {
+    // the creation time of the highlight (KOReader's `datetime` never changes); the time of the last edit
+    // only when the device says nothing else
     let when = n
-        .updated
+        .created
         .as_deref()
-        .or(n.created.as_deref())
+        .or(n.updated.as_deref())
         .and_then(bookx_serve::reading::parse_time)
         .and_then(|t| DateTime::from_timestamp(t, 0));
     let mut note = n.note.trim().to_string();
@@ -768,6 +937,8 @@ fn note_of(n: &bookx_serve::reading::DeviceNote) -> DeviceNote {
     }
     DeviceNote {
         id: None,
+        color: n.color.clone(),
+        style: n.style.clone(),
         text: n.text.clone(),
         note,
         created: when,
@@ -799,7 +970,13 @@ pub fn read_device(
                 path: b.path.clone(),
                 state: d.and_then(|d| d.state.clone()),
                 notes: d
-                    .map(|d| d.notes.iter().map(note_of).collect())
+                    .map(|d| {
+                        d.notes
+                            .iter()
+                            .filter(|n| !n.bookmark)
+                            .map(note_of)
+                            .collect()
+                    })
                     .unwrap_or_default(),
                 accepts_notes: sidecars && !bookx_serve::reading::sidecar_file(&b.path).exists(),
             }
@@ -833,96 +1010,96 @@ impl NoteSink for SidecarSink {
     }
 }
 
-/// Finds a quote in the text of the book's chapters (character offsets in the chapter text).
+/// Finds a quote in the text of the book's chapters: character offsets in the reader's text of
+/// the chapter ([`crate::core::doc::Doc::reader_text`], the numbers highlights are stored with and
+/// the reader paints by), found by the quote itself (see [`crate::core::anchor`]).
 pub struct BookLocator {
     pub root: PathBuf,
     pub files: BTreeMap<u64, String>,
+    opened: std::sync::Mutex<BTreeMap<u64, std::sync::Arc<OpenedBook>>>,
+}
+
+/// A book with its chapters parsed once for a whole import or sync.
+struct OpenedBook {
+    chapters: crate::core::anchor::BookChapters,
+    /// `(normalised title, spine index)` of the contents entries.
+    toc: Vec<(String, usize)>,
+}
+
+impl BookLocator {
+    pub fn new(root: PathBuf, files: BTreeMap<u64, String>) -> BookLocator {
+        BookLocator {
+            root,
+            files,
+            opened: Default::default(),
+        }
+    }
+
+    fn open(&self, book_id: u64) -> Option<std::sync::Arc<OpenedBook>> {
+        if let Some(b) = self.opened.lock().ok()?.get(&book_id) {
+            return Some(b.clone());
+        }
+        let file = self.files.get(&book_id)?;
+        let book = crate::core::book::OpenBook::open(&self.root.join(file)).ok()?;
+        let toc_entries = book.toc();
+        let chapters = crate::core::anchor::BookChapters::new(book);
+        let toc = crate::core::toc::flatten(&toc_entries)
+            .iter()
+            .filter_map(|t| {
+                let path = t.href.split('#').next().unwrap_or(&t.href);
+                Some((key(&t.title), chapters.index_of(path)?))
+            })
+            .filter(|(k, _)| !k.is_empty())
+            .collect();
+        let opened = std::sync::Arc::new(OpenedBook { chapters, toc });
+        self.opened.lock().ok()?.insert(book_id, opened.clone());
+        Some(opened)
+    }
 }
 
 impl Locator for BookLocator {
     fn locate(&self, book_id: u64, text: &str) -> Option<(usize, i32, i32)> {
-        let file = self.files.get(&book_id)?;
-        let book = crate::core::book::OpenBook::open(&self.root.join(file)).ok()?;
-        let want: Vec<char> = text.trim().chars().collect();
-        if want.len() < 8 {
-            return None;
-        }
-        for (spine, p) in book.spine_paths().iter().enumerate() {
-            let Some(doc) = book.chapter_doc(p) else {
-                continue;
-            };
-            let hay: Vec<char> = doc.to_text().chars().collect();
-            if let Some(pos) = hay.windows(want.len()).position(|w| w == want.as_slice()) {
-                return Some((spine, pos as i32, (pos + want.len()) as i32));
-            }
-            if let Some((a, b)) = find_loose(&hay, text) {
-                return Some((spine, a as i32, b as i32));
-            }
-        }
-        None
+        self.locate_in(book_id, text, None)
     }
-}
 
-fn loose_char(c: char) -> Option<char> {
-    match c {
-        '\u{ad}' | '\u{200b}' | '\u{feff}' => None,
-        '\u{2018}' | '\u{2019}' | '\u{201b}' => Some('\''),
-        '\u{201c}' | '\u{201d}' | '\u{201e}' => Some('"'),
-        '\u{2013}' | '\u{2014}' => Some('-'),
-        c if c.is_whitespace() => Some(' '),
-        c => Some(c),
+    fn locate_in(
+        &self,
+        book_id: u64,
+        text: &str,
+        chapter: Option<&str>,
+    ) -> Option<(usize, i32, i32)> {
+        let opened = self.open(book_id)?;
+        let hint = chapter
+            .map(key)
+            .filter(|k| !k.is_empty())
+            .and_then(|k| opened.toc.iter().find(|(t, _)| *t == k).map(|(_, s)| *s));
+        let r = crate::core::anchor::resolve(&opened.chapters, text, hint, None)?;
+        Some((r.spine, r.found.start as i32, r.found.end as i32))
     }
-}
 
-/// Finds `quote` in `hay` ignoring what devices and stores change in a quote: curly or straight
-/// quotes, dashes, runs of spaces and line breaks, soft hyphens. Returns the character range in
-/// `hay`.
-pub fn find_loose(hay: &[char], quote: &str) -> Option<(usize, usize)> {
-    let mut norm = String::new();
-    let mut origin: Vec<usize> = Vec::new();
-    let mut last_space = true;
-    for (i, &c) in hay.iter().enumerate() {
-        let Some(c) = loose_char(c) else { continue };
-        if c == ' ' {
-            if last_space {
-                continue;
-            }
-            last_space = true;
-        } else {
-            last_space = false;
-        }
-        norm.push(c);
-        origin.push(i);
+    fn locate_other(
+        &self,
+        book_id: u64,
+        text: &str,
+        chapter: Option<&str>,
+        taken: &[(usize, i32, i32)],
+    ) -> Option<(usize, i32, i32)> {
+        let opened = self.open(book_id)?;
+        let hint = chapter
+            .map(key)
+            .filter(|k| !k.is_empty())
+            .and_then(|k| opened.toc.iter().find(|(t, _)| *t == k).map(|(_, s)| *s));
+        let r = crate::core::anchor::resolve_avoiding(&opened.chapters, text, hint, taken)?;
+        Some((r.spine, r.found.start as i32, r.found.end as i32))
     }
-    let mut want = String::new();
-    let mut last_space = true;
-    for c in quote.trim().chars().filter_map(loose_char) {
-        if c == ' ' {
-            if last_space {
-                continue;
-            }
-            last_space = true;
-        } else {
-            last_space = false;
-        }
-        want.push(c);
-    }
-    let want = want.trim_end();
-    if want.chars().count() < 8 {
-        return None;
-    }
-    let byte = norm.find(want)?;
-    let first = norm[..byte].chars().count();
-    let last = first + want.chars().count() - 1;
-    Some((*origin.get(first)?, origin.get(last)? + 1))
 }
 
 /// A locator for the library's books.
 pub fn book_locator(lib: &crate::core::library::Library) -> BookLocator {
-    BookLocator {
-        root: lib.root.clone(),
-        files: lib.books.iter().map(|b| (b.id, b.file.clone())).collect(),
-    }
+    BookLocator::new(
+        lib.root.clone(),
+        lib.books.iter().map(|b| (b.id, b.file.clone())).collect(),
+    )
 }
 
 #[cfg(test)]
@@ -959,6 +1136,8 @@ mod tests {
             text: text.into(),
             note: note.into(),
             created: None,
+            color: None,
+            style: None,
         }
     }
 
@@ -970,6 +1149,7 @@ mod tests {
             progress,
             last_read: None,
             highlights: hs,
+            looks: Default::default(),
         }
     }
 
@@ -1394,6 +1574,9 @@ mod tests {
             chapter: None,
             created: Some("2026-05-06 07:08:09".into()),
             updated: None,
+            color: None,
+            style: None,
+            bookmark: false,
         };
         let d = note_of(&n);
         assert_eq!(d.note, "");
@@ -1513,6 +1696,9 @@ mod tests {
             "He said, \u{201c}Fear is the\n  mind\u{2014}killer.\u{201d} Then more."
                 .chars()
                 .collect();
+        let find_loose = |hay: &[char], q: &str| {
+            crate::core::anchor::locate_exact(hay, q, None).map(|f| (f.start, f.end))
+        };
         let (a, b) = find_loose(&hay, "\"Fear is the mind-killer.\"").unwrap();
         let found: String = hay[a..b].iter().collect();
         assert!(

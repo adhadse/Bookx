@@ -156,7 +156,7 @@ fn https_post_with_a_body_and_expect_continue() {
     let body = br#"{"username":"tls","password":"pw"}"#;
     s.write_all(
         format!(
-            "POST /users/create HTTP/1.1\r\nHost: x\r\nExpect: 100-continue\r\nContent-Length: {}\r\n\r\n",
+            "POST /bookx/users/create HTTP/1.1\r\nHost: x\r\nExpect: 100-continue\r\nContent-Length: {}\r\n\r\n",
             body.len()
         )
         .as_bytes(),

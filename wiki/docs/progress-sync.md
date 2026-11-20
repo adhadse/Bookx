@@ -1,25 +1,51 @@
-# Sync your reading position (KOSync)
+# Bookx sync (extended KOSync)
 
-Bookx can keep your place in step with KOReader and other apps through a **KOReader progress-sync (“KOSync”)
-server**: Bookx’s own server (see [Share Library](devices-and-sharing.md#share-library)), a self-hosted kosync, or
-the public one at `sync.koreader.rocks`. Only the **position** is synced, not highlights or notes (for those see
-[Import Highlights](annotations.md) and [Devices and sharing](devices-and-sharing.md)).
+**Bookx sync (extended KOSync)** keeps your reading position, and with the Bookx plugin your highlights, notes and
+bookmarks, in step between Bookx and KOReader over Wi-Fi. It is compatible with KOReader’s own KOSync progress
+protocol, so KOReader’s built-in *Progress sync* works against it too; Bookx’s extension adds highlights, notes and
+bookmarks over the same connection when the [Bookx plugin](koreader-sync.md) is installed in KOReader. From here on it is
+just **Bookx sync**.
+
+Everything is under **main menu → Sync** (what to use when, and one button) and **Preferences → Sync** (the setup).
+Nothing goes to a cloud: the server is your own computer, a self-hosted server you enter, or the public one at
+`sync.koreader.rocks` if you choose it.
 
 ## Set it up
 
-*Preferences → Sync → **Sync reading position (KOSync)***:
+<figure markdown="1">
+![Preferences, Sync](assets/preferences-sync-light.png#only-light)
+![Preferences, Sync](assets/preferences-sync-dark.png#only-dark)
+<figcaption markdown="1">Preferences → Sync: the setup checklist first, everything technical under Advanced.</figcaption>
+</figure>
 
-1. **Server address**: for Bookx’s own server the address KOReader shows in Share Library, ending in `/kosync`
-   (for example `http://192.168.1.5:8080/kosync`); for the public server `https://sync.koreader.rocks`.
-2. **User name** and **Password**. The password is kept in the system keyring, like the Share and e-mail passwords (the settings file only when there is no keyring).
-3. **Register** creates the account on the server (and logs in); **Log in** checks an account that already exists,
-   for example one made in KOReader. The result is shown next to the buttons.
-4. **Match books by** must be the same as in KOReader (*Tools → Progress sync → Document matching method*):
-   - **Partial MD5 of the file** (the default in both): books match when the files are byte-for-byte the same.
-     Renaming is fine, converting or editing the book changes the id.
-   - **File name**: books match when the file names are the same.
-5. **This device is called** is the name the other devices show (“Continue from *Bookx on my laptop*?”).
-6. Switch **Sync the reading position** on.
+*Preferences → Sync → **Setup checklist*** is a **stepper**: four numbered steps one under the other, each with a short status (for example *Off*, *alice*, *Copied*), a check mark when it is done and a line to the next step. The first step that is not done is open; click any step to open it (you can go back to a done one), click an open step to close it. The steps:
+
+1. **Turn on the Bookx sync server.** Starts the server on this computer so the e-reader can reach it over your
+   Wi-Fi or home network. The address for the e-reader appears below the switch, ending in `/bookx`
+   (for example `http://192.168.1.5:8080/bookx`) with a copy button.
+2. **Create your sync account.** Type any **User name** and **Password** and press **Register** (this also logs in).
+   There is no existing KOReader account: you make it here. These are what you type into Bookx Sync on the e-reader.
+   They are **not** the Share Library password. The result shows next to the buttons; if the name is taken, choose
+   another or press **Log in** if the account is yours.
+3. **Install the Bookx plugin on KOReader.** **Copy to the device** puts it in KOReader’s plugins folder on the
+   connected e-reader, or **Save to a folder** lets you copy it yourself. Without the plugin only the reading position
+   is synced. See [KOReader highlights and notes](koreader-sync.md).
+4. **Test on the device.** On the e-reader: open a book → top menu → More tools → **Bookx Sync** → **Sync now**.
+
+To use another server (a self-hosted one or `https://sync.koreader.rocks`) open **Advanced** and type its **Server
+address**; the same **User name**, **Password**, **Register** and **Log in** apply. Under **Advanced** you also find
+**Sync the reading position** (the switch for Bookx’s own reader), **Match books by** and **This device is called**:
+
+- **Match books by** must be the same as in KOReader (*Tools → Progress sync → Document matching method*):
+  - **Partial MD5 of the file** (the default in both): books match when the files are byte-for-byte the same.
+    Renaming is fine, converting or editing the book changes the id.
+  - **File name**: books match when the file names are the same.
+- **This device is called** is the name the other devices show (“Continue from *Bookx on my laptop*?”).
+
+**Sync highlights, notes and bookmarks** (*What Bookx sync does*) is **on by default**. It is independent of the server: while the server is off nothing listens, and once the server is on (step 1) the Bookx plugin can sync highlights, notes and bookmarks without any further switch. Turn it off there if you only want the reading position.
+
+The password is kept in the system keyring, like the Share Library and e-mail passwords (the settings file only when
+there is no keyring).
 
 ## What happens
 
@@ -31,6 +57,9 @@ the public one at `sync.koreader.rocks`. Only the **position** is synced, not hi
   along) is held back instead of overwriting it.
 - The reading position shown in your library follows what you read here; it is not changed by a position you did
   not accept.
+
+Highlights, notes and bookmarks are not part of the stock KOSync protocol; Bookx’s extension syncs them when the
+Bookx plugin is installed, see [KOReader highlights and notes](koreader-sync.md).
 
 ## Limits
 
@@ -45,4 +74,9 @@ the public one at `sync.koreader.rocks`. Only the **position** is synced, not hi
   later: when Bookx starts, every minute, and as soon as the network comes back. The pause between tries grows from
   30 seconds to an hour. A server that refuses your login drops the entry instead of trying for ever. Opening a book
   still needs the network to ask where you were.
-- Only the position is synced. Use [Import Highlights](annotations.md) for highlights and notes.
+- Without the plugin only the position is synced. Use the plugin, or [Import Highlights](annotations.md), for highlights and notes.
+
+## Using a reverse proxy
+
+To serve the sync endpoint under a name and real HTTPS (`https://bookx.lan/bookx`), see
+[Put Bookx behind a reverse proxy](reverse-proxy.md). Keep the `/bookx` prefix.

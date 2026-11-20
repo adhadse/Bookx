@@ -11,7 +11,7 @@ gi.require_version("Atspi", "2.0")
 from gi.repository import Atspi  # noqa: E402
 
 import atspi  # noqa: E402
-from harness import scenario  # noqa: E402
+from harness import Skip, scenario  # noqa: E402
 from scenarios_editor_tools import open_editor, status_line  # noqa: E402
 
 
@@ -422,4 +422,78 @@ def editor_code_tag_keys(c):
         text = code_view(c).get_text()
         c.shot("after-split")
         c.check("Ctrl+Alt+> splits the paragraph at the caret", "<p>one </p><p>two three</p>" in text or "<p>one</p><p>two three</p>" in text, text[-60:])
+    c.check("the app is still alive", c.is_alive())
+
+
+@scenario
+def editor_completion_vulkan(c):
+    """Regression (bugs.md): typing `<p class="pgheader">x</p>` fast closed and re-opened the completion popup in the
+    same millisecond; with GTK 4.24's Vulkan renderer mutter killed the app (`wl_surface already has a buffer
+    committed`, protocol error 71). The popup now answers 90 ms after the keystroke. Runs with the Vulkan renderer;
+    skipped when GTK does not get one in this session."""
+    c.start(extra_env={"GSK_RENDERER": "vulkan", "GSK_DEBUG": "renderer"})
+    log = open(f"{c.dir}/app.log", errors="replace").read() if c.sb else ""
+    if "GskVulkanRenderer" not in log:
+        raise Skip("GTK did not get the Vulkan renderer here")
+    if not c.check("Edit Book opens the editor window", open_editor(c)):
+        return
+    c.sb.key("Escape")
+    code = code_view(c)
+    c.click_node(code)
+    c.sb.key("Home", ("Control",))
+    for _ in range(3):
+        c.sb.type('<p class="pgheader">x</p>')
+        c.sb.key("Return")
+        time.sleep(0.3)
+    time.sleep(0.8)
+    c.shot("typed")
+    text = code_view(c).get_text()
+    c.check("the typed lines are in the page", text.count('class="pgheader"') >= 3, text[:160])
+    c.check("the app is still alive (no Wayland protocol error)", c.is_alive())
+    log = open(f"{c.dir}/app.log", errors="replace").read()
+    c.check("no 'already has a buffer committed' protocol error", "already has a buffer" not in log and "Error 71" not in log)
+
+
+@scenario
+def editor_ctrl_hover(c):
+    """Holding Ctrl with the real pointer over a link target underlines it (and releasing Ctrl takes it away); the
+    same pointer position without Ctrl changes nothing."""
+    from sandbox import keysym
+    c.start()
+    if not c.check("Edit Book opens the editor window", open_editor(c)):
+        return
+    c.sb.key("Escape")
+    open_file(c, "toc.xhtml")
+    code = code_view(c)
+    c.click_node(code)
+    c.sb.key("Home", ("Control",))
+    c.sb.type('<p class="pgheader">x</p>')
+    c.sb.key("Escape")
+    time.sleep(1.0)
+    code = code_view(c)
+    text = code.get_text()
+    i = text.find("pgheader")
+    cx, cy = char_center(c, code, i + 2)
+    x1, _ = char_center(c, code, i + 8)
+    box = (cx - 4, cy - 10, x1 + 4, cy + 10)
+    c.sb.move_to(cx, cy)
+    time.sleep(0.6)
+    plain = c.image("without-ctrl").crop(box)
+    c.sb._n("NotifyKeyboardKeysym", "(ub)", keysym("Control"), True)
+    try:
+        c.sb.move_by(1, 0)
+        time.sleep(0.8)
+        held = c.image("with-ctrl").crop(box)
+    finally:
+        c.sb._n("NotifyKeyboardKeysym", "(ub)", keysym("Control"), False)
+    time.sleep(0.8)
+    after = c.image("after-release").crop(box)
+    from PIL import ImageChops, ImageStat
+
+    def diff(a, b):
+        return ImageStat.Stat(ImageChops.difference(a, b).convert("L")).mean[0]
+
+    c.note(f"diff plain/held={diff(plain, held):.2f} plain/after={diff(plain, after):.2f} box={box}")
+    c.check("with Ctrl held the link target under the pointer is drawn differently (underline)", diff(plain, held) > 0.8, f"{diff(plain, held):.2f}")
+    c.check("releasing Ctrl brings the plain look back", diff(plain, after) < diff(plain, held) / 2, f"{diff(plain, after):.2f}")
     c.check("the app is still alive", c.is_alive())

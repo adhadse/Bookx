@@ -202,7 +202,7 @@ fn silent_connection_is_closed_without_a_reply() {
 fn stalled_body_gets_408() {
     let srv = start_fast(|_| {});
     let mut c = Client::connect(srv.addr());
-    c.send(b"POST /users/create HTTP/1.1\r\nHost: x\r\nContent-Length: 1000\r\n\r\n{\"user")
+    c.send(b"POST /bookx/users/create HTTP/1.1\r\nHost: x\r\nContent-Length: 1000\r\n\r\n{\"user")
         .unwrap();
     let started = Instant::now();
     let r = c.read_response(false).expect("408");
@@ -219,7 +219,7 @@ fn dripped_never_ending_body_hits_the_total_deadline() {
     let srv = start_fast(|_| {});
     let mut c = Client::connect(srv.addr());
     c.set_timeout(MS(50));
-    c.send(b"PUT /syncs/progress HTTP/1.1\r\nHost: x\r\nContent-Length: 1000000\r\n\r\n")
+    c.send(b"PUT /bookx/syncs/progress HTTP/1.1\r\nHost: x\r\nContent-Length: 1000000\r\n\r\n")
         .unwrap();
     let started = Instant::now();
     let mut reply = None;
@@ -246,7 +246,8 @@ fn endless_flood_of_body_bytes_is_cut_at_content_length() {
     // garbage after the request, and must get a 400, not be buffered forever
     let srv = start_fast(|_| {});
     let mut c = Client::connect(srv.addr());
-    let mut raw = b"POST /users/create HTTP/1.1\r\nHost: x\r\nContent-Length: 10\r\n\r\n".to_vec();
+    let mut raw =
+        b"POST /bookx/users/create HTTP/1.1\r\nHost: x\r\nContent-Length: 10\r\n\r\n".to_vec();
     raw.extend_from_slice(b"0123456789");
     raw.extend_from_slice(&vec![b'z'; 2 * 1024 * 1024]);
     let _ = c.send(&raw);
@@ -270,7 +271,7 @@ fn partial_request_then_close_frees_the_slot() {
     for partial in [
         &b"GET /heal"[..],
         b"GET /healthcheck HTTP/1.1\r\nHost:",
-        b"POST /users/create HTTP/1.1\r\nContent-Length: 50\r\n\r\nabc",
+        b"POST /bookx/users/create HTTP/1.1\r\nContent-Length: 50\r\n\r\nabc",
         b"\r\n",
     ] {
         let mut c = Client::connect(srv.addr());
@@ -375,7 +376,7 @@ fn pipelined_requests_are_answered_in_order() {
     raw.extend_from_slice(b"GET /healthcheck HTTP/1.1\r\nHost: x\r\n\r\n");
     raw.extend_from_slice(format!("GET /nothing HTTP/1.1\r\nHost: x\r\n{auth}\r\n").as_bytes());
     raw.extend_from_slice(
-        b"POST /users/create HTTP/1.1\r\nHost: x\r\nContent-Length: 31\r\n\r\n{\"username\":\"p\",\"password\":\"q\"}",
+        b"POST /bookx/users/create HTTP/1.1\r\nHost: x\r\nContent-Length: 31\r\n\r\n{\"username\":\"p\",\"password\":\"q\"}",
     );
     raw.extend_from_slice(b"HEAD /healthcheck HTTP/1.1\r\nHost: x\r\n\r\n");
     raw.extend_from_slice(b"GET /healthcheck HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n");
@@ -851,7 +852,7 @@ fn expect_100_continue_flow() {
     let mut c = Client::connect(srv.addr());
     c.send(
         format!(
-            "POST /users/create HTTP/1.1\r\nHost: x\r\nExpect: 100-continue\r\nContent-Length: {}\r\n\r\n",
+            "POST /bookx/users/create HTTP/1.1\r\nHost: x\r\nExpect: 100-continue\r\nContent-Length: {}\r\n\r\n",
             body.len()
         )
         .as_bytes(),
@@ -871,7 +872,7 @@ fn expect_continue_is_not_sent_for_refused_requests() {
     let srv = start_fast(|_| {});
     let mut c = Client::connect(srv.addr());
     c.send(
-        b"POST /users/create HTTP/1.1\r\nHost: x\r\nExpect: 100-continue\r\nContent-Length: 99999999\r\n\r\n",
+        b"POST /bookx/users/create HTTP/1.1\r\nHost: x\r\nExpect: 100-continue\r\nContent-Length: 99999999\r\n\r\n",
     )
     .unwrap();
     let r = c.read_response(false).unwrap();
@@ -880,7 +881,7 @@ fn expect_continue_is_not_sent_for_refused_requests() {
 
     let r = once(
         srv.addr(),
-        b"POST /users/create HTTP/1.1\r\nExpect: banana\r\nContent-Length: 2\r\n\r\n{}",
+        b"POST /bookx/users/create HTTP/1.1\r\nExpect: banana\r\nContent-Length: 2\r\n\r\n{}",
     )
     .unwrap();
     assert_eq!(r.status, 417);
@@ -904,7 +905,7 @@ fn body_limit_over_http() {
     let r = once(
         srv.addr(),
         format!(
-            "POST /users/create HTTP/1.1\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{ok}",
+            "POST /bookx/users/create HTTP/1.1\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{ok}",
             ok.len()
         )
         .as_bytes(),
@@ -915,7 +916,7 @@ fn body_limit_over_http() {
     let mut c = Client::connect(srv.addr());
     c.send(
         format!(
-            "POST /users/create HTTP/1.1\r\nContent-Length: {}\r\n\r\n{big}",
+            "POST /bookx/users/create HTTP/1.1\r\nContent-Length: {}\r\n\r\n{big}",
             big.len()
         )
         .as_bytes(),
@@ -932,7 +933,7 @@ fn body_arriving_in_tiny_pieces_is_assembled() {
     let mut c = Client::connect(srv.addr());
     c.send(
         format!(
-            "POST /users/create HTTP/1.1\r\nHost: x\r\nContent-Length: {}\r\n\r\n",
+            "POST /bookx/users/create HTTP/1.1\r\nHost: x\r\nContent-Length: {}\r\n\r\n",
             body.len()
         )
         .as_bytes(),
@@ -954,7 +955,7 @@ fn one_mebibyte_body_is_accepted() {
     let mut c = Client::connect(srv.addr());
     c.send(
         format!(
-            "POST /users/create HTTP/1.1\r\nHost: x\r\nContent-Length: {}\r\n\r\n",
+            "POST /bookx/users/create HTTP/1.1\r\nHost: x\r\nContent-Length: {}\r\n\r\n",
             body.len()
         )
         .as_bytes(),
@@ -968,7 +969,7 @@ fn one_mebibyte_body_is_accepted() {
 #[test]
 fn chunked_bodies_are_cleanly_refused() {
     let srv = start_fast(|_| {});
-    let chunked = b"POST /users/create HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n";
+    let chunked = b"POST /bookx/users/create HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n";
     let r = once(srv.addr(), chunked).unwrap();
     assert_eq!(r.status, 501);
     assert_eq!(r.header("connection"), Some("close"));
@@ -981,7 +982,7 @@ fn chunked_bodies_are_cleanly_refused() {
     ] {
         let r = once(
             srv.addr(),
-            format!("PUT /syncs/progress HTTP/1.1\r\n{te}\r\n\r\n0\r\n\r\n").as_bytes(),
+            format!("PUT /bookx/syncs/progress HTTP/1.1\r\n{te}\r\n\r\n0\r\n\r\n").as_bytes(),
         )
         .unwrap();
         // hyper itself refuses a Transfer-Encoding that does not end in `chunked` with 400
@@ -995,7 +996,7 @@ fn chunked_bodies_are_cleanly_refused() {
     ] {
         let r = once(
             srv.addr(),
-            format!("PUT /syncs/progress HTTP/1.1\r\n{te}\r\n\r\n0\r\n\r\n").as_bytes(),
+            format!("PUT /bookx/syncs/progress HTTP/1.1\r\n{te}\r\n\r\n0\r\n\r\n").as_bytes(),
         );
         // either rejected outright, or (for the unknown header name) ignored and answered normally
         let r = r.unwrap();
@@ -1015,8 +1016,10 @@ fn request_smuggling_attempts_are_rejected() {
     ] {
         let mut c = Client::connect(srv.addr());
         c.send(
-            format!("POST /users/create HTTP/1.1\r\nHost: x\r\n{headers}\r\n0\r\n\r\n{smuggled}")
-                .as_bytes(),
+            format!(
+                "POST /bookx/users/create HTTP/1.1\r\nHost: x\r\n{headers}\r\n0\r\n\r\n{smuggled}"
+            )
+            .as_bytes(),
         )
         .unwrap();
         let r = c.read_response(false).unwrap();
@@ -1034,8 +1037,10 @@ fn request_smuggling_attempts_are_rejected() {
         "Content-Length: 5\r\ncontent-length: 6\r\n",
     ] {
         let mut c = Client::connect(srv.addr());
-        c.send(format!("POST /users/create HTTP/1.1\r\n{headers}\r\n12345{smuggled}").as_bytes())
-            .unwrap();
+        c.send(
+            format!("POST /bookx/users/create HTTP/1.1\r\n{headers}\r\n12345{smuggled}").as_bytes(),
+        )
+        .unwrap();
         assert_eq!(c.read_response(false).unwrap().status, 400, "{headers:?}");
         assert!(c.read_response(false).is_none(), "{headers:?}");
     }
@@ -1044,7 +1049,7 @@ fn request_smuggling_attempts_are_rejected() {
     let mut c = Client::connect(srv.addr());
     c.send(
         format!(
-            "POST /users/create HTTP/1.1\r\nContent-Length: 5\r\nContent-Length: 5\r\n\r\n12345{smuggled}"
+            "POST /bookx/users/create HTTP/1.1\r\nContent-Length: 5\r\nContent-Length: 5\r\n\r\n12345{smuggled}"
         )
         .as_bytes(),
     )
@@ -1055,7 +1060,8 @@ fn request_smuggling_attempts_are_rejected() {
     for v in ["+5", "-5", "5 5", "0x5", "5,5", "", "abc", "1e3"] {
         let r = once(
             srv.addr(),
-            format!("POST /users/create HTTP/1.1\r\nContent-Length: {v}\r\n\r\n12345").as_bytes(),
+            format!("POST /bookx/users/create HTTP/1.1\r\nContent-Length: {v}\r\n\r\n12345")
+                .as_bytes(),
         )
         .unwrap();
         assert_eq!(r.status, 400, "{v:?}");
@@ -1064,7 +1070,7 @@ fn request_smuggling_attempts_are_rejected() {
     // answered separately and in order (normal pipelining), never merged into the first
     let mut c = Client::connect(srv.addr());
     c.send(
-        format!("POST /users/create HTTP/1.1\r\nContent-Length: 2\r\n\r\n{{}}{smuggled}")
+        format!("POST /bookx/users/create HTTP/1.1\r\nContent-Length: 2\r\n\r\n{{}}{smuggled}")
             .as_bytes(),
     )
     .unwrap();
@@ -1112,6 +1118,8 @@ fn more_path_traversal_attempts() {
         "/./././etc/passwd",
         "/kosync/../../etc/passwd",
         "/kosync/%2e%2e/etc/passwd",
+        "/bookx/../../etc/passwd",
+        "/bookx/%2e%2e/etc/passwd",
         "/download/1.epub/../../../../etc/passwd",
         "/download/file:///etc/passwd",
         "/download//etc/passwd",
@@ -1214,14 +1222,14 @@ fn failed_kosync_logins_count_too() {
     for _ in 0..4 {
         let r = once(
             srv.addr(),
-            b"GET /users/auth HTTP/1.1\r\nx-auth-user: nobody\r\nx-auth-key: 00\r\nConnection: close\r\n\r\n",
+            b"GET /bookx/users/auth HTTP/1.1\r\nx-auth-user: nobody\r\nx-auth-key: 00\r\nConnection: close\r\n\r\n",
         )
         .unwrap();
         assert_eq!(r.status, 401);
     }
     let r = once(
         srv.addr(),
-        b"GET /users/auth HTTP/1.1\r\nx-auth-user: nobody\r\nx-auth-key: 00\r\nConnection: close\r\n\r\n",
+        b"GET /bookx/users/auth HTTP/1.1\r\nx-auth-user: nobody\r\nx-auth-key: 00\r\nConnection: close\r\n\r\n",
     )
     .unwrap();
     assert_eq!(r.status, 429);
@@ -1350,7 +1358,7 @@ fn shutdown_with_open_connections_is_prompt_and_closes_them() {
         .send(b"GET /opds HTTP/1.1\r\nHost: x\r\nX-Half")
         .unwrap();
     let mut body = Client::connect(addr);
-    body.send(b"POST /users/create HTTP/1.1\r\nContent-Length: 100\r\n\r\nabc")
+    body.send(b"POST /bookx/users/create HTTP/1.1\r\nContent-Length: 100\r\n\r\nabc")
         .unwrap();
     assert!(eventually(Duration::from_secs(2), || srv
         .open_connections()

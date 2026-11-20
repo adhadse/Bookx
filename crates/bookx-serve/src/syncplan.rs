@@ -256,10 +256,22 @@ fn title_matches(device_title: &str, library_title: &str) -> bool {
     !l.is_empty() && (d == l || (l.len() >= 4 && d.ends_with(&l)))
 }
 
+/// One author as a key that does not care about the order of the names: `Newman, Sam` and
+/// `Sam Newman` are the same person (the library keeps the first form, a device import gives the second).
+fn author_key(s: &str) -> String {
+    let mut words: Vec<String> = s
+        .split(|c: char| c.is_whitespace() || c == ',')
+        .map(norm)
+        .filter(|w| !w.is_empty())
+        .collect();
+    words.sort();
+    words.join(" ")
+}
+
 fn authors_overlap(a: &[String], b: &[String]) -> Option<bool> {
     let (a, b): (Vec<_>, Vec<_>) = (
-        a.iter().map(|s| norm(s)).collect(),
-        b.iter().map(|s| norm(s)).collect(),
+        a.iter().map(|s| author_key(s)).collect(),
+        b.iter().map(|s| author_key(s)).collect(),
     );
     if a.iter().all(|s| s.is_empty()) || b.iter().all(|s| s.is_empty()) {
         return None;
@@ -783,6 +795,26 @@ mod tests {
         assert!(lib[0].notes.len() == 3 && dev[0].notes.len() == 3);
         assert_eq!(lib[1].status, Status::Finished);
         assert_eq!(dev[1].status, Status::Finished);
+    }
+
+    #[test]
+    fn authors_match_whatever_the_order_of_their_names() {
+        let mut lib = book("1", "Building Microservices", 0.0, vec![]);
+        lib.authors = vec!["Newman, Sam".into()];
+        let lib = [lib];
+        // what the device import gives for KOReader's "Newman, Sam;"
+        assert_eq!(
+            pair(&lib, "Building Microservices", &["Sam Newman".into()]),
+            Pairing::One(0)
+        );
+        assert_eq!(
+            pair(&lib, "Building Microservices", &["Newman, Sam".into()]),
+            Pairing::One(0)
+        );
+        assert_eq!(
+            pair(&lib, "Building Microservices", &["Someone Else".into()]),
+            Pairing::NoBook
+        );
     }
 
     #[test]

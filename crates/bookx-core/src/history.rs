@@ -90,6 +90,11 @@ pub enum OpKind {
         format: crate::formats::FormatFile,
         trashed: String,
     },
+    /// The place of highlights was re-checked against the book's text: the highlights of every
+    /// book that changed, as they were.
+    RepairHighlights {
+        before: Vec<(u64, Vec<crate::library::Highlight>)>,
+    },
     /// Files were moved to follow a layout change or a bulk rename.
     Move { moves: Vec<BookMove> },
 }

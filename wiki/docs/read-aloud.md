@@ -49,6 +49,13 @@ reading your own books.
 
 ## The player card
 
+<figure markdown="1">
+![The read-aloud player card](assets/read-aloud-card-light.png#only-light)
+![The read-aloud player card](assets/read-aloud-card-dark.png#only-dark)
+<figcaption markdown="1">The player card while reading: sentence by sentence, with pause, next and previous.</figcaption>
+</figure>
+
+
 While reading aloud, a small player floats over the page (it is not a menu, so clicking the page does not close it).
 It is **small by default** (at most about 360 × 120 px, so it hides little text): the cover, the title and the sentence
 on one line, **previous / next sentence** and **play / pause**. The arrow button opens the **full player**: the
@@ -84,6 +91,13 @@ work too: Bookx shows up as a media player named *Bookx* while it reads.
 
 ## The speaker button
 
+<figure markdown="1">
+![The read-aloud popover](assets/read-aloud-menu-light.png#only-light)
+![The read-aloud popover](assets/read-aloud-menu-dark.png#only-dark)
+<figcaption markdown="1">The speaker button: play, stop, speed, pitch, voice, a sleep timer, saving audio and the voice settings.</figcaption>
+</figure>
+
+
 ![The read aloud popover](assets/read-aloud-popover-light.png#only-light){ align=right width="260" }
 ![The read aloud popover](assets/read-aloud-popover-dark.png#only-dark){ align=right width="260" }
 
@@ -104,6 +118,13 @@ leaves no half-written file. WAV files are large (about 3 MB per minute with Kok
 `ffmpeg -i chapter.wav chapter.mp3` if you want MP3 or OGG.
 
 ## Narrating a book (media overlays)
+
+<figure markdown="1">
+![The Add Narration dialog](assets/editor-narration-light.png#only-light)
+![The Add Narration dialog](assets/editor-narration-dark.png#only-dark)
+<figcaption markdown="1">Add Narration says how many chapters, how long it will be and how much disk space it needs before it starts.</figcaption>
+</figure>
+
 
 *Tools → Add Narration* in the editor reads the whole book with your voice and stores the audio **inside the EPUB** as
 an EPUB 3 *media overlay*: one audio file per chapter, a SMIL file that says which sentence is spoken when, and the
@@ -126,6 +147,13 @@ reading systems will not play it. Check Book reports this as a usage note. A sen
 takes a few times longer than listening on a slow computer.
 
 ## Settings
+
+<figure markdown="1">
+![Preferences, Text to Speech](assets/preferences-tts-light.png#only-light)
+![Preferences, Text to Speech](assets/preferences-tts-dark.png#only-dark)
+<figcaption markdown="1">Preferences → Text to Speech: voice engine, speed, pitch, models and a test button.</figcaption>
+</figure>
+
 
 **Preferences → Text to Speech**:
 

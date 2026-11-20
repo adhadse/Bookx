@@ -3,9 +3,11 @@
 The editor is for fixing and polishing EPUB files. Open it from the library with right-click → *Edit Book*
 (or the details panel). Each book opens in its own window.
 
+<figure markdown="1">
 ![The book editor](assets/editor-light.png#only-light)
 ![The book editor](assets/editor-dark.png#only-dark)
-*Real screenshot.*
+<figcaption markdown="1">Real screenshot.</figcaption>
+</figure>
 
 ## Overview
 
@@ -21,9 +23,11 @@ is drawn by the same engine as the reader, so what you see is what the reader sh
 
 The code view is built on GtkSourceView, the editing widget of GNOME's own editors.
 
+<figure markdown="1">
 ![The code view with the minimap, the marks column and a misspelled word](assets/editor-light.png#only-light)
 ![The code view with the minimap, the marks column and a misspelled word](assets/editor-dark.png#only-dark)
-*Real screenshot.*
+<figcaption markdown="1">Real screenshot.</figcaption>
+</figure>
 
 - **Highlighting** for XHTML, XML, OPF, NCX, CSS (and SVG, JavaScript and Markdown files). The colours follow the app:
   light, dark, and a black-on-white scheme in e-ink mode.
@@ -37,6 +41,13 @@ The code view is built on GtkSourceView, the editing widget of GNOME's own edito
   the status line names it.
 
 ### Marks column
+
+<figure markdown="1">
+![The code view with line numbers and squiggles under misspelled words](assets/editor-code-light.png#only-light)
+![The code view with line numbers and squiggles under misspelled words](assets/editor-code-dark.png#only-dark)
+<figcaption markdown="1">The code view: line numbers, syntax colours, and red squiggles with a count in the marks column for possible misspellings.</figcaption>
+</figure>
+
 
 The narrow column left of the line numbers shows, per line:
 
@@ -53,12 +64,26 @@ run the check again.
 
 ### Spelling in the text
 
+<figure markdown="1">
+![The Spelling panel](assets/editor-spelling-light.png#only-light)
+![The Spelling panel](assets/editor-spelling-dark.png#only-dark)
+<figcaption markdown="1">The Spelling panel: every possibly misspelled word with its count, then *Change All*, *Ignore*, *Ignore in Book* and *Add to Dictionary*.</figcaption>
+</figure>
+
+
 Possibly misspelled words in XHTML files are underlined in red while you type, using the same Hunspell dictionary as
 Tools → *Check Spelling* (the book's language; none is bundled). Right-click a word for **Replace with**,
 **Ignore** (until the editor closes) and **Add to Dictionary** (kept in `spelling-words.txt` next to the settings).
 Files bigger than about 700 kB are not checked while typing.
 
 ### Completion
+
+<figure markdown="1">
+![The completion list after typing an angle bracket and two letters](assets/editor-completion-light.png#only-light)
+![The completion list after typing an angle bracket and two letters](assets/editor-completion-dark.png#only-dark)
+<figcaption markdown="1">Completion after `<di`: tag names with their kind and a *Details* button.</figcaption>
+</figure>
+
 
 Completion pops up while you type, or press ++ctrl+space++.
 
@@ -71,6 +96,13 @@ Completion pops up while you type, or press ++ctrl+space++.
 - in text: words from the open file and snippets whose trigger matches.
 
 ### Snippets
+
+<figure markdown="1">
+![The Manage Snippets dialog](assets/editor-snippets-light.png#only-light)
+![The Manage Snippets dialog](assets/editor-snippets-dark.png#only-dark)
+<figcaption markdown="1">Manage Snippets: your own triggers, the files they apply to and a test box.</figcaption>
+</figure>
+
 
 A snippet is a short word that expands into text with tab stops. Type the word and press ++tab++. Tab moves to the next
 stop, `${1:text}` stops hold a default, and the caret ends where `$0` is. Built in: `p` (paragraph), `h` (heading),
@@ -94,6 +126,13 @@ files** (XHTML or CSS; `{title}` is replaced by the name), the ones Files → **
 
 ### Editor preferences
 
+<figure markdown="1">
+![The Editor Preferences dialog](assets/editor-preferences-light.png#only-light)
+![The Editor Preferences dialog](assets/editor-preferences-dark.png#only-dark)
+<figcaption markdown="1">Editor Preferences: font, tabs, line numbers, margin guide, wrapping and the overview map.</figcaption>
+</figure>
+
+
 **Preferences → Editor** (also *Editor Preferences* in the editor's command palette, ++ctrl+shift+p++) sets
 how the code looks and behaves; every open editor window follows at once.
 
@@ -111,7 +150,24 @@ how the code looks and behaves; every open editor window follows at once.
 The cursor's width and blinking follow your desktop settings. Keyboard shortcuts of the editor are under
 **Preferences → Keyboard Shortcuts → Editor**.
 
+### Files with one very long line
+
+Some EPUBs are written without line breaks, so a whole chapter is a single line of hundreds of kilobytes. A text view
+cannot show such a line without freezing for seconds, so Bookx does not put the file into the code view. The code
+view shows a page that says so, with two choices: **Add Line Breaks and Open** puts the tags on separate lines (only the
+white space between tags changes; *Undo* takes it back) and **Open Anyway** shows the file as it is, which can make the
+editor stop responding for a few seconds. The preview of the chapter is not affected. Files of more than about 50 KB
+on one line are never coloured or underlined while they stay in one line; after line breaks are added they are
+coloured again.
+
 ## Files and tabs
+
+<figure markdown="1">
+![The Metadata tab of the editor](assets/editor-metadata-tab-light.png#only-light)
+![The Metadata tab of the editor](assets/editor-metadata-tab-dark.png#only-dark)
+<figcaption markdown="1">The *Metadata* tab: cover, title, authors and tags of the book you are editing.</figcaption>
+</figure>
+
 
 Files are grouped by type, with reading-order numbers.
 
@@ -136,9 +192,11 @@ Every change that touches the whole book first takes a checkpoint named "Before:
 
 ++ctrl+h++ or ++ctrl+f++ opens find and replace.
 
+<figure markdown="1">
 ![Find and replace in the editor](assets/editor-find-light.png#only-light)
 ![Find and replace in the editor](assets/editor-find-dark.png#only-dark)
-*Real screenshot.*
+<figcaption markdown="1">Real screenshot.</figcaption>
+</figure>
 
 - Modes: text, regular expression (look-around, `\1` back-references), **function mode** (a script decides each
   replacement), and **tag search** (elements and attributes). Searching **ignoring HTML markup** finds a phrase that is
@@ -166,6 +224,13 @@ browser.
 
 ### Underlines and colours
 
+<figure markdown="1">
+![A CSS rule with colour swatches behind the colour codes](assets/editor-swatches-light.png#only-light)
+![A CSS rule with colour swatches behind the colour codes](assets/editor-swatches-dark.png#only-dark)
+<figcaption markdown="1">Colour codes in a stylesheet are painted in their own colour.</figcaption>
+</figure>
+
+
 These are drawn while you type and can be switched off in the **View** part of the Markup menu:
 
 - **Invalid markup** has a red squiggle (unclosed or stray tags, duplicate or unquoted attributes, a bare `&`, unbalanced
@@ -181,7 +246,18 @@ open element when you type `</`; typing the rest of the closing tag yourself wor
 
 ## Tag actions
 
-The `<>` button opens the **Markup menu**:
+<figure markdown="1">
+![The Markup menu](assets/editor-markup-menu-light.png#only-light)
+![The Markup menu](assets/editor-markup-menu-dark.png#only-dark)
+<figcaption markdown="1">The Markup menu: Format, Insert, Structure, split at the caret, go to definition and sort CSS rules.</figcaption>
+</figure>
+
+
+The `<>` button opens the **Markup menu**. It has short pages so it never needs scrolling: **Format** (text styles,
+colour, alignment, case, block type), **Insert** (hyperlink, image, special character, snippets), **Structure** (matching
+tags, wrap, rename, comment, and the split entries), three commands (*Split Tag at Caret*, *Go to Definition*, *Sort CSS
+Rules*) and **View** (the switches of the editor). Where a command has a key, the menu shows it next to the item; the label
+follows the key when you change it in Preferences → Keyboard Shortcuts.
 
 | Action | Shortcut |
 |---|---|
@@ -195,6 +271,8 @@ The `<>` button opens the **Markup menu**:
 | Strikethrough, superscript, subscript, code | Format submenu; set keys in Preferences |
 | Insert hyperlink / insert image | ++ctrl+k++ / ++ctrl+alt+m++ |
 | Go to definition | ++f12++ or ++ctrl++ + click |
+| Text colour / background colour | Format → Colour; set keys in Preferences |
+| Align left / centre / right / justify | Format → Alignment; set keys in Preferences |
 | Sort CSS rules | menu only |
 | Rename a tag | ++ctrl+alt+r++ |
 | Toggle a comment | ++ctrl+slash++ |
@@ -206,10 +284,29 @@ element (or inside it: the element is closed and reopened around your selection)
 refused with a hint. **Insert Hyperlink** and **Insert Image** open a dialog: type a few letters of a file name to filter
 (abbreviations work), pick an anchor inside a page, set the link text, title or alt text, and read the markup that will be
 inserted before you press *Insert* (++enter++). With the caret inside a link, the dialog changes that link's address
-instead of adding a second one. **Sort CSS Rules** orders the plain rules by selector; at-rules and comments stay with
-their place.
+instead of adding a second one. **Sort CSS Rules** orders the plain rules by selector, also the rules inside `@media`,
+`@supports`, `@layer` and `@container` blocks (each block on its own); other at-rules and comments stay in their place.
+
+**Text colour** and **background colour** (Format → Colour) open the system colour chooser and wrap the selection in
+`<span style="color:#rrggbb">` (or `background-color`). Choosing the same colour again takes the span off, another colour
+replaces it, and *Remove Text Colour* / *Remove Background Colour* clear it. **Alignment** (Format → Alignment) writes
+`style="text-align:…"` on the paragraph, heading or other block around the caret; the same alignment again, or *Remove
+Alignment*, takes it off, and other style declarations of the block stay. Switch on **View → Use CSS Classes for Colours
+and Alignment** to get `class="color-ff0000"`, `class="bg-ffff00"` or `class="align-center"` instead; the rule is added to
+the book's first style sheet (and shown in the editor, so you can undo it there).
+
+Hold ++ctrl++ over a link target, a class name or an id and it is underlined and the pointer turns into a hand: a click
+there jumps to the target. Typing `</` closes the open tag also when the `/` comes from an input method (a compose key
+or an on-screen keyboard).
 
 ## Checking the book
+
+<figure markdown="1">
+![The problems panel after a book check](assets/editor-problems-light.png#only-light)
+![The problems panel after a book check](assets/editor-problems-dark.png#only-dark)
+<figcaption markdown="1">F7 lists the findings with their file and line; a click jumps there, and the panel explains the selected one.</figcaption>
+</figure>
+
 
 Press ++f7++ or use the check button. The **Problems** panel opens at the bottom of the editor: a list grouped by
 file, with a red, amber or blue icon per problem, the line and column, the check id (such as `OPF-003`) and count
@@ -314,9 +411,19 @@ The cursor's width and blinking follow your desktop settings. Keyboard shortcuts
 
 ## Table of contents
 
+<figure markdown="1">
+![The Contents tab of the editor](assets/editor-contents-tab-light.png#only-light)
+![The Contents tab of the editor](assets/editor-contents-tab-dark.png#only-dark)
+<figcaption markdown="1">The *Contents* tab: the table of contents as a tree; drag entries to move or re-nest them, then *Generate*.</figcaption>
+</figure>
+
+
 The contents editor renames, indents, reorders and links entries, and writes both `toc.ncx` and `nav.xhtml`.
 Selecting an entry opens its file at the anchor. *Generate* builds a contents from the headings (levels 1-6), from
 the links of a contents page, or one entry per file, replacing the current one or adding to it.
+
+The list only builds the rows in view, so a book with tens of thousands of entries still opens at once and scrolls
+smoothly.
 
 **Moving entries.** Drag the grip at the left of an entry onto another entry. Where you let go on the row decides:
 the top quarter puts the entry *before* it, the bottom quarter *after* it (and after its sub-entries), the middle
@@ -371,6 +478,13 @@ Tabs are built when you first open them; *Refresh* rebuilds them after edits.
 
 ## Special characters
 
+<figure markdown="1">
+![The Insert Special Character window](assets/editor-special-chars-light.png#only-light)
+![The Insert Special Character window](assets/editor-special-chars-dark.png#only-dark)
+<figcaption markdown="1">Insert Special Character: browse by block or search by name or code; Ctrl+click keeps the window open.</figcaption>
+</figure>
+
+
 **Markup menu → Insert Special Character** (++ctrl+alt+i++) shows every Unicode character by block, with a search by name
 or code (`acute`, `U+00E9`), your **favourites** (right-click a character to add, remove or move it) and the characters
 you used last. Click inserts the character at the caret, or into the find and replace field when that has the focus, and
@@ -391,7 +505,7 @@ The pane on the right shows the open chapter and follows what you do in the code
 |---|---|
 | Follow the cursor | the preview scrolls to the element at the cursor (on by default) |
 | Scrolling the code | the preview scrolls to show the same part of the page, also with the mouse wheel, the scrollbar and Page Up/Down |
-| Sync scrolling both ways | off by default: scrolling the preview then scrolls the code too; the setting is remembered |
+| Sync scrolling both ways | on by default: scrolling the preview also scrolls the code; switch it off in the preview toolbar or in the editor settings; the setting is remembered |
 | Click in the preview | puts the cursor at that element in the code |
 | Click a link of the book | opens the linked file in the editor and the preview |
 | Reload automatically | redraws the preview while you type; switch it off for big files and refresh with ++f5++ |
@@ -427,6 +541,13 @@ Only well-formed XHTML can be split.
 
 ## Compare and checkpoints
 
+<figure markdown="1">
+![The Checkpoints dialog](assets/editor-checkpoints-light.png#only-light)
+![The Checkpoints dialog](assets/editor-checkpoints-dark.png#only-dark)
+<figcaption markdown="1">Checkpoints: save a named copy of the whole book, compare it later or go back to it.</figcaption>
+</figure>
+
+
 Every tool takes a snapshot of the book first. Tools → *Checkpoints* lists them with time, size and file count; there
 you can create a named checkpoint, rename one, keep it when old ones are pruned, delete it, *Compare* it with the book
 or *Revert* the book to it (the state before the revert is kept too).
@@ -456,6 +577,13 @@ and it is read only: edit the stylesheet itself.
 
 ## Tools menu
 
+<figure markdown="1">
+![The Tools menu](assets/editor-tools-menu-light.png#only-light)
+![The Tools menu](assets/editor-tools-menu-dark.png#only-dark)
+<figcaption markdown="1">The Tools menu: fixes, EPUB 3, the submenus of dialogs, contents page, accessibility, images, fonts, splitting and the problems list.</figcaption>
+</figure>
+
+
 The first entries run at once; the grouped entries open a dialog that shows **what will change** (press *Preview*:
 the tool runs on a copy and lists the files with the lines before and after) and runs on a checkpoint, so one undo
 brings the old state back.
@@ -470,6 +598,13 @@ brings the old state back.
 
 ### Styles
 
+<figure markdown="1">
+![The Transform HTML dialog](assets/editor-transform-html-light.png#only-light)
+![The Transform HTML dialog](assets/editor-transform-html-dark.png#only-dark)
+<figcaption markdown="1">Transform HTML: build rules such as *Rename the tag*, preview which pages change, then apply.</figcaption>
+</figure>
+
+
 | Entry | What it does |
 |---|---|
 | Transform Styles | a rule builder: *If a property has a value, change it* (`color` is `red` → `green`), *Set a property everywhere*, *Remove a property* (`margin*` works), *Remove a property when it has a value*, *Multiply all font sizes*, *Make a font family italic*, *Rename a font family*, *Change one colour into another*. Rules apply in order to stylesheets, `<style>` blocks and style attributes. Save a list of rules under a name and load it later (also in other books) |
@@ -478,6 +613,19 @@ brings the old state back.
 | Filter Style Information | removes the ticked properties (with how often they are used) everywhere |
 
 ### Media and fonts
+
+<figure markdown="1">
+![The Set Cover dialog](assets/editor-set-cover-light.png#only-light)
+![The Set Cover dialog](assets/editor-set-cover-dark.png#only-dark)
+<figcaption markdown="1">Set Cover: pick an image of the book, a file, or a cover drawn from the title; optionally add a cover page.</figcaption>
+</figure>
+
+<figure markdown="1">
+![The Manage Fonts dialog](assets/editor-manage-fonts-light.png#only-light)
+![The Manage Fonts dialog](assets/editor-manage-fonts-dark.png#only-dark)
+<figcaption markdown="1">Manage Fonts: the fonts embedded in the book, a sample, and *Embed Fonts from this Computer*.</figcaption>
+</figure>
+
 
 | Entry | What it does |
 |---|---|
@@ -489,6 +637,19 @@ brings the old state back.
 
 ### Structure and accessibility
 
+<figure markdown="1">
+![The Book Jacket dialog](assets/editor-jacket-light.png#only-light)
+![The Book Jacket dialog](assets/editor-jacket-dark.png#only-dark)
+<figcaption markdown="1">Book Jacket: a page after the cover that lists the metadata, with the fields you want.</figcaption>
+</figure>
+
+<figure markdown="1">
+![The Accessibility Metadata form](assets/editor-a11y-form-light.png#only-light)
+![The Accessibility Metadata form](assets/editor-a11y-form-dark.png#only-dark)
+<figcaption markdown="1">Accessibility Metadata: a preset or *Suggest from the Book*, then the summary, access modes, features and hazards.</figcaption>
+</figure>
+
+
 | Entry | What it does |
 |---|---|
 | Set Semantics | says which page is the cover, title page, table of contents, foreword, dedication, index and so on (guide and, in EPUB 3, landmarks) |
@@ -497,6 +658,13 @@ brings the old state back.
 | Accessibility | three tabs: the book’s *Language*; *Image descriptions* (a text per image, *Decorative* for images a screen reader should skip, one text for every use of an image); *Accessibility metadata* (summary, access modes, features, hazards, conformance; EPUB 3) |
 
 ### Links
+
+<figure markdown="1">
+![The Insert Hyperlink dialog](assets/editor-insert-link-light.png#only-light)
+![The Insert Hyperlink dialog](assets/editor-insert-link-dark.png#only-dark)
+<figcaption markdown="1">Insert Hyperlink: filter the files of the book, pick an anchor, or type an address.</figcaption>
+</figure>
+
 
 | Entry | What it does |
 |---|---|
@@ -528,6 +696,19 @@ brings the old state back.
 
 ## File list extras
 
+<figure markdown="1">
+![The Rename Tag dialog](assets/editor-rename-tag-light.png#only-light)
+![The Rename Tag dialog](assets/editor-rename-tag-dark.png#only-dark)
+<figcaption markdown="1">Rename Tag changes an element and its closing tag together.</figcaption>
+</figure>
+
+<figure markdown="1">
+![The Bulk Rename dialog](assets/editor-bulk-rename-light.png#only-light)
+![The Bulk Rename dialog](assets/editor-bulk-rename-dark.png#only-dark)
+<figcaption markdown="1">Bulk Rename numbers the selected files in reading order and fixes the references.</figcaption>
+</figure>
+
+
 - **Order and groups.** Pages are listed in reading order, then stylesheets, images, fonts and package files, each
   alphabetically. A number shows the place in the reading order.
 - **Hover** a file for its path, size, type and what is special about it. Icons mark the package document, the
@@ -547,6 +728,13 @@ brings the old state back.
   configuration folder; they appear in *New File* (`{title}` in the text is replaced by the name you type).
 
 ## Book menu
+
+<figure markdown="1">
+![The Book menu of the editor](assets/editor-book-menu-light.png#only-light)
+![The Book menu of the editor](assets/editor-book-menu-dark.png#only-dark)
+<figcaption markdown="1">The Book menu: save a copy, open another book, revert, close tabs and reopen tabs next time.</figcaption>
+</figure>
+
 
 The ☰ button at the left of the header bar.
 

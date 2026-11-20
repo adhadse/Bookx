@@ -34,6 +34,8 @@ pub struct NoteActions {
     pub delete: Rc<dyn Fn()>,
     pub recolor: Option<Rc<dyn Fn(&str)>>,
     pub restyle: Option<Rc<dyn Fn(&str)>>,
+    /// A note whose text could not be found in the book: look for it again.
+    pub relocate: Option<Rc<dyn Fn()>>,
 }
 
 /// The pieces of a card that change when a row is reused for another highlight.
@@ -201,6 +203,20 @@ impl NoteCard {
         acts.append(&copy);
         acts.append(&delete);
         col.append(&acts);
+        if let Some(relocate) = &actions.relocate {
+            let b = gtk::Button::with_label(&tr("Locate again"));
+            b.add_css_class("flat");
+            b.set_tooltip_text(Some(&tr(
+                "Search the book for this text again and put the highlight back on the page",
+            )));
+            super::audit::label(&b, &tr("Locate again"));
+            let (f, p) = (relocate.clone(), close(&pop));
+            b.connect_clicked(move |_| {
+                p();
+                f();
+            });
+            col.append(&b);
+        }
 
         let mut colors = Vec::new();
         let mut styles = Vec::new();

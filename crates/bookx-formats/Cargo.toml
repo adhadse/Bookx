@@ -10,6 +10,7 @@ license = "GPL-3.0-or-later"
 [dependencies]
 bookx-core = { path = "../bookx-core" }
 bookx-pdf = { path = "../bookx-pdf" }
+bookx-comic = { path = "../bookx-comic" }
 anyhow = "1"
 base64 = "0.22"
 ego-tree = "0.11"

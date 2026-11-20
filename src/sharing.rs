@@ -26,6 +26,11 @@ pub struct ShareSettings {
     pub password: String,
     /// Also serve KOReader's progress-sync endpoints.
     pub kosync: bool,
+    /// Also take highlights, notes and bookmarks from the Bookx plugin of KOReader (on by default;
+    /// it only matters while the server runs with `kosync`, because it uses the same accounts).
+    pub annotations: bool,
+    /// The Bookx plugin was copied to a KOReader device or folder from the Sync page.
+    pub plugin_copied: bool,
     /// Serve HTTPS instead of HTTP.
     pub https: bool,
     /// PEM certificate chain for HTTPS; empty together with `key_file` means a self-signed
@@ -42,6 +47,8 @@ impl Default for ShareSettings {
             lan: false,
             password: String::new(),
             kosync: false,
+            annotations: true,
+            plugin_copied: false,
             https: false,
             cert_file: String::new(),
             key_file: String::new(),
@@ -119,6 +126,12 @@ pub fn server_config(
     if settings.kosync {
         let store = JsonFileStore::open(&data_dir.join("kosync.json"))?;
         cfg.kosync = Some(Arc::new(KoSync::new(Box::new(store), true)));
+        if settings.annotations {
+            let ann = bookx_serve::annotation_sync::AnnotationSync::open(
+                &data_dir.join("koreader-annotations.json"),
+            )?;
+            cfg.annotations = Some(Arc::new(ann));
+        }
     }
     Ok(cfg)
 }
@@ -184,6 +197,7 @@ pub fn tls_for(
 #[derive(Default)]
 pub struct Sharing {
     handle: Option<bookx_serve::server::ServerHandle>,
+    annotations: Option<Arc<bookx_serve::annotation_sync::AnnotationSync>>,
     settings: Option<ShareSettings>,
 }
 
@@ -202,11 +216,13 @@ impl Sharing {
     ) -> Result<Vec<String>> {
         self.stop();
         let cfg = server_config(settings, provider(root.to_path_buf()), data_dir)?;
+        let annotations = cfg.annotations.clone();
         let handle = bookx_serve::server::Server::start(cfg).map_err(|e| {
             anyhow::anyhow!("Could not start sharing on port {}: {e:#}", settings.port)
         })?;
         let urls = urls(settings, handle.addr().port());
         self.handle = Some(handle);
+        self.annotations = annotations;
         self.settings = Some(settings.clone());
         Ok(urls)
     }
@@ -216,6 +232,12 @@ impl Sharing {
             h.shutdown();
         }
         self.settings = None;
+        self.annotations = None;
+    }
+
+    /// The KOReader annotation store of the running server, when it serves one.
+    pub fn annotations(&self) -> Option<Arc<bookx_serve::annotation_sync::AnnotationSync>> {
+        self.annotations.clone()
     }
 
     /// Addresses of the running server.
@@ -227,17 +249,18 @@ impl Sharing {
     }
 }
 
-/// Subtitle of the "KOReader progress sync" switch in the Share window.
-pub const KOSYNC_SUBTITLE: &str = "Wi-Fi only. Bookx also speaks KOReader’s “Progress sync”, so KOReader on any device can keep its reading position here. Syncs the reading position only, not highlights or notes.";
-
-/// The longer explanation behind the "?" button of the switch.
-pub const KOSYNC_HELP: &str = "This is about Wi-Fi and has nothing to do with the USB cable or the Device window.\n\nBookx’s built-in server also speaks the “Progress sync” (KOSync) protocol of KOReader. KOReader runs on Kobo, Kindle, Android and PocketBook readers; if yours runs it, you can point it at this address and your reading position follows you from one KOReader device to the next.\n\nIn KOReader: Tools → Progress sync → Custom sync server, type the address shown below, then Register with a user name and password of your choice (they are not the Share password; Bookx only keeps them to tell KOReader accounts apart). Anyone who can reach this port can register such an account, so only switch this on in networks you trust.\n\nOnly the reading position (a percentage and a place in the book) is stored. Highlights and notes are not synced this way, and Bookx does not copy these positions into the progress of your library. It is only useful if the reader runs KOReader.";
-
-/// The address to type into KOReader's custom sync server, from the addresses of the running
-/// server (the last one is the one on the local network when there is one).
+/// The address to type into KOReader's custom sync server (and the Bookx plugin), from the
+/// addresses of the running server (the last one is the one on the local network when there is
+/// one). It ends in `/bookx`: reading progress (KOSync protocol) and annotations share it; the
+/// server has no other mount.
 pub fn kosync_url(urls: &[String]) -> Option<String> {
-    urls.last()
-        .map(|u| format!("{}/kosync", u.trim_end_matches('/')))
+    urls.last().map(|u| {
+        format!(
+            "{}{}",
+            u.trim_end_matches('/'),
+            bookx_serve::server::SYNC_PREFIX
+        )
+    })
 }
 
 /// Addresses to show the user: always this computer, plus this machine's LAN address when
@@ -275,23 +298,12 @@ mod tests {
         ];
         assert_eq!(
             kosync_url(&urls).as_deref(),
-            Some("http://192.168.1.5:8080/kosync")
+            Some("http://192.168.1.5:8080/bookx")
         );
         assert_eq!(
             kosync_url(&urls[..1]).as_deref(),
-            Some("http://127.0.0.1:8080/kosync")
+            Some("http://127.0.0.1:8080/bookx")
         );
-        // what the text promises is what the server does: its own account, position only
-        for needle in [
-            "Custom sync server",
-            "Register",
-            "not the Share password",
-            "reading position",
-            "not copy",
-        ] {
-            assert!(KOSYNC_HELP.contains(needle), "{needle}");
-        }
-        assert!(KOSYNC_SUBTITLE.contains("not highlights or notes"));
     }
 
     use bookx_serve::server::Server;
@@ -361,6 +373,38 @@ mod tests {
         assert!(!s.lan && !s.kosync);
         assert_eq!(s.bind(), "127.0.0.1");
         assert!(s.problem().is_none());
+    }
+
+    /// Highlights, notes and bookmarks sync is on by default (deliberate: it is what the Bookx
+    /// plugin needs), and it is independent of the server: nothing listens until the server is
+    /// started, and with Bookx sync on the annotation store is there.
+    #[test]
+    fn annotation_sync_is_on_by_default_and_independent_of_the_server() {
+        let s = ShareSettings::default();
+        assert!(s.annotations, "the switch is on by default");
+        assert!(!s.kosync && !s.lan, "but nothing is shared by default");
+        assert!(
+            !Sharing::default().running(),
+            "nothing listens until the server is started"
+        );
+        // an old config without the key gets the default; an explicit choice is kept
+        let old: ShareSettings = serde_json::from_str(r#"{"port": 9000}"#).unwrap();
+        assert!(old.annotations);
+        let off: ShareSettings = serde_json::from_str(r#"{"annotations": false}"#).unwrap();
+        assert!(!off.annotations);
+        let dir = tmp("annotdefault");
+        let prov = provider(dir.join("lib"));
+        // server without Bookx sync: no accounts, so no annotation store
+        let plain = server_config(&s, prov.clone(), &dir).unwrap();
+        assert!(plain.annotations.is_none() && plain.kosync.is_none());
+        // with Bookx sync on, annotation sync is available without touching the switch
+        let sync = ShareSettings {
+            kosync: true,
+            ..Default::default()
+        };
+        let c = server_config(&sync, prov, &dir).unwrap();
+        assert!(c.kosync.is_some() && c.annotations.is_some());
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

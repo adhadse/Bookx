@@ -30,6 +30,13 @@ them back. Your position is remembered per book.
 
 ## The reader menu
 
+<figure markdown="1">
+![The reader menu with the themes row](assets/reader-menu-light.png#only-light)
+![The reader menu with the themes row](assets/reader-menu-dark.png#only-dark)
+<figcaption markdown="1">The reader menu: the theme swatches (system, light, sepia, dark, black), *Theme / Original / Custom*, the zoom, then Go to, Layout, Speed Reading, Book Map, Reading Ruler and Footer Stats.</figcaption>
+</figure>
+
+
 The main menu holds the theme swatches (with your own themes), zoom, *Open Book*, *Reload*, *Go to*,
 *Layout*, *Speed Reading*, *Book Map*, *Footer Stats*, *Preferences* and *Keyboard Shortcuts*. (*Properties* of the book
 is a button in the sidebar.) Everything about how the text looks is in
@@ -68,6 +75,19 @@ The search box at the top finds highlights by words of the quote, the note or th
 
 ### Go to…
 
+<figure markdown="1">
+![The Go to dialog](assets/reader-goto-light.png#only-light)
+![The Go to dialog](assets/reader-goto-dark.png#only-dark)
+<figcaption markdown="1">Ctrl+G: type a page, a percentage, a location or a chapter name.</figcaption>
+</figure>
+
+<figure markdown="1">
+![Search in the book with a list of matches](assets/reader-search-light.png#only-light)
+![Search in the book with a list of matches](assets/reader-search-dark.png#only-dark)
+<figcaption markdown="1">Ctrl+F: every match with its chapter; Enter or a click jumps to it and highlights it.</figcaption>
+</figure>
+
+
 ++ctrl+g++ (or *Go to* in the menu) asks where to go. Type:
 
 | You type | Where it goes |
@@ -100,6 +120,13 @@ viewer. Pictures in fixed-layout books and comics are not clickable (taps turn p
 inline in a line of text are not either.
 
 ### Book map
+
+<figure markdown="1">
+![A close-up of the book map](assets/book-map-detail-light.png#only-light)
+![A close-up of the book map](assets/book-map-detail-dark.png#only-dark)
+<figcaption markdown="1">Close-up of the book map: reading progress, highlights and the preview of a place.</figcaption>
+</figure>
+
 
 *Book Map* (++m++) shows every page of the book as a grid of small cells, in a window of its own. The page numbers are
 the printed ones when the book has a page-list, otherwise the pages of the current layout.
@@ -145,6 +172,25 @@ to edit or delete them; the editor also **exports** and **imports** themes as JS
 
 ### Themes and colours
 
+<figure markdown="1">
+![A page in the Light theme](assets/reader-theme-light-light.png#only-light)
+![A page in the Light theme](assets/reader-theme-light-dark.png#only-dark)
+<figcaption markdown="1">Light</figcaption>
+</figure>
+
+<figure markdown="1">
+![A page in the Sepia theme](assets/reader-theme-sepia-light.png#only-light)
+![A page in the Sepia theme](assets/reader-theme-sepia-dark.png#only-dark)
+<figcaption markdown="1">Sepia</figcaption>
+</figure>
+
+<figure markdown="1">
+![A page in the Dark theme](assets/reader-theme-dark-light.png#only-light)
+![A page in the Dark theme](assets/reader-theme-dark-dark.png#only-dark)
+<figcaption markdown="1">Dark</figcaption>
+</figure>
+
+
 Themes: follow the system, **light**, **sepia**, **dark** and **black**. In the reader menu the colours section
 offers three modes:
 
@@ -155,6 +201,13 @@ offers three modes:
 The editor's live preview has the same control (the palette button above the preview).
 
 ### Text appearance
+
+<figure markdown="1">
+![The Text appearance popover](assets/reader-text-settings-light.png#only-light)
+![The Text appearance popover](assets/reader-text-settings-dark.png#only-dark)
+<figcaption markdown="1">Text appearance: font, paragraph spacing, optimal line breaking, hyphenation, columns, line spacing, margins and justification.</figcaption>
+</figure>
+
 
 The **Text appearance** button (the "A" in the header) holds everything about how the text looks, in three parts:
 
@@ -230,6 +283,13 @@ as `fn1`, and the text is short. Links to chapters and headings are followed as 
 
 ## Reader focus
 
+<figure markdown="1">
+![The reading ruler dimming all lines but one](assets/reader-ruler-light.png#only-light)
+![The reading ruler dimming all lines but one](assets/reader-ruler-dark.png#only-dark)
+<figcaption markdown="1">The reading ruler keeps one line bright and dims the rest.</figcaption>
+</figure>
+
+
 While you read, the header and the bottom panel get out of the way: a few seconds after your last interaction they fade
 and only the page is left, and they come back as soon as you move the pointer, press a key or open a menu (they never
 fade while you use them, and not when the pointer rests on them or at the top or bottom edge). The page does not move
@@ -242,6 +302,13 @@ finish on the right. Paused, the reader behaves as it always does (the bars fade
 the status line). With an e-ink display the bars stay.
 
 ## Speed reading
+
+<figure markdown="1">
+![The speed reading card](assets/reader-speed-card-light.png#only-light)
+![The speed reading card](assets/reader-speed-card-dark.png#only-dark)
+<figcaption markdown="1">Speed reading: one word at a time at the speed you set; Space pauses.</figcaption>
+</figure>
+
 
 Main menu → *Speed Reading* (or the command palette) reads on the page itself: the word to read has a broad
 highlight and the letter your eye should rest on a strong red one, and they move through the text by themselves; the page
@@ -258,6 +325,13 @@ Bookx) the card is where it was, at the same word and speed, paused; a card clos
 
 ## Dictionaries and Wikipedia
 
+<figure markdown="1">
+![The popover over a selected word](assets/reader-selection-popover-light.png#only-light)
+![The popover over a selected word](assets/reader-selection-popover-dark.png#only-dark)
+<figcaption markdown="1">Select a word: highlight colours and styles, copy, note, dictionary, Wikipedia and translate.</figcaption>
+</figure>
+
+
 Double-click a word, or select text, to look it up.
 
 - **Dictionary**: offline StarDict dictionaries, see [Dictionaries](#dictionaries) below.
@@ -270,9 +344,18 @@ Double-click a word, or select text, to look it up.
 ![A Wikipedia look-up with the picture of the article](assets/reader-wikipedia-light.png#only-light)
 ![A Wikipedia look-up with the picture of the article](assets/reader-wikipedia-dark.png#only-dark)
 
-Looked-up words are added to your [vocabulary](#statistics-and-vocabulary).
+Looked-up words are added to your [vocabulary](#statistics-and-vocabulary). A word that is in no dictionary (a name,
+jargon, an invented word, an abbreviation) can be added with **your own definition**, see
+[My own words](#my-own-words-and-definitions).
 
 ### Dictionaries
+
+<figure markdown="1">
+![A dictionary result in the popover](assets/reader-dictionary-light.png#only-light)
+![A dictionary result in the popover](assets/reader-dictionary-dark.png#only-dark)
+<figcaption markdown="1">The dictionary result opens in the same popover; the word is saved to your vocabulary.</figcaption>
+</figure>
+
 
 A look-up uses **StarDict dictionaries on your computer**, so it works offline. You do not have to find one yourself:
 
@@ -310,6 +393,13 @@ A look-up uses **StarDict dictionaries on your computer**, so it works offline. 
 
 ## Annotations and highlights
 
+<figure markdown="1">
+![The popover of a highlight with its note](assets/reader-note-popover-light.png#only-light)
+![The popover of a highlight with its note](assets/reader-note-popover-dark.png#only-dark)
+<figcaption markdown="1">A highlight with a note: the colours, the four styles, and the note itself.</figcaption>
+</figure>
+
+
 Select text to highlight it. There are **5 colours** and **4 styles** (background, underline, strikethrough,
 squiggly). A highlight can carry a note, which is saved when you click away; you can also remove it. Add
 bookmarks with ++ctrl+b++. Highlights, notes and bookmarks are listed in [the sidebar](#the-sidebar), where you can also
@@ -320,11 +410,87 @@ Export them from the library (right-click → *Export Annotations*) to JSON, Mar
 
 ## Statistics and vocabulary
 
+<figure markdown="1">
+![The Add to Vocabulary dialog](assets/reader-vocab-add-light.png#only-light)
+![The Add to Vocabulary dialog](assets/reader-vocab-add-dark.png#only-dark)
+<figcaption markdown="1">Add to Vocabulary: your own term, your definition, a note, tags, and whether it applies to this book or all.</figcaption>
+</figure>
+
+
+<figure markdown="1">
+![The Reading Statistics window](assets/library-statistics-light.png#only-light)
+![The Reading Statistics window](assets/library-statistics-dark.png#only-dark)
+<figcaption markdown="1">Reading Statistics: time today, this week and all time, your streak, books finished and your goals.</figcaption>
+</figure>
+
+<figure markdown="1">
+![The Vocabulary flashcards](assets/library-vocabulary-words-light.png#only-light)
+![The Vocabulary flashcards](assets/library-vocabulary-words-dark.png#only-dark)
+<figcaption markdown="1">Vocabulary: the words you looked up come back as flashcards; *Show Answer* turns the card.</figcaption>
+</figure>
+
+
 - **Reading Statistics** (main menu): time today, this week and this month, streaks, reading speed, a 7-day chart and
   your most-read books. It also holds your **goals** (minutes a day, books a year, with a progress bar each; 0 means
   no goal), a **calendar of the year** that shades the days you read, and a **review of the year** (time, days read,
   pages, books finished, longest streak, best day).
-- **Vocabulary** (main menu): the words you looked up, reviewed as spaced-repetition flashcards.
+- **Vocabulary** (main menu): two pages. **Review** is the spaced-repetition flashcards of the words you looked up.
+  **Words** is the list of everything in your vocabulary, with a search, the filter *All / Mine / From dictionary*, and
+  the buttons to add, edit and remove terms, paste or import a glossary, and export. See
+  [My own words and definitions](#my-own-words-and-definitions).
+
+## My own words and definitions
+
+A term does not have to be in any dictionary to go into your vocabulary. Names, jargon, invented words and
+abbreviations can be saved **with your own definition**, and you see that definition again wherever the term appears in
+the book.
+
+**Adding a term.** Select a word or a phrase (any selection, several words are fine), then choose **Add to
+Vocabulary**: the **+** button of the selection popover, the key **V** while text is selected, *Add to Vocabulary* in the
+command palette (`Ctrl+Shift+V`), or **Add my own definition** in the look-up popover (it is there whether or not the
+dictionary has an entry). A small dialog opens with:
+
+- the **Term** (editable; white space is made single and punctuation around it is dropped),
+- **Your definition** (several lines),
+- an optional **Note** and **Tags**, and the **Language** (the language of the book),
+- **Applies to**: *This book* (the default), *All books*, or *This series* (when the book belongs to one),
+- the sentence you met it in, kept automatically with the place in the book.
+
+**Save** (or `Ctrl+Enter` from anywhere in the dialog) stores it. Everything is reachable with the keyboard: select
+with `Shift+arrows`, press `Enter` and then `V`, type the definition, `Tab` to the other fields, `Ctrl+Enter`.
+
+**In the look-up popover** your definition comes first, labelled **Your definition**, above the dictionary results,
+and the button says **Edit my definition**. It works offline and with no dictionary installed.
+
+**In the text.** Every occurrence of a saved term in the book gets a **dotted underline** in the reading colour
+(it follows the theme and e-ink mode). Click or tap one to see your definition in a small popover with **Edit**,
+**Remove** and **Open in Vocabulary**; to select the word instead, double-click it as usual. Matching ignores case,
+needs whole words (`art` is not found in `part`; there are no inflections, so `walk` does not mark `walked`), finds
+phrases (`New York`) and works with any script and with hyphenated words. A term marked inside a highlight opens the
+highlight's popover instead. Turn the marks off in *Preferences → Reading → Vocabulary → Mark my vocabulary terms in
+the text* (on by default).
+
+**Terms in this book** (reader menu, or the command palette) lists what you defined for the book and the words you met
+in it; the arrow button of a term goes to the place where you met it.
+
+**The Words page.** Terms with your own definition carry a **Mine** badge. *All / Mine / From dictionary* filters, the
+search looks in words, definitions, notes and tags. **Add Term**, the pencil (edit; on a word from a dictionary it
+adds your own definition) and the bin work on a row. **More** has:
+
+- **Paste a Glossary**: one term per line as `term; definition` (also a tab, or `term — definition`); the dialog counts
+  the terms it found before you add them,
+- **Import a CSV File**: `term;definition` with an optional note and tags column, quoted fields understood (a header
+  row is skipped),
+- **Export My Definitions as CSV or JSON**, **Export Everything as Anki Cards** (the text file Anki imports; your
+  definition and note are on the back) and **Export as a StarDict Dictionary**.
+
+**My Vocabulary as a dictionary.** *Preferences → Reading → Dictionaries* lists **My Vocabulary** first, before the
+downloaded ones. It is built in and cannot be removed; its *Export* button writes it as a StarDict dictionary, JSON or
+CSV for other apps.
+
+Limits: one definition per term (writing the same term again edits it; its *Applies to* is the last one you chose),
+the marks are found in the text of a chapter, not in images, and the vocabulary is kept on this computer (it is not
+part of the library backups and not synced).
 
 ## Read aloud
 
@@ -344,9 +510,11 @@ licences and limits.
   left-handed, wide, off) and large touch controls.
 - **E-ink mode**: pure black on white, no animations, bars that stay, wide tap zones.
 
+<figure markdown="1">
 ![E-ink mode](assets/reader-eink-light.png#only-light)
 ![E-ink mode](assets/reader-eink-dark.png#only-dark)
-*E-ink mode, captured on a normal screen: the colours show how it looks, not how an e-ink panel renders it.*
+<figcaption markdown="1">E-ink mode, captured on a normal screen: the colours show how it looks, not how an e-ink panel renders it.</figcaption>
+</figure>
 
 ## Fixed layout and right-to-left text
 
@@ -357,6 +525,13 @@ licences and limits.
   with the *Next* arrow on the left, and the contents sidebar opens on the right.
 
 ## PDF
+
+<figure markdown="1">
+![A PDF in the reader](assets/reader-pdf-light.png#only-light)
+![A PDF in the reader](assets/reader-pdf-dark.png#only-dark)
+<figcaption markdown="1">A PDF opens in the same reader, with the same footer, search and highlights.</figcaption>
+</figure>
+
 
 A PDF opens **as pages**, the way it was made. Next to the PDF the library keeps a reflowed EPUB of its text, which is
 what search, the library index and *Convert To* use.
@@ -384,15 +559,79 @@ what search, the library index and *Convert To* use.
     two pages. Vertical and right-to-left PDF text is shown correctly but may select in a different order. Forms,
     comments and other PDF annotations are not drawn or edited. Writing a PDF (EPUB to PDF) is not available.
 
+## Comics and manga
+
+<figure markdown="1">
+![A comic in the two-page layout](assets/reader-comic-spread-light.png#only-light)
+![A comic in the two-page layout](assets/reader-comic-spread-dark.png#only-dark)
+<figcaption markdown="1">The two-page layout; the cover can stay on a page of its own. The pages are from *Little Nemo in Slumberland* by Winsor McCay (1905, public domain).</figcaption>
+</figure>
+
+
+<figure markdown="1">
+![A comic page in the reader](assets/reader-comic-page-light.png#only-light)
+![A comic page in the reader](assets/reader-comic-page-dark.png#only-dark)
+<figcaption markdown="1">A comic page fitted to the window; the toolbar has the comic's own settings. The comic is a Sunday page of *Little Nemo in Slumberland* by Winsor McCay (1905), a public-domain comic from Wikimedia Commons.</figcaption>
+</figure>
+
+
+CBZ and CBT comics (and CBR files that are really zip archives) open in a **comic reader** made for pictures. The
+text of ComicInfo.xml fills the library: title, series, number, writer, publisher, year, summary and genre. The same
+file says which pages are double pages or covers. Real RAR archives cannot be read (convert them to CBZ first).
+
+- **Layout** (*View* menu, the eye button, or the **M** key): *Single page*, *Two pages* (like an open book) or
+  *Vertical scroll* for webtoons, where the pages follow each other as one long strip. In the two-page layout
+  *Cover on its own page* keeps the first page alone and *Wide pages on their own* gives a double-page picture the
+  whole screen; the pairs then continue after it.
+- **Fit**: *Fit page*, *Fit width*, *Fit height* or *Original size*. In a page that is taller than the window, Space
+  reads down the page and turns to the next one at the bottom.
+- **Direction**: a book marked as manga in ComicInfo.xml (`Manga` = `YesAndRightToLeft`) opens **right to left**: the
+  Left arrow and a click on the left edge go forward, the first page of a two-page spread is on the right, and the page
+  slider runs from right to left. Switch it for a book with *Right to left (manga)* or the **R** key; Bookx remembers
+  it, the layout and the fit **for that book**. *Use the defaults for this book* forgets them.
+- **Smart zoom**: double-click (or double-tap) a panel to zoom to it, double-click again to go back. Bookx finds the
+  panels by the gutters between them; on a page without gutters it zooms to the region around the pointer.
+- **Guided view** (**G** key, or the *View* menu): Space goes to the next panel, Shift+Space to the one before, across
+  pages, in reading order (right to left in manga). The panel is outlined. Without guided view Space reads on a screenful
+  at a time.
+- **Moving and zooming**: arrow keys turn pages, or move a zoomed page; Page Up and Page Down turn pages; Home and End go
+  to the first and last page. Drag to pan, swipe a fitted page to turn it, plus and minus (or Ctrl+scroll, or a
+  two-finger pinch) zoom, **0** fits the page again. Clicking near the left or right edge of a fitted page turns it,
+  a click in the middle hides or shows the bars.
+- **Thumbnails** (F9): the sidebar lists every page as a thumbnail; click one to go there. Pages of a special type in
+  ComicInfo.xml (cover, preview, back cover, ...) are named in the tooltip.
+- **Grey pages** and **e-ink mode**: pages are shown in grey and moves are not animated. Moves are also not animated
+  when your system asks for reduced motion (*Animate moves between panels* in Preferences).
+- **Defaults** for new comics are in *Preferences → Reading → Comics*.
+
+Pages are decoded in the background and kept ready: the next few pages in your reading direction are prepared while
+you read, very large scans are reduced to a size that fits the memory, and the memory used for pages has a ceiling.
+Files that claim an absurd picture size (a page of billions of pixels) are not decoded: the page is left out when the
+comic is added.
+
+!!! note "Limits"
+    Panel detection looks for gutters of one plain colour (white or black) between rectangular panels. Pages with
+    overlapping, slanted or borderless panels have no panels found and are shown whole. Bookx does not read the text in
+    the pictures, and a screen reader cannot read them. There is no automatic "next volume in the folder" yet.
+
 ## Vertical writing
+
+<figure markdown="1">
+![Vertical Japanese text, close up](assets/reader-vertical-detail-light.png#only-light)
+![Vertical Japanese text, close up](assets/reader-vertical-detail-dark.png#only-dark)
+<figcaption markdown="1">Vertical lines run right to left, with the punctuation set for vertical writing.</figcaption>
+</figure>
+
 
 Japanese and Chinese books that are set in vertical lines open the way they were made: the lines run from top to bottom
 and the columns follow each other from right to left (`writing-mode: vertical-rl`) or, for some Chinese and Mongolian
 books, from left to right (`vertical-lr`). The book decides, there is nothing to switch on.
 
+<figure markdown="1">
 ![A Japanese book in vertical lines, with furigana](assets/reader-vertical-light.png#only-light)
 ![A Japanese book in vertical lines, with furigana](assets/reader-vertical-dark.png#only-dark)
-*Natsume Soseki, "Wagahai wa neko de aru" (public domain, Aozora Bunko), in the two-page layout.*
+<figcaption markdown="1">Natsume Soseki, "Wagahai wa neko de aru" (public domain, Aozora Bunko), in the two-page layout.</figcaption>
+</figure>
 
 - **Pages.** A page holds as many columns as fit its width. In a book whose spine says
   `page-progression-direction="rtl"` (all Japanese vertical books should) the first page of a two-page spread is the
@@ -434,5 +673,5 @@ combining.
       styling*. The page itself is not exposed to screen readers yet.
     - [Read aloud](read-aloud.md) works on Linux only; natural voices need `espeak-ng` and a command-line audio player.
     - Touch gestures and e-ink mode have been tested with simulated input, not on a real touch or e-ink screen.
-    - There is no cloud sync of reading progress; the only sync is [KOSync](devices-and-sharing.md#share-library),
+    - There is no cloud sync of reading progress; the only sync is [Bookx sync](progress-sync.md),
       which you switch on yourself.

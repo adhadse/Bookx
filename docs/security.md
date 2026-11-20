@@ -270,3 +270,93 @@ process, a secret or a dependency.
 * Executes something: no. Listener / URL: no. New dependency: none. Secret: none.
 * Widens a capability: yes, plugins of the new kind `editor-action` may read and change the open book after the user switched them
   on and read the permission text; the capability statement above is updated. Needs a second reviewer.
+
+### 2026-11-20: audiobooks (wave 6, PP-G-25)
+
+Checklist (§8) for `crates/bookx-audio`, `src/audiobook.rs`, `src/ui/audiobook_player.rs`:
+
+* **Untrusted bytes:** ID3v2 (v2.2-2.4 frames, unsynchronisation, `CHAP`, `APIC`), MP4 atoms (`moov`, `chpl`, `ilst`, chapter
+  text track with `stbl` tables), Vorbis comments and Ogg pages, FLAC blocks, WAV chunks, Symphonia decoding of whole files,
+  zip entries, the per-book state and cache JSON. Budgets in `bookx_audio::limits` (see `docs/audiobook-notes.md`); tests
+  that feed every prefix and byte flips of generated and real files and absurd sizes; no `unsafe`; no cargo-fuzz target yet.
+* **Paths:** zip entry names go through `scan::safe_rel` (absolute, `..`, backslash, drive letter, NUL, hidden and over-long
+  names are skipped) and the unpacked path is checked to stay under the destination; folders are walked without following
+  symlinks; part paths in the cache are relative to the audio folder and joined on load (a cache written by hand could name
+  `../x`: parts are only opened for reading by the decoder, never written or executed, and a part that does not exist makes the
+  cache invalid).
+* **Executes something:** only the sound player (`pacat`, `pw-cat`, `aplay`) by name with rate/channel arguments of our own;
+  the shell override `BOOKX_AUDIO_PLAYER` is an environment setting, like `BOOKX_TTS_PLAYER`.
+* **Listener / URL:** none (MPRIS is a D-Bus service on the user's own session bus, as read aloud has).
+* **New dependency:** `symphonia` 0.5.5 and codec/format crates (MPL-2.0), in `NOTICE.md`.
+* **Secret:** none. **Capability:** a book can now make Bookx read audio files from the folder it links to, with the same
+  rights as the user; nothing is written there.
+* **Regression tests:** hostile-input tests per parser, `safe_names`, `zip_entries_are_checked_and_unpacked`,
+  `symlinks_are_not_followed`, `the_list_and_notes_are_bounded`.
+
+### 2026-11-20: comic reader (wave 6, PP-G-24)
+
+Checklist (§8) for `crates/bookx-comic`, `crates/bookx-formats/src/comic.rs`, `src/comic.rs`, `src/ui/reader_comic.rs`:
+
+* **Untrusted bytes:** the page pictures of a CBZ/CBT (JPEG, PNG, GIF, WebP through the `image` crate) and ComicInfo.xml. Budgets in
+  `bookx_comic::decode`: a header that claims more than 160 megapixels or 40 000 pixels on a side is refused **before** anything is
+  allocated (`dimensions` reads the header only; the decoder also gets `Limits` for width, height and 1 GiB of allocation); the decoded
+  page is reduced to at most 4096 px on its longest side and 12 megapixels (2400 px on e-ink) on a worker thread, and the cache of
+  decoded pages has a byte budget (320 MiB, pages on screen are never evicted). The converter drops a page whose header claims an
+  absurd size (`decode::is_bomb`), so it never enters the library. The archive readers already bound entry size, total size and entry
+  count. Tests: `image_bombs_are_refused_from_the_header` (a 70-byte PNG claiming 900 megapixels), `an_image_bomb_page_is_left_out`,
+  `a_small_header_with_missing_data_fails_cleanly`, `garbage_is_an_error_not_a_panic`, the UI scenarios `comic_bomb` and
+  `comic_corrupt`. No cargo-fuzz target for the page decoder yet (the `image` crate is the exposed parser).
+* **Path from a file:** page names from the archive are never used as paths: the converter renames every page to
+  `images/page-NNNN.ext`, entries with `..` are skipped (`archive_entry_names_cannot_reach_outside_the_book`). Per-book settings are
+  keyed by the numeric book id.
+* **Executes something:** no. **Listener / URL:** no. **New dependency:** none new (`image`, `zip`, `serde` were already in the tree;
+  the new crate `bookx-comic` is ours). **Secret:** none.
+* **Widens a capability:** no. The settings file `comics.json` holds layout choices only.
+* **Regression test:** the real-session swipe test (`comic_manga`) failed before the fix of a drag that also counted as a click
+  (an interface bug, not a security one).
+
+### 2026-11-20: release hardening pass (wave 6, PP-C-19)
+
+* Dependency audit: `cargo deny` 0.21 (installed under `~/.cache/tools`, advisory database fetched from GitHub) found six
+  vulnerabilities in `lettre` 0.11.23 (RUSTSEC-2026-0560 to 0565: STARTTLS reply injection, SMTP command injection by dot-stuffing,
+  quoted local part delivered to another mailbox, two panics, unbounded reply buffering). `lettre` is used by the *Send by e-mail*
+  feature of `bookx-serve`. **Fixed** by `cargo update -p lettre` to 0.11.24 (Cargo.lock and `build-aux/cargo-sources.json`
+  regenerated); regression test `release_consistency::lettre_is_past_the_smtp_advisories`. This is an advisory-worthy change if
+  0.2.0 binaries are in use: the issue was present in the 0.2.0 tree.
+* Seven "unmaintained" notices remain (no known vulnerability): `chrono`, `ttf-parser`, `smartstring` (via `rhai`), `zvariant`,
+  `zbus_names`, `zvariant_derive` (via `oo7`), `rustybuzz` (dev-dependency only). They are listed with reasons in `deny.toml`;
+  `cargo deny check advisories bans licenses sources` is clean with them. Gap G3 is now half closed: a committed policy and a CI job
+  (`deny` in `ci.yml`, never run on GitHub), but no scheduled run, no Dependabot and no SBOM yet.
+* Licences: every crate in the lock file has a licence the policy allows (MIT, Apache-2.0, ISC, BSD, Zlib, Unicode, CC0, 0BSD,
+  bzip2-1.0.6, CDLA-Permissive-2.0, MPL-2.0, LGPL-2.1-or-later as an alternative, GPL-3.0-or-later for our own crates). New
+  since the 0.2.0 files: `symphonia` (MPL-2.0) and its codec crates, `extended`, `bitflags` 1.3 (audiobooks, uncommitted at the
+  time of writing); `NOTICE.md` now lists them and the remaining direct dependencies. Wave 5 itself changed no dependencies.
+* Narration / plugins / overlays (wave 5): re-read against the checklist, nothing new; the plugin ABI is now frozen by the golden
+  tests (`crates/bookx-plugin/tests/abi_compat.rs`), so a host change cannot silently widen what an old plugin may do.
+* Flatpak permissions re-checked against the manifest: network, IPC, Wayland/X11 fallback, DRI, PulseAudio, Documents, `/run/media`,
+  `xdg-run/gvfs` and `gvfsd`, `org.gtk.vfs.*`; no home/host/all-devices/session-bus/ssh-agent. Guarded by `release_consistency::
+  the_flatpak_manifest_stays_minimal`, `desktop_integration` and `release-check.sh`. `--share=network` and `/run/media` are the
+  widest and are needed (see `docs/packaging-notes.md`).
+* Release pipeline: the release workflow builds with `--locked`, runs `release-check.sh` first, never pushes tags, and publishes
+  `SHA256SUMS`. Artefacts are not signed (P2 item 2 stays open). Workflows have never run on GitHub.
+
+### 2026-11-20: Sync UX, KOReader plugin and wave-6 regressions
+
+Per-change checklist (§8) for the wireless sync and editor fixes in the final wave:
+
+- **Untrusted bytes?** Annotation JSON from `/bookx` is still parsed by the existing size-capped readers in
+  `bookx-serve::annotation_sync`; the colour merge adds no new parse path. `bookxmd5.lua` hashes only a local password string
+  with bounded length; vectors cover 55/56/57-byte and 1000-byte inputs (`koreader-plugin/tests/run.sh`).
+- **Path from a file or the network?** No new path join. The plugin installer copies a fixed list of seven files into KOReader's
+  `plugins` directory; it does not use a path supplied by a file or the network.
+- **Executes something?** No shell or `PATH` lookup added. The plugin's KOReader-facing callbacks are wrapped in `pcall` so a
+  malformed settings file or dialog error cannot become a device crash; the error reporter itself is fail-safe.
+- **Listener or user-supplied URL?** No new listener. `/bookx` replaces `/kosync` with no alias; the server's existing auth and
+  loopback defaults are unchanged. The plugin's server URL comes from the device's own settings form.
+- **New dependency?** None. `bookxmd5.lua` is original, dependency-free Lua (MIT, listed in `NOTICE.md`); it replaces the
+  optional KOReader `ffi/sha2` module so a missing FFI library cannot panic.
+- **Secret?** Still only the one-way hash in the plugin settings; the plaintext password is never stored, sent or logged, and an
+  empty password field means “keep the saved hash”. No secret appears in the new tests.
+- **Widens a capability?** No. The sync plugin is unchanged in scope; the UI edits only configuration.
+- **Regression tests?** `docs/bugs.md` rows 17–21: plugin exceptions and MD5, device colour preservation, preview follow race,
+  external-editor events, and the virtual Contents list scroll. Each has a test that fails without its fix.

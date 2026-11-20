@@ -46,6 +46,7 @@ pub fn export_annotations(book: &Book, chapters: &[String], fmt: AnnotationForma
                     "text": h.text,
                     "note": h.note,
                     "color": h.color,
+                    "style": h.style,
                     "created": h.created,
                 })).collect::<Vec<_>>(),
                 "bookmarks": book.bookmarks.iter().map(|b| json!({

@@ -69,6 +69,14 @@ pub struct DeviceNote {
     pub created: Option<String>,
     /// Last change, when the device keeps it apart from `created`.
     pub updated: Option<String>,
+    /// The colour as a stored word (`bookx_core::devstyle`: a Bookx colour, or a device colour kept
+    /// as written); `None` when the device does not say.
+    pub color: Option<String>,
+    /// The style as a Bookx style name; `None` when the device does not say.
+    pub style: Option<String>,
+    /// A page bookmark (KOReader's annotation without a highlighted range): its text is only a label
+    /// such as `in Chapter 3`, not a quote.
+    pub bookmark: bool,
 }
 
 /// Everything a KOReader sidecar says.
@@ -133,12 +141,26 @@ pub fn parse_sidecar(text: &str) -> Sidecar {
                 if text.trim().is_empty() && note.trim().is_empty() {
                     continue;
                 }
+                // KOReader's current format: a highlight has a range (`pos1`) and a `drawer`; a page
+                // bookmark has neither. The legacy `bookmarks` list does not say it that way.
+                let bookmark = key == "annotations"
+                    && a.get("pos1").is_none()
+                    && a.str("drawer").is_none()
+                    && a.get("page").is_some();
                 notes.push(DeviceNote {
+                    bookmark,
                     text: text.to_string(),
                     note: note.to_string(),
                     chapter: a.str("chapter").map(str::to_string),
                     created: a.str("datetime").map(str::to_string),
                     updated: a.str("datetime_updated").map(str::to_string),
+                    color: a
+                        .str("color")
+                        .and_then(bookx_core::devstyle::koreader_color),
+                    style: a
+                        .str("drawer")
+                        .and_then(bookx_core::devstyle::style_from_any)
+                        .map(str::to_string),
                 });
             }
             break;
@@ -330,6 +352,26 @@ return {
     },
 }
 "#;
+
+    /// The real KOReader (v2026.07) sidecar of the owner's Kobo: highlights have `pos0`/`pos1`/`drawer`,
+    /// a page bookmark has only `page`, `pageno` and the label `in <chapter>` as its text.
+    #[test]
+    fn a_page_bookmark_is_no_highlight() {
+        let lua = r#"return {
+    ["annotations"] = {
+        [1] = { ["chapter"] = "Domain Coupling", ["datetime"] = "2026-08-23 07:09:10", ["page"] = "/body/DocFragment[7]/body/section/div/section[3]/div/section[1]/div/figure/div/img.0", ["pageno"] = 77, ["text"] = "in Domain Coupling" },
+        [2] = { ["chapter"] = "Ch", ["color"] = "cyan", ["datetime"] = "2026-08-17 11:22:15", ["datetime_updated"] = "2026-08-17 11:30:00", ["drawer"] = "lighten", ["page"] = "/body/a/text().0", ["pageno"] = 22, ["pos0"] = "/body/a/text().0", ["pos1"] = "/body/a/text().9", ["text"] = "A quote.", ["note"] = "mine" },
+    },
+    ["doc_props"] = { ["title"] = "T" },
+}"#;
+        let n = parse_sidecar(lua).notes;
+        assert_eq!(n.len(), 2);
+        assert!(n[0].bookmark && n[0].text == "in Domain Coupling");
+        assert!(!n[1].bookmark);
+        assert_eq!(n[1].created.as_deref(), Some("2026-08-17 11:22:15"));
+        assert_eq!(n[1].updated.as_deref(), Some("2026-08-17 11:30:00"));
+        assert_eq!(n[1].color.as_deref(), Some("cyan"));
+    }
 
     #[test]
     fn koreader_progress_and_status_are_parsed() {

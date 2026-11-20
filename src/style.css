@@ -214,6 +214,12 @@ window.touch .bookx-sidebar .row-actions { opacity: 1; }
 .note-card.compact .note-meta { font-size: 12px; }
 .note-row { padding: 4px 8px; }
 
+/* ---- editions of one work: the chip with the count on a cover ---------------------------------------- */
+.edition-badge { min-width: 0; min-height: 0; padding: 2px 8px; border-radius: 99px; background: alpha(black, .65); color: white;
+  box-shadow: 0 1px 3px alpha(black, .4); border: 1px solid alpha(white, .25); font-weight: bold; font-size: 12px; }
+.edition-badge:hover { background: alpha(black, .85); }
+window.eink .edition-badge { background: #ffffff; color: #000000; border: 2px solid #000000; box-shadow: none; }
+
 /* ---- favourites: the star on a cover, the toggle of the details panel, the rating stars ------------- */
 .fav-badge { min-width: 24px; min-height: 24px; padding: 0; border-radius: 99px; background: alpha(black, .55); color: #ffd23f;
   box-shadow: 0 1px 3px alpha(black, .4); border: 1px solid alpha(white, .25); }
@@ -231,3 +237,11 @@ window.eink .fav-badge { background: #ffffff; color: #000000; border: 2px solid 
 .job-row .success image { color: @success_color; }
 .job-row .warning image { color: @warning_color; }
 .jobs-badge { background: @accent_bg_color; color: @accent_fg_color; border-radius: 99px; padding: 0 6px; font-size: 11px; font-weight: 700; min-width: 14px; }
+
+/* ---- audiobooks ----------------------------------------------------------------------------- */
+.audio-badge { min-width: 22px; min-height: 22px; padding: 3px; border-radius: 99px; background: alpha(black, .6); color: white;
+  box-shadow: 0 1px 3px alpha(black, .4); border: 1px solid alpha(white, .25); }
+window.eink .audio-badge { background: #ffffff; color: #000000; border: 2px solid #000000; }
+
+/* a word you defined yourself, in the vocabulary list */
+.own-badge { font-size: .78em; font-weight: 700; padding: 1px 8px; border-radius: 99px; color: @accent_color; background: alpha(@accent_bg_color, .16); }

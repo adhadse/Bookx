@@ -262,8 +262,10 @@ def header_menus(c):
 def news_dialog(c):
     c.start()
     c.click_node(c.wait_node("toggle button", rx="^Add books"))
-    c.wait_node("menu item")
-    c.click_node(c.find("menu item")[3])  # the + menu: Add Books, Add from the Web, Add Folder, News Subscriptions
+    # the + menu has grown (Add Audiobook is now before News Subscriptions) and its GTK menu items do not
+    # expose a useful accessible name; use the known order of the entries
+    c.wait_node("menu item", timeout=5)
+    c.click_node(c.find("menu item")[4])
     d = c.wait_node("dialog", "News Subscriptions", timeout=5)
     c.shot("news")
     if not c.check("the News Subscriptions dialog opens", d):
@@ -499,8 +501,17 @@ import scenarios_editor_preview  # noqa: E402,F401  (preview sync and split with
 import scenarios_editor_prefs  # noqa: E402,F401  (editor shortcuts and snippets with real input)
 import scenarios_ux_gaps  # noqa: E402,F401  (keyboard shortcuts, shelves, jobs, reader extras with real input)
 import scenarios_map_keys  # noqa: E402,F401  (book map wheel and drag, new reader keys with real input)
+import scenarios_vocab  # noqa: E402,F401  (own vocabulary terms with real input)
 import scenarios_pain  # noqa: E402,F401  (reading ruler keys with real input)
+import scenarios_works  # noqa: E402,F401  (grouped editions: badge, edition list, link and unlink with real input)
 import scenarios_library  # noqa: E402,F401  (library sidebar, selection clicks, details panel with real input)
 import scenarios_reader_ux  # noqa: E402,F401  (reader sidebar, footer, selection handles with real input)
 import scenarios_wiki  # noqa: E402,F401  (public wiki screenshots, WIKI_SCHEME=light|dark)
+import scenarios_wiki_ext  # noqa: E402,F401  (more wiki screenshots: details and usage steps)
 import scenarios_editor_code  # noqa: E402,F401  (code editing helpers with real input)
+import scenarios_anchor  # noqa: E402,F401  (imported highlights are painted where their text is)
+import scenarios_scale  # noqa: E402,F401  (20,000 book grid scroll with the real frame clock and wheel)
+import scenarios_audiobook  # noqa: E402,F401  (audiobooks with real input)
+import scenarios_comics  # noqa: E402,F401  (comics: smart zoom, guided view, direction with real input)
+import scenarios_sync  # noqa: E402,F401  (Sync menu entry, window and Preferences page with real input)
+import scenarios_qa  # noqa: E402,F401  (QA sweeps by eye)

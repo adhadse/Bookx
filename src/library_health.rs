@@ -184,10 +184,10 @@ pub fn describe_trash(e: &bookx_core::history::TrashEntry) -> String {
 /// What the Preferences layout choices are called, with the template text where one applies.
 pub fn layout_choices() -> [(&'static str, &'static str); 4] {
     [
-        ("tree", "Author / Title folders"),
-        ("flat", "One flat folder"),
-        ("template", "Custom template"),
-        ("linked", "Link in place (do not copy)"),
+        ("tree", crate::i18n::N_("Author / Title folders")),
+        ("flat", crate::i18n::N_("One flat folder")),
+        ("template", crate::i18n::N_("Custom template")),
+        ("linked", crate::i18n::N_("Link in place (do not copy)")),
     ]
 }
 

@@ -5,7 +5,7 @@
 //!
 //! The wiki page *Privacy* repeats this list; the test `ledger_matches_the_wiki` keeps them in step.
 
-use crate::i18n::N_;
+use crate::i18n::{tr, trf, N_};
 
 /// One thing Bookx can connect to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,85 +24,85 @@ pub const LEDGER: [Connection; 14] = [
     Connection {
         feature: N_("Fetch Metadata and covers"),
         destination: "openlibrary.org, covers.openlibrary.org, googleapis.com (Google Books), query.wikidata.org",
-        sends: "title, author, ISBN of the books you look up",
+        sends: N_("title, author, ISBN of the books you look up"),
         offline_blocks: true,
     },
     Connection {
         feature: N_("Wikipedia look-up in the reader"),
         destination: "<language>.wikipedia.org, upload.wikimedia.org (pictures)",
-        sends: "the selected word or phrase",
+        sends: N_("the selected word or phrase"),
         offline_blocks: true,
     },
     Connection {
         feature: N_("Translate in the reader"),
         destination: "translate.googleapis.com",
-        sends: "the selected text",
+        sends: N_("the selected text"),
         offline_blocks: true,
     },
     Connection {
         feature: N_("Online catalogues"),
-        destination: "gutenberg.org, standardebooks.org and the catalogues you add",
-        sends: "your search words; books you download",
+        destination: N_("gutenberg.org, standardebooks.org and the catalogues you add"),
+        sends: N_("your search words; books you download"),
         offline_blocks: true,
     },
     Connection {
         feature: N_("Add from the Web and news subscriptions"),
-        destination: "the addresses you give",
-        sends: "a plain request for the page or feed",
+        destination: N_("the addresses you give"),
+        sends: N_("a plain request for the page or feed"),
         offline_blocks: true,
     },
     Connection {
         feature: N_("Check Links in the editor"),
-        destination: "the web addresses found in the book",
-        sends: "a plain request per link",
+        destination: N_("the web addresses found in the book"),
+        sends: N_("a plain request per link"),
         offline_blocks: true,
     },
     Connection {
         feature: N_("Dictionary downloads"),
         destination: "download.wikdict.com, github.com",
-        sends: "the file you ask for",
+        sends: N_("the file you ask for"),
         offline_blocks: true,
     },
     Connection {
         feature: N_("Voice and model downloads"),
         destination: "huggingface.co, github.com",
-        sends: "the file you ask for",
+        sends: N_("the file you ask for"),
         offline_blocks: true,
     },
     Connection {
         feature: N_("Read aloud with a voice server"),
-        destination: "the server address you enter",
-        sends: "the text being read",
+        destination: N_("the server address you enter"),
+        sends: N_("the text being read"),
         offline_blocks: false,
     },
     Connection {
         feature: N_("Send by e-mail"),
-        destination: "the mail server you enter",
-        sends: "the book and the message",
+        destination: N_("the mail server you enter"),
+        sends: N_("the book and the message"),
         offline_blocks: false,
     },
     Connection {
         feature: N_("Cloud folders (WebDAV) for devices and backups"),
-        destination: "the WebDAV address you enter",
-        sends: "book files or encrypted backups",
+        destination: N_("the WebDAV address you enter"),
+        sends: N_("book files or encrypted backups"),
         offline_blocks: false,
     },
     Connection {
-        feature: N_("Reading position sync (KOSync)"),
-        destination: "the sync server you enter, or your own Bookx",
-        sends: "a book fingerprint and your position",
+        feature: N_("Bookx sync (reading position, highlights, notes)"),
+        destination: N_("the sync server you enter, or your own Bookx"),
+        sends: N_("a book fingerprint and your position"),
         offline_blocks: false,
     },
     Connection {
-        feature: N_("Share Library"),
-        destination: "nothing: other devices connect to this computer, only while sharing is on and only with the password",
-        sends: "the books you share",
+        feature: N_("Sync: library server (OPDS, KOReader)"),
+        destination: N_("nothing: other devices connect to this computer, only while sharing is on and only with the password"),
+        sends: N_("the books you share"),
         offline_blocks: false,
     },
     Connection {
         feature: N_("Readwise upload"),
         destination: "readwise.io",
-        sends: "your highlights, when you press Upload",
+        sends: N_("your highlights, when you press Upload"),
         offline_blocks: false,
     },
 ];
@@ -120,16 +120,16 @@ pub fn apply(on: bool) {
 
 /// The ledger row as one line for a list.
 pub fn describe(c: &Connection) -> String {
-    format!(
-        "{} · sends {}{}",
-        c.destination,
-        c.sends,
-        if c.offline_blocks {
-            ""
-        } else {
-            " · not stopped by offline mode"
-        }
-    )
+    let dest = if c.destination.contains(' ') {
+        tr(c.destination)
+    } else {
+        c.destination.to_string()
+    };
+    let mut line = trf("{} · sends {}", &[&dest, &tr(c.sends)]);
+    if !c.offline_blocks {
+        line.push_str(&tr(" · not stopped by offline mode"));
+    }
+    line
 }
 
 #[cfg(test)]

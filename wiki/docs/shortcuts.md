@@ -48,6 +48,7 @@ Preferences. See [Accessibility](accessibility.md#command-palette) for the detai
 | Select text by sentence | ++shift+down++ / ++shift+up++ |
 | Open the actions for the selection | ++enter++ |
 | Dictionary / Wikipedia / translate the selection | ++d++ / ++w++ / ++t++ |
+| Add the selection to your vocabulary with your own definition (++ctrl+enter++ saves) | ++v++, or ++ctrl+shift+v++ |
 | Highlight / add a note / copy the selection | ++h++ / ++n++ / ++ctrl+c++ |
 | Clear the selection | ++escape++ |
 | Search in book | ++ctrl+f++ |
@@ -78,6 +79,17 @@ and swipes are mirrored.
 
 The mouse wheel turns pages; ++ctrl++ + wheel or a pinch zooms; double-click the margin for fullscreen. In the book map the
 wheel scrolls the map and ++ctrl++ + wheel changes how much of the book it shows.
+
+## Audiobook player
+
+| Action | Shortcut |
+|---|---|
+| Play / pause | ++space++ |
+| Back 15 seconds / forward 15 seconds | ++left++ / ++right++ |
+| Back / forward 30 seconds | ++shift+left++ / ++shift+right++ |
+| Previous / next chapter | ++page-up++ / ++page-down++ |
+| Back to the library | ++escape++ |
+| Play / pause, next, previous (any application) | the media keys of your keyboard |
 
 ## Book editor
 
@@ -127,6 +139,19 @@ These are the defaults; every one of them can be changed under [Changing shortcu
 | Smart *Home* / *End* | ++home++ / ++end++ (first press goes to the first character of the line) |
 
 ## Changing shortcuts
+
+<figure markdown="1">
+![Changing a shortcut](assets/shortcut-rebind-light.png#only-light)
+![Changing a shortcut](assets/shortcut-rebind-dark.png#only-dark)
+<figcaption markdown="1">Click a shortcut, press the new keys; Escape cancels and Backspace removes it.</figcaption>
+</figure>
+
+<figure markdown="1">
+![The Keyboard Shortcuts window](assets/shortcuts-window-light.png#only-light)
+![The Keyboard Shortcuts window](assets/shortcuts-window-dark.png#only-dark)
+<figcaption markdown="1">Keyboard Shortcuts: filter, or choose Library, Reader, Comics or Book editor.</figcaption>
+</figure>
+
 
 Open **Preferences → Keyboard Shortcuts**. Every action of the library, the reader and the book editor (and the application-wide ones)
 is listed with its keys.

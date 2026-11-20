@@ -208,8 +208,11 @@ pub fn time_left_text(size: u64, progress: f64) -> String {
     let left = (total * (1.0 - progress.clamp(0.0, 1.0))).round() as u64;
     match left {
         0 => String::new(),
-        1..=59 => format!("about {left} min left"),
-        m => format!("about {} h {:02} min left", m / 60, m % 60),
+        1..=59 => crate::i18n::trf("about {} left", &[&format!("{left} min")]),
+        m => crate::i18n::trf(
+            "about {} left",
+            &[&format!("{} h {:02} min", m / 60, m % 60)],
+        ),
     }
 }
 

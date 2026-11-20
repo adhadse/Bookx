@@ -11,7 +11,9 @@ description = "A modern, pure-Rust e-book library, reader and editor for GNOME"
 license = "GPL-3.0-or-later"
 
 [dependencies]
+bookx-audio = { path = "crates/bookx-audio" }
 bookx-backup = { path = "crates/bookx-backup" }
+bookx-comic = { path = "crates/bookx-comic" }
 bookx-core = { path = "crates/bookx-core" }
 bookx-editing = { path = "crates/bookx-editing" }
 bookx-convert = { path = "crates/bookx-convert" }
@@ -64,3 +66,56 @@ resvg = "0.47"
 [profile.release]
 lto = "thin"
 codegen-units = 4
+
+# `cargo deb` (cargo-deb): build `cargo build --release -p bookx -p bookx-cli` first, then `cargo deb --no-build`.
+[package.metadata.deb]
+name = "bookx"
+maintainer = "Anurag Dhadse <hello@adhadse.com>"
+copyright = "Anurag Dhadse and the Bookx contributors"
+license-file = ["LICENSE", "0"]
+section = "gnome"
+priority = "optional"
+extended-description = """\
+Bookx is a native GNOME application for your e-books, written entirely in Rust: a Calibre-style library, a reader and an EPUB editor."""
+depends = "libc6, libgtk-4-1 (>= 4.20), libadwaita-1-0 (>= 1.8), libgtksourceview-5-0"
+recommends = "espeak-ng, pulseaudio-utils | pipewire-bin"
+assets = [
+    ["target/release/bookx", "usr/bin/", "755"],
+    ["target/release/bookx-cli", "usr/bin/", "755"],
+    ["data/com.adhadse.Bookx.desktop", "usr/share/applications/", "644"],
+    ["data/com.adhadse.Bookx.metainfo.xml", "usr/share/metainfo/", "644"],
+    ["data/com.adhadse.Bookx.mime.xml", "usr/share/mime/packages/com.adhadse.Bookx.xml", "644"],
+    ["data/icons/hicolor/scalable/apps/com.adhadse.Bookx.svg", "usr/share/icons/hicolor/scalable/apps/", "644"],
+    ["data/icons/hicolor/scalable/apps/com.adhadse.Bookx-symbolic.svg", "usr/share/icons/hicolor/symbolic/apps/", "644"],
+    ["README.md", "usr/share/doc/bookx/", "644"],
+    ["NOTICE.md", "usr/share/doc/bookx/", "644"],
+    ["CHANGELOG.md", "usr/share/doc/bookx/", "644"],
+]
+
+# `cargo generate-rpm` (cargo-generate-rpm), after the same release build.
+[package.metadata.generate-rpm]
+name = "bookx"
+license = "GPL-3.0-or-later"
+summary = "A modern e-book library, reader and editor for GNOME"
+url = "https://bookx.adhadse.com"
+assets = [
+    { source = "target/release/bookx", dest = "/usr/bin/bookx", mode = "755" },
+    { source = "target/release/bookx-cli", dest = "/usr/bin/bookx-cli", mode = "755" },
+    { source = "data/com.adhadse.Bookx.desktop", dest = "/usr/share/applications/com.adhadse.Bookx.desktop", mode = "644" },
+    { source = "data/com.adhadse.Bookx.metainfo.xml", dest = "/usr/share/metainfo/com.adhadse.Bookx.metainfo.xml", mode = "644" },
+    { source = "data/com.adhadse.Bookx.mime.xml", dest = "/usr/share/mime/packages/com.adhadse.Bookx.xml", mode = "644" },
+    { source = "data/icons/hicolor/scalable/apps/com.adhadse.Bookx.svg", dest = "/usr/share/icons/hicolor/scalable/apps/com.adhadse.Bookx.svg", mode = "644" },
+    { source = "data/icons/hicolor/scalable/apps/com.adhadse.Bookx-symbolic.svg", dest = "/usr/share/icons/hicolor/symbolic/apps/com.adhadse.Bookx-symbolic.svg", mode = "644" },
+    { source = "README.md", dest = "/usr/share/doc/bookx/README.md", mode = "644", doc = true },
+    { source = "NOTICE.md", dest = "/usr/share/doc/bookx/NOTICE.md", mode = "644", doc = true },
+    { source = "CHANGELOG.md", dest = "/usr/share/doc/bookx/CHANGELOG.md", mode = "644", doc = true },
+    { source = "LICENSE", dest = "/usr/share/licenses/bookx/LICENSE", mode = "644", license = true },
+]
+
+[package.metadata.generate-rpm.requires]
+gtk4 = ">= 4.20"
+libadwaita = ">= 1.8"
+gtksourceview5 = "*"
+
+[package.metadata.generate-rpm.recommends]
+espeak-ng = "*"

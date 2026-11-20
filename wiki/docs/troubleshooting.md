@@ -10,7 +10,7 @@ from another computer never is, so make sure nothing else is using the library b
 
 A library on a network file system, or in a Dropbox/Syncthing-style folder, can be damaged if two computers change it
 at once. Keep the library on a local disk and use [backups](library.md#library-health) or the
-[share feature](devices-and-sharing.md#share-library) to reach it from elsewhere.
+[share feature](devices-and-sharing.md#library-server) to reach it from elsewhere.
 
 ## A book did not import
 

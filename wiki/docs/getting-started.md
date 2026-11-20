@@ -2,6 +2,13 @@
 
 ## Your first library
 
+<figure markdown="1">
+![The welcome page of an empty library](assets/library-welcome-light.png#only-light)
+![The welcome page of an empty library](assets/library-welcome-dark.png#only-dark)
+<figcaption markdown="1">A new library: the welcome page asks you to add books, and nothing else gets in the way.</figcaption>
+</figure>
+
+
 When you start Bookx for the first time the library is empty and shows a welcome page. The library is a plain
 folder, by default `~/Documents/Bookx Library`. It holds your book files and a SQLite catalogue,
 `bookx-library.db`. You can move the folder, copy it or back it up like any other folder.
@@ -10,6 +17,13 @@ To use another folder, open **Preferences** (++ctrl+comma++) and change the libr
 the command palette (++ctrl+k++) finds every command, book and setting; see [Accessibility](accessibility.md).
 
 ## Adding books
+
+<figure markdown="1">
+![The Add menu](assets/library-add-menu-light.png#only-light)
+![The Add menu](assets/library-add-menu-dark.png#only-dark)
+<figcaption markdown="1">The **+** menu: files, the web, a folder, an audiobook, news subscriptions and a whole folder tree.</figcaption>
+</figure>
+
 
 - Click **+** in the header, then *Add Books* (++ctrl+o++), *Add Folder* or *Add Folder Recursively*.
 - Or drag files and folders onto the window.
@@ -35,6 +49,9 @@ already there. The same is available on the command line:
 ```bash
 bookx-cli library import-calibre ~/Calibre\ Library --copy
 ```
+
+You can also go back: *Export as Calibre Library* in the main menu writes a Calibre library that Calibre opens
+([details](library.md#exporting-as-a-calibre-library)).
 
 ## Opening a book
 

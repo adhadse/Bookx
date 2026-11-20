@@ -107,6 +107,12 @@ pub enum ToolsCmd {
         #[arg(long)]
         copy: bool,
     },
+    /// Write the library as a Calibre library (Author/Title (id)/ files, cover.jpg, metadata.opf
+    /// and a metadata.db Calibre can open) into an empty folder. The library is only read.
+    ExportCalibre {
+        /// The folder to create (it must not exist or be empty, and not be inside the library)
+        dir: PathBuf,
+    },
     /// Show or change where books are stored: tree, flat, template, linked
     Layout {
         /// tree | flat | template | linked (omit to show the current one)
@@ -411,6 +417,25 @@ pub fn run(cmd: ToolsCmd, root: &Path, out: &mut dyn Write, err: &mut dyn Write)
             )?;
             writeln!(out, "{}", r.summary())?;
             Ok(if r.copy_failed.is_empty() { 0 } else { 1 })
+        }
+        ToolsCmd::ExportCalibre { dir } => {
+            let g = open_library_guarded(root, "Bookx CLI", true)?;
+            let mut last = usize::MAX;
+            let r = bookx_store::export_calibre(
+                &g.opened.library.books,
+                root,
+                &dir,
+                &mut |done, total| {
+                    let pct = if total == 0 { 100 } else { done * 100 / total };
+                    if pct != last {
+                        last = pct;
+                        let _ = writeln!(err, "exporting: {done}/{total}");
+                    }
+                },
+                &|| false,
+            )?;
+            writeln!(out, "{} to {}", r.summary(), dir.display())?;
+            Ok(if r.problems.is_empty() { 0 } else { 1 })
         }
         ToolsCmd::Layout {
             name,

@@ -50,7 +50,7 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | R14 | Night mode + warmth schedule, e-ink | PARTIAL | `eink.rs`, schemes | warmth/auto-dark schedule (R60) | S | L |
 | R15 | Status bar customisation | DONE (2026-11-13, enhancement 13) | `footer_stats.rs`, `ui/reader_footer.rs`: 15 items, order, presets, position, separator, size, opacity, per-book override; right click / Preferences → Reading → Footer | | | |
 | R16 | Reading-position sync (KOSync) | DONE | `kosync_sync.rs`, `ui/kosync.rs`, `bookx-serve` |  |  |  |
-| R17 | Fixed-layout / image books (CBZ, PDF) | PARTIAL | CBZ/CBT/CBC in `bookx-formats`; PDF agent running | PDF (agent running), CBR real RAR | L | M |
+| R17 | Fixed-layout / image books (CBZ, PDF) | PARTIAL | CBZ/CBT/CBC in `bookx-formats` read in the comic reader (wave 6); PDF pages in the PDF reader | CBR real RAR | L | M |
 | R18 | Media overlays, embedded audio/video | MISSING |  | SMIL playback | L | L |
 | R19 | Per-book settings profiles | DONE (was PARTIAL) | `reading_profiles.rs`, `ui/reader_profiles.rs`: a profile can be the book's own (pin); scenario `reading_profiles` |  | S | M |
 | R20 | Annotation export | DONE | `annotation_export.rs` (md, html, json, txt, Kindle clippings, Readwise payload, CSV); Anki (`bookx_lookup::anki`: .apkg, TSV, CSV, basic and cloze); Readwise upload (`readwise_sync.rs`) | Joplin, Obsidian templates; Anki / Readwise not tried against the real services | M | M |
@@ -79,6 +79,7 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | R37 | Selection menu | DONE | popover: highlight, note, dictionary, Wikipedia (with the lead picture, enhancement 16), translate, copy; draggable selection handles (enhancement 10) | share, search-in-book from selection | S | L |
 | R38 | Multiple dictionaries, lookup history, web templates | PARTIAL | `dictionaries.rs` | priority list UI, custom web lookup, history | S | L |
 | R39 | Vocabulary: auto-add, due list, flashcards | DONE | `ui/vocab.rs` |  |  |  |
+| R39b | Own vocabulary: terms with your own definition (no dictionary needed), marked in the text, Words list, glossary import/export, "My Vocabulary" dictionary | DONE (enhancements 32) | `bookx-lookup::{vocab,own,termmatch}`, `ui/vocab_*.rs`, `ui/reader_vocab.rs` | not in the catalogue or backups, no Ctrl+hover, no book-map entry | S | M |
 | R40 | Statistics detail (sessions, estimates, calendar) | PARTIAL | `ui/stats.rs` | calendar, export, per-book view | S | M |
 | R41 | Search in book | DONE | sidebar search, regex-less | whole word / case / regex options | S | L |
 | R42 | Reference mode (paper page numbers) | DONE (was MISSING) | `page_list.rs`, footer *Page N*, Go to… with printed labels; scenario `reader_goto` |  | S | L |
@@ -91,7 +92,7 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | R49 | Auto-turn page timer | MISSING |  |  | S | M |
 | R50 | Read-aloud controls | DONE | `ui/reader_tts.rs` |  |  |  |
 | R51 | Fixed-layout EPUB | PARTIAL | single page per spine item | spreads, positioned text | L | L |
-| R52 | Comics/manga reader | PARTIAL | CBZ as images; RTL page order | panel zoom, spreads, preloading, next file in folder | L | M |
+| R52 | Comics/manga reader | PARTIAL (wave 6: reader DONE) | `crates/bookx-comic` + `ui/reader_comic.rs`: single, two-page and webtoon layouts, smart zoom, guided view, RTL per book, preloading with a memory budget, thumbnails, grey/e-ink, ComicInfo page types (`docs/comic-notes.md`) | next file in folder, real RAR, per-library direction, hardware e-ink check | L | M |
 | R53 | Book information screen | DONE | reader Properties, library details panel |  |  |  |
 | R54 | Custom cover per book | PARTIAL | cover replace in edit dialog | page screenshot as cover | S | L |
 | R55 | Footnote popups configurable | DONE (was MISSING) | as R5; on/off in Preferences → Reading → Links | always/never only (no long-press mode) | S | H |
@@ -118,7 +119,7 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | L7 | Duplicate detection and merge | DONE | `duplicates.rs` |  |  |  |
 | L8 | Series management | DONE | `series_view.rs`, `bookx-sources::tidy` |  |  |  |
 | L9 | Library checks, backups, restore | DONE | `library_health.rs`, `bookx-backup` |  |  |  |
-| L10 | Calibre import | DONE | `bookx-store::calibre` | export back to Calibre format | M | L |
+| L10 | Calibre import and export | DONE | `bookx-store::calibre`, `bookx-store::calibre_export` (wave 6: `export-calibre`, menu entry, verified with calibredb 9.15) | custom columns, reading state | M | L |
 | L11 | Multiple libraries, switcher | DONE (was PARTIAL) | `libraries.rs`, `ui/library_switcher.rs`, header button; scenario `library_switcher` |  | S | M |
 | L12 | Folder watcher | PARTIAL | inbox (rescan on open/start) | background `notify` watcher | S | L |
 | L13 | Cover tools | PARTIAL (2026-11-20) | `bookx-sources::cover` generation/crop; edit dialog; **`cover_quality` grading, Health → Covers scan, larger covers offered as safe changes in the fetch review; `library covers`; scenario `pain_health`** | crop UI, extract from PDF, side-by-side candidates | M | L |
@@ -183,7 +184,7 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | P3 | KOSync server | DONE | `bookx-serve::kosync` |  |  |  |
 | P4 | OPDS server | DONE | `bookx-serve::opds`, `ui/share.rs` |  |  |  |
 | P4c | OPDS client (browse/search/download UI) | DONE (was MISSING) | `opds_browse.rs`, `ui/opds.rs`; scenarios `opds_browse`, `opds_errors` | not tried against the real Gutenberg/Standard Ebooks (no network in tests); basic auth only | M | H |
-| P5 | Calibre wireless protocol | DEFERRED | `docs/calibre-wireless-device-plan.md` | implementation (see plan) | L | L |
+| P5 | Calibre wireless protocol | DEFERRED (owner decision D10, 2026-11-20: wireless sync is KOReader only; stock firmware = USB) | `docs/calibre-wireless-device-plan.md` | implementation (see plan) | L | L |
 | P6 | Send by e-mail | DONE | `emailing.rs` |  |  |  |
 | P7 | MTP | PARTIAL | gvfs mounts | direct USB MTP | L | L |
 | P8 | Content server web UI | DONE | `bookx-serve::server`, `bookx-cli serve` |  |  |  |
@@ -192,6 +193,7 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | P11 | OPDS search incl. content, pagination | DONE | `bookx-serve::opds` |  |  |  |
 | P12 | KOSync endpoints | DONE |  |  |  |  |
 | P13 | Calibre-plugin interop (KOReader) | DEFERRED | see P5 |  | M | L |
+| P13b | KOReader highlight/note/bookmark sync over Wi-Fi (own plugin + built-in server) | DONE (not run on a device) | `crates/bookx-serve/src/annotation_sync.rs`, `koreader-plugin/bookx.koplugin/`, `src/annotation_sync*.rs`, wiki `koreader-sync.md`, `docs/koreader-annotation-sync.md`; scenarios `koreader_annotations*` | the plugin menu was never run inside KOReader; Bookx highlights are listed on the device, not painted; bookmarks are not imported | M | M |
 | P14 | Device drivers (Kobo, Kindle, PocketBook, Boox…) | PARTIAL | generic + Kobo + Kindle detection, reading state from Kobo/KOReader | Kindle native reading state | L | L |
 | P15 | Send options (format fallback, templates, remove, sync back) | DONE | Device window |  |  |  |
 | P16 | Share: email, folder, LAN | DONE | Share Library, e-mail |  |  |  |
@@ -224,7 +226,7 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | X4 | Performance harness | DONE | `perf_budgets.rs` in 6 crates | reader/scroll budgets partly via scenario `reader_budget` |  |  |
 | X5 | Adaptive layout for phones | PARTIAL | narrow-window overlays in library | reader/prefs on phone sizes | M | M |
 | X6 | Localization | PARTIAL | `i18n.rs` (`tr`, `tr_c`, `trf`, `ntr`, `N_`, plural rules, number/date helpers), `po/` (pot, es, de complete; fr, hi 191 strings), `build-aux/i18n.sh`, ~1,600 strings marked across `src/ui` and the glue modules by script; tests keep template, es/de, placeholders and plural forms in step; wiki *Translating Bookx* | es/de/fr/hi are machine-assisted and need native review; roughly 700 literals are still English (enum label tables, composed device-sync sentences, export labels, markup fragments, error texts); no Weblate project | M | H |
-| X7 | Flatpak and AppImage, update notice | PARTIAL | the Flatpak builds offline (`build-aux/flatpak.sh`, GNOME 50, espeak-ng module, cargo sources script) and its smoke tests pass; release/CI workflows; see `docs/packaging-notes.md` | AppImage, update notice, Flathub submission; devices/voices/secrets not exercised in the sandbox | S | L |
+| X7 | Flatpak and AppImage, update notice | PARTIAL | the Flatpak builds offline (`build-aux/flatpak.sh`, GNOME 50, espeak-ng module, cargo sources script) and its smoke tests pass; release/CI workflows; `make release-check`; see `docs/packaging-notes.md` | AppImage, update notice, Flathub submission; devices/voices/secrets not exercised in the sandbox | S | L |
 | X8 | Plugin API | DONE | = X3 |  |  |  |
 | X9 | User patches | DONE | `bookx-plugin::patch` |  |  |  |
 | X10 | Profiles/gestures/quick menu as config; import/export settings | MISSING |  |  | S | M |
@@ -233,7 +235,7 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | X13 | E-ink mode | DONE | `eink.rs` | not on hardware |  |  |
 | X14 | Keyboard-first + command palette | DONE | `palette.rs`, `ui/palette.rs` |  |  |  |
 | X15 | Offline-first principles | DONE | no telemetry; **offline mode switch and the list of connections (`privacy.rs`, Preferences → Privacy, wiki Privacy; tests in `bookx-sources/tests/offline.rs`, `bookx-tts/tests/offline.rs`, scenario `pain_offline`)** |  |  |  |
-| X16 | Release channels, deb/rpm | PARTIAL | Flatpak bundle + tarball with checksums in `.github/workflows/release.yml` (never run on GitHub) | deb/rpm, reproducible builds | M | L |
+| X16 | Release channels, deb/rpm | PARTIAL | Flatpak bundle, tarball (deterministic packing), `.deb`/`.rpm` metadata and jobs, `SHA256SUMS`, `CHANGELOG.md`, `release-check.sh` (workflow never run on GitHub; `cargo deb`/`generate-rpm` never run here) | binary reproducibility, signing, install tests on other distros | M | L |
 | X17 | Localization workflow | PARTIAL | as X6; RTL default direction for right-to-left languages (unit tested, no RTL catalogue ships); locale-aware numbers, plurals and some dates | live re-translation of open windows; Weblate project | M | H |
 | X18 | Performance harness extended | PARTIAL | budgets for open, search, import, conversion | scroll fps, memory ceiling | M | L |
 | X19 | Diagnostics: system info, debug log export, safe mode | PARTIAL (was MISSING) | `src/diagnostics.rs` with a unit-tested `redact`; About → Troubleshooting and *Copy Diagnostics* (main menu, palette, `app.copy-diagnostics`); wiki Troubleshooting | debug log export, safe mode | S | M |
@@ -284,3 +286,15 @@ move the counts.
 Runners-up: R49 auto-turn, R60 warmth schedule, R33 status bar items, R65 page-turn animation, L14 add by ISBN / empty
 record, L21 marked books, P5 Calibre wireless (plan only, see `docs/calibre-wireless-device-plan.md`; judged larger
 than a day), C7 PDF output, C4/R17 PDF (PDF agent).
+
+## Sync umbrella (2026-11-20, syncui)
+
+| Item | Status | Where |
+|---|---|---|
+| One umbrella “Sync”: main menu entry (was Share Library), one Preferences → Sync page (was Devices and Sharing + Sync), old name kept as an alias | DONE | `src/sync_model.rs`, `src/ui/sync_prefs.rs`, `src/ui/sync_window.rs`, `src/ui/library.rs` |
+| Task-oriented Sync window: status card (off / ready / connected) with one main button, three choice cards (Bookx sync with KOReader, USB device, Share books), collapsed Advanced | DONE | `src/ui/sync_window.rs` |
+| Preferences → Sync: four-step setup checklist (server, account with Register / Log in inline, plugin copy, test on the device), What Bookx sync does, USB, library servers, collapsed Advanced holding every technical setting and the Requirements table | DONE | `src/ui/sync_prefs.rs`, `src/ui/share.rs`, `src/ui/kosync.rs`, `src/annotation_sync_ui.rs` |
+| One settings bus for both surfaces; no duplicated switch with its own state | DONE | `src/settings_bus.rs` (`sync()`), `share::follow` |
+| “KOSync” removed from labels, titles and buttons (named once as “Bookx sync (extended KOSync)”); no `/kosync` text; wiki pages renamed and rewritten | DONE | wiki `progress-sync.md`, `koreader-sync.md`, `devices-and-sharing.md`, `preferences.md`, `reverse-proxy.md` |
+| Research note, before/after IA, where each old setting went | DONE | `docs/sync-ux-notes.md` |
+| Not done: “connected” only reflects annotation sync; a hand-copied plugin is not detected; not tried on a real Kobo or KOReader device | caveat | `docs/sync-ux-notes.md` |

@@ -191,9 +191,23 @@ impl BannerCtl {
             });
         }
         // the room changed (window, sidebar, details panel): plan again
+        // (not in the signal itself: it fires while the book list is being allocated, and changing the size of the
+        // banner then leaves it without an allocation when the frame is drawn: "Trying to snapshot GtkScrolledWindow
+        // without a current allocation")
+        let pending = Rc::new(Cell::new(false));
         for adj in [vadj, hadj] {
-            let (me, mode) = (self.clone(), mode.clone());
-            adj.connect_changed(move |_| me.replan(&mode()));
+            let (me, mode, pending) = (self.clone(), mode.clone(), pending.clone());
+            adj.connect_changed(move |_| {
+                if pending.replace(true) {
+                    return;
+                }
+                let (me, mode, pending) = (me.clone(), mode.clone(), pending.clone());
+                glib::idle_add_local_full(glib::Priority::HIGH_IDLE, move || {
+                    pending.set(false);
+                    me.replan(&mode());
+                    glib::ControlFlow::Break
+                });
+            });
         }
     }
 

@@ -29,7 +29,7 @@ pub(super) fn install_css() {
     }
 }
 
-fn clear(row: &gtk::ListBoxRow) {
+fn clear(row: &impl IsA<gtk::Widget>) {
     for c in ["toc-drop-before", "toc-drop-after", "toc-drop-into"] {
         row.remove_css_class(c);
     }
@@ -43,61 +43,70 @@ fn class_of(pos: DropPos) -> &'static str {
     }
 }
 
-impl Editor {
-    /// Makes the grip the drag source of entry `i` and the row a drop target.
-    pub(super) fn toc_row_dnd(&self, row: &gtk::ListBoxRow, i: usize) -> gtk::Image {
-        install_css();
-        let grip = gtk::Image::from_icon_name("list-drag-handle-symbolic");
-        grip.add_css_class("dim-label");
-        grip.set_tooltip_text(Some(&tr("Drag to move this entry")));
-        let src = gtk::DragSource::new();
-        src.set_actions(gdk::DragAction::MOVE);
+/// Makes the grip the drag source of the entry shown in `item` and the row a drop target. The list is
+/// virtual, so the entry number is read from the item's position when the drag or the drop happens.
+pub(super) fn toc_row_dnd(
+    row: &gtk::Box,
+    item: &gtk::ListItem,
+    tx: relm4::Sender<Input>,
+) -> gtk::Image {
+    install_css();
+    let grip = gtk::Image::from_icon_name("list-drag-handle-symbolic");
+    grip.add_css_class("dim-label");
+    grip.set_tooltip_text(Some(&tr("Drag to move this entry")));
+    let src = gtk::DragSource::new();
+    src.set_actions(gdk::DragAction::MOVE);
+    {
+        let item = item.downgrade();
         src.connect_prepare(move |_, _, _| {
-            Some(gdk::ContentProvider::for_value(&(i as u32).to_value()))
+            let i = item.upgrade()?.position();
+            Some(gdk::ContentProvider::for_value(&i.to_value()))
         });
-        {
-            let row = row.clone();
-            src.connect_drag_begin(move |s, _| {
-                let p = gtk::WidgetPaintable::new(Some(&row));
-                s.set_icon(Some(&p), 0, 0);
-            });
-        }
-        grip.add_controller(src);
-
-        let target = gtk::DropTarget::new(u32::static_type(), gdk::DragAction::MOVE);
-        {
-            let row = row.clone();
-            target.connect_motion(move |_, _, y| {
-                clear(&row);
-                row.add_css_class(class_of(toc_ops::drop_zone(y, f64::from(row.height()))));
-                gdk::DragAction::MOVE
-            });
-        }
-        {
-            let row = row.clone();
-            target.connect_leave(move |_| clear(&row));
-        }
-        {
-            let row = row.clone();
-            let tx = self.sender.input_sender().clone();
-            target.connect_drop(move |_, v, _, y| {
-                clear(&row);
-                let Ok(from) = v.get::<u32>() else {
-                    return false;
-                };
-                let pos = toc_ops::drop_zone(y, f64::from(row.height()));
-                tx.emit(Input::Ext(Cmd::Struct(StructCmd::TocDrop(
-                    from as usize,
-                    i,
-                    pos,
-                ))));
-                true
-            });
-        }
-        row.add_controller(target);
-        grip
     }
+    {
+        let row = row.clone();
+        src.connect_drag_begin(move |s, _| {
+            let p = gtk::WidgetPaintable::new(Some(&row));
+            s.set_icon(Some(&p), 0, 0);
+        });
+    }
+    grip.add_controller(src);
 
+    let target = gtk::DropTarget::new(u32::static_type(), gdk::DragAction::MOVE);
+    {
+        let row = row.clone();
+        target.connect_motion(move |_, _, y| {
+            clear(&row);
+            row.add_css_class(class_of(toc_ops::drop_zone(y, f64::from(row.height()))));
+            gdk::DragAction::MOVE
+        });
+    }
+    {
+        let row = row.clone();
+        target.connect_leave(move |_| clear(&row));
+    }
+    {
+        let row = row.clone();
+        let item = item.downgrade();
+        target.connect_drop(move |_, v, _, y| {
+            clear(&row);
+            let (Ok(from), Some(item)) = (v.get::<u32>(), item.upgrade()) else {
+                return false;
+            };
+            let pos = toc_ops::drop_zone(y, f64::from(row.height()));
+            tx.emit(Input::Ext(Cmd::Struct(StructCmd::TocDrop(
+                from as usize,
+                item.position() as usize,
+                pos,
+            ))));
+            true
+        });
+    }
+    row.add_controller(target);
+    grip
+}
+
+impl Editor {
     /// Alt+Up/Down move the entry among its siblings, Alt+Left promotes, Alt+Right demotes (called once).
     pub(super) fn toc_keys_install(&self) {
         let key = gtk::EventControllerKey::new();

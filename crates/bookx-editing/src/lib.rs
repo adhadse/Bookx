@@ -9,6 +9,7 @@ pub mod checkpoints;
 pub mod code_format;
 pub mod code_marks;
 pub mod code_nav;
+pub mod code_style;
 pub mod compare;
 pub mod cover;
 pub mod files;

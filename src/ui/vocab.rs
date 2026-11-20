@@ -15,10 +15,21 @@ pub const EMPTY_HELP: &str =
     "No words yet. Select a word while reading and choose the dictionary button: looked-up words are collected here.";
 
 pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
+    show_with(parent, shared, false, None);
+}
+
+/// The vocabulary window. `words` opens on the list of words instead of the flashcards, `focus` is a
+/// word to find in it (the "Open in Vocabulary" of a saved term in the text).
+pub fn show_with(
+    parent: &impl IsA<gtk::Widget>,
+    shared: &SharedRef,
+    words: bool,
+    focus: Option<&str>,
+) {
     let dialog = adw::Dialog::new();
     dialog.set_title(&tr("Vocabulary"));
-    dialog.set_content_width(460);
-    dialog.set_content_height(560);
+    dialog.set_content_width(520);
+    dialog.set_content_height(620);
 
     let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
     root.set_margin_top(18);
@@ -147,9 +158,42 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
     }
     refresh();
 
+    // two pages: the flashcards, and the list of words (yours marked)
+    let list = super::vocab_list::build(shared, None, focus);
+    let stack = gtk::Stack::new();
+    stack.add_named(&root, Some("review"));
+    stack.add_named(&list.root, Some("words"));
+    let switch = adw::ToggleGroup::new();
+    for (name, label) in [("review", tr("Review")), ("words", tr("Words"))] {
+        let t = adw::Toggle::new();
+        t.set_name(Some(name));
+        t.set_label(Some(&label));
+        switch.add(t);
+    }
+    super::audit::label(&switch, &tr("Vocabulary page"));
+    {
+        let (stack, list) = (stack.clone(), list.clone());
+        switch.connect_active_name_notify(move |g| {
+            if let Some(n) = g.active_name() {
+                stack.set_visible_child_name(&n);
+                if n == "words" {
+                    (list.refresh)();
+                }
+            }
+        });
+    }
+    let start = if words || focus.is_some() {
+        "words"
+    } else {
+        "review"
+    };
+    stack.set_visible_child_name(start);
+    switch.set_active_name(Some(start));
+    let header = adw::HeaderBar::new();
+    header.set_title_widget(Some(&switch));
     let view = adw::ToolbarView::new();
-    view.add_top_bar(&adw::HeaderBar::new());
-    view.set_content(Some(&root));
+    view.add_top_bar(&header);
+    view.set_content(Some(&stack));
     dialog.set_child(Some(&view));
     dialog.present(Some(parent));
 }

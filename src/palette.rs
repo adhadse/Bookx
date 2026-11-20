@@ -181,6 +181,13 @@ pub const COMMANDS: &[Command] = &[
         LIB
     ),
     cmd!(
+        "lib.export-calibre",
+        N_("Export as Calibre Library"),
+        "",
+        "migrate backup leave",
+        LIB
+    ),
+    cmd!(
         "lib.focus-search",
         N_("Search the Library"),
         "<Control>f",
@@ -312,6 +319,20 @@ pub const COMMANDS: &[Command] = &[
         "Book Map",
         "m",
         "chapters overview strip thumbnails page browser bookmarks highlights",
+        RDR
+    ),
+    cmd!(
+        "reader.vocab-add",
+        N_("Add to Vocabulary"),
+        "<Control><Shift>v",
+        "word term phrase own definition glossary name jargon save",
+        RDR
+    ),
+    cmd!(
+        "reader.vocab-terms",
+        N_("Terms in this Book"),
+        "",
+        "vocabulary glossary words definitions list",
         RDR
     ),
     cmd!(
@@ -518,10 +539,10 @@ pub const COMMANDS: &[Command] = &[
         None
     ),
     cmd!(
-        "app.share",
-        N_("Share Library"),
+        "app.sync",
+        N_("Sync"),
         "",
-        "serve opds network",
+        "share library serve opds network bookx sync koreader usb device wifi",
         None
     ),
     cmd!(

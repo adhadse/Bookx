@@ -1,5 +1,5 @@
 //! A KOSync client: the other half of [`crate::kosync`]. It talks to Bookx's own server (mounted at
-//! `/kosync` of a share) and to any server that implements KOReader's progress-sync protocol
+//! `/bookx` of a share) and to any server that implements KOReader's progress-sync protocol
 //! (`https://sync.koreader.rocks`, a self-hosted kosync, Calibre-Web's `/kosync`).
 //!
 //! Protocol, as KOReader's `kosync` plugin speaks it:
@@ -391,10 +391,8 @@ mod tests {
             "https://sync.koreader.rocks/"
         );
         assert_eq!(
-            base_url(" http://192.168.1.5:8080/kosync/ ")
-                .unwrap()
-                .path(),
-            "/kosync"
+            base_url(" http://192.168.1.5:8080/bookx/ ").unwrap().path(),
+            "/bookx"
         );
         assert!(base_url("").is_err());
         assert!(base_url("ftp://x").is_err());
@@ -406,7 +404,7 @@ mod tests {
             return;
         }
         let s = server(true);
-        let url = format!("{}/kosync", s.base_url());
+        let url = format!("{}/bookx", s.base_url());
         let a = Client::new(&url, "alice", "pw").unwrap();
         assert!(a.login().unwrap_err().downcast_ref::<Failure>() == Some(&Failure::BadCredentials));
         a.register().unwrap();
@@ -439,9 +437,14 @@ mod tests {
         assert_eq!(r.device_id, "dev-1");
         assert_eq!(r.progress, "/body/DocFragment[3]/body");
         assert_eq!(r.timestamp, ts);
-        // the server is also reachable without the prefix (KOReader's custom server address)
-        let root = Client::new(&s.base_url(), "alice", "pw").unwrap();
-        assert!(root.get_progress("abc123").unwrap().is_some());
+        // there is no root-level mount and no /kosync alias: only /bookx answers
+        for bad in [s.base_url(), format!("{}/kosync", s.base_url())] {
+            let other = Client::new(&bad, "alice", "pw").unwrap();
+            assert!(
+                other.get_progress("abc123").is_err() || other.login().is_err(),
+                "{bad}"
+            );
+        }
         // another account does not see it
         let c = Client::new(&url, "bob", "pw").unwrap();
         c.register().unwrap();
@@ -455,7 +458,7 @@ mod tests {
             return;
         }
         let s = server(false);
-        let c = Client::new(&s.base_url(), "alice", "pw").unwrap();
+        let c = Client::new(&format!("{}/bookx", s.base_url()), "alice", "pw").unwrap();
         assert_eq!(
             c.register().unwrap_err().downcast_ref::<Failure>(),
             Some(&Failure::RegistrationClosed)

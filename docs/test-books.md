@@ -25,6 +25,41 @@ Used by: the real-session UI tests (`build-aux/session-tests.sh`, see `docs/test
 editor and menus, the Masque for the second-book scenario); the real-Kobo sandbox send (`docs/kobo-real-device-report.md`), the ignored test
 `devices::tests::sandbox_send_to_a_real_kobo` (`BOOKX_TEST_BOOKS=~/.cache/bookx-testbooks`).
 
+## Comic fixtures
+
+No comic is committed or downloaded. `bookx_comic::testgen` draws synthetic pages (gutters of one colour, a tinted picture per panel,
+splash and noise pages, a PNG that claims 40000 x 40000 pixels in 70 bytes) and `cargo run -p bookx-comic --example make_test_comics DIR`
+writes `story.cbz` (6 pages with ComicInfo: a cover, grids of panels, a wide double page, one page with black gutters),
+`manga.cbz` (4 pages, `Manga=YesAndRightToLeft`), `webtoon.cbz` (4 tall pages), `spreads.cbz`, `bomb.cbz` and `corrupt.cbz` for the Broadway
+and real-session scenarios. All content is generated, so there is no third-party licence. The unit tests, the Broadway tests and
+the real-session tests always use these, so they stay offline and deterministic. Panel detection is only checked on generated
+pages; it has not been tested on a whole real comic yet (the real pages below are only used for the wiki pictures).
+
+### Real comic for the wiki pictures (downloaded, never committed)
+
+`build-aux/wiki-screenshots.sh` shows a real comic in `reader-comic-page` and `reader-comic-spread`:
+**"Little Nemo in Slumberland"** by **Winsor McCay** (1869-1934), five Sunday pages of the *New York Herald*, 15 October to
+19 November 1905. The author died in 1934 and the pages were published in 1905, so they are in the **public domain** (United
+States: published before 1931; elsewhere: life plus 70 years). Source: the scans on Wikimedia Commons (from archive.org), tagged
+"Public domain" there, <https://commons.wikimedia.org/wiki/Category:Little_Nemo_in_Slumberland>. It is a Western comic read left
+to right; no manga was found whose licence clearly allows redistribution, so the manga picture (if any) stays synthetic.
+
+| Page | Commons file | SHA-256 of the downloaded JPEG |
+|---|---|---|
+| p001 | `Little_Nemo_1905-10-15.jpg` (1740 x 2376) | `339d7b1228ca24bbffa55afe46efb4203db484afb6875eaa5888684694fce9d6` |
+| p002 | `Little_Nemo_1905-10-29.jpg` (1740 x 2376) | `858c2158e678dceb4ab25feea7a9e67973c85bd13b6102fd0d5bd1d43679c7ab` |
+| p003 | `Little_Nemo_1905-11-05.jpg` (1775 x 2427) | `16586b20d7940cee3123f2dcb81b1efa10edcf4bbbbf5352e492fff157d56a2d` |
+| p004 | `Little_Nemo_1905-11-12.jpg` (1775 x 2427) | `8eae9b9e60c695ce5da0bd136231b6a9e9a8abe52dd82d7e6bee379cfe37d20a` |
+| p005 | `Little_Nemo_1905-11-19.jpg` (1741 x 2405) | `7de67d3a65bcc70c1f557c3ddaafd5527d6f4790d4ae95baf626154047a636d0` |
+
+`build-aux/make-real-comic.py OUT.cbz [CACHE]` downloads the pages (fixed `upload.wikimedia.org` URLs, size cap, accepted only when the
+SHA-256 matches) into `~/.cache/bookx-testbooks/real-comic/` and zips them with a `ComicInfo.xml` into
+`~/.cache/bookx-testbooks/comics/little-nemo.cbz` (the CBZ's own hash changes with the zip timestamps; the page hashes are what is
+pinned). `wiki-screenshots.sh` exports `WIKI_REAL_COMIC` to that file and `session-tests.sh` then sets `BOOK_COMIC` to it for that
+run only. Offline (`NET=0`) and without a cache the script says so and the synthetic comic is used: do not commit pictures made
+that way. Nothing of this is in the repository or in a release; see the attribution in `NOTICE.md`.
+
+
 ## PDF fixtures
 
 No PDF is committed or downloaded. `bookx_pdf::testpdf` (a small PDF writer: Helvetica/Times/Courier text, links, outline,

@@ -12,6 +12,13 @@ The folders can also be set with the `BOOKX_PLUGINS` and `BOOKX_PATCHES` environ
 
 ## Using plugins
 
+<figure markdown="1">
+![Preferences, Extensions](assets/preferences-extensions-light.png#only-light)
+![Preferences, Extensions](assets/preferences-extensions-dark.png#only-dark)
+<figcaption markdown="1">Preferences → Extensions: installed plugins and the folder they go into.</figcaption>
+</figure>
+
+
 1. Put the plugin folder (with `plugin.toml` and `plugin.wasm`) into the plugins folder. *Preferences → Extensions →
    Open plugins folder* opens it.
 2. Open *Preferences → Extensions* and switch the plugin on.
@@ -49,6 +56,13 @@ becomes an error message in the app, never a crash.
 
 ## Using patches
 
+<figure markdown="1">
+![Preferences, Patches](assets/preferences-patches-light.png#only-light)
+![Preferences, Patches](assets/preferences-patches-dark.png#only-dark)
+<figcaption markdown="1">Preferences → Patches: installed patches and their folder.</figcaption>
+</figure>
+
+
 A patch is one `.toml` file. It applies regex or CSS rules to the book's text files at a chosen moment:
 
 | Moment | Effect |
@@ -74,3 +88,10 @@ See the [plugin and patch developer guide](plugin-development.md).
     - There is no plugin store or browser. Plugins are folders you place yourself.
     - API versions 1 and 2 exist (2 adds editor actions). File-system permissions (`fs:*`) are never granted.
     - Plugin and patch support is tested with sample plugins built for the tests; few real-world plugins exist yet.
+
+## Will my plugins keep working?
+
+Yes: a plugin declares the plugin interface version it was written for (`api_version`, today 1 or 2) and every later
+Bookx release keeps running it unchanged. New abilities arrive as additions or as a new interface version, and a
+release never takes a permission or an operation away from a released version. Plugin authors can read the details in
+the [stability policy](plugin-development.md#compatibility-and-the-abi-stability-policy).

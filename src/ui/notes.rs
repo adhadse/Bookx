@@ -71,6 +71,9 @@ struct State {
     to: gtk::Entry,
     stack: gtk::Stack,
     summary: gtk::Label,
+    /// The colours of the shown highlights, each with its swatch and count (click one in the
+    /// Colour filter to narrow the list).
+    legend: gtk::Label,
     sel_label: gtk::Label,
     /// The visible matches, in display order.
     shown: RefCell<Vec<usize>>,
@@ -224,6 +227,31 @@ impl State {
             "{} of {} highlights · {} books · {} with notes",
             &[&order.len(), &total, &books.len(), &with_notes],
         ));
+        let mut counts: Vec<(String, usize)> = Vec::new();
+        for &i in order.iter() {
+            let c = rows[i].color.clone();
+            match counts.iter_mut().find(|(n, _)| *n == c) {
+                Some(e) => e.1 += 1,
+                None => counts.push((c, 1)),
+            }
+        }
+        let legend: Vec<String> = counts
+            .iter()
+            .filter(|(c, _)| !c.is_empty())
+            .map(|(c, n)| {
+                let (r, g, b) = super::reader::color_of(c);
+                format!(
+                    "<span foreground=\"#{:02x}{:02x}{:02x}\">●</span> {} {}",
+                    (r * 255.0) as u8,
+                    (g * 255.0) as u8,
+                    (b * 255.0) as u8,
+                    glib::markup_escape_text(&capitalise(c)),
+                    n
+                )
+            })
+            .collect();
+        self.legend.set_markup(&legend.join("   "));
+        self.legend.set_visible(!legend.is_empty());
         self.sel_label
             .set_label(&match self.selected.borrow().len() {
                 0 => tr("Nothing selected: exports use everything shown"),
@@ -256,6 +284,10 @@ impl State {
                 restyle: can_look.then(|| {
                     Rc::new(move |st: &str| s4.apply_look(&k4, None, Some(st))) as Rc<dyn Fn(&str)>
                 }),
+                relocate: r.unplaced.then(|| {
+                    let (s5, k5) = (self.clone(), k.clone());
+                    Rc::new(move || s5.relocate(&k5)) as Rc<dyn Fn()>
+                }),
             }
         };
         let card = NoteCard::compact(&actions);
@@ -271,7 +303,21 @@ impl State {
                 .unwrap_or_default(),
             text: r.text.trim().to_string(),
             note: r.note.clone(),
-            meta: format!("{} · {}", r.place(), date_text(r)),
+            meta: {
+                let m = format!(
+                    "{} · {}",
+                    if r.unplaced {
+                        tr("Could not be located in the book")
+                    } else {
+                        r.place()
+                    },
+                    date_text(r)
+                );
+                match crate::annotation_sync_ui::source_label(r.book_id, &r.highlight_id) {
+                    Some(src) => format!("{m} · {src}"),
+                    None => m,
+                }
+            },
         });
         let row = gtk::FlowBoxChild::new();
         row.set_widget_name(&format!("{}\t{}", k.0, k.1));
@@ -309,6 +355,22 @@ impl State {
     }
 
     /// Changes colour or style of a highlight.
+    /// Looks for the text of a note without a place in its book again.
+    fn relocate(self: &Rc<Self>, k: &Key) {
+        let ok = {
+            let mut lib = self.shared.lib.borrow_mut();
+            crate::highlight_repair::relocate_one(&mut lib, k.0, &k.1)
+        };
+        if ok {
+            (self.toast)(tr("Found it: the highlight is back on the page"));
+            self.reload();
+        } else {
+            (self.toast)(tr(
+                "The text is not in this book. Select the passage in the book and highlight it again, then delete this note",
+            ));
+        }
+    }
+
     fn apply_look(self: &Rc<Self>, k: &Key, color: Option<&str>, style: Option<&str>) {
         let ok = {
             let mut lib = self.shared.lib.borrow_mut();
@@ -868,6 +930,15 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
     info.append(&chips);
     summary.set_hexpand(true);
     info.append(&summary);
+    let legend = gtk::Label::new(None);
+    legend.set_use_markup(true);
+    legend.set_xalign(0.0);
+    legend.set_wrap(true);
+    legend.add_css_class("caption");
+    legend.set_margin_start(12);
+    legend.set_margin_end(12);
+    legend.set_margin_top(2);
+    super::audit::label(&legend, &tr("Colour legend"));
 
     // the list is as wide as the window: cards in as many columns as fit
     let list = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -941,6 +1012,7 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
     body.add_css_class("notes-view");
     body.append(&toolbar);
     body.append(&info);
+    body.append(&legend);
     body.append(&stack);
 
     body.set_vexpand(true);
@@ -969,6 +1041,7 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
         to: to.clone(),
         stack,
         summary,
+        legend: legend.clone(),
         sel_label,
         shown: RefCell::new(Vec::new()),
         colors: colors.clone(),

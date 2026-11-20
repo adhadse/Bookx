@@ -995,9 +995,6 @@ msgstr "Diagnose kopieren"
 msgid "Copy Final Output"
 msgstr "Endergebnis kopieren"
 
-msgid "Copy KOReader address"
-msgstr "KOReader-Adresse kopieren"
-
 msgid "Copy address"
 msgstr "Adresse kopieren"
 
@@ -1291,12 +1288,6 @@ msgstr "Gerät"
 msgid "Device plugin"
 msgstr "Geräte-Plugin"
 
-msgid "Devices"
-msgstr "Geräte"
-
-msgid "Devices and Sharing"
-msgstr "Geräte und Freigabe"
-
 msgid "Diagnostics copied. They hold no book titles or passwords."
 msgstr "Diagnose kopiert. Sie enthält keine Buchtitel oder Passwörter."
 
@@ -1455,12 +1446,6 @@ msgstr "Papierkorb leeren?"
 
 msgid "Encrypt the copies"
 msgstr "Kopien verschlüsseln"
-
-msgid "Encryption (HTTPS)"
-msgstr "Verschlüsselung (HTTPS)"
-
-msgid "Encrypts the connection, including the password"
-msgstr "Verschlüsselt die Verbindung, einschließlich des Passworts"
 
 msgid "Enter a file name without a folder"
 msgstr "Geben Sie einen Dateinamen ohne Ordner ein"
@@ -2072,9 +2057,6 @@ msgstr "Zum passenden Tag springen"
 msgid "Justify text"
 msgstr "Text im Blocksatz"
 
-msgid "KOReader progress sync"
-msgstr "KOReader-Fortschrittssynchronisierung"
-
 msgid "Keep audio of read sentences (MB)"
 msgstr "Audio gelesener Sätze aufbewahren (MB)"
 
@@ -2086,9 +2068,6 @@ msgstr "Nur die vom Buch verwendeten Zeichen behalten"
 
 msgid "Keep this checkpoint when old ones are removed"
 msgstr "Diesen Prüfpunkt behalten, wenn alte entfernt werden"
-
-msgid "Keeps your place in step with KOReader and other apps through a KOReader progress-sync server: Bookx’s own Share Library server (address ending in /kosync), a self-hosted kosync, or the public one at sync.koreader.rocks. Only the position is synced, not highlights. {}"
-msgstr "Hält Ihre Position mit KOReader und anderen Apps über einen KOReader-Fortschrittssynchronisierungsserver auf dem Laufenden: den Bibliotheksfreigabe-Server von Bookx (Adresse mit /kosync am Ende), ein selbst gehostetes kosync oder den öffentlichen unter sync.koreader.rocks. Es wird nur die Position synchronisiert, keine Markierungen. {}"
 
 msgid "Keyboard Shortcuts"
 msgstr "Tastenkürzel"
@@ -2996,9 +2975,6 @@ msgstr "Passwort"
 msgid "Password (an app password if you use two-factor sign-in)"
 msgstr "Passwort (ein App-Passwort, wenn Sie Zwei-Faktor-Anmeldung nutzen)"
 
-msgid "Password (user name: bookx)"
-msgstr "Passwort (Benutzername: bookx)"
-
 msgid "Password needed"
 msgstr "Passwort erforderlich"
 
@@ -3286,9 +3262,6 @@ msgstr "Berichte aktualisieren"
 
 msgid "Register"
 msgstr "Registrieren"
-
-msgid "Register creates the account on the server; Log in checks it."
-msgstr "„Registrieren“ legt das Konto auf dem Server an; „Anmelden“ prüft es."
 
 msgid "Reload"
 msgstr "Neu laden"
@@ -3929,17 +3902,11 @@ msgstr "Einstellung"
 msgid "Settings sections"
 msgstr "Einstellungsbereiche"
 
-msgid "Share Library"
-msgstr "Bibliothek freigeben"
-
 msgid "Share themes"
 msgstr "Designs teilen"
 
 msgid "Share this library"
 msgstr "Diese Bibliothek freigeben"
-
-msgid "Sharing at:\n{}"
-msgstr "Freigegeben unter:\n{}"
 
 msgid "Sharing is off."
 msgstr "Die Freigabe ist aus."
@@ -4627,9 +4594,6 @@ msgstr "Papierkorb"
 
 msgid "Trigger word, for example fn"
 msgstr "Kürzelwort, zum Beispiel fn"
-
-msgid "Turn on “Share this library” to get the address."
-msgstr "Schalten Sie „Diese Bibliothek freigeben“ ein, um die Adresse zu erhalten."
 
 msgid "Type a command, book or setting"
 msgstr "Befehl, Buch oder Einstellung eingeben"
@@ -6063,9 +6027,6 @@ msgstr "Per E-Mail senden"
 msgid "Cloud folders (WebDAV) for devices and backups"
 msgstr "Cloud-Ordner (WebDAV) für Geräte und Sicherungen"
 
-msgid "Reading position sync (KOSync)"
-msgstr "Synchronisierung der Leseposition (KOSync)"
-
 msgid "Readwise upload"
 msgstr "Readwise-Upload"
 
@@ -7057,13 +7018,6 @@ msgid "Continue reading {}, {}"
 msgstr "{} weiterlesen, {}"
 
 msgid ""
-"Add some books to start your library.\n"
-"EPUB, plain text, Markdown and HTML files are supported — drop them here."
-msgstr ""
-"Fügen Sie ein paar Bücher hinzu, um Ihre Bibliothek zu starten.\n"
-"EPUB-, Nur-Text-, Markdown- und HTML-Dateien werden unterstützt – legen Sie sie hier ab."
-
-msgid ""
 "Calibre-style search:\n"
 "  title: author: tag: series: publisher: language: rating: status: format: identifier:\n"
 "  = exact, >= <= comparison, - to exclude, OR to combine\n"
@@ -7101,3 +7055,1616 @@ msgstr "Klasse „{}“ umbenennen"
 
 msgid "Colour scheme preview"
 msgstr "Vorschau des Farbschemas"
+
+msgid "Nothing new"
+msgstr "Nichts Neues"
+
+msgid "{} highlights from KOReader"
+msgstr "{} Markierungen von KOReader"
+
+msgid "{} notes updated"
+msgstr "{} Notizen aktualisiert"
+
+msgid "{} colours updated"
+msgstr "{} Farben aktualisiert"
+
+msgid "{} removed"
+msgstr "{} entfernt"
+
+msgid "{} sent to the device"
+msgstr "{} an das Gerät gesendet"
+
+msgid "{} not found in the book"
+msgstr "{} im Buch nicht gefunden"
+
+msgid "{} kept as in your library"
+msgstr "{} wie in deiner Bibliothek belassen"
+
+msgid "{} books not in your library"
+msgstr "{} Bücher nicht in deiner Bibliothek"
+
+msgid "Bookx plugin for KOReader"
+msgstr "Bookx-Plugin für KOReader"
+
+msgid "Copy to the device"
+msgstr "Auf das Gerät kopieren"
+
+msgid "Copy the Bookx plugin to the connected e-reader"
+msgstr "Bookx-Plugin auf den verbundenen E-Reader kopieren"
+
+msgid "Save to a folder"
+msgstr "In einem Ordner speichern…"
+
+msgid "Save the Bookx plugin to a folder"
+msgstr "Bookx-Plugin in einem Ordner speichern"
+
+msgid "No e-reader with KOReader found. Connect it with the USB cable, or save the plugin to a folder."
+msgstr "Kein E-Reader mit KOReader gefunden. Verbinde ihn mit dem USB-Kabel oder speichere das Plugin in einem Ordner."
+
+msgid "Choose the folder for the plugin"
+msgstr "Ordner für das Plugin wählen"
+
+msgid "Nothing received yet."
+msgstr "Noch nichts empfangen."
+
+msgid "Sync now"
+msgstr "Jetzt synchronisieren"
+
+msgid "Merge the highlights received from KOReader now"
+msgstr "Von KOReader empfangene Markierungen jetzt zusammenführen"
+
+msgid "Copied to {} ({}). Restart KOReader, then open Bookx Sync in its top menu."
+msgstr "Auf {} kopiert ({}). Starte KOReader neu und öffne dann Bookx Sync im oberen Menü."
+
+msgid "Could not copy the plugin: {}"
+msgstr "Das Plugin konnte nicht kopiert werden: {}"
+
+msgid "Saved to {}"
+msgstr "Gespeichert in {}"
+
+msgid "Could not save the plugin: {}"
+msgstr "Das Plugin konnte nicht gespeichert werden: {}"
+
+msgid "Last sync: {}"
+msgstr "Letzte Synchronisation: {}"
+
+msgid "{} of {} books"
+msgstr "{} von {} Büchern"
+
+msgid "{} of {} {}"
+msgstr "{} von {} {}"
+
+msgid "about {} left"
+msgstr "noch etwa {}"
+
+msgid "Select at least two books to link"
+msgstr "Wähle mindestens zwei Bücher zum Verknüpfen aus"
+
+msgid "Link as Editions"
+msgstr "Als Ausgaben verknüpfen"
+
+msgid "Show Editions"
+msgstr "Ausgaben anzeigen"
+
+msgid "Unlink All Editions"
+msgstr "Alle Ausgaben trennen"
+
+msgid "Group editions of the same book"
+msgstr "Ausgaben desselben Buchs gruppieren"
+
+msgid "Show editions and formats of one book as one card, with a list of the editions"
+msgstr "Zeigt Ausgaben und Formate eines Buchs als eine Karte mit einer Liste der Ausgaben"
+
+msgid "This edition opens first now"
+msgstr "Diese Ausgabe wird jetzt zuerst geöffnet"
+
+msgid "Took the edition out of its group"
+msgstr "Die Ausgabe wurde aus ihrer Gruppe genommen"
+
+msgid "Could not change the editions: {}"
+msgstr "Die Ausgaben konnten nicht geändert werden: {}"
+
+msgid "Linked {} books as editions of one work"
+msgstr "{} Bücher als Ausgaben eines Werks verknüpft"
+
+msgid "Took {} books out of their group"
+msgstr "{} Bücher wurden aus ihrer Gruppe genommen"
+
+msgid "Opens first"
+msgstr "Wird zuerst geöffnet"
+
+msgid "read last"
+msgstr "zuletzt gelesen"
+
+msgid "Editions"
+msgstr "Ausgaben"
+
+msgid "{}: show the list"
+msgstr "{}: Liste anzeigen"
+
+msgid "Open {}"
+msgstr "{} öffnen"
+
+msgid "Send {}"
+msgstr "{} senden"
+
+msgid "Open {} first"
+msgstr "{} zuerst öffnen"
+
+msgid "Unlink {}"
+msgstr "{} trennen"
+
+msgid "Text Colour"
+msgstr "Textfarbe"
+
+msgid "Background Colour"
+msgstr "Hintergrundfarbe"
+
+msgid "Align Left"
+msgstr "Linksbündig"
+
+msgid "Align Centre"
+msgstr "Zentriert"
+
+msgid "Align Right"
+msgstr "Rechtsbündig"
+
+msgid "Justify"
+msgstr "Blocksatz"
+
+msgid "Use CSS Classes for Colours and Alignment"
+msgstr "CSS-Klassen für Farben und Ausrichtung verwenden"
+
+msgid "Alignment"
+msgstr "Ausrichtung"
+
+msgid "Structure"
+msgstr "Struktur"
+
+msgid "Remove Text Colour"
+msgstr "Textfarbe entfernen"
+
+msgid "Remove Background Colour"
+msgstr "Hintergrundfarbe entfernen"
+
+msgid "Remove Alignment"
+msgstr "Ausrichtung entfernen"
+
+msgid "Colours and alignment work in HTML pages"
+msgstr "Farben und Ausrichtung funktionieren in HTML-Seiten"
+
+msgid "That is not a colour"
+msgstr "Das ist keine Farbe"
+
+msgid "There is no colour here to remove"
+msgstr "Hier gibt es keine Farbe zu entfernen"
+
+msgid "The cursor is not inside a paragraph or other block"
+msgstr "Der Cursor steht nicht in einem Absatz oder anderen Block"
+
+msgid "The book has no style sheet for the class"
+msgstr "Das Buch hat kein Stylesheet für die Klasse"
+
+msgid "Added .{} to {}"
+msgstr "Klasse .{} zu {} hinzugefügt"
+
+msgid "Re-checked your highlights: {} moved to where their text is, {} could not be found in the book and are kept as notes without a place"
+msgstr "Deine Markierungen wurden geprüft: {} wurden dorthin verschoben, wo ihr Text steht, {} wurden im Buch nicht gefunden und bleiben als Notizen ohne Position erhalten"
+
+msgid "Locate again"
+msgstr "Erneut suchen"
+
+msgid "Search the book for this text again and put the highlight back on the page"
+msgstr "Den Text erneut im Buch suchen und die Markierung wieder auf der Seite anzeigen"
+
+msgid "Could not be located in the book"
+msgstr "Im Buch nicht gefunden"
+
+msgid "Found it: the highlight is back on the page"
+msgstr "Gefunden: Die Markierung ist wieder auf der Seite"
+
+msgid "The text is not in this book. Select the passage in the book and highlight it again, then delete this note"
+msgstr "Der Text steht nicht in diesem Buch. Wähle die Stelle im Buch aus, markiere sie neu und lösche dann diese Notiz"
+
+msgid "Colour legend"
+msgstr "Farblegende"
+
+msgid "Not located in the book"
+msgstr "Im Buch nicht gefunden"
+
+msgid "Fixed the place of {} highlight (it was off from its text)"
+msgid_plural "Fixed the place of {} highlights (they were off from their text)"
+msgstr[0] "Die Position von {} Markierung wurde korrigiert (sie passte nicht zu ihrem Text)"
+msgstr[1] "Die Position von {} Markierungen wurde korrigiert (sie passten nicht zu ihrem Text)"
+
+msgid "Exporting"
+msgstr "Exportiere"
+
+msgid "Export as Calibre Library"
+msgstr "Als Calibre-Bibliothek exportieren"
+
+msgid "Choose an empty folder for the Calibre library"
+msgstr "Leeren Ordner für die Calibre-Bibliothek wählen"
+
+msgid "Export cancelled; nothing was kept"
+msgstr "Export abgebrochen; nichts wurde behalten"
+
+msgid "Exporting {} to a Calibre library"
+msgstr "{} Bücher werden in eine Calibre-Bibliothek exportiert"
+
+msgid "Exported to {}: {}"
+msgstr "Exportiert nach {}: {}"
+
+msgid "Comics"
+msgstr "Comics"
+
+msgid "Next or previous page"
+msgstr "Nächste oder vorherige Seite"
+
+msgid "Read on, or next panel in guided view"
+msgstr "Weiterlesen, oder nächstes Panel in der geführten Ansicht"
+
+msgid "Back, or previous panel in guided view"
+msgstr "Zurück, oder vorheriges Panel in der geführten Ansicht"
+
+msgid "Zoom in, out, fit"
+msgstr "Vergrößern, verkleinern, anpassen"
+
+msgid "Guided view"
+msgstr "Geführte Ansicht"
+
+msgid "Reading direction"
+msgstr "Leserichtung"
+
+msgid "Layout: single, two pages, webtoon"
+msgstr "Layout: eine Seite, zwei Seiten, Webtoon"
+
+msgid "Defaults for comic books (CBZ, CBT). Layout, fit and reading direction you choose inside a comic are remembered for that book."
+msgstr "Voreinstellungen für Comics (CBZ, CBT). Layout, Anpassung und Leserichtung, die du in einem Comic wählst, werden für dieses Buch gemerkt."
+
+msgid "How pages are shown in a comic you have not changed yet"
+msgstr "Wie Seiten in einem Comic angezeigt werden, den du noch nicht geändert hast"
+
+msgid "Single page"
+msgstr "Einzelne Seite"
+
+msgid "Two pages"
+msgstr "Zwei Seiten"
+
+msgid "Vertical scroll (webtoon)"
+msgstr "Vertikales Scrollen (Webtoon)"
+
+msgid "Fit"
+msgstr "Anpassung"
+
+msgid "How large a page is shown"
+msgstr "Wie groß eine Seite angezeigt wird"
+
+msgid "Fit page"
+msgstr "Seite einpassen"
+
+msgid "Fit width"
+msgstr "Breite einpassen"
+
+msgid "Fit height"
+msgstr "Höhe einpassen"
+
+msgid "Original size"
+msgstr "Originalgröße"
+
+msgid "Cover on its own page"
+msgstr "Titelbild auf einer eigenen Seite"
+
+msgid "In two-page layout the first page stands alone"
+msgstr "Im Zwei-Seiten-Layout steht die erste Seite allein"
+
+msgid "Wide pages on their own"
+msgstr "Breite Seiten allein"
+
+msgid "In two-page layout a double-page picture takes the whole screen"
+msgstr "Im Zwei-Seiten-Layout füllt ein Doppelseitenbild den ganzen Bildschirm"
+
+msgid "Space steps through the panels of a page instead of scrolling"
+msgstr "Die Leertaste springt von Panel zu Panel, statt zu scrollen"
+
+msgid "Grey pages"
+msgstr "Graue Seiten"
+
+msgid "Show pages in grey (always on in e-ink mode)"
+msgstr "Seiten in Grau anzeigen (im E-Ink-Modus immer an)"
+
+msgid "Animate moves between panels"
+msgstr "Wechsel zwischen Panels animieren"
+
+msgid "Off when your system asks for reduced motion, and in e-ink mode"
+msgstr "Aus, wenn dein System weniger Bewegung wünscht, und im E-Ink-Modus"
+
+msgid "Page thumbnails (F9)"
+msgstr "Seitenvorschau (F9)"
+
+msgid "Right to left (manga)"
+msgstr "Von rechts nach links (Manga)"
+
+msgid "Guided view: Space goes panel by panel"
+msgstr "Geführte Ansicht: Leertaste geht Panel für Panel"
+
+msgid "Use the defaults for this book"
+msgstr "Voreinstellungen für dieses Buch verwenden"
+
+msgid "View: layout, fit, direction"
+msgstr "Ansicht: Layout, Anpassung, Richtung"
+
+msgid "Page {} cannot be shown"
+msgstr "Seite {} kann nicht angezeigt werden"
+
+msgid "Page {} of {}"
+msgstr "Seite {} von {}"
+
+msgid "Pages {}–{} of {}"
+msgstr "Seiten {}–{} von {}"
+
+msgid "{}, comic pages"
+msgstr "{}, Comicseiten"
+
+msgid "Page {} ({})"
+msgstr "Seite {} ({})"
+
+msgid "Could not play the audiobook: {}"
+msgstr "Das Hörbuch konnte nicht abgespielt werden: {}"
+
+msgid "{} % · {} h {} min left"
+msgstr "{} % · noch {} Std. {} Min."
+
+msgid "{} % · {} min left"
+msgstr "{} % · noch {} Min."
+
+msgid "Position in the audiobook"
+msgstr "Position im Hörbuch"
+
+msgid "Back 15 seconds"
+msgstr "15 Sekunden zurück"
+
+msgid "Forward 30 seconds"
+msgstr "30 Sekunden vor"
+
+msgid "Playback speed"
+msgstr "Wiedergabegeschwindigkeit"
+
+msgid "The pitch of the voice stays the same."
+msgstr "Die Tonhöhe der Stimme bleibt gleich."
+
+msgid "Chapters"
+msgstr "Kapitel"
+
+msgid "Note (optional)"
+msgstr "Notiz (optional)"
+
+msgid "Bookmark note"
+msgstr "Notiz zum Lesezeichen"
+
+msgid "Add a bookmark at this position"
+msgstr "Lesezeichen an dieser Stelle hinzufügen"
+
+msgid "Audiobook player"
+msgstr "Hörbuch-Player"
+
+msgid "Bookmark added"
+msgstr "Lesezeichen hinzugefügt"
+
+msgid "Too many bookmarks"
+msgstr "Zu viele Lesezeichen"
+
+msgid "Delete this bookmark"
+msgstr "Dieses Lesezeichen löschen"
+
+msgid "Chapter"
+msgstr "Kapitel"
+
+msgid "Sleep timer: playback stopped"
+msgstr "Schlaftimer: Wiedergabe angehalten"
+
+msgid "Listen"
+msgstr "Anhören"
+
+msgid "Narrator"
+msgstr "Sprecher"
+
+msgid "Length"
+msgstr "Länge"
+
+msgid "Progress"
+msgstr "Fortschritt"
+
+msgid "Play in Bookx"
+msgstr "In Bookx abspielen"
+
+msgid "Audio"
+msgstr "Audio"
+
+msgid "Add Audiobook"
+msgstr "Hörbuch hinzufügen"
+
+msgid "Choose the folder of an audiobook, or one audio file (MP3, M4B, OGG, FLAC, WAV) or zip. The audio stays where it is."
+msgstr "Wähle den Ordner eines Hörbuchs oder eine Audiodatei (MP3, M4B, OGG, FLAC, WAV) oder ein Zip. Das Audio bleibt, wo es ist."
+
+msgid "Audiobook Folder"
+msgstr "Hörbuch-Ordner"
+
+msgid "Audiobook File"
+msgstr "Hörbuch-Datei"
+
+msgid "Audio files and zips"
+msgstr "Audiodateien und Zips"
+
+msgid "Today"
+msgstr "Heute"
+
+msgid "Total"
+msgstr "Gesamt"
+
+msgid "Audiobooks finished this year"
+msgstr "In diesem Jahr beendete Hörbücher"
+
+msgid "(removed book)"
+msgstr "(entferntes Buch)"
+
+msgid "5 minutes"
+msgstr "5 Minuten"
+
+msgid "10 minutes"
+msgstr "10 Minuten"
+
+msgid "15 minutes"
+msgstr "15 Minuten"
+
+msgid "30 minutes"
+msgstr "30 Minuten"
+
+msgid "45 minutes"
+msgstr "45 Minuten"
+
+msgid "1 hour"
+msgstr "1 Stunde"
+
+msgid "End of chapter"
+msgstr "Ende des Kapitels"
+
+msgid "{} · narrated by {}"
+msgstr "{} · gesprochen von {}"
+
+msgid "Speed {}"
+msgstr "Geschwindigkeit {}"
+
+msgid "Chapter {}: {}"
+msgstr "Kapitel {}: {}"
+
+msgid "Go to {} {}"
+msgstr "Gehe zu {} {}"
+
+msgid "Chapter {} of {}"
+msgstr "Kapitel {} von {}"
+
+msgid "{} · {} chapters"
+msgstr "{} · {} Kapitel"
+
+msgid "Add to Vocabulary"
+msgstr "Zum Vokabular hinzufügen"
+
+msgid "Terms in this Book"
+msgstr "Begriffe in diesem Buch"
+
+msgid "Choose another dictionary"
+msgstr "Anderes Wörterbuch wählen"
+
+msgid "Learn more about dictionaries"
+msgstr "Mehr über Wörterbücher"
+
+msgid "Removed your definition of “{}”."
+msgstr "Deine Definition von „{}“ wurde entfernt."
+
+msgid "Saved “{}” to your vocabulary."
+msgstr "„{}“ wurde in deinem Vokabular gespeichert."
+
+msgid "Select a word or phrase first."
+msgstr "Wähle zuerst ein Wort oder eine Wendung aus."
+
+msgid "Review"
+msgstr "Wiederholen"
+
+msgid "Vocabulary page"
+msgstr "Vokabelseite"
+
+msgid "Search words, definitions, notes and tags"
+msgstr "Wörter, Definitionen, Notizen und Schlagwörter durchsuchen"
+
+msgid "Search the vocabulary"
+msgstr "Vokabular durchsuchen"
+
+msgid "All"
+msgstr "Alle"
+
+msgid "Mine"
+msgstr "Eigene"
+
+msgid "From dictionary"
+msgstr "Aus dem Wörterbuch"
+
+msgid "No words here"
+msgstr "Keine Wörter hier"
+
+msgid "Select a word or phrase while reading and choose Add to Vocabulary to write your own definition, or look a word up in a dictionary."
+msgstr "Wähle beim Lesen ein Wort oder eine Wendung aus und wähle „Zum Vokabular hinzufügen“, um eine eigene Definition zu schreiben, oder schlage ein Wort in einem Wörterbuch nach."
+
+msgid "Add Term"
+msgstr "Begriff hinzufügen"
+
+msgid "Paste, import and export"
+msgstr "Einfügen, importieren und exportieren"
+
+msgid "Paste a Glossary"
+msgstr "Glossar einfügen"
+
+msgid "Import a CSV File"
+msgstr "CSV-Datei importieren"
+
+msgid "One term per line: term; definition (or a tab, or “term — definition”)."
+msgstr "Ein Begriff pro Zeile: Begriff; Definition (oder ein Tabulator, oder „Begriff — Definition“)."
+
+msgid "Glossary"
+msgstr "Glossar"
+
+msgid "No terms found yet."
+msgstr "Noch keine Begriffe gefunden."
+
+msgid "Apply to all books"
+msgstr "Für alle Bücher verwenden"
+
+msgid "That file is too big for a glossary."
+msgstr "Diese Datei ist für ein Glossar zu groß."
+
+msgid "No terms with a definition found in that file."
+msgstr "In dieser Datei wurden keine Begriffe mit Definition gefunden."
+
+msgid "My Vocabulary"
+msgstr "Mein Vokabular"
+
+msgid "Export My Definitions as CSV"
+msgstr "Meine Definitionen als CSV exportieren"
+
+msgid "Export My Definitions as JSON"
+msgstr "Meine Definitionen als JSON exportieren"
+
+msgid "Export Everything as Anki Cards"
+msgstr "Alles als Anki-Karten exportieren"
+
+msgid "Export as a StarDict Dictionary"
+msgstr "Als StarDict-Wörterbuch exportieren"
+
+msgid "{} words · {} with your own definition"
+msgstr "{} Wörter · {} mit eigener Definition"
+
+msgid "Go to where you met “{}”"
+msgstr "Zu der Stelle gehen, an der dir „{}“ begegnet ist"
+
+msgid "Edit my definition of {}"
+msgstr "Meine Definition von {} bearbeiten"
+
+msgid "Add my own definition of {}"
+msgstr "Eigene Definition von {} hinzufügen"
+
+msgid "Remove {} from the vocabulary"
+msgstr "{} aus dem Vokabular entfernen"
+
+msgid "{} terms added, {} updated."
+msgstr "{} Begriffe hinzugefügt, {} aktualisiert."
+
+msgid "{} terms found."
+msgstr "{} Begriffe gefunden."
+
+msgid "Could not read the file: {}"
+msgstr "Die Datei konnte nicht gelesen werden: {}"
+
+msgid "Terms in {}"
+msgstr "Begriffe in {}"
+
+msgid "This book"
+msgstr "Dieses Buch"
+
+msgid "Another book"
+msgstr "Anderes Buch"
+
+msgid "My Definition"
+msgstr "Meine Definition"
+
+msgid "Term"
+msgstr "Begriff"
+
+msgid "Your definition"
+msgstr "Deine Definition"
+
+msgid "Tags (optional, separated by spaces)"
+msgstr "Schlagwörter (optional, durch Leerzeichen getrennt)"
+
+msgid "Applies to"
+msgstr "Gilt für"
+
+msgid "Remove My Definition"
+msgstr "Meine Definition entfernen"
+
+msgid "Save (Ctrl+Enter)"
+msgstr "Speichern (Strg+Eingabe)"
+
+msgid "Type the term first."
+msgstr "Gib zuerst den Begriff ein."
+
+msgid "Write your definition first."
+msgstr "Schreibe zuerst deine Definition."
+
+msgid "Add my own definition"
+msgstr "Eigene Definition hinzufügen"
+
+msgid "Edit my definition"
+msgstr "Meine Definition bearbeiten"
+
+msgid "Open in Vocabulary"
+msgstr "Im Vokabular öffnen"
+
+msgid "This series ({})"
+msgstr "Diese Reihe ({})"
+
+msgid "The series {}"
+msgstr "Die Reihe {}"
+
+msgid "Met in: “{}”"
+msgstr "Gefunden in: „{}“"
+
+msgid "Mark my vocabulary terms in the text"
+msgstr "Begriffe meines Vokabulars im Text markieren"
+
+msgid "Words and phrases you saved with your own definition get a dotted underline; tap one to see your definition."
+msgstr "Wörter und Wendungen, die du mit eigener Definition gespeichert hast, werden gepunktet unterstrichen; tippe darauf, um deine Definition zu sehen."
+
+msgid "Built in, it cannot be removed"
+msgstr "Eingebaut, kann nicht entfernt werden"
+
+msgid "Export My Vocabulary"
+msgstr "Mein Vokabular exportieren"
+
+msgid "Open My Vocabulary"
+msgstr "Mein Vokabular öffnen"
+
+msgid "Your own definitions · {} terms · works offline, always first"
+msgstr "Deine eigenen Definitionen · {} Begriffe · funktioniert offline, immer zuerst"
+
+msgid "Follow system"
+msgstr "Systemeinstellung"
+
+msgid "Light"
+msgstr "Hell"
+
+msgid "Sepia"
+msgstr "Sepia"
+
+msgid "Dark"
+msgstr "Dunkel"
+
+msgid "Black"
+msgstr "Schwarz"
+
+msgid "Add my notes to the copy sent to the device"
+msgstr "Meine Notizen in die Kopie auf dem Gerät aufnehmen"
+
+msgid "The copy on the device gets an extra “My notes” section at the end (readable in any e-reader app) and a KOReader notes file, so KOReader lists them too. Your library copy is not changed."
+msgstr "Die Kopie auf dem Gerät erhält am Ende einen zusätzlichen Abschnitt „Meine Notizen“ (in jeder E-Reader-App lesbar) und eine KOReader-Notizdatei, sodass auch KOReader sie anzeigt. Ihre Bibliothekskopie bleibt unverändert."
+
+msgid "Sync automatically when a device connects"
+msgstr "Automatisch synchronisieren, wenn ein Gerät verbunden wird"
+
+msgid "For e-readers plugged in with a cable. Bookx reads the progress, highlights and notes the device keeps and merges them with your library: progress only moves forward, notes are united, nothing is deleted."
+msgstr "Für E-Reader, die per Kabel angeschlossen sind. Bookx liest den Fortschritt, die Markierungen und Notizen des Geräts und führt sie mit Ihrer Bibliothek zusammen: Der Fortschritt geht nur vorwärts, Notizen werden vereint, nichts wird gelöscht."
+
+msgid "This is about a device plugged in with a USB cable (or mounted in Files).\n\nWhen you plug in a Kobo, Kindle or similar reader, Bookx reads the reading progress and the highlights and notes the device keeps: from the Kobo’s own database, or from KOReader’s “.sdr” files if KOReader is installed on it. It merges them with your library. Progress only moves forward, highlights and notes are united, and nothing is deleted on either side.\n\nA Kobo needs no KOReader for this; its own reading state is read. A Kindle’s own state is not readable, only KOReader’s files. If the device has no readable state, nothing happens. Reading progress is never written to the device; notes go to it only as a new KOReader notes file where there is none.\n\nOff by default: you are asked first, with a summary of what will change."
+msgstr "Dies betrifft ein Gerät, das per USB-Kabel angeschlossen (oder in Dateien eingehängt) ist.\n\nWenn Sie einen Kobo, Kindle oder ähnlichen Reader anschließen, liest Bookx den Lesefortschritt sowie die Markierungen und Notizen des Geräts: aus der eigenen Datenbank des Kobo oder aus den „.sdr“-Dateien von KOReader, falls KOReader darauf installiert ist. Sie werden mit Ihrer Bibliothek zusammengeführt. Der Fortschritt geht nur vorwärts, Markierungen und Notizen werden vereint, und auf keiner Seite wird etwas gelöscht.\n\nEin Kobo braucht dafür kein KOReader; sein eigener Lesezustand wird gelesen. Der eigene Zustand eines Kindle ist nicht lesbar, nur die Dateien von KOReader. Hat das Gerät keinen lesbaren Zustand, passiert nichts. Der Lesefortschritt wird nie auf das Gerät geschrieben; Notizen gelangen nur als neue KOReader-Notizdatei dorthin, wo noch keine existiert.\n\nStandardmäßig aus: Sie werden vorher gefragt, mit einer Zusammenfassung der Änderungen."
+
+msgid "STARTTLS (port 587)"
+msgstr "STARTTLS (Port 587)"
+
+msgid "TLS (port 465)"
+msgstr "TLS (Port 465)"
+
+msgid "None (local server only)"
+msgstr "Keine (nur lokaler Server)"
+
+msgid "Page X of Y"
+msgstr "Seite X von Y"
+
+msgid "Page in the chapter"
+msgstr "Seite im Kapitel"
+
+msgid "Percent read"
+msgstr "Prozent gelesen"
+
+msgid "Time left in the chapter"
+msgstr "Restzeit im Kapitel"
+
+msgid "Time left in the book"
+msgstr "Restzeit im Buch"
+
+msgid "Current time"
+msgstr "Uhrzeit"
+
+msgid "Battery"
+msgstr "Akku"
+
+msgid "Chapter title"
+msgstr "Kapiteltitel"
+
+msgid "Book title"
+msgstr "Buchtitel"
+
+msgid "Author"
+msgstr "Autor"
+
+msgid "Progress bar"
+msgstr "Fortschrittsbalken"
+
+msgid "Chapters read"
+msgstr "Gelesene Kapitel"
+
+msgid "Time reading this session"
+msgstr "Lesezeit in dieser Sitzung"
+
+msgid "Reading today"
+msgstr "Heute gelesen"
+
+msgid "Edges (narrow strips)"
+msgstr "Ränder (schmale Streifen)"
+
+msgid "Thirds (tablet)"
+msgstr "Drittel (Tablet)"
+
+msgid "Thirds, mirrored (left hand)"
+msgstr "Drittel, gespiegelt (Linkshänder)"
+
+msgid "Wide (no bar toggle)"
+msgstr "Breit (ohne Leistenwechsel)"
+
+msgid "Off (swipe or keys only)"
+msgstr "Aus (nur Wischen oder Tasten)"
+
+msgid "Automatic (touch screens)"
+msgstr "Automatisch (Touchscreens)"
+
+msgid "Always on"
+msgstr "Immer an"
+
+msgid "Author / Title folders"
+msgstr "Autor-/Titel-Ordner"
+
+msgid "One flat folder"
+msgstr "Ein flacher Ordner"
+
+msgid "Custom template"
+msgstr "Eigene Vorlage"
+
+msgid "Link in place (do not copy)"
+msgstr "Am Ort verknüpfen (nicht kopieren)"
+
+msgid "No assistant has connected recently."
+msgstr "Noch kein Assistent hat sich kürzlich verbunden."
+
+msgid "Application"
+msgstr "Anwendung"
+
+msgid "Remove Selected Books"
+msgstr "Ausgewählte Bücher entfernen"
+
+msgid "Where Bookx keeps the book files. Changing it moves them (with a preview), all or nothing."
+msgstr "Wo Bookx die Buchdateien aufbewahrt. Ein Wechsel verschiebt sie (mit Vorschau), ganz oder gar nicht."
+
+msgid "Publishers"
+msgstr "Verlage"
+
+msgid "Languages"
+msgstr "Sprachen"
+
+msgid "Ratings"
+msgstr "Bewertungen"
+
+msgid "Reading status"
+msgstr "Lesestatus"
+
+msgid "Open Library and Google Books are asked only when you ask, or after an import if you switch this on."
+msgstr "Open Library und Google Books werden nur auf Ihre Anfrage gefragt, oder nach einem Import, wenn Sie das einschalten."
+
+msgid "Two columns"
+msgstr "Zwei Spalten"
+
+msgid "Single column"
+msgstr "Eine Spalte"
+
+msgid "Continuous scroll"
+msgstr "Fortlaufendes Scrollen"
+
+msgid "Extensions run in a sandbox and can only do what their manifest asks for. They add metadata sources and file formats."
+msgstr "Erweiterungen laufen in einer Sandbox und können nur tun, was ihr Manifest verlangt. Sie ergänzen Metadatenquellen und Dateiformate."
+
+msgid "Small rule files that fix text or style in books when they are imported, converted or opened. They only edit the book itself, never other files. Off until you switch them on; use the magnifier for a dry run on your first book."
+msgstr "Kleine Regeldateien, die Text oder Stil in Büchern beim Import, bei der Konvertierung oder beim Öffnen korrigieren. Sie ändern nur das Buch selbst, nie andere Dateien. Standardmäßig aus; mit der Lupe testen Sie sie an Ihrem ersten Buch, ohne etwas zu ändern."
+
+msgid "Not set"
+msgstr "Nicht festgelegt"
+
+msgid "Nothing read yet"
+msgstr "Noch nichts gelesen"
+
+msgid "Books you open appear here, the latest first."
+msgstr "Bücher, die Sie öffnen, erscheinen hier, die neuesten zuerst."
+
+msgid "No favourites yet"
+msgstr "Noch keine Favoriten"
+
+msgid "Right-click a book and choose to add it to your favourites to find it here."
+msgstr "Klicken Sie mit der rechten Maustaste auf ein Buch und fügen Sie es zu den Favoriten hinzu, um es hier zu finden."
+
+msgid "Add some books to start your library.\nEPUB, PDF, MOBI, FB2, comics, audiobooks, plain text and more — drop them here."
+msgstr "Fügen Sie ein paar Bücher hinzu, um Ihre Bibliothek zu starten.\nEPUB, PDF, MOBI, FB2, Comics, Hörbücher, reiner Text und mehr – legen Sie sie hier ab."
+
+msgid "Turn news sites and blogs (RSS, Atom) into books that update by themselves"
+msgstr "Verwandeln Sie Nachrichtenseiten und Blogs (RSS, Atom) in Bücher, die sich von selbst aktualisieren"
+
+msgid " · not stopped by offline mode"
+msgstr " · nicht durch den Offline-Modus gestoppt"
+
+msgid "title, author, ISBN of the books you look up"
+msgstr "Titel, Autor, ISBN der nachgeschlagenen Bücher"
+
+msgid "the selected word or phrase"
+msgstr "das markierte Wort oder die markierte Wendung"
+
+msgid "the selected text"
+msgstr "der markierte Text"
+
+msgid "gutenberg.org, standardebooks.org and the catalogues you add"
+msgstr "gutenberg.org, standardebooks.org und die Kataloge, die Sie hinzufügen"
+
+msgid "your search words; books you download"
+msgstr "Ihre Suchbegriffe; Bücher, die Sie herunterladen"
+
+msgid "the addresses you give"
+msgstr "die Adressen, die Sie angeben"
+
+msgid "a plain request for the page or feed"
+msgstr "eine einfache Anfrage nach der Seite oder dem Feed"
+
+msgid "the web addresses found in the book"
+msgstr "die im Buch gefundenen Webadressen"
+
+msgid "a plain request per link"
+msgstr "eine einfache Anfrage pro Link"
+
+msgid "the file you ask for"
+msgstr "die Datei, die Sie anfordern"
+
+msgid "the server address you enter"
+msgstr "die Serveradresse, die Sie eingeben"
+
+msgid "the text being read"
+msgstr "der gerade gelesene Text"
+
+msgid "the mail server you enter"
+msgstr "der Mailserver, den Sie eingeben"
+
+msgid "the book and the message"
+msgstr "das Buch und die Nachricht"
+
+msgid "the WebDAV address you enter"
+msgstr "die WebDAV-Adresse, die Sie eingeben"
+
+msgid "book files or encrypted backups"
+msgstr "Buchdateien oder verschlüsselte Sicherungen"
+
+msgid "the sync server you enter, or your own Bookx"
+msgstr "der Sync-Server, den Sie eingeben, oder Ihr eigenes Bookx"
+
+msgid "a book fingerprint and your position"
+msgstr "ein Fingerabdruck des Buchs und Ihre Position"
+
+msgid "nothing: other devices connect to this computer, only while sharing is on and only with the password"
+msgstr "nichts: Andere Geräte verbinden sich mit diesem Computer, nur solange die Freigabe aktiv ist und nur mit dem Passwort"
+
+msgid "the books you share"
+msgstr "die Bücher, die Sie freigeben"
+
+msgid "your highlights, when you press Upload"
+msgstr "Ihre Markierungen, wenn Sie auf Hochladen drücken"
+
+msgid "{} · sends {}"
+msgstr "{} · sendet {}"
+
+msgid "Kept in the system keyring, not in the settings file."
+msgstr "Im Schlüsselbund des Systems gespeichert, nicht in der Einstellungsdatei."
+
+msgid "No keyring was found, so this is kept in the settings file (unencrypted). Install GNOME Keyring or KeePassXC to protect it."
+msgstr "Es wurde kein Schlüsselbund gefunden, daher wird dies in der Einstellungsdatei gespeichert (unverschlüsselt). Installieren Sie GNOME-Schlüsselbund oder KeePassXC, um es zu schützen."
+
+msgid "English “double”"
+msgstr "Englisch „double“"
+
+msgid "German „double“"
+msgstr "Deutsch „double“"
+
+msgid "French « double »"
+msgstr "Französisch « double »"
+
+msgid "Swedish ”double”"
+msgstr "Schwedisch ”double”"
+
+msgid "Video"
+msgstr "Video"
+
+msgid "Blank page (XHTML)"
+msgstr "Leere Seite (XHTML)"
+
+msgid "Chapter with a heading"
+msgstr "Kapitel mit Überschrift"
+
+msgid "Title page"
+msgstr "Titelseite"
+
+msgid "Stylesheet (CSS)"
+msgstr "Stylesheet (CSS)"
+
+msgid "Embedding allowed"
+msgstr "Einbetten erlaubt"
+
+msgid "Embedding allowed (editable documents)"
+msgstr "Einbetten erlaubt (bearbeitbare Dokumente)"
+
+msgid "Embedding allowed for viewing and printing only"
+msgstr "Einbetten nur zum Ansehen und Drucken erlaubt"
+
+msgid "The font's licence forbids embedding"
+msgstr "Die Lizenz der Schrift verbietet das Einbetten"
+
+msgid "The font does not say whether it may be embedded"
+msgstr "Die Schrift gibt nicht an, ob sie eingebettet werden darf"
+
+msgid "Title Page"
+msgstr "Titelseite"
+
+msgid "Table of Contents"
+msgstr "Inhaltsverzeichnis"
+
+msgid "Start of Content"
+msgstr "Textbeginn"
+
+msgid "Foreword"
+msgstr "Vorwort"
+
+msgid "Preface"
+msgstr "Vorrede"
+
+msgid "Copyright"
+msgstr "Urheberrecht"
+
+msgid "Dedication"
+msgstr "Widmung"
+
+msgid "Epigraph"
+msgstr "Motto"
+
+msgid "Acknowledgements"
+msgstr "Danksagung"
+
+msgid "Index"
+msgstr "Register"
+
+msgid "Bibliography"
+msgstr "Literaturverzeichnis"
+
+msgid "Colophon"
+msgstr "Kolophon"
+
+msgid "List of Illustrations"
+msgstr "Abbildungsverzeichnis"
+
+msgid "List of Tables"
+msgstr "Tabellenverzeichnis"
+
+msgid "Rename the tag"
+msgstr "Das Tag umbenennen"
+
+msgid "Remove the tag, keep its content"
+msgstr "Das Tag entfernen, den Inhalt behalten"
+
+msgid "Remove the element and its content"
+msgstr "Das Element samt Inhalt entfernen"
+
+msgid "Set an attribute"
+msgstr "Ein Attribut setzen"
+
+msgid "Remove an attribute"
+msgstr "Ein Attribut entfernen"
+
+msgid "Replace text in an attribute"
+msgstr "Text in einem Attribut ersetzen"
+
+msgid "Wrap in a new element"
+msgstr "In ein neues Element einpacken"
+
+msgid "Add a class"
+msgstr "Eine Klasse hinzufügen"
+
+msgid "Remove a class"
+msgstr "Eine Klasse entfernen"
+
+msgid "Change a class"
+msgstr "Eine Klasse ändern"
+
+msgid "If a property has a value, change it"
+msgstr "Hat eine Eigenschaft einen Wert, ihn ändern"
+
+msgid "Set a property everywhere"
+msgstr "Eine Eigenschaft überall setzen"
+
+msgid "Remove a property"
+msgstr "Eine Eigenschaft entfernen"
+
+msgid "Remove a property when it has a value"
+msgstr "Eine Eigenschaft entfernen, wenn sie einen Wert hat"
+
+msgid "Multiply all font sizes"
+msgstr "Alle Schriftgrößen vervielfachen"
+
+msgid "Make a font family italic"
+msgstr "Eine Schriftfamilie kursiv machen"
+
+msgid "Rename a font family"
+msgstr "Eine Schriftfamilie umbenennen"
+
+msgid "Change one colour into another"
+msgstr "Eine Farbe in eine andere ändern"
+
+msgid "Keep the whole image"
+msgstr "Ganzes Bild behalten"
+
+msgid "Crop to 2:3 (centered)"
+msgstr "Auf 2:3 zuschneiden (zentriert)"
+
+msgid "Crop to 3:4 (centered)"
+msgstr "Auf 3:4 zuschneiden (zentriert)"
+
+msgid "Keep the size"
+msgstr "Größe beibehalten"
+
+msgid "At most 1600 pixels high"
+msgstr "Höchstens 1600 Pixel hoch"
+
+msgid "At most 1200 pixels high"
+msgstr "Höchstens 1200 Pixel hoch"
+
+msgid "At most 800 pixels high"
+msgstr "Höchstens 800 Pixel hoch"
+
+msgid "Change how the book looks without editing every stylesheet by hand. The rules apply to stylesheets, <style> blocks and style attributes."
+msgstr "Ändern Sie das Aussehen des Buchs, ohne jedes Stylesheet von Hand zu bearbeiten. Die Regeln gelten für Stylesheets, <style>-Blöcke und style-Attribute."
+
+msgid "Change elements and attributes in all pages at once. Preview lists the pages a rule set would change; nothing outside the tags you name is touched."
+msgstr "Ändern Sie Elemente und Attribute in allen Seiten auf einmal. Die Vorschau listet die Seiten, die ein Regelsatz ändern würde; nichts außerhalb der genannten Tags wird angefasst."
+
+msgid "Update the jacket"
+msgstr "Schutzumschlag aktualisieren"
+
+msgid "Add a jacket"
+msgstr "Schutzumschlag hinzufügen"
+
+msgid "Preview colours: theme, the book's original colours, or your own"
+msgstr "Vorschaufarben: Thema, die Originalfarben des Buchs oder eigene"
+
+msgid "More file actions: merge, bulk rename, link stylesheets, export"
+msgstr "Weitere Dateiaktionen: zusammenführen, Massenumbenennung, Stylesheets verknüpfen, exportieren"
+
+msgid "Metadata"
+msgstr "Metadaten"
+
+msgid "Package"
+msgstr "Paket"
+
+msgid "Fonts"
+msgstr "Schriften"
+
+msgid "Other"
+msgstr "Sonstiges"
+
+msgid "Follow the cursor: the preview scrolls to the element at the cursor"
+msgstr "Folgen Sie dem Cursor: Die Vorschau scrollt zum Element am Cursor"
+
+msgid "Reload the preview automatically while typing"
+msgstr "Vorschau beim Tippen automatisch neu laden"
+
+msgid "Live CSS"
+msgstr "Live-CSS"
+
+msgid "(none)"
+msgstr "(keine)"
+
+msgid "Curly quotes, proper dashes and ellipses in the text of the pages. Code, scripts, styles and attributes are never touched."
+msgstr "Typografische Anführungszeichen, richtige Gedankenstriche und Auslassungspunkte im Text der Seiten. Code, Skripte, Stile und Attribute bleiben unberührt."
+
+msgid "Repairs pages that are not well-formed XHTML: unclosed and misnested tags, stray ampersands, missing namespaces. Pages that are fine are left alone."
+msgstr "Repariert Seiten, die kein wohlgeformtes XHTML sind: nicht geschlossene und falsch verschachtelte Tags, einzelne Et-Zeichen, fehlende Namensräume. Intakte Seiten bleiben unverändert."
+
+msgid "Tidies the layout of the files. Only the white space between block-level tags changes, so the pages look exactly the same."
+msgstr "Ordnet das Layout der Dateien. Nur der Leerraum zwischen Block-Tags ändert sich, die Seiten sehen genau gleich aus."
+
+msgid "Deletes the rules of the stylesheets that match nothing in the book. @font-face, @media and other @-rules are kept."
+msgstr "Löscht die Regeln der Stylesheets, die nichts im Buch treffen. @font-face, @media und andere @-Regeln bleiben erhalten."
+
+msgid "Removes the ticked properties from stylesheets, <style> blocks and style attributes."
+msgstr "Entfernt die angekreuzten Eigenschaften aus Stylesheets, <style>-Blöcken und style-Attributen."
+
+msgid "These images, fonts and media files are not used by any page, stylesheet or the package. The cover is never listed."
+msgstr "Diese Bilder, Schriften und Mediendateien werden von keiner Seite, keinem Stylesheet und nicht vom Paket verwendet. Das Titelbild wird nie aufgeführt."
+
+msgid "Fonts the pages ask for but the book does not carry, found among the fonts installed here. Only embed fonts whose licence allows it."
+msgstr "Schriften, welche die Seiten verlangen, die das Buch aber nicht enthält, gefunden unter den hier installierten Schriften. Betten Sie nur Schriften ein, deren Lizenz es erlaubt."
+
+msgid "Embed"
+msgstr "Einbetten"
+
+msgid "Tell readers where the cover, the title page, the table of contents, the foreword and so on are. Written to the guide and, in EPUB 3, to the landmarks."
+msgstr "Sagen Sie den Lesern, wo Titelbild, Titelseite, Inhaltsverzeichnis, Vorwort und so weiter sind. Wird in die Guide-Angaben und in EPUB 3 in die Landmarks geschrieben."
+
+msgid "Language, image descriptions and the accessibility metadata that stores and shops show."
+msgstr "Sprache, Bildbeschreibungen und die Barrierefreiheits-Metadaten, die Stores und Shops anzeigen."
+
+msgid "Fixes links to files and anchors that no longer exist when a clear match is found (a different capitalisation, a renamed file). The others are listed."
+msgstr "Korrigiert Links auf Dateien und Anker, die nicht mehr existieren, wenn es eine klare Entsprechung gibt (andere Groß-/Kleinschreibung, umbenannte Datei). Die übrigen werden aufgelistet."
+
+msgid "Repair"
+msgstr "Reparieren"
+
+msgid "Move"
+msgstr "Verschieben"
+
+msgid "Images, stylesheets and media the pages load from the web are copied into the book and the links point at the copies. Only download what you are allowed to keep: check the licences."
+msgstr "Bilder, Stylesheets und Medien, welche die Seiten aus dem Web laden, werden ins Buch kopiert und die Links zeigen auf die Kopien. Laden Sie nur herunter, was Sie behalten dürfen: Prüfen Sie die Lizenzen."
+
+msgid "Syntax colouring is off for this file because it has very long lines"
+msgstr "Die Syntaxhervorhebung ist für diese Datei aus, weil sie sehr lange Zeilen hat"
+
+msgid "Sync: library server (OPDS, KOReader)"
+msgstr "Sync: Bibliotheksserver (OPDS, KOReader)"
+
+msgid "Choose another user name, or press Log in if this account is yours."
+msgstr "Wählen Sie einen anderen Benutzernamen oder tippen Sie auf Anmelden, wenn dieses Konto Ihnen gehört."
+
+msgid "on"
+msgstr "ein"
+
+msgid "off"
+msgstr "aus"
+
+msgid "Wi-Fi sync"
+msgstr "WLAN-Sync"
+
+msgid "USB device"
+msgstr "USB-Gerät"
+
+msgid "connected"
+msgstr "verbunden"
+
+msgid "not connected"
+msgstr "nicht verbunden"
+
+msgid "OPDS"
+msgstr "OPDS"
+
+msgid "Requirements: what each sync type needs"
+msgstr "Voraussetzungen: was jede Sync-Art braucht"
+
+msgid "In KOReader: open a book → top menu → More tools → Bookx Sync"
+msgstr "In KOReader: Buch öffnen → oberes Menü → Weitere Werkzeuge → Bookx Sync"
+
+msgid "No account yet? Open Preferences → Sync and press Register."
+msgstr "Noch kein Konto? Öffnen Sie Einstellungen → Sync und tippen Sie auf Registrieren."
+
+msgid "In KOReader: Tools → Progress sync → Custom sync server"
+msgstr "In KOReader: Werkzeuge → Fortschrittssync → Eigener Sync-Server"
+
+msgid "Stock Kobo and Kindle Wi-Fi sync is not supported: those readers sync over the USB cable only. Wi-Fi sync needs KOReader on the e-reader. “bookx” is the only address path: http://<host-ip>:<port>/bookx"
+msgstr "WLAN-Sync der Original-Software von Kobo und Kindle wird nicht unterstützt: Diese Reader synchronisieren nur über das USB-Kabel. WLAN-Sync braucht KOReader auf dem E-Reader. „bookx“ ist der einzige Adresspfad: http://<Rechner-IP>:<Port>/bookx"
+
+msgid "Sync type"
+msgstr "Sync-Art"
+
+msgid "Works between"
+msgstr "Funktioniert zwischen"
+
+msgid "What Bookx needs"
+msgstr "Was Bookx braucht"
+
+msgid "What the e-reader needs"
+msgstr "Was der E-Reader braucht"
+
+msgid "Connection"
+msgstr "Verbindung"
+
+msgid "What syncs"
+msgstr "Was synchronisiert wird"
+
+msgid "Reading progress (KOReader)"
+msgstr "Lesefortschritt (KOReader)"
+
+msgid "Bookx and KOReader on a Kobo, Kindle, Android or PocketBook reader"
+msgstr "Bookx und KOReader auf einem Kobo, Kindle, Android- oder PocketBook-Reader"
+
+msgid "KOReader with Progress sync set to a custom sync server at the same address http://<host-ip>:<port>/bookx and that user name and password (or create the account from KOReader’s own Progress sync menu)"
+msgstr "KOReader mit Fortschrittssync auf einen eigenen Sync-Server unter derselben Adresse http://<Rechner-IP>:<Port>/bookx und mit diesem Benutzernamen und Passwort (oder legen Sie das Konto im Fortschrittssync-Menü von KOReader an)"
+
+msgid "Wi-Fi or local network"
+msgstr "WLAN oder lokales Netz"
+
+msgid "Highlights, notes and bookmarks (KOReader)"
+msgstr "Markierungen, Notizen und Lesezeichen (KOReader)"
+
+msgid "Bookx and KOReader"
+msgstr "Bookx und KOReader"
+
+msgid "KOReader with the Bookx Sync plugin installed and set up. Not available on stock Kobo or Kindle software"
+msgstr "KOReader mit installiertem und eingerichtetem Bookx-Sync-Plugin. Nicht mit der Original-Software von Kobo oder Kindle möglich"
+
+msgid "Wi-Fi or local network, the same one"
+msgstr "WLAN oder lokales Netz, dasselbe"
+
+msgid "Highlights with their text, notes, colours and styles, and bookmarks"
+msgstr "Markierungen mit Text, Notizen, Farben und Stilen sowie Lesezeichen"
+
+msgid "USB device sync"
+msgstr "USB-Geräte-Sync"
+
+msgid "Bookx and a Kobo or other e-reader mounted as a USB drive"
+msgstr "Bookx und ein Kobo oder anderer E-Reader, der als USB-Laufwerk eingebunden ist"
+
+msgid "Nothing to switch on; the USB switches on this page choose what is synced"
+msgstr "Nichts einzuschalten; die USB-Schalter auf dieser Seite legen fest, was synchronisiert wird"
+
+msgid "Connected with the cable and mounted. Bookx reads the Kobo’s own reading state and KOReader’s sidecar files"
+msgstr "Mit dem Kabel verbunden und eingebunden. Bookx liest den eigenen Lesestand des Kobo und die Begleitdateien von KOReader"
+
+msgid "USB cable, no Wi-Fi"
+msgstr "USB-Kabel, kein WLAN"
+
+msgid "Books, reading progress, highlights and notes. Stock Kobo notes and progress are imported; stock firmware has no wireless sync with Bookx"
+msgstr "Bücher, Lesefortschritt, Markierungen und Notizen. Notizen und Fortschritt des Original-Kobo werden importiert; die Original-Firmware hat keinen drahtlosen Sync mit Bookx"
+
+msgid "Library server (OPDS and web page)"
+msgstr "Bibliotheksserver (OPDS und Webseite)"
+
+msgid "Bookx and reader apps or e-readers that browse OPDS"
+msgstr "Bookx und Reader-Apps oder E-Reader, die OPDS durchsuchen"
+
+msgid "The library server on"
+msgstr "Der Bibliotheksserver ist an"
+
+msgid "An app or browser on the same network, or one that can reach this computer (KOReader, Moon+ Reader, Librera, Kybook)"
+msgstr "Eine App oder ein Browser im selben Netz oder mit Zugriff auf diesen Rechner (KOReader, Moon+ Reader, Librera, Kybook)"
+
+msgid "Books and the catalogue only"
+msgstr "Nur Bücher und der Katalog"
+
+msgid "E-mail and exports"
+msgstr "E-Mail und Exporte"
+
+msgid "Bookx and any address, file or app"
+msgstr "Bookx und beliebige Adresse, Datei oder App"
+
+msgid "A mail account under Preferences → E-mail to send books; nothing for exports"
+msgstr "Ein Mailkonto unter Einstellungen → E-Mail zum Senden von Büchern; für Exporte nichts"
+
+msgid "Nothing: the other side only receives a file"
+msgstr "Nichts: Die Gegenseite erhält nur eine Datei"
+
+msgid "Internet for e-mail; none for exports"
+msgstr "Internet für E-Mail; keines für Exporte"
+
+msgid "Book files, annotations and citations only"
+msgstr "Nur Buchdateien, Anmerkungen und Zitate"
+
+msgid "This File Is One Very Long Line"
+msgstr "Diese Datei besteht aus einer einzigen sehr langen Zeile"
+
+msgid "Add Line Breaks and Open"
+msgstr "Zeilenumbrüche einfügen und öffnen"
+
+msgid "Puts the tags on separate lines. Only the white space between tags changes"
+msgstr "Setzt die Tags in eigene Zeilen. Nur der Leerraum zwischen den Tags ändert sich"
+
+msgid "Open Anyway"
+msgstr "Trotzdem öffnen"
+
+msgid "The editor may stop responding for several seconds"
+msgstr "Der Editor reagiert eventuell mehrere Sekunden lang nicht"
+
+msgid "Line breaks added"
+msgstr "Zeilenumbrüche eingefügt"
+
+msgid "{} has a line of {} KB. A line this long makes the editor stop responding for seconds; with line breaks it works normally."
+msgstr "{} hat eine Zeile von {} KB. Eine so lange Zeile lässt den Editor sekundenlang nicht reagieren; mit Zeilenumbrüchen funktioniert er normal."
+
+msgid "No table of contents yet.\nUse “Generate” to build one from headings."
+msgstr "Noch kein Inhaltsverzeichnis.\nMit „Erzeugen“ wird es aus den Überschriften erstellt."
+
+msgid "Enter the password"
+msgstr "Passwort eingeben"
+
+msgid "Registering…"
+msgstr "Registrierung läuft …"
+
+msgid "Logging in…"
+msgstr "Anmeldung läuft …"
+
+msgid "Registered and logged in. Reading positions will sync."
+msgstr "Registriert und angemeldet. Lesepositionen werden synchronisiert."
+
+msgid "Logged in. Reading positions will sync."
+msgstr "Angemeldet. Lesepositionen werden synchronisiert."
+
+msgid "Use Bookx server"
+msgstr "Bookx-Server verwenden"
+
+msgid "Fill in the address of the library server that is running here (Sync shows the same)"
+msgstr "Trägt die Adresse des hier laufenden Bibliotheksservers ein (Sync zeigt dieselbe)"
+
+msgid "Use the address of the Bookx server of this computer"
+msgstr "Adresse des Bookx-Servers dieses Rechners verwenden"
+
+msgid "Register creates the account on the server; Log in checks it. The result shows here."
+msgstr "Registrieren legt das Konto auf dem Server an; Anmelden prüft es. Das Ergebnis erscheint hier."
+
+msgid "Register the user name and password on the server"
+msgstr "Benutzernamen und Passwort auf dem Server registrieren"
+
+msgid "Log in with the user name and password"
+msgstr "Mit Benutzernamen und Passwort anmelden"
+
+msgid "Device window"
+msgstr "Geräte-Fenster"
+
+msgid "Send books, remove them and sync reading state now"
+msgstr "Bücher senden, entfernen und den Lesestand jetzt abgleichen"
+
+msgid "Offline mode and the list of connections"
+msgstr "Offline-Modus und Liste der Verbindungen"
+
+msgid "Open Privacy"
+msgstr "Datenschutz öffnen"
+
+msgid "Open Preferences → Sync"
+msgstr "Einstellungen → Sync öffnen"
+
+msgid "{}   ·   one very long line"
+msgstr "{}   ·   eine einzige sehr lange Zeile"
+
+msgid "Kobo: .adds/koreader/plugins/bookx.koplugin · other readers: koreader/plugins/bookx.koplugin"
+msgstr "Kobo: .adds/koreader/plugins/bookx.koplugin · andere Reader: koreader/plugins/bookx.koplugin"
+
+msgid "Sync highlights, notes and bookmarks"
+msgstr "Markierungen, Notizen und Lesezeichen synchronisieren"
+
+msgid "Uses the same account as the reading position. Highlights are placed by their text; one that is not found in the book is kept as a note without a place."
+msgstr "Nutzt dasselbe Konto wie die Leseposition. Markierungen werden anhand ihres Textes platziert; eine, die im Buch nicht gefunden wird, bleibt als Notiz ohne Stelle erhalten."
+
+msgid "Turn on the Bookx sync server (step 1) and this switch first."
+msgstr "Schalten Sie zuerst den Bookx-Sync-Server (Schritt 1) und diesen Schalter ein."
+
+msgid "Bookx sync (reading position, highlights, notes)"
+msgstr "Bookx-Sync (Leseposition, Markierungen, Notizen)"
+
+msgid "Bookx sync is off"
+msgstr "Bookx-Sync ist aus"
+
+msgid "Bookx sync is ready"
+msgstr "Bookx-Sync ist bereit"
+
+msgid "Bookx sync is connected"
+msgstr "Bookx-Sync ist verbunden"
+
+msgid "Set up Bookx sync"
+msgstr "Bookx-Sync einrichten"
+
+msgid "Bookx sync with KOReader (Wi-Fi)"
+msgstr "Bookx-Sync mit KOReader (WLAN)"
+
+msgid "Use this when your Kobo, Kindle, Android or other e-reader runs KOReader."
+msgstr "Nutzen Sie dies, wenn Ihr Kobo, Kindle, Android- oder anderer E-Reader KOReader verwendet."
+
+msgid "Open setup guide"
+msgstr "Einrichtungsanleitung öffnen"
+
+msgid "Start setup"
+msgstr "Einrichtung starten"
+
+msgid "Use this when your e-reader is connected by a cable. It also works for devices without KOReader."
+msgstr "Nutzen Sie dies, wenn Ihr E-Reader per Kabel verbunden ist. Es funktioniert auch bei Geräten ohne KOReader."
+
+msgid "Open device window"
+msgstr "Geräte-Fenster öffnen"
+
+msgid "Share books (OPDS)"
+msgstr "Bücher freigeben (OPDS)"
+
+msgid "Use this to let another device or app download books from this computer."
+msgstr "Nutzen Sie dies, damit ein anderes Gerät oder eine App Bücher von diesem Rechner herunterladen kann."
+
+msgid "Stop library server"
+msgstr "Bibliotheksserver stoppen"
+
+msgid "Start library server"
+msgstr "Bibliotheksserver starten"
+
+msgid "Bookx sync (extended KOSync) is compatible with KOReader’s KOSync progress protocol. Bookx’s extension also syncs highlights, notes and bookmarks when the Bookx plugin is installed in KOReader. Everything goes over one connection to this computer; no cloud service is involved."
+msgstr "Bookx-Sync (erweitertes KOSync) ist mit dem KOSync-Fortschrittsprotokoll von KOReader kompatibel. Die Erweiterung von Bookx synchronisiert auch Markierungen, Notizen und Lesezeichen, wenn das Bookx-Plugin in KOReader installiert ist. Alles läuft über eine Verbindung zu diesem Rechner; es ist kein Cloud-Dienst beteiligt."
+
+msgid "Setup checklist"
+msgstr "Einrichtungs-Checkliste"
+
+msgid "What Bookx sync does"
+msgstr "Was Bookx-Sync macht"
+
+msgid "Library servers (OPDS)"
+msgstr "Bibliotheksserver (OPDS)"
+
+msgid "Advanced"
+msgstr "Erweitert"
+
+msgid "Sync your Kobo or other KOReader device over Wi-Fi: reading position, highlights, notes and bookmarks. Use USB for devices without KOReader."
+msgstr "Synchronisieren Sie Ihren Kobo oder ein anderes KOReader-Gerät über WLAN: Leseposition, Markierungen, Notizen und Lesezeichen. Nutzen Sie USB für Geräte ohne KOReader."
+
+msgid "Starts the server on this computer so the e-reader can reach it over your Wi-Fi or home network."
+msgstr "Startet den Server auf diesem Rechner, damit der E-Reader ihn über Ihr WLAN oder Heimnetz erreicht."
+
+msgid "Choose any user name and password. Copy these into Bookx Sync on the e-reader. This is not the Share Library password. There is no existing KOReader account. If the server is not on yet, switch on step 1 first."
+msgstr "Wählen Sie einen beliebigen Benutzernamen und ein Passwort. Tragen Sie beide im E-Reader bei Bookx Sync ein. Das ist nicht das Passwort der Bibliotheksfreigabe. Es gibt kein vorhandenes KOReader-Konto. Ist der Server noch nicht an, schalten Sie zuerst Schritt 1 ein."
+
+msgid "Copies the plugin into KOReader’s plugins folder on the connected e-reader, or into a folder you choose. Restart KOReader afterwards. Without the plugin only the reading position is synced."
+msgstr "Kopiert das Plugin in den Plugin-Ordner von KOReader auf dem verbundenen E-Reader oder in einen Ordner Ihrer Wahl. Starten Sie KOReader danach neu. Ohne das Plugin wird nur die Leseposition synchronisiert."
+
+msgid "On the e-reader: open a book → top menu → More tools → Bookx Sync → Sync now. Enter this computer’s address, the user name and the password from step 2."
+msgstr "Am E-Reader: Buch öffnen → oberes Menü → Weitere Werkzeuge → Bookx Sync → Jetzt synchronisieren. Geben Sie die Adresse dieses Rechners sowie Benutzernamen und Passwort aus Schritt 2 ein."
+
+msgid "Reading position, highlights, notes and bookmarks, over the same connection, when the Bookx plugin is installed. Without the plugin: reading position only."
+msgstr "Leseposition, Markierungen, Notizen und Lesezeichen über dieselbe Verbindung, wenn das Bookx-Plugin installiert ist. Ohne Plugin: nur die Leseposition."
+
+msgid "Start the server first (step 1), or type the address of another sync server under Advanced."
+msgstr "Starten Sie zuerst den Server (Schritt 1) oder geben Sie unter Erweitert die Adresse eines anderen Sync-Servers ein."
+
+msgid "Turn on the Bookx sync server (step 1) first: the server does not take accounts before."
+msgstr "Schalten Sie zuerst den Bookx-Sync-Server ein (Schritt 1): Vorher nimmt der Server keine Konten an."
+
+msgid "The Bookx sync server on, and a sync account you make in Bookx under Preferences → Sync (Register); no existing KOReader account is needed"
+msgstr "Der Bookx-Sync-Server ist an, dazu ein Sync-Konto, das Sie in Bookx unter Einstellungen → Sync anlegen (Registrieren); ein vorhandenes KOReader-Konto ist nicht nötig"
+
+msgid "Reading position only (highlights, notes and bookmarks need the Bookx plugin)"
+msgstr "Nur die Leseposition (Markierungen, Notizen und Lesezeichen brauchen das Bookx-Plugin)"
+
+msgid "The Bookx sync server on and “Sync highlights, notes and bookmarks” on"
+msgstr "Der Bookx-Sync-Server ist an und „Markierungen, Notizen und Lesezeichen synchronisieren“ ist an"
+
+msgid "Server address (Advanced)"
+msgstr "Serveradresse (erweitert)"
+
+msgid "Keeps your place in step with KOReader and other apps through a sync server: your own Bookx server (the address ending in /bookx), a self-hosted one, or the public one at sync.koreader.rocks. {}"
+msgstr "Hält Ihre Position mit KOReader und anderen Apps über einen Sync-Server auf dem Laufenden: Ihren eigenen Bookx-Server (die Adresse endet auf /bookx), einen selbst gehosteten oder den öffentlichen unter sync.koreader.rocks. {}"
+
+msgid "Address for the e-reader"
+msgstr "Adresse für den E-Reader"
+
+msgid "Appears here when the server is on."
+msgstr "Erscheint hier, sobald der Server läuft."
+
+msgid "OPDS catalogue and web page for other apps and e-readers. Off until you switch it on."
+msgstr "OPDS-Katalog und Webseite für andere Apps und E-Reader. Aus, bis Sie es einschalten."
+
+msgid "Library password (user name: bookx)"
+msgstr "Bibliothekspasswort (Benutzername: bookx)"
+
+msgid "Allow this port in your firewall for the e-reader to connect."
+msgstr "Erlauben Sie diesen Port in Ihrer Firewall, damit der E-Reader sich verbinden kann."
+
+msgid "Encrypts the connection, including the password. Without your own certificate Bookx makes a self-signed one: browsers and readers warn until you trust it."
+msgstr "Verschlüsselt die Verbindung samt Passwort. Ohne eigenes Zertifikat erstellt Bookx ein selbstsigniertes: Browser und Reader warnen, bis Sie ihm vertrauen."
+
+msgid "Plug in a Kobo, Kindle or other e-reader. Books, progress and notes sync over the cable, never wirelessly. Progress only moves forward and nothing is deleted."
+msgstr "Schließen Sie einen Kobo, Kindle oder anderen E-Reader an. Bücher, Fortschritt und Notizen werden über das Kabel abgeglichen, nie drahtlos. Der Fortschritt geht nur vorwärts, und es wird nichts gelöscht."
+
+msgid "Let other apps and e-readers browse and download your books from this computer: KOReader, Moon+ Reader, Librera, Kybook and more."
+msgstr "Andere Apps und E-Reader können Ihre Bücher von diesem Rechner durchsuchen und herunterladen: KOReader, Moon+ Reader, Librera, Kybook und mehr."
+
+msgid "Which device needs what, over which connection, and what syncs"
+msgstr "Was welches Gerät braucht, über welche Verbindung und was synchronisiert wird"
+
+msgid "Server address, port and firewall, HTTPS, matching, privacy and offline mode, reverse proxy, requirements"
+msgstr "Serveradresse, Port und Firewall, HTTPS, Buchzuordnung, Datenschutz und Offline-Modus, Reverse-Proxy, Voraussetzungen"
+
+msgid "Reverse proxy and remote access"
+msgstr "Reverse-Proxy und Fernzugriff"
+
+msgid "Open guide"
+msgstr "Anleitung öffnen"
+
+msgid "Offline mode refuses online look-ups; your own servers keep working. The list names everything Bookx can connect to, and when."
+msgstr "Der Offline-Modus lehnt Online-Abfragen ab; Ihre eigenen Server laufen weiter. Die Liste nennt alles, womit sich Bookx verbinden kann, und wann."
+
+msgid "Account and address for sending books to a Kindle or another address"
+msgstr "Konto und Adresse zum Senden von Büchern an einen Kindle oder eine andere Adresse"
+
+msgid "Main action of Bookx sync"
+msgstr "Hauptaktion von Bookx-Sync"
+
+msgid "Put nginx or Caddy in front of Bookx for HTTPS on your own address."
+msgstr "Setzen Sie nginx oder Caddy vor Bookx, um HTTPS unter Ihrer eigenen Adresse zu erhalten."
+
+msgid "Open the reverse proxy guide"
+msgstr "Reverse-Proxy-Anleitung öffnen"
+
+msgid "Every setting"
+msgstr "Alle Einstellungen"
+
+msgid "Nothing to merge yet. Turn on “Sync highlights, notes and bookmarks” in Preferences → Sync. Reading position syncs by itself as you read."
+msgstr "Noch nichts zum Abgleichen. Schalten Sie „Markierungen, Notizen und Lesezeichen synchronisieren“ unter Einstellungen → Sync ein. Die Leseposition wird beim Lesen von selbst synchronisiert."
+
+msgid "Not created yet"
+msgstr "Noch nicht angelegt"
+
+msgid "Copied"
+msgstr "Kopiert"
+
+msgid "Not copied yet"
+msgstr "Noch nicht kopiert"
+
+msgid "A device has synced"
+msgstr "Ein Gerät hat synchronisiert"
+
+msgid "Waiting for a device"
+msgstr "Warte auf ein Gerät"
+
+msgid "Turn on the Bookx sync server"
+msgstr "Bookx-Sync-Server einschalten"
+
+msgid "Create your sync account"
+msgstr "Sync-Konto anlegen"
+
+msgid "Install the Bookx plugin on KOReader"
+msgstr "Bookx-Plugin in KOReader installieren"
+
+msgid "Test on the device"
+msgstr "Am Gerät testen"
+
+msgid "Bookx sync server"
+msgstr "Bookx-Sync-Server"
+
+msgid "done"
+msgstr "erledigt"
+
+msgid "current"
+msgstr "aktuell"
+
+msgid "not done"
+msgstr "offen"
+
+msgid "Step {} of {}: {}"
+msgstr "Schritt {} von {}: {}"
+
+msgid "Four steps to sync with KOReader over Wi-Fi. Open any step; the first one that is not done is open for you."
+msgstr "Vier Schritte zum Sync mit KOReader über WLAN. Öffnen Sie einen beliebigen Schritt; der erste, der noch nicht erledigt ist, ist schon geöffnet."
+
+msgid "Put nginx or Caddy in front of Bookx for HTTPS on your own address. Bookx sync answers on the /bookx path and accepts up to {} requests per minute for each account; a reverse proxy can limit more."
+msgstr "Setzen Sie nginx oder Caddy vor Bookx, um HTTPS unter Ihrer eigenen Adresse zu erhalten. Bookx-Sync antwortet unter dem Pfad /bookx und nimmt bis zu {} Anfragen pro Minute und Konto an; ein Reverse-Proxy kann stärker begrenzen."
+
+msgid "Reverse proxy, port and firewall, every setting"
+msgstr "Reverse-Proxy, Port und Firewall, alle Einstellungen"
+
+msgid "Port {}: allow it in your firewall for the e-reader to connect. Server address, HTTPS, matching, privacy and offline mode are in Preferences → Sync."
+msgstr "Port {}: Erlauben Sie ihn in Ihrer Firewall, damit der E-Reader sich verbinden kann. Serveradresse, HTTPS, Buchzuordnung, Datenschutz und Offline-Modus finden Sie unter Einstellungen → Sync."

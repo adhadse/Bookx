@@ -24,9 +24,9 @@ impl Encryption {
 
     pub fn label(self) -> &'static str {
         match self {
-            Encryption::StartTls => "STARTTLS (port 587)",
-            Encryption::Tls => "TLS (port 465)",
-            Encryption::None => "None (local server only)",
+            Encryption::StartTls => crate::i18n::N_("STARTTLS (port 587)"),
+            Encryption::Tls => crate::i18n::N_("TLS (port 465)"),
+            Encryption::None => crate::i18n::N_("None (local server only)"),
         }
     }
 

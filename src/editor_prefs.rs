@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 pub struct EditorPrefs {
     /// The overview of the whole file at the right edge of the code view.
     pub minimap: bool,
-    /// Scrolling the preview also scrolls the code view (the other way, code to preview, is always on).
+    /// Scrolling the preview also scrolls the code view (the other way, code to preview, is always on). On by default.
     pub scroll_both: bool,
     /// Draw spaces, tabs, line breaks and invisible characters (CE-338).
     pub show_whitespace: bool,
@@ -27,7 +27,7 @@ impl Default for EditorPrefs {
     fn default() -> Self {
         EditorPrefs {
             minimap: true,
-            scroll_both: false,
+            scroll_both: true,
             show_whitespace: false,
             convert_entities: false,
             ignored_checks: BTreeMap::new(),
@@ -299,6 +299,32 @@ impl EditorPrefs {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scroll_both_is_on_by_default_but_a_saved_choice_wins() {
+        assert!(EditorPrefs::default().scroll_both);
+        let dir = std::env::temp_dir().join(format!("bookx-eprefs-sb-{}", uuid::Uuid::new_v4()));
+        let f = dir.join("editor.json");
+        assert!(EditorPrefs::load_from(&f).scroll_both, "no file: on");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(&f, "{\"minimap\": false}").unwrap();
+        assert!(EditorPrefs::load_from(&f).scroll_both, "key missing: on");
+        std::fs::write(&f, "{\"scroll_both\": false}").unwrap();
+        assert!(
+            !EditorPrefs::load_from(&f).scroll_both,
+            "explicit false is kept"
+        );
+        let off = EditorPrefs {
+            scroll_both: false,
+            ..EditorPrefs::default()
+        };
+        off.save_to(&f).unwrap();
+        assert!(
+            !EditorPrefs::load_from(&f).scroll_both,
+            "saved false round trips"
+        );
+        let _ = std::fs::remove_dir_all(dir);
+    }
 
     #[test]
     fn defaults_round_trip_and_tolerate_damage() {

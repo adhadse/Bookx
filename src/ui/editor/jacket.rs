@@ -17,9 +17,9 @@ impl Editor {
             &tr("Action"),
             &[
                 &tr(if existing.is_some() {
-                    "Update the jacket"
+                    crate::i18n::N_("Update the jacket")
                 } else {
-                    "Add a jacket"
+                    crate::i18n::N_("Add a jacket")
                 }),
                 &tr("Remove the jacket"),
             ],
@@ -66,9 +66,9 @@ impl Editor {
         });
         self.tool_dialog(
             Spec::new(
-                "Book Jacket",
+                crate::i18n::N_("Book Jacket"),
                 tr("A page after the cover that lists the title, authors, series, tags, rating and comments from the book's metadata. It is marked, so it can be updated when the metadata changes and removed without a trace."),
-                "Apply",
+                crate::i18n::N_("Apply"),
             ),
             Some(g.upcast()),
             make,

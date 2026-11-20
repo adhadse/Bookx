@@ -15,10 +15,11 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 use bookx_lookup::import::{self, Imported};
-use bookx_serve::syncplan::{self, Annot, Pairing};
+use bookx_serve::syncplan::{self, Pairing};
 use chrono::{DateTime, Utc};
 
 use crate::device_sync::{self, BookPlan, DeviceNote, Incoming, LibraryBook, Locator};
+use crate::look_sync;
 
 /// Reads whatever `path` is: a file of a known kind, or a folder (a device root, a KOReader
 /// folder) searched for the files below. Files are only read, never written.
@@ -94,7 +95,9 @@ fn imported_of(
         location: None,
         chapter: n.chapter.clone(),
         created: when,
-        bookmark: false,
+        bookmark: n.bookmark,
+        color: n.color.clone(),
+        style: n.style.clone(),
     }
 }
 
@@ -237,11 +240,9 @@ impl ImportPlan {
         for b in &self.books {
             let p = &b.plan;
             let mut parts = Vec::new();
-            if !p.highlights_in.is_empty() {
-                parts.push(format!(
-                    "{} added",
-                    n(p.highlights_in.len(), "highlight", "highlights")
-                ));
+            let placed = p.highlights_in.len().saturating_sub(p.unplaced);
+            if placed > 0 {
+                parts.push(format!("{} added", n(placed, "highlight", "highlights")));
             }
             if !p.notes_in.is_empty() {
                 parts.push(format!(
@@ -254,7 +255,7 @@ impl ImportPlan {
             }
             if p.unplaced > 0 {
                 parts.push(format!(
-                    "{} not found in the book’s text, left out",
+                    "{} not found in the book’s text, added as notes without a place",
                     p.unplaced
                 ));
             }
@@ -310,14 +311,6 @@ impl ImportPlan {
     }
 }
 
-fn annot_of(h: &crate::core::library::Highlight) -> Annot {
-    Annot {
-        text: h.text.clone(),
-        note: h.note.clone(),
-        when: None,
-    }
-}
-
 /// Works out what importing `items` into `library` would do. Changes nothing.
 pub fn plan(items: &[Imported], library: &[LibraryBook], locator: &dyn Locator) -> ImportPlan {
     let sides: Vec<_> = library.iter().map(device_sync::side_of_library).collect();
@@ -325,7 +318,12 @@ pub fn plan(items: &[Imported], library: &[LibraryBook], locator: &dyn Locator) 
     let mut by_book: BTreeMap<u64, BookImport> = BTreeMap::new();
     let mut unmatched: BTreeMap<String, usize> = BTreeMap::new();
     let mut ambiguous: BTreeMap<String, usize> = BTreeMap::new();
-    for it in import::dedupe(items.to_vec()) {
+    let mut claims: BTreeMap<u64, std::collections::HashSet<String>> = BTreeMap::new();
+    // longest first: a passage claims its own library highlight before a shorter quote that is part of
+    // it can (the order of the file says nothing about which of the two the library already has)
+    let mut ordered = import::dedupe(items.to_vec());
+    ordered.sort_by_key(|i| std::cmp::Reverse(syncplan::norm(&i.text).len()));
+    for it in ordered {
         if it.bookmark || it.text.trim().is_empty() {
             out.skipped += 1;
             continue;
@@ -355,41 +353,81 @@ pub fn plan(items: &[Imported], library: &[LibraryBook], locator: &dyn Locator) 
             },
             already: 0,
         });
-        let want = Annot {
-            text: it.text.clone(),
-            note: it.note.clone(),
-            when: None,
-        };
-        match book
-            .highlights
-            .iter()
-            .find(|h| syncplan::same_highlight(&annot_of(h), &want))
-        {
-            Some(h) => {
+        let (color, style) = look_sync::want_of(&it.color, &it.style);
+        let want = (color.clone(), style.clone());
+        let claimed = claims.entry(book.id).or_default();
+        match look_sync::pick(&book.highlights, &book.looks, claimed, &it.text, &want) {
+            look_sync::Pick::Existing(l) => {
+                let h = book.highlights.iter().find(|h| h.id == l.id);
                 bi.already += 1;
-                if h.note.trim().is_empty()
-                    && !it.note.trim().is_empty()
-                    && !bi.plan.notes_in.iter().any(|(id, _)| *id == h.id)
-                {
-                    bi.plan
-                        .notes_in
-                        .push((h.id.clone(), it.note.trim().to_string()));
+                if let Some(h) = h {
+                    if h.note.trim().is_empty()
+                        && !it.note.trim().is_empty()
+                        && !bi.plan.notes_in.iter().any(|(id, _)| *id == h.id)
+                    {
+                        bi.plan
+                            .notes_in
+                            .push((h.id.clone(), it.note.trim().to_string()));
+                    }
+                }
+                bi.plan.looks_in.push(l);
+            }
+            look_sync::Pick::New => {
+                // the words may be highlighted more than once (a term marked in every chapter that
+                // explains it): a second highlight goes to another place, never on top of the first
+                let mut spot = locator.locate_in(book.id, &it.text, it.chapter.as_deref());
+                if let Some(first) = spot {
+                    let mut taken: Vec<(usize, i32, i32)> = book
+                        .highlights
+                        .iter()
+                        .map(|h| (h.spine, h.start, h.end))
+                        .collect();
+                    taken.extend(
+                        bi.plan
+                            .highlights_in
+                            .iter()
+                            .map(|h| (h.spine, h.start, h.end)),
+                    );
+                    if taken.contains(&first) {
+                        spot = locator
+                            .locate_other(book.id, &it.text, it.chapter.as_deref(), &taken)
+                            .or(spot);
+                    }
+                }
+                match spot {
+                    Some((spine, start, end)) => bi.plan.highlights_in.push(Incoming {
+                        note: DeviceNote {
+                            id: None,
+                            text: it.text.clone(),
+                            note: it.note.clone(),
+                            created: it.created,
+                            color: color.clone(),
+                            style: style.clone(),
+                        },
+                        spine,
+                        start,
+                        end,
+                    }),
+                    None => {
+                        // never at a guessed place: a note without a place, kept with its text
+                        let (spine, start, end) = crate::core::anchor::unplaced(0);
+                        bi.plan.highlights_in.push(Incoming {
+                            note: DeviceNote {
+                                id: None,
+                                text: it.text.clone(),
+                                note: it.note.clone(),
+                                created: it.created,
+                                color: color.clone(),
+                                style: style.clone(),
+                            },
+                            spine,
+                            start,
+                            end,
+                        });
+                        bi.plan.unplaced += 1;
+                    }
                 }
             }
-            None => match locator.locate(book.id, &it.text) {
-                Some((spine, start, end)) => bi.plan.highlights_in.push(Incoming {
-                    note: DeviceNote {
-                        id: None,
-                        text: it.text.clone(),
-                        note: it.note.clone(),
-                        created: it.created,
-                    },
-                    spine,
-                    start,
-                    end,
-                }),
-                None => bi.plan.unplaced += 1,
-            },
         }
     }
     out.books = by_book.into_values().collect();
@@ -405,13 +443,25 @@ pub use crate::device_sync::Applied;
 pub fn apply(lib: &mut crate::core::library::Library, plan: &ImportPlan) -> Applied {
     let now = Utc::now();
     let mut total = Applied::default();
+    let mut before = Vec::new();
     for b in &plan.books {
         if let Some(book) = lib.get_mut(b.plan.book_id) {
             let a = device_sync::apply_book(book, &b.plan, now);
             total.highlights += a.highlights;
             total.notes += a.notes;
+            total.ledger.extend(a.ledger);
+            let snapshot = book.highlights.clone();
+            let (n, ledger) = look_sync::apply(&mut book.highlights, &b.plan.looks_in);
+            total
+                .ledger
+                .extend(ledger.into_iter().map(|(id, l)| (b.plan.book_id, id, l)));
+            if n > 0 {
+                total.recolored += n;
+                before.push((b.plan.book_id, snapshot));
+            }
         }
     }
+    device_sync::finish_looks(lib, &total, before);
     total
 }
 
@@ -438,6 +488,8 @@ mod tests {
             chapter: None,
             created: Some(Utc.with_ymd_and_hms(2024, 3, 3, 10, 42, 11).unwrap()),
             bookmark: false,
+            color: None,
+            style: None,
         }
     }
 
@@ -449,6 +501,7 @@ mod tests {
             progress: 0.0,
             last_read: None,
             highlights: hs,
+            looks: Default::default(),
         }
     }
 
@@ -495,15 +548,21 @@ mod tests {
             imp("Not Mine", None, "x quote", ""),
         ];
         let p = plan(&items, &lib, &Anywhere);
-        assert_eq!(p.new_highlights(), 1);
+        // the quote that is nowhere in the book is added too, as a note without a place
+        assert_eq!(p.new_highlights(), 2);
         assert_eq!(p.notes_added(), 1);
         assert_eq!(p.already(), 2);
         assert_eq!(p.unplaced(), 1);
+        assert!(p.books[0]
+            .plan
+            .highlights_in
+            .iter()
+            .any(|i| i.start < 0 && i.note.text.contains("MISSING")));
         assert_eq!(p.unmatched, vec![("Not Mine".to_string(), 1)]);
         let text = p.text();
         assert!(
             text.contains(
-                "Dune: 1 highlight added, 1 empty note filled in, 2 already there, 1 not found"
+                "Dune: 1 highlight added, 1 empty note filled in, 2 already there, 1 not found in the book’s text, added as notes without a place"
             ),
             "{text}"
         );
@@ -617,6 +676,109 @@ mod tests {
         );
         assert_eq!(p.skipped, 2);
         assert!(p.text().contains("2 left out: bookmarks and notes without"));
+    }
+
+    /// Found on the owner's Kobo (KOReader v2026.07, *Building Microservices*): the three page bookmarks
+    /// (`text = "in <chapter>"`) were imported as highlights (one placed at a heading that has that
+    /// text, two as notes without a place), and the book was not found at all because its author is
+    /// `Newman, Sam;` there and `Newman, Sam` in the library.
+    #[test]
+    fn a_real_koreader_sidecar_imports_its_highlights_and_no_bookmarks() {
+        let lua = r#"return {
+    ["annotations"] = {
+        [1] = { ["chapter"] = "Domain Coupling", ["datetime"] = "2026-08-23 07:09:10", ["page"] = "/body/DocFragment[7]/body/p/text().0", ["pageno"] = 77, ["text"] = "in Domain Coupling" },
+        [2] = { ["chapter"] = "Ch", ["color"] = "cyan", ["datetime"] = "2026-08-17 11:22:15", ["drawer"] = "lighten", ["page"] = "/body/a/text().0", ["pageno"] = 22, ["pos0"] = "/body/a/text().0", ["pos1"] = "/body/a/text().9", ["text"] = "A quote worth keeping." },
+    },
+    ["doc_props"] = { ["authors"] = "Newman, Sam;", ["title"] = "Building Microservices" },
+}"#;
+        let items = read_koreader_lua(
+            lua,
+            Path::new("Building Microservices.sdr/metadata.epub.lua"),
+        );
+        let lib = [lib_book(1, "Building Microservices", "Newman, Sam", vec![])];
+        let p = plan(&items, &lib, &Anywhere);
+        assert!(
+            p.unmatched.is_empty(),
+            "the book is found: {:?}",
+            p.unmatched
+        );
+        assert_eq!(p.new_highlights(), 1, "only the highlight");
+        assert_eq!(
+            p.books[0].plan.highlights_in[0].note.text,
+            "A quote worth keeping."
+        );
+        assert_eq!(
+            p.books[0].plan.highlights_in[0].note.color.as_deref(),
+            Some("cyan")
+        );
+        assert_eq!(p.skipped, 1, "the bookmark is counted, not imported");
+    }
+
+    /// Found on the owner's Kobo: the short cyan highlight "service discovery" was taken for the long
+    /// yellow highlight that contains those words, which then turned cyan.
+    #[test]
+    fn a_short_quote_inside_a_longer_one_is_not_the_longer_one() {
+        let long = "Common features implemented by service meshes include mutual TLS, correlation IDs, service discovery and load balancing, and more";
+        let mut h = hl("long", long, "");
+        h.color = "yellow".into();
+        let lib = [lib_book(1, "Dune", "F", vec![h])];
+        let mut short = imp("Dune", None, "service discovery", "");
+        short.color = Some("cyan".into());
+        let mut whole = imp("Dune", None, long, "");
+        whole.color = Some("yellow".into());
+        // whatever the order in the file
+        for items in [[short.clone(), whole.clone()], [whole, short]] {
+            let p = plan(&items, &lib, &Anywhere);
+            assert_eq!(p.already(), 1, "the long one is the library's");
+            assert_eq!(p.new_highlights(), 1, "the short one is its own highlight");
+            assert_eq!(
+                p.books[0].plan.highlights_in[0].note.text,
+                "service discovery"
+            );
+            assert!(
+                p.books[0].plan.looks_in.iter().all(|l| l.set.is_none()),
+                "the long highlight keeps its yellow"
+            );
+        }
+    }
+
+    /// A book that holds the quote at two places; the first is where `locate_in` always says.
+    struct TwoPlaces;
+    impl Locator for TwoPlaces {
+        fn locate(&self, _: u64, _: &str) -> Option<(usize, i32, i32)> {
+            Some((8, 100, 116))
+        }
+        fn locate_other(
+            &self,
+            _: u64,
+            _: &str,
+            _: Option<&str>,
+            taken: &[(usize, i32, i32)],
+        ) -> Option<(usize, i32, i32)> {
+            [(8, 100, 116), (8, 900, 916)]
+                .into_iter()
+                .find(|p| !taken.contains(p))
+        }
+    }
+
+    /// Found on the owner's Kobo: "Request-response" is highlighted in two chapters; both were stored at
+    /// the first place the words occur.
+    #[test]
+    fn the_same_words_highlighted_twice_go_to_two_places() {
+        let mut first = hl("a", "Request-response", "");
+        first.spine = 8;
+        first.start = 100;
+        first.end = 116;
+        let lib = [lib_book(1, "Dune", "F", vec![first])];
+        let mut one = imp("Dune", None, "Request-response", "");
+        one.chapter = Some("Styles".into());
+        let mut two = one.clone();
+        two.chapter = Some("Patterns".into());
+        let p = plan(&[one, two], &lib, &TwoPlaces);
+        assert_eq!(p.already(), 1);
+        assert_eq!(p.new_highlights(), 1);
+        let h = &p.books[0].plan.highlights_in[0];
+        assert_eq!((h.spine, h.start, h.end), (8, 900, 916));
     }
 
     fn tmp() -> PathBuf {

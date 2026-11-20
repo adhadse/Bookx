@@ -5,62 +5,44 @@ use crate::i18n::{tr, trf};
 use bookx_editing::toc_ops;
 
 impl Editor {
+    /// Refills the Contents list. It is a virtual `ListView`: only the rows in view have widgets, so a book
+    /// with 20 000 entries costs one store update, not 20 000 rows of widgets.
     pub(super) fn rebuild_toc(&self) {
-        while let Some(c) = self.w.toc_list.first_child() {
-            self.w.toc_list.remove(&c);
+        let st = &self.ext.structure;
+        // Keyboard moves must keep the moved entry in view; a drag already happened in view, and scrolling
+        // the virtual list here would pull the rows out from under the pointer between two drops.
+        let refocus = st.toc_refocus.replace(false);
+        st.toc_syncing.set(true);
+        let items: Vec<glib::BoxedAnyObject> = self
+            .toc
+            .iter()
+            .map(|t| glib::BoxedAnyObject::new(t.clone()))
+            .collect();
+        self.w
+            .toc_store
+            .splice(0, self.w.toc_store.n_items(), &items);
+        if let Some(h) = st.toc_hint.borrow().as_ref() {
+            h.set_visible(self.toc.is_empty());
         }
-        for (i, t) in self.toc.iter().enumerate() {
-            let row = gtk::ListBoxRow::new();
-            let bx = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-            bx.append(&self.toc_row_dnd(&row, i));
-            bx.set_margin_start(6 + 18 * t.depth as i32);
-            bx.set_margin_end(6);
-            bx.set_margin_top(3);
-            bx.set_margin_bottom(3);
-            let e = gtk::Entry::new();
-            e.set_text(&t.title);
-            e.set_hexpand(true);
-            e.add_css_class("flat");
-            crate::ui::audit::label(&e, &tr("Contents entry title"));
-            let focus = gtk::EventControllerFocus::new();
-            let tx = self.sender.input_sender().clone();
-            focus.connect_enter(move |_| tx.emit(Input::TocSelect(i)));
-            e.add_controller(focus);
-            let tx = self.sender.input_sender().clone();
-            e.connect_changed(move |e| tx.emit(Input::TocTitle(i, e.text().to_string())));
-            let link = gtk::Label::new(Some(file_name(&t.href)));
-            link.add_css_class("dim-label");
-            link.add_css_class("caption");
-            link.set_ellipsize(pango::EllipsizeMode::Middle);
-            link.set_max_width_chars(18);
-            link.set_tooltip_text(Some(&t.href));
-            bx.append(&e);
-            bx.append(&link);
-            row.set_child(Some(&bx));
-            self.w.toc_list.append(&row);
-        }
-        if self.toc.is_empty() {
-            let l = gtk::Label::new(Some(
-                "No table of contents yet.\nUse “Generate” to build one from headings.",
-            ));
-            l.add_css_class("dim-label");
-            l.set_margin_all(16);
-            l.set_justify(gtk::Justification::Center);
-            self.w.toc_list.append(&l);
-        }
-        if let Some(i) = self.toc_selected {
-            if let Some(r) = self.w.toc_list.row_at_index(i as i32) {
-                self.w.toc_list.select_row(Some(&r));
-                if self.ext.structure.toc_refocus.replace(false) {
-                    if let Some(e) = r
-                        .child()
-                        .and_then(|c| c.first_child())
-                        .and_then(|g| g.next_sibling())
-                    {
-                        e.grab_focus();
-                    }
+        let sel = self
+            .toc_selected
+            .filter(|i| *i < self.toc.len())
+            .map_or(gtk::INVALID_LIST_POSITION, |i| i as u32);
+        self.w.toc_sel.set_selected(sel);
+        st.toc_syncing.set(false);
+        if refocus && sel != gtk::INVALID_LIST_POSITION {
+            // The focused entry is brought into view by GTK; an explicit `scroll_to` here aligns it to the
+            // edge of the virtual list and hides the neighbour that gives the move its context.
+            let entries = st.toc_entries.clone();
+            glib::idle_add_local_once(move || {
+                let hit = entries.borrow().iter().find_map(|(i, e)| {
+                    let (i, e) = (i.upgrade()?, e.upgrade()?);
+                    (i.position() == sel).then_some(e)
+                });
+                if let Some(e) = hit {
+                    e.grab_focus();
                 }
-            }
+            });
         }
     }
 
@@ -187,7 +169,8 @@ impl Editor {
         if self.current.as_deref() != Some(&path) {
             self.select_file(&path);
         }
-        if !is_text_path(&path) {
+        if !is_text_path(&path) || self.w.center.visible_child_name().as_deref() == Some("longline")
+        {
             return;
         }
         let buf = self.buffer_for(&path);
@@ -277,4 +260,146 @@ impl Editor {
             },
         );
     }
+}
+
+/// What the Contents list is made of: the virtual list, its store (one `BoxedAnyObject<FlatToc>` per entry),
+/// its selection and the hint over it.
+pub(super) struct TocList {
+    pub list: gtk::ListView,
+    pub store: gio::ListStore,
+    pub sel: gtk::SingleSelection,
+    pub root: gtk::Overlay,
+}
+
+pub(super) fn toc_list_new(tx: relm4::Sender<Input>, st: &super::struct_hub::State) -> TocList {
+    let store = gio::ListStore::new::<glib::BoxedAnyObject>();
+    let sel = gtk::SingleSelection::new(Some(store.clone()));
+    sel.set_autoselect(false);
+    sel.set_can_unselect(true);
+    let list = gtk::ListView::new(Some(sel.clone()), Some(toc_factory(tx.clone(), st)));
+    list.add_css_class("navigation-sidebar");
+    list.set_single_click_activate(true);
+    {
+        let (tx, syncing) = (tx.clone(), st.toc_syncing.clone());
+        sel.connect_selected_notify(move |s| {
+            if !syncing.get() && s.selected() != gtk::INVALID_LIST_POSITION {
+                tx.emit(Input::TocSelect(s.selected() as usize));
+            }
+        });
+    }
+    list.connect_activate(move |_, i| tx.emit(Input::TocGo(i as usize)));
+    let scroll = gtk::ScrolledWindow::new();
+    scroll.set_vexpand(true);
+    scroll.set_child(Some(&list));
+    let hint = gtk::Label::new(Some(&tr(
+        "No table of contents yet.\nUse “Generate” to build one from headings.",
+    )));
+    hint.add_css_class("dim-label");
+    hint.set_margin_start(16);
+    hint.set_margin_end(16);
+    hint.set_justify(gtk::Justification::Center);
+    hint.set_wrap(true);
+    hint.set_valign(gtk::Align::Center);
+    hint.set_can_target(false);
+    hint.set_visible(false);
+    let root = gtk::Overlay::new();
+    root.set_vexpand(true);
+    root.set_child(Some(&scroll));
+    root.add_overlay(&hint);
+    *st.toc_hint.borrow_mut() = Some(hint);
+    TocList {
+        list,
+        store,
+        sel,
+        root,
+    }
+}
+
+fn toc_factory(
+    tx: relm4::Sender<Input>,
+    st: &super::struct_hub::State,
+) -> gtk::SignalListItemFactory {
+    let factory = gtk::SignalListItemFactory::new();
+    // set while bind fills an entry, so that it does not come back as an edit
+    let binding = Rc::new(Cell::new(false));
+    let entries = st.toc_entries.clone();
+    {
+        let (tx, binding) = (tx, binding.clone());
+        factory.connect_setup(move |_, obj| {
+            let Some(item) = obj.downcast_ref::<gtk::ListItem>() else {
+                return;
+            };
+            let bx = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+            bx.append(&super::toc_dnd::toc_row_dnd(&bx, item, tx.clone()));
+            bx.set_margin_end(6);
+            bx.set_margin_top(3);
+            bx.set_margin_bottom(3);
+            let e = gtk::Entry::new();
+            e.set_hexpand(true);
+            e.add_css_class("flat");
+            crate::ui::audit::label(&e, &tr("Contents entry title"));
+            let focus = gtk::EventControllerFocus::new();
+            {
+                let (tx, item) = (tx.clone(), item.downgrade());
+                focus.connect_enter(move |_| {
+                    if let Some(i) = item.upgrade() {
+                        tx.emit(Input::TocSelect(i.position() as usize));
+                    }
+                });
+            }
+            e.add_controller(focus);
+            {
+                let (tx, item, binding) = (tx.clone(), item.downgrade(), binding.clone());
+                e.connect_changed(move |e| {
+                    if let (false, Some(i)) = (binding.get(), item.upgrade()) {
+                        tx.emit(Input::TocTitle(i.position() as usize, e.text().to_string()));
+                    }
+                });
+            }
+            let link = gtk::Label::new(None);
+            link.add_css_class("dim-label");
+            link.add_css_class("caption");
+            link.set_ellipsize(pango::EllipsizeMode::Middle);
+            link.set_max_width_chars(18);
+            bx.append(&e);
+            bx.append(&link);
+            item.set_child(Some(&bx));
+        });
+    }
+    factory.connect_bind(move |_, obj| {
+        let Some(item) = obj.downcast_ref::<gtk::ListItem>() else {
+            return;
+        };
+        let (Some(bx), Some(data)) = (
+            item.child().and_downcast::<gtk::Box>(),
+            item.item().and_downcast::<glib::BoxedAnyObject>(),
+        ) else {
+            return;
+        };
+        let t = data.borrow::<FlatToc>();
+        let Some(e) = bx
+            .first_child()
+            .and_then(|g| g.next_sibling())
+            .and_downcast::<gtk::Entry>()
+        else {
+            return;
+        };
+        let Some(link) = e.next_sibling().and_downcast::<gtk::Label>() else {
+            return;
+        };
+        bx.set_margin_start(6 + 18 * t.depth as i32);
+        binding.set(true);
+        if e.text() != t.title {
+            e.set_text(&t.title);
+        }
+        binding.set(false);
+        link.set_text(file_name(&t.href));
+        link.set_tooltip_text(Some(&t.href));
+        let mut map = entries.borrow_mut();
+        map.retain(|(i, w)| i.upgrade().is_some() && w.upgrade().is_some());
+        if !map.iter().any(|(i, _)| i.upgrade().as_ref() == Some(item)) {
+            map.push((item.downgrade(), e.downgrade()));
+        }
+    });
+    factory
 }

@@ -4,7 +4,7 @@ APP_ID = com.adhadse.Bookx
 TARGET_DIR ?= target/release
 LANGS = $(basename $(notdir $(wildcard po/*.po)))
 
-.PHONY: build run test perf ui-test mockups install install-flatpak uninstall flatpak flatpak-sources desktop-check i18n locale
+.PHONY: build run test perf scale ui-test mockups install install-flatpak uninstall flatpak flatpak-sources desktop-check i18n locale release-check tarball
 
 build:
 	cargo build --release
@@ -18,6 +18,10 @@ test:
 perf:
 	cargo test --release --workspace --test perf_budgets
 	cargo test --release -p bookx --bin bookx perf::
+
+# the full table of timings at 10k, 50k and 100k books (docs/performance.md)
+scale:
+	cargo run --release -p bookx-store --example scale -- 10000 50000 100000
 
 ui-test:
 	JOBS=$(JOBS) build-aux/ui-tests.sh
@@ -53,6 +57,13 @@ desktop-check:
 	desktop-file-validate data/$(APP_ID).desktop
 	appstreamcli validate --no-net data/$(APP_ID).metainfo.xml
 	xmllint --noout data/$(APP_ID).mime.xml
+
+release-check:
+	build-aux/release-check.sh
+
+tarball: build
+	cargo build --release -p bookx-cli
+	build-aux/tarball.sh
 
 flatpak-sources:
 	build-aux/flatpak-cargo-sources.py

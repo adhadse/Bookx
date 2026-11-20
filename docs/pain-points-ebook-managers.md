@@ -30,17 +30,17 @@ How to read it:
 | PP-G-2 | Edits live in the database, not in the file | high | DONE | Drift check and write-back everywhere | M | P1 |
 | PP-G-3 | Series and author naming chaos | high | DONE | Normaliser, series view, author aliases in UI | M | P1 |
 | PP-G-4 | Duplicate detection too naive or too late | high | DONE | Numerals, post-import check, edition-aware merge | S | P2 |
-| PP-G-5 | Work vs edition vs format is not modelled | medium | PARTIAL | "Work" grouping over several files | L | P3 |
+| PP-G-5 | Work vs edition vs format is not modelled | medium | DONE (2026-11-20, grouping; shared progress with audiobooks open) | "Work" grouping over several files | L | P3 |
 | PP-G-6 | Format fragmentation and device-specific conversion | high | PARTIAL | Send-to-device preflight, real-device test matrix | M | P1 |
 | PP-G-7 | DRM and store lock-in | high | DONE | Detect and explain DRM, LCP later | S | P2 |
 | PP-G-8 | Reading position sync across apps and devices | high | DONE | Reader as KOSync client, precise matching | M | P1 |
 | PP-G-9 | Kobo and Kindle sideloaded books lose sync and notes | high | DONE | Read Kobo DB annotations, carry notes on send | M | P1 |
 | PP-G-10 | Highlights are trapped in the app or the store | high | DONE | Wire exporters, add importers | M | P1 |
-| PP-G-11 | Device transfer is clumsy | medium | PARTIAL | MTP via gio, wireless pull | M | P2 |
-| PP-G-12 | Large library performance | high | PARTIAL | 100k budgets, lazy covers | M | P2 |
+| PP-G-11 | Device transfer is clumsy | medium | PARTIAL (wireless = KOReader only, D10) | MTP via gio, wireless pull | M | P2 |
+| PP-G-12 | Large library performance | high | DONE (2026-11-20; docs/performance.md) | 100k budgets, lazy covers | M | P2 |
 | PP-G-13 | Fragile database, cloud sync and schema breaks | high | DONE | Lock guard, schema doc, read-only mode | S | P2 |
 | PP-G-14 | Backups are manual or absent | medium | DONE | Scheduler, destinations, restore UI | S | P1 |
-| PP-G-15 | Import and migration lock-in | medium | PARTIAL | Round-trip to Calibre layout, OPF sidecars | M | P2 |
+| PP-G-15 | Import and migration lock-in | medium | DONE (export to Calibre, 2026-11-20) | Round-trip to Calibre layout, OPF sidecars | M | P2 |
 | PP-G-16 | Tracker data: Goodreads API dead, silos | medium | PARTIAL | CSV import/export, Hardcover sync | M | P2 |
 | PP-G-17 | Projects get abandoned or change terms | medium | DONE | Documented schema, plain-file export | S | P2 |
 | PP-G-18 | Cloud dependence and privacy | medium | DONE | Keep the rule, add a written network ledger | S | P3 |
@@ -49,8 +49,8 @@ How to read it:
 | PP-G-21 | CJK, RTL and vertical text | medium | PARTIAL | RTL page direction done; vertical writing planned (`docs/vertical-writing-plan.md`) | L | P2 |
 | PP-G-22 | Dictionary and translation | medium | DONE | Fix bug 1, offline-first fallbacks | S | P2 |
 | PP-G-23 | E-ink support | medium | PARTIAL | Refresh hints, stay nice-to-have | M | P3 |
-| PP-G-24 | Comics and manga | high | PARTIAL | Page reader with RTL, ComicInfo rules | L | P2 |
-| PP-G-25 | Audiobook and ebook pairing | medium | PARTIAL | EPUB 3 media overlays, linked audio | L | P3 |
+| PP-G-24 | Comics and manga | high | PARTIAL (reader DONE 2026-11-20) | next volume in the folder, series from folders, "ignore ComicInfo" switch, real RAR (CBR) | L | P2 |
+| PP-G-25 | Audiobook and ebook pairing | medium | PARTIAL (playback DONE 2026-11-20) | one position across e-book and audiobook, EPUB 3 media overlays in the reader, position sync between devices | L | P3 |
 | PP-G-26 | Multi-user and sharing | high | PARTIAL | Per-user accounts in Share Library | M | P3 |
 | PP-G-27 | Mobile and offline | medium | PARTIAL | Offline-capable web client | L | P3 |
 | PP-G-28 | Cover quality | medium | PARTIAL | Candidate picker with resolution score | S | P2 |
@@ -74,17 +74,17 @@ updates.** DONE means everything the proposal asks for and that code can solve i
 | PP-G-2 edits only in the database | DONE | Every edit goes through `Library::update_metadata` (file and catalogue together); drift check with *use file* / *use catalogue* fixes (`library check --drift`, Health) | AZW3/PDF write-back |
 | PP-G-3 series and author chaos | DONE | Series number parser, Series window with gaps, author aliases window, tidy names, `library authors/rename-author` (`series_view.rs`, `authors_view.rs`, `bookx-sources::{authors,aliases,tidy}`) | Language-aware name order; no automatic transliteration |
 | PP-G-4 duplicates | DONE | ISBN/title/author fuzzy match, number words, import-time check, merge or merge as formats, **"Not a Duplicate" memory** (`duplicates::Apart`, scenario `pain_apart`) | |
-| PP-G-5 work vs edition vs format | PARTIAL | One book holds several formats (merge, add format, best format per device); *Editions & Formats* groups books of one work | No "work" entity above books in the grid (a grouped card with an expander); editions of different ISBN stay separate books; reading progress is not shared with an audiobook |
+| PP-G-5 work vs edition vs format | DONE (grouping) | One book holds several formats (merge, add format, best format per device); **works above books**: catalogue schema v7 (`work_links`, `work_apart`), pure grouping `src/work_groups.rs` (user links, ISBN / work ids, title+author; translations and other subtitles/numbers/authors never merge), one grid card or table row with an edition badge, edition list (popover and details panel) with Open / Send / Open first / Unlink, *Link as Editions*, *Unlink All Editions*, bulk actions reach every edition, setting *Group editions of the same book* (default off); scenarios `works_*` (Broadway) and `works_editions_*` (real session) | Reading progress is not shared between an EPUB and an audiobook (the card shows the progress of the edition read last; audiobooks are separate books); the Editions & Formats window still lists by title and author only |
 | PP-G-6 format fragmentation | PARTIAL | Check Before Sending (validator + Kindle/Kobo/e-mail rules), Fix All, best format per device, conversion report | Check not in the Device window's send flow; no real-device test matrix |
 | PP-G-7 DRM | DONE | Detection of Adobe, Kindle, Kobo, FairPlay, LCP with a clear message (`core::drm`, `drm:` search) | Synthetic fixtures only; no LCP support (and no circumvention, by design) |
 | PP-G-8 position sync | DONE | KOSync client and server, partial-MD5 ids, "continue from X%?" (`kosync_sync.rs`, `ui/kosync.rs`) | Not verified against a real KOReader |
 | PP-G-9 Kobo/Kindle notes | DONE | Highlights imported from `KoboReader.sqlite`, KOReader sidecars, My Clippings; notes travel with sent books (`annotation_import.rs`, `send_notes.rs`) | Nothing is written into the Kobo database (by design) |
 | PP-G-10 highlights trapped | DONE | Notes & Highlights window, export to Markdown/HTML/JSON/text/Kindle/Readwise/Anki, imports, stable ids | Anki and Readwise only tested against stand-ins |
-| PP-G-11 device transfer | PARTIAL | USB mass storage, WebDAV, gvfs mounts, OPDS, e-mail | No direct MTP, no wireless pull from a device |
-| PP-G-12 large libraries | PARTIAL | Virtual grid, per-book diff commits, budgets at 10,000 books | No 100,000-book budget, no scroll fps / memory ceiling |
+| PP-G-11 device transfer | PARTIAL | USB mass storage, WebDAV, gvfs mounts, OPDS, e-mail; **wireless sync for KOReader only (owner decision D10, 2026-11-20): KOSync progress + the Bookx plugin for highlights/notes (`docs/koreader-annotation-sync.md`)** | No direct MTP. No wireless sync for stock Kobo/Kindle firmware or other devices by decision (USB only); the Calibre wireless protocol stays deferred. The plugin was never run on a real KOReader |
+| PP-G-12 large libraries | PARTIAL | Virtual grid, per-book diff commits, budgets at 10,000 books | **Wave 6:** 100,000-book budgets incl. RSS ceiling, O(n²) fixes, 20k-book Broadway scroll scenario (docs/performance.md); no real-session fps |
 | PP-G-13 fragile DB / cloud sync | DONE | Transactions, library lock, read-only mode, network/synced folder warning, **documented schema (wiki "Your data and leaving Bookx")**, `check` | |
 | PP-G-14 backups | DONE | Snapshots, restore, off-site with encryption and verification (`docs/backup-notes.md`) | |
-| PP-G-15 migration lock-in | PARTIAL | Calibre import (GUI + CLI), JSON dump, save-to-disk templates, citations (BibTeX/RIS/CSL/APA), tracker CSV, annotation exports | No export back to Calibre's `metadata.db`, no OPF sidecars |
+| PP-G-15 migration lock-in | DONE (wave 6) | Calibre import (GUI + CLI), JSON dump, save-to-disk templates, citations (BibTeX/RIS/CSL/APA), tracker CSV, annotation exports | Export to a Calibre library with `metadata.db` and per-book `metadata.opf` now exists (`bookx-store::calibre_export`); OPF sidecars next to files in the Bookx library itself are still not written |
 | PP-G-16 tracker data | PARTIAL | Goodreads/StoryGraph/Hardcover CSV import, Goodreads/StoryGraph export | No Hardcover API sync; Hardcover CSV not checked against a real export |
 | PP-G-17 abandonment / terms | DONE | GPL-3.0-or-later, plain files, SQLite, `library dump`, **documented data layout** | |
 | PP-G-18 cloud and privacy | DONE | No telemetry; **list of every connection and an offline mode switch (Preferences → Privacy, wiki Privacy, `src/privacy.rs`)** | |
@@ -93,8 +93,8 @@ updates.** DONE means everything the proposal asks for and that code can solve i
 | PP-G-21 CJK, RTL, vertical | PARTIAL | RTL pages, vertical writing and furigana in the canvas (`docs/vertical-writing-plan.md`) | Tate-chu-yoko edge cases, selection in vertical text |
 | PP-G-22 dictionary / translation | DONE | StarDict with word forms, automatic dictionary download per language, vocabulary with SM-2 and Anki export, Wikipedia with picture, offline-first fallbacks | Translation always goes to an online service (listed in Privacy) |
 | PP-G-23 e-ink | PARTIAL | E-ink mode (palette, no animation, wide tap zones) | No frontlight / partial-refresh control; not on hardware |
-| PP-G-24 comics | PARTIAL | CBZ/CBT/CBC reader, RTL flag | No panel zoom, spreads or next-file-in-folder |
-| PP-G-25 audiobooks | PARTIAL | Pairing of audio files with books (open in the system player) | No playback, no position sync, no media overlays playback in the reader |
+| PP-G-24 comics | PARTIAL | Comic reader (`ui/reader_comic.rs`, `crates/bookx-comic`): single page, two-page spread (cover alone, wide pages alone), vertical webtoon strip, fit page/width/height/original, manga right to left from ComicInfo or a toggle remembered per book, smart zoom to the panel under a double-click, guided view (Space / Shift+Space), pan, pinch, Ctrl+wheel, thumbnails strip, decoding on worker threads with a memory budget, grey pages and e-ink, ComicInfo page types; defaults in Preferences (`docs/comic-notes.md`) | No next volume in the folder, no series from folder names, no per-library direction or "ignore ComicInfo" switch, no real RAR (CBR), panel detection only for plain gutters (no overlapping or slanted panels), not tried on e-ink hardware or with real published comics, no screen-reader text for the pictures |
+| PP-G-25 audiobooks | PARTIAL | Pairing of audio files with books; import of folders, zips and M4B as audiobooks of their own; in-app player (chapters, speed 0.5-3x with pitch kept, sleep timer, bookmarks with notes, resume, MPRIS, listening statistics); badge, sidebar entry and `format:` filters (`docs/audiobook-notes.md`) | No position sync between devices, no shared place between an e-book and its audiobook, no EPUB 3 media overlays playback in the reader (narration overlays are R18), no Opus playback, never heard on a real sound card |
 | PP-G-26 multi-user | PARTIAL | Share password, KOSync accounts | No per-user libraries or progress |
 | PP-G-27 mobile / offline | PARTIAL | OPDS, web page, touch controls | No offline web client |
 | PP-G-28 cover quality | PARTIAL | **Size and shape grading, small-cover scan, larger covers offered as safe changes in the fetch review (`cover_quality.rs`, Health → Covers)**, cover crop and generation | One candidate per book, no side-by-side picker of several covers |
@@ -205,6 +205,18 @@ duplicate editions; managers cannot attach an ebook and an audiobook to the same
   format, `bookx-cli library formats|add-format|remove-format|merge-formats`. Still missing: editions as a level above books ("work" ids;
   *Editions & Formats* is still a grouping view by title and author), reading progress shared between an EPUB and an audiobook.
   (Earlier: no multi-file concept; merge in `src/duplicates.rs` deleted the other file.)
+- **Update 2026-11-20 (works grouping):** done as a *view* over books, never a silent merge. Schema v7 adds `work_links`
+  (book → work id, plus the edition that opens first) and `work_apart` (books the user took out of the automatic
+  grouping). The automatic suggestions are computed from the books each time (`work_groups::group`, ISBN-13 and work
+  identifiers, then the normalised main title with a compatible subtitle, same author, compatible language) and never
+  stored. A book without a language only goes with books of one language; a pair with two languages in sight (a
+  translation) stays apart. Choosing the edition that opens first on an automatic group turns the group into a link
+  (the choice must survive new imports). Default of the setting: **off**, because it hides books in the grid and the
+  existing counts and tile tests assume one card per book; *Link as Editions* turns it on. Perf: grouping 20 000 books
+  (a fifth of them editions) is a unit test with a 400 ms release budget (measured about 0.1 s including building
+  the books). Not done: sharing reading progress between an EPUB and an audiobook (PP-G-25 attaches audio as a
+  format/resource of a book, not as an edition), the Series window does not group editions, the OPDS/content server
+  and devices still list books, not works.
 - Proposal: a "work" id in SQLite that groups several files (EPUB, KEPUB, audiobook) and editions; progress and
   highlights attach to the work; the duplicate finder offers "group" as an alternative to "merge and delete".
   L, P3 (schema decision first).
@@ -334,8 +346,10 @@ Users need cables, wired mounts, MTP quirks and wireless protocols that are hard
   [Amazon's removal of USB download](https://blog.the-ebook-reader.com/2025/02/12/download-transfer-for-kindle-ebooks-going-away-on-february-26),
   [Syncthing-based setup as a workaround](https://medium.com/@philwornath/self-hosted-e-book-sync-between-android-kindle-and-koreader-reclaim-your-reading-be5f5c69e2f3).
 - Frequency: medium.
-- Bookx: PARTIAL. USB mass storage plus OPDS and web page via Share Library (roadmap P1, P4, P10). No MTP, no
-  Calibre wireless protocol, no WebDAV (roadmap "Known gaps": P5/P7/P9).
+- Bookx: PARTIAL. USB mass storage plus OPDS and web page via Share Library (roadmap P1, P4, P10); WebDAV and gvfs
+  MTP mounts. **Owner decision D10: wireless sync is supported only for KOReader** (progress through KOSync, highlights and
+  notes through the Bookx plugin); stock Kobo/Kindle firmware and other devices are USB only, so the Calibre wireless protocol
+  stays deferred (P5).
 - Proposal: MTP through GVfs/`gio` (already a GTK dependency, no libmtp) for Android phones and some readers; a
   "scan this QR code" flow for the OPDS page (roadmap P20); WebDAV as a folder source. M, P2.
 
@@ -540,9 +554,10 @@ Series detection from folders, ComicInfo conflicts, per-library reading directio
   [Kavita wiki on comic metadata and trades](https://wiki.kavitareader.com/guides/metadata/comics),
   [BookOrbit: folder-as-series for comics](https://github.com/bookorbit/bookorbit/issues/1167).
 - Frequency: high (in the comic community).
-- Bookx: PARTIAL. Readers for CBZ, CBT, CBC with RTL flag (`crates/bookx-formats/src/comic.rs`, roadmap C2,
-  R17/R52). The roadmap does not list a page-image reader with panel zoom, double-page spreads or per-series
-  direction in the app, and I did not find one in `src/ui/`.
+- Bookx: PARTIAL (update 2026-11-20: the page reader is built). Readers for CBZ, CBT, CBC with RTL flag
+  (`crates/bookx-formats/src/comic.rs`, roadmap C2, R17/R52) and since this update a comic reader with single page, two-page
+  spreads, webtoon strip, panel zoom and guided view, direction and layout remembered per book (`docs/comic-notes.md`).
+  Still open: per-library direction, "ignore ComicInfo for this library", folder-as-series, next volume.
 - Proposal: a dedicated image reader mode (single, double, webtoon) with per-book and per-collection
   direction remembered, ComicInfo `Manga` honoured, "ignore ComicInfo for this library" switch, folder-as-series
   option. L, P2.
@@ -556,7 +571,7 @@ Users own both formats and want one entry, one progress and a seamless switch. S
   [Audiobookshelf docs: progress stored only for the primary ebook](https://audiobookshelf.org/docs/documentation/libraries/book-library/ebooks),
   [Readarr successor Chaptarr handles both media types](https://docs.elfhosted.com/app/readarr).
 - Frequency: medium.
-- Bookx: PARTIAL (update 2026-11-13). Audiobook pairing is built: `.m4b` files and folders of audio parts are found next to the books or in a
+- Bookx: PARTIAL (update 2026-11-20: audiobooks play in Bookx, see `docs/audiobook-notes.md`; the text below is the state of 2026-11-13). Audiobook pairing is built: `.m4b` files and folders of audio parts are found next to the books or in a
   folder you name, paired by folder, ISBN, title and author, linked to the book as an `audiobook` resource, shown in the details panel with
   Open (system player) and Unlink. No playback, no position sync, no EPUB 3 media overlays (roadmap R18 stays "low priority").
 - Proposal: step 1 EPUB 3 media overlays (read-along) as R18; step 2 attach audio files to a work (needs PP-G-5)

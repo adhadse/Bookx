@@ -46,10 +46,13 @@ fn network_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
         let shared = ctx.shared.clone();
         off.connect_active_notify(move |r| {
             let on = r.is_active();
-            let mut c = shared.cfg.borrow_mut();
-            c.offline = on;
-            c.save();
+            {
+                let mut c = shared.cfg.borrow_mut();
+                c.offline = on;
+                c.save();
+            }
             privacy::apply(on);
+            crate::settings_bus::sync().notify();
         });
     }
     g.add(&off);

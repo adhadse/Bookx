@@ -22,6 +22,13 @@ scenario i18n_plurals_de_es 'library:language=de,wait:400,ntr:0,ntr:1,ntr:2,libr
     sed -n 4p <<<"$N" | grep -q "^ntr: 1 libro "; check "Spanish: one book" $?
     sed -n 5p <<<"$N" | grep -q "^ntr: 5 libros "; check "Spanish: five books" $?'
 
+scenario library_subtitle_translated 'library:language=de,wait:500,library:dump,library:search=zzzz,wait:400,library:dump,library:language=es,wait:500,library:search=,wait:300,library:dump,quit' '
+    T=$(grep "^title:" <<<"$OUT")
+    sed -n 1p <<<"$T" | grep -q "^title: Start | 2 Bücher"; check "switching the language re-translates the library title and subtitle at once" $?
+    sed -n 2p <<<"$T" | grep -q "| 0 von 2 Büchern"; check "a search subtitle (n of total) is translated" $?
+    sed -n 3p <<<"$T" | grep -q "^title: Inicio | 2 libros"; check "and again for Spanish" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
 scenario diagnostics 'diag:,action:copy-diagnostics,wait:300,quit' '
     D=$(grep "^diag:" <<<"$OUT")
     grep -q "^diag: Bookx [0-9]" <<<"$D"; check "the report starts with the version" $?

@@ -34,6 +34,10 @@ pub fn incoming_format(path: &std::path::Path) -> String {
 /// Is the prepared book another format of one the library already has (same identifier, or same
 /// title and author) in a format the library lacks? Then adding it as a format is offered.
 pub fn offer_for(lib: &Library, p: &Prepared) -> Option<Offer> {
+    // an audiobook is a book of its own, not another format of an e-book
+    if p.meta.identifier(crate::audiobook::MARKER).is_some() {
+        return None;
+    }
     let src = p.source_file.as_ref()?;
     let format = incoming_format(src);
     if format.is_empty() {

@@ -121,7 +121,7 @@ class Ctx:
             "StarDict's dict ifo file\nversion=2.4.2\nwordcount=%d\nidxfilesize=%d\n"
             "bookname=Session Test Dict\nsametypesequence=m\n" % (len(words), len(idx)))
 
-    def start(self, books=("alice",), extra_env=None, settings="", size="1280x800"):
+    def start(self, books=("alice",), extra_env=None, settings="", size="1280x800", seed=None):
         self.make_dictionary()
         self.sb = Sandbox(self.dir, size=size, settings=settings)
         self.sb.results = self.results
@@ -131,6 +131,8 @@ class Ctx:
                                env=self.sb.env)
             if r.returncode != 0:
                 raise RuntimeError(f"importing {b}: {r.stdout}{r.stderr}")
+        if seed:  # more books or settings in the sandbox, before the app starts
+            seed(self)
         # BOOKX_DEVICE_ROOTS: without it the app lists the e-readers that are mounted on THIS machine
         env = {"BOOKX_LIBRARY": os.path.join(self.dir, "lib"),
                "BOOKX_DICTIONARIES": os.path.join(self.dir, "dicts"),
@@ -139,10 +141,12 @@ class Ctx:
             env["WAYLAND_DEBUG"] = os.environ["WAYLAND_DEBUG"]
         # automatic dictionary downloads never go to the network by themselves in the tests
         env["BOOKX_DICT_AUTO"] = "off"
+        if os.environ.get("APP_G_DEBUG"):  # e.g. fatal-warnings with GDB=1: a backtrace of the first GLib warning of the app only
+            env["G_DEBUG"] = os.environ["APP_G_DEBUG"]
         # GTK 4.24's Vulkan renderer makes a re-shown popup (the completion list hides and shows again
         # while typing) reuse a wl_surface that still has a buffer: mutter kills the app with
         # "wl_surface already has a buffer committed" (Wayland protocol error 71). The GL renderer is fine.
-        env.setdefault("GSK_RENDERER", os.environ.get("GSK_RENDERER", "ngl"))
+        env.setdefault("GSK_RENDERER", os.environ.get("GSK_RENDERER", "gl"))
         env.update(extra_env or {})
         cmd = [self.bin]
         if os.environ.get("GDB") == "1":  # debugging aid: a backtrace of a crash lands in app.log
@@ -315,7 +319,8 @@ def run(name):
             sys.exit(f"refusing to run: {var} is not inside the sandbox {root}")
     c = Ctx(name, root, os.environ["BOOKX_BIN"], os.environ["BOOKX_CLI"],
             {"alice": os.environ["BOOK_ALICE"], "tiny": os.environ["BOOK_TINY"],
-             "vsynth": os.environ.get("BOOK_VSYNTH", ""), "vneko": os.environ.get("BOOK_VNEKO", ""), "pdf": os.environ.get("BOOK_PDF", "")},
+             "vsynth": os.environ.get("BOOK_VSYNTH", ""), "vneko": os.environ.get("BOOK_VNEKO", ""), "pdf": os.environ.get("BOOK_PDF", ""),
+             "comic": os.environ.get("BOOK_COMIC", ""), "manga": os.environ.get("BOOK_MANGA", "")},
             os.environ["SESSION_RESULTS"])
     code = 0
     killed = False
@@ -324,6 +329,15 @@ def run(name):
         if fn.net and os.environ.get("NET") == "0":
             raise Skip("NET=0")
         fn(c)
+        # a GTK CRITICAL in the app's log is a bug of ours, whatever the scenario was about (the accessibility bus
+        # of a sandbox that is shutting down is not)
+        try:
+            log = open(os.path.join(c.dir, "app.log"), errors="replace").read()
+        except OSError:
+            log = ""
+        crit = [ln for ln in log.splitlines() if "CRITICAL" in ln and "accessibility bus" not in ln]
+        if crit:
+            c.check("no GTK or GLib CRITICAL in the app log", False, crit[0][:200])
         if c.app and not c.is_alive():
             c.check("the app is still running at the end", False, f"exit status {c.app.returncode}")
     except Skip as e:

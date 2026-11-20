@@ -33,6 +33,7 @@ pub fn rows_of(books: &[Book]) -> Vec<NoteRow> {
                 style: crate::annotation_export::style_of(&h.style),
                 created: h.created,
                 page: pdf.then_some(h.spine + 1),
+                unplaced: !pdf && crate::core::anchor::is_unanchored(h),
             });
         }
     }

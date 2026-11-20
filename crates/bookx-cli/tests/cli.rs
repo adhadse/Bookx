@@ -1106,6 +1106,8 @@ fn serve_kosync_endpoint_is_optional() {
     let kf = sb.path("kosync.json");
     let (addr, stop, h) = start_server(&sb, &["--kosync", s(&kf)]);
     assert_eq!(http_get(&addr, "/healthcheck", None).0, 200);
+    assert_eq!(http_get(&addr, "/bookx/healthcheck", None).0, 200);
+    assert_eq!(http_get(&addr, "/kosync/healthcheck", None).0, 404);
     stop.store(true, Ordering::SeqCst);
     assert_eq!(h.join().unwrap(), 0);
 }

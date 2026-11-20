@@ -236,6 +236,8 @@ struct Callbacks {
     edge: Cb<Edge>,
     tap: Cb<()>,
     highlight_click: Cb<SelectionInfo>,
+    /// A click on a term saved with the user's own definition (see `set_vocab_marks`).
+    vocab_click: Cb<SelectionInfo>,
     /// A click on a picture: its path in the book.
     image: Cb<String>,
     double_tap: Cb<()>,
@@ -264,6 +266,10 @@ struct State {
     kb_sel: Option<(i32, i32)>,
     highlights: Vec<Highlight>,
     hits: Vec<(i32, i32)>,
+    /// Terms of the user's vocabulary found in the chapter (char ranges), drawn as dotted underlines.
+    vocab_marks: Vec<(i32, i32)>,
+    /// Counts the clicks on saved terms; a double click (selecting the word) cancels the popover that waits.
+    vocab_tok: u32,
     /// The sentence being read aloud.
     speaking: Option<(i32, i32)>,
     /// Speed reading: the word being read and the single letter to rest the eye on.
@@ -372,6 +378,8 @@ impl BookCanvas {
             kb_sel: None,
             highlights: Vec::new(),
             hits: Vec::new(),
+            vocab_marks: Vec::new(),
+            vocab_tok: 0,
             speaking: None,
             focus_word: None,
             active_hit: None,
@@ -473,6 +481,76 @@ impl BookCanvas {
         *self.cb.highlight_click.borrow_mut() = Some(Rc::new(f));
     }
 
+    pub fn on_vocab_click(&self, f: impl Fn(SelectionInfo) + 'static) {
+        *self.cb.vocab_click.borrow_mut() = Some(Rc::new(f));
+    }
+
+    /// Marks the places in the chapter (global char ranges) where a saved vocabulary term stands.
+    pub fn set_vocab_marks(&self, marks: Vec<(i32, i32)>) {
+        self.st.borrow_mut().vocab_marks = marks;
+        self.area.queue_draw();
+    }
+
+    /// The saved term under a point of the page, with where it is.
+    fn vocab_mark_at(&self, x: f64, y: f64) -> Option<SelectionInfo> {
+        let (a, b, rect) = {
+            let s = self.st.borrow();
+            if s.vocab_marks.is_empty() || !on_text(&s, x, y) {
+                return None;
+            }
+            let (c, _) = hit(&s, x, y)?;
+            let &(a, b) = s.vocab_marks.iter().find(|(a, b)| c >= *a && c < *b)?;
+            (a, b, range_rect(&s, a, b)?)
+        };
+        Some(SelectionInfo {
+            text: self.text_between(a, b),
+            start: a,
+            end: b,
+            rect,
+            highlight: None,
+        })
+    }
+
+    /// Test hook: the marks `(start, end, text)` and a click on the first one that is on the page.
+    pub fn dev_vocab_marks(&self) -> Vec<(i32, i32, String)> {
+        let marks = self.st.borrow().vocab_marks.clone();
+        marks
+            .into_iter()
+            .map(|(a, b)| (a, b, self.text_between(a, b)))
+            .collect()
+    }
+
+    /// Test hook: clicks the middle of the first saved term that is on the page.
+    pub fn dev_click_vocab(&self) -> bool {
+        let at = {
+            let s = self.st.borrow();
+            s.vocab_marks.iter().find_map(|(a, b)| {
+                visible_range_rects(&s, *a, *b)
+                    .first()
+                    .map(|r| (r.0 + r.2 / 2.0, r.1 + r.3 / 2.0))
+            })
+        };
+        match at {
+            Some((x, y)) => {
+                self.click(x, y);
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Test hook: how many saved terms are on the page being shown, and where the first one is.
+    pub fn dev_visible_vocab(&self) -> (usize, Option<(i32, i32, i32, i32)>) {
+        let s = self.st.borrow();
+        let on: Vec<_> = s
+            .vocab_marks
+            .iter()
+            .filter(|(a, b)| !visible_range_rects(&s, *a, *b).is_empty())
+            .collect();
+        let first = on.first().and_then(|(a, b)| range_rect(&s, *a, *b));
+        (on.len(), first)
+    }
+
     /// Double click / tap on empty page area (not on text).
     pub fn on_double_tap(&self, f: impl Fn() + 'static) {
         *self.cb.double_tap.borrow_mut() = Some(Rc::new(move |_| f()));
@@ -498,6 +576,7 @@ impl BookCanvas {
             s.sel = None;
             s.sel_anchor = None;
             s.hits.clear();
+            s.vocab_marks.clear();
             s.active_hit = None;
             s.speaking = None;
             s.focus_word = None;
@@ -1044,6 +1123,44 @@ impl BookCanvas {
         self.area.queue_draw();
     }
 
+    /// Test hook: `(id, start, end, text on the page at that range)` of every highlight the
+    /// canvas paints. The text is read back through the same mapping the painting uses.
+    pub fn dev_painted_highlights(&self) -> Vec<(String, i32, i32, String)> {
+        let s = self.st.borrow();
+        s.highlights
+            .iter()
+            .map(|h| {
+                (
+                    h.id.clone(),
+                    h.start,
+                    h.end,
+                    text_in_range(&s.items, h.start, h.end),
+                )
+            })
+            .collect()
+    }
+
+    /// Test hook: `(id, colour as painted `#rrggbb`, style name)` of every highlight the canvas paints.
+    pub fn dev_painted_looks(&self) -> Vec<(String, String, String)> {
+        let s = self.st.borrow();
+        s.highlights
+            .iter()
+            .map(|h| {
+                let (r, g, b) = h.color;
+                (
+                    h.id.clone(),
+                    format!(
+                        "#{:02x}{:02x}{:02x}",
+                        (r * 255.0).round() as u8,
+                        (g * 255.0).round() as u8,
+                        (b * 255.0).round() as u8
+                    ),
+                    h.style.name().to_string(),
+                )
+            })
+            .collect()
+    }
+
     /// Sets search hit ranges (global char offsets) and optionally scrolls to `active`.
     pub fn set_hits(&self, hits: Vec<(i32, i32)>, active: Option<usize>) {
         {
@@ -1309,6 +1426,18 @@ impl BookCanvas {
         self.area.queue_draw();
         let info = self.selection_info();
         fire(&self.cb.selection, info);
+    }
+
+    /// Test hook: selects the first place where `text` stands in the chapter.
+    pub fn dev_select_text(&self, text: &str) -> bool {
+        let Some(&(a, b)) = self.find_all(text).first() else {
+            return false;
+        };
+        self.st.borrow_mut().sel = Some((a, b));
+        self.area.queue_draw();
+        let info = self.selection_info();
+        fire(&self.cb.selection, info);
+        true
     }
 
     pub fn select_all(&self) {
@@ -1693,6 +1822,7 @@ impl BookCanvas {
         let this = self.clone();
         dbl.connect_pressed(move |_, n, x, y| {
             if n == 2 {
+                this.st.borrow_mut().vocab_tok += 1;
                 let on_text = on_text(&this.st.borrow(), x, y);
                 if on_text {
                     this.st.borrow_mut().word_selected = true;
@@ -1984,6 +2114,23 @@ impl BookCanvas {
             let info = self.highlight_info(&id);
             if let Some(i) = info {
                 fire(&self.cb.highlight_click, i);
+                return;
+            }
+        }
+        if let Some(i) = self.vocab_mark_at(x, y) {
+            if self.cb.vocab_click.borrow().is_some() {
+                // a double click selects the word: the definition waits for a second click that does not come
+                let tok = {
+                    let mut s = self.st.borrow_mut();
+                    s.vocab_tok += 1;
+                    s.vocab_tok
+                };
+                let this = self.clone();
+                glib::timeout_add_local_once(std::time::Duration::from_millis(320), move || {
+                    if this.st.borrow().vocab_tok == tok {
+                        fire(&this.cb.vocab_click, i);
+                    }
+                });
                 return;
             }
         }
@@ -3607,7 +3754,14 @@ fn optimal_segments(
     let hy = pango::Layout::new(ctx);
     hy.set_font_description(Some(fd));
     hy.set_text(&paragraph::GHOST_HYPHEN.to_string());
-    let x = |b: usize| probe.index_to_pos(b as i32).x() as f64 / SCALE;
+    let table = (!p.text.contains('\n') && !super::canvas_xtable::has_rtl(&p.text))
+        .then(|| cluster_table(&probe, p.text.len()));
+    let x = |b: usize| {
+        table
+            .as_ref()
+            .and_then(|t| t.get(b))
+            .unwrap_or_else(|| probe.index_to_pos(b as i32).x() as f64 / SCALE)
+    };
     let head_w = shape
         .head
         .map_or(shape.width, |(_, t)| (shape.width - t).max(60.0));
@@ -3684,6 +3838,28 @@ fn optimal_segments(
             links: tl,
         },
     ])
+}
+
+/// The x of every cluster start of a one-line layout in one pass (see `canvas_xtable`).
+fn cluster_table(layout: &pango::Layout, len: usize) -> super::canvas_xtable::XTable {
+    let mut at = Vec::with_capacity(len / 2 + 2);
+    let mut it = layout.iter();
+    let mut end = None;
+    loop {
+        let (_, logical) = it.cluster_extents();
+        let b = it.index();
+        if b >= 0 {
+            at.push((b as usize, logical.x() as f64 / SCALE));
+            end = Some(((logical.x() + logical.width()) as f64 / SCALE, b));
+        }
+        if !it.next_cluster() {
+            break;
+        }
+    }
+    if let Some((x, _)) = end {
+        at.push((len, x));
+    }
+    super::canvas_xtable::XTable::new(at)
 }
 
 fn paginate(s: &mut State) {
@@ -4136,6 +4312,28 @@ fn draw(s: &State, cr: &gtk::cairo::Context, w: f64, h: f64) {
         }
     }
 
+    // terms saved with the user's own definition: a dotted underline in the reading colour
+    if !s.vocab_marks.is_empty() {
+        let _ = cr.save();
+        set_rgb(cr, p.fg, 0.8);
+        cr.set_line_width(1.4);
+        cr.set_line_cap(gtk::cairo::LineCap::Round);
+        cr.set_dash(&[0.1, 3.0], 0.0);
+        for (a, b) in &s.vocab_marks {
+            for (x0, y0, w, h) in visible_range_rects(s, *a, *b) {
+                if vertical {
+                    cr.move_to(x0 + w - 1.5, y0);
+                    cr.line_to(x0 + w - 1.5, y0 + h);
+                } else {
+                    cr.move_to(x0, y0 + h - 1.5);
+                    cr.line_to(x0 + w, y0 + h - 1.5);
+                }
+                let _ = cr.stroke();
+            }
+        }
+        let _ = cr.restore();
+    }
+
     // page divider for two columns
     if s.style.layout == LayoutMode::TwoColumns {
         let geo = column_geometry(s);
@@ -4521,5 +4719,57 @@ mod vertical_tests {
             px(upright.size().0),
             px(mixed.size().0)
         );
+    }
+}
+
+#[cfg(test)]
+mod xtable_tests {
+    use super::*;
+
+    fn one_line(text: &str) -> pango::Layout {
+        let ctx = pangocairo::FontMap::default().create_context();
+        let l = pango::Layout::new(&ctx);
+        let mut fd = pango::FontDescription::new();
+        fd.set_family("Serif");
+        fd.set_absolute_size(18.0 * SCALE);
+        l.set_font_description(Some(&fd));
+        l.set_width(-1);
+        l.set_text(text);
+        l
+    }
+
+    /// The table answers exactly what `index_to_pos` answers, for every offset it knows, and it knows
+    /// the start of every word (the offsets the Knuth-Plass planner asks for).
+    #[test]
+    fn cluster_table_matches_pango_positions() {
+        for text in [
+            "The quick brown fox jumps over the lazy dog, and then it rests.",
+            "Käse, Brötchen und Ärger über Müllers Straße — naïve café",
+            "fi fl ffi ligatures: office, affluent, finish",
+        ] {
+            let l = one_line(text);
+            let t = cluster_table(&l, text.len());
+            assert!(
+                t.len() > text.chars().count() / 2,
+                "{text}: {} entries",
+                t.len()
+            );
+            let mut known = 0;
+            for b in (0..=text.len()).filter(|b| text.is_char_boundary(*b)) {
+                if let Some(x) = t.get(b) {
+                    known += 1;
+                    let want = l.index_to_pos(b as i32).x() as f64 / SCALE;
+                    assert!((x - want).abs() < 0.01, "{text}: byte {b}: {x} vs {want}");
+                }
+            }
+            assert!(known > 10);
+            for (b, _) in text.match_indices(' ') {
+                assert!(t.get(b).is_some(), "{text}: no entry at the space at {b}");
+            }
+            assert!(
+                t.get(text.len()).is_some(),
+                "the end of the text is in the table"
+            );
+        }
     }
 }

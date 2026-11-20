@@ -118,6 +118,29 @@ A complete example in Rust (no dependencies, about 150 lines) is `examples/plugi
 `cargo build --release --target wasm32-unknown-unknown` and copy the `.wasm` as `plugin.wasm` next to `plugin.toml`
 (a prebuilt `plugin.wasm` is included).
 
+### Compatibility and the ABI stability policy
+
+Plugins are compiled once and then live for years, so the host treats the ABI like a public API:
+
+* **A plugin keeps working.** A plugin built for `api_version = 1` or `2` loads and behaves the same in every later
+  Bookx 0.x and 1.x release. The host never removes an export, an import, an operation, a return code or a field of
+  the JSON replies that a released ABI version defined.
+* **Changes are additive.** New operations, new optional JSON fields, new manifest keys and new host imports may appear
+  in a release; a plugin must ignore JSON fields it does not know, and the host does the same for fields a plugin
+  adds. A new capability that old plugins could not know about needs a new `api_version` (that is how editor
+  actions arrived: ABI v2, with `api_version = 1` plugins unaffected).
+* **Versions are numbers, not releases.** A plugin states the `api_version` it was written for. The host lists the
+  versions it speaks (today 1 and 2) and refuses others with a message that names both. A plugin never needs to
+  mention the Bookx release.
+* **Breaking changes** (they should be rare and are never made in a patch release) get a new `api_version`, keep
+  loading the older one for at least two minor releases, and are announced in `CHANGELOG.md`. The limits (memory,
+  fuel, time, reply size, call budgets) may only get *more* generous; a permission is never silently widened for an
+  existing plugin, and a permission that a new ABI adds is not granted to older plugins.
+* **How this is enforced.** `crates/bookx-plugin/tests/golden/` contains a v1 format writer and a v2 editor action
+  as compiled binaries that are never rebuilt by the tests, and `tests/abi_compat.rs` loads and runs them. A host
+  change that breaks one of them fails `cargo test`, and `build-aux/release-check.sh` fails if a golden file was
+  changed. Updating a golden file is only legitimate together with a new ABI version.
+
 ### Operations per kind
 
 Books travel as base64 of the EPUB (zip). Metadata objects use the field names of `bookx_core::opf::Metadata`

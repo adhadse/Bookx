@@ -224,3 +224,104 @@ fn tempdir(tag: &str) -> std::path::PathBuf {
     std::fs::create_dir_all(&p).unwrap();
     p
 }
+
+#[test]
+fn books_for_ids_keeps_order_and_is_linear() {
+    let dir = tempdir("books-for");
+    let mut lib = Library::in_memory(&dir).unwrap();
+    lib.books = (0..50_000).map(synthetic_book).collect();
+    let mut ids: Vec<u64> = lib.books.iter().map(|b| b.id).collect();
+    ids.reverse();
+    ids.push(u64::MAX); // unknown ids are left out
+    let (got, took) = timed(|| lib.books_for(&ids));
+    assert_eq!(got.len(), 50_000);
+    assert_eq!(got[0].id, lib.books[49_999].id);
+    assert_eq!(got[49_999].id, lib.books[0].id);
+    // a `get` per id takes seconds here (quadratic); one pass takes milliseconds
+    check("books for 50 000 ids", took, budget(100));
+    std::fs::remove_dir_all(dir).ok();
+}
+
+/// A book like `build-aux/make-big-epub.py OUT 20000`: 20 files of one long line each, a nested EPUB 3
+/// navigation document with `entries` entries.
+fn big_toc_epub(entries: usize) -> Vec<u8> {
+    use std::io::Write;
+    let parts = 20;
+    let per_part = entries / parts;
+    let mut nav = String::new();
+    let mut files: Vec<(String, String)> = Vec::new();
+    for p in 0..parts {
+        let mut body = format!("<h1 id=\"p{p}\">Part {p}</h1>");
+        let mut lis = String::new();
+        for s in 0..per_part {
+            body.push_str(&format!(
+                "<h3 id=\"s{p}_{s}\">Section {s}</h3><p>Paragraph of section {p}.{s}. The reader opens this book to test the sidebar.</p>"
+            ));
+            lis.push_str(&format!(
+                "<li><a href=\"part{p}.xhtml#s{p}_{s}\">Section {p}.{s}</a></li>"
+            ));
+        }
+        nav.push_str(&format!(
+            "<li><a href=\"part{p}.xhtml\">Part {p}</a><ol>{lis}</ol></li>"
+        ));
+        files.push((
+            format!("part{p}.xhtml"),
+            format!("<?xml version=\"1.0\" encoding=\"utf-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>Part</title></head><body>{body}</body></html>"),
+        ));
+    }
+    let manifest: String = (0..parts)
+        .map(|i| {
+            format!(
+                "<item id=\"f{i}\" href=\"part{i}.xhtml\" media-type=\"application/xhtml+xml\"/>"
+            )
+        })
+        .collect();
+    let spine: String = (0..parts)
+        .map(|i| format!("<itemref idref=\"f{i}\"/>"))
+        .collect();
+    let opf = format!(
+        "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"id\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\"><dc:identifier id=\"id\">big</dc:identifier><dc:title>Big</dc:title><dc:language>en</dc:language></metadata><manifest><item id=\"nav\" href=\"nav.xhtml\" media-type=\"application/xhtml+xml\" properties=\"nav\"/>{manifest}</manifest><spine>{spine}</spine></package>"
+    );
+    let navdoc = format!(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\"><head><title>Contents</title></head><body><nav epub:type=\"toc\"><ol>{nav}</ol></nav></body></html>"
+    );
+    let container = "<?xml version=\"1.0\"?><container version=\"1.0\" xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\"><rootfiles><rootfile full-path=\"OEBPS/content.opf\" media-type=\"application/oebps-package+xml\"/></rootfiles></container>";
+    let mut out = std::io::Cursor::new(Vec::new());
+    {
+        let mut z = zip::ZipWriter::new(&mut out);
+        let opts = zip::write::SimpleFileOptions::default();
+        z.start_file("mimetype", opts).unwrap();
+        z.write_all(b"application/epub+zip").unwrap();
+        z.start_file("META-INF/container.xml", opts).unwrap();
+        z.write_all(container.as_bytes()).unwrap();
+        z.start_file("OEBPS/content.opf", opts).unwrap();
+        z.write_all(opf.as_bytes()).unwrap();
+        z.start_file("OEBPS/nav.xhtml", opts).unwrap();
+        z.write_all(navdoc.as_bytes()).unwrap();
+        for (n, c) in &files {
+            z.start_file(format!("OEBPS/{n}"), opts).unwrap();
+            z.write_all(c.as_bytes()).unwrap();
+        }
+        z.finish().unwrap();
+    }
+    out.into_inner()
+}
+
+#[test]
+fn a_book_with_20000_contents_entries_opens_and_lists_fast() {
+    let bytes = big_toc_epub(20_000);
+    let (book, took) = timed(|| {
+        OpenBook::from_archive(bookx_core::archive::Archive::from_bytes(bytes).unwrap()).unwrap()
+    });
+    check("opening a 20 000 entry EPUB", took, budget(250));
+    let (flat, took) = timed(|| bookx_core::toc::flatten(&book.toc()));
+    assert!(flat.len() >= 20_000, "{} entries", flat.len());
+    check(
+        "reading and flattening 20 000 contents entries",
+        took,
+        budget(400),
+    );
+    // the editor asks for the same notes of every file: the semantics are read once, not once per file
+    let (_, took) = timed(|| book.spine_paths().len());
+    check("listing the spine of a 20 000 entry book", took, budget(20));
+}

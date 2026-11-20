@@ -338,6 +338,7 @@ fn gdk_primary() -> u32 {
 
 fn parse_kind(s: &str) -> Kind {
     match s {
+        "export" => Kind::Export,
         "convert" => Kind::Convert,
         "send" => Kind::Send,
         "fetch" => Kind::Fetch,

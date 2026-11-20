@@ -128,8 +128,15 @@ Text, HTML and Markdown files are not registered; add them from inside Bookx.
 | Plugins and patches | `~/.local/share/bookx/plugins/`, `~/.local/share/bookx/patches/` |
 
 !!! note "Limitations"
-    - No prebuilt packages, AppImage, `.deb` or `.rpm`; no Windows or macOS builds.
+    - Release files (tarball, `.deb`, `.rpm`, Flatpak bundle, `SHA256SUMS`) are attached to each GitHub release once a version is
+      tagged; there is no AppImage and no Flathub listing yet, and no Windows or macOS builds. Check a download with
+      `sha256sum -c SHA256SUMS`. The packages have not been tested on other distributions than the build machine's.
     - The Flatpak has been built and started on one machine only; devices and the natural voices are not tested inside
       the sandbox. The Flatpak translations are the built-in ones (see [Translating Bookx](translating.md)).
     - Older GNOME releases (before 49) are not supported when you build from source; the Flatpak needs the GNOME 50
       runtime.
+
+## Running servers
+
+Bookx can serve your library, sync and AI assistants on the network. For anything beyond one computer, run it behind a
+reverse proxy: [Put Bookx behind a reverse proxy](reverse-proxy.md).

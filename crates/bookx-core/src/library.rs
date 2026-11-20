@@ -72,11 +72,53 @@ impl CatalogBackend for MemoryBackend {
     }
 }
 
-fn book_hash(b: &Book) -> u64 {
-    use std::hash::{Hash, Hasher};
+/// A fingerprint of the book's catalogue record; `buf` is reused between books.
+fn book_hash_with(buf: &mut Vec<u8>, b: &Book) -> u64 {
+    use std::hash::Hasher;
+    buf.clear();
+    let _ = serde_json::to_writer(&mut *buf, b);
     let mut h = std::collections::hash_map::DefaultHasher::new();
-    serde_json::to_string(b).unwrap_or_default().hash(&mut h);
+    h.write(buf);
     h.finish()
+}
+
+/// The hashes of all `books`, in order. Serialising 100,000 books takes about 100 ms on one core, so
+/// large libraries are hashed on several threads (`save` runs on every page turn).
+fn book_hashes(books: &[Book]) -> Vec<u64> {
+    const PARALLEL_FROM: usize = 4096;
+    let threads = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1)
+        .min(8);
+    if books.len() < PARALLEL_FROM || threads < 2 {
+        let mut buf = Vec::new();
+        return books.iter().map(|b| book_hash_with(&mut buf, b)).collect();
+    }
+    let chunk = books.len().div_ceil(threads);
+    let mut parts: Vec<Option<Vec<u64>>> = Vec::new();
+    std::thread::scope(|s| {
+        let handles: Vec<_> = books
+            .chunks(chunk)
+            .map(|c| {
+                s.spawn(move || {
+                    let mut buf = Vec::new();
+                    c.iter()
+                        .map(|b| book_hash_with(&mut buf, b))
+                        .collect::<Vec<u64>>()
+                })
+            })
+            .collect();
+        for h in handles {
+            parts.push(h.join().ok());
+        }
+    });
+    match parts.into_iter().collect::<Option<Vec<_>>>() {
+        Some(p) => p.concat(),
+        None => {
+            let mut buf = Vec::new();
+            books.iter().map(|b| book_hash_with(&mut buf, b)).collect()
+        }
+    }
 }
 
 /// What the backend already has.
@@ -404,7 +446,11 @@ impl Library {
             .max(books.iter().map(|b| b.id + 1).max().unwrap_or(1))
             .max(1);
         let saved = Saved {
-            hashes: books.iter().map(|b| (b.id, book_hash(b))).collect(),
+            hashes: books
+                .iter()
+                .zip(book_hashes(&books))
+                .map(|(b, h)| (b.id, h))
+                .collect(),
             next_id,
         };
         Ok(Library {
@@ -436,9 +482,9 @@ impl Library {
         let mut saved = self.saved.lock().unwrap_or_else(|e| e.into_inner());
         let mut changed: Vec<(&Book, u64)> = Vec::new();
         let mut present = std::collections::HashSet::with_capacity(self.books.len());
-        for b in &self.books {
+        let hashes = book_hashes(&self.books);
+        for (b, h) in self.books.iter().zip(hashes) {
             present.insert(b.id);
-            let h = book_hash(b);
             if saved.hashes.get(&b.id) != Some(&h) {
                 changed.push((b, h));
             }
@@ -465,6 +511,14 @@ impl Library {
         }
         saved.next_id = self.next_id;
         Ok(())
+    }
+
+    /// The books for `ids`, in that order (unknown ids are left out). One pass over the library:
+    /// calling [`get`](Self::get) per id is quadratic, which a 100,000 book grid cannot afford.
+    pub fn books_for(&self, ids: &[u64]) -> Vec<&Book> {
+        let by_id: std::collections::HashMap<u64, &Book> =
+            self.books.iter().map(|b| (b.id, b)).collect();
+        ids.iter().filter_map(|id| by_id.get(id).copied()).collect()
     }
 
     pub fn get(&self, id: u64) -> Option<&Book> {
@@ -537,43 +591,48 @@ impl Library {
 
     pub fn search(&self, query: &str, key: SortKey, ascending: bool) -> Vec<u64> {
         let q = Query::parse(query);
-        let mut v: Vec<&Book> = self.books.iter().filter(|b| q.matches(b)).collect();
-        v.sort_by(|a, b| {
+        // lower-cased sort keys are computed once per book, not once per comparison
+        struct Keyed<'a> {
+            b: &'a Book,
+            s: String,
+            tie: String,
+        }
+        let mut v: Vec<Keyed> = self
+            .books
+            .iter()
+            .filter(|b| q.matches(b))
+            .map(|b| Keyed {
+                b,
+                s: match key {
+                    SortKey::Title => b.meta.title_sort.to_lowercase(),
+                    SortKey::Author => b.meta.author_sort.to_lowercase(),
+                    SortKey::Series => b.meta.series.to_lowercase(),
+                    _ => String::new(),
+                },
+                tie: b.meta.title_sort.to_lowercase(),
+            })
+            .collect();
+        v.sort_by(|x, y| {
             use std::cmp::Ordering::*;
+            let (a, b) = (x.b, y.b);
             let o = match key {
-                SortKey::Title => a
-                    .meta
-                    .title_sort
-                    .to_lowercase()
-                    .cmp(&b.meta.title_sort.to_lowercase()),
-                SortKey::Author => a
-                    .meta
-                    .author_sort
-                    .to_lowercase()
-                    .cmp(&b.meta.author_sort.to_lowercase()),
+                SortKey::Title | SortKey::Author => x.s.cmp(&y.s),
                 SortKey::DateAdded => a.added.cmp(&b.added),
                 SortKey::LastRead => a.last_read.cmp(&b.last_read),
                 SortKey::Published => a.meta.published.cmp(&b.meta.published),
                 SortKey::Rating => a.meta.rating.cmp(&b.meta.rating),
-                SortKey::Series => (a.meta.series.to_lowercase())
-                    .cmp(&b.meta.series.to_lowercase())
-                    .then(
-                        a.meta
-                            .series_index
-                            .partial_cmp(&b.meta.series_index)
-                            .unwrap_or(Equal),
-                    ),
+                SortKey::Series => x.s.cmp(&y.s).then(
+                    a.meta
+                        .series_index
+                        .partial_cmp(&b.meta.series_index)
+                        .unwrap_or(Equal),
+                ),
                 SortKey::Size => a.size.cmp(&b.size),
                 SortKey::Progress => a.progress.partial_cmp(&b.progress).unwrap_or(Equal),
             };
-            o.then_with(|| {
-                a.meta
-                    .title_sort
-                    .to_lowercase()
-                    .cmp(&b.meta.title_sort.to_lowercase())
-            })
+            o.then_with(|| x.tie.cmp(&y.tie))
         });
-        let mut ids: Vec<u64> = v.iter().map(|b| b.id).collect();
+        let mut ids: Vec<u64> = v.iter().map(|k| k.b.id).collect();
         if !ascending {
             ids.reverse();
         }

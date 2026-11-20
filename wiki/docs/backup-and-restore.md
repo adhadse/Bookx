@@ -50,6 +50,13 @@ its own **number of automatic backups to keep**. Manual backups (*Back up now*) 
 
 ## Making backups
 
+<figure markdown="1">
+![The Backups tab of Library Health](assets/library-health-backups-light.png#only-light)
+![The Backups tab of Library Health](assets/library-health-backups-dark.png#only-dark)
+<figcaption markdown="1">*Backups*: automatic snapshots, how many to keep, *Back Up* now and the places backups are copied to.</figcaption>
+</figure>
+
+
 - **Automatically on this computer**: a snapshot when Bookx starts and closes, if something changed.
 - **To other places**: *Copy when Bookx closes* and *Copy once a day while Bookx is open* (both on by default for the
   places you add). Only a snapshot a place does not have yet is copied. When Bookx closes it waits at most 20 seconds
@@ -81,6 +88,13 @@ Plain copies are ordinary SQLite files (`.db`), which you can open with any SQLi
 can read them: Bookx shows a note under every off-site place that is not encrypted.
 
 ## Restoring
+
+<figure markdown="1">
+![The Trash and History tab of Library Health](assets/library-health-trash-light.png#only-light)
+![The Trash and History tab of Library Health](assets/library-health-trash-dark.png#only-dark)
+<figcaption markdown="1">*Trash & History*: removed books can be restored, and the log of changes can be undone.</figcaption>
+</figure>
+
 
 *Library Health* has two lists:
 

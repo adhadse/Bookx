@@ -26,15 +26,15 @@ pub fn vault() -> &'static Vault {
 /// The caption under a password field: where the password is kept.
 pub fn caption(available: bool) -> &'static str {
     if available {
-        "Kept in the system keyring, not in the settings file."
+        crate::i18n::N_("Kept in the system keyring, not in the settings file.")
     } else {
-        "No keyring was found, so this is kept in the settings file (unencrypted). Install GNOME Keyring or KeePassXC to protect it."
+        crate::i18n::N_("No keyring was found, so this is kept in the settings file (unencrypted). Install GNOME Keyring or KeePassXC to protect it.")
     }
 }
 
 /// [`caption`] for this session.
-pub fn caption_now() -> &'static str {
-    caption(vault().available())
+pub fn caption_now() -> String {
+    crate::i18n::tr(caption(vault().available()))
 }
 
 #[cfg(test)]

@@ -65,6 +65,17 @@ if BIG=0 cargo run --quiet -p bookx-pdf --example make_test_pdfs "$BOOKS/pdf" >/
     export BOOK_PDF=$BOOKS/pdf/story.pdf
 fi
 
+# generated comics (a story with panels, a manga, a webtoon); nothing is downloaded
+if cargo run --quiet -p bookx-comic --example make_test_comics "$BOOKS/comics" >/dev/null 2>&1 && [ -s "$BOOKS/comics/story.cbz" ]; then
+    export BOOK_COMIC=$BOOKS/comics/story.cbz BOOK_MANGA=$BOOKS/comics/manga.cbz
+fi
+# the wiki screenshots show a real public-domain comic (build-aux/make-real-comic.py, made by wiki-screenshots.sh);
+# every other run keeps the synthetic one, so the tests stay offline and deterministic
+if [ -n "${WIKI_REAL_COMIC:-}" ]; then
+    if [ -s "$WIKI_REAL_COMIC" ]; then export BOOK_COMIC=$WIKI_REAL_COMIC
+    else echo "WIKI_REAL_COMIC=$WIKI_REAL_COMIC does not exist; the synthetic comic is used"; fi
+fi
+
 # GNOME Shell + the app + helper daemons are heavy: default to a quarter of the cores (at least 1)
 JOBS=${JOBS:-$(( $(nproc 2>/dev/null || echo 4) / 4 ))}
 [ "$JOBS" = 0 ] && JOBS=100000

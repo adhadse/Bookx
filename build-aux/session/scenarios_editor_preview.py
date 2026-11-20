@@ -60,18 +60,18 @@ def editor_split_at_cursor(c):
     if not c.check("the Markup menu button exists", btn):
         return
     c.click_node(btn[0])
-    # menu items have no accessible names here: Split at Cursor is the third from the end
+    # menu items have no accessible names here: the Structure submenu is the third entry of the first page and Split at
+    # Cursor the third from the end of its page
     items = c.wait(lambda: [n for n in c.find("menu item") if n.showing and n.box[2] > 0] or None, 5)
     items = sorted(items or [], key=lambda n: n.box[1])
-    if items:
-        # the menu is taller than a small screen: scroll its end into view with the real wheel
-        wx, wy = items[3].center()
-        c.sb.scroll(25, wx, wy)
+    c.note(f"first page rows: {len(items)}")
+    if len(items) >= 3:
+        c.click_node(items[2])
         time.sleep(0.8)
         items = sorted([n for n in c.find("menu item") if n.showing and n.box[2] > 0], key=lambda n: n.box[1])
     c.note(f"menu items by position: {[n.box[1] for n in items]}")
     c.shot("markup-menu")
-    item = items[-3] if len(items) >= 17 else None
+    item = items[-3] if len(items) >= 10 else None
     if not c.check("the Markup menu offers Split at Cursor", item is not None):
         c.shot("no-split-item")
         return
@@ -82,6 +82,62 @@ def editor_split_at_cursor(c):
     c.shot("after-split")
     c.check("Split at Cursor adds the new file to the Files list", ok)
     c.check("the app is still alive", c.is_alive())
+
+
+def markup_menu_pages(c, size):
+    """Opens the Markup menu and each of its submenus; returns [(page, rows, lowest row bottom)] and the window box."""
+    out = []
+    btn = [n for n in c.find("toggle button") + c.find("button") if n.name.startswith("Markup:")]
+    if not btn:
+        return out, None
+    fr = frame_box(c)
+    for page in (None, 0, 1, 2):
+        if page is None:
+            c.click_node(btn[0])
+        else:
+            c.sb.key("Escape")
+            time.sleep(0.4)
+            c.click_node(btn[0])
+        time.sleep(0.8)
+        items = sorted([n for n in c.find("menu item") if n.showing and n.box[2] > 0], key=lambda n: n.box[1])
+        if page is not None:
+            if len(items) <= page:
+                break
+            c.click_node(items[page])
+            time.sleep(0.8)
+            items = sorted([n for n in c.find("menu item") if n.showing and n.box[2] > 0], key=lambda n: n.box[1])
+        c.shot(f"markup-menu-{size}-{page}")
+        if items:
+            out.append((page, len(items), max(n.box[1] + n.box[3] for n in items), min(n.box[1] for n in items)))
+    c.sb.key("Escape")
+    return out, fr
+
+
+def _fits(c, size):
+    c.start(size=size)
+    if not c.check("Edit Book opens the editor window", open_editor(c)):
+        return
+    pages, fr = markup_menu_pages(c, size)
+    c.note(f"pages (page, rows, bottom, top): {pages} frame={fr}")
+    if not c.check("the Markup menu and its submenus can be opened", len(pages) == 4, str(pages)):
+        return
+    top_rows = pages[0][1]
+    c.check("the first page has the four entries and the three commands (Split Tag, Go to Definition, Sort CSS)", top_rows >= 7, str(pages[0]))
+    fx, fy, fw, fh = fr
+    for page, rows, bottom, top in pages:
+        c.check(f"page {page} of the Markup menu fits in the window ({rows} rows, bottom {bottom} of {fy + fh}), no scrolling",
+                bottom <= fy + fh - 2 and top >= fy, str((page, rows, bottom, top)))
+    c.check("the app is still alive", c.is_alive())
+
+
+@scenario
+def editor_markup_menu_fits_1280(c):
+    _fits(c, "1280x800")
+
+
+@scenario
+def editor_markup_menu_fits_900(c):
+    _fits(c, "900x600")
 
 
 def region_diff(a, b, box):

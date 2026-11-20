@@ -3,7 +3,7 @@
 //! selection, search.
 
 use std::cell::{Cell, RefCell};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -20,6 +20,8 @@ use crate::config::ViewMode;
 use crate::core::convert::{export_book, ExportFormat};
 use crate::core::library::{AddOutcome, Book, Category, Prepared, SortKey};
 use crate::core::util::*;
+use crate::grid_columns;
+use crate::grid_fill::{self, Chunker};
 use crate::library_nav::{self as nav, View};
 
 // ---------------------------------------------------------------------------
@@ -43,6 +45,10 @@ pub struct BookItem {
     cover: Option<PathBuf>,
     progress: f64,
     favourite: bool,
+    /// Books on this card: 1, or the editions of a work.
+    editions: usize,
+    /// The book has audio you can play: the cover shows a headphones badge.
+    audio: bool,
     size: Rc<Cell<i32>>,
     tx: relm4::Sender<Input>,
 }
@@ -58,6 +64,8 @@ pub struct ItemWidgets {
     prog_row: gtk::Box,
     done: gtk::Image,
     fav: gtk::Button,
+    badge: gtk::Button,
+    audio: gtk::Image,
     ctx: Ctx,
     last_class: RefCell<Option<String>>,
 }
@@ -128,6 +136,10 @@ impl RelmGridItem for BookItem {
         fav.set_tooltip_text(Some(&fav_tip));
         super::audit::label(&fav, &fav_tip);
         overlay.add_overlay(&fav);
+        let badge = super::library_works::make_badge();
+        overlay.add_overlay(&badge);
+        let audio = super::audiobook_player::cover_badge();
+        overlay.add_overlay(&audio);
 
         let title = gtk::Label::new(None);
         title.set_ellipsize(gtk::pango::EllipsizeMode::End);
@@ -136,6 +148,18 @@ impl RelmGridItem for BookItem {
         title.set_wrap_mode(gtk::pango::WrapMode::WordChar);
         title.set_justify(gtk::Justification::Center);
         title.add_css_class("heading");
+        // The tooltip is answered on demand. `set_tooltip_text` in `bind` made GTK pick the whole window
+        // for every bound tile (a style pass over the window each time): 17 s for the first frame of a
+        // 20,000 book grid in a real session.
+        title.set_has_tooltip(true);
+        title.connect_query_tooltip(|l, _, _, _, tip| {
+            let text = l.label();
+            if text.is_empty() {
+                return false;
+            }
+            tip.set_text(Some(&text));
+            true
+        });
         let author = gtk::Label::new(None);
         author.set_ellipsize(gtk::pango::EllipsizeMode::End);
         author.add_css_class("dim-label");
@@ -152,6 +176,14 @@ impl RelmGridItem for BookItem {
             fav.connect_clicked(move |_| {
                 if let Some((id, tx)) = ctx.borrow().as_ref() {
                     tx.emit(Input::ToggleFav(*id));
+                }
+            });
+        }
+        {
+            let ctx = ctx.clone();
+            badge.connect_clicked(move |b| {
+                if let Some((id, tx)) = ctx.borrow().as_ref() {
+                    tx.emit(Input::ShowEditions(*id, b.clone().upcast()));
                 }
             });
         }
@@ -194,6 +226,8 @@ impl RelmGridItem for BookItem {
                 prog_row,
                 done,
                 fav,
+                badge,
+                audio,
                 ctx,
                 last_class: RefCell::new(None),
             },
@@ -211,7 +245,6 @@ impl RelmGridItem for BookItem {
         w.author.set_max_width_chars((size / 9).max(8));
         w.title.set_label(&self.title);
         w.author.set_label(&self.authors);
-        w.title.set_tooltip_text(Some(&self.title));
         w.fallback_label.set_label(&self.title);
         if let Some(c) = w.last_class.borrow_mut().take() {
             w.fallback.remove_css_class(&c);
@@ -241,6 +274,8 @@ impl RelmGridItem for BookItem {
             .set_visible(self.progress > 0.0 && self.progress < 0.98);
         w.done.set_visible(self.progress >= 0.98);
         w.fav.set_visible(self.favourite);
+        super::library_works::set_badge(&w.badge, self.editions);
+        w.audio.set_visible(self.audio);
         *w.ctx.borrow_mut() = Some((self.id, self.tx.clone()));
     }
 
@@ -265,12 +300,14 @@ pub struct BookRow {
     tags: String,
     progress: u32,
     fav: bool,
+    editions: u32,
 }
 
 impl BookRow {
     fn from(b: &Book, fav: bool) -> Self {
         BookRow {
             fav,
+            editions: 1,
             id: b.id,
             title: b.meta.title.clone(),
             authors: b.meta.authors.join(" & "),
@@ -355,6 +392,15 @@ column!(
     }
 );
 column!(ColTitle, "Title", String, true, 34, |r| r.title.clone());
+column!(
+    ColEditions,
+    "Editions",
+    u32,
+    false,
+    4,
+    |r| r.editions,
+    fmt = |v| if *v > 1 { v.to_string() } else { String::new() }
+);
 column!(ColAuthors, "Author(s)", String, true, 18, |r| r
     .authors
     .clone());
@@ -425,6 +471,8 @@ pub enum Act {
     ImportAnn,
     /// Export All Annotations… (one file per book).
     ExportAllAnn,
+    /// Export as Calibre Library… (a background job).
+    ExportCalibre,
     /// Notes & Highlights (every highlight of the library in the content area).
     Notes,
     /// Star or unstar the selected books.
@@ -457,6 +505,37 @@ pub enum Act {
     ShelfRemove,
     /// Move the selected book earlier (-1) or later (1) on the shelf that is shown.
     ShelfMove(i32),
+    /// Link the selected books as editions of one work.
+    LinkEditions,
+    /// Take every edition of the selected card out of its group.
+    UnlinkEditions,
+    /// Show the edition list of the selected card.
+    ShowEditionList,
+}
+
+impl Act {
+    /// Whether the action goes to every edition of a selected card (not just the one on top).
+    fn reaches_editions(&self) -> bool {
+        matches!(
+            self,
+            Act::MarkRead(_)
+                | Act::Favourite
+                | Act::ExportAnn(_)
+                | Act::Convert(_)
+                | Act::ConvertTo(_)
+                | Act::ConvertToGo(_)
+                | Act::Email
+                | Act::EmailGo
+                | Act::FetchMeta
+                | Act::Preflight
+                | Act::Delete
+                | Act::ShelfAdd(_)
+                | Act::ShelfNew
+                | Act::ShelfRemove
+                | Act::LinkEditions
+                | Act::UnlinkEditions
+        )
+    }
 }
 
 #[derive(Debug)]
@@ -514,6 +593,14 @@ pub enum Input {
     SetView(ViewMode),
     Zoom(i32),
     Selection(Vec<u64>),
+    /// The badge of a card: its edition list, anchored on the badge.
+    ShowEditions(u64, gtk::Widget),
+    /// An edition's buttons: send it, prefer it, take it out of the group.
+    EditionSend(u64),
+    EditionPrefer(u64),
+    EditionUnlink(u64),
+    /// Turn *Group editions of the same book* on or off.
+    GroupEditions(bool),
     Activate(u64),
     Context(u64, f64, f64, gtk::Widget),
     AddFiles,
@@ -524,6 +611,8 @@ pub enum Input {
     Toast(String),
     FocusSearch,
     SelectAll,
+    /// The next piece of a book list that is being filled in idle steps (the number of the fill).
+    FillStep(u64),
     Dev(String),
     /// The devices connected now (from the periodic look).
     Devices(Vec<bookx_core::contracts::DeviceInfo>),
@@ -533,6 +622,8 @@ pub enum Input {
 #[derive(Debug)]
 pub enum Output {
     Read(u64),
+    /// Play the audiobook of this book in the player.
+    PlayAudio(u64),
     EditBook(u64),
     Toast(String),
     LibraryChanged,
@@ -571,6 +662,36 @@ struct W {
     banner_label: gtk::Label,
 }
 
+/// The books still to go into the model, by view.
+enum FillRows {
+    Grid(Chunker<BookItem>),
+    Table(Chunker<BookRow>),
+}
+
+/// A fill in progress: what is left, when it began, the scroll position to get back to.
+struct Fill {
+    rows: FillRows,
+    started: std::time::Instant,
+    scroll: Option<f64>,
+    steps_left: u32,
+    busy: bool,
+}
+
+impl Fill {
+    fn loaded(&self) -> usize {
+        match &self.rows {
+            FillRows::Grid(c) => c.loaded(),
+            FillRows::Table(c) => c.loaded(),
+        }
+    }
+    fn is_done(&self) -> bool {
+        match &self.rows {
+            FillRows::Grid(c) => c.is_done(),
+            FillRows::Table(c) => c.is_done(),
+        }
+    }
+}
+
 pub struct LibraryView {
     shared: SharedRef,
     root: adw::NavigationPage,
@@ -580,6 +701,12 @@ pub struct LibraryView {
     cover_size: Rc<Cell<i32>>,
     w: W,
     selected: Vec<u64>,
+    /// Cards with several editions, by the edition that stands for them.
+    groups: HashMap<u64, crate::work_groups::Card>,
+    /// Every book that sits inside a card with several editions → that card's edition.
+    card_of: HashMap<u64, u64>,
+    /// The books the list shows, one per card, in order.
+    card_ids: Vec<u64>,
     /// The book a Shift+click extends from.
     anchor: Option<u64>,
     /// What this run has shown of the banner (hero on a cold start, strip on later visits).
@@ -590,6 +717,11 @@ pub struct LibraryView {
     skip_details: Cell<bool>,
     /// How many times the book list was rebuilt (the tests check that panels do not do it).
     requeries: u32,
+    /// The book list being put into the grid or table in pieces (`grid_fill`), if one is.
+    fill: Option<Fill>,
+    fill_gen: u64,
+    /// The search text of the last fill (a new search starts at the top, a new sort keeps the place).
+    fill_query: String,
     view: View,
     notes: Rc<RefCell<Option<super::notes::View>>>,
     query: String,
@@ -980,13 +1112,214 @@ impl LibraryView {
         let _ = self.sender.output(Output::LibraryChanged);
     }
 
+    /// Starts putting the books into the grid (or the table): the first piece now, so the list is never
+    /// empty, the rest in idle steps. A fill that is still running is dropped (its steps see an old number).
+    fn begin_fill(&mut self, items: Vec<BookItem>, rows: Vec<BookRow>, grid_mode: bool) {
+        let same_query = self.fill_query == self.query;
+        self.fill_query = self.query.clone();
+        let adj = self.grid_vadjustment();
+        // the place to get back to: the one an unfinished fill was heading for, else where the list is now
+        let keep = match self.fill.as_ref().map(|f| f.scroll) {
+            Some(s) => s,
+            None => Some(adj.value()).filter(|v| *v > 0.5),
+        }
+        .filter(|_| same_query && grid_mode);
+        let old_books = self.grid.len() as usize;
+        self.fill = None;
+        self.fill_gen += 1;
+        self.w.stack.set_cursor(None);
+        if !same_query {
+            adj.set_value(0.0);
+        }
+        self.grid.clear();
+        self.table.clear();
+        let budget = if crate::eink::is_active() {
+            grid_fill::BUDGET_EINK_MS
+        } else {
+            grid_fill::BUDGET_MS
+        };
+        let first = match keep {
+            Some(v) => grid_fill::first_for_scroll(v, adj.page_size(), adj.upper(), old_books),
+            None => grid_fill::FIRST_CHUNK,
+        };
+        let rows = if grid_mode {
+            FillRows::Grid(Chunker::new(self.fill_gen, items, first, budget))
+        } else {
+            FillRows::Table(Chunker::new(self.fill_gen, rows, first, budget))
+        };
+        self.fill = Some(Fill {
+            rows,
+            started: std::time::Instant::now(),
+            scroll: keep,
+            steps_left: 12,
+            busy: false,
+        });
+        // `BOOKX_FILL_SYNC=1`: the whole list at once (the old behaviour; for measuring against)
+        let sync = std::env::var_os("BOOKX_FILL_SYNC").is_some();
+        self.fill_piece(sync);
+        self.schedule_fill();
+    }
+
+    /// Puts the next piece (or everything that is left) into the model and selects the books of it that are
+    /// selected. Returns false when there is no fill.
+    fn fill_piece(&mut self, all: bool) -> bool {
+        let Some(mut fill) = self.fill.take() else {
+            return false;
+        };
+        let t = std::time::Instant::now();
+        let before = fill.loaded();
+        match &mut fill.rows {
+            FillRows::Grid(c) => {
+                let piece = if all { c.take_all() } else { c.take() };
+                let n = piece.len();
+                self.grid.extend_from_iter(piece);
+                c.record(n, t.elapsed().as_secs_f64() * 1000.0);
+            }
+            FillRows::Table(c) => {
+                let piece = if all { c.take_all() } else { c.take() };
+                let n = piece.len();
+                self.table.extend_from_iter(piece);
+                c.record(n, t.elapsed().as_secs_f64() * 1000.0);
+            }
+        }
+        if !self.selected.is_empty() {
+            let model = self.active_model();
+            let want: HashSet<u64> = self.selected.iter().copied().collect();
+            for i in before..fill.loaded() {
+                if self
+                    .id_at_model(&model, i as u32)
+                    .is_some_and(|id| want.contains(&id))
+                {
+                    model.select_item(i as u32, false);
+                }
+            }
+        }
+        if let Some(v) = fill.scroll {
+            // the adjustment learns the new length only when the grid is laid out (a frame later): aim at the
+            // place on every step and stop when it holds with the whole list in
+            let adj = self.grid_vadjustment();
+            let room = adj.upper() >= v + adj.page_size();
+            if room && (adj.value() - v).abs() > 1.0 {
+                adj.set_value(v);
+            }
+            if fill.is_done() && room && (adj.value() - v).abs() <= 1.0 {
+                fill.scroll = None;
+            }
+        }
+        let elapsed = fill.started.elapsed().as_millis();
+        let busy = grid_fill::show_progress(fill.is_done(), elapsed);
+        if busy != fill.busy {
+            fill.busy = busy;
+            self.w
+                .stack
+                .set_cursor_from_name(busy.then_some("progress"));
+        }
+        // a finished fill stays until the scroll position was restored (about half a second at most)
+        if fill.is_done() {
+            fill.steps_left = fill.steps_left.saturating_sub(1);
+        }
+        if !fill.is_done() || (fill.scroll.is_some() && fill.steps_left > 0) {
+            self.fill = Some(fill);
+        }
+        true
+    }
+
+    /// True while books of the list are still to come.
+    fn filling(&self) -> bool {
+        self.fill.as_ref().is_some_and(|f| !f.is_done())
+    }
+
+    /// The `stalls` dev command: four actions in a row, each given 1.5 s, with the longest gap between two
+    /// 4 ms timers measured (a block of the main loop by the work or by the frame that follows it).
+    fn dev_stalls(&self, sender: &ComponentSender<Self>) {
+        let gap = Rc::new(Cell::new((std::time::Instant::now(), 0u128)));
+        let g = gap.clone();
+        let watch = glib::timeout_add_local(std::time::Duration::from_millis(4), move || {
+            let (last, max) = g.get();
+            let late = last.elapsed().as_millis().saturating_sub(4);
+            g.set((std::time::Instant::now(), max.max(late)));
+            glib::ControlFlow::Continue
+        });
+        let search = self.w.search.clone();
+        let other = SortKey::ALL.get(1).copied().unwrap_or(SortKey::ALL[0]);
+        let first = SortKey::ALL[0];
+        let tx = sender.input_sender().clone();
+        type Step = Box<dyn Fn()>;
+        let steps: Vec<(&'static str, Step)> = vec![
+            ("sort", {
+                let tx = tx.clone();
+                Box::new(move || tx.emit(Input::Sort(other)))
+            }),
+            ("search", {
+                let s = search.clone();
+                Box::new(move || s.set_text("ba"))
+            }),
+            ("clear", {
+                let s = search.clone();
+                Box::new(move || s.set_text(""))
+            }),
+            ("sortback", Box::new(move || tx.emit(Input::Sort(first)))),
+        ];
+        fn run(
+            mut steps: std::collections::VecDeque<(&'static str, Step)>,
+            gap: Rc<Cell<(std::time::Instant, u128)>>,
+            watch: glib::SourceId,
+            mut out: Vec<String>,
+            mut worst: u128,
+        ) {
+            let Some((name, act)) = steps.pop_front() else {
+                watch.remove();
+                eprintln!("stalls: {} max={worst}", out.join(" "));
+                return;
+            };
+            gap.set((std::time::Instant::now(), 0));
+            act();
+            glib::timeout_add_local_once(std::time::Duration::from_millis(1500), move || {
+                let m = gap.get().1;
+                out.push(format!("{name}={m}"));
+                worst = worst.max(m);
+                run(steps, gap, watch, out, worst);
+            });
+        }
+        run(steps.into(), gap, watch, Vec::new(), 0);
+    }
+
+    /// Queues the next step below the redraw priority, so a frame is drawn between two pieces.
+    fn schedule_fill(&self) {
+        if self.fill.is_none() {
+            return;
+        }
+        let (tx, gen) = (self.sender.input_sender().clone(), self.fill_gen);
+        if self.filling() {
+            glib::idle_add_local_full(glib::Priority::DEFAULT_IDLE, move || {
+                tx.emit(Input::FillStep(gen));
+                glib::ControlFlow::Break
+            });
+        } else {
+            // only the scroll position is left: wait for the frame that lays the list out
+            glib::timeout_add_local_once(std::time::Duration::from_millis(50), move || {
+                tx.emit(Input::FillStep(gen))
+            });
+        }
+    }
+
+    /// Puts all the books that are still to come into the model now (select all, a click on the list).
+    fn finish_fill(&mut self) {
+        if !self.filling() {
+            return;
+        }
+        self.fill_piece(true);
+        self.restore_selection();
+    }
+
     fn requery(&mut self) {
         self.requeries += 1;
         let ids = self.visible_ids();
         let lib = self.shared.lib.borrow();
         let size = self.cover_size.clone();
         let tx = self.sender.input_sender().clone();
-        let books: Vec<&Book> = ids.iter().filter_map(|i| lib.get(*i)).collect();
+        // one pass, not a `get` per id: that is quadratic and took seconds at 100,000 books
+        let books: Vec<&Book> = lib.books_for(&ids);
         let favs: HashSet<u64> = self
             .shared
             .cfg
@@ -996,34 +1329,106 @@ impl LibraryView {
             .copied()
             .collect();
 
-        let items: Vec<BookItem> = books
+        // editions of one work: one card each (the preferred edition stands for it)
+        let group_on = self.shared.cfg.borrow().group_editions;
+        let cards: Vec<crate::work_groups::Card> = if group_on {
+            let links = crate::work_groups::Links::from_store(&self.shared.guard.borrow().store);
+            crate::work_groups::group(&books, &links)
+        } else {
+            Vec::new()
+        };
+        let by_id: HashMap<u64, &Book> = books.iter().map(|b| (b.id, *b)).collect();
+        // (card book, the book whose progress it shows, editions on the card, starred)
+        let shown: Vec<(&Book, &Book, usize, bool)> = if group_on {
+            cards
+                .iter()
+                .filter_map(|c| {
+                    let rep = *by_id.get(&c.rep)?;
+                    let prog = by_id.get(&c.progress_from).copied().unwrap_or(rep);
+                    let fav = c.members.iter().any(|m| favs.contains(m));
+                    Some((rep, prog, c.members.len(), fav))
+                })
+                .collect()
+        } else {
+            books
+                .iter()
+                .map(|b| (*b, *b, 1, favs.contains(&b.id)))
+                .collect()
+        };
+        let items: Vec<BookItem> = shown
             .iter()
-            .map(|b| BookItem {
+            .map(|(b, prog, n, fav)| BookItem {
                 id: b.id,
                 title: b.meta.title.clone(),
                 authors: b.meta.authors.join(" & "),
                 cover: lib.cover_path(b),
-                progress: b.progress,
-                favourite: favs.contains(&b.id),
+                progress: prog.progress,
+                favourite: *fav,
+                editions: *n,
+                audio: crate::audiobook::is_audiobook(b),
                 size: size.clone(),
                 tx: tx.clone(),
             })
             .collect();
-        let rows: Vec<BookRow> = books
+        let rows: Vec<BookRow> = shown
             .iter()
-            .map(|b| BookRow::from(b, favs.contains(&b.id)))
+            .map(|(b, prog, n, fav)| {
+                let mut r = BookRow::from(b, *fav);
+                r.progress = (prog.progress * 100.0).round() as u32;
+                r.editions = *n as u32;
+                r
+            })
             .collect();
+        let card_ids: Vec<u64> = shown.iter().map(|(b, ..)| b.id).collect();
+        self.groups = cards
+            .into_iter()
+            .filter(|c| c.is_group())
+            .map(|c| (c.rep, c))
+            .collect();
+        self.card_of = self
+            .groups
+            .values()
+            .flat_map(|c| c.members.iter().map(|m| (*m, c.rep)))
+            .collect();
+        self.card_ids = card_ids;
         let total = lib.books.len();
         let n = books.len();
         drop(lib);
 
-        self.grid.clear();
-        self.grid.extend_from_iter(items);
-        self.table.clear();
-        self.table.extend_from_iter(rows);
-
         let mode = self.shared.cfg.borrow().view_mode;
-        let page = if total == 0 {
+        self.begin_fill(items, rows, mode == ViewMode::Grid);
+
+        let nothing_in_view = n == 0
+            && self.query.trim().is_empty()
+            && matches!(self.view, View::Recent | View::Favourites);
+        if nothing_in_view {
+            if let Some(p) = self
+                .w
+                .stack
+                .child_by_name("viewempty")
+                .and_downcast::<adw::StatusPage>()
+            {
+                let (icon, title, text) = if self.view == View::Recent {
+                    (
+                        "document-open-recent-symbolic",
+                        tr("Nothing read yet"),
+                        tr("Books you open appear here, the latest first."),
+                    )
+                } else {
+                    (
+                        "starred-symbolic",
+                        tr("No favourites yet"),
+                        tr("Right-click a book and choose to add it to your favourites to find it here."),
+                    )
+                };
+                p.set_icon_name(Some(icon));
+                p.set_title(&title);
+                p.set_description(Some(&text));
+            }
+        }
+        let page = if nothing_in_view {
+            "viewempty"
+        } else if total == 0 {
             "empty"
         } else if n == 0 {
             "nomatch"
@@ -1036,16 +1441,24 @@ impl LibraryView {
         self.show_content();
         let vl = self.shared.cfg.borrow().virtual_library.clone();
         let mut sub = if self.query.trim().is_empty() && vl.is_none() {
-            format!("{total} books")
+            ntr("{} book", "{} books", total)
         } else {
-            format!("{n} of {total} books")
+            trf("{} of {} books", &[&n, &total])
         };
         if let Some(v) = vl {
             sub = format!("{sub} · {v}");
         }
         self.w.title.set_title(&self.view_title());
         self.w.title.set_subtitle(&sub);
-        self.selected.retain(|id| ids.contains(id));
+        // a book that is now hidden inside a card is selected through its card
+        let mut sel: Vec<u64> = Vec::new();
+        for id in &self.selected {
+            let id = self.card_of.get(id).copied().unwrap_or(*id);
+            if ids.contains(&id) && !sel.contains(&id) {
+                sel.push(id);
+            }
+        }
+        self.selected = sel;
         self.restore_selection();
         self.update_banner();
         if !self.skip_details.get() {
@@ -1393,6 +1806,16 @@ impl LibraryView {
         n
     }
 
+    /// The vertical adjustment of the scrolled window that holds the cover grid.
+    fn grid_vadjustment(&self) -> gtk::Adjustment {
+        self.grid
+            .view
+            .ancestor(gtk::ScrolledWindow::static_type())
+            .and_downcast::<gtk::ScrolledWindow>()
+            .map(|s| s.vadjustment())
+            .unwrap_or_default()
+    }
+
     fn grid_scroll_adjustment(&self) -> gtk::Adjustment {
         self.grid
             .view
@@ -1587,6 +2010,9 @@ impl LibraryView {
 
         let lib = self.shared.lib.borrow();
         list.append(&super::shelves::section(&self.shelf_ctx()));
+        if let Some(row) = super::audiobook_player::sidebar_row(&lib, go.clone()) {
+            list.append(&row);
+        }
 
         let (saved, active_vl) = {
             let c = self.shared.cfg.borrow();
@@ -1720,6 +2146,9 @@ impl LibraryView {
                 title.set_wrap(true);
                 title.set_justify(gtk::Justification::Center);
                 title.set_selectable(true);
+                // a selectable label that is the first thing a focus move reaches makes GTK log
+                // "gtk_widget_is_ancestor: assertion 'GTK_IS_WIDGET (widget)' failed" (the mouse still selects)
+                title.set_focusable(false);
                 d.append(&title);
                 let authors = gtk::Label::new(Some(&b.meta.authors_display()));
                 authors.add_css_class("dim-label");
@@ -1781,17 +2210,27 @@ impl LibraryView {
                 buttons.append(&star);
                 d.append(&buttons);
 
-                if b.progress > 0.0 {
+                let shown_progress = self
+                    .groups
+                    .get(&b.id)
+                    .and_then(|c| lib.get(c.progress_from))
+                    .map_or(b.progress, |x| x.progress);
+                if shown_progress > 0.0 {
                     let bar = gtk::ProgressBar::new();
-                    bar.set_fraction(b.progress);
+                    bar.set_fraction(shown_progress);
                     bar.set_margin_top(8);
                     bar.set_tooltip_text(Some(&trf(
                         "{}% read",
-                        &[&format!("{:.0}", b.progress * 100.0)],
+                        &[&format!("{:.0}", shown_progress * 100.0)],
                     )));
                     d.append(&bar);
                 }
 
+                if let Some(g) = self.groups.get(&b.id).and_then(|c| {
+                    super::library_works::details_group(&lib, c, &self.edition_actions())
+                }) {
+                    d.append(&g);
+                }
                 d.append(&self.rating_row(&[id], b.meta.rating, true));
                 d.append(&self.tags_editor(&[id], &b.meta.tags, true));
                 let props = gtk::Button::with_label(&tr("Properties"));
@@ -1826,6 +2265,15 @@ impl LibraryView {
                     crate::ui::formats::details_group(&self.shared, b, &self.format_callbacks())
                 {
                     d.append(&g);
+                }
+                {
+                    let tx = self.sender.output_sender().clone();
+                    let play: Rc<dyn Fn(u64)> = Rc::new(move |id| {
+                        let _ = tx.send(Output::PlayAudio(id));
+                    });
+                    if let Some(g) = super::audiobook_player::details_group(&self.shared, b, play) {
+                        d.append(&g);
+                    }
                 }
                 if let Some(g) =
                     crate::ui::audiobooks::details_group(b, self.health_notify(), &self.shared)
@@ -1862,8 +2310,8 @@ impl LibraryView {
                     .build();
                 s.add_css_class("compact");
                 d.append(&s);
-                d.append(&self.rating_row(&self.selected.clone(), 0, true));
-                d.append(&self.tags_editor(&self.selected.clone(), &[], true));
+                d.append(&self.rating_row(&self.selected_books(), 0, true));
+                d.append(&self.tags_editor(&self.selected_books(), &[], true));
                 let group = adw::PreferencesGroup::new();
                 let favs = self.shared.cfg.borrow().favourites.clone();
                 let all_fav = self.selected.iter().all(|i| favs.contains(i));
@@ -2208,9 +2656,150 @@ impl LibraryView {
         (search, fetch, self.health_notify())
     }
 
+    /// The books an action on `cards` reaches: a card with several editions stands for all of them.
+    fn expanded(&self, cards: &[u64]) -> Vec<u64> {
+        let mut out: Vec<u64> = Vec::new();
+        for id in cards {
+            match self.groups.get(id) {
+                Some(c) => out.extend(c.members.iter().copied()),
+                None => out.push(*id),
+            }
+        }
+        out.dedup();
+        out
+    }
+
+    /// The selection as the books it reaches (every edition of a selected card).
+    fn selected_books(&self) -> Vec<u64> {
+        self.expanded(&self.selected)
+    }
+
+    fn work_edit(&mut self, f: impl FnOnce(&bookx_store::SqliteStore) -> anyhow::Result<String>) {
+        let res = f(&self.shared.guard.borrow().store);
+        match res {
+            Ok(msg) => {
+                self.sender.input(Input::Refresh);
+                self.sender.input(Input::Toast(msg));
+            }
+            Err(e) => self.sender.input(Input::Toast(trf(
+                "Could not change the editions: {}",
+                &[&e],
+            ))),
+        }
+    }
+
+    /// The `works=` developer commands.
+    fn dev_works(&mut self, cmd: &str, sender: &ComponentSender<Self>) {
+        let ids =
+            |s: &str| -> Vec<u64> { s.split('+').filter_map(|x| x.trim().parse().ok()).collect() };
+        match cmd.split_once(':').unwrap_or((cmd, "")) {
+            ("on", _) => sender.input(Input::GroupEditions(true)),
+            ("off", _) => sender.input(Input::GroupEditions(false)),
+            ("link", a) => {
+                self.selected = ids(a);
+                self.do_act(Act::LinkEditions);
+            }
+            ("unlink", a) => sender.input(Input::EditionUnlink(a.parse().unwrap_or(0))),
+            ("prefer", a) => sender.input(Input::EditionPrefer(a.parse().unwrap_or(0))),
+            ("card", a) => {
+                let (id, how) = a.split_once(':').unwrap_or((a, ""));
+                let how = if how == "ctrl" {
+                    nav::Pick::Ctrl
+                } else {
+                    nav::Pick::Plain
+                };
+                sender.input(Input::Pick(id.parse().unwrap_or(0), how));
+            }
+            ("show", a) => {
+                let id: u64 = a.parse().unwrap_or(0);
+                let w = self.card_widget(id);
+                self.show_editions(id, &w);
+                eprintln!(
+                    "works: popover for {id} rows={}",
+                    self.groups.get(&id).map_or(0, |c| c.members.len())
+                );
+            }
+            ("cards", _) => {
+                let mut g: Vec<String> = self
+                    .groups
+                    .values()
+                    .map(|c| format!("{}={:?}", c.rep, c.members))
+                    .collect();
+                g.sort();
+                eprintln!(
+                    "works: cards={} books={} groups=[{}] subtitle={}",
+                    self.card_ids.len(),
+                    self.visible_ids().len(),
+                    g.join(" "),
+                    self.w.title.subtitle()
+                );
+            }
+            ("selected", _) => eprintln!(
+                "works: selected={:?} books={:?}",
+                self.selected,
+                self.selected_books()
+            ),
+            _ => eprintln!("works: unknown command {cmd}"),
+        }
+    }
+
+    /// The widget of the card of `id` in the grid, or the whole view.
+    fn card_widget(&self, id: u64) -> gtk::Widget {
+        let view = self.grid.view.clone();
+        let name = id.to_string();
+        let mut c = view.first_child();
+        while let Some(w) = c {
+            if let Some(root) = w.first_child() {
+                if root.widget_name() == name {
+                    return root;
+                }
+            }
+            c = w.next_sibling();
+        }
+        view.upcast()
+    }
+
+    fn edition_actions(&self) -> super::library_works::EditionActions {
+        let tx = self.sender.input_sender().clone();
+        let (t1, t2, t3) = (tx.clone(), tx.clone(), tx.clone());
+        super::library_works::EditionActions {
+            read: Rc::new(move |id| tx.emit(Input::Activate(id))),
+            send: Rc::new(move |id| t1.emit(Input::EditionSend(id))),
+            prefer: Rc::new(move |id| t2.emit(Input::EditionPrefer(id))),
+            unlink: Rc::new(move |id| t3.emit(Input::EditionUnlink(id))),
+            can_send: !self.devices.is_empty(),
+        }
+    }
+
+    fn show_editions(&self, rep: u64, anchor: &gtk::Widget) {
+        let Some(card) = self.groups.get(&rep) else {
+            return;
+        };
+        super::library_works::show_popover(
+            &self.shared.lib.borrow(),
+            card,
+            &self.edition_actions(),
+            &if self.shared.cfg.borrow().view_mode == ViewMode::Grid {
+                self.grid.view.clone().upcast::<gtk::Widget>()
+            } else {
+                self.table.view.clone().upcast::<gtk::Widget>()
+            },
+            anchor,
+        );
+    }
+
     fn do_act(&mut self, act: Act) {
-        let ids = self.selected.clone();
-        if ids.is_empty() && !matches!(act, Act::ImportAnn | Act::ExportAllAnn | Act::Notes) {
+        let ids = if act.reaches_editions() {
+            self.selected_books()
+        } else {
+            self.selected.clone()
+        };
+        if ids.is_empty()
+            && !matches!(
+                act,
+                Act::ImportAnn | Act::ExportAllAnn | Act::ExportCalibre | Act::Notes
+            )
+        {
             return;
         }
         let first = ids.first().copied().unwrap_or_default();
@@ -2451,10 +3040,53 @@ impl LibraryView {
                 self.requery();
             }
             Act::Properties => self.show_properties(),
+            Act::LinkEditions => {
+                if ids.len() < 2 {
+                    self.sender
+                        .input(Input::Toast(tr("Select at least two books to link")));
+                    return;
+                }
+                let on = self.shared.cfg.borrow().group_editions;
+                if !on {
+                    let mut c = self.shared.cfg.borrow_mut();
+                    c.group_editions = true;
+                    c.save();
+                }
+                let n = ids.len();
+                self.work_edit(move |s| {
+                    s.link_editions(&ids)?;
+                    Ok(trf("Linked {} books as editions of one work", &[&n]))
+                });
+            }
+            Act::UnlinkEditions => {
+                let n = ids.len();
+                self.work_edit(move |s| {
+                    for id in &ids {
+                        s.unlink_edition(*id)?;
+                    }
+                    Ok(trf("Took {} books out of their group", &[&n]))
+                });
+            }
+            Act::ShowEditionList => {
+                if let Some(rep) = self.selected.first().copied() {
+                    let w = self.card_widget(rep);
+                    self.show_editions(rep, &w);
+                }
+            }
             Act::ExportAllAnn => {
                 if let Some(p) = parent {
                     let t = self.sender.input_sender().clone();
                     super::annotations::start_export_all(
+                        &p,
+                        &self.shared,
+                        Rc::new(move |m| t.emit(Input::Toast(m))),
+                    );
+                }
+            }
+            Act::ExportCalibre => {
+                if let Some(p) = parent {
+                    let t = self.sender.input_sender().clone();
+                    super::calibre_export::start(
                         &p,
                         &self.shared,
                         Rc::new(move |m| t.emit(Input::Toast(m))),
@@ -2782,8 +3414,8 @@ impl LibraryView {
             self.update_details();
             self.update_bottom_bar();
         }
-        super::devices::set_library_selection(&self.selected);
-        super::shelves::set_selection(&self.selected);
+        super::devices::set_library_selection(&self.selected_books());
+        super::shelves::set_selection(&self.selected_books());
         let menu = self.book_menu(self.selected.len() > 1);
         let popover = gtk::PopoverMenu::from_model(Some(&menu));
         popover.set_parent(widget);
@@ -2875,6 +3507,18 @@ impl LibraryView {
                 Some(&tr("Merge as Formats of One Book")),
                 Some("book.merge-formats"),
             );
+            m.append(Some(&tr("Link as Editions")), Some("book.link-editions"));
+            org.append_section(None, &m);
+        }
+        if self.selected.iter().any(|id| self.groups.contains_key(id)) {
+            let m = gio::Menu::new();
+            if !multi {
+                m.append(Some(&tr("Show Editions")), Some("book.show-editions"));
+            }
+            m.append(
+                Some(&tr("Unlink All Editions")),
+                Some("book.unlink-editions"),
+            );
             org.append_section(None, &m);
         }
         s.append_submenu(Some(&tr("Organise")), &org);
@@ -2960,12 +3604,23 @@ impl LibraryView {
 
 use crate::i18n::ntr;
 use crate::i18n::N_;
+
+/// Names of `Category::label` (the core crate cannot translate): listed here so that they are extracted.
+const _CATEGORY_NAMES: [&str; 7] = [
+    N_("Authors"),
+    N_("Series"),
+    N_("Tags"),
+    N_("Publishers"),
+    N_("Languages"),
+    N_("Ratings"),
+    N_("Reading status"),
+];
 use crate::i18n::{tr, trf};
 
 /// The entries of the main (hamburger) menu below the view options; an empty entry is a
 /// separator between groups. Series, Notes & Highlights, News Subscriptions, Duplicates, Editions
 /// & Formats and Needs Attention are in the sidebar, the + menu and Library Health.
-const MAIN_MENU: [(&str, &str); 22] = [
+const MAIN_MENU: [(&str, &str); 23] = [
     (N_("Open Library Folder"), "lib.open-folder"),
     (N_("Saved Searches"), "lib.saved"),
     (N_("Online Catalogues"), "lib.opds"),
@@ -2976,10 +3631,11 @@ const MAIN_MENU: [(&str, &str); 22] = [
     (N_("Audiobooks"), "lib.audiobooks"),
     ("", ""),
     (N_("Import Calibre Library"), "lib.calibre"),
+    (N_("Export as Calibre Library"), "lib.export-calibre"),
     (N_("Import Highlights"), "lib.import-highlights"),
     (N_("Export All Annotations"), "lib.export-annotations"),
     (N_("Export Citations"), "lib.citations"),
-    (N_("Share Library"), "app.share"),
+    (N_("Sync"), "app.sync"),
     (N_("Device"), "app.devices"),
     ("", ""),
     (N_("Library Health"), "lib.health"),
@@ -3064,13 +3720,26 @@ impl SimpleComponent for LibraryView {
 
         // ---- typed views ----------------------------------------------------
         let grid: TypedGridView<BookItem, gtk::MultiSelection> = TypedGridView::new();
-        grid.view.set_max_columns(40);
+        // GtkGridView keeps `max_columns * 32 + 1` tiles alive (40 columns: 1281 bound tiles, most of the cost of a
+        // rebuild): the cap follows the width, see `grid_columns::max_for`
+        grid.view.set_max_columns(grid_columns::START_MAX);
         grid.view.set_min_columns(2);
+        {
+            let size = cover_size.clone();
+            grid.view.add_tick_callback(move |view, _| {
+                let want = grid_columns::max_for(view.width(), size.get(), view.max_columns());
+                if want != view.max_columns() {
+                    view.set_max_columns(want);
+                }
+                glib::ControlFlow::Continue
+            });
+        }
         grid.view.set_enable_rubberband(true);
         grid.view.add_css_class("book-grid");
         let mut table: TypedColumnView<BookRow, gtk::MultiSelection> = TypedColumnView::new();
         table.append_column::<ColFav>();
         table.append_column::<ColTitle>();
+        table.append_column::<ColEditions>();
         table.append_column::<ColAuthors>();
         table.append_column::<ColSeries>();
         table.append_column::<ColRating>();
@@ -3149,7 +3818,7 @@ impl SimpleComponent for LibraryView {
         let empty = adw::StatusPage::builder()
             .icon_name("com.adhadse.Bookx")
             .title(tr("Welcome to Bookx"))
-            .description(tr("Add some books to start your library.\nEPUB, plain text, Markdown and HTML files are supported — drop them here."))
+            .description(tr("Add some books to start your library.\nEPUB, PDF, MOBI, FB2, comics, audiobooks, plain text and more — drop them here."))
             .build();
         // the buttons wrap in a narrow window
         let empty_btns = gtk::FlowBox::new();
@@ -3170,9 +3839,9 @@ impl SimpleComponent for LibraryView {
         empty_btns.insert(&add_folder, -1);
         let add_news = gtk::Button::with_label(&tr("News Subscriptions"));
         add_news.add_css_class("pill");
-        add_news.set_tooltip_text(Some(
+        add_news.set_tooltip_text(Some(&tr(
             "Turn news sites and blogs (RSS, Atom) into books that update by themselves",
-        ));
+        )));
         add_news.set_action_name(Some("lib.news"));
         empty_btns.insert(&add_news, -1);
         empty.set_child(Some(&empty_btns));
@@ -3184,6 +3853,11 @@ impl SimpleComponent for LibraryView {
             .description(tr("No book matches your search"))
             .build();
         stack.add_named(&nomatch, Some("nomatch"));
+        // Recent and Favourites with nothing in them: say what fills them (the welcome page is for Home)
+        let view_empty = adw::StatusPage::builder()
+            .icon_name("view-list-symbolic")
+            .build();
+        stack.add_named(&view_empty, Some("viewempty"));
 
         // drag & drop of files
         let drop = gtk::DropTarget::new(gdk::FileList::static_type(), gdk::DragAction::COPY);
@@ -3195,8 +3869,15 @@ impl SimpleComponent for LibraryView {
                     for f in list.files() {
                         if let Some(p) = f.path() {
                             if p.is_dir() {
+                                let before = files.len();
                                 crate::import::collect(&p, true, &mut files);
-                            } else if crate::import::is_supported(&p) {
+                                // a folder of audio and no e-books is one audiobook
+                                if files.len() == before && crate::audiobook::is_audio_source(&p) {
+                                    files.push(p);
+                                }
+                            } else if crate::import::is_supported(&p)
+                                || crate::audiobook::is_audio_source(&p)
+                            {
                                 files.push(p);
                             }
                         }
@@ -3351,6 +4032,7 @@ impl SimpleComponent for LibraryView {
         add_menu.append(Some(&tr("Add Books")), Some("lib.add-books"));
         add_menu.append(Some(&tr("Add from the Web")), Some("lib.add-web"));
         add_menu.append(Some(&tr("Add Folder")), Some("lib.add-folder"));
+        add_menu.append(Some(&tr("Add Audiobook")), Some("lib.add-audiobook"));
         add_menu.append(Some(&tr("News Subscriptions")), Some("lib.news"));
         add_menu.append(
             Some(&tr("Add Folder Recursively")),
@@ -3512,6 +4194,16 @@ impl SimpleComponent for LibraryView {
         }
         opts.append(&zoom_lbl);
         opts.append(&zoom);
+        let group_check = gtk::CheckButton::with_label(&tr("Group editions of the same book"));
+        group_check.set_active(cfg.group_editions);
+        group_check.set_tooltip_text(Some(&tr(
+            "Show editions and formats of one book as one card, with a list of the editions",
+        )));
+        {
+            let tx = sender.input_sender().clone();
+            group_check.connect_toggled(move |c| tx.emit(Input::GroupEditions(c.is_active())));
+        }
+        opts.append(&group_check);
         let view_pop = gtk::Popover::new();
         view_pop.set_child(Some(&opts));
         let view_btn = gtk::MenuButton::new();
@@ -3738,8 +4430,25 @@ impl SimpleComponent for LibraryView {
             );
             let tx = sender.input_sender().clone();
             add(
+                "export-calibre",
+                Box::new(move || tx.emit(Input::Act(Act::ExportCalibre))),
+            );
+            let tx = sender.input_sender().clone();
+            add(
                 "add-folder",
                 Box::new(move || tx.emit(Input::AddFolder(false))),
+            );
+            let tx = sender.input_sender().clone();
+            let win_root = root.clone();
+            add(
+                "add-audiobook",
+                Box::new(move || {
+                    let tx = tx.clone();
+                    super::audiobook_player::pick(
+                        window_of(&win_root),
+                        Rc::new(move |paths| tx.emit(Input::ImportPaths(paths))),
+                    );
+                }),
             );
             let tx = sender.input_sender().clone();
             add(
@@ -3777,6 +4486,9 @@ impl SimpleComponent for LibraryView {
         simple("fetch-meta", Act::FetchMeta);
         simple("preflight", Act::Preflight);
         simple("merge-formats", Act::MergeFormats);
+        simple("link-editions", Act::LinkEditions);
+        simple("unlink-editions", Act::UnlinkEditions);
+        simple("show-editions", Act::ShowEditionList);
         simple("edit-book", Act::EditBook);
         simple("mark-read", Act::MarkRead(true));
         simple("mark-unread", Act::MarkRead(false));
@@ -3921,11 +4633,17 @@ impl SimpleComponent for LibraryView {
                 banner_label,
             },
             selected: Vec::new(),
+            groups: HashMap::new(),
+            card_of: HashMap::new(),
+            card_ids: Vec::new(),
             anchor: None,
             hero: RefCell::new(nav::HeroSession::default()),
             banner_colors: RefCell::new(None),
             skip_details: Cell::new(false),
             requeries: 0,
+            fill: None,
+            fill_gen: 0,
+            fill_query: String::new(),
             view: View::from_key(&cfg.sidebar_view),
             notes: Rc::new(RefCell::new(None)),
             query: String::new(),
@@ -3992,6 +4710,12 @@ impl SimpleComponent for LibraryView {
             glib::timeout_add_seconds_local(60, move || {
                 tx.emit(Input::NewsDue);
                 glib::ControlFlow::Continue
+            });
+        }
+        {
+            let tx = sender.input_sender().clone();
+            super::language_settings::on_change(move || {
+                let _ = tx.send(Input::Requery);
             });
         }
         ComponentParts { model, widgets: () }
@@ -4110,7 +4834,7 @@ impl SimpleComponent for LibraryView {
                 }
             }
             Input::Pick(id, how) => {
-                let shown = self.visible_ids();
+                let shown = self.card_ids.clone();
                 let sel = nav::pick(&self.selected, &shown, self.anchor, id, how);
                 if how != nav::Pick::Shift {
                     self.anchor = Some(id);
@@ -4323,9 +5047,72 @@ impl SimpleComponent for LibraryView {
                 }
                 self.requery();
             }
+            Input::ShowEditions(id, w) => self.show_editions(id, &w),
+            Input::EditionSend(id) => {
+                super::devices::set_library_selection(&[id]);
+                if self.w.send_action.is_enabled() {
+                    self.w.send_action.activate(None);
+                }
+            }
+            Input::EditionPrefer(id) => {
+                let members = self
+                    .card_of
+                    .get(&id)
+                    .and_then(|r| self.groups.get(r))
+                    .map(|c| c.members.clone())
+                    .unwrap_or_else(|| vec![id]);
+                self.work_edit(move |s| {
+                    s.prefer_edition(id, &members)?;
+                    Ok(tr("This edition opens first now"))
+                });
+            }
+            Input::EditionUnlink(id) => {
+                self.work_edit(move |s| {
+                    s.unlink_edition(id)?;
+                    Ok(tr("Took the edition out of its group"))
+                });
+            }
+            Input::GroupEditions(on) => {
+                {
+                    let mut c = self.shared.cfg.borrow_mut();
+                    if c.group_editions == on {
+                        return;
+                    }
+                    c.group_editions = on;
+                    c.save();
+                }
+                self.requery();
+            }
             Input::Selection(ids) => {
                 // Only the visible view drives the selection.
                 let live = self.current_selection();
+                if self.filling() {
+                    // while the list is still coming in, the model holds only the books that arrived: what it
+                    // says is ours unless the user changed it, and then the rest must be there before it counts
+                    let loaded = self.fill.as_ref().map_or(0, Fill::loaded);
+                    let mine: HashSet<u64> = self.selected.iter().copied().collect();
+                    let expected: Vec<u64> = self
+                        .card_ids
+                        .iter()
+                        .take(loaded)
+                        .filter(|id| mine.contains(id))
+                        .copied()
+                        .collect();
+                    if live == expected {
+                        return;
+                    }
+                    let seen: HashSet<u64> = self.card_ids.iter().take(loaded).copied().collect();
+                    let mut now = live;
+                    now.extend(self.selected.iter().filter(|id| !seen.contains(id)));
+                    self.selected = now;
+                    self.finish_fill();
+                    super::devices::set_library_selection(&self.selected_books());
+                    super::shelves::set_selection(&self.selected_books());
+                    self.follow_selection();
+                    self.update_details();
+                    self.update_bottom_bar();
+                    return;
+                }
                 let ids = if ids.len() == live.len() || ids.is_empty() {
                     live
                 } else {
@@ -4336,8 +5123,8 @@ impl SimpleComponent for LibraryView {
                         self.anchor = ids.first().copied();
                     }
                     self.selected = ids;
-                    super::devices::set_library_selection(&self.selected);
-                    super::shelves::set_selection(&self.selected);
+                    super::devices::set_library_selection(&self.selected_books());
+                    super::shelves::set_selection(&self.selected_books());
                     self.follow_selection();
                     self.update_details();
                     self.update_bottom_bar();
@@ -4436,9 +5223,27 @@ impl SimpleComponent for LibraryView {
                             return;
                         }
                         let protected = !p.drm.is_empty();
-                        match self.shared.lib.borrow_mut().commit_import(p, false) {
+                        let audio_src = p
+                            .meta
+                            .identifier(crate::audiobook::MARKER)
+                            .and(p.source_file.clone());
+                        let committed = self.shared.lib.borrow_mut().commit_import(p, false);
+                        match committed {
                             Ok(AddOutcome::Added(id)) => {
                                 self.stats.0 += 1;
+                                if let (Some(src), Some(data)) =
+                                    (audio_src, crate::audiobook::data_dir())
+                                {
+                                    let r = crate::audiobook::after_import(
+                                        &mut self.shared.lib.borrow_mut(),
+                                        id,
+                                        &src,
+                                        &data,
+                                    );
+                                    if let Err(e) = r {
+                                        tracing::warn!("linking the audio failed: {e:#}");
+                                    }
+                                }
                                 IMPORT_ADDED.with(|a| {
                                     let mut a = a.borrow_mut();
                                     a.0.push(id);
@@ -4631,6 +5436,103 @@ impl SimpleComponent for LibraryView {
                             a.set_value(a.value() + px);
                         }
                     }
+                    // `stalls` sorts, searches and clears the search with a main-loop watcher running and prints
+                    // the longest time the loop was blocked in each (`stalls: sort=N search=N clear=N sortback=N max=N`)
+                    "stalls" => self.dev_stalls(&sender),
+                    // a rebuild, then select all before the rest of the list has arrived
+                    "fillselect" => {
+                        self.requery();
+                        let during = self.filling();
+                        let early = self.grid.len();
+                        sender.input(Input::SelectAll);
+                        eprintln!(
+                            "fillselect: filling={during} loaded={early} books={}",
+                            self.card_ids.len()
+                        );
+                    }
+                    // `scroll-to=PX`: the cover grid to that offset
+                    other if other.starts_with("scroll-to=") => {
+                        let px: f64 = other[10..].parse().unwrap_or(0.0);
+                        self.grid_vadjustment().set_value(px);
+                    }
+                    "fillstate" => eprintln!(
+                        "fillstate: tiles={} view={}x{} adj={:.0}/{:.0}/{:.0} grid={} table={} filling={} books={}",
+                        {
+                            let mut n = 0;
+                            let mut c = self.grid.view.first_child();
+                            while let Some(w) = c {
+                                n += 1;
+                                c = w.next_sibling();
+                            }
+                            n
+                        },
+                        self.grid.view.width(),
+                        self.grid.view.height(),
+                        self.grid_vadjustment().value(),
+                        self.grid_vadjustment().page_size(),
+                        self.grid_vadjustment().upper(),
+                        self.grid.len(),
+                        self.table.len(),
+                        self.filling(),
+                        self.card_ids.len()
+                    ),
+                    // `requery-time` rebuilds the grid and table models and prints how long it took
+                    // (the scale scenario, docs/performance.md)
+                    "requery-time" => {
+                        let t = std::time::Instant::now();
+                        self.requery();
+                        self.finish_fill();
+                        eprintln!(
+                            "requery_time: books={} ms={}",
+                            self.card_ids.len(),
+                            t.elapsed().as_millis()
+                        );
+                    }
+                    // `grid-bench=<frames>` scrolls the cover grid by a screen every frame and prints the
+                    // frame intervals: `grid_bench: frames=N avg_ms=A max_ms=M wall_ms=W moved=P`
+                    other if other.starts_with("grid-bench=") => {
+                        let frames: u32 = other["grid-bench=".len()..].parse().unwrap_or(60);
+                        // the grid view is the scrolled window's direct child
+                        let a = self
+                            .grid
+                            .view
+                            .ancestor(gtk::ScrolledWindow::static_type())
+                            .and_downcast::<gtk::ScrolledWindow>()
+                            .map(|s| s.vadjustment())
+                            .unwrap_or_else(|| self.grid_scroll_adjustment());
+                        let step = (a.page_size() / 3.0).max(40.0);
+                        let start = (a.value(), std::time::Instant::now());
+                        let state = Rc::new(std::cell::RefCell::new((0u32, 0i64, 0i64, 0i64)));
+                        let slow = Rc::new(std::cell::RefCell::new(Vec::<String>::new()));
+                        self.grid.view.add_tick_callback(move |_, clock| {
+                            let mut s = state.borrow_mut();
+                            let now = clock.frame_time();
+                            if s.1 != 0 {
+                                let dt = now - s.1;
+                                s.2 += dt;
+                                s.3 = s.3.max(dt);
+                                if dt > 250_000 && slow.borrow().len() < 8 {
+                                    slow.borrow_mut().push(format!("{}:{}ms", s.0, dt / 1000));
+                                }
+                            }
+                            s.1 = now;
+                            s.0 += 1;
+                            a.set_value(a.value() + step);
+                            if s.0 >= frames {
+                                eprintln!(
+                                    "grid_bench: frames={} avg_ms={:.1} max_ms={:.1} wall_ms={} moved={:.0} slow=[{}]",
+                                    s.0,
+                                    s.2 as f64 / 1000.0 / (s.0.max(2) - 1) as f64,
+                                    s.3 as f64 / 1000.0,
+                                    start.1.elapsed().as_millis(),
+                                    a.value() - start.0,
+                                    slow.borrow().join(" ")
+                                );
+                                return glib::ControlFlow::Break;
+                            }
+                            glib::ControlFlow::Continue
+                        });
+                    }
                     // where the first book is and how far the books are scrolled
                     "gridpos" => {
                         let a = self.grid_scroll_adjustment();
@@ -4650,7 +5552,7 @@ impl SimpleComponent for LibraryView {
                     // `rate=<0-10>` rates the selection, `tags=+a,b` / `tags=-a` edits the tags of the selection
                     other if other.starts_with("rate=") => {
                         let v: u8 = other[5..].parse().unwrap_or(0);
-                        sender.input(Input::SetRating(self.selected.clone(), v, false));
+                        sender.input(Input::SetRating(self.selected_books(), v, false));
                     }
                     other if other.starts_with("tags=") => {
                         let spec = &other[5..];
@@ -4660,13 +5562,23 @@ impl SimpleComponent for LibraryView {
                             _ => (crate::tags::parse_entry(spec), Vec::new()),
                         };
                         sender.input(Input::EditTags {
-                            ids: self.selected.clone(),
+                            ids: self.selected_books(),
                             add,
                             remove,
                             in_panel: false,
                         });
                     }
                     // the star badges on the covers and what the selection has
+                    // `audiobadges`: the headphones badges on the covers and the sidebar's Audiobooks row
+                    "audiobadges" => {
+                        let mut n = 0;
+                        super::audiobook_player::audio_badges(self.grid.view.upcast_ref(), &mut n);
+                        let row = super::audiobook_player::has_named(
+                            self.w.tags.upcast_ref(),
+                            "audiobooks-row",
+                        );
+                        eprintln!("audiobadges: visible={n} sidebar_row={row}");
+                    }
                     "favbadges" => {
                         let mut n = 0;
                         count_badges(self.grid.view.upcast_ref(), &mut n);
@@ -4698,6 +5610,10 @@ impl SimpleComponent for LibraryView {
                         }
                     }
                     "properties" => self.do_act(Act::Properties),
+                    // editions of one work: `works=on|off`, `works=link:1,2`, `works=unlink:ID`,
+                    // `works=prefer:ID`, `works=card:ID[:ctrl]` (click that card), `works=show:ID`
+                    // (its edition list), `works=cards` and `works=selected` print what is there
+                    other if other.starts_with("works=") => self.dev_works(&other[6..], &sender),
                     // what a click does: `click=<position>[:ctrl|shift]` on the n-th book shown,
                     // `rightclick=<position>`, `click-empty` (the handlers the gestures call)
                     "click-empty" => sender.input(Input::ClearSelection),
@@ -4829,6 +5745,15 @@ impl SimpleComponent for LibraryView {
                     "notes" => self.do_act(Act::Notes),
                     other if other.starts_with("notes:") => {
                         super::notes::dev_command(&other["notes:".len()..])
+                    }
+                    // `export-calibre=<folder>` runs the Calibre export job without the folder dialog
+                    other if other.starts_with("export-calibre=") => {
+                        let t = self.sender.input_sender().clone();
+                        super::calibre_export::run(
+                            &self.shared,
+                            std::path::PathBuf::from(&other["export-calibre=".len()..]),
+                            Rc::new(move |m| t.emit(Input::Toast(m))),
+                        );
                     }
                     other if other.starts_with("export-all=") => {
                         if let Some((id, dir)) = other["export-all=".len()..].split_once(':') {
@@ -5413,6 +6338,7 @@ impl SimpleComponent for LibraryView {
                     "editmeta" => self.do_act(Act::EditMeta),
                     "delete" => self.do_act(Act::Delete),
                     "selectall" => {
+                        self.finish_fill();
                         self.active_model().select_all();
                     }
                     other if other.starts_with("import=") => {
@@ -5451,6 +6377,16 @@ impl SimpleComponent for LibraryView {
                         if let Some(win) = window_of(&self.root) {
                             let (search, _, notify) = self.organize_callbacks();
                             crate::ui::saved::dev(&win, &self.shared, search, notify, &other[6..]);
+                        }
+                    }
+                    // `sort=N`: the Nth sort key of the sort menu
+                    other if other.starts_with("sort=") => {
+                        let key = other[5..]
+                            .parse::<usize>()
+                            .ok()
+                            .and_then(|n| SortKey::ALL.get(n).copied());
+                        if let Some(k) = key {
+                            sender.input(Input::Sort(k));
                         }
                     }
                     other if other.starts_with("language=") => {
@@ -5500,7 +6436,17 @@ impl SimpleComponent for LibraryView {
                     _ => {}
                 }
             }
+            Input::FillStep(gen) => {
+                if self.fill.as_ref().is_some_and(|f| match &f.rows {
+                    FillRows::Grid(c) => c.is_for(gen),
+                    FillRows::Table(c) => c.is_for(gen),
+                }) {
+                    self.fill_piece(false);
+                    self.schedule_fill();
+                }
+            }
             Input::SelectAll => {
+                self.finish_fill();
                 self.active_model().select_all();
             }
         }
@@ -5688,4 +6634,19 @@ fn header_report(header: &adw::HeaderBar) -> String {
         rightmost,
         clipped.join(", ")
     )
+}
+
+#[cfg(test)]
+mod sync_menu_tests {
+    use super::MAIN_MENU;
+
+    #[test]
+    fn the_menu_has_one_sync_entry_and_no_share_library() {
+        assert_eq!(MAIN_MENU.iter().filter(|(l, _)| *l == "Sync").count(), 1);
+        assert!(MAIN_MENU.contains(&("Sync", "app.sync")));
+        assert!(!MAIN_MENU.iter().any(|(l, _)| *l == "Share Library"));
+        // the USB window stays next to it
+        let i = MAIN_MENU.iter().position(|(l, _)| *l == "Sync").unwrap();
+        assert_eq!(MAIN_MENU[i + 1].1, "app.devices");
+    }
 }

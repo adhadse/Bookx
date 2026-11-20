@@ -240,3 +240,18 @@ fn matching_a_tracker_export_against_a_large_library() {
     });
     assert_eq!(m.iter().filter(|x| x.book.is_some()).count(), rows.len());
 }
+
+// -- duplicate scan at 100 000 books (PP-C-11, PP-G-12) -----------------------------------------------
+
+#[path = "../../bookx-store/tests/common/synth.rs"]
+mod synth;
+
+#[test]
+fn duplicate_scan_of_a_hundred_thousand_books() {
+    let books = synth::synth_library(100_000);
+    let sets = check("find_duplicates(100 000 books)", 6_000, || {
+        dedup::find_duplicates(&books, dedup::DEFAULT_THRESHOLD)
+    });
+    // every 500th book is a planted near-duplicate of the one before it
+    assert!(sets.len() >= 190, "found {} sets", sets.len());
+}

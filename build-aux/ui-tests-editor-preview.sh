@@ -104,18 +104,18 @@ scenario editor_pv_a11y 'edit:1,wait:3000,editor:open=OEBPS/chapter-1.xhtml,wait
     ! has "^a11y-problem:"; check "the preview header, compare view, Live CSS panel, checkpoints dialog and split dialog have accessible names" $?
     [ "$(grep -c "^a11y:" <<<"$OUT")" -ge 4 ]; check "the audit ran with each of them open" $?'
 
-scenario editor_scroll_sync 'edit:1,wait:3000,editor:open=OEBPS/chapter-1.xhtml,wait:600,editor:pv-fill=150,wait:400,editor:pv-refresh,wait:800,editor:pv-sync-state,editor:pv-code-scroll=120,wait:600,editor:pv-sync-state,editor:pv-code-scroll=60,wait:600,editor:pv-sync-state,editor:pv-code-scroll=1,wait:600,editor:pv-sync-state,editor:pv-preview-scroll=0.5,wait:600,editor:pv-sync-state,editor:pv-both=on,wait:200,editor:pv-preview-scroll=0.5,wait:600,editor:pv-sync-state,editor:pv-code-scroll=100,wait:600,editor:pv-sync-state,editor:find-in-text=Filler paragraph 20 of,wait:700,editor:pv-where,editor:pv-sync-state,editor:pv-hide=on,wait:300,editor:pv-code-scroll=10,wait:600,editor:pv-sync-state,quit' '
+scenario editor_scroll_sync 'edit:1,wait:3000,editor:open=OEBPS/chapter-1.xhtml,wait:600,editor:pv-fill=150,wait:400,editor:pv-refresh,wait:800,editor:pv-sync-state,editor:pv-both=off,wait:200,editor:pv-code-scroll=120,wait:600,editor:pv-sync-state,editor:pv-code-scroll=60,wait:600,editor:pv-sync-state,editor:pv-code-scroll=1,wait:600,editor:pv-sync-state,editor:pv-preview-scroll=0.5,wait:600,editor:pv-sync-state,editor:pv-both=on,wait:200,editor:pv-preview-scroll=0.5,wait:600,editor:pv-sync-state,editor:pv-code-scroll=100,wait:600,editor:pv-sync-state,editor:find-in-text=Filler paragraph 20 of,wait:700,editor:pv-where,editor:pv-sync-state,editor:pv-hide=on,wait:300,editor:pv-code-scroll=10,wait:600,editor:pv-sync-state,quit' '
     S=$(grep "^editor_sync:" <<<"$OUT")
     f() { sed -n "$1p" <<<"$S" | sed -E "s/.* $2=(Some\()?([0-9]+).*/\2/"; }
     near() { [ "$(( $1 - $2 ))" -le 1 ] && [ "$(( $2 - $1 ))" -le 1 ]; }
-    sed -n 1p <<<"$S" | grep -q "both=false code_line=1 "; check "the file starts at the top in both panes" $?
+    sed -n 1p <<<"$S" | grep -q "^editor_sync: both=true "; check "scrolling the preview scrolls the code is on by default (a fresh editor.json)" $?
     c=$(f 2 code_block); p=$(f 2 preview_block)
     [ "${c:-0}" -gt 40 ] && near "${p:-0}" "${c:-0}"; check "scrolling the code view moves the preview to the same block (code block $c, preview block $p)" $?
     c=$(f 3 code_block); p=$(f 3 preview_block)
     [ "${c:-0}" -gt 10 ] && [ "${c:-0}" -lt 70 ] && near "${p:-0}" "${c:-0}"; check "and back up again (code block $c, preview block $p)" $?
     c=$(f 4 code_block); p=$(f 4 preview_block)
     [ "${p:-9}" -le 1 ]; check "scrolling the code to the top brings the preview to the top (preview block $p)" $?
-    sed -n 5p <<<"$S" | grep -q "code_line=1 "; check "with the option off, scrolling the preview does not move the code" $?
+    sed -n 5p <<<"$S" | grep -q "code_line=1 "; check "with the option switched off, scrolling the preview does not move the code" $?
     sed -n 6p <<<"$S" | grep -q "both=true"; check "the option can be switched on" $?
     l=$(f 6 code_line); [ "${l:-1}" -gt 40 ]; check "with the option on, scrolling the preview scrolls the code to the same place (code line $l)" $?
     y1=$(f 7 preview_y); c=$(f 7 code_block); p=$(f 7 preview_block)

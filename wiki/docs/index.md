@@ -164,11 +164,11 @@ been tried on real hardware with one Kobo only.
 
     Read many formats, write KEPUB, AZW3, MOBI, FB2 and more, from the app or the command line. [Converting](converting.md)
 
-- :material-sync: **Reading progress sync**
+- :material-sync: **Bookx sync**
 
     ---
 
-    KOSync-compatible: Bookx can be a server, or talk to one. [Progress sync](progress-sync.md)
+    Bookx sync keeps position, highlights, notes and bookmarks in step with KOReader, on your own network. [Bookx sync](progress-sync.md)
 
 - :material-newspaper-variant-outline: **News and web pages**
 

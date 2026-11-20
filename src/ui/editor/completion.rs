@@ -4,7 +4,10 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::rc::Rc;
+use std::time::Duration;
 
 use relm4::gtk::{self, gio, glib, prelude::*, subclass::prelude::*};
 use sourceview5 as sv;
@@ -30,6 +33,34 @@ pub struct Data {
     pub region: Rc<SnippetRegion>,
     /// How often the popup asked for proposals and how many it got the last time (dev hook).
     pub populated: (usize, usize),
+    /// How long the popup waited for its proposals (dev hook, regression test of the debounce).
+    pub waits: PopupWaits,
+}
+
+/// The popup is only opened this long after the keystroke that asked for it. GtkSourceView hides the list and
+/// asks again within one main-loop iteration while text is typed (`class=` then `"`); GTK 4.24's Vulkan renderer
+/// then re-uses the Wayland surface of the popup that was just destroyed, and mutter kills the app
+/// (`wl_surface already has a buffer committed`, protocol error 71). The reader's popovers wait the same way.
+pub const POPUP_DELAY_MS: u64 = 90;
+
+/// Timing of the answers the provider gave (microseconds between the request and the answer).
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PopupWaits {
+    pub answers: usize,
+    pub shortest_us: Option<i64>,
+}
+
+impl PopupWaits {
+    pub fn record(&mut self, waited_us: i64) {
+        self.answers += 1;
+        self.shortest_us = Some(self.shortest_us.map_or(waited_us, |s| s.min(waited_us)));
+    }
+
+    /// Whether every answer came at least [`POPUP_DELAY_MS`] after its request.
+    pub fn debounced(&self) -> bool {
+        self.shortest_us
+            .is_none_or(|s| s >= POPUP_DELAY_MS as i64 * 1000)
+    }
 }
 
 pub type SharedData = Rc<RefCell<Data>>;
@@ -248,6 +279,24 @@ mod provider_imp {
             Ok(store.upcast())
         }
 
+        fn populate_future(
+            &self,
+            context: &sv::CompletionContext,
+        ) -> Pin<Box<dyn Future<Output = Result<gio::ListModel, glib::Error>>>> {
+            let (obj, context) = (self.obj().clone(), context.clone());
+            Box::pin(async move {
+                let asked = glib::monotonic_time();
+                glib::timeout_future(Duration::from_millis(POPUP_DELAY_MS)).await;
+                let store = gio::ListStore::new::<Proposal>();
+                let imp = obj.imp();
+                imp.fill(&context, &store);
+                if let Some(d) = imp.data.borrow().as_ref() {
+                    d.borrow_mut().waits.record(glib::monotonic_time() - asked);
+                }
+                Ok(store.upcast())
+            })
+        }
+
         fn refilter(&self, context: &sv::CompletionContext, model: &gio::ListModel) {
             if let Some(store) = model.downcast_ref::<gio::ListStore>() {
                 store.remove_all();
@@ -423,4 +472,20 @@ pub fn install(view: &sv::View, data: SharedData) {
     let completion = view.completion();
     completion.set_select_on_show(true);
     completion.add_provider(&Provider::new(data));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn answers_that_come_too_early_are_noticed() {
+        let mut w = PopupWaits::default();
+        assert!(w.debounced(), "nothing asked yet");
+        w.record(POPUP_DELAY_MS as i64 * 1000 + 5);
+        assert!(w.debounced());
+        w.record(300);
+        assert!(!w.debounced());
+        assert_eq!((w.answers, w.shortest_us), (2, Some(300)));
+    }
 }

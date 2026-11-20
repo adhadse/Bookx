@@ -61,7 +61,7 @@ page: it does not change the text, the pages or what a screen reader hears.
 
 ## Search in Preferences
 
-**Preferences** (++ctrl+comma++) has a list of sections (General, Library, Reading, Devices and Sharing, E-mail, Sync,
+**Preferences** (++ctrl+comma++) has a list of sections (General, Library, Reading, Sync, E-mail,
 Extensions, Patches) and the settings of the chosen one next to it; see [Preferences](preferences.md). Press ++ctrl+f++ in
 the dialog and type to filter the settings of all sections (the list shows the sections that match). The command palette
 also finds settings, by their name, their description and their section, and opens Preferences on that row.
@@ -87,6 +87,8 @@ left). Vertical writing (Japanese, Chinese) is not supported yet.
   Page Down turns the page); nobody has done a long listening session, and other screen readers (NVDA, VoiceOver) are not
   tested.
 - Selection is by character, word and sentence; there is no caret that moves through the page text.
-- The text of fixed-layout books (pictures of pages) and comics is not readable by a screen reader.
+- The text of fixed-layout books (pictures of pages) and comics is not readable by a screen reader. In a comic the
+  page area is named with the title and the page ("Page 3 of 12"), the controls are named, and everything that the mouse
+  does has a key (see [Comics and manga](reading.md#comics-and-manga)).
 - Links inside the page text cannot be followed with the keyboard yet (they have no focus); the contents list and the
   search are reachable with ++tab++.

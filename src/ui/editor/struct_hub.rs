@@ -17,6 +17,17 @@ use crate::editor_structure::Origin;
 pub struct State {
     /// Put the focus back on the selected Contents entry after the next rebuild (keyboard moves).
     pub toc_refocus: Cell<bool>,
+    /// True while the Contents list is being filled from the code (its signals must not come back as input).
+    pub toc_syncing: Rc<Cell<bool>>,
+    /// The entry widget of every Contents row that exists right now (the list is virtual), by list item.
+    pub toc_entries: Rc<RefCell<Vec<(glib::WeakRef<gtk::ListItem>, glib::WeakRef<gtk::Entry>)>>>,
+    /// Files whose very long lines the user has chosen to open, and the page that asks.
+    pub long_ok: RefCell<std::collections::HashSet<String>>,
+    pub long_page: RefCell<Option<adw::StatusPage>>,
+    /// What the code view holds while that page is shown (the long file is not put into it).
+    pub long_blank: RefCell<Option<sv::Buffer>>,
+    /// The "No table of contents" hint over the list.
+    pub toc_hint: RefCell<Option<gtk::Label>>,
     /// The file a non-EPUB book was opened from; saving offers to convert back into it.
     pub origin: RefCell<Option<Origin>>,
     /// A merge by dragging that waits for the user's answer: (dragged file, target file).
@@ -31,6 +42,8 @@ pub enum StructCmd {
     TocDrop(usize, usize, DropPos),
     /// A page was dropped onto the middle of another page: (dragged, target).
     DropMerge(String, String),
+    /// The answer to the very-long-line page: add line breaks (true) or open as it is (false).
+    LongLine(bool),
     /// The result of the file chooser of "Open a Book of Another Format".
     OpenForeign(PathBuf),
     /// Save the foreign book as an EPUB at a path.
@@ -54,6 +67,7 @@ impl Editor {
     pub(super) fn struct_update(&mut self, c: StructCmd) {
         match c {
             StructCmd::TocDrop(from, target, pos) => self.toc_drop(from, target, pos),
+            StructCmd::LongLine(reformat) => self.long_line_choose(reformat),
             StructCmd::DropMerge(from, onto) => self.prompt_drop_merge(&from, &onto),
             StructCmd::OpenForeign(p) => self.open_foreign_file(&p),
             StructCmd::SaveEpub(p) => self.save_foreign_epub(&p),

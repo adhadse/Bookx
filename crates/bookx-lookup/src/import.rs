@@ -35,6 +35,11 @@ pub struct Imported {
     pub chapter: Option<String>,
     pub created: Option<DateTime<Utc>>,
     pub bookmark: bool,
+    /// The colour as the source wrote it (a name, `#rrggbb`); `None` when the source has none
+    /// (Kindle clippings never have). Mapped by `bookx_core::devstyle`.
+    pub color: Option<String>,
+    /// The style as the source wrote it (`lighten`, `underscore`, `strikeout`, `underline`, ...).
+    pub style: Option<String>,
 }
 
 fn norm(s: &str) -> String {
@@ -209,6 +214,8 @@ pub fn parse_kindle_clippings(text: &str) -> Vec<Imported> {
                 chapter: None,
                 created,
                 bookmark: kind == Kind::Bookmark,
+                color: None,
+                style: None,
             },
             kind,
             rng,
@@ -321,6 +328,8 @@ fn koreader_doc(doc: &Value, out: &mut Vec<Imported>) {
             chapter: str_field(e, "chapter"),
             created: e.get("time").and_then(json_time),
             bookmark: false,
+            color: str_field(e, "color"),
+            style: str_field(e, "drawer").or_else(|| str_field(e, "style")),
         });
     }
 }
@@ -350,6 +359,8 @@ fn bookx_core_doc(doc: &Value, out: &mut Vec<Imported>) {
             chapter: str_field(h, "chapter"),
             created: h.get("created").and_then(json_time),
             bookmark: false,
+            color: str_field(h, "color"),
+            style: str_field(h, "style"),
         });
     }
 }
@@ -387,6 +398,8 @@ fn bookx_lookup_doc(doc: &Value, out: &mut Vec<Imported>) {
                 chapter: str_field(a, "chapter"),
                 created: a.get("created").and_then(json_time),
                 bookmark,
+                color: str_field(a, "color"),
+                style: str_field(a, "style").filter(|_| !bookmark),
             });
         }
     }
@@ -424,6 +437,8 @@ fn calibre_walk(v: &Value, book: &(Option<String>, Option<String>), out: &mut Ve
                             .map(str::to_string),
                         created: v.get("timestamp").and_then(json_time),
                         bookmark: false,
+                        color: None,
+                        style: None,
                     });
                 }
                 return;
@@ -528,6 +543,8 @@ pub fn parse_koreader_markdown(text: &str) -> Vec<Imported> {
                 chapter: chapter.clone(),
                 created,
                 bookmark: false,
+                color: None,
+                style: None,
             });
         }
     };
@@ -580,6 +597,16 @@ pub fn dedupe(items: Vec<Imported>) -> Vec<Imported> {
             if norm(&o.book_title) != key {
                 return false;
             }
+            // the same words in another colour or style are another highlight
+            let differ = |a: &Option<String>, b: &Option<String>| matches!((a, b), (Some(x), Some(y)) if !x.eq_ignore_ascii_case(y));
+            if differ(&o.color, &it.color) || differ(&o.style, &it.style) {
+                return false;
+            }
+            // the same words in two different chapters are two highlights (a word or term that is
+            // marked every time it is explained); a source that does not name the chapter says nothing
+            if differ(&o.chapter, &it.chapter) {
+                return false;
+            }
             let ot = norm(&o.text);
             if text.is_empty() || ot.is_empty() {
                 return text == ot && !it.note.is_empty() && norm(&o.note) == norm(&it.note);
@@ -604,6 +631,12 @@ pub fn dedupe(items: Vec<Imported>) -> Vec<Imported> {
                 }
                 if o.created.is_none() {
                     o.created = it.created;
+                }
+                if o.color.is_none() {
+                    o.color = it.color;
+                }
+                if o.style.is_none() {
+                    o.style = it.style;
                 }
             }
         }
@@ -786,6 +819,8 @@ mod tests {
             chapter: None,
             created: None,
             bookmark: false,
+            color: None,
+            style: None,
         };
         let v = dedupe(vec![
             mk("Fear is the mind-killer", ""),
@@ -799,6 +834,35 @@ mod tests {
             "Fear is the mind-killer. Fear is the little-death."
         );
         assert_eq!(v[0].note, "n");
+    }
+
+    /// Found on the owner's Kobo: the term "Request-response" is highlighted in two chapters (pages 150 and
+    /// 157); the second was thrown away as a repeat.
+    #[test]
+    fn the_same_words_in_two_chapters_are_two_highlights() {
+        let mk = |chapter: Option<&str>| Imported {
+            book_title: "Building Microservices".into(),
+            book_author: None,
+            text: "Request-response".into(),
+            note: String::new(),
+            location: None,
+            chapter: chapter.map(str::to_string),
+            created: None,
+            bookmark: false,
+            color: Some("cyan".into()),
+            style: None,
+        };
+        let v = dedupe(vec![
+            mk(Some("Styles of Microservice Communication")),
+            mk(Some("Pattern: Asynchronous Nonblocking")),
+            mk(Some("Pattern: Asynchronous Nonblocking")),
+            mk(None),
+        ]);
+        assert_eq!(
+            v.len(),
+            2,
+            "two chapters; a copy and one that names no chapter fold in"
+        );
     }
 
     #[test]

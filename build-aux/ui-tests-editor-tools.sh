@@ -149,7 +149,8 @@ scenario editor_x_embed_dialog "edit:1,wait:3000,editor:x:write-font=$ROOT/xt/fo
     ! has "^a11y-problem:"; check "the dialog has accessible names" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
-scenario editor_x_open_with "edit:1,wait:3000,editor:open=OEBPS/chapter-1.xhtml,wait:300,editor:x:open-with-export,wait:1500,editor:x:external-pending,editor:x:external-accept,wait:600,editor:cat=OEBPS/chapter-1.xhtml,editor:dump,quit" '
+scenario editor_x_open_with "edit:1,wait:3000,editor:open=OEBPS/chapter-1.xhtml,wait:300,editor:x:open-with-export,until:editor-external-pending:10000,editor:x:external-pending,editor:x:external-accept,wait:1000,editor:cat=OEBPS/chapter-1.xhtml,editor:dump,quit" '
+    has "^until: editor-external-pending ok"; check "the file monitor notices the external save without a fixed sleep" $?
     has "^editor_x: external: OEBPS/chapter-1.xhtml"; check "a file saved by the other program is noticed and waits for the answer" $?
     has "^editor_cat: .*EXTERNAL EDIT"; check "accepting puts the new content into the book" $?
     has "^editor: .*toast=\"Replaced chapter-1.xhtml|^editor: .*checkpoints=[1-9]"; check "the update is one undoable step" $?

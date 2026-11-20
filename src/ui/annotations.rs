@@ -126,10 +126,9 @@ pub fn run(
 ) {
     let (books, locator) = {
         let lib = shared.lib.borrow();
-        (
-            crate::device_sync::library_books(&lib.books),
-            crate::device_sync::book_locator(&lib),
-        )
+        let mut books = crate::device_sync::library_books(&lib.books);
+        crate::device_sync::attach_looks(&mut books, &lib.root);
+        (books, crate::device_sync::book_locator(&lib))
     };
     let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {

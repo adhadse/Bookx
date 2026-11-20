@@ -232,6 +232,7 @@ impl Library {
                 Ok(())
             }
             OpKind::Move { moves } => self.undo_moves(moves),
+            OpKind::RepairHighlights { before } => self.undo_repair_highlights(before),
             OpKind::MergeFormats {
                 primary,
                 before_file,

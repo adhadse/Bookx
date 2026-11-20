@@ -6,6 +6,9 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid " · not stopped by offline mode"
+msgstr ""
+
 msgid " · {} spellings"
 msgstr ""
 
@@ -24,7 +27,13 @@ msgstr ""
 msgid "(choose an image)"
 msgstr ""
 
+msgid "(none)"
+msgstr ""
+
 msgid "(not stated)"
+msgstr ""
+
+msgid "(removed book)"
 msgstr ""
 
 msgid "(the page itself)"
@@ -45,7 +54,25 @@ msgstr ""
 msgid "0 of {}"
 msgstr ""
 
+msgid "1 hour"
+msgstr ""
+
+msgid "10 minutes"
+msgstr ""
+
+msgid "15 minutes"
+msgstr ""
+
+msgid "30 minutes"
+msgstr ""
+
+msgid "45 minutes"
+msgstr ""
+
 msgid "45, 37%, loc 1200, ch 3"
+msgstr ""
+
+msgid "5 minutes"
 msgstr ""
 
 msgid "</{}> has no matching start tag"
@@ -69,6 +96,9 @@ msgstr ""
 msgid "A class name starts with a letter or _ and has no spaces"
 msgstr ""
 
+msgid "A device has synced"
+msgstr ""
+
 msgid "A first page that shows the cover, listed as the cover in the guide and landmarks"
 msgstr ""
 
@@ -76,6 +106,9 @@ msgid "A library is a folder with its own books and catalogue. Choose a name; yo
 msgstr ""
 
 msgid "A location is a whole number from 1."
+msgstr ""
+
+msgid "A mail account under Preferences → E-mail to send books; nothing for exports"
 msgstr ""
 
 msgid "A modern library, reader and editor for e-books — written entirely in Rust."
@@ -153,6 +186,12 @@ msgstr ""
 msgid "Account"
 msgstr ""
 
+msgid "Account and address for sending books to a Kindle or another address"
+msgstr ""
+
+msgid "Acknowledgements"
+msgstr ""
+
 msgid "Action"
 msgstr ""
 
@@ -178,6 +217,9 @@ msgid "Add"
 msgstr ""
 
 msgid "Add All"
+msgstr ""
+
+msgid "Add Audiobook"
 msgstr ""
 
 msgid "Add Books"
@@ -207,6 +249,9 @@ msgstr ""
 msgid "Add Folder and Subfolders"
 msgstr ""
 
+msgid "Add Line Breaks and Open"
+msgstr ""
+
 msgid "Add Narration"
 msgstr ""
 
@@ -222,16 +267,28 @@ msgstr ""
 msgid "Add Template"
 msgstr ""
 
+msgid "Add Term"
+msgstr ""
+
 msgid "Add a Catalogue"
 msgstr ""
 
 msgid "Add a Place"
 msgstr ""
 
+msgid "Add a bookmark at this position"
+msgstr ""
+
 msgid "Add a bookmark on this page (Ctrl+B)"
 msgstr ""
 
 msgid "Add a catalogue"
+msgstr ""
+
+msgid "Add a class"
+msgstr ""
+
+msgid "Add a jacket"
 msgstr ""
 
 msgid "Add a note"
@@ -288,10 +345,19 @@ msgstr ""
 msgid "Add from the Web and news subscriptions"
 msgstr ""
 
+msgid "Add my notes to the copy sent to the device"
+msgstr ""
+
+msgid "Add my own definition"
+msgstr ""
+
+msgid "Add my own definition of {}"
+msgstr ""
+
 msgid "Add one above to restore from it. You can also restore from a backup file."
 msgstr ""
 
-msgid "Add some books to start your library.\nEPUB, plain text, Markdown and HTML files are supported — drop them here."
+msgid "Add some books to start your library.\nEPUB, PDF, MOBI, FB2, comics, audiobooks, plain text and more — drop them here."
 msgstr ""
 
 msgid "Add some rules and give the set a name first"
@@ -312,6 +378,9 @@ msgstr ""
 msgid "Add to Shelf"
 msgstr ""
 
+msgid "Add to Vocabulary"
+msgstr ""
+
 msgid "Add {} to the library"
 msgstr ""
 
@@ -319,6 +388,9 @@ msgid "Add {} to your library?"
 msgstr ""
 
 msgid "Added"
+msgstr ""
+
+msgid "Added .{} to {}"
 msgstr ""
 
 msgid "Added the book jacket {}"
@@ -351,10 +423,16 @@ msgstr ""
 msgid "Address (a file, #anchor or a web address)"
 msgstr ""
 
+msgid "Address for the e-reader"
+msgstr ""
+
 msgid "Address, e.g. https://cloud.example.com/remote.php/dav/files/me/"
 msgstr ""
 
 msgid "Address, e.g. https://cloud.example/remote.php/dav/files/me/Books"
+msgstr ""
+
+msgid "Advanced"
 msgstr ""
 
 msgid "Advanced and custom CSS"
@@ -367,6 +445,21 @@ msgid "After {}"
 msgstr ""
 
 msgid "Alias"
+msgstr ""
+
+msgid "Align Centre"
+msgstr ""
+
+msgid "Align Left"
+msgstr ""
+
+msgid "Align Right"
+msgstr ""
+
+msgid "Alignment"
+msgstr ""
+
+msgid "All"
 msgstr ""
 
 msgid "All Fonts"
@@ -417,6 +510,9 @@ msgstr ""
 msgid "Allow other devices on my network"
 msgstr ""
 
+msgid "Allow this port in your firewall for the e-reader to connect."
+msgstr ""
+
 msgid "Already EPUB 3"
 msgstr ""
 
@@ -447,10 +543,19 @@ msgstr ""
 msgid "Always download the voice without asking"
 msgstr ""
 
+msgid "Always on"
+msgstr ""
+
 msgid "Always use the HTML5 parser"
 msgstr ""
 
+msgid "An app or browser on the same network, or one that can reach this computer (KOReader, Moon+ Reader, Librera, Kybook)"
+msgstr ""
+
 msgid "Anchor in the page"
+msgstr ""
+
+msgid "Animate moves between panels"
 msgstr ""
 
 msgid "Anki CSV, front/back"
@@ -474,6 +579,9 @@ msgstr ""
 msgid "Annotations"
 msgstr ""
 
+msgid "Another book"
+msgstr ""
+
 msgid "Another rule wins for this property"
 msgstr ""
 
@@ -486,7 +594,16 @@ msgstr ""
 msgid "Appearance"
 msgstr ""
 
+msgid "Appears here when the server is on."
+msgstr ""
+
+msgid "Application"
+msgstr ""
+
 msgid "Applied by Convert To and Send to, after the built-in steps. It also stays available as a one-off tool."
+msgstr ""
+
+msgid "Applies to"
 msgstr ""
 
 msgid "Applies to this element"
@@ -505,6 +622,9 @@ msgid "Apply later"
 msgstr ""
 
 msgid "Apply safe changes automatically"
+msgstr ""
+
+msgid "Apply to all books"
 msgstr ""
 
 msgid "Apply {}"
@@ -531,10 +651,43 @@ msgstr ""
 msgid "At (HH:MM, local time)"
 msgstr ""
 
+msgid "At most 1200 pixels high"
+msgstr ""
+
+msgid "At most 1600 pixels high"
+msgstr ""
+
+msgid "At most 800 pixels high"
+msgstr ""
+
+msgid "Audio"
+msgstr ""
+
+msgid "Audio files and zips"
+msgstr ""
+
 msgid "Audiobook"
 msgstr ""
 
+msgid "Audiobook File"
+msgstr ""
+
+msgid "Audiobook Folder"
+msgstr ""
+
+msgid "Audiobook player"
+msgstr ""
+
 msgid "Audiobooks"
+msgstr ""
+
+msgid "Audiobooks finished this year"
+msgstr ""
+
+msgid "Author"
+msgstr ""
+
+msgid "Author / Title folders"
 msgstr ""
 
 msgid "Author sort"
@@ -546,6 +699,9 @@ msgstr ""
 msgid "Authors (separate with &amp;)"
 msgstr ""
 
+msgid "Automatic (touch screens)"
+msgstr ""
+
 msgid "Automatic backups"
 msgstr ""
 
@@ -553,6 +709,9 @@ msgid "Automatic backups to keep here"
 msgstr ""
 
 msgid "Back"
+msgstr ""
+
+msgid "Back 15 seconds"
 msgstr ""
 
 msgid "Back Up"
@@ -582,10 +741,16 @@ msgstr ""
 msgid "Back up now, or leave automatic backups on: a snapshot is taken when Bookx starts and when it closes."
 msgstr ""
 
+msgid "Back, or previous panel in guided view"
+msgstr ""
+
 msgid "Backed up {}"
 msgstr ""
 
 msgid "Background"
+msgstr ""
+
+msgid "Background Colour"
 msgstr ""
 
 msgid "Background Jobs"
@@ -621,6 +786,9 @@ msgstr ""
 msgid "Basics"
 msgstr ""
 
+msgid "Battery"
+msgstr ""
+
 msgid "Beautify"
 msgstr ""
 
@@ -630,10 +798,19 @@ msgstr ""
 msgid "Best day"
 msgstr ""
 
+msgid "Bibliography"
+msgstr ""
+
 msgid "Bibliography preview"
 msgstr ""
 
+msgid "Black"
+msgstr ""
+
 msgid "Black on white, no animations, bars that stay, wide tap zones"
+msgstr ""
+
+msgid "Blank page (XHTML)"
 msgstr ""
 
 msgid "Bold"
@@ -658,6 +835,9 @@ msgid "Book check passed — no problems found"
 msgstr ""
 
 msgid "Book editor"
+msgstr ""
+
+msgid "Book files, annotations and citations only"
 msgstr ""
 
 msgid "Book filter"
@@ -687,7 +867,16 @@ msgstr ""
 msgid "Book source editor"
 msgstr ""
 
+msgid "Book title"
+msgstr ""
+
 msgid "Bookmark"
+msgstr ""
+
+msgid "Bookmark added"
+msgstr ""
+
+msgid "Bookmark note"
 msgstr ""
 
 msgid "Bookmarks"
@@ -700,6 +889,9 @@ msgid "Bookmarks and highlights"
 msgstr ""
 
 msgid "Books"
+msgstr ""
+
+msgid "Books and the catalogue only"
 msgstr ""
 
 msgid "Books are stored in a Calibre-style folder tree inside this folder"
@@ -720,7 +912,28 @@ msgstr ""
 msgid "Books to send"
 msgstr ""
 
+msgid "Books you open appear here, the latest first."
+msgstr ""
+
+msgid "Books, reading progress, highlights and notes. Stock Kobo notes and progress are imported; stock firmware has no wireless sync with Bookx"
+msgstr ""
+
 msgid "Bookx Library"
+msgstr ""
+
+msgid "Bookx and KOReader"
+msgstr ""
+
+msgid "Bookx and KOReader on a Kobo, Kindle, Android or PocketBook reader"
+msgstr ""
+
+msgid "Bookx and a Kobo or other e-reader mounted as a USB drive"
+msgstr ""
+
+msgid "Bookx and any address, file or app"
+msgstr ""
+
+msgid "Bookx and reader apps or e-readers that browse OPDS"
 msgstr ""
 
 msgid "Bookx can download {} (free, works offline afterwards) and show the definition at once."
@@ -732,7 +945,31 @@ msgstr ""
 msgid "Bookx has no telemetry, no account and no update check. It only connects when you use a feature that needs it."
 msgstr ""
 
+msgid "Bookx plugin for KOReader"
+msgstr ""
+
 msgid "Bookx remembers a SHA-256 checksum of every book file and tells you when a file changed without being edited, which is what a failing disk or a bad sync looks like."
+msgstr ""
+
+msgid "Bookx sync (extended KOSync) is compatible with KOReader’s KOSync progress protocol. Bookx’s extension also syncs highlights, notes and bookmarks when the Bookx plugin is installed in KOReader. Everything goes over one connection to this computer; no cloud service is involved."
+msgstr ""
+
+msgid "Bookx sync (reading position, highlights, notes)"
+msgstr ""
+
+msgid "Bookx sync is connected"
+msgstr ""
+
+msgid "Bookx sync is off"
+msgstr ""
+
+msgid "Bookx sync is ready"
+msgstr ""
+
+msgid "Bookx sync server"
+msgstr ""
+
+msgid "Bookx sync with KOReader (Wi-Fi)"
 msgstr ""
 
 msgid "Break long words at line ends, in the language of the book"
@@ -742,6 +979,9 @@ msgid "Browse Images"
 msgstr ""
 
 msgid "Build the reports again from the book as it is now"
+msgstr ""
+
+msgid "Built in, it cannot be removed"
 msgstr ""
 
 msgid "Built-in"
@@ -870,10 +1110,22 @@ msgstr ""
 msgid "Change Extension"
 msgstr ""
 
+msgid "Change a class"
+msgstr ""
+
 msgid "Change colour to {}"
 msgstr ""
 
+msgid "Change elements and attributes in all pages at once. Preview lists the pages a rule set would change; nothing outside the tags you name is touched."
+msgstr ""
+
 msgid "Change every occurrence of the word in the book"
+msgstr ""
+
+msgid "Change how the book looks without editing every stylesheet by hand. The rules apply to stylesheets, <style> blocks and style attributes."
+msgstr ""
+
+msgid "Change one colour into another"
 msgstr ""
 
 msgid "Change to"
@@ -903,16 +1155,37 @@ msgstr ""
 msgid "Changes are switched off for this session."
 msgstr ""
 
+msgid "Chapter"
+msgstr ""
+
 msgid "Chapter start"
+msgstr ""
+
+msgid "Chapter title"
+msgstr ""
+
+msgid "Chapter with a heading"
 msgstr ""
 
 msgid "Chapter {}"
 msgstr ""
 
+msgid "Chapter {} of {}"
+msgstr ""
+
 msgid "Chapter {} of {}: sentence {} of {}"
 msgstr ""
 
+msgid "Chapter {}: {}"
+msgstr ""
+
 msgid "Chapter: {}"
+msgstr ""
+
+msgid "Chapters"
+msgstr ""
+
+msgid "Chapters read"
 msgstr ""
 
 msgid "Character groups"
@@ -1050,7 +1323,19 @@ msgstr ""
 msgid "Choose a folder or enter an address first"
 msgstr ""
 
+msgid "Choose an empty folder for the Calibre library"
+msgstr ""
+
 msgid "Choose another"
+msgstr ""
+
+msgid "Choose another dictionary"
+msgstr ""
+
+msgid "Choose another user name, or press Log in if this account is yours."
+msgstr ""
+
+msgid "Choose any user name and password. Copy these into Bookx Sync on the e-reader. This is not the Share Library password. There is no existing KOReader account. If the server is not on yet, switch on step 1 first."
 msgstr ""
 
 msgid "Choose at least one search"
@@ -1066,6 +1351,12 @@ msgid "Choose the Calibre Library Folder"
 msgstr ""
 
 msgid "Choose the Folder to Watch"
+msgstr ""
+
+msgid "Choose the folder for the plugin"
+msgstr ""
+
+msgid "Choose the folder of an audiobook, or one audio file (MP3, M4B, OGG, FLAC, WAV) or zip. The audio stays where it is."
 msgstr ""
 
 msgid "Choose the image to use as the cover."
@@ -1167,6 +1458,9 @@ msgstr ""
 msgid "Code"
 msgstr ""
 
+msgid "Colophon"
+msgstr ""
+
 msgid "Color scheme"
 msgstr ""
 
@@ -1177,6 +1471,9 @@ msgid "Colour codes like #1a2b3c are painted in their colour"
 msgstr ""
 
 msgid "Colour filter"
+msgstr ""
+
+msgid "Colour legend"
 msgstr ""
 
 msgid "Colour scheme"
@@ -1191,7 +1488,13 @@ msgstr ""
 msgid "Colour themes for the page, shared by all your books."
 msgstr ""
 
+msgid "Colours and alignment work in HTML pages"
+msgstr ""
+
 msgid "Columns"
+msgstr ""
+
+msgid "Comics"
 msgstr ""
 
 msgid "Command"
@@ -1257,7 +1560,13 @@ msgstr ""
 msgid "Connected device"
 msgstr ""
 
+msgid "Connected with the cable and mounted. Bookx reads the Kobo’s own reading state and KOReader’s sidecar files"
+msgstr ""
+
 msgid "Connecting…"
+msgstr ""
+
+msgid "Connection"
 msgstr ""
 
 msgid "Contents"
@@ -1296,6 +1605,9 @@ msgstr ""
 msgid "Continue reading {}, {}"
 msgstr ""
 
+msgid "Continuous scroll"
+msgstr ""
+
 msgid "Convert"
 msgstr ""
 
@@ -1329,6 +1641,9 @@ msgstr ""
 msgid "Converting {} to {}"
 msgstr ""
 
+msgid "Copied"
+msgstr ""
+
 msgid "Copied the bibliography"
 msgstr ""
 
@@ -1341,6 +1656,12 @@ msgstr ""
 msgid "Copied to {}"
 msgstr ""
 
+msgid "Copied to {} ({}). Restart KOReader, then open Bookx Sync in its top menu."
+msgstr ""
+
+msgid "Copies the plugin into KOReader’s plugins folder on the connected e-reader, or into a folder you choose. Restart KOReader afterwards. Without the plugin only the reading position is synced."
+msgstr ""
+
 msgid "Copies to other places"
 msgstr ""
 
@@ -1351,9 +1672,6 @@ msgid "Copy Diagnostics"
 msgstr ""
 
 msgid "Copy Final Output"
-msgstr ""
-
-msgid "Copy KOReader address"
 msgstr ""
 
 msgid "Copy address"
@@ -1369,6 +1687,9 @@ msgid "Copy saved"
 msgstr ""
 
 msgid "Copy text"
+msgstr ""
+
+msgid "Copy the Bookx plugin to the connected e-reader"
 msgstr ""
 
 msgid "Copy the Selection of the Preview"
@@ -1395,10 +1716,16 @@ msgstr ""
 msgid "Copy the token"
 msgstr ""
 
+msgid "Copy to the device"
+msgstr ""
+
 msgid "Copy to this place"
 msgstr ""
 
 msgid "Copy when Bookx closes"
+msgstr ""
+
+msgid "Copyright"
 msgstr ""
 
 msgid "Could not add the book: {}"
@@ -1408,6 +1735,12 @@ msgid "Could not add “{}”: {}"
 msgstr ""
 
 msgid "Could not back up to {}: {}"
+msgstr ""
+
+msgid "Could not be located in the book"
+msgstr ""
+
+msgid "Could not change the editions: {}"
 msgstr ""
 
 msgid "Could not compare: {}"
@@ -1420,6 +1753,9 @@ msgid "Could not convert back: {}"
 msgstr ""
 
 msgid "Could not convert: {}"
+msgstr ""
+
+msgid "Could not copy the plugin: {}"
 msgstr ""
 
 msgid "Could not copy to: {}"
@@ -1476,10 +1812,16 @@ msgstr ""
 msgid "Could not place a marker there"
 msgstr ""
 
+msgid "Could not play the audiobook: {}"
+msgstr ""
+
 msgid "Could not read that file"
 msgstr ""
 
 msgid "Could not read the book"
+msgstr ""
+
+msgid "Could not read the file: {}"
 msgstr ""
 
 msgid "Could not read {}: {}"
@@ -1513,6 +1855,9 @@ msgid "Could not save the folder: {}"
 msgstr ""
 
 msgid "Could not save the image"
+msgstr ""
+
+msgid "Could not save the plugin: {}"
 msgstr ""
 
 msgid "Could not save the word: {}"
@@ -1575,6 +1920,9 @@ msgstr ""
 msgid "Cover image: {}"
 msgstr ""
 
+msgid "Cover on its own page"
+msgstr ""
+
 msgid "Cover page: {}"
 msgstr ""
 
@@ -1596,6 +1944,9 @@ msgstr ""
 msgid "Create Checkpoint"
 msgstr ""
 
+msgid "Create your sync account"
+msgstr ""
+
 msgid "Created shelf “{}”"
 msgstr ""
 
@@ -1608,13 +1959,31 @@ msgstr ""
 msgid "Crop margins"
 msgstr ""
 
+msgid "Crop to 2:3 (centered)"
+msgstr ""
+
+msgid "Crop to 3:4 (centered)"
+msgstr ""
+
 msgid "Curly quotation marks"
+msgstr ""
+
+msgid "Curly quotes, proper dashes and ellipses in the text of the pages. Code, scripts, styles and attributes are never touched."
+msgstr ""
+
+msgid "Current time"
 msgstr ""
 
 msgid "Custom"
 msgstr ""
 
 msgid "Custom style sheet"
+msgstr ""
+
+msgid "Custom template"
+msgstr ""
+
+msgid "Dark"
 msgstr ""
 
 msgid "Dark pages (invert colours)"
@@ -1629,10 +1998,16 @@ msgstr ""
 msgid "Decorative"
 msgstr ""
 
+msgid "Dedication"
+msgstr ""
+
 msgid "Deepest heading level"
 msgstr ""
 
 msgid "Default voice"
+msgstr ""
+
+msgid "Defaults for comic books (CBZ, CBT). Layout, fit and reading direction you choose inside a comic are remembered for that book."
 msgstr ""
 
 msgid "Delete"
@@ -1677,6 +2052,9 @@ msgstr ""
 msgid "Delete theme {}"
 msgstr ""
 
+msgid "Delete this bookmark"
+msgstr ""
+
 msgid "Delete this function"
 msgstr ""
 
@@ -1707,6 +2085,9 @@ msgstr ""
 msgid "Deletes the file and its @font-face rules; the text falls back to the next font of its list"
 msgstr ""
 
+msgid "Deletes the rules of the stylesheets that match nothing in the book. @font-face, @media and other @-rules are kept."
+msgstr ""
+
 msgid "Deleting a book moves its files here. Restore them, or empty the trash to erase them for good."
 msgstr ""
 
@@ -1722,10 +2103,7 @@ msgstr ""
 msgid "Device plugin"
 msgstr ""
 
-msgid "Devices"
-msgstr ""
-
-msgid "Devices and Sharing"
+msgid "Device window"
 msgstr ""
 
 msgid "Diagnostics copied. They hold no book titles or passwords."
@@ -1872,6 +2250,9 @@ msgstr ""
 msgid "E-mail"
 msgstr ""
 
+msgid "E-mail and exports"
+msgstr ""
+
 msgid "E-mailing {}"
 msgstr ""
 
@@ -1879,6 +2260,9 @@ msgid "EPUB · {}"
 msgstr ""
 
 msgid "EPUB → {} (converted)"
+msgstr ""
+
+msgid "Edges (narrow strips)"
 msgstr ""
 
 msgid "Edit"
@@ -1920,6 +2304,12 @@ msgstr ""
 msgid "Edit metadata"
 msgstr ""
 
+msgid "Edit my definition"
+msgstr ""
+
+msgid "Edit my definition of {}"
+msgstr ""
+
 msgid "Edit note"
 msgstr ""
 
@@ -1939,6 +2329,9 @@ msgid "Editing a {} book through a temporary EPUB. {}"
 msgstr ""
 
 msgid "Editing “{}”"
+msgstr ""
+
+msgid "Editions"
 msgstr ""
 
 msgid "Editions & Formats"
@@ -1962,6 +2355,9 @@ msgstr ""
 msgid "Ellipses"
 msgstr ""
 
+msgid "Embed"
+msgstr ""
+
 msgid "Embed Fonts from this Computer"
 msgstr ""
 
@@ -1974,6 +2370,15 @@ msgstr ""
 msgid "Embedded {} ({})"
 msgstr ""
 
+msgid "Embedding allowed"
+msgstr ""
+
+msgid "Embedding allowed (editable documents)"
+msgstr ""
+
+msgid "Embedding allowed for viewing and printing only"
+msgstr ""
+
 msgid "Empty Trash"
 msgstr ""
 
@@ -1983,10 +2388,13 @@ msgstr ""
 msgid "Encrypt the copies"
 msgstr ""
 
-msgid "Encryption (HTTPS)"
+msgid "Encrypts the connection, including the password. Without your own certificate Bookx makes a self-signed one: browsers and readers warn until you trust it."
 msgstr ""
 
-msgid "Encrypts the connection, including the password"
+msgid "End of chapter"
+msgstr ""
+
+msgid "English “double”"
 msgstr ""
 
 msgid "Enter a file name without a folder"
@@ -2001,6 +2409,9 @@ msgstr ""
 msgid "Enter the mail server in Preferences → E-mail"
 msgstr ""
 
+msgid "Enter the password"
+msgstr ""
+
 msgid "Enter the password of the mail account in Preferences → E-mail"
 msgstr ""
 
@@ -2008,6 +2419,9 @@ msgid "Enter your own e-mail address in Preferences → E-mail"
 msgstr ""
 
 msgid "Entities are left as typed"
+msgstr ""
+
+msgid "Epigraph"
 msgstr ""
 
 msgid "Erase everything in the trash"
@@ -2046,6 +2460,9 @@ msgstr ""
 msgid "Every image, font and media file is used"
 msgstr ""
 
+msgid "Every setting"
+msgstr ""
+
 msgid "Every style rule is used"
 msgstr ""
 
@@ -2079,10 +2496,22 @@ msgstr ""
 msgid "Export Citations"
 msgstr ""
 
+msgid "Export Everything as Anki Cards"
+msgstr ""
+
 msgid "Export File"
 msgstr ""
 
 msgid "Export Files to Folder"
+msgstr ""
+
+msgid "Export My Definitions as CSV"
+msgstr ""
+
+msgid "Export My Definitions as JSON"
+msgstr ""
+
+msgid "Export My Vocabulary"
 msgstr ""
 
 msgid "Export Selected"
@@ -2095,6 +2524,15 @@ msgid "Export all searches to a JSON file"
 msgstr ""
 
 msgid "Export and Send"
+msgstr ""
+
+msgid "Export as Calibre Library"
+msgstr ""
+
+msgid "Export as a StarDict Dictionary"
+msgstr ""
+
+msgid "Export cancelled; nothing was kept"
 msgstr ""
 
 msgid "Export functions"
@@ -2127,6 +2565,9 @@ msgstr ""
 msgid "Exported to {}"
 msgstr ""
 
+msgid "Exported to {}: {}"
+msgstr ""
+
 msgid "Exported {}"
 msgstr ""
 
@@ -2142,7 +2583,16 @@ msgstr ""
 msgid "Exported {} to {}"
 msgstr ""
 
+msgid "Exporting"
+msgstr ""
+
+msgid "Exporting {} to a Calibre library"
+msgstr ""
+
 msgid "Extensions"
+msgstr ""
+
+msgid "Extensions run in a sandbox and can only do what their manifest asks for. They add metadata sources and file formats."
 msgstr ""
 
 msgid "External Links Checked"
@@ -2218,6 +2668,9 @@ msgid "Files that change"
 msgstr ""
 
 msgid "Files the split would make"
+msgstr ""
+
+msgid "Fill in the address of the library server that is running here (Sync shows the same)"
 msgstr ""
 
 msgid "Fills the form from the images, audio, MathML, headings and contents it finds"
@@ -2307,6 +2760,18 @@ msgstr ""
 msgid "Fish Speech API server"
 msgstr ""
 
+msgid "Fit"
+msgstr ""
+
+msgid "Fit height"
+msgstr ""
+
+msgid "Fit page"
+msgstr ""
+
+msgid "Fit width"
+msgstr ""
+
 msgid "Fix"
 msgstr ""
 
@@ -2323,6 +2788,14 @@ msgid "Fix all of this kind"
 msgstr ""
 
 msgid "Fix all {} of this kind"
+msgstr ""
+
+msgid "Fixed the place of {} highlight (it was off from its text)"
+msgid_plural "Fixed the place of {} highlights (they were off from their text)"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Fixes links to files and anchors that no longer exist when a clear match is found (a different capitalisation, a renamed file). The others are listed."
 msgstr ""
 
 msgid "Folder"
@@ -2346,7 +2819,13 @@ msgstr ""
 msgid "Follow light and dark mode"
 msgstr ""
 
+msgid "Follow system"
+msgstr ""
+
 msgid "Follow the cursor"
+msgstr ""
+
+msgid "Follow the cursor: the preview scrolls to the element at the cursor"
 msgstr ""
 
 msgid "Following a link to a footnote shows the note where you are, with a button to go to it."
@@ -2361,7 +2840,13 @@ msgstr ""
 msgid "Font size (pt)"
 msgstr ""
 
+msgid "Fonts"
+msgstr ""
+
 msgid "Fonts in this book"
+msgstr ""
+
+msgid "Fonts the pages ask for but the book does not carry, found among the fonts installed here. Only embed fonts whose licence allows it."
 msgstr ""
 
 msgid "Footer Stats"
@@ -2382,6 +2867,12 @@ msgstr ""
 msgid "Footer text size (percent)"
 msgstr ""
 
+msgid "For e-readers plugged in with a cable. Bookx reads the progress, highlights and notes the device keeps and merges them with your library: progress only moves forward, notes are united, nothing is deleted."
+msgstr ""
+
+msgid "Foreword"
+msgstr ""
+
 msgid "Forget this book's own look and use the defaults again"
 msgstr ""
 
@@ -2397,7 +2888,13 @@ msgstr ""
 msgid "Forward"
 msgstr ""
 
+msgid "Forward 30 seconds"
+msgstr ""
+
 msgid "Forward to the place you came back from (Alt+Right)"
+msgstr ""
+
+msgid "Found it: the highlight is back on the page"
 msgstr ""
 
 msgid "Found on {} ({}% match), but nothing new to add."
@@ -2406,7 +2903,16 @@ msgstr ""
 msgid "Found on {} ({}% match). Updated: {}."
 msgstr ""
 
+msgid "Four steps to sync with KOReader over Wi-Fi. Open any step; the first one that is not done is open for you."
+msgstr ""
+
+msgid "French « double »"
+msgstr ""
+
 msgid "From"
+msgstr ""
+
+msgid "From dictionary"
 msgstr ""
 
 msgid "Full articles"
@@ -2439,6 +2945,9 @@ msgstr ""
 msgid "Generate"
 msgstr ""
 
+msgid "German „double“"
+msgstr ""
+
 msgid "Get a dictionary"
 msgstr ""
 
@@ -2452,6 +2961,9 @@ msgid "Give the search a name."
 msgstr ""
 
 msgid "Give the shelf a name."
+msgstr ""
+
+msgid "Glossary"
 msgstr ""
 
 msgid "Go"
@@ -2499,7 +3011,13 @@ msgstr ""
 msgid "Go to the rule {} in {}"
 msgstr ""
 
+msgid "Go to where you met “{}”"
+msgstr ""
+
 msgid "Go to {}"
+msgstr ""
+
+msgid "Go to {} {}"
 msgstr ""
 
 msgid "Goal reached: {} of {} {}"
@@ -2517,6 +3035,9 @@ msgstr ""
 msgid "Google Translate"
 msgstr ""
 
+msgid "Grey pages"
+msgstr ""
+
 msgid "Group"
 msgstr ""
 
@@ -2532,7 +3053,16 @@ msgstr ""
 msgid "Group by month"
 msgstr ""
 
+msgid "Group editions of the same book"
+msgstr ""
+
 msgid "Grouping"
+msgstr ""
+
+msgid "Guided view"
+msgstr ""
+
+msgid "Guided view: Space goes panel by panel"
 msgstr ""
 
 msgid "Hazards"
@@ -2571,6 +3101,12 @@ msgstr ""
 msgid "Highlights and notes you make while reading appear here, with the books they come from."
 msgstr ""
 
+msgid "Highlights with their text, notes, colours and styles, and bookmarks"
+msgstr ""
+
+msgid "Highlights, notes and bookmarks (KOReader)"
+msgstr ""
+
 msgid "History"
 msgstr ""
 
@@ -2578,6 +3114,12 @@ msgid "Home"
 msgstr ""
 
 msgid "How books are read aloud. The first time you press Read Aloud, Bookx offers to download the default voice."
+msgstr ""
+
+msgid "How large a page is shown"
+msgstr ""
+
+msgid "How pages are shown in a comic you have not changed yet"
 msgstr ""
 
 msgid "How the text of the editor looks. Changes apply to every open editor window."
@@ -2602,6 +3144,9 @@ msgid "Identifiers (isbn:…, doi:…)"
 msgstr ""
 
 msgid "Identifiers tidied in {} books"
+msgstr ""
+
+msgid "If a property has a value, change it"
 msgstr ""
 
 msgid "If you forget this passphrase, encrypted backups cannot be opened"
@@ -2646,6 +3191,9 @@ msgstr ""
 msgid "Images of the book"
 msgstr ""
 
+msgid "Images, stylesheets and media the pages load from the web are copied into the book and the links point at the copies. Only download what you are allowed to keep: check the licences."
+msgstr ""
+
 msgid "Import"
 msgstr ""
 
@@ -2668,6 +3216,9 @@ msgid "Import OPML"
 msgstr ""
 
 msgid "Import Shortcuts"
+msgstr ""
+
+msgid "Import a CSV File"
 msgstr ""
 
 msgid "Import a Calibre library"
@@ -2751,7 +3302,22 @@ msgstr ""
 msgid "Improve Accessibility"
 msgstr ""
 
+msgid "In KOReader: Tools → Progress sync → Custom sync server"
+msgstr ""
+
+msgid "In KOReader: open a book → top menu → More tools → Bookx Sync"
+msgstr ""
+
 msgid "In book order"
+msgstr ""
+
+msgid "In two-page layout a double-page picture takes the whole screen"
+msgstr ""
+
+msgid "In two-page layout the first page stands alone"
+msgstr ""
+
+msgid "Index"
 msgstr ""
 
 msgid "Inherited from {}"
@@ -2790,10 +3356,16 @@ msgstr ""
 msgid "Install hunspell dictionaries with your system, or import one here"
 msgstr ""
 
+msgid "Install the Bookx plugin on KOReader"
+msgstr ""
+
 msgid "Installed. Kokoro and Piper use it to turn text into phonemes."
 msgstr ""
 
 msgid "Interface language"
+msgstr ""
+
+msgid "Internet for e-mail; none for exports"
 msgstr ""
 
 msgid "Invalid regular expression"
@@ -2817,10 +3389,16 @@ msgstr ""
 msgid "Jump to Matching Tag"
 msgstr ""
 
+msgid "Justify"
+msgstr ""
+
 msgid "Justify text"
 msgstr ""
 
-msgid "KOReader progress sync"
+msgid "KOReader with Progress sync set to a custom sync server at the same address http://<host-ip>:<port>/bookx and that user name and password (or create the account from KOReader’s own Progress sync menu)"
+msgstr ""
+
+msgid "KOReader with the Bookx Sync plugin installed and set up. Not available on stock Kobo or Kindle software"
 msgstr ""
 
 msgid "Keep audio of read sentences (MB)"
@@ -2832,13 +3410,22 @@ msgstr ""
 msgid "Keep only the characters the book uses"
 msgstr ""
 
+msgid "Keep the size"
+msgstr ""
+
+msgid "Keep the whole image"
+msgstr ""
+
 msgid "Keep this checkpoint when old ones are removed"
 msgstr ""
 
-msgid "Keeps your place in step with KOReader and other apps through a KOReader progress-sync server: Bookx’s own Share Library server (address ending in /kosync), a self-hosted kosync, or the public one at sync.koreader.rocks. Only the position is synced, not highlights. {}"
+msgid "Keeps your place in step with KOReader and other apps through a sync server: your own Bookx server (the address ending in /bookx), a self-hosted one, or the public one at sync.koreader.rocks. {}"
 msgstr ""
 
 msgid "Kept apart: these books will not be suggested as copies again"
+msgstr ""
+
+msgid "Kept in the system keyring, not in the settings file."
 msgstr ""
 
 msgid "Keyboard Shortcuts"
@@ -2854,6 +3441,9 @@ msgid "Kinds of problems you chose to ignore"
 msgstr ""
 
 msgid "Kobo shelf for sent books (empty: leave the Kobo alone)"
+msgstr ""
+
+msgid "Kobo: .adds/koreader/plugins/bookx.koplugin · other readers: koreader/plugins/bookx.koplugin"
 msgstr ""
 
 msgid "Kokoro (natural, on this computer)"
@@ -2872,6 +3462,12 @@ msgid "Language of the book"
 msgstr ""
 
 msgid "Language rules for double quotes"
+msgstr ""
+
+msgid "Language, image descriptions and the accessibility metadata that stores and shops show."
+msgstr ""
+
+msgid "Languages"
 msgstr ""
 
 msgid "Large"
@@ -2895,6 +3491,9 @@ msgstr ""
 msgid "Last read"
 msgstr ""
 
+msgid "Last sync: {}"
+msgstr ""
+
 msgid "Last verified {}"
 msgstr ""
 
@@ -2913,13 +3512,25 @@ msgstr ""
 msgid "Layout: Two Columns"
 msgstr ""
 
+msgid "Layout: single, two pages, webtoon"
+msgstr ""
+
 msgid "Learn more"
+msgstr ""
+
+msgid "Learn more about dictionaries"
 msgstr ""
 
 msgid "Leave empty to generate automatically"
 msgstr ""
 
+msgid "Length"
+msgstr ""
+
 msgid "Let AI assistants connect"
+msgstr ""
+
+msgid "Let other apps and e-readers browse and download your books from this computer: KOReader, Moon+ Reader, Librera, Kybook and more."
 msgstr ""
 
 msgid "Lets AI assistants such as Claude, Cursor or opencode search and read your library while Bookx is open. It only listens on this computer and every request needs the token below. Switched off until you turn it on."
@@ -2943,6 +3554,15 @@ msgstr ""
 msgid "Library name"
 msgstr ""
 
+msgid "Library password (user name: bookx)"
+msgstr ""
+
+msgid "Library server (OPDS and web page)"
+msgstr ""
+
+msgid "Library servers (OPDS)"
+msgstr ""
+
 msgid "Library switched to {}"
 msgstr ""
 
@@ -2953,6 +3573,12 @@ msgid "Library: {}. Click to switch libraries"
 msgstr ""
 
 msgid "Licence"
+msgstr ""
+
+msgid "Light"
+msgstr ""
+
+msgid "Line breaks added"
 msgstr ""
 
 msgid "Line numbers"
@@ -2973,6 +3599,12 @@ msgstr ""
 msgid "Link Stylesheets"
 msgstr ""
 
+msgid "Link as Editions"
+msgstr ""
+
+msgid "Link in place (do not copy)"
+msgstr ""
+
 msgid "Link text"
 msgstr ""
 
@@ -2985,6 +3617,9 @@ msgstr ""
 msgid "Linked audiobook to \"{}\""
 msgstr ""
 
+msgid "Linked {} books as editions of one work"
+msgstr ""
+
 msgid "Linked {}. Undo takes each back."
 msgstr ""
 
@@ -2994,7 +3629,19 @@ msgstr ""
 msgid "List"
 msgstr ""
 
+msgid "List of Illustrations"
+msgstr ""
+
+msgid "List of Tables"
+msgstr ""
+
+msgid "Listen"
+msgstr ""
+
 msgid "Listening"
+msgstr ""
+
+msgid "Live CSS"
 msgstr ""
 
 msgid "Load"
@@ -3006,10 +3653,22 @@ msgstr ""
 msgid "Loading the voice…"
 msgstr ""
 
+msgid "Locate again"
+msgstr ""
+
 msgid "Location"
 msgstr ""
 
 msgid "Log in"
+msgstr ""
+
+msgid "Log in with the user name and password"
+msgstr ""
+
+msgid "Logged in. Reading positions will sync."
+msgstr ""
+
+msgid "Logging in…"
 msgstr ""
 
 msgid "Longest streak"
@@ -3075,6 +3734,9 @@ msgstr ""
 msgid "Mail user name"
 msgstr ""
 
+msgid "Main action of Bookx sync"
+msgstr ""
+
 msgid "Main menu"
 msgstr ""
 
@@ -3100,6 +3762,9 @@ msgid "Make Paragraph"
 msgstr ""
 
 msgid "Make a cover page"
+msgstr ""
+
+msgid "Make a font family italic"
 msgstr ""
 
 msgid "Make a new self-signed certificate"
@@ -3136,6 +3801,9 @@ msgid "Mark as Unread"
 msgstr ""
 
 msgid "Mark finished"
+msgstr ""
+
+msgid "Mark my vocabulary terms in the text"
 msgstr ""
 
 msgid "Mark selected text"
@@ -3183,6 +3851,9 @@ msgstr ""
 msgid "Merge as formats of one book?"
 msgstr ""
 
+msgid "Merge the highlights received from KOReader now"
+msgstr ""
+
 msgid "Merge these pages?"
 msgstr ""
 
@@ -3210,6 +3881,12 @@ msgstr ""
 msgid "Merged {} files into {}"
 msgstr ""
 
+msgid "Met in: “{}”"
+msgstr ""
+
+msgid "Metadata"
+msgstr ""
+
 msgid "Metadata lookup"
 msgstr ""
 
@@ -3217,6 +3894,9 @@ msgid "Metadata saved"
 msgstr ""
 
 msgid "Metadata updated — save to keep your changes"
+msgstr ""
+
+msgid "Mine"
 msgstr ""
 
 msgid "Minimal"
@@ -3237,6 +3917,9 @@ msgstr ""
 msgid "More"
 msgstr ""
 
+msgid "More file actions: merge, bulk rename, link stylesheets, export"
+msgstr ""
+
 msgid "More search actions"
 msgstr ""
 
@@ -3244,6 +3927,9 @@ msgid "More spelling options"
 msgstr ""
 
 msgid "Most read"
+msgstr ""
+
+msgid "Move"
 msgstr ""
 
 msgid "Move Down"
@@ -3285,6 +3971,15 @@ msgstr ""
 msgid "Moves the {} selected file(s) to another folder of the book. Every link to them, and every link they contain, is updated."
 msgstr ""
 
+msgid "Multiply all font sizes"
+msgstr ""
+
+msgid "My Definition"
+msgstr ""
+
+msgid "My Vocabulary"
+msgstr ""
+
 msgid "Name"
 msgstr ""
 
@@ -3316,6 +4011,9 @@ msgid "Narration needs an EPUB 3 book. Use Tools → Upgrade to EPUB 3 first."
 msgstr ""
 
 msgid "Narration stopped: {}"
+msgstr ""
+
+msgid "Narrator"
 msgstr ""
 
 msgid "Natural voices"
@@ -3450,6 +4148,9 @@ msgstr ""
 msgid "Next match (Enter)"
 msgstr ""
 
+msgid "Next or previous page"
+msgstr ""
+
 msgid "Next page"
 msgstr ""
 
@@ -3478,6 +4179,12 @@ msgid "No Files Left Out"
 msgstr ""
 
 msgid "No Results"
+msgstr ""
+
+msgid "No account yet? Open Preferences → Sync and press Register."
+msgstr ""
+
+msgid "No assistant has connected recently."
 msgstr ""
 
 msgid "No authors yet"
@@ -3534,7 +4241,13 @@ msgstr ""
 msgid "No duplicates found"
 msgstr ""
 
+msgid "No e-reader with KOReader found. Connect it with the USB cable, or save the plugin to a folder."
+msgstr ""
+
 msgid "No embedded fonts to shrink"
+msgstr ""
+
+msgid "No favourites yet"
 msgstr ""
 
 msgid "No favourites yet: right-click a character to add it"
@@ -3574,6 +4287,9 @@ msgid "No highlights yet"
 msgstr ""
 
 msgid "No images"
+msgstr ""
+
+msgid "No keyring was found, so this is kept in the settings file (unencrypted). Install GNOME Keyring or KeePassXC to protect it."
 msgstr ""
 
 msgid "No match found. Check the title and author and try again."
@@ -3633,10 +4349,19 @@ msgstr ""
 msgid "No table of contents"
 msgstr ""
 
+msgid "No table of contents yet.\nUse “Generate” to build one from headings."
+msgstr ""
+
 msgid "No tags"
 msgstr ""
 
 msgid "No templates yet"
+msgstr ""
+
+msgid "No terms found yet."
+msgstr ""
+
+msgid "No terms with a definition found in that file."
 msgstr ""
 
 msgid "No themes yet"
@@ -3651,7 +4376,13 @@ msgstr ""
 msgid "No voice yet: it is downloaded when you first press Read Aloud (or below)"
 msgstr ""
 
+msgid "No words here"
+msgstr ""
+
 msgid "None"
+msgstr ""
+
+msgid "None (local server only)"
 msgstr ""
 
 msgid "None of those properties is used"
@@ -3666,6 +4397,12 @@ msgstr ""
 msgid "Not checked yet"
 msgstr ""
 
+msgid "Not copied yet"
+msgstr ""
+
+msgid "Not created yet"
+msgstr ""
+
 msgid "Not downloaded yet"
 msgstr ""
 
@@ -3673,6 +4410,9 @@ msgid "Not found. Kokoro and Piper need it (package espeak-ng, GPL-3.0); install
 msgstr ""
 
 msgid "Not installed on this computer"
+msgstr ""
+
+msgid "Not located in the book"
 msgstr ""
 
 msgid "Not now"
@@ -3684,10 +4424,16 @@ msgstr ""
 msgid "Not scanned yet"
 msgstr ""
 
+msgid "Not set"
+msgstr ""
+
 msgid "Not used yet"
 msgstr ""
 
 msgid "Note"
+msgstr ""
+
+msgid "Note (optional)"
 msgstr ""
 
 msgid "Note filter"
@@ -3744,10 +4490,19 @@ msgstr ""
 msgid "Nothing needs attention"
 msgstr ""
 
+msgid "Nothing new"
+msgstr ""
+
 msgid "Nothing new to import ({} already in your library)"
 msgstr ""
 
+msgid "Nothing read yet"
+msgstr ""
+
 msgid "Nothing readable found at {} (the page has too little text, or needs JavaScript)"
+msgstr ""
+
+msgid "Nothing received yet."
 msgstr ""
 
 msgid "Nothing searched yet"
@@ -3777,6 +4532,9 @@ msgstr ""
 msgid "Nothing to look up"
 msgstr ""
 
+msgid "Nothing to merge yet. Turn on “Sync highlights, notes and bookmarks” in Preferences → Sync. Reading position syncs by itself as you read."
+msgstr ""
+
 msgid "Nothing to read here"
 msgstr ""
 
@@ -3795,6 +4553,9 @@ msgstr ""
 msgid "Nothing to send yet. Select books in the library, then use Send to Device… in the right-click menu (or the Device button)."
 msgstr ""
 
+msgid "Nothing to switch on; the USB switches on this page choose what is synced"
+msgstr ""
+
 msgid "Nothing to undo"
 msgstr ""
 
@@ -3810,13 +4571,28 @@ msgstr ""
 msgid "Nothing yet"
 msgstr ""
 
+msgid "Nothing: the other side only receives a file"
+msgstr ""
+
 msgid "OK"
 msgstr ""
 
 msgid "OK — last copy {}"
 msgstr ""
 
+msgid "OPDS"
+msgstr ""
+
+msgid "OPDS catalogue and web page for other apps and e-readers. Off until you switch it on."
+msgstr ""
+
 msgid "Off"
+msgstr ""
+
+msgid "Off (swipe or keys only)"
+msgstr ""
+
+msgid "Off when your system asks for reduced motion, and in e-ink mode"
 msgstr ""
 
 msgid "Off: a book that has a rating keeps it"
@@ -3834,6 +4610,12 @@ msgstr ""
 msgid "Offline mode"
 msgstr ""
 
+msgid "Offline mode and the list of connections"
+msgstr ""
+
+msgid "Offline mode refuses online look-ups; your own servers keep working. The list names everything Bookx can connect to, and when."
+msgstr ""
+
 msgid "Older issues are removed from the library after a download"
 msgstr ""
 
@@ -3843,10 +4625,19 @@ msgstr ""
 msgid "On"
 msgstr ""
 
+msgid "On the e-reader: open a book → top menu → More tools → Bookx Sync → Sync now. Enter this computer’s address, the user name and the password from step 2."
+msgstr ""
+
 msgid "On this computer"
 msgstr ""
 
+msgid "One flat folder"
+msgstr ""
+
 msgid "One line in the middle of the page"
+msgstr ""
+
+msgid "One term per line: term; definition (or a tab, or “term — definition”)."
 msgstr ""
 
 msgid "Online Accounts"
@@ -3900,6 +4691,9 @@ msgstr ""
 msgid "Open Another Book"
 msgstr ""
 
+msgid "Open Anyway"
+msgstr ""
+
 msgid "Open Book"
 msgstr ""
 
@@ -3910,6 +4704,18 @@ msgid "Open Folder as Library"
 msgstr ""
 
 msgid "Open Library Folder"
+msgstr ""
+
+msgid "Open Library and Google Books are asked only when you ask, or after an import if you switch this on."
+msgstr ""
+
+msgid "Open My Vocabulary"
+msgstr ""
+
+msgid "Open Preferences → Sync"
+msgstr ""
+
+msgid "Open Privacy"
 msgstr ""
 
 msgid "Open Wikipedia"
@@ -3951,6 +4757,9 @@ msgstr ""
 msgid "Open an Unzipped Folder"
 msgstr ""
 
+msgid "Open device window"
+msgstr ""
+
 msgid "Open dictionary folder"
 msgstr ""
 
@@ -3958,6 +4767,12 @@ msgid "Open folder"
 msgstr ""
 
 msgid "Open from start"
+msgstr ""
+
+msgid "Open guide"
+msgstr ""
+
+msgid "Open in Vocabulary"
 msgstr ""
 
 msgid "Open licence page"
@@ -3969,7 +4784,19 @@ msgstr ""
 msgid "Open plugins folder"
 msgstr ""
 
+msgid "Open setup guide"
+msgstr ""
+
+msgid "Open the reverse proxy guide"
+msgstr ""
+
 msgid "Open the styles folder"
+msgstr ""
+
+msgid "Open {}"
+msgstr ""
+
+msgid "Open {} first"
 msgstr ""
 
 msgid "OpenAI-compatible (/v1/audio/speech)"
@@ -3987,6 +4814,9 @@ msgstr ""
 msgid "Opening…"
 msgstr ""
 
+msgid "Opens first"
+msgstr ""
+
 msgid "Optimised {}, saved {}"
 msgstr ""
 
@@ -4002,6 +4832,12 @@ msgstr ""
 msgid "Organise"
 msgstr ""
 
+msgid "Original size"
+msgstr ""
+
+msgid "Other"
+msgstr ""
+
 msgid "Overrides and your own style sheet"
 msgstr ""
 
@@ -4014,10 +4850,19 @@ msgstr ""
 msgid "PDF properties"
 msgstr ""
 
+msgid "Package"
+msgstr ""
+
 msgid "Page"
 msgstr ""
 
+msgid "Page X of Y"
+msgstr ""
+
 msgid "Page colour"
+msgstr ""
+
+msgid "Page in the chapter"
 msgstr ""
 
 msgid "Page number at the left, the rest at the right"
@@ -4026,13 +4871,28 @@ msgstr ""
 msgid "Page thumbnails"
 msgstr ""
 
+msgid "Page thumbnails (F9)"
+msgstr ""
+
 msgid "Page {}"
+msgstr ""
+
+msgid "Page {} ({})"
+msgstr ""
+
+msgid "Page {} cannot be shown"
+msgstr ""
+
+msgid "Page {} of {}"
 msgstr ""
 
 msgid "Pages"
 msgstr ""
 
 msgid "Pages turned"
+msgstr ""
+
+msgid "Pages {}–{} of {}"
 msgstr ""
 
 msgid "Pages, contents, bookmarks and notes (F9)"
@@ -4050,16 +4910,19 @@ msgstr ""
 msgid "Password (an app password if you use two-factor sign-in)"
 msgstr ""
 
-msgid "Password (user name: bookx)"
+msgid "Password needed"
 msgstr ""
 
-msgid "Password needed"
+msgid "Paste a Glossary"
 msgstr ""
 
 msgid "Paste the address of an article to read later, or of a news feed (RSS, Atom, JSON Feed) to make a book of its latest articles."
 msgstr ""
 
 msgid "Paste the token from readwise.io/access_token. It is kept in the system keyring."
+msgstr ""
+
+msgid "Paste, import and export"
 msgstr ""
 
 msgid "Patches"
@@ -4075,6 +4938,9 @@ msgid "Pause"
 msgstr ""
 
 msgid "Pause reading"
+msgstr ""
+
+msgid "Percent read"
 msgstr ""
 
 msgid "Permissions: may connect to {}. It cannot read your files."
@@ -4113,7 +4979,16 @@ msgstr ""
 msgid "Play a test sentence"
 msgstr ""
 
+msgid "Play in Bookx"
+msgstr ""
+
+msgid "Playback speed"
+msgstr ""
+
 msgid "Played with {} {}"
+msgstr ""
+
+msgid "Plug in a Kobo, Kindle or other e-reader. Books, progress and notes sync over the cable, never wirelessly. Progress only moves forward and nothing is deleted."
 msgstr ""
 
 msgid "Plugins"
@@ -4131,7 +5006,13 @@ msgstr ""
 msgid "Port"
 msgstr ""
 
+msgid "Port {}: allow it in your firewall for the e-reader to connect. Server address, HTTPS, matching, privacy and offline mode are in Preferences → Sync."
+msgstr ""
+
 msgid "Position"
+msgstr ""
+
+msgid "Position in the audiobook"
 msgstr ""
 
 msgid "Position in the book"
@@ -4141,6 +5022,9 @@ msgid "Position in the chapter"
 msgstr ""
 
 msgid "Position in the reading order"
+msgstr ""
+
+msgid "Preface"
 msgstr ""
 
 msgid "Preferences"
@@ -4168,6 +5052,9 @@ msgid "Press the new keys. Esc cancels, Backspace removes the shortcut."
 msgstr ""
 
 msgid "Preview"
+msgstr ""
+
+msgid "Preview colours: theme, the book's original colours, or your own"
 msgstr ""
 
 msgid "Previous Chapter"
@@ -4239,6 +5126,12 @@ msgstr ""
 msgid "Problems with the markup or the package cannot be skipped"
 msgstr ""
 
+msgid "Progress"
+msgstr ""
+
+msgid "Progress bar"
+msgstr ""
+
 msgid "Progress of the goal {}"
 msgstr ""
 
@@ -4263,10 +5156,22 @@ msgstr ""
 msgid "Publisher"
 msgstr ""
 
+msgid "Publishers"
+msgstr ""
+
 msgid "Put .toml patch files into {}"
 msgstr ""
 
+msgid "Put nginx or Caddy in front of Bookx for HTTPS on your own address."
+msgstr ""
+
+msgid "Put nginx or Caddy in front of Bookx for HTTPS on your own address. Bookx sync answers on the /bookx path and accepts up to {} requests per minute for each account; a reverse proxy can limit more."
+msgstr ""
+
 msgid "Put plugin folders (plugin.toml and plugin.wasm) into {}"
+msgstr ""
+
+msgid "Puts the tags on separate lines. Only the white space between tags changes"
 msgstr ""
 
 msgid "Quit"
@@ -4285,6 +5190,12 @@ msgid "Rated {} of 5 stars"
 msgstr ""
 
 msgid "Rating"
+msgstr ""
+
+msgid "Ratings"
+msgstr ""
+
+msgid "Re-checked your highlights: {} moved to where their text is, {} could not be found in the book and are kept as notes without a place"
 msgstr ""
 
 msgid "Read"
@@ -4317,6 +5228,9 @@ msgstr ""
 msgid "Read aloud with a voice server"
 msgstr ""
 
+msgid "Read on, or next panel in guided view"
+msgstr ""
+
 msgid "Read {}"
 msgstr ""
 
@@ -4347,10 +5261,19 @@ msgstr ""
 msgid "Reading Trackers"
 msgstr ""
 
+msgid "Reading direction"
+msgstr ""
+
 msgid "Reading in {}"
 msgstr ""
 
-msgid "Reading position sync (KOSync)"
+msgid "Reading position only (highlights, notes and bookmarks need the Bookx plugin)"
+msgstr ""
+
+msgid "Reading position, highlights, notes and bookmarks, over the same connection, when the Bookx plugin is installed. Without the plugin: reading position only."
+msgstr ""
+
+msgid "Reading progress (KOReader)"
 msgstr ""
 
 msgid "Reading ruler"
@@ -4359,10 +5282,16 @@ msgstr ""
 msgid "Reading speed"
 msgstr ""
 
+msgid "Reading status"
+msgstr ""
+
 msgid "Reading the device…"
 msgstr ""
 
 msgid "Reading the reading state…"
+msgstr ""
+
+msgid "Reading today"
 msgstr ""
 
 msgid "Reads a sentence with the settings above"
@@ -4431,7 +5360,16 @@ msgstr ""
 msgid "Register"
 msgstr ""
 
-msgid "Register creates the account on the server; Log in checks it."
+msgid "Register creates the account on the server; Log in checks it. The result shows here."
+msgstr ""
+
+msgid "Register the user name and password on the server"
+msgstr ""
+
+msgid "Registered and logged in. Reading positions will sync."
+msgstr ""
+
+msgid "Registering…"
 msgstr ""
 
 msgid "Reload"
@@ -4443,7 +5381,16 @@ msgstr ""
 msgid "Reload the book"
 msgstr ""
 
+msgid "Reload the preview automatically while typing"
+msgstr ""
+
 msgid "Remove"
+msgstr ""
+
+msgid "Remove Alignment"
+msgstr ""
+
+msgid "Remove Background Colour"
 msgstr ""
 
 msgid "Remove Contents Page"
@@ -4452,16 +5399,37 @@ msgstr ""
 msgid "Remove Cover"
 msgstr ""
 
+msgid "Remove My Definition"
+msgstr ""
+
 msgid "Remove Narration"
 msgstr ""
 
 msgid "Remove Selected"
 msgstr ""
 
+msgid "Remove Selected Books"
+msgstr ""
+
 msgid "Remove Surrounding Tag"
 msgstr ""
 
+msgid "Remove Text Colour"
+msgstr ""
+
 msgid "Remove Unused CSS Rules"
+msgstr ""
+
+msgid "Remove a class"
+msgstr ""
+
+msgid "Remove a property"
+msgstr ""
+
+msgid "Remove a property when it has a value"
+msgstr ""
+
+msgid "Remove an attribute"
 msgstr ""
 
 msgid "Remove bookmark"
@@ -4503,6 +5471,9 @@ msgstr ""
 msgid "Remove the dictionary {}"
 msgstr ""
 
+msgid "Remove the element and its content"
+msgstr ""
+
 msgid "Remove the filter {}"
 msgstr ""
 
@@ -4519,6 +5490,9 @@ msgid "Remove the tag {}"
 msgstr ""
 
 msgid "Remove the tag {} from all the selected books"
+msgstr ""
+
+msgid "Remove the tag, keep its content"
 msgstr ""
 
 msgid "Remove this catalogue"
@@ -4542,6 +5516,9 @@ msgstr ""
 msgid "Remove {} from the device?"
 msgstr ""
 
+msgid "Remove {} from the vocabulary"
+msgstr ""
+
 msgid "Remove {} from {}"
 msgstr ""
 
@@ -4560,6 +5537,9 @@ msgstr ""
 msgid "Removed unused rules from {} ({} smaller)"
 msgstr ""
 
+msgid "Removed your definition of “{}”."
+msgstr ""
+
 msgid "Removed {} and {}"
 msgstr ""
 
@@ -4576,6 +5556,9 @@ msgid "Removed {}."
 msgstr ""
 
 msgid "Removed {}; could not remove: {}"
+msgstr ""
+
+msgid "Removes the ticked properties from stylesheets, <style> blocks and style attributes."
 msgstr ""
 
 msgid "Removing…"
@@ -4602,10 +5585,16 @@ msgstr ""
 msgid "Rename Tag"
 msgstr ""
 
+msgid "Rename a font family"
+msgstr ""
+
 msgid "Rename author"
 msgstr ""
 
 msgid "Rename file"
+msgstr ""
+
+msgid "Rename the tag"
 msgstr ""
 
 msgid "Renamed and updated references"
@@ -4632,6 +5621,9 @@ msgstr ""
 msgid "Reopen Tabs and Cursors Next Time"
 msgstr ""
 
+msgid "Repair"
+msgstr ""
+
 msgid "Repair Broken Links"
 msgstr ""
 
@@ -4639,6 +5631,9 @@ msgid "Repaired {} books"
 msgstr ""
 
 msgid "Repaired {} books, {} failed: {}"
+msgstr ""
+
+msgid "Repairs pages that are not well-formed XHTML: unclosed and misnested tags, stray ampersands, missing namespaces. Pages that are fine are left alone."
 msgstr ""
 
 msgid "Replace"
@@ -4663,6 +5658,9 @@ msgid "Replace existing values"
 msgstr ""
 
 msgid "Replace ratings I already have"
+msgstr ""
+
+msgid "Replace text in an attribute"
 msgstr ""
 
 msgid "Replace with"
@@ -4690,6 +5688,9 @@ msgid "Report"
 msgstr ""
 
 msgid "Reports"
+msgstr ""
+
+msgid "Requirements: what each sync type needs"
 msgstr ""
 
 msgid "Reset All"
@@ -4770,6 +5771,12 @@ msgstr ""
 msgid "Reverse order"
 msgstr ""
 
+msgid "Reverse proxy and remote access"
+msgstr ""
+
+msgid "Reverse proxy, port and firewall, every setting"
+msgstr ""
+
 msgid "Revert the book to this state"
 msgstr ""
 
@@ -4785,6 +5792,9 @@ msgstr ""
 msgid "Reverted to before “{}”"
 msgstr ""
 
+msgid "Review"
+msgstr ""
+
 msgid "Reviewed {} cards, {} remembered."
 msgstr ""
 
@@ -4794,6 +5804,12 @@ msgstr ""
 msgid "Right margin guide"
 msgstr ""
 
+msgid "Right to left (manga)"
+msgstr ""
+
+msgid "Right-click a book and choose to add it to your favourites to find it here."
+msgstr ""
+
 msgid "Rules, applied in this order"
 msgstr ""
 
@@ -4801,6 +5817,9 @@ msgid "Run one from here, or type search:name in the search bar. A virtual libra
 msgstr ""
 
 msgid "Run {} in every conversion"
+msgstr ""
+
+msgid "STARTTLS (port 587)"
 msgstr ""
 
 msgid "Sample"
@@ -4822,6 +5841,9 @@ msgid "Sample text to test on"
 msgstr ""
 
 msgid "Save"
+msgstr ""
+
+msgid "Save (Ctrl+Enter)"
 msgstr ""
 
 msgid "Save Book as Audio"
@@ -4872,10 +5894,16 @@ msgstr ""
 msgid "Save path, e.g. {author}/{series}/{title}"
 msgstr ""
 
+msgid "Save the Bookx plugin to a folder"
+msgstr ""
+
 msgid "Save the note (Ctrl+Enter)"
 msgstr ""
 
 msgid "Save the rules above as"
+msgstr ""
+
+msgid "Save to a folder"
 msgstr ""
 
 msgid "Save your shortcuts to a file or load them from one"
@@ -4917,6 +5945,9 @@ msgstr ""
 msgid "Saved the copy, but could not add it to the library: {}"
 msgstr ""
 
+msgid "Saved to {}"
+msgstr ""
+
 msgid "Saved to {}."
 msgstr ""
 
@@ -4933,6 +5964,9 @@ msgid "Saved “{}”"
 msgstr ""
 
 msgid "Saved “{}” ({} images)"
+msgstr ""
+
+msgid "Saved “{}” to your vocabulary."
 msgstr ""
 
 msgid "Saving a snapshot"
@@ -5016,10 +6050,19 @@ msgstr ""
 msgid "Search the Library"
 msgstr ""
 
+msgid "Search the book for this text again and put the highlight back on the page"
+msgstr ""
+
 msgid "Search the library"
 msgstr ""
 
+msgid "Search the vocabulary"
+msgstr ""
+
 msgid "Search this catalogue"
+msgstr ""
+
+msgid "Search words, definitions, notes and tags"
 msgstr ""
 
 msgid "Search: {}"
@@ -5076,7 +6119,16 @@ msgstr ""
 msgid "Select a word first"
 msgstr ""
 
+msgid "Select a word or phrase first."
+msgstr ""
+
+msgid "Select a word or phrase while reading and choose Add to Vocabulary to write your own definition, or look a word up in a dictionary."
+msgstr ""
+
 msgid "Select all books"
+msgstr ""
+
+msgid "Select at least two books to link"
 msgstr ""
 
 msgid "Select at least two pages to merge"
@@ -5139,6 +6191,9 @@ msgstr ""
 msgid "Send books to a Kindle or another address. Use an app password if your provider offers one. {}"
 msgstr ""
 
+msgid "Send books, remove them and sync reading state now"
+msgstr ""
+
 msgid "Send by E-mail"
 msgstr ""
 
@@ -5152,6 +6207,9 @@ msgid "Send to Device"
 msgstr ""
 
 msgid "Send to Readwise"
+msgstr ""
+
+msgid "Send {}"
 msgstr ""
 
 msgid "Send {} books"
@@ -5184,6 +6242,9 @@ msgstr ""
 msgid "Separator"
 msgstr ""
 
+msgid "Sepia"
+msgstr ""
+
 msgid "Series"
 msgstr ""
 
@@ -5205,6 +6266,12 @@ msgstr ""
 msgid "Server address"
 msgstr ""
 
+msgid "Server address (Advanced)"
+msgstr ""
+
+msgid "Server address, port and firewall, HTTPS, matching, privacy and offline mode, reverse proxy, requirements"
+msgstr ""
+
 msgid "Server inside Bookx"
 msgstr ""
 
@@ -5223,6 +6290,12 @@ msgstr ""
 msgid "Set a password of at least {} characters before letting other devices connect."
 msgstr ""
 
+msgid "Set a property everywhere"
+msgstr ""
+
+msgid "Set an attribute"
+msgstr ""
+
 msgid "Set authors"
 msgstr ""
 
@@ -5238,22 +6311,25 @@ msgstr ""
 msgid "Set series"
 msgstr ""
 
+msgid "Set up Bookx sync"
+msgstr ""
+
 msgid "Setting"
 msgstr ""
 
 msgid "Settings sections"
 msgstr ""
 
-msgid "Share Library"
+msgid "Setup checklist"
+msgstr ""
+
+msgid "Share books (OPDS)"
 msgstr ""
 
 msgid "Share themes"
 msgstr ""
 
 msgid "Share this library"
-msgstr ""
-
-msgid "Sharing at:\n{}"
 msgstr ""
 
 msgid "Sharing is off."
@@ -5286,6 +6362,9 @@ msgstr ""
 msgid "Show Colour Swatches"
 msgstr ""
 
+msgid "Show Editions"
+msgstr ""
+
 msgid "Show Favourites"
 msgstr ""
 
@@ -5316,6 +6395,9 @@ msgstr ""
 msgid "Show colours in style sheets"
 msgstr ""
 
+msgid "Show editions and formats of one book as one card, with a list of the editions"
+msgstr ""
+
 msgid "Show footnotes in a popup"
 msgstr ""
 
@@ -5335,6 +6417,9 @@ msgid "Show more of the book"
 msgstr ""
 
 msgid "Show or hide what the marks mean"
+msgstr ""
+
+msgid "Show pages in grey (always on in e-ink mode)"
 msgstr ""
 
 msgid "Show preview"
@@ -5376,6 +6461,12 @@ msgstr ""
 msgid "Sidebar"
 msgstr ""
 
+msgid "Single column"
+msgstr ""
+
+msgid "Single page"
+msgstr ""
+
 msgid "Single pages"
 msgstr ""
 
@@ -5388,6 +6479,9 @@ msgstr ""
 msgid "Sleep timer"
 msgstr ""
 
+msgid "Sleep timer: playback stopped"
+msgstr ""
+
 msgid "Sleep timer: reading stopped"
 msgstr ""
 
@@ -5398,6 +6492,9 @@ msgid "Sleep timer: {}"
 msgstr ""
 
 msgid "Slower"
+msgstr ""
+
+msgid "Small rule files that fix text or style in books when they are imported, converted or opened. They only edit the book itself, never other files. Off until you switch them on; use the magnifier for a dry run on your first book."
 msgstr ""
 
 msgid "Small: 92 MB. Full: 326 MB, slightly cleaner"
@@ -5463,6 +6560,9 @@ msgstr ""
 msgid "Sources: {}"
 msgstr ""
 
+msgid "Space steps through the panels of a page instead of scrolling"
+msgstr ""
+
 msgid "Speaks a short sentence and tells how long the server took"
 msgstr ""
 
@@ -5476,6 +6576,9 @@ msgid "Speed reading"
 msgstr ""
 
 msgid "Speed reading controls"
+msgstr ""
+
+msgid "Speed {}"
 msgstr ""
 
 msgid "Spelling"
@@ -5529,6 +6632,18 @@ msgstr ""
 msgid "Start from a preset"
 msgstr ""
 
+msgid "Start library server"
+msgstr ""
+
+msgid "Start of Content"
+msgstr ""
+
+msgid "Start setup"
+msgstr ""
+
+msgid "Start the server first (step 1), or type the address of another sync server under Advanced."
+msgstr ""
+
 msgid "Starting the voice…"
 msgstr ""
 
@@ -5538,13 +6653,25 @@ msgstr ""
 msgid "Starts a local server on this computer"
 msgstr ""
 
+msgid "Starts the server on this computer so the e-reader can reach it over your Wi-Fi or home network."
+msgstr ""
+
 msgid "Stay Here"
+msgstr ""
+
+msgid "Step {} of {}: {}"
 msgstr ""
 
 msgid "Still searching the installed fonts, try again in a moment"
 msgstr ""
 
+msgid "Stock Kobo and Kindle Wi-Fi sync is not supported: those readers sync over the USB cable only. Wi-Fi sync needs KOReader on the e-reader. “bookx” is the only address path: http://<host-ip>:<port>/bookx"
+msgstr ""
+
 msgid "Stop"
+msgstr ""
+
+msgid "Stop library server"
 msgstr ""
 
 msgid "Stop picking a location"
@@ -5562,6 +6689,9 @@ msgstr ""
 msgid "Strikethrough"
 msgstr ""
 
+msgid "Structure"
+msgstr ""
+
 msgid "Structure and Accessibility"
 msgstr ""
 
@@ -5575,6 +6705,9 @@ msgid "Styles"
 msgstr ""
 
 msgid "Styles that apply to the element at the cursor"
+msgstr ""
+
+msgid "Stylesheet (CSS)"
 msgstr ""
 
 msgid "Stylesheets linked in {}"
@@ -5610,6 +6743,9 @@ msgstr ""
 msgid "Swap"
 msgstr ""
 
+msgid "Swedish ”double”"
+msgstr ""
+
 msgid "Switch library"
 msgstr ""
 
@@ -5622,16 +6758,40 @@ msgstr ""
 msgid "Sync Reading State"
 msgstr ""
 
+msgid "Sync automatically when a device connects"
+msgstr ""
+
+msgid "Sync highlights, notes and bookmarks"
+msgstr ""
+
+msgid "Sync now"
+msgstr ""
+
 msgid "Sync scrolling both ways: scrolling the preview also scrolls the code (the code always moves the preview)"
 msgstr ""
 
 msgid "Sync the reading position"
 msgstr ""
 
+msgid "Sync type"
+msgstr ""
+
 msgid "Sync with {}?"
 msgstr ""
 
+msgid "Sync your Kobo or other KOReader device over Wi-Fi: reading position, highlights, notes and bookmarks. Use USB for devices without KOReader."
+msgstr ""
+
+msgid "Sync: library server (OPDS, KOReader)"
+msgstr ""
+
+msgid "Syntax colouring is off for this file because it has very long lines"
+msgstr ""
+
 msgid "System language"
+msgstr ""
+
+msgid "TLS (port 465)"
 msgstr ""
 
 msgid "Tab width"
@@ -5640,10 +6800,16 @@ msgstr ""
 msgid "Table"
 msgstr ""
 
+msgid "Table of Contents"
+msgstr ""
+
 msgid "Tags"
 msgstr ""
 
 msgid "Tags (comma separated)"
+msgstr ""
+
+msgid "Tags (optional, separated by spaces)"
 msgstr ""
 
 msgid "Tags of the selected books"
@@ -5664,6 +6830,9 @@ msgstr ""
 msgid "Tap zones"
 msgstr ""
 
+msgid "Tell readers where the cover, the title page, the table of contents, the foreword and so on are. Written to the guide and, in EPUB 3, to the landmarks."
+msgstr ""
+
 msgid "Template file type"
 msgstr ""
 
@@ -5679,10 +6848,22 @@ msgstr ""
 msgid "Templates for new files"
 msgstr ""
 
+msgid "Term"
+msgstr ""
+
+msgid "Terms in this Book"
+msgstr ""
+
+msgid "Terms in {}"
+msgstr ""
+
 msgid "Test"
 msgstr ""
 
 msgid "Test on Sample"
+msgstr ""
+
+msgid "Test on the device"
 msgstr ""
 
 msgid "Test results"
@@ -5701,6 +6882,9 @@ msgid "Testing…"
 msgstr ""
 
 msgid "Text"
+msgstr ""
+
+msgid "Text Colour"
 msgstr ""
 
 msgid "Text appearance"
@@ -5739,7 +6923,13 @@ msgstr ""
 msgid "That file is not in the book any more: refresh the report"
 msgstr ""
 
+msgid "That file is too big for a glossary."
+msgstr ""
+
 msgid "That is a web address: choose “WebDAV” as the kind instead"
+msgstr ""
+
+msgid "That is not a colour"
 msgstr ""
 
 msgid "That is not a valid class name"
@@ -5764,6 +6954,12 @@ msgid "That template does not work: {}"
 msgstr ""
 
 msgid "That template is gone"
+msgstr ""
+
+msgid "The Bookx sync server on and “Sync highlights, notes and bookmarks” on"
+msgstr ""
+
+msgid "The Bookx sync server on, and a sync account you make in Bookx under Preferences → Sync (Register); no existing KOReader account is needed"
 msgstr ""
 
 msgid "The address of an OPDS catalogue, such as a Calibre server (http://host:8080/opds) or another Bookx. A user name and password are only needed when the server asks for them."
@@ -5802,6 +6998,9 @@ msgstr ""
 msgid "The book has no style declarations"
 msgstr ""
 
+msgid "The book has no style sheet for the class"
+msgstr ""
+
 msgid "The book uses no external resources"
 msgstr ""
 
@@ -5832,6 +7031,9 @@ msgstr ""
 msgid "The content of “{}” is replaced by “{}”. If you change the name, links to the file follow."
 msgstr ""
 
+msgid "The copy on the device gets an extra “My notes” section at the end (readable in any e-reader app) and a KOReader notes file, so KOReader lists them too. Your library copy is not changed."
+msgstr ""
+
 msgid "The current search ({})"
 msgstr ""
 
@@ -5842,6 +7044,9 @@ msgid "The cursor is inside a tag; move it into the text"
 msgstr ""
 
 msgid "The cursor is not in a tag pair"
+msgstr ""
+
+msgid "The cursor is not inside a paragraph or other block"
 msgstr ""
 
 msgid "The cursor is not inside an element"
@@ -5857,6 +7062,9 @@ msgid "The dictionary to add the word to"
 msgstr ""
 
 msgid "The download did not work: {}"
+msgstr ""
+
+msgid "The editor may stop responding for several seconds"
 msgstr ""
 
 msgid "The entry now points to {}#{}"
@@ -5898,6 +7106,12 @@ msgstr ""
 msgid "The folder {} already has files in it. Use “Open Folder as Library” for that."
 msgstr ""
 
+msgid "The font does not say whether it may be embedded"
+msgstr ""
+
+msgid "The font's licence forbids embedding"
+msgstr ""
+
 msgid "The function “{}” does not exist"
 msgstr ""
 
@@ -5908,6 +7122,9 @@ msgid "The images are already as small as they can get"
 msgstr ""
 
 msgid "The layout was not changed: {}"
+msgstr ""
+
+msgid "The library server on"
 msgstr ""
 
 msgid "The live preview next to the code."
@@ -5932,6 +7149,9 @@ msgid "The page whose links are used"
 msgstr ""
 
 msgid "The password must not contain a colon."
+msgstr ""
+
+msgid "The pitch of the voice stays the same."
 msgstr ""
 
 msgid "The plugin {} is not enabled"
@@ -5964,6 +7184,9 @@ msgstr ""
 msgid "The semantics are unchanged"
 msgstr ""
 
+msgid "The series {}"
+msgstr ""
+
 msgid "The snippet needs a name"
 msgstr ""
 
@@ -5980,6 +7203,9 @@ msgid "The text changed since it was checked: refreshing"
 msgstr ""
 
 msgid "The text changed; try again"
+msgstr ""
+
+msgid "The text is not in this book. Select the passage in the book and highlight it again, then delete this note"
 msgstr ""
 
 msgid "The trash is empty"
@@ -6030,6 +7256,9 @@ msgstr ""
 msgid "There are no problems to go to"
 msgstr ""
 
+msgid "There is no colour here to remove"
+msgstr ""
+
 msgid "There is no connection to the internet. Bookx will try again later, or press Try again."
 msgstr ""
 
@@ -6066,6 +7295,18 @@ msgstr ""
 msgid "These files are required and cannot be deleted"
 msgstr ""
 
+msgid "These images, fonts and media files are not used by any page, stylesheet or the package. The cover is never listed."
+msgstr ""
+
+msgid "Thirds (tablet)"
+msgstr ""
+
+msgid "Thirds, mirrored (left hand)"
+msgstr ""
+
+msgid "This File Is One Very Long Line"
+msgstr ""
+
 msgid "This PDF cannot be shown"
 msgstr ""
 
@@ -6076,6 +7317,9 @@ msgid "This PDF is protected. Enter its password to read it."
 msgstr ""
 
 msgid "This backup is encrypted. Enter the passphrase it was made with."
+msgstr ""
+
+msgid "This book"
 msgstr ""
 
 msgid "This book does not define one"
@@ -6099,6 +7343,9 @@ msgstr ""
 msgid "This device is called"
 msgstr ""
 
+msgid "This edition opens first now"
+msgstr ""
+
 msgid "This file is gone. Library check can remove the entry or you can restore a backup."
 msgstr ""
 
@@ -6106,6 +7353,9 @@ msgid "This file is not a list of snippets"
 msgstr ""
 
 msgid "This file was edited after the check. Check again."
+msgstr ""
+
+msgid "This is about a device plugged in with a USB cable (or mounted in Files).\n\nWhen you plug in a Kobo, Kindle or similar reader, Bookx reads the reading progress and the highlights and notes the device keeps: from the Kobo’s own database, or from KOReader’s “.sdr” files if KOReader is installed on it. It merges them with your library. Progress only moves forward, highlights and notes are united, and nothing is deleted on either side.\n\nA Kobo needs no KOReader for this; its own reading state is read. A Kindle’s own state is not readable, only KOReader’s files. If the device has no readable state, nothing happens. Reading progress is never written to the device; notes go to it only as a new KOReader notes file where there is none.\n\nOff by default: you are asked first, with a summary of what will change."
 msgstr ""
 
 msgid "This is the last file; there is nothing to merge it with"
@@ -6121,6 +7371,9 @@ msgid "This problem is about the book as a whole, not one file"
 msgstr ""
 
 msgid "This search is too complicated"
+msgstr ""
+
+msgid "This series ({})"
 msgstr ""
 
 msgid "This tag has no closing >"
@@ -6144,13 +7397,25 @@ msgstr ""
 msgid "Tidied {}"
 msgstr ""
 
+msgid "Tidies the layout of the files. Only the white space between block-level tags changes, so the pages look exactly the same."
+msgstr ""
+
 msgid "Tidy Names"
 msgstr ""
 
 msgid "Tidy names"
 msgstr ""
 
+msgid "Time left in the book"
+msgstr ""
+
+msgid "Time left in the chapter"
+msgstr ""
+
 msgid "Time reading"
+msgstr ""
+
+msgid "Time reading this session"
 msgstr ""
 
 msgid "Title"
@@ -6162,13 +7427,22 @@ msgstr ""
 msgid "Title Case"
 msgstr ""
 
+msgid "Title Page"
+msgstr ""
+
 msgid "Title of the new book"
+msgstr ""
+
+msgid "Title page"
 msgstr ""
 
 msgid "Title sort"
 msgstr ""
 
 msgid "To"
+msgstr ""
+
+msgid "Today"
 msgstr ""
 
 msgid "Toggle Bookmark"
@@ -6195,10 +7469,22 @@ msgstr ""
 msgid "Too big: {} needed, {} free on the device."
 msgstr ""
 
+msgid "Too many bookmarks"
+msgstr ""
+
+msgid "Took the edition out of its group"
+msgstr ""
+
 msgid "Took {}"
 msgstr ""
 
+msgid "Took {} books out of their group"
+msgstr ""
+
 msgid "Tools: fix, upgrade, compress, report, checkpoints"
+msgstr ""
+
+msgid "Total"
 msgstr ""
 
 msgid "Transform HTML"
@@ -6228,10 +7514,25 @@ msgstr ""
 msgid "Try again"
 msgstr ""
 
-msgid "Turn on “Share this library” to get the address."
+msgid "Turn news sites and blogs (RSS, Atom) into books that update by themselves"
+msgstr ""
+
+msgid "Turn on the Bookx sync server"
+msgstr ""
+
+msgid "Turn on the Bookx sync server (step 1) and this switch first."
+msgstr ""
+
+msgid "Turn on the Bookx sync server (step 1) first: the server does not take accounts before."
 msgstr ""
 
 msgid "Turn typed entities into characters"
+msgstr ""
+
+msgid "Two columns"
+msgstr ""
+
+msgid "Two pages"
 msgstr ""
 
 msgid "Type a command, book or setting"
@@ -6255,6 +7556,9 @@ msgstr ""
 msgid "Type the new name"
 msgstr ""
 
+msgid "Type the term first."
+msgstr ""
+
 msgid "Typing ; after &name now turns the entity into its character"
 msgstr ""
 
@@ -6265,6 +7569,15 @@ msgid "Typing > after an opening tag adds the closing tag"
 msgstr ""
 
 msgid "UPPERCASE"
+msgstr ""
+
+msgid "USB cable, no Wi-Fi"
+msgstr ""
+
+msgid "USB device"
+msgstr ""
+
+msgid "USB device sync"
 msgstr ""
 
 msgid "Unchanged lines shown around each change"
@@ -6324,10 +7637,19 @@ msgstr ""
 msgid "Unlink"
 msgstr ""
 
+msgid "Unlink All Editions"
+msgstr ""
+
+msgid "Unlink {}"
+msgstr ""
+
 msgid "Unlinked audiobook from \"{}\""
 msgstr ""
 
 msgid "Unrated"
+msgstr ""
+
+msgid "Update the jacket"
 msgstr ""
 
 msgid "Updated the book jacket {}"
@@ -6349,6 +7671,12 @@ msgid "Use"
 msgstr ""
 
 msgid "Use + to make one, then drag books onto it"
+msgstr ""
+
+msgid "Use Bookx server"
+msgstr ""
+
+msgid "Use CSS Classes for Colours and Alignment"
 msgstr ""
 
 msgid "Use HTTPS"
@@ -6387,6 +7715,9 @@ msgstr ""
 msgid "Use optimal line breaking"
 msgstr ""
 
+msgid "Use the address of the Bookx server of this computer"
+msgstr ""
+
 msgid "Use the book's own styling"
 msgstr ""
 
@@ -6394,6 +7725,9 @@ msgid "Use the default font"
 msgstr ""
 
 msgid "Use the default {}"
+msgstr ""
+
+msgid "Use the defaults for this book"
 msgstr ""
 
 msgid "Use the dictionary {}"
@@ -6405,6 +7739,15 @@ msgstr ""
 msgid "Use the same description for every use of an image"
 msgstr ""
 
+msgid "Use this to let another device or app download books from this computer."
+msgstr ""
+
+msgid "Use this when your Kobo, Kindle, Android or other e-reader runs KOReader."
+msgstr ""
+
+msgid "Use this when your e-reader is connected by a cable. It also works for devices without KOReader."
+msgstr ""
+
 msgid "Use {} as virtual library"
 msgstr ""
 
@@ -6414,16 +7757,28 @@ msgstr ""
 msgid "User name"
 msgstr ""
 
+msgid "Uses the same account as the reading position. Highlights are placed by their text; one that is not found in the book is kept as a note without a place."
+msgstr ""
+
 msgid "Verify Files"
 msgstr ""
 
 msgid "Verify book files"
 msgstr ""
 
+msgid "Vertical scroll (webtoon)"
+msgstr ""
+
+msgid "Video"
+msgstr ""
+
 msgid "View"
 msgstr ""
 
 msgid "View options"
+msgstr ""
+
+msgid "View: layout, fit, direction"
 msgstr ""
 
 msgid "View: zoom, layout, margins, colours"
@@ -6451,6 +7806,9 @@ msgid "Vocabulary as Anki package (.apkg)"
 msgstr ""
 
 msgid "Vocabulary as Anki text file"
+msgstr ""
+
+msgid "Vocabulary page"
 msgstr ""
 
 msgid "Voice"
@@ -6492,6 +7850,9 @@ msgstr ""
 msgid "Waiting books"
 msgstr ""
 
+msgid "Waiting for a device"
+msgstr ""
+
 msgid "Watched folder"
 msgstr ""
 
@@ -6507,10 +7868,22 @@ msgstr ""
 msgid "What Bookx can connect to"
 msgstr ""
 
+msgid "What Bookx needs"
+msgstr ""
+
+msgid "What Bookx sync does"
+msgstr ""
+
 msgid "What is this?"
 msgstr ""
 
 msgid "What stores, libraries and screen readers are told about the book: how it can be read, which features it has and which hazards. Values are checked against the EPUB accessibility vocabulary and against the book."
+msgstr ""
+
+msgid "What syncs"
+msgstr ""
+
+msgid "What the e-reader needs"
 msgstr ""
 
 msgid "What the marks mean"
@@ -6528,6 +7901,9 @@ msgstr ""
 msgid "When a book in a new language is added, or opened, its dictionary is fetched in the background."
 msgstr ""
 
+msgid "Where Bookx keeps the book files. Changing it moves them (with a preview), all or nothing."
+msgstr ""
+
 msgid "Where backups go"
 msgstr ""
 
@@ -6540,6 +7916,9 @@ msgstr ""
 msgid "Where to split"
 msgstr ""
 
+msgid "Which device needs what, over which connection, and what syncs"
+msgstr ""
+
 msgid "Which part of the page turns it when tapped or clicked"
 msgstr ""
 
@@ -6547,6 +7926,21 @@ msgid "Whole book"
 msgstr ""
 
 msgid "Whole words only"
+msgstr ""
+
+msgid "Wi-Fi or local network"
+msgstr ""
+
+msgid "Wi-Fi or local network, the same one"
+msgstr ""
+
+msgid "Wi-Fi sync"
+msgstr ""
+
+msgid "Wide (no bar toggle)"
+msgstr ""
+
+msgid "Wide pages on their own"
 msgstr ""
 
 msgid "Wikipedia look-up in the reader"
@@ -6570,10 +7964,16 @@ msgstr ""
 msgid "Words"
 msgstr ""
 
+msgid "Words and phrases you saved with your own definition get a dotted underline; tap one to see your definition."
+msgstr ""
+
 msgid "Words that are not in the dictionary get a wavy red line"
 msgstr ""
 
 msgid "Works"
+msgstr ""
+
+msgid "Works between"
 msgstr ""
 
 msgid "Wrap Long Lines"
@@ -6582,7 +7982,13 @@ msgstr ""
 msgid "Wrap Selection in Tag"
 msgstr ""
 
+msgid "Wrap in a new element"
+msgstr ""
+
 msgid "Wrap long lines"
+msgstr ""
+
+msgid "Write your definition first."
 msgstr ""
 
 msgid "Writes one file per book that has highlights, notes or bookmarks, into a folder you choose."
@@ -6612,10 +8018,16 @@ msgstr ""
 msgid "Your changes to this book will be lost if you don't save them."
 msgstr ""
 
+msgid "Your definition"
+msgstr ""
+
 msgid "Your dictionaries"
 msgstr ""
 
 msgid "Your library ({} books) now lives in a database; the old catalogue was kept as bookx-library.json.migrated"
+msgstr ""
+
+msgid "Your own definitions · {} terms · works offline, always first"
 msgstr ""
 
 msgid "Your own dictionaries"
@@ -6630,43 +8042,136 @@ msgstr ""
 msgid "Zoom in (Ctrl++)"
 msgstr ""
 
+msgid "Zoom in, out, fit"
+msgstr ""
+
 msgid "Zoom level (dots) and the part of the book in view (bar)"
 msgstr ""
 
 msgid "Zoom out (Ctrl+−)"
 msgstr ""
 
+msgid "a book fingerprint and your position"
+msgstr ""
+
+msgid "a plain request for the page or feed"
+msgstr ""
+
+msgid "a plain request per link"
+msgstr ""
+
+msgid "about {} left"
+msgstr ""
+
 msgid "and {} more"
+msgstr ""
+
+msgid "book files or encrypted backups"
 msgstr ""
 
 msgid "can be fixed"
 msgstr ""
 
+msgid "connected"
+msgstr ""
+
 msgid "copied"
+msgstr ""
+
+msgid "current"
+msgstr ""
+
+msgid "done"
 msgstr ""
 
 msgid "for example"
 msgstr ""
 
+msgid "gutenberg.org, standardebooks.org and the catalogues you add"
+msgstr ""
+
 msgid "new token; copy the new settings into your assistants"
+msgstr ""
+
+msgid "not connected"
+msgstr ""
+
+msgid "not done"
 msgstr ""
 
 msgid "not used by any text"
 msgstr ""
 
+msgid "nothing: other devices connect to this computer, only while sharing is on and only with the password"
+msgstr ""
+
 msgid "of {}"
+msgstr ""
+
+msgid "off"
+msgstr ""
+
+msgid "on"
 msgstr ""
 
 msgid "progress of {}"
 msgstr ""
 
+msgid "read last"
+msgstr ""
+
 msgid "sWAP cASE"
+msgstr ""
+
+msgid "the WebDAV address you enter"
+msgstr ""
+
+msgid "the addresses you give"
+msgstr ""
+
+msgid "the book and the message"
+msgstr ""
+
+msgid "the books you share"
+msgstr ""
+
+msgid "the file you ask for"
+msgstr ""
+
+msgid "the mail server you enter"
+msgstr ""
+
+msgid "the selected text"
+msgstr ""
+
+msgid "the selected word or phrase"
+msgstr ""
+
+msgid "the server address you enter"
+msgstr ""
+
+msgid "the sync server you enter, or your own Bookx"
+msgstr ""
+
+msgid "the text being read"
+msgstr ""
+
+msgid "the web addresses found in the book"
+msgstr ""
+
+msgid "title, author, ISBN of the books you look up"
 msgstr ""
 
 msgid "typed through the UI"
 msgstr ""
 
 msgid "used {} times"
+msgstr ""
+
+msgid "your highlights, when you press Upload"
+msgstr ""
+
+msgid "your search words; books you download"
 msgstr ""
 
 msgid "{ is never closed"
@@ -6676,6 +8181,15 @@ msgid "{}\n"
 msgstr ""
 
 msgid "{}   ·   Ln {}, Col {}   ·   {} lines{}"
+msgstr ""
+
+msgid "{}   ·   one very long line"
+msgstr ""
+
+msgid "{} % · {} h {} min left"
+msgstr ""
+
+msgid "{} % · {} min left"
 msgstr ""
 
 msgid "{} (highlights and notes) from the device"
@@ -6719,6 +8233,9 @@ msgid_plural "{} books"
 msgstr[0] ""
 msgstr[1] ""
 
+msgid "{} books not in your library"
+msgstr ""
+
 msgid "{} change"
 msgid_plural "{} changes"
 msgstr[0] ""
@@ -6737,6 +8254,9 @@ msgid "{} characters used"
 msgstr ""
 
 msgid "{} checked for {}: {} ready, {} blocking, {}"
+msgstr ""
+
+msgid "{} colours updated"
 msgstr ""
 
 msgid "{} day"
@@ -6784,12 +8304,18 @@ msgstr ""
 msgid "{} h {} min"
 msgstr ""
 
+msgid "{} has a line of {} KB. A line this long makes the editor stop responding for seconds; with line breaks it works normally."
+msgstr ""
+
 msgid "{} highlight"
 msgid_plural "{} highlights"
 msgstr[0] ""
 msgstr[1] ""
 
 msgid "{} highlights"
+msgstr ""
+
+msgid "{} highlights from KOReader"
 msgstr ""
 
 msgid "{} ignored ({} hidden problems)"
@@ -6833,6 +8359,9 @@ msgid_plural "{} items"
 msgstr[0] ""
 msgstr[1] ""
 
+msgid "{} kept as in your library"
+msgstr ""
+
 msgid "{} match"
 msgid_plural "{} matches"
 msgstr[0] ""
@@ -6859,10 +8388,16 @@ msgid_plural "{} new issues"
 msgstr[0] ""
 msgstr[1] ""
 
+msgid "{} not found in the book"
+msgstr ""
+
 msgid "{} note"
 msgid_plural "{} notes"
 msgstr[0] ""
 msgstr[1] ""
+
+msgid "{} notes updated"
+msgstr ""
 
 msgid "{} occurrence"
 msgid_plural "{} occurrences"
@@ -6870,6 +8405,9 @@ msgstr[0] ""
 msgstr[1] ""
 
 msgid "{} of {}"
+msgstr ""
+
+msgid "{} of {} books"
 msgstr ""
 
 msgid "{} of {} covers are small"
@@ -6882,6 +8420,9 @@ msgid "{} of {} highlights · {} books · {} with notes"
 msgstr ""
 
 msgid "{} of {} in this file"
+msgstr ""
+
+msgid "{} of {} {}"
 msgstr ""
 
 msgid "{} on {} · {}"
@@ -6903,6 +8444,9 @@ msgstr[0] ""
 msgstr[1] ""
 
 msgid "{} references"
+msgstr ""
+
+msgid "{} removed"
 msgstr ""
 
 msgid "{} replacement"
@@ -6929,10 +8473,19 @@ msgstr[1] ""
 msgid "{} selected"
 msgstr ""
 
+msgid "{} sent to the device"
+msgstr ""
+
 msgid "{} stars"
 msgstr ""
 
 msgid "{} synced: {}"
+msgstr ""
+
+msgid "{} terms added, {} updated."
+msgstr ""
+
+msgid "{} terms found."
 msgstr ""
 
 msgid "{} to the device"
@@ -6970,13 +8523,25 @@ msgstr ""
 msgid "{} words · {} due · {} learning · {} mastered"
 msgstr ""
 
+msgid "{} words · {} with your own definition"
+msgstr ""
+
 msgid "{} wpm"
+msgstr ""
+
+msgid "{} · narrated by {}"
+msgstr ""
+
+msgid "{} · sends {}"
 msgstr ""
 
 msgid "{} · wrapped around"
 msgstr ""
 
 msgid "{} · {}\n{}"
+msgstr ""
+
+msgid "{} · {} chapters"
 msgstr ""
 
 msgid "{} · {} files · {}"
@@ -7012,10 +8577,16 @@ msgstr ""
 msgid "{}, PDF pages"
 msgstr ""
 
+msgid "{}, comic pages"
+msgstr ""
+
 msgid "{}, page text"
 msgstr ""
 
 msgid "{}: nothing needed to change"
+msgstr ""
+
+msgid "{}: show the list"
 msgstr ""
 
 msgid "{}: {}"

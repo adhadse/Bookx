@@ -112,7 +112,7 @@ impl Editor {
     fn update_spelling(&mut self, path: &str, buf: &sv::Buffer, text: &str) {
         let (s, e) = buf.bounds();
         buf.remove_tag_by_name(codeview::TAG_SPELL, &s, &e);
-        if !is_spelled_path(path) || text.len() > SPELL_MAX {
+        if !is_spelled_path(path) || text.len() > SPELL_MAX || codeview::is_plain(buf) {
             self.spell.borrow_mut().spots.clear();
             return;
         }

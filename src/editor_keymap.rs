@@ -295,6 +295,48 @@ pub const COMMANDS: &[Cmd] = &[
         "edit.code::image"
     ),
     c!(
+        "editor.colour-text",
+        N_("Text Colour"),
+        &[],
+        "colour color font span",
+        "edit.code::colour-text"
+    ),
+    c!(
+        "editor.colour-background",
+        N_("Background Colour"),
+        &[],
+        "colour color highlight span",
+        "edit.code::colour-background"
+    ),
+    c!(
+        "editor.align-left",
+        N_("Align Left"),
+        &[],
+        "text-align paragraph",
+        "edit.code::align-left"
+    ),
+    c!(
+        "editor.align-center",
+        N_("Align Centre"),
+        &[],
+        "text-align paragraph center",
+        "edit.code::align-center"
+    ),
+    c!(
+        "editor.align-right",
+        N_("Align Right"),
+        &[],
+        "text-align paragraph",
+        "edit.code::align-right"
+    ),
+    c!(
+        "editor.align-justify",
+        N_("Justify"),
+        &[],
+        "text-align paragraph",
+        "edit.code::align-justify"
+    ),
+    c!(
         "editor.go-to-definition",
         N_("Go to Definition"),
         &["F12"],

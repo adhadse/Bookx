@@ -5,6 +5,7 @@
 //! Everything here is GTK-free. The protocol logic is pure (`handle(&Request) -> Response`) and the
 //! HTTP transport in [`server`] (hyper, optionally TLS) is a thin shell around it.
 
+pub mod annotation_sync;
 pub mod cert;
 pub mod devfs;
 pub mod devices;

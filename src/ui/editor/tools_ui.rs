@@ -275,7 +275,7 @@ impl Editor {
         custom_apply: Option<Rc<dyn Fn(&ToolUi)>>,
     ) -> ToolUi {
         let dialog = adw::Dialog::new();
-        dialog.set_title(spec.title);
+        dialog.set_title(&tr(spec.title));
         let (w, h) = fit_dialog(&self.w.win, 560, spec.height);
         dialog.set_content_width(w);
         dialog.set_content_height(h);
@@ -284,7 +284,7 @@ impl Editor {
         body.set_margin_bottom(12);
         body.set_margin_start(16);
         body.set_margin_end(16);
-        let intro = gtk::Label::new(Some(&spec.intro));
+        let intro = gtk::Label::new(Some(&tr(&spec.intro)));
         intro.set_wrap(true);
         intro.set_xalign(0.0);
         intro.add_css_class("dim-label");
@@ -310,7 +310,7 @@ impl Editor {
         scroll.set_child(Some(&body));
 
         let preview_btn = gtk::Button::with_label(&tr("Preview"));
-        let apply = gtk::Button::with_label(spec.apply);
+        let apply = gtk::Button::with_label(&tr(spec.apply));
         apply.add_css_class("suggested-action");
         let bar = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         bar.set_margin_all(12);
@@ -401,7 +401,8 @@ impl Editor {
         let ellipses = switch_row(&tr("Ellipses"), &tr("... becomes …"), true);
         let lang = self.book.borrow().metadata().language.clone();
         let default_style = QuoteStyle::for_language(&lang);
-        let labels: Vec<&str> = QuoteStyle::ALL.iter().map(|s| s.label()).collect();
+        let labels_owned: Vec<String> = QuoteStyle::ALL.iter().map(|s| tr(s.label())).collect();
+        let labels: Vec<&str> = labels_owned.iter().map(String::as_str).collect();
         let style = combo_row(
             &tr("Language rules for double quotes"),
             &labels,
@@ -449,9 +450,9 @@ impl Editor {
         });
         self.tool_dialog(
             Spec::new(
-                "Smarten Punctuation",
-                "Curly quotes, proper dashes and ellipses in the text of the pages. Code, scripts, styles and attributes are never touched.",
-                "Apply",
+                crate::i18n::N_("Smarten Punctuation"),
+                crate::i18n::N_("Curly quotes, proper dashes and ellipses in the text of the pages. Code, scripts, styles and attributes are never touched."),
+                crate::i18n::N_("Apply"),
             ),
             Some(g.upcast()),
             make,
@@ -496,9 +497,9 @@ impl Editor {
         });
         self.tool_dialog(
             Spec::new(
-                "Fix HTML",
-                "Repairs pages that are not well-formed XHTML: unclosed and misnested tags, stray ampersands, missing namespaces. Pages that are fine are left alone.",
-                "Fix",
+                crate::i18n::N_("Fix HTML"),
+                crate::i18n::N_("Repairs pages that are not well-formed XHTML: unclosed and misnested tags, stray ampersands, missing namespaces. Pages that are fine are left alone."),
+                crate::i18n::N_("Fix"),
             ),
             Some(g.upcast()),
             make,
@@ -532,9 +533,9 @@ impl Editor {
         });
         self.tool_dialog(
             Spec::new(
-                "Beautify",
-                "Tidies the layout of the files. Only the white space between block-level tags changes, so the pages look exactly the same.",
-                "Beautify",
+                crate::i18n::N_("Beautify"),
+                crate::i18n::N_("Tidies the layout of the files. Only the white space between block-level tags changes, so the pages look exactly the same."),
+                crate::i18n::N_("Beautify"),
             ),
             Some(g.upcast()),
             make,
@@ -557,9 +558,9 @@ impl Editor {
                 auto_preview: true,
                 height: 380,
                 ..Spec::new(
-                    "Remove Unused CSS Rules",
-                    "Deletes the rules of the stylesheets that match nothing in the book. @font-face, @media and other @-rules are kept.",
-                    "Remove",
+                    crate::i18n::N_("Remove Unused CSS Rules"),
+                    crate::i18n::N_("Deletes the rules of the stylesheets that match nothing in the book. @font-face, @media and other @-rules are kept."),
+                    crate::i18n::N_("Remove"),
                 )
             },
             None,
@@ -621,9 +622,9 @@ impl Editor {
             Spec {
                 height: 640,
                 ..Spec::new(
-                    "Filter Style Information",
-                    "Removes the ticked properties from stylesheets, <style> blocks and style attributes.",
-                    "Remove",
+                    crate::i18n::N_("Filter Style Information"),
+                    crate::i18n::N_("Removes the ticked properties from stylesheets, <style> blocks and style attributes."),
+                    crate::i18n::N_("Remove"),
                 )
             },
             Some(bx.upcast()),
@@ -649,7 +650,7 @@ impl Editor {
             row.set_title(&glib::markup_escape_text(&u.path));
             row.set_subtitle(&format!(
                 "{} · {}",
-                u.kind.label(),
+                tr(u.kind.label()),
                 human_size(u.bytes as u64)
             ));
             let c = gtk::CheckButton::new();
@@ -681,9 +682,9 @@ impl Editor {
                 height: 600,
                 auto_preview: true,
                 ..Spec::new(
-                    "Delete Unused Media",
-                    "These images, fonts and media files are not used by any page, stylesheet or the package. The cover is never listed.",
-                    "Delete",
+                    crate::i18n::N_("Delete Unused Media"),
+                    crate::i18n::N_("These images, fonts and media files are not used by any page, stylesheet or the package. The cover is never listed."),
+                    crate::i18n::N_("Delete"),
                 )
             },
             Some(scrolled(&list, 220).upcast()),
@@ -748,9 +749,9 @@ impl Editor {
             Spec {
                 height: 620,
                 ..Spec::new(
-                    "Embed Referenced Fonts",
-                    "Fonts the pages ask for but the book does not carry, found among the fonts installed here. Only embed fonts whose licence allows it.",
-                    "Embed",
+                    crate::i18n::N_("Embed Referenced Fonts"),
+                    crate::i18n::N_("Fonts the pages ask for but the book does not carry, found among the fonts installed here. Only embed fonts whose licence allows it."),
+                    crate::i18n::N_("Embed"),
                 )
             },
             Some(holder.clone().upcast()),
@@ -812,7 +813,7 @@ impl Editor {
                                     row.set_subtitle(&glib::markup_escape_text(&format!(
                                         "{} · {}",
                                         f.path.display(),
-                                        f.embedding.label()
+                                        tr(f.embedding.label())
                                     )));
                                     match f.embedding {
                                         fonts::Embedding::Restricted => check.set_sensitive(false),
@@ -897,7 +898,7 @@ impl Editor {
                     options.push(h.clone());
                 }
             }
-            let mut labels = vec!["(none)".to_string()];
+            let mut labels = vec![tr("(none)")];
             labels.extend(options.iter().cloned());
             let labs: Vec<&str> = labels.iter().map(String::as_str).collect();
             let sel = have
@@ -905,7 +906,7 @@ impl Editor {
                 .and_then(|h| options.iter().position(|o| o == h))
                 .map(|i| i as u32 + 1)
                 .unwrap_or(0);
-            let row = combo_row(sem.label(), &labs, sel);
+            let row = combo_row(&tr(sem.label()), &labs, sel);
             row.set_use_subtitle(true);
             g.add(&row);
             rows.push((*sem, row, options));
@@ -936,9 +937,9 @@ impl Editor {
             Spec {
                 height: 640,
                 ..Spec::new(
-                    "Set Semantics",
-                    "Tell readers where the cover, the title page, the table of contents, the foreword and so on are. Written to the guide and, in EPUB 3, to the landmarks.",
-                    "Apply",
+                    crate::i18n::N_("Set Semantics"),
+                    crate::i18n::N_("Tell readers where the cover, the title page, the table of contents, the foreword and so on are. Written to the guide and, in EPUB 3, to the landmarks."),
+                    crate::i18n::N_("Apply"),
                 )
             },
             Some(scrolled(&g, 300).upcast()),
@@ -1139,9 +1140,9 @@ impl Editor {
             Spec {
                 height: 700,
                 ..Spec::new(
-                    "Accessibility",
-                    "Language, image descriptions and the accessibility metadata that stores and shops show.",
-                    "Apply",
+                    crate::i18n::N_("Accessibility"),
+                    crate::i18n::N_("Language, image descriptions and the accessibility metadata that stores and shops show."),
+                    crate::i18n::N_("Apply"),
                 )
             },
             Some(bx.upcast()),
@@ -1164,9 +1165,9 @@ impl Editor {
                 auto_preview: true,
                 height: 420,
                 ..Spec::new(
-                    "Repair Broken Links",
-                    "Fixes links to files and anchors that no longer exist when a clear match is found (a different capitalisation, a renamed file). The others are listed.",
-                    "Repair",
+                    crate::i18n::N_("Repair Broken Links"),
+                    crate::i18n::N_("Fixes links to files and anchors that no longer exist when a clear match is found (a different capitalisation, a renamed file). The others are listed."),
+                    crate::i18n::N_("Repair"),
                 )
             },
             None,
@@ -1213,9 +1214,9 @@ impl Editor {
         });
         self.tool_dialog(
             Spec::new(
-                "Move Files to a Folder",
+                crate::i18n::N_("Move Files to a Folder"),
                 trf("Moves the {} selected file(s) to another folder of the book. Every link to them, and every link they contain, is updated.", &[&paths.len()]),
-                "Move",
+                crate::i18n::N_("Move"),
             ),
             Some(g.upcast()),
             make,
@@ -1304,9 +1305,9 @@ impl Editor {
             Spec {
                 height: 440,
                 ..Spec::new(
-                    "Check External Links",
+                    crate::i18n::N_("Check External Links"),
                     trf("Visits the {} web address(es) the book links to, one every few moments, and lists the ones that do not answer. Nothing in the book changes.", &[&n]),
-                    "Start",
+                    crate::i18n::N_("Start"),
                 )
             },
             None,
@@ -1374,9 +1375,9 @@ impl Editor {
             Spec {
                 height: 480,
                 ..Spec::new(
-                    "Download External Resources",
-                    "Images, stylesheets and media the pages load from the web are copied into the book and the links point at the copies. Only download what you are allowed to keep: check the licences.",
-                    "Download",
+                    crate::i18n::N_("Download External Resources"),
+                    crate::i18n::N_("Images, stylesheets and media the pages load from the web are copied into the book and the links point at the copies. Only download what you are allowed to keep: check the licences."),
+                    crate::i18n::N_("Download"),
                 )
             },
             None,

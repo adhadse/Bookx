@@ -11,6 +11,10 @@ use bookx_editing::split_merge::SplitSpec;
 
 use super::*;
 
+/// How long a caret reveal keeps a stale code scroll from pulling the preview away. It has to cover
+/// the debounce of a scroll step plus a slow main loop under load, but not the next deliberate scroll.
+const FOLLOW_GRACE_MS: u64 = 1000;
+
 /// What a click in "pick a location" mode is for.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Pick {
@@ -90,6 +94,8 @@ pub(super) struct PvState {
     pub both: Cell<bool>,
     both_btn: gtk::ToggleButton,
     pub gate: Cell<bookx_editing::scroll_sync::Gate>,
+    /// Until when a caret reveal wins over a delayed code → preview sync.
+    follow_until: Cell<u64>,
     /// A sync step is under way (its own scrolls must not start another).
     pub syncing: Cell<bool>,
     sync_timer: Rc<RefCell<Option<glib::SourceId>>>,
@@ -204,12 +210,12 @@ impl PvState {
         // ---- header: follow, auto reload, refresh, find, copy --------------------------------
         let follow_btn = toggle(
             "find-location-symbolic",
-            "Follow the cursor: the preview scrolls to the element at the cursor",
+            &tr("Follow the cursor: the preview scrolls to the element at the cursor"),
             crate::editor_prefs::look().preview_follow,
         );
         let auto_btn = toggle(
             "media-playlist-repeat-symbolic",
-            "Reload the preview automatically while typing",
+            &tr("Reload the preview automatically while typing"),
             true,
         );
         let refresh_btn = flat_button("view-refresh-symbolic", &tr("Refresh the preview (F5)"));
@@ -440,7 +446,7 @@ impl PvState {
         sidebar_stack.add_titled_with_icon(
             &css.root,
             Some("css"),
-            "Live CSS",
+            &tr("Live CSS"),
             "format-text-rich-symbolic",
         );
         {
@@ -478,6 +484,7 @@ impl PvState {
             both: Cell::new(both),
             both_btn,
             gate: Cell::new(Default::default()),
+            follow_until: Cell::new(0),
             syncing: Cell::new(false),
             sync_timer: Rc::new(RefCell::new(None)),
             sync_timer_pv: Rc::new(RefCell::new(None)),
@@ -678,9 +685,30 @@ impl Editor {
         }
     }
 
+    /// The caret block is already on screen. With *Follow cursor* on that wins over a delayed
+    /// code scroll: otherwise a queued step puts the code view's old top back and hides the caret.
+    fn caret_is_visible(&self) -> bool {
+        if !self.pv.follow.get() {
+            return false;
+        }
+        let Some(c) = self.caret_char() else {
+            return false;
+        };
+        let Some(b) = self.block_at_char(c) else {
+            return false;
+        };
+        let canvas = &self.w.preview;
+        canvas
+            .block_top(b)
+            .is_some_and(|t| t >= 0.0 && t < canvas.visible_height())
+    }
+
     /// Code view -> preview: the preview shows the part of the page the code view shows.
     pub(super) fn sync_code_to_preview(&self) {
         if !self.sync_ready() {
+            return;
+        }
+        if now_ms() < self.pv.follow_until.get() && self.caret_is_visible() {
             return;
         }
         let t = std::time::Instant::now();
@@ -734,6 +762,15 @@ impl Editor {
         best
     }
 
+    /// Drops a code → preview sync that was already queued. A cursor move (or switching Follow on)
+    /// scrolls the preview to the caret itself; the older queued step would put the code view's old
+    /// top back on screen and hide the caret again.
+    fn cancel_code_sync(&self) {
+        if let Some(id) = self.pv.sync_timer.borrow_mut().take() {
+            id.remove();
+        }
+    }
+
     /// CE-243: the preview shows the element at the cursor.
     pub(super) fn pv_follow_cursor(&self) {
         if !self.pv.follow.get() || !self.pv_map_is_current() {
@@ -743,8 +780,13 @@ impl Editor {
         if self.pv.skip_follow.take() == Some(c) {
             return;
         }
+        self.cancel_code_sync();
         if let Some(b) = self.block_at_char(c) {
+            let was_visible = self.caret_is_visible();
             self.w.preview.reveal_block(b);
+            if !was_visible {
+                self.pv.follow_until.set(now_ms() + FOLLOW_GRACE_MS);
+            }
         }
     }
 

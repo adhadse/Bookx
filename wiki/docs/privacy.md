@@ -6,14 +6,27 @@ stay in files on your computer (see [Library files](library.md#library-files-and
 
 ## Offline mode
 
+<figure markdown="1">
+![The Offline mode switch](assets/privacy-offline-light.png#only-light)
+![The Offline mode switch](assets/privacy-offline-dark.png#only-dark)
+<figcaption markdown="1">*Offline mode* refuses every look-up and download until you switch it off.</figcaption>
+</figure>
+
+<figure markdown="1">
+![Preferences, Privacy](assets/preferences-privacy-light.png#only-light)
+![Preferences, Privacy](assets/preferences-privacy-dark.png#only-dark)
+<figcaption markdown="1">Preferences → Privacy: the offline switch and what Bookx can connect to.</figcaption>
+</figure>
+
+
 *Preferences → Privacy → Offline mode* refuses every online look-up and download: metadata and covers, Wikipedia,
 translation, online catalogues, web articles and news, link checks, dictionary and voice downloads. Features then say
 that offline mode is on instead of failing slowly. Books, notes, search, conversion, editing, reading aloud with a voice
 you already have and your backups keep working.
 
 Servers you set up yourself are **not** stopped by the switch, because you chose their address: the voice server, the
-mail server, WebDAV folders, the sync server and Readwise. Share Library is not a connection from your computer:
-other devices connect to it, only while sharing is on and only with the password. The environment variable
+mail server, WebDAV folders, the sync server and Readwise. The library server (Sync) is not a connection from your computer:
+other devices connect to it, only while it is on and only with the password. The environment variable
 `BOOKX_OFFLINE=1` has the same effect for one session.
 
 ## What Bookx can connect to
@@ -31,8 +44,8 @@ other devices connect to it, only while sharing is on and only with the password
 | Read aloud with a voice server | the server address you enter | the text being read | not stopped |
 | Send by e-mail | the mail server you enter | the book and the message | not stopped |
 | Cloud folders (WebDAV) for devices and backups | the WebDAV address you enter | book files or encrypted backups | not stopped |
-| Reading position sync (KOSync) | the sync server you enter, or your own Bookx | a book fingerprint and your position | not stopped |
-| Share Library | nothing: other devices connect to this computer | the books you share | not stopped |
+| Bookx sync (reading position, highlights, notes) | the sync server you enter, or your own Bookx | a book fingerprint and your position | not stopped |
+| Sync: library server (OPDS, KOReader) | nothing: other devices connect to this computer | the books you share | not stopped |
 | Readwise upload | readwise.io | your highlights, when you press Upload | not stopped |
 
 The same list is in Preferences → Privacy. Translate sends the selected text to Google's translation service; if that

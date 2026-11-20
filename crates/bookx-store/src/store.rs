@@ -13,7 +13,7 @@ use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
 use serde::Deserialize;
 
 /// Schema version written to `PRAGMA user_version` by the newest migration.
-pub const SCHEMA_VERSION: i32 = 6;
+pub const SCHEMA_VERSION: i32 = 7;
 
 /// Catalogue persisted in SQLite. Cheap to share between threads (`Send + Sync`).
 pub struct SqliteStore {
@@ -103,6 +103,7 @@ fn migrate(conn: &mut Connection) -> Result<()> {
             4 => migrate_v4(&tx)?,
             5 => migrate_v5(&tx)?,
             6 => migrate_v6(&tx)?,
+            7 => crate::works::migrate_v7(&tx)?,
             _ => bail!("no migration to schema version {v}"),
         }
         tx.execute_batch(&format!("PRAGMA user_version = {v}"))?;

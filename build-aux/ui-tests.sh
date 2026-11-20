@@ -432,6 +432,21 @@ scenario() {
             printf '{"version":1,"bindings":{"reader.reload":["F5"],"app.quit":[]}}' >"$d/cfg/bookx/shortcuts.json"
             ;;
         esac
+        case "$name" in
+        scale_grid_20k)
+            # 20 000 books through the Calibre importer (no files: only the catalogue matters)
+            make_scale_calibre "$d/scalecal" 20000
+            "$CLI" --library "$d/lib" library import-calibre "$d/scalecal" >/dev/null 2>&1
+            ;;
+        big_book_*)
+            # the 10 MB book with 20 000 contents entries is book 1
+            "$CLI" --library "$d/lib" library add "$ROOT/big20k/big.epub" >/dev/null 2>&1
+            ;;
+        grid_stalls_2000)
+            make_scale_calibre "$d/scalecal" 2000
+            "$CLI" --library "$d/lib" library import-calibre "$d/scalecal" >/dev/null 2>&1
+            ;;
+        esac
         # ---- metadata review, series, works, preflight (docs/metadata-notes.md) ----
         case "$name" in
         meta_series*)
@@ -519,9 +534,9 @@ PY
             "$CLI" --library "$d/srvlib" library add "$ROOT/src/second.md" >/dev/null 2>&1
             "$CLI" --library "$d/srvlib" serve --port "$port" --kosync "$d/ko.json" >"$d/srv.log" 2>&1 &
             srvpid=$!
-            $PEER wait "http://127.0.0.1:$port" || echo "kosync server did not start" >&2
-            $PEER register "http://127.0.0.1:$port" alice secret >/dev/null
-            $PEER put "http://127.0.0.1:$port" alice secret "$DOC" 0.63 "Kobo Libra" KOBO1 >/dev/null
+            $PEER wait "http://127.0.0.1:$port/bookx" || echo "kosync server did not start" >&2
+            $PEER register "http://127.0.0.1:$port/bookx" alice secret >/dev/null
+            $PEER put "http://127.0.0.1:$port/bookx" alice secret "$DOC" 0.63 "Kobo Libra" KOBO1 >/dev/null
         fi
         case "$name" in
         annotations_import)
@@ -543,6 +558,11 @@ PY
             printf 'return {\n ["annotations"] = {\n  [1] = { ["text"] = "Paragraph 8 of chapter 2 talks about functionality, readers and the world around them in plain words.", ["datetime"] = "2026-08-17 11:22:15" },\n },\n ["doc_props"] = { ["title"] = "UI Test Book" },\n}\n' >"$d/imp/dev/Books/UI Test Book.sdr/metadata.epub.lua"
             ;;
         annotations_export) mkdir -p "$d/out" "$d/out2" "$d/out3" ;;
+        hl_anchor) hl_anchor_fixture "$d" ;;
+        hl_repair) hl_repair_fixture "$d" ;;
+        hl_colors) hl_colors_fixture "$d" ;;
+        koreader_annotations*) koannot_setup "$d" ;;
+        sync_prefs_live) mkdir -p "$d/mounts/KOBOeReader/.adds/koreader/plugins" ;; # KOReader on the fake Kobo
         esac
         case "$name" in
             device_none) rm -rf "$d/mounts" && mkdir -p "$d/mounts" ;;
@@ -585,6 +605,17 @@ PY
 <book-title>UI Test Book</book-title><lang>en</lang></title-info></description>
 <body><section><title><p>One</p></title><p>The same story in another format.</p></section></body></FictionBook>
 FB2
+            ;;
+        works_*)
+            # one work in two editions (two publishers), its German translation, and another book
+            sed 's/UI Test Book/Edition Tale/; s/Test Author/Ed Writer/' "$ROOT/src/book.md" >"$d/ed1.md"
+            sed 's/language: en/language: de/' "$d/ed1.md" >"$d/ed3.md"
+            sed 's/UI Test Book/Other Tale/; s/Test Author/Oth Writer/' "$ROOT/src/book.md" >"$d/oth.md"
+            "$CLI" convert "$d/ed1.md" "$d/ed1.epub" --publisher "Pub A" >/dev/null 2>&1
+            "$CLI" convert "$d/ed1.md" "$d/ed2.epub" --publisher "Pub B" >/dev/null 2>&1
+            "$CLI" convert "$d/ed3.md" "$d/ed3.epub" --publisher "Verlag" >/dev/null 2>&1
+            "$CLI" convert "$d/oth.md" "$d/oth.epub" >/dev/null 2>&1
+            "$CLI" --library "$d/lib" library add --allow-duplicates "$d/ed1.epub" "$d/ed2.epub" "$d/ed3.epub" "$d/oth.epub" >/dev/null 2>&1
             ;;
         cat_drm)
             mkdir -p "$d/drm"
@@ -809,6 +840,7 @@ PY
             [ -n "$hun" ] && export BOOKX_HUNSPELL=$hun
             [[ "$name" == wiki_image_cached || "$name" == wiki_image_offline ]] && export BOOKX_OFFLINE=1
             [[ "$name" == dict_offline ]] && export BOOKX_OFFLINE=1
+            [[ "$name" == grid_stalls_* || "$name" == big_book_* ]] && export BOOKX_STALL_WATCH=${STALL_WATCH_MS:-100}
             # automatic dictionary downloads are off in every scenario but the ones that test them
             if [ -n "${dictauto-off}" ]; then export BOOKX_DICT_AUTO=${dictauto-off}; fi
             [ -n "${dictcat:-}" ] && export BOOKX_DICT_CATALOG=$dictcat
@@ -1412,15 +1444,15 @@ scenario device_sync_ui 'library:annotate,devwin:show,wait:1500,devwin:device=Bo
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
 scenario annotations_import 'library:import-highlights=@D@/imp/My Clippings.txt;@D@/imp/koreader.json,wait:3500,library:import-confirm,wait:1500,library:import-highlights=@D@/imp/My Clippings.txt;@D@/imp/koreader.json,wait:3500,library:import-confirm,wait:800,quit' '
-    has "^import_plan: found=5 new=3 notes=0 already=0 unplaced=1 unmatched=1"; check "the Kindle clippings and the KOReader export are read, the repeated quote counted once, one quote is not in the book and one book is not in the library" $?
-    has "^import_summary: UI Test Book: 3 highlights added, 1 not found in the book’s text, left out"; check "the review says per book what will be added" $?
+    has "^import_plan: found=5 new=4 notes=0 already=0 unplaced=1 unmatched=1"; check "the Kindle clippings and the KOReader export are read, the repeated quote counted once, one quote is not in the book (kept as a note without a place) and one book is not in the library" $?
+    has "^import_summary: UI Test Book: 3 highlights added, 1 not found in the book’s text, added as notes without a place"; check "the review says per book what will be added" $?
     has "^import_summary: Left out, not in your library: Some Other Book \\(1\\)"; check "books that are not in the library are listed, not guessed" $?
     has "^import_summary: .*no quote is added twice"; check "the review promises that nothing is duplicated or deleted" $?
-    has "^import_done: highlights=3 notes=0"; check "confirming adds the three highlights" $?
+    has "^import_done: highlights=4 notes=0"; check "confirming adds the three highlights and the note without a place" $?
     [ "$(grep -c "\"text\": \"Paragraph" <<<"$LIB")" -eq 3 ]; check "the library has exactly the three imported quotes" $?
     [ "$(grep -c "litany from kindle" <<<"$LIB")" -eq 1 ]; check "the Kindle note joined its highlight" $?
     grep -q "2014-03-03T10:42:11" <<<"$LIB"; check "the highlight keeps the date it was made" $?
-    has "^import_plan: found=5 new=0 notes=0 already=3"; check "importing the same files again finds everything already there and adds nothing" $?
+    has "^import_plan: found=5 new=0 notes=0 already=4"; check "importing the same files again finds everything already there and adds nothing" $?
     ! has "^import_done: highlights=[1-9]" || [ "$(grep -c "^import_done:" <<<"$OUT")" -eq 1 ]; check "the second import is not applied" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
@@ -1496,33 +1528,33 @@ fi
 if [ "${NET:-1}" != 0 ]; then
     # Bookx as a KOSync client against a KOSync server on this machine (Bookx's own, via the CLI), with a
     # second client that plays KOReader on a Kobo
-    scenario kosync_client 'kosync:setup=http://127.0.0.1:@PORT@;bob;pw,kosync:register,wait:1500,kosync:setup=http://127.0.0.1:@PORT@;alice;secret,kosync:login,wait:1500,read:1,wait:3000,kosync:continue,wait:2000,reader:next,wait:6500,kosync:dump,quit' '
+    scenario kosync_client 'kosync:setup=http://127.0.0.1:@PORT@/bookx;bob;pw,kosync:register,wait:1500,kosync:setup=http://127.0.0.1:@PORT@/bookx;alice;secret,kosync:login,wait:1500,read:1,wait:3000,kosync:continue,wait:2000,reader:next,wait:6500,kosync:dump,quit' '
         has "^kosync_account: Registered and logged in"; check "Register creates the account on the server and logs in" $?
         has "^kosync_account: Logged in"; check "Log in accepts the account that another client made" $?
         has "^kosync_pull: doc=$DOC remote=0.630"; check "opening the book asks the server for the book named by its partial MD5, the id another client computed on its own" $?
         has "^kosync_prompt: Continue from Kobo Libra at 63%\\?"; check "a position further on, from another device, is offered by name and percentage" $?
         has "^kosync_goto: spine="; check "continuing moves the reader to the percentage" $?
         python3 -c "import json,sys; d=json.loads(sys.argv[1]); b=[x for x in d.get(\"books\", d) if x[\"meta\"][\"title\"]==\"UI Test Book\"][0] if isinstance(d, dict) else d[0]; assert 0.58 < b[\"progress\"] < 0.72, b[\"progress\"]" "$LIB" 2>/dev/null || python3 -c "import re,sys; m=re.search(r\"\\\"progress\\\": ([0-9.]+)\", sys.argv[1]); assert 0.58 < float(m.group(1)) < 0.72" "$LIB"; check "the library position follows to about 63%" $?
-        R=$($PEER get "http://127.0.0.1:$port" alice secret "$DOC")
+        R=$($PEER get "http://127.0.0.1:$port/bookx" alice secret "$DOC")
         set -- $R none none none
         [ "$2" = "Bookx_test" ] && python3 -c "import sys; assert 0.58 < float(sys.argv[1]) < 0.75" "$1" && [ "${3#/body/DocFragment[}" != "$3" ]; check "after a page turn the new position is on the server under this device name, with a KOReader xpointer" $?
         has "^kosync_push: pct=.* ok"; check "the push is reported" $?
         ! has "panicked|CRITICAL"; check "no errors" $?'
 
     # offline queue: the push fails (nothing listens), is kept on disk, and goes out when the server is back
-    scenario kosync_client_queue 'kosync:setup=http://127.0.0.1:1;alice;secret;filename,wait:300,read:1,wait:3000,reader:next,wait:6500,kosync:queue-dump,kosync:setup=http://127.0.0.1:@PORT@;alice;secret;filename,kosync:queue-flush,wait:2500,kosync:queue-dump,quit' '
+    scenario kosync_client_queue 'kosync:setup=http://127.0.0.1:1;alice;secret;filename,wait:300,read:1,wait:3000,reader:next,wait:6500,kosync:queue-dump,kosync:setup=http://127.0.0.1:@PORT@/bookx;alice;secret;filename,kosync:queue-flush,wait:2500,kosync:queue-dump,quit' '
         has "^kosync_push: error"; check "with the server down the push fails" $?
         has "^kosync_queue: entries=1"; check "and the position is kept in the queue on disk" $?
         has "^kosync_queue_flush: sent=1 kept=0 dropped=0"; check "when the server is back the queued position is sent" $?
         has "^kosync_queue: entries=0"; check "and the queue is empty afterwards" $?
         FN=$($PEER filename-md5 "$BOOKFILE")
-        R=$($PEER get "http://127.0.0.1:$port" alice secret "$FN"); set -- $R none
+        R=$($PEER get "http://127.0.0.1:$port/bookx" alice secret "$FN"); set -- $R none
         [ "$1" != none ] && python3 -c "import sys; assert float(sys.argv[1]) > 0" "$1"; check "the server has the queued position under the book name" $?
         ! has "panicked|CRITICAL"; check "no errors" $?'
-    scenario kosync_client_stay 'kosync:setup=http://127.0.0.1:@PORT@;alice;secret,wait:300,read:1,wait:3000,reader:next,wait:6500,kosync:stay,reader:next,wait:6500,quit' '
+    scenario kosync_client_stay 'kosync:setup=http://127.0.0.1:@PORT@/bookx;alice;secret,wait:300,read:1,wait:3000,reader:next,wait:6500,kosync:stay,reader:next,wait:6500,quit' '
         has "^kosync_prompt: Continue from Kobo Libra at 63%\\?"; check "the question is asked" $?
         has "^kosync_push: pct=.* held back"; check "until the question is answered a push does not take the server backwards" $?
-        R=$($PEER get "http://127.0.0.1:$port" alice secret "$DOC")
+        R=$($PEER get "http://127.0.0.1:$port/bookx" alice secret "$DOC")
         set -- $R none none none
         [ "$2" = "Bookx_test" ] && python3 -c "import sys; assert float(sys.argv[1]) < 0.3" "$1"; check "after Stay Here the reader keeps its own place and the next push goes out" $?
         ! has "kosync_goto"; check "nothing moved the reader" $?
@@ -1758,7 +1790,7 @@ scenario sharing 'share:start:0,wait:400,share:fetch:/opds,share:fetch:/,share:f
     ! has "panicked"; check "the sharing window opens without errors" $?'
 
 scenario sharing_kosync 'share:kosync,wait:500,share:show,wait:800,share:kodump,quit' '
-    has "^share_ko: visible=true address=http://127\\.0\\.0\\.1:[0-9]+/kosync"; check "with the KOReader switch on the window shows the exact address to type into KOReader, ending in /kosync" $?
+    has "^share_ko: visible=true address=http://127\\.0\\.0\\.1:[0-9]+/bookx$"; check "with the KOReader switch on the window shows the exact address to type into KOReader, ending in /bookx" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
 scenario sharing_lan 'share:lan:short,share:lan:long-enough-pw,wait:400,share:fetch:/opds,share:stop,quit' '
@@ -2713,18 +2745,18 @@ scenario page_text_for_readers 'read:1,wait:2500,reader:page-text,reader:next,wa
 
 scenario prefs_search 'prefs:,wait:800,palette:open,wait:600,palette:type=sync,wait:300,palette:dump,palette:type=mail,wait:300,palette:dump,palette:type=plugin,wait:300,palette:dump,quit' '
     P=$(grep "^palette: query" <<<"$OUT")
-    sed -n 1p <<<"$P" | grep -q "Setting|"; check "settings of the Devices page are in the search index" $?
+    sed -n 1p <<<"$P" | grep -q "Setting|"; check "settings of the Sync page are in the search index" $?
     sed -n 2p <<<"$P" | grep -q "Setting|"; check "settings of the E-mail section are in the search index" $?
     sed -n 3p <<<"$P" | grep -q "Setting|\|Command|"; check "plugin settings are in the search index" $?'
 
 scenario prefs_sidebar 'prefs:,wait:900,prefs:dump,prefs:search=hyphen,wait:400,prefs:dump,prefs:search=mail server,wait:400,prefs:dump,prefs:search=sync,wait:400,prefs:dump,prefs:search=zzqq,wait:400,prefs:dump,prefs:search=,wait:400,prefs:dump,prefs:pick=Patches,wait:300,prefs:dump,quit' '
     P=$(grep "^prefs: query" <<<"$OUT")
-    sed -n 1p <<<"$P" | grep -q "sections=General|Library|Reading|Devices and Sharing|Editor|E-mail|Sync|Extensions|Patches.* selected=General"; check "Preferences lists its sections in the sidebar, General first" $?
+    sed -n 1p <<<"$P" | grep -q "sections=General|Library|Reading|Sync|Editor|E-mail|Extensions|Patches.* selected=General"; check "Preferences lists its sections in the sidebar, General first" $?
     sed -n 2p <<<"$P" | grep -q "sections=Reading selected=Reading hits=[1-9]"; check "searching filters the sidebar to the matching section, selects it and highlights the hit" $?
     sed -n 3p <<<"$P" | grep -q "sections=E-mail.* selected=E-mail"; check "a search finds a row of another section" $?
     sed -n 4p <<<"$P" | grep -q "sections=.*Sync.* selected"; check "the search also matches section titles" $?
     sed -n 5p <<<"$P" | grep -q "empty=true"; check "nonsense shows the empty state" $?
-    sed -n 6p <<<"$P" | grep -q "sections=General|Library|Reading|Devices and Sharing|Editor|E-mail|Sync|Extensions|Patches.* selected=.* hits=0"; check "clearing the search brings every section back" $?
+    sed -n 6p <<<"$P" | grep -q "sections=General|Library|Reading|Sync|Editor|E-mail|Extensions|Patches.* selected=.* hits=0"; check "clearing the search brings every section back" $?
     sed -n 7p <<<"$P" | grep -q "selected=Patches"; check "a section can be picked" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no GTK warnings" $?'
 
@@ -2962,6 +2994,7 @@ scenario language 'library:language=es,library:menus-tr,library:opds=open,wait:5
 # editor preview sync, splitting, compare view, Live CSS (own file to keep this one short)
 . "$HERE/ui-tests-editor-preview.sh"
 . "$HERE/ui-tests-pdf.sh"
+. "$HERE/ui-tests-comics.sh"
 . "$HERE/ui-tests-editor-tools.sh"
 . "$HERE/ui-tests-ed-xl.sh"
 . "$HERE/ui-tests-editor-struct.sh"
@@ -2970,7 +3003,15 @@ scenario language 'library:language=es,library:menus-tr,library:opds=open,wait:5
 . "$HERE/ui-tests-ux-gaps.sh"
 . "$HERE/ui-tests-reader-ux.sh"
 . "$HERE/ui-tests-dictionaries.sh"
+. "$HERE/ui-tests-vocab.sh"
+. "$HERE/ui-tests-scale.sh"
 . "$HERE/ui-tests-pain.sh"
+. "$HERE/ui-tests-works.sh"
+. "$HERE/ui-tests-audiobook.sh"
+. "$HERE/ui-tests-anchor.sh"
+. "$HERE/ui-tests-koannot.sh"
+. "$HERE/ui-tests-sync.sh"
+. "$HERE/ui-tests-bigbook.sh"
 . "$HERE/ui-tests-i18n.sh"
 
 

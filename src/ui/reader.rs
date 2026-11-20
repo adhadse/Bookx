@@ -24,6 +24,9 @@ use crate::core::library::{Bookmark, Highlight, ReadPos};
 use crate::core::toc::{flatten, FlatToc};
 use crate::core::util::*;
 
+#[path = "reader_vocab.rs"]
+mod reader_vocab;
+
 pub const HIGHLIGHT_COLORS: [(&str, Rgb); 5] = [
     ("yellow", (1.0, 0.85, 0.12)),
     ("purple", (0.72, 0.45, 0.95)),
@@ -32,11 +35,17 @@ pub const HIGHLIGHT_COLORS: [(&str, Rgb); 5] = [
     ("green", (0.2, 0.8, 0.42)),
 ];
 
-fn color_of(name: &str) -> Rgb {
+/// The colour a stored highlight colour is drawn in: the five of the colour picker, else the
+/// device's colour (orange, pink, gray, olive, cyan, `#rrggbb`) in its own shade, else yellow.
+pub fn color_of(name: &str) -> Rgb {
     HIGHLIGHT_COLORS
         .iter()
         .find(|(n, _)| *n == name)
         .map(|(_, c)| *c)
+        .or_else(|| {
+            crate::core::devstyle::canonical_color(name)
+                .map(|c| crate::core::devstyle::display_rgb(&c))
+        })
         .unwrap_or(HIGHLIGHT_COLORS[0].1)
 }
 
@@ -61,6 +70,16 @@ pub enum Input {
     Selection(Option<SelectionInfo>),
     HighlightClick(SelectionInfo),
     Highlight(String),
+    /// Your vocabulary: save the selection with your own definition.
+    VocabAdd,
+    /// The dialog for a term (new or to edit), a saved term was removed or opened in the list.
+    VocabEdit(String),
+    VocabRemove(String),
+    VocabOpen(String),
+    /// A term was saved (its text) or the vocabulary changed elsewhere.
+    VocabSaved(Option<String>),
+    VocabMark(SelectionInfo),
+    VocabTerms,
     SaveNote(String),
     HlStyle(HighlightStyle),
     RemoveHighlight,
@@ -217,6 +236,9 @@ struct W {
     wiki_text: gtk::Label,
     dict_text: gtk::Label,
     dict_prompt: DictPromptUi,
+    /// "Your definition" above the dictionary text, and the button that adds the selection to the vocabulary.
+    vocab_def: super::vocab_own::YourDef,
+    vocab_btn: gtk::Button,
     wiki_spin: gtk::Spinner,
     wiki_img: (gtk::Box, gtk::Stack, gtk::Picture),
     wiki_url: Rc<RefCell<String>>,
@@ -281,6 +303,9 @@ pub struct Reader {
     dict_prompt_state: RefCell<crate::dict_auto::Prompt>,
     /// The book was opened and its dictionary looked at (once).
     dict_opened: Cell<bool>,
+    _vocab_sub: Option<crate::settings_bus::Subscription>,
+    /// What the marks of saved terms were computed for: (chapter, vocabulary revision, setting on).
+    vocab_key: Cell<Option<(usize, u64, bool)>>,
     /// Closes the selection popover when a dialog, window or menu comes over the reader.
     overlay_guard: Rc<super::overlay_guard::OverlayGuard>,
 }
@@ -476,6 +501,7 @@ impl Reader {
         self.canvas.set_language(&hyphen_lang);
         self.canvas.set_doc(doc, frac, anchor, last);
         self.refresh_highlights();
+        self.refresh_vocab_marks();
         self.w.mid_label.set_label(&self.chapter_title(idx));
         self.w.title.set_subtitle(&self.chapter_title(idx));
         // the contents entry of this chapter (the one with the anchor of the chapter itself, else the last in it)
@@ -516,7 +542,11 @@ impl Reader {
         let hl: Vec<CHighlight> = b
             .highlights
             .iter()
-            .filter(|h| h.spine == self.spine_idx && !crate::pdf::is_pdf(h))
+            .filter(|h| {
+                h.spine == self.spine_idx
+                    && !crate::pdf::is_pdf(h)
+                    && !crate::core::anchor::is_unanchored(h)
+            })
             .map(|h| CHighlight {
                 id: h.id.clone(),
                 start: h.start,
@@ -1297,6 +1327,15 @@ impl Reader {
         u.title.set_label(&p.heading());
         u.body.set_label(&p.body());
         u.primary.set_label(&p.primary());
+        // hidden, the button has no text: it still has a name
+        super::audit::label(
+            &u.primary,
+            &if p.primary().is_empty() {
+                tr("Download dictionary")
+            } else {
+                p.primary()
+            },
+        );
         u.primary.set_sensitive(p.primary_enabled());
         match p.progress() {
             Some(f) => {
@@ -1311,6 +1350,7 @@ impl Reader {
     /// Fills the dictionary page for `term`: the definition from the installed dictionaries, and the offer
     /// to download one when the language of the book has none.
     fn fill_dict(&self, term: &str) {
+        self.show_your_definition(term);
         let dir = crate::dictionaries::dictionary_dir();
         let loaded = crate::dictionaries::load(&dir);
         let lang = self.dict_language();
@@ -2469,7 +2509,11 @@ impl Reader {
             );
             // a highlight knows its character position, not its fraction: this is an estimate;
             // its colour and style are the stored ones, a note adds a pencil in the same colour
-            for h in b.highlights.iter().filter(|h| h.spine < self.spine.len()) {
+            for h in b
+                .highlights
+                .iter()
+                .filter(|h| h.spine < self.spine.len() && !crate::core::anchor::is_unanchored(h))
+            {
                 let page = page_of(
                     h.spine,
                     (h.start.max(0) as f64 / (w(h.spine) * 0.7)).clamp(0.0, 1.0),
@@ -2573,7 +2617,11 @@ impl Reader {
                 .map(|b| {
                     b.highlights
                         .iter()
-                        .filter(|h| h.spine < self.spine.len() && !h.note.is_empty())
+                        .filter(|h| {
+                            h.spine < self.spine.len()
+                                && !h.note.is_empty()
+                                && !crate::core::anchor::is_unanchored(h)
+                        })
                         .map(|h| {
                             let c = color_of(&h.color);
                             let sw = Swatch {
@@ -2628,7 +2676,11 @@ impl Reader {
                         .map(|b| {
                             b.highlights
                                 .iter()
-                                .filter(|h| h.spine == i && !crate::pdf::is_pdf(h))
+                                .filter(|h| {
+                                    h.spine == i
+                                        && !crate::pdf::is_pdf(h)
+                                        && !crate::core::anchor::is_unanchored(h)
+                                })
                                 .map(|h| CHighlight {
                                     id: h.id.clone(),
                                     start: h.start,
@@ -3118,6 +3170,8 @@ impl SimpleComponent for Reader {
             let tx = sender.input_sender().clone();
             canvas.on_highlight_click(move |s| tx.emit(Input::HighlightClick(s)));
             let tx = sender.input_sender().clone();
+            canvas.on_vocab_click(move |s| tx.emit(Input::VocabMark(s)));
+            let tx = sender.input_sender().clone();
             canvas.on_tap(move || tx.emit(Input::Tap));
             let tx = sender.input_sender().clone();
             canvas.on_double_tap(move || tx.emit(Input::DoubleTap));
@@ -3164,10 +3218,12 @@ impl SimpleComponent for Reader {
         let wiki_btn = icon_button("wikipedia-symbolic", &tr("Look up on Wikipedia"));
         let tr_btn = icon_button("translate-symbolic", &tr("Translate"));
         let sel_remove = icon_button("user-trash-symbolic", &tr("Remove highlight"));
+        let vocab_btn = icon_button("list-add-symbolic", &tr("Add to Vocabulary"));
         for b in [
             &note_btn,
             &copy_btn,
             &dict_btn,
+            &vocab_btn,
             &wiki_btn,
             &tr_btn,
             &sel_remove,
@@ -3182,6 +3238,8 @@ impl SimpleComponent for Reader {
             wiki_btn.connect_clicked(move |_| tx.emit(Input::Wiki));
             let tx = sender.input_sender().clone();
             dict_btn.connect_clicked(move |_| tx.emit(Input::Dict));
+            let tx = sender.input_sender().clone();
+            vocab_btn.connect_clicked(move |_| tx.emit(Input::VocabAdd));
             let tx = sender.input_sender().clone();
             tr_btn.connect_clicked(move |_| tx.emit(Input::Translate));
             let tx = sender.input_sender().clone();
@@ -3367,6 +3425,10 @@ impl SimpleComponent for Reader {
         dict_text.set_use_markup(true);
         // "No dictionary for German yet": the offer to download one, above the text, inside the scroll
         // area of a fixed height (the popover never changes size when the state changes)
+        let vocab_def = {
+            let tx = sender.input_sender().clone();
+            super::vocab_own::YourDef::new(move |t| tx.emit(Input::VocabEdit(t)))
+        };
         let dict_prompt = {
             let root = gtk::Box::new(gtk::Orientation::Vertical, 6);
             root.set_margin_start(8);
@@ -3392,8 +3454,10 @@ impl SimpleComponent for Reader {
             let row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
             let secondary = gtk::Button::with_label(&tr("Choose another"));
             secondary.add_css_class("flat");
+            super::audit::label(&secondary, &tr("Choose another dictionary"));
             let learn = gtk::Button::with_label(&tr("Learn more"));
             learn.add_css_class("flat");
+            super::audit::label(&learn, &tr("Learn more about dictionaries"));
             row.append(&secondary);
             row.append(&learn);
             root.append(&title);
@@ -3407,6 +3471,7 @@ impl SimpleComponent for Reader {
             {
                 scroll.set_child(None::<&gtk::Widget>);
                 let body_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                body_box.append(&vocab_def.root);
                 body_box.append(&root);
                 body_box.append(&dict_text);
                 scroll.set_child(Some(&body_box));
@@ -3986,6 +4051,7 @@ impl SimpleComponent for Reader {
         let layout_b = item(&tr("Layout"), "", true);
         let rsvp_b = item(&tr("Speed Reading"), "", false);
         let map_b = item(&tr("Book Map"), "reader.map", false);
+        let terms_b = item(&tr("Terms in this Book"), "reader.vocab-terms", false);
         let ruler_b = item(&tr("Reading Ruler"), "reader.ruler", false);
         let footer_b = item(&tr("Footer Stats"), "", false);
         let prefs_b = item(&tr("Preferences"), "app.preferences", false);
@@ -4003,6 +4069,7 @@ impl SimpleComponent for Reader {
         main.append(&layout_b);
         main.append(&rsvp_b);
         main.append(&map_b);
+        main.append(&terms_b);
         main.append(&ruler_b);
         main.append(&footer_b);
         main.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
@@ -4080,6 +4147,7 @@ impl SimpleComponent for Reader {
             wire(&reload_b, || Input::Reload);
             wire(&rsvp_b, || Input::Rsvp);
             wire(&map_b, || Input::BookMap);
+            wire(&terms_b, || Input::VocabTerms);
             wire(&footer_b, || Input::FooterConfigure);
         }
 
@@ -4640,6 +4708,7 @@ impl SimpleComponent for Reader {
                     let act = match key {
                         Key::Return | Key::KP_Enter => Some("commit"),
                         Key::d => Some("dict"),
+                        Key::v => Some("vocab"),
                         Key::w => Some("wiki"),
                         Key::t => Some("translate"),
                         Key::h => Some("highlight"),
@@ -4732,6 +4801,8 @@ impl SimpleComponent for Reader {
             add("bookmark", Rc::new(|| Input::ToggleBookmark));
             add("goto", Rc::new(|| Input::GotoDialog));
             add("map", Rc::new(|| Input::BookMap));
+            add("vocab-add", Rc::new(|| Input::VocabAdd));
+            add("vocab-terms", Rc::new(|| Input::VocabTerms));
             add("new-theme", Rc::new(|| Input::ThemeEditor(None)));
             add("use-as-default", Rc::new(|| Input::UseAsDefault));
             add("reset-look", Rc::new(|| Input::ResetLook));
@@ -4886,6 +4957,8 @@ impl SimpleComponent for Reader {
             wiki_text,
             dict_text,
             dict_prompt,
+            vocab_def,
+            vocab_btn,
             wiki_spin,
             wiki_img,
             wiki_url,
@@ -4960,6 +5033,11 @@ impl SimpleComponent for Reader {
             dict_waiting: Cell::new(false),
             dict_prompt_state: RefCell::new(crate::dict_auto::Prompt::Hidden),
             dict_opened: Cell::new(false),
+            vocab_key: Cell::new(None),
+            _vocab_sub: Some({
+                let tx = sender.input_sender().clone();
+                super::vocab_settings::subscribe(move || tx.emit(Input::VocabSaved(None)))
+            }),
             _footer_sub: Some({
                 let tx = sender.input_sender().clone();
                 crate::settings_bus::footer().subscribe(move || tx.emit(Input::FooterChanged))
@@ -5192,6 +5270,7 @@ impl SimpleComponent for Reader {
             }
             Input::Position(p) => {
                 self.pos = p;
+                self.vocab_ensure_marks();
                 if !self.dict_opened.replace(true) {
                     // a book whose language has no dictionary: with the setting on, it is fetched now
                     let lang = self.dict_language();
@@ -5245,6 +5324,27 @@ impl SimpleComponent for Reader {
                     self.w.sel_pop.popdown();
                 }
             },
+            Input::VocabAdd => self.vocab_add(),
+            Input::VocabEdit(term) => self.vocab_dialog(&term),
+            Input::VocabRemove(term) => {
+                self.shared.vocab.borrow_mut().remove_own(&term);
+                self.vocab_changed();
+                super::vocab_settings::changed();
+                self.vocab_say(trf("Removed your definition of “{}”.", &[&term]));
+            }
+            Input::VocabOpen(term) => {
+                super::vocab::show_with(&self.w.page, &self.shared, true, Some(&term));
+            }
+            Input::VocabSaved(term) => {
+                self.vocab_changed();
+                if let Some(t) = term {
+                    self.canvas.clear_selection();
+                    super::vocab_settings::changed();
+                    self.vocab_say(trf("Saved “{}” to your vocabulary.", &[&t]));
+                }
+            }
+            Input::VocabMark(info) => self.vocab_mark_click(&info),
+            Input::VocabTerms => self.vocab_terms(),
             Input::HighlightClick(info) => {
                 self.selection = Some(info.clone());
                 self.show_selection_popover(&info);
@@ -6054,6 +6154,79 @@ impl SimpleComponent for Reader {
                         sender.input(Input::Highlight("yellow".into()));
                         return;
                     }
+                    // what is painted for every highlight of this chapter, read back from the page,
+                    // against the stored text; and whether the canvas numbers the chapter's text as
+                    // `Doc::reader_text` does (the numbering imports are stored in)
+                    // the colour and style each highlight of this chapter is painted with, with its text
+                    "hl-looks" => {
+                        let stored: Vec<(String, String)> = self
+                            .shared
+                            .lib
+                            .borrow()
+                            .get(self.book_id)
+                            .map(|b| {
+                                b.highlights
+                                    .iter()
+                                    .map(|h| (h.id.clone(), h.text.chars().take(30).collect()))
+                                    .collect()
+                            })
+                            .unwrap_or_default();
+                        for (id, color, style) in self.canvas.dev_painted_looks() {
+                            let text = stored
+                                .iter()
+                                .find(|(i, _)| *i == id)
+                                .map(|(_, t)| t.as_str())
+                                .unwrap_or("");
+                            eprintln!("hl_look: text={text:?} color={color} style={style}");
+                        }
+                        return;
+                    }
+                    "hl-paint" => {
+                        let path = self.spine[self.spine_idx].clone();
+                        let want = self
+                            .book
+                            .chapter_doc_layered(&path, false, "")
+                            .map(|d| d.reader_text())
+                            .unwrap_or_default();
+                        eprintln!(
+                            "hl_text_numbering: same={} canvas={} doc={}",
+                            self.canvas.canonical_text() == want,
+                            self.canvas.canonical_text().chars().count(),
+                            want.chars().count()
+                        );
+                        let stored: Vec<(String, String, bool)> = self
+                            .shared
+                            .lib
+                            .borrow()
+                            .get(self.book_id)
+                            .map(|b| {
+                                b.highlights
+                                    .iter()
+                                    .map(|h| {
+                                        (
+                                            h.id.clone(),
+                                            h.text.clone(),
+                                            crate::core::anchor::is_unanchored(h),
+                                        )
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or_default();
+                        let painted = self.canvas.dev_painted_highlights();
+                        for (id, text, unanchored) in &stored {
+                            let p = painted.iter().find(|p| p.0 == *id);
+                            let same =
+                                p.is_some_and(|p| crate::core::anchor::same_text(&p.3, text));
+                            eprintln!(
+                                "hl_paint: text={:?} painted={} same={} unanchored={}",
+                                text.chars().take(40).collect::<String>(),
+                                p.is_some(),
+                                same,
+                                unanchored
+                            );
+                        }
+                        return;
+                    }
                     // drives the real buttons: Note → type → Save Note
                     "ui-note" => {
                         self.w.note_btn.emit_clicked();
@@ -6255,6 +6428,7 @@ impl SimpleComponent for Reader {
                         }
                         return;
                     }
+                    c if self.vocab_dev(c) => return,
                     "ui-dict" => {
                         sender.input(Input::Dict);
                         return;
@@ -6887,6 +7061,7 @@ impl SimpleComponent for Reader {
                 }
                 match k {
                     "dict" => sender.input(Input::Dict),
+                    "vocab" => sender.input(Input::VocabAdd),
                     "wiki" => sender.input(Input::Wiki),
                     "translate" => sender.input(Input::Translate),
                     "highlight" => sender.input(Input::Highlight("yellow".into())),
@@ -7056,5 +7231,8 @@ mod tests {
     fn unknown_highlight_colour_falls_back_to_yellow() {
         assert_eq!(color_of("nonsense"), HIGHLIGHT_COLORS[0].1);
         assert_eq!(color_of("green"), HIGHLIGHT_COLORS[4].1);
+        // device colours Bookx's picker lacks keep their own shade
+        assert_ne!(color_of("orange"), HIGHLIGHT_COLORS[0].1);
+        assert_ne!(color_of("pink"), color_of("red"));
     }
 }

@@ -159,7 +159,11 @@ impl Editor {
             s.set_icon_name(Some("dialog-information-symbolic"));
             let make: MakeOp = Rc::new(|| Err("Upgrade the book to EPUB 3 first".to_string()));
             self.tool_dialog(
-                Spec::new("Accessibility Metadata", "", "Apply"),
+                Spec::new(
+                    crate::i18n::N_("Accessibility Metadata"),
+                    "",
+                    crate::i18n::N_("Apply"),
+                ),
                 Some(s.upcast()),
                 make,
                 None,
@@ -349,9 +353,9 @@ impl Editor {
             Spec {
                 height: 760,
                 ..Spec::new(
-                    "Accessibility Metadata",
+                    crate::i18n::N_("Accessibility Metadata"),
                     tr("What stores, libraries and screen readers are told about the book: how it can be read, which features it has and which hazards. Values are checked against the EPUB accessibility vocabulary and against the book."),
-                    "Apply",
+                    crate::i18n::N_("Apply"),
                 )
             },
             Some(bx.upcast()),

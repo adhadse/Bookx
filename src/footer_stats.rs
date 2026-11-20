@@ -71,21 +71,21 @@ impl Item {
     /// The name in the settings (untranslated; the caller runs it through `tr`).
     pub fn label(self) -> &'static str {
         match self {
-            Item::PageOfTotal => "Page X of Y",
-            Item::ChapterPage => "Page in the chapter",
-            Item::Percent => "Percent read",
-            Item::TimeLeftChapter => "Time left in the chapter",
-            Item::TimeLeftBook => "Time left in the book",
-            Item::Speed => "Reading speed",
-            Item::Clock => "Current time",
-            Item::Battery => "Battery",
-            Item::ChapterTitle => "Chapter title",
-            Item::BookTitle => "Book title",
-            Item::Author => "Author",
-            Item::ProgressBar => "Progress bar",
-            Item::ChaptersRead => "Chapters read",
-            Item::SessionTime => "Time reading this session",
-            Item::TodayReading => "Reading today",
+            Item::PageOfTotal => crate::i18n::N_("Page X of Y"),
+            Item::ChapterPage => crate::i18n::N_("Page in the chapter"),
+            Item::Percent => crate::i18n::N_("Percent read"),
+            Item::TimeLeftChapter => crate::i18n::N_("Time left in the chapter"),
+            Item::TimeLeftBook => crate::i18n::N_("Time left in the book"),
+            Item::Speed => crate::i18n::N_("Reading speed"),
+            Item::Clock => crate::i18n::N_("Current time"),
+            Item::Battery => crate::i18n::N_("Battery"),
+            Item::ChapterTitle => crate::i18n::N_("Chapter title"),
+            Item::BookTitle => crate::i18n::N_("Book title"),
+            Item::Author => crate::i18n::N_("Author"),
+            Item::ProgressBar => crate::i18n::N_("Progress bar"),
+            Item::ChaptersRead => crate::i18n::N_("Chapters read"),
+            Item::SessionTime => crate::i18n::N_("Time reading this session"),
+            Item::TodayReading => crate::i18n::N_("Reading today"),
         }
     }
 }
@@ -145,9 +145,9 @@ impl Preset {
 
     pub fn label(self) -> &'static str {
         match self {
-            Preset::Minimal => "Minimal",
-            Preset::Standard => "Standard",
-            Preset::Everything => "Everything",
+            Preset::Minimal => crate::i18n::N_("Minimal"),
+            Preset::Standard => crate::i18n::N_("Standard"),
+            Preset::Everything => crate::i18n::N_("Everything"),
         }
     }
 

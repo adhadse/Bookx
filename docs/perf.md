@@ -15,6 +15,7 @@ not in a library). Each asserts that an operation stays under a budget in releas
 | Editor search/replace over about 1.2 MB of XHTML in 200 files, file scoping | `src/editor_search.rs`, module `perf` (new) |
 | Library search, sorted listing, load, save, import of 10k books | `bookx-core/tests/perf_budgets.rs`, `bookx-store/tests/perf_budgets.rs` |
 | Validation, reports, compare, spell check of a 5 MB book | `bookx-editing/tests/perf_budgets.rs` |
+| 100,000-book library: save, reopen, RSS, sorts, filters, categories, FTS, backup; duplicate scan; books for the grid ids | `bookx-store`, `bookx-sources`, `bookx-core` `tests/perf_budgets.rs`; numbers and fixes in `docs/performance.md`, full table with `make scale` |
 
 ## Measured numbers
 

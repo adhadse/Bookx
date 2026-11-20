@@ -32,11 +32,11 @@ impl ReaderTheme {
 
     pub fn label(&self) -> &'static str {
         match self {
-            Self::Auto => "Follow system",
-            Self::Light => "Light",
-            Self::Sepia => "Sepia",
-            Self::Dark => "Dark",
-            Self::Black => "Black",
+            Self::Auto => crate::i18n::N_("Follow system"),
+            Self::Light => crate::i18n::N_("Light"),
+            Self::Sepia => crate::i18n::N_("Sepia"),
+            Self::Dark => crate::i18n::N_("Dark"),
+            Self::Black => crate::i18n::N_("Black"),
         }
     }
 
@@ -270,6 +270,9 @@ pub struct Config {
     pub sort_key: SortKey,
     pub sort_ascending: bool,
     pub cover_size: i32,
+    /// Books that are editions of the same work (same title and author, same ISBN, or linked by
+    /// the user) show as one card with an edition list. Off by default: it hides books in the grid.
+    pub group_editions: bool,
     /// The sidebar entry shown last (`library_nav::Section::key`), restored at the next start.
     pub sidebar_view: String,
     /// Books the user starred (the Favourites entry of the sidebar), by catalogue id.
@@ -317,6 +320,8 @@ pub struct Config {
     pub goals: crate::goals::GoalPrefs,
     /// Following a link to a footnote shows the note in a popup.
     pub footnote_popups: bool,
+    /// Terms saved with your own definition are marked in the text (dotted underline).
+    pub mark_vocabulary: bool,
     /// Speed reading: words per minute.
     pub rsvp_wpm: u32,
     /// The read-aloud and speed-reading cards of each book: open or closed, where, and the place.
@@ -358,6 +363,7 @@ impl Default for Config {
             sort_key: SortKey::Title,
             sort_ascending: true,
             cover_size: 150,
+            group_editions: false,
             sidebar_view: String::new(),
             favourites: Vec::new(),
             banner_mode: String::new(),
@@ -384,6 +390,7 @@ impl Default for Config {
             language: String::new(),
             goals: crate::goals::GoalPrefs::default(),
             footnote_popups: true,
+            mark_vocabulary: true,
             rsvp_wpm: crate::rsvp_view::DEFAULT_WPM,
             cards: Default::default(),
             opds_catalogs: Vec::new(),

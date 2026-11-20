@@ -389,7 +389,12 @@ fn basic_auth_protects_everything_but_health_and_kosync() {
     );
     assert_eq!(r.status, 401);
     assert_eq!(get(addr, "/healthcheck").status, 200);
-    assert_eq!(get(addr, "/kosync/healthcheck").status, 200);
+    assert_eq!(get(addr, "/bookx/healthcheck").status, 200);
+    assert_eq!(
+        get(addr, "/kosync/healthcheck").status,
+        401,
+        "no legacy mount"
+    );
     srv.shutdown();
 }
 
@@ -657,7 +662,7 @@ fn oversized_request_body_is_refused() {
     let body = vec![b'x'; 2 * 1024 * 1024];
     let raw = {
         let mut r = format!(
-            "POST /users/create HTTP/1.1\r\nHost: x\r\nConnection: close\r\nContent-Length: {}\r\n\r\n",
+            "POST /bookx/users/create HTTP/1.1\r\nHost: x\r\nConnection: close\r\nContent-Length: {}\r\n\r\n",
             body.len()
         )
         .into_bytes();
@@ -852,13 +857,13 @@ fn read_only_mode_over_http() {
     let r = request(
         addr,
         "POST",
-        "/users/create",
+        "/bookx/users/create",
         &[],
         br#"{"username":"a","password":"b"}"#,
     );
     assert_eq!(r.status, 405);
     // reading existing sync data still works (needs auth, so 401 proves the route is live)
-    assert_eq!(get(addr, "/users/auth").status, 401);
+    assert_eq!(get(addr, "/bookx/users/auth").status, 401);
 }
 
 #[test]
@@ -878,28 +883,52 @@ fn kosync_protocol_over_http_with_json_file_store() {
 
     let key = md5_hex("hunter2");
     let create = format!(r#"{{"username":"anna","password":"{key}"}}"#);
-    let r = request(addr, "POST", "/users/create", &json, create.as_bytes());
+    let r = request(
+        addr,
+        "POST",
+        "/bookx/users/create",
+        &json,
+        create.as_bytes(),
+    );
     assert_eq!(r.status, 201);
     assert_eq!(r.header("content-type"), Some("application/json"));
-    let r = request(addr, "POST", "/users/create", &json, create.as_bytes());
+    let r = request(
+        addr,
+        "POST",
+        "/bookx/users/create",
+        &json,
+        create.as_bytes(),
+    );
     assert_eq!(r.status, 402);
 
     let auth = [("x-auth-user", "anna"), ("x-auth-key", key.as_str())];
-    assert_eq!(request(addr, "GET", "/users/auth", &auth, b"").status, 200);
+    assert_eq!(
+        request(addr, "GET", "/bookx/users/auth", &auth, b"").status,
+        200
+    );
     let bad = [("x-auth-user", "anna"), ("x-auth-key", "00")];
-    assert_eq!(request(addr, "GET", "/users/auth", &bad, b"").status, 401);
+    assert_eq!(
+        request(addr, "GET", "/bookx/users/auth", &bad, b"").status,
+        401
+    );
 
     let doc = "9e107d9d372bb6826bd81d3542a419d6";
     let put = format!(
         r#"{{"document":"{doc}","progress":"/body/DocFragment[12]/body/p[3]/text().0","percentage":0.375,"device":"PocketBook","device_id":"DEV1"}}"#
     );
-    let r = request(addr, "PUT", "/syncs/progress", &auth, put.as_bytes());
+    let r = request(addr, "PUT", "/bookx/syncs/progress", &auth, put.as_bytes());
     assert_eq!(r.status, 200, "{}", r.text());
     let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
     assert_eq!(v["document"], doc);
     assert!(v["timestamp"].as_i64().unwrap() > 1_600_000_000);
 
-    let r = request(addr, "GET", &format!("/syncs/progress/{doc}"), &auth, b"");
+    let r = request(
+        addr,
+        "GET",
+        &format!("/bookx/syncs/progress/{doc}"),
+        &auth,
+        b"",
+    );
     assert_eq!(r.status, 200);
     let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
     assert_eq!(v["percentage"], 0.375);
@@ -907,21 +936,39 @@ fn kosync_protocol_over_http_with_json_file_store() {
     assert_eq!(v["device_id"], "DEV1");
     assert_eq!(v["progress"], "/body/DocFragment[12]/body/p[3]/text().0");
 
-    // the same under the /kosync prefix (what you type into KOReader as the server URL)
+    // the same under the /bookx prefix (what you type into KOReader as the server URL)
     let r = request(
         addr,
         "GET",
-        &format!("/kosync/syncs/progress/{doc}"),
+        &format!("/bookx/syncs/progress/{doc}"),
         &auth,
         b"",
     );
     assert_eq!(r.status, 200);
+    // and nowhere else: no /kosync alias, no root mount
+    for p in ["/kosync", ""] {
+        let r = request(
+            addr,
+            "GET",
+            &format!("{p}/syncs/progress/{doc}"),
+            &auth,
+            b"",
+        );
+        assert_eq!(r.status, 404, "{p}");
+    }
     assert_eq!(
-        request(addr, "GET", "/syncs/progress/unknown", &auth, b"").status,
+        request(addr, "GET", "/bookx/syncs/progress/unknown", &auth, b"").status,
         404
     );
     assert_eq!(
-        request(addr, "GET", &format!("/syncs/progress/{doc}"), &[], b"").status,
+        request(
+            addr,
+            "GET",
+            &format!("/bookx/syncs/progress/{doc}"),
+            &[],
+            b""
+        )
+        .status,
         401
     );
     srv.shutdown();
@@ -936,7 +983,7 @@ fn kosync_protocol_over_http_with_json_file_store() {
     let r = request(
         srv2.addr(),
         "GET",
-        &format!("/syncs/progress/{doc}"),
+        &format!("/bookx/syncs/progress/{doc}"),
         &auth,
         b"",
     );
@@ -954,20 +1001,23 @@ fn kosync_users_are_isolated_and_registration_can_be_closed() {
     let r = request(
         addr,
         "POST",
-        "/users/create",
+        "/bookx/users/create",
         &[],
         br#"{"username":"new","password":"x"}"#,
     );
     assert_eq!(r.status, 403);
     let auth = [("x-auth-user", "only"), ("x-auth-key", "k")];
-    assert_eq!(request(addr, "GET", "/users/auth", &auth, b"").status, 200);
+    assert_eq!(
+        request(addr, "GET", "/bookx/users/auth", &auth, b"").status,
+        200
+    );
 }
 
 #[test]
 fn kosync_routes_404_when_not_configured() {
     let (fx, books) = fixture();
     let srv = start(books, &fx.dir, |_| {});
-    assert_eq!(get(srv.addr(), "/users/auth").status, 404);
+    assert_eq!(get(srv.addr(), "/bookx/users/auth").status, 404);
     assert_eq!(get(srv.addr(), "/healthcheck").status, 200);
 }
 

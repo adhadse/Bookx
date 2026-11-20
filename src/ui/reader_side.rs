@@ -88,11 +88,7 @@ fn rgb16(c: (f64, f64, f64)) -> (u16, u16, u16) {
 }
 
 fn colour_rgb(name: &str) -> (f64, f64, f64) {
-    HIGHLIGHT_COLORS
-        .iter()
-        .find(|(n, _)| *n == name)
-        .map(|(_, c)| *c)
-        .unwrap_or(HIGHLIGHT_COLORS[0].1)
+    super::reader::color_of(name)
 }
 
 /// The Pango attributes that draw a quote the way the highlight is drawn on the page.
@@ -787,6 +783,7 @@ fn build_note_row(li: &gtk::ListItem, send: Send) {
             restyle: Some(Rc::new(move |n: &str| {
                 s4(Cmd::Restyle(c4.borrow().clone(), n.to_string()))
             })),
+            relocate: None,
         }
     };
     let card = NoteCard::new(&actions);
@@ -821,7 +818,15 @@ fn build_note_row(li: &gtk::ListItem, send: Send) {
                     style: e.style.clone(),
                     text: e.text.clone(),
                     note: e.note.clone(),
-                    meta: side_notes::date_text(e.created),
+                    meta: if e.start < 0 {
+                        format!(
+                            "{} · {}",
+                            tr("Not located in the book"),
+                            side_notes::date_text(e.created)
+                        )
+                    } else {
+                        side_notes::date_text(e.created)
+                    },
                 });
             }
         }

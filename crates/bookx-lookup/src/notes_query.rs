@@ -24,6 +24,8 @@ pub struct NoteRow {
     pub created: DateTime<Utc>,
     /// Set for a PDF highlight: the (1-based) page.
     pub page: Option<usize>,
+    /// The text could not be found in the book: the note has no place on the page.
+    pub unplaced: bool,
 }
 
 impl NoteRow {
@@ -281,6 +283,7 @@ mod tests {
             style: HighlightStyle::Highlight,
             created: Utc.with_ymd_and_hms(2026, 11, day, 10, 0, 0).unwrap(),
             page: None,
+            unplaced: false,
         }
     }
 

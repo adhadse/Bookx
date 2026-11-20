@@ -54,6 +54,13 @@ impl Drop for Subscription {
 thread_local! {
     static FOOTER: Rc<Bus> = Rc::new(Bus::default());
     static EDITOR: Rc<Bus> = Rc::new(Bus::default());
+    static SYNC: Rc<Bus> = Rc::new(Bus::default());
+}
+
+/// A sync setting or the library server changed (Preferences → Sync and the Sync window show the
+/// same state and follow each other through this).
+pub fn sync() -> Rc<Bus> {
+    SYNC.with(|b| b.clone())
 }
 
 /// The editor settings (`editor_prefs`) were changed; every open editor window applies them.

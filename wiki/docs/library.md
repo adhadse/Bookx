@@ -3,11 +3,20 @@
 The library has a sidebar on the left (like the one in Files), your books in the middle and, when you select a
 book, its details on the right. Search and the view options are in the header bar.
 
+<figure markdown="1">
 ![The library: sidebar, a grid of covers and the details panel of the selected book](assets/library-details-light.png#only-light)
 ![The library: sidebar, a grid of covers and the details panel of the selected book](assets/library-details-dark.png#only-dark)
-*The library with a book selected. The covers here are drawn for the screenshots.*
+<figcaption markdown="1">The library with a book selected. The covers here are drawn for the screenshots.</figcaption>
+</figure>
 
 ## The sidebar
+
+<figure markdown="1">
+![The library sidebar](assets/library-sidebar-light.png#only-light)
+![The library sidebar](assets/library-sidebar-dark.png#only-dark)
+<figcaption markdown="1">The sidebar: Home, Recent, Favourites, Notes & Highlights, your shelves, then authors, tags, languages and reading status. Library Health sits at the bottom.</figcaption>
+</figure>
+
 
 The sidebar is always there on a wide window. In a window narrower than about 920 px it turns into an overlay on top of
 the books (so they keep at least about 670 px) and a sidebar button appears at the left of the header bar to open it;
@@ -41,9 +50,11 @@ switcher, the search button and the main menu. The header bar of the books shows
 
 ### Notes & Highlights
 
+<figure markdown="1">
 ![Notes & Highlights in the library](assets/library-notes-light.png#only-light)
 ![Notes & Highlights in the library](assets/library-notes-dark.png#only-dark)
-*The view uses the full width: the cards flow into two, three or four columns on a wide window.*
+<figcaption markdown="1">The view uses the full width: the cards flow into two, three or four columns on a wide window.</figcaption>
+</figure>
 
 Highlights are grouped by book. A card is one or two lines of the quote drawn the way it looks on the page (its
 colour and style), the note you wrote in its own **Note** line below it, and the chapter and date at the right next to the
@@ -58,6 +69,13 @@ chip under the toolbar that you can click to remove. The line at the right of th
 shown.
 
 ## Views
+
+<figure markdown="1">
+![The view options popover](assets/library-view-options-light.png#only-light)
+![The view options popover](assets/library-view-options-dark.png#only-dark)
+<figcaption markdown="1">View options: grid or table, the sort field and its direction, the cover size and the grouping of editions.</figcaption>
+</figure>
+
 
 - **Grid or table.** Switch in the main menu. The table has sortable columns for title, author, series, rating,
   progress, date and size.
@@ -91,12 +109,26 @@ shown.
     - *Preferences → Library → Continue reading banner* can force **Large** (always the hero), **Compact** (always the
       strip) or **Hidden**; **Adaptive** is the default.
 
+<figure markdown="1">
 ![The hero banner when Bookx is opened](assets/library-banner-hero-light.png#only-light)
 ![The hero banner when Bookx is opened](assets/library-banner-hero-dark.png#only-dark)
-*The hero on a big window; below, the strip on the next visits to Home.*
+<figcaption markdown="1">The hero on a big window; below, the strip on the next visits to Home.</figcaption>
+</figure>
 
 ![The slim strip on the next visits to Home](assets/library-banner-strip-light.png#only-light)
 ![The slim strip on the next visits to Home](assets/library-banner-strip-dark.png#only-dark)
+
+<figure markdown="1">
+![The hero banner with the Also reading chips](assets/library-banner-also-light.png#only-light)
+![The hero banner with the Also reading chips](assets/library-banner-also-dark.png#only-dark)
+<figcaption markdown="1">The hero banner shows the book you read last. *Also reading* lists the other books you started as small covers.</figcaption>
+</figure>
+
+<figure markdown="1">
+![The slim Continue Reading strip](assets/library-banner-chips-light.png#only-light)
+![The slim Continue Reading strip](assets/library-banner-chips-dark.png#only-dark)
+<figcaption markdown="1">The slim strip keeps the library's covers in view and still offers *Continue*.</figcaption>
+</figure>
 
 - **Device button.** While an e-reader is connected, its name appears in the header bar. It opens the
   [Device window](devices-and-sharing.md#the-device-window).
@@ -115,11 +147,20 @@ The same as in Files:
 
 A bar at the bottom appears for two or more books with *Read*, *Edit Metadata*, *Remove* and a clear button.
 
+<figure markdown="1">
 ![The library as a table](assets/library-table-light.png#only-light)
 ![The library as a table](assets/library-table-dark.png#only-dark)
-*Table view. Real screenshot.*
+<figcaption markdown="1">Table view. Real screenshot.</figcaption>
+</figure>
 
 ## The book menu
+
+<figure markdown="1">
+![The context menu of a book](assets/library-book-menu-light.png#only-light)
+![The context menu of a book](assets/library-book-menu-dark.png#only-dark)
+<figcaption markdown="1">Right-click a book: read, favourite, then the Edit, Organise and Export and Send submenus, Properties, Show in Files and Remove.</figcaption>
+</figure>
+
 
 Right-click a book (or several) for what concerns the selected books only, in short groups:
 
@@ -138,9 +179,16 @@ Everything else about e-readers lives in the [Device window](devices-and-sharing
 
 ## The main menu
 
+<figure markdown="1">
+![The main menu of the library](assets/library-main-menu-light.png#only-light)
+![The main menu of the library](assets/library-main-menu-dark.png#only-dark)
+<figcaption markdown="1">The main menu: statistics, vocabulary and trackers, import and export, sharing, the device, Library Health, Preferences and help.</figcaption>
+</figure>
+
+
 The hamburger menu holds the view options (grid or table, sort, cover size) and, in groups: *Open Library Folder*,
 *Saved Searches*, *Online Catalogues* · statistics, *Vocabulary*, *Reading Trackers*, *Audiobooks* · *Import Calibre
-Library*, *Import Highlights*, *Export All Annotations*, *Share Library*, *Device* · *Library Health* ·
+Library*, *Export as Calibre Library*, *Import Highlights*, *Export All Annotations*, *Sync*, *Device* · *Library Health* ·
 *Preferences*, *Keyboard Shortcuts*, *Copy Diagnostics*, *About Bookx*.
 
 *News Subscriptions* and adding books are in the **+** menu (and on the welcome page). *Series* and *Notes &
@@ -161,9 +209,11 @@ Open it from the sidebar or the main menu. Its tabs:
 
 ## Favourites, ratings and tags
 
+<figure markdown="1">
 ![Details of a favourite: the star on the cover, the rating and the tags](assets/library-favourites-light.png#only-light)
 ![Details of a favourite: the star on the cover, the rating and the tags](assets/library-favourites-dark.png#only-dark)
-*The star on the cover, the favourite toggle, the rating and the tags of the selected book.*
+<figcaption markdown="1">The star on the cover, the favourite toggle, the rating and the tags of the selected book.</figcaption>
+</figure>
 
 - **Favourites.** A starred book wears a small **star badge at the top left of its cover** (and a ★ column in the table view).
   Click the badge to take the star off, or use the round star button of the details panel (a toggle that shows whether the book is a
@@ -184,6 +234,13 @@ Open it from the sidebar or the main menu. Its tabs:
 
 ## Search
 
+<figure markdown="1">
+![The search bar with a query and two matching books](assets/library-search-light.png#only-light)
+![The search bar with a query and two matching books](assets/library-search-dark.png#only-dark)
+<figcaption markdown="1">Ctrl+F opens the search bar. The query `author:melville OR author:austen` leaves two books, and the title shows *2 of 13 books*.</figcaption>
+</figure>
+
+
 Press ++ctrl+f++ or click the search button and type. Results update as you type. Hover the search field for a
 cheat sheet.
 
@@ -200,7 +257,7 @@ cheat sheet.
 | `fav:true`, `fav:false`, `-fav:true` | [favourites](#favourites-ratings-and-tags) or the books that are not |
 | `language:en`, `publisher:penguin`, `format:epub` | other fields; `format:` also finds books that hold that format as a further file |
 | `drm:`, `drm:kindle` | [protected books](#copy-protection), any or one scheme |
-| `audiobook:` | books with a [linked audiobook](#audiobooks) |
+| `audiobook:yes` | audiobooks and books with a [linked audiobook](#audiobooks); `format:m4b` finds one by its format |
 | `identifier:isbn:978…`, `isbn:978…` | identifiers |
 | `comments:wizard` | the description |
 | `a OR b` | either term; terms without `OR` must all match |
@@ -215,6 +272,19 @@ Books show up in `text:` results after they have been indexed.
 The same language works on the command line: `bookx-cli search 'author:le guin rating:>=4'`.
 
 ## Metadata
+
+<figure markdown="1">
+![The details panel of a selected book](assets/library-details-panel-light.png#only-light)
+![The details panel of a selected book](assets/library-details-panel-dark.png#only-dark)
+<figcaption markdown="1">The details panel: cover, title, author, *Read* and *Edit Metadata*, the star, the rating, the tags and the properties.</figcaption>
+</figure>
+
+<figure markdown="1">
+![The Edit Metadata dialog](assets/library-edit-metadata-light.png#only-light)
+![The Edit Metadata dialog](assets/library-edit-metadata-dark.png#only-dark)
+<figcaption markdown="1">Edit Metadata: cover, *Fetch Metadata*, title, authors, series and rating; more fields follow when you scroll.</figcaption>
+</figure>
+
 
 Right-click → *Edit Metadata* (++ctrl+e++) edits title, authors, series and number, rating, tags, publisher, date,
 language, identifiers, title and author sort, description and cover. Changes are written into the EPUB, and the
@@ -278,9 +348,67 @@ review table then suggests series names and numbers from the sources.
 
 ## Editions and formats of one work
 
+<figure markdown="1">
+![The Editions and Formats tab of Library Health](assets/library-health-editions-light.png#only-light)
+![The Editions and Formats tab of Library Health](assets/library-health-editions-dark.png#only-dark)
+<figcaption markdown="1">*Editions & Formats*: books that are one work in several files.</figcaption>
+</figure>
+
+
 Menu → *Editions & Formats* groups books with the same title (ignoring "The", subtitles and punctuation) and the same
 author, whatever the edition: expand a work to see its editions with publisher, date, ISBN, size and formats. A book
 that holds several formats is listed too, with all of them (`epub + azw3`).
+
+### Grouping editions in the grid
+
+<figure markdown="1">
+![A cover with the badge for two editions](assets/library-works-badge-light.png#only-light)
+![A cover with the badge for two editions](assets/library-works-badge-dark.png#only-dark)
+<figcaption markdown="1">Two editions of one book show as one card, with a badge that counts them.</figcaption>
+</figure>
+
+<figure markdown="1">
+![The list of editions of one book](assets/library-works-editions-light.png#only-light)
+![The list of editions of one book](assets/library-works-editions-dark.png#only-dark)
+<figcaption markdown="1">Click the badge: each edition with its format, publisher and buttons to open it, prefer it or unlink it.</figcaption>
+</figure>
+
+
+*View options* → **Group editions of the same book** shows the editions of one work as **one card** in the grid and one
+row in the table. It is off by default, because it hides books from the grid, and nothing about your files changes when
+you turn it on or off. A card with several editions has a small badge with the count (`2`); the table has an *Editions*
+column.
+
+Books are grouped when they:
+
+* were **linked by you** (select two or more books → book menu → *Organise* → *Link as Editions*; linking turns the
+  grouping on);
+* share an **ISBN** or a work identifier (for example a Goodreads or Open Library work id);
+* or have the same **title and author**: "The" and punctuation are ignored, a subtitle may be missing on one of them,
+  the author may be written another way (`Herbert, Frank` and `F. Herbert`), and several authors match when they
+  share one.
+
+They are **not** grouped when the languages differ (a translation is another book), when the subtitles differ, when a
+number differs (`Part 1` and `Part 2`), or when the authors differ. A book without a language goes with the others only
+while they have one language between them.
+
+What you can do with a card:
+
+* The **badge** (or book menu → *Organise* → *Show Editions*) opens the list of editions with the format, language,
+  size, publisher and reading progress of each, and four buttons per edition: **Open**, **Send** (to the connected
+  device), **Open this edition first** and **Unlink**. The list is a button group you reach with *Tab*; *Esc* closes it.
+  The details panel shows the same list under the *Read* button.
+* **The edition that opens first** stands for the card and is the one *Read* opens. Without a choice it is the edition
+  you read last, then the best format (KEPUB, EPUB, AZW3, MOBI…). Choosing one saves the choice.
+* **Reading progress** on the card comes from the edition you read last (the one that opens first when none has been
+  read).
+* **Unlink** takes one edition out of the card, and keeps it out: it is not grouped automatically again until you link
+  it again. *Unlink All Editions* in the book menu splits the whole card.
+* **Selecting a card selects all its editions**, so bulk actions (*Mark as Read*, favourites, shelves, ratings, tags,
+  *Send*, *Convert*, *Remove*) reach every edition; *Remove* asks with the number of books. *Edit Metadata*, *Properties*
+  and *Read* use the edition on top.
+* The sidebar counts, *3 books* in the header and the search still count and find **books**, not cards: searching for
+  one publisher shows just the matching edition.
 
 ### Formats of one book
 
@@ -314,6 +442,13 @@ are carried along, sent and opened with other applications.
 
 ## Authors
 
+<figure markdown="1">
+![The authors manager](assets/library-authors-light.png#only-light)
+![The authors manager](assets/library-authors-dark.png#only-dark)
+<figcaption markdown="1">Manage authors: spellings of one person merge into one name; *Rename* changes it in every book.</figcaption>
+</figure>
+
+
 Menu → *Authors* lists people instead of spellings: `Mark Twain`, `Twain, Mark` and a pen name you merged are one
 entry with all their books. Expand an entry to see the spellings.
 
@@ -341,6 +476,13 @@ DRM*. A protected file in another format is not imported and the same message is
 
 ## Reading trackers
 
+<figure markdown="1">
+![The Reading Trackers dialog](assets/library-trackers-light.png#only-light)
+![The Reading Trackers dialog](assets/library-trackers-dark.png#only-dark)
+<figcaption markdown="1">Reading Trackers: import a CSV from Goodreads, StoryGraph or Hardcover, or export yours.</figcaption>
+</figure>
+
+
 Menu → *Reading Trackers* exchanges reading data with Goodreads, StoryGraph and Hardcover.
 
 * **Import**: choose the CSV export of the service. Books are matched by ISBN, then by title and author; the window
@@ -354,13 +496,32 @@ Menu → *Reading Trackers* exchanges reading data with Goodreads, StoryGraph an
 
 ## Audiobooks
 
-Menu → *Audiobooks* finds `.m4b` files and folders of audio parts (`.mp3`, `.m4a`, `.ogg`, `.opus`, `.flac`) in your
-library folder and in folders you add, and pairs them with your books: an audiobook in a book's own folder, one with
-the same ISBN in its name, or one named like the book and its author (`Frank Herbert - Dune.m4b`). You see the
-pairings and press *Link All*. A linked audiobook shows in the details panel with **Open**, which starts your
-system's audio player; **Unlink** takes the link off and leaves the files where they are. Bookx plays nothing itself.
+<figure markdown="1">
+![The Audiobooks dialog](assets/library-audiobooks-light.png#only-light)
+![The Audiobooks dialog](assets/library-audiobooks-dark.png#only-dark)
+<figcaption markdown="1">The Audiobooks dialog looks for audio files next to your books and offers to link them.</figcaption>
+</figure>
+
+
+Audiobooks are books of the library that Bookx plays itself: see [Audiobooks](audiobooks.md) (adding a folder, an
+`.m4b` or a zip, the player, speed, sleep timer, bookmarks).
+
+Menu → *Audiobooks* is for the other case: audio you already have next to your e-books. It finds `.m4b` files and
+folders of audio parts (`.mp3`, `.m4a`, `.ogg`, `.opus`, `.flac`) in your library folder and in folders you add, and
+pairs them with your books: an audiobook in a book's own folder, one with the same ISBN in its name, or one named like
+the book and its author (`Frank Herbert - Dune.m4b`). You see the pairings and press *Link All*. A linked audiobook
+shows in the details panel with **Play in Bookx** (see [Audiobooks](audiobooks.md#an-audiobook-for-an-e-book-you-own)),
+**Open**, which starts your system's audio player, and **Unlink**, which takes the link off and leaves the files where
+they are.
 
 ## Needs attention
+
+<figure markdown="1">
+![The Needs Attention tab of Library Health](assets/library-health-attention-light.png#only-light)
+![The Needs Attention tab of Library Health](assets/library-health-attention-dark.png#only-dark)
+<figcaption markdown="1">*Needs Attention*: books with missing metadata, covers or files.</figcaption>
+</figure>
+
 
 A book needs attention when it has no author, a title that looks like a file name (`my_book_final`, `scan_0042.pdf`),
 no cover or no language. The sidebar of the browse panel shows *Needs Attention* with the number of such books; the
@@ -371,6 +532,13 @@ cleanups: `ISBN: 978-0-441-17271-9` becomes `isbn:9780441172719`, an ISBN-10 bec
 pointed out. Nothing changes until you press *Clean Up*, and it can be undone.
 
 ## Saved searches and virtual libraries
+
+<figure markdown="1">
+![The Saved Searches dialog](assets/library-saved-searches-light.png#only-light)
+![The Saved Searches dialog](assets/library-saved-searches-dark.png#only-dark)
+<figcaption markdown="1">Saved Searches: give a search a name once and run it from here, from the search bar (`search:name`) or as a virtual library.</figcaption>
+</figure>
+
 
 Menu → *Saved Searches* keeps searches under a name. Type the name and a search (the window starts with what is in
 the search bar) and press *Save Search*. Then:
@@ -386,6 +554,25 @@ ignored. The search language has no parentheses, so a saved search with `OR` is 
 spreading them over its alternatives.
 
 ## Shelves, collections and tags
+
+<figure markdown="1">
+![The New Shelf dialog](assets/library-new-shelf-light.png#only-light)
+![The New Shelf dialog](assets/library-new-shelf-dark.png#only-dark)
+<figcaption markdown="1">New Shelf asks for a name only; books are added from the book menu or by dragging them onto the shelf.</figcaption>
+</figure>
+
+<figure markdown="1">
+![Two shelves in the sidebar with the number of books in each](assets/library-shelves-light.png#only-light)
+![Two shelves in the sidebar with the number of books in each](assets/library-shelves-dark.png#only-dark)
+<figcaption markdown="1">Shelves list under the sidebar's own heading, with the number of books next to each one.</figcaption>
+</figure>
+
+<figure markdown="1">
+![The grid showing the books of one shelf](assets/library-shelf-open-light.png#only-light)
+![The grid showing the books of one shelf](assets/library-shelf-open-dark.png#only-dark)
+<figcaption markdown="1">Click a shelf: the grid shows its books, and the search bar holds the shelf's query (`shelf:"Classics"`).</figcaption>
+</figure>
+
 
 **Shelves** hold books you put there by hand; a book can be on several. They are in the browse panel under *Shelves*
 (open it with the sidebar button).
@@ -408,6 +595,13 @@ Tags are the other way to group books. Add them in the metadata dialog or in bul
 
 ## Several libraries
 
+<figure markdown="1">
+![The library switcher](assets/library-switch-light.png#only-light)
+![The library switcher](assets/library-switch-dark.png#only-dark)
+<figcaption markdown="1">The switcher next to the library name: other libraries on this computer, *New Library* and *Open Folder as Library*.</figcaption>
+</figure>
+
+
 The button at the left of the header shows the library in use. Click it to switch:
 
 - Click another library to open it. The list remembers every library you opened; the one in use is ticked.
@@ -426,8 +620,11 @@ is released; if another copy of Bookx has the new library open, it opens read-on
 The list button in the header opens **Background Jobs**: imports, conversions, e-mailing books, metadata fetches,
 downloads of voices and dictionaries, scheduled backups and news downloads.
 
-![The Background Jobs panel](assets/library-jobs-light.png#only-light)
-![The Background Jobs panel](assets/library-jobs-dark.png#only-dark)
+<figure markdown="1">
+![The Background Jobs panel with running, failed and finished jobs](assets/library-jobs-panel-light.png#only-light)
+![The Background Jobs panel with running, failed and finished jobs](assets/library-jobs-panel-dark.png#only-dark)
+<figcaption markdown="1">Background jobs: each with its progress, a cancel button while it runs, and the reason when it failed.</figcaption>
+</figure>
 
 - The panel has a fixed width (at most about 380 px, narrower in a narrow window) and scrolls only up and down; long titles
   wrap to two lines and end in "…", the full title is in the tooltip.
@@ -442,6 +639,13 @@ downloads of voices and dictionaries, scheduled backups and news downloads.
 
 ## Export citations
 
+<figure markdown="1">
+![The Export Citations dialog](assets/library-citations-light.png#only-light)
+![The Export Citations dialog](assets/library-citations-dark.png#only-dark)
+<figcaption markdown="1">Export Citations: pick a format and the books; the references appear below and can be copied or saved.</figcaption>
+</figure>
+
+
 Menu → *Export Citations* writes a bibliography of the whole library, or of the books the current search shows, as
 **BibTeX**, **RIS** (Zotero, EndNote, Mendeley), **CSL JSON** (Zotero, Pandoc) or **APA 7** text. *Copy* puts it on the
 clipboard, *Save* writes a file. Each reference has the authors (as `Last, First`), title, publisher, year of the
@@ -450,6 +654,13 @@ fields come from the catalogue, so fix wrong titles or dates first. The same fro
 `bookx-cli library cite --style bibtex "author:herbert" -o refs.bib`.
 
 ## Duplicates
+
+<figure markdown="1">
+![The Duplicates tab of Library Health](assets/library-health-duplicates-light.png#only-light)
+![The Duplicates tab of Library Health](assets/library-health-duplicates-dark.png#only-dark)
+<figcaption markdown="1">*Duplicates*: books that look like the same book, with the reason, and what merging keeps.</figcaption>
+</figure>
+
 
 Menu → *Find Duplicates* groups copies of the same book. Pick the one to keep and merge: metadata, highlights,
 bookmarks and reading progress are united. When the copies are in different formats (an EPUB and an AZW3 of the
@@ -470,6 +681,13 @@ Changing the layout shows what will move first, and it either moves everything o
 
 ## Library Health
 
+<figure markdown="1">
+![The Library Health window, Health tab](assets/library-health-checks-light.png#only-light)
+![The Library Health window, Health tab](assets/library-health-checks-dark.png#only-dark)
+<figcaption markdown="1">Library Health, *Health* tab: where the library lives, *Check Library* and its result, then imports from Calibre.</figcaption>
+</figure>
+
+
 Menu → *Library Health* is the safety net of the library.
 
 - **Backups** of the catalogue: automatic snapshots at start-up and exit, *Back up now*, copies to other places (drives,
@@ -483,6 +701,25 @@ Menu → *Library Health* is the safety net of the library.
 - **History and Undo**: imports, deletions, edits and layout changes can be taken back.
 - **Trash**: deleting a book moves its files to the trash. Restore or empty it from this window.
 - **Name tidying**: one spelling per author and series, and series with missing numbers.
+
+### Exporting as a Calibre library
+
+Menu → *Export as Calibre Library* (or `bookx-cli library export-calibre DIR`) writes your library as a Calibre
+library: one `Author/Title (id)/` folder per book with every format file, `cover.jpg` and `metadata.opf`, and a
+`metadata.db` with titles, authors, tags, series, publisher, description, rating, language, identifiers, dates and
+the formats. Choose an empty folder (or one that does not exist yet); Bookx refuses a folder that has files in it
+and a folder inside the library, so nothing is overwritten and your library is never written to. The export is a
+background job in the Jobs panel and can be cancelled, which removes what it had written.
+
+Open the folder in Calibre with *Add a Calibre library*. Things to know:
+
+- Reading progress, highlights, bookmarks, collections, shelves and reading status are not part of a Calibre library
+  and are not exported (use *Export All Annotations* for highlights).
+- Custom columns are not written. Calibre calculates page counts and the book sort order itself after it opens the
+  library.
+- A cover is copied as is under the name `cover.jpg`.
+- File names are made from the title and author, with characters that are not allowed in file names replaced.
+- A file that is missing or cannot be read is skipped and reported; the book is still exported with its other files.
 
 ### File integrity
 

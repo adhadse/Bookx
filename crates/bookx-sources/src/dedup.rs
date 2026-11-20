@@ -271,6 +271,61 @@ impl Dsu {
     }
 }
 
+/// What a cheap pre-check needs to rule a pair out without scoring its titles: the length and a
+/// character histogram of the normalised title. See [`TitlePre::cannot_reach`].
+struct TitlePre {
+    len: usize,
+    hist: [u16; 40],
+    /// No subtitle and a non-empty title: the title score is then exactly the full-title similarity.
+    plain: bool,
+}
+
+impl TitlePre {
+    fn new(title: &str) -> TitlePre {
+        let key = title_key(title);
+        let norm = normalize(&key.full);
+        let mut hist = [0u16; 40];
+        let mut len = 0;
+        for c in norm.chars() {
+            len += 1;
+            let slot = match c {
+                'a'..='z' => c as usize - 'a' as usize,
+                '0'..='9' => 26 + c as usize - '0' as usize,
+                _ => 36 + (c as usize % 4),
+            };
+            hist[slot] = hist[slot].saturating_add(1);
+        }
+        TitlePre {
+            len,
+            hist,
+            plain: key.sub.is_empty() && len > 0,
+        }
+    }
+
+    /// True when the title similarity of the two books is certainly below `threshold`. It bounds the
+    /// scores [`title_similarity`] takes the best of from above using only the characters the two
+    /// titles share (a multiset overlap `c`): Levenshtein ratio is at most `c / max_len`, and
+    /// Jaro-Winkler at most `jaro + 0.4 (1 - jaro)` with `jaro <= (c/la + c/lb + 1) / 3`, scaled the
+    /// way `title_similarity` scales it. Titles with a subtitle are never ruled out here.
+    fn cannot_reach(&self, other: &TitlePre, threshold: f64) -> bool {
+        if !(self.plain && other.plain) {
+            return false;
+        }
+        let common: usize = self
+            .hist
+            .iter()
+            .zip(other.hist.iter())
+            .map(|(a, b)| *a.min(b) as usize)
+            .sum();
+        let (la, lb, c) = (self.len as f64, other.len as f64, common as f64);
+        let lev = c / la.max(lb);
+        let jaro = ((c / la + c / lb + 1.0) / 3.0).min(1.0);
+        let jw = (jaro + 0.4 * (1.0 - jaro)).min(1.0);
+        let jw = if jw >= 0.85 { jw * 0.98 } else { jw * 0.6 };
+        lev.max(jw) < threshold
+    }
+}
+
 /// Groups `books` into duplicate sets (transitively). Only books that share a block are compared:
 /// an ISBN, a main title, or the surname of the first author, so large libraries stay fast.
 pub fn find_duplicates(books: &[Book], threshold: f64) -> Vec<DuplicateSet> {
@@ -292,12 +347,21 @@ pub fn find_duplicates(books: &[Book], threshold: f64) -> Vec<DuplicateSet> {
         blocks.entry(format!("a:{last}")).or_default().push(i);
     }
     let mut dsu = Dsu((0..books.len()).collect());
+    // an ISBN match scores 1.0 whatever the titles say, so the title pre-check only applies to
+    // books that share no ISBN
+    let pre: Vec<TitlePre> = books.iter().map(|b| TitlePre::new(&b.meta.title)).collect();
+    let isbn_sets: Vec<Vec<String>> = books.iter().map(|b| isbns_of(&b.meta)).collect();
     for members in blocks.values() {
         for (x, &i) in members.iter().enumerate() {
             for &j in &members[x + 1..] {
-                if dsu.find(i) != dsu.find(j)
-                    && is_duplicate(&books[i].meta, &books[j].meta, threshold)
-                {
+                if dsu.find(i) == dsu.find(j) {
+                    continue;
+                }
+                let shares_isbn = isbn_sets[i].iter().any(|n| isbn_sets[j].contains(n));
+                if !shares_isbn && pre[i].cannot_reach(&pre[j], threshold) {
+                    continue;
+                }
+                if is_duplicate(&books[i].meta, &books[j].meta, threshold) {
                     dsu.union(i, j);
                 }
             }
@@ -738,5 +802,103 @@ mod tests {
             assert_eq!(m.authors, a.authors);
             assert_eq!(m.tags, a.tags);
         }
+    }
+
+    /// The title pre-check only ever skips pairs that the full scoring would reject too.
+    #[test]
+    fn the_title_pre_check_never_hides_a_duplicate() {
+        let base = [
+            "The Hobbit",
+            "Hobbit, The",
+            "The Hobbit!",
+            "Hobbit",
+            "L'Étranger",
+            "Etranger",
+            "Dune",
+            "Dune Messiah",
+            "Dunes",
+            "War and Peace",
+            "War & Peace",
+            "Wars and Peace",
+            "A Tale of Two Cities",
+            "Tale of Two Cities",
+            "Tales of Two Cities",
+            "Neuromancer",
+            "Neuromancers",
+            "Neuromancer: A Novel",
+            "Harry Potter 1",
+            "Harry Potter 2",
+            "Zzzz",
+            "aaaa",
+            "ab",
+            "ba",
+            "",
+        ];
+        let pres: Vec<TitlePre> = base.iter().map(|t| TitlePre::new(t)).collect();
+        for threshold in [0.6, DEFAULT_THRESHOLD, 0.95] {
+            for (i, a) in base.iter().enumerate() {
+                for (j, b) in base.iter().enumerate() {
+                    if pres[i].cannot_reach(&pres[j], threshold) {
+                        let score = title_score(a, b);
+                        assert!(
+                            score < threshold,
+                            "{a:?} vs {b:?}: pre-check says unreachable but the score is {score}"
+                        );
+                    }
+                }
+            }
+        }
+        // and it does rule out clearly different titles
+        assert!(
+            TitlePre::new("Zzzz Qqqq").cannot_reach(&TitlePre::new("Hobbit"), DEFAULT_THRESHOLD)
+        );
+        assert!(!TitlePre::new("The Hobbit")
+            .cannot_reach(&TitlePre::new("Hobbit, The"), DEFAULT_THRESHOLD));
+    }
+
+    #[test]
+    fn find_duplicates_agrees_with_pairwise_scoring() {
+        let titles = [
+            "The Hobbit",
+            "Hobbit, The",
+            "The Hobbit: There and Back Again",
+            "Dune",
+            "Dune Messiah",
+            "Dune!",
+            "War and Peace",
+            "War & Peace",
+        ];
+        let books: Vec<Book> = titles
+            .iter()
+            .enumerate()
+            .map(|(i, t)| book(i as u64 + 1, md(t, &["Some Author"])))
+            .collect();
+        let found = find_duplicates(&books, DEFAULT_THRESHOLD);
+        // reference: every pair scored on its own, merged transitively
+        let mut group: Vec<usize> = (0..books.len()).collect();
+        for i in 0..books.len() {
+            for j in i + 1..books.len() {
+                if is_duplicate(&books[i].meta, &books[j].meta, DEFAULT_THRESHOLD) {
+                    let (gi, gj) = (group[i], group[j]);
+                    for g in group.iter_mut() {
+                        if *g == gj {
+                            *g = gi;
+                        }
+                    }
+                }
+            }
+        }
+        let mut expected: Vec<Vec<u64>> = Vec::new();
+        for g in 0..books.len() {
+            let ids: Vec<u64> = (0..books.len())
+                .filter(|&i| group[i] == g)
+                .map(|i| i as u64 + 1)
+                .collect();
+            if ids.len() > 1 {
+                expected.push(ids);
+            }
+        }
+        let got: Vec<Vec<u64>> = found.into_iter().map(|s| s.ids).collect();
+        assert_eq!(got, expected);
     }
 }

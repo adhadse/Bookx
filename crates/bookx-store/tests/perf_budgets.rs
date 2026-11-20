@@ -159,42 +159,38 @@ fn reopening_a_10k_library_is_fast() {
     let _ = std::fs::remove_dir_all(d);
 }
 
-// -- 100 000 books (roadmap PP-G-12) ---------------------------------------------------------------
+// -- 100 000 books (roadmap PP-C-11, PP-G-12) -----------------------------------------------------
 //
-// Budgets are for release builds and kept near what the code does with some room; the point is to
-// catch an accidental O(n^2), not to race.
+// A synthetic library (`tests/common/synth.rs`: reproducible, no real content) of the size the roadmap
+// asks for. Budgets are for release builds and sit about 2 to 5 times above what an ordinary desktop
+// measures (numbers in docs/performance.md); the point is to catch an accidental O(n^2), not to race.
+// `cargo run --release -p bookx-store --example scale -- 10000 50000 100000` prints the full table.
+
+#[path = "common/synth.rs"]
+mod synth;
 
 const N100K: u64 = 100_000;
 
-fn synthetic_book(id: u64, r: &mut Rng) -> bookx_core::library::Book {
-    let title = format!("{} {} {}", word(r), word(r), id);
-    let mut b = book(id, &title, &format!("{} {}", word(r), word(r)));
-    b.meta.tags = vec![word(r)];
-    b.meta.series = format!("Series {}", id % 3000);
-    b.meta.series_index = (id % 12) as f64;
-    b.meta.description = "a description of the book ".repeat(4);
-    b
-}
-
 #[test]
 fn a_hundred_thousand_book_library() {
+    use bookx_core::library::{Category, SortKey};
+
     let d = lib_tmp("100k");
     let root = d.join("lib");
-    let mut r = Rng(2026);
     {
         let mut o = bookx_store::open_library(&root).unwrap();
-        o.library.books = (1..=N100K).map(|id| synthetic_book(id, &mut r)).collect();
+        o.library.books = synth::synth_library(N100K);
         o.library.books[77_777].meta.title = "Zanzibarlike Needle".into();
-        timed("first save of 100 000 books", 8_000, || {
+        timed("first save of 100 000 books", 25_000, || {
             o.library.save().unwrap()
         });
         assert_eq!(o.store.len(), N100K as usize);
 
-        timed("one progress save among 100 000 books", 400, || {
+        timed("one progress save among 100 000 books", 500, || {
             o.library.books[54_321].progress = 0.5;
             o.library.save().unwrap()
         });
-        timed("saving 100 000 unchanged books", 400, || {
+        timed("saving 100 000 unchanged books", 500, || {
             o.library.save().unwrap()
         });
         let hits = timed("metadata search among 100 000", 100, || {
@@ -205,6 +201,10 @@ fn a_hundred_thousand_book_library() {
             o.store.ids_sorted(bookx_store::Order::Title, true)
         });
         assert_eq!(ids.len(), N100K as usize);
+        let common = timed("metadata search, a word in half the books", 1_500, || {
+            o.store.search_ids("tal")
+        });
+        assert!(common.len() > 10_000);
         timed("snapshot of 100 000 books", 4_000, || {
             bookx_store::health::take_snapshot(
                 &o.store,
@@ -214,21 +214,68 @@ fn a_hundred_thousand_book_library() {
             )
             .unwrap()
         });
+        let bak = d.join("backup.sqlite");
+        timed("online backup of 100 000 books", 1_500, || {
+            o.store.backup_to(&bak).unwrap()
+        });
+        assert!(std::fs::metadata(&bak).unwrap().len() > 100_000_000);
         timed("integrity check of 100 000 books", 5_000, || {
             assert!(o.store.check_integrity().is_empty())
         });
     }
-    let o = timed("opening a 100 000 book library", 5_000, || {
+    let rss_before = synth::rss_kb();
+    let o = timed("opening a 100 000 book library", 1_500, || {
         bookx_store::open_library(&root).unwrap()
     });
     assert_eq!(o.library.books.len(), N100K as usize);
-    let found = timed("library search among 100 000", 500, || {
-        o.library.search(
-            "series:=\"Series 42\"",
-            bookx_core::library::SortKey::Title,
+    if rss_before > 0 {
+        // the whole catalogue lives in memory: about 1.7 kB per book (measured 180 MB at 100 000)
+        let grown = synth::rss_kb().saturating_sub(rss_before);
+        assert!(
+            grown < 450_000,
+            "opening 100 000 books grew RSS by {grown} kB"
+        );
+    }
+    let lib = &o.library;
+    let found = timed("series filter among 100 000", 300, || {
+        lib.search(
+            &format!("series:=\"{}\"", lib.books[2].meta.series),
+            SortKey::Title,
             true,
         )
     });
-    assert_eq!(found.len(), 34);
+    assert!(!found.is_empty() || lib.books[2].meta.series.is_empty());
+    for (name, key, ms) in [
+        ("title", SortKey::Title, 400),
+        ("author", SortKey::Author, 400),
+        ("date added", SortKey::DateAdded, 300),
+        ("series", SortKey::Series, 800),
+    ] {
+        let ids = timed(&format!("list sorted by {name}, 100 000 books"), ms, || {
+            lib.search("", key, true)
+        });
+        assert_eq!(ids.len(), N100K as usize);
+    }
+    for (name, q) in [
+        ("tag filter", "tags:tag-17"),
+        ("rating filter", "rating:>=8"),
+        ("free text", "kobaltal"),
+        ("language and tag", "language:de tags:tag-3"),
+    ] {
+        timed(&format!("{name} among 100 000"), 400, || {
+            lib.search(q, SortKey::Title, true)
+        });
+    }
+    let all = lib.search("", SortKey::Title, true);
+    // what the grid does with the ids: this was a `get` per id, 3 s at 100 000 books
+    let shown = timed("books for 100 000 visible ids", 150, || lib.books_for(&all));
+    assert_eq!(shown.len(), N100K as usize);
+    timed("sidebar categories of 100 000 books", 500, || {
+        (
+            lib.categories(Category::Authors).len(),
+            lib.categories(Category::Series).len(),
+            lib.categories(Category::Tags).len(),
+        )
+    });
     let _ = std::fs::remove_dir_all(d);
 }

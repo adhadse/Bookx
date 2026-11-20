@@ -257,9 +257,9 @@ impl Editor {
             Spec {
                 height: 780,
                 ..Spec::new(
-                    "Transform HTML",
-                    "Change elements and attributes in all pages at once. Preview lists the pages a rule set would change; nothing outside the tags you name is touched.",
-                    "Apply",
+                    crate::i18n::N_("Transform HTML"),
+                    crate::i18n::N_("Change elements and attributes in all pages at once. Preview lists the pages a rule set would change; nothing outside the tags you name is touched."),
+                    crate::i18n::N_("Apply"),
                 )
             },
             Some(bx.upcast()),

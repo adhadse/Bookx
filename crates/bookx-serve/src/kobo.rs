@@ -490,7 +490,7 @@ fn read_notes_in(c: &Connection) -> Result<Vec<(String, DeviceNote)>> {
     let cols = require(c, "Bookmark", &["VolumeID", "Text"])?;
     let has = |n: &str| cols.iter().any(|c| c == n);
     let sql = format!(
-        "SELECT VolumeID, Text, {}, {}, {} FROM Bookmark WHERE {} {}",
+        "SELECT VolumeID, Text, {}, {}, {}, {} FROM Bookmark WHERE {} {}",
         if has("Annotation") {
             "Annotation"
         } else {
@@ -506,6 +506,7 @@ fn read_notes_in(c: &Connection) -> Result<Vec<(String, DeviceNote)>> {
         } else {
             "NULL"
         },
+        if has("Color") { "Color" } else { "NULL" },
         if has("Hidden") {
             "COALESCE(Hidden, 0) = 0"
         } else {
@@ -526,11 +527,12 @@ fn read_notes_in(c: &Connection) -> Result<Vec<(String, DeviceNote)>> {
                 r.get::<_, Option<String>>(2)?,
                 r.get::<_, Option<String>>(3)?,
                 r.get::<_, Option<String>>(4)?,
+                r.get::<_, Option<i64>>(5)?,
             ))
         })?
         .collect::<Result<Vec<_>, _>>()?;
     let mut out = Vec::new();
-    for (vol, text, note, created, modified) in rows {
+    for (vol, text, note, created, modified, color) in rows {
         let text = text.unwrap_or_default();
         let note = note.unwrap_or_default();
         if text.trim().is_empty() && note.trim().is_empty() {
@@ -545,6 +547,11 @@ fn read_notes_in(c: &Connection) -> Result<Vec<(String, DeviceNote)>> {
                 chapter: None,
                 created,
                 updated,
+                color: color
+                    .and_then(bookx_core::devstyle::kobo_color)
+                    .map(str::to_string),
+                style: None,
+                bookmark: false,
             },
         ));
     }
@@ -619,6 +626,32 @@ pub fn add_test_highlight(
     c.execute(
         "INSERT INTO Bookmark (BookmarkID, VolumeID, ContentID, StartContainerPath, StartContainerChildIndex, StartOffset, EndContainerPath, EndContainerChildIndex, EndOffset, Text, Annotation, DateCreated, Type) VALUES (?1,?2,'c','p',0,0,'p',0,5,?3,?4,'2026-11-01T08:00:00Z','highlight')",
         params![uuid::Uuid::new_v4().to_string(), content_id, text, note],
+    )?;
+    Ok(())
+}
+
+/// Sets `Bookmark.Color` of every row (tests of other crates).
+#[doc(hidden)]
+pub fn set_test_color_all(db: &Path, color: i64) -> Result<()> {
+    Connection::open(db)?.execute("UPDATE Bookmark SET Color = ?1", params![color])?;
+    Ok(())
+}
+
+/// Adds one more highlight with a colour (`Bookmark.Color`) and a type (`highlight`, `note` or
+/// `dogear`) for a book that [`add_test_highlight`] added (tests of other crates).
+#[doc(hidden)]
+pub fn add_test_highlight_colored(
+    db: &Path,
+    content_id: &str,
+    text: &str,
+    note: &str,
+    color: i64,
+    kind: &str,
+) -> Result<()> {
+    let c = Connection::open(db)?;
+    c.execute(
+        "INSERT INTO Bookmark (BookmarkID, VolumeID, ContentID, StartContainerPath, StartContainerChildIndex, StartOffset, EndContainerPath, EndContainerChildIndex, EndOffset, Text, Annotation, DateCreated, Type, Color) VALUES (?1,?2,'c','span#kobo.1.1',0,17,'span#kobo.1.9',0,60,?3,?4,'2026-11-01T08:00:00Z',?6,?5)",
+        params![uuid::Uuid::new_v4().to_string(), content_id, text, note, color, kind],
     )?;
     Ok(())
 }

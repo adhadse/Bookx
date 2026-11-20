@@ -220,6 +220,8 @@ pub fn koreader_sidecar(title: &str, chapters: &[String], notes: &Notes) -> Stri
         text: String,
         note: String,
         when: String,
+        /// KOReader's `color` and `drawer` words; none for a bookmark.
+        look: Option<(String, &'static str)>,
     }
     let fmt = |d: &chrono::DateTime<chrono::Utc>| d.format("%Y-%m-%d %H:%M:%S").to_string();
     let mut entries: Vec<Entry> = Vec::new();
@@ -230,6 +232,10 @@ pub fn koreader_sidecar(title: &str, chapters: &[String], notes: &Notes) -> Stri
             text: h.text.clone(),
             note: h.note.clone(),
             when: fmt(&h.created),
+            look: Some((
+                bookx_core::devstyle::to_koreader_color(&h.color),
+                bookx_core::devstyle::to_koreader_drawer(&h.style),
+            )),
         });
     }
     for b in &notes.bookmarks {
@@ -243,6 +249,7 @@ pub fn koreader_sidecar(title: &str, chapters: &[String], notes: &Notes) -> Stri
             },
             note: String::new(),
             when: fmt(&b.created),
+            look: None,
         });
     }
     entries.sort_by(|a, b| (a.spine, a.order.to_bits()).cmp(&(b.spine, b.order.to_bits())));
@@ -258,8 +265,16 @@ pub fn koreader_sidecar(title: &str, chapters: &[String], notes: &Notes) -> Stri
         } else {
             format!("            [\"note\"] = {},\n", lua_str(&e.note))
         };
+        let look = match &e.look {
+            Some((c, d)) => format!(
+                "            [\"color\"] = {},\n            [\"drawer\"] = {},\n",
+                lua_str(c),
+                lua_str(d)
+            ),
+            None => String::new(),
+        };
         s.push_str(&format!(
-            "        [{}] = {{\n            [\"chapter\"] = {},\n            [\"datetime\"] = {},\n{own_note}            [\"notes\"] = {},\n            [\"page\"] = {},\n            [\"text\"] = {},\n        }},\n",
+            "        [{}] = {{\n            [\"chapter\"] = {},\n{look}            [\"datetime\"] = {},\n{own_note}            [\"notes\"] = {},\n            [\"page\"] = {},\n            [\"text\"] = {},\n        }},\n",
             i + 1,
             lua_str(&chapter_name(chapters, e.spine)),
             lua_str(&e.when),

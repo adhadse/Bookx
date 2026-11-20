@@ -74,3 +74,53 @@ fn aggregating_20k_sessions_is_fast() {
     check("daily totals of 20 000 sessions", t.elapsed(), budget(150));
     assert!(days.len() > 1000);
 }
+
+/// Words of a made-up language: `w123` forms, so every term is a real, distinct word.
+fn page_and_terms(words: usize, terms: usize) -> (String, Vec<String>) {
+    let mut page = String::new();
+    for i in 0..words {
+        page.push_str(&format!("w{} ", (i * 7919) % (terms * 3)));
+        if i % 12 == 11 {
+            page.push_str("New York, ");
+        }
+    }
+    let mut t: Vec<String> = (0..terms).map(|i| format!("w{i}")).collect();
+    t.push("New York".into());
+    (page, t)
+}
+
+#[test]
+fn marking_two_thousand_saved_terms_on_a_3000_word_page_is_fast() {
+    use bookx_lookup::termmatch::TermMatcher;
+    let (page, terms) = page_and_terms(3000, 2000);
+    let t = Instant::now();
+    let m = TermMatcher::new(&terms);
+    check(
+        "building the matcher for 2000 terms",
+        t.elapsed(),
+        budget(40),
+    );
+    let t = Instant::now();
+    let found = m.find(&page);
+    check(
+        "matching 2000 terms on a 3000-word page",
+        t.elapsed(),
+        budget(8),
+    );
+    assert!(found.len() > 500, "{}", found.len());
+}
+
+#[test]
+fn marking_a_whole_chapter_of_30000_words_is_fast() {
+    use bookx_lookup::termmatch::TermMatcher;
+    let (page, terms) = page_and_terms(30_000, 2000);
+    let m = TermMatcher::new(&terms);
+    let t = Instant::now();
+    let found = m.find(&page);
+    check(
+        "matching 2000 terms in 30 000 words",
+        t.elapsed(),
+        budget(60),
+    );
+    assert!(found.len() > 5000);
+}

@@ -900,25 +900,57 @@ pub fn classes_used(src: &str) -> Vec<String> {
 // sort CSS rules (CE-355)
 // ---------------------------------------------------------------------------------------------
 
-/// Sorts the plain style rules of a stylesheet by selector. Runs of rules between at-rules (`@import`,
-/// `@media`, `@font-face`, ...) are sorted separately so the at-rules keep their place; a comment directly in
-/// front of a rule moves with it. Returns `None` when the order does not change.
+/// Sorts the plain style rules of a stylesheet by selector, also the ones inside `@media`, `@supports`, `@layer`
+/// and `@container` blocks (each block on its own). Runs of rules between at-rules (`@import`, `@media`,
+/// `@font-face`, ...) are sorted separately so the at-rules keep their place; a comment directly in front of a
+/// rule moves with it. Returns `None` when the order does not change.
 pub fn sort_css_rules(css: &str) -> Option<String> {
-    let rules: Vec<CssRule> = css_rules(css).into_iter().filter(|r| r.top).collect();
-    let mut out = String::with_capacity(css.len());
-    let mut last = 0;
+    let rules = css_rules(css);
+    let out = sort_block(css, 0..css.len(), &rules);
+    (out != css).then_some(out)
+}
+
+fn is_block_container(name: &str) -> bool {
+    matches!(
+        name,
+        "media" | "supports" | "layer" | "container" | "document"
+    )
+}
+
+/// `css[range]` with the plain rules directly in it sorted and the blocks of container at-rules sorted inside.
+fn sort_block(css: &str, range: Range<usize>, rules: &[CssRule]) -> String {
+    let mut kids: Vec<&CssRule> = Vec::new();
+    for r in rules {
+        if r.whole.start >= range.start
+            && r.whole.end <= range.end
+            && kids.last().is_none_or(|k| r.whole.start >= k.whole.end)
+        {
+            kids.push(r);
+        }
+    }
+    let mut out = String::with_capacity(range.len());
+    let mut last = range.start;
     let mut i = 0;
-    let mut changed = false;
-    while i < rules.len() {
-        if rules[i].at.is_some() {
+    while i < kids.len() {
+        let k = kids[i];
+        if let Some(name) = &k.at {
+            out.push_str(&css[last..k.whole.start]);
+            if is_block_container(name) && k.body.end < k.whole.end {
+                out.push_str(&css[k.whole.start..k.body.start]);
+                out.push_str(&sort_block(css, k.body.clone(), rules));
+                out.push_str(&css[k.body.end..k.whole.end]);
+            } else {
+                out.push_str(&css[k.whole.clone()]);
+            }
+            last = k.whole.end;
             i += 1;
             continue;
         }
         let mut j = i;
-        while j < rules.len() && rules[j].at.is_none() {
+        while j < kids.len() && kids[j].at.is_none() {
             j += 1;
         }
-        let run = &rules[i..j];
+        let run = &kids[i..j];
         let mut order: Vec<usize> = (0..run.len()).collect();
         let key = |r: &CssRule| {
             css[r.selector.clone()]
@@ -927,23 +959,20 @@ pub fn sort_css_rules(css: &str) -> Option<String> {
                 .join(" ")
                 .to_lowercase()
         };
-        order.sort_by(|a, b| key(&run[*a]).cmp(&key(&run[*b])));
-        if order.iter().enumerate().any(|(k, o)| k != *o) {
-            changed = true;
-            // keep the separators (whitespace between the rules) in place, swap only the rule texts
-            out.push_str(&css[last..run[0].whole.start]);
-            for (k, o) in order.iter().enumerate() {
-                out.push_str(&css[run[*o].whole.clone()]);
-                if k + 1 < run.len() {
-                    out.push_str(&css[run[k].whole.end..run[k + 1].whole.start]);
-                }
+        order.sort_by(|a, b| key(run[*a]).cmp(&key(run[*b])));
+        // keep the separators (whitespace between the rules) in place, swap only the rule texts
+        out.push_str(&css[last..run[0].whole.start]);
+        for (n, o) in order.iter().enumerate() {
+            out.push_str(&css[run[*o].whole.clone()]);
+            if n + 1 < run.len() {
+                out.push_str(&css[run[n].whole.end..run[n + 1].whole.start]);
             }
-            last = run[run.len() - 1].whole.end;
         }
+        last = run[run.len() - 1].whole.end;
         i = j;
     }
-    out.push_str(&css[last..]);
-    changed.then_some(out)
+    out.push_str(&css[last..range.end]);
+    out
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1376,6 +1405,27 @@ mod tests {
         let r = rename_class(&f, "héros", "épée").unwrap();
         assert_eq!(r.changes[0].new_text, "<p class=\"épée\">é</p>");
         assert!(valid_class_name("a-b_c") && !valid_class_name("a b") && !valid_class_name("9"));
+    }
+
+    #[test]
+    fn sort_rules_sorts_inside_media_blocks_too() {
+        let css = "b { x: y }\na { x: y }\n@media (max-width: 600px) {\n  z { c: d }\n  /* m */\n  m { c: d }\n  a { c: d }\n}\n@import url(x);\nd { e: f }\nc { e: f }\n";
+        let s = sort_css_rules(css).unwrap();
+        assert_eq!(
+            s,
+            "a { x: y }\nb { x: y }\n@media (max-width: 600px) {\n  a { c: d }\n  /* m */\n  m { c: d }\n  z { c: d }\n}\n@import url(x);\nc { e: f }\nd { e: f }\n"
+        );
+        assert_eq!(sort_css_rules(&s), None);
+        // only the block is out of order; the outer rules stay
+        let only = "a { x: y }\n@supports (display: grid) {\n  q { a: b }\n  p { a: b }\n}\n";
+        assert_eq!(
+            sort_css_rules(only).unwrap(),
+            "a { x: y }\n@supports (display: grid) {\n  p { a: b }\n  q { a: b }\n}\n"
+        );
+        // nested at-rules that are not containers (@font-face inside @media) keep their place; an open block is safe
+        let odd = "@media print { b { x: y } a { x: y }";
+        let _ = sort_css_rules(odd);
+        assert_eq!(sort_css_rules("@media print { }"), None);
     }
 
     #[test]

@@ -58,6 +58,8 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
         });
     }
     g.add(&auto);
+    // your own definitions are a dictionary too, and the first one
+    g.add(&super::vocab_settings::my_vocabulary_row(ctx));
     AUTO.with(|a| *a.borrow_mut() = Some(auto.clone()));
 
     // the dictionaries Bookx installed

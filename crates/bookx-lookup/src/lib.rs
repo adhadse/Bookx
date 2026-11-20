@@ -11,10 +11,12 @@ pub mod ids;
 pub mod import;
 pub mod mapview;
 pub mod notes_query;
+pub mod own;
 pub mod rsvp;
 pub mod search;
 pub mod stardict;
 pub mod stats;
+pub mod termmatch;
 pub mod thumbs;
 pub mod vocab;
 

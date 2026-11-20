@@ -21,6 +21,7 @@ use bookx_core::query::Query;
 use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use serde_json::json;
 
+use crate::annotation_sync::{self, AnnotationSync};
 use crate::devices::sanitize_file_name;
 use crate::http::{
     constant_time_eq, mime_for_extension, parse_basic_auth, parse_range, RangeSpec, Request,
@@ -62,6 +63,8 @@ pub struct ServerConfig {
     pub users: Vec<User>,
     pub read_only: bool,
     pub kosync: Option<Arc<KoSync>>,
+    /// KOReader annotation sync (`/bookx/annotations/...`); needs `kosync` for the accounts.
+    pub annotations: Option<Arc<AnnotationSync>>,
     pub library: LibraryProvider,
     /// Requests handled at the same time.
     pub threads: usize,
@@ -81,6 +84,7 @@ impl ServerConfig {
             users: Vec::new(),
             read_only: false,
             kosync: None,
+            annotations: None,
             library,
             threads: 8,
             limits: Limits::default(),
@@ -332,11 +336,21 @@ pub fn handle(cfg: &ServerConfig, req: &Request) -> Response {
     resp
 }
 
+/// The one prefix of the sync endpoint: reading progress (KOReader's KOSync protocol) and Bookx's
+/// annotation routes share it. This is the address shown to the user. There is no other mount
+/// (no `/kosync`, no root-level routes).
+pub const SYNC_PREFIX: &str = "/bookx";
+
+/// The path below `/bookx` (empty for `/bookx` itself), or `None` when the path is not under it.
+/// The prefix must end at a `/` or at the end of the path.
+pub fn strip_sync_prefix(path: &str) -> Option<&str> {
+    let rest = path.strip_prefix(SYNC_PREFIX)?;
+    (rest.is_empty() || rest.starts_with('/')).then_some(rest)
+}
+
 fn route(cfg: &ServerConfig, req: &Request) -> Response {
-    let path_only_kosync = {
-        let p = req.path.strip_prefix("/kosync").unwrap_or(&req.path);
-        KoSync::owns(p)
-    };
+    let path_only_kosync =
+        strip_sync_prefix(&req.path).is_some_and(|p| KoSync::owns(p) || annotation_sync::owns(p));
     let is_health = req.path == "/healthcheck";
     if !cfg.users.is_empty()
         && !is_health
@@ -353,11 +367,17 @@ fn route(cfg: &ServerConfig, req: &Request) -> Response {
         return Response::json(200, &json!({"state": "OK"}));
     }
     if path_only_kosync {
-        let rel = req
-            .path
-            .strip_prefix("/kosync")
-            .unwrap_or(&req.path)
-            .to_string();
+        let rel = strip_sync_prefix(&req.path).unwrap_or_default().to_string();
+        if annotation_sync::owns(&rel) {
+            return match (&cfg.kosync, &cfg.annotations) {
+                (Some(k), Some(a)) => {
+                    let mut inner = req.clone();
+                    inner.path = rel;
+                    a.handle(&inner, &|u, key| k.store().check_user(u, key))
+                }
+                _ => error(404, "Not found"),
+            };
+        }
         return match &cfg.kosync {
             Some(k) => {
                 let mut inner = req.clone();
@@ -737,36 +757,127 @@ mod tests {
         std::fs::remove_dir_all(root).ok();
     }
 
-    #[test]
-    fn kosync_is_mounted_at_root_and_prefix() {
-        let root = tmp();
-        let mut cfg = cfg_with(&root, vec![]);
+    fn sync_cfg(root: &std::path::Path) -> ServerConfig {
+        let mut cfg = cfg_with(root, vec![]);
         cfg.kosync = Some(Arc::new(KoSync::new(
             Box::new(crate::kosync::MemoryStore::new()),
             true,
         )));
+        cfg.annotations = Some(Arc::new(annotation_sync::AnnotationSync::memory()));
+        cfg
+    }
+
+    fn acct(p: &str) -> Request {
+        Request::new("GET", p)
+            .with_header("x-auth-user", "k")
+            .with_header("x-auth-key", "abc")
+    }
+
+    #[test]
+    fn sync_is_mounted_under_bookx_only() {
+        let root = tmp();
+        let mut cfg = sync_cfg(&root);
         cfg.users = vec![User {
             name: "u".into(),
             password: "p".into(),
         }];
-        let create = Request::new("POST", "/kosync/users/create")
+        let create = Request::new("POST", "/bookx/users/create")
             .with_body(br#"{"username":"k","password":"abc"}"#);
         assert_eq!(handle(&cfg, &create).status, 201);
-        let auth = |p: &str| {
-            Request::new("GET", p)
-                .with_header("x-auth-user", "k")
-                .with_header("x-auth-key", "abc")
-        };
-        assert_eq!(handle(&cfg, &auth("/kosync/users/auth")).status, 200);
-        assert_eq!(handle(&cfg, &auth("/users/auth")).status, 200);
+        assert_eq!(handle(&cfg, &acct("/bookx/users/auth")).status, 200);
+        // the account decides, not the Basic credentials of the library
         assert_eq!(
-            handle(&cfg, &Request::new("GET", "/kosync/users/auth")).status,
+            handle(&cfg, &Request::new("GET", "/bookx/users/auth")).status,
             401
         );
         assert_eq!(
-            handle(&cfg, &Request::new("GET", "/kosync/healthcheck")).status,
+            handle(&cfg, &Request::new("GET", "/bookx/healthcheck")).status,
             200
         );
+        // progress round trip
+        let doc = "a".repeat(32);
+        let put = Request::new("PUT", "/bookx/syncs/progress")
+            .with_header("x-auth-user", "k")
+            .with_header("x-auth-key", "abc")
+            .with_body(
+                format!(
+                    r#"{{"document":"{doc}","progress":"1","percentage":0.5,"device":"d","device_id":"i"}}"#
+                )
+                .as_bytes(),
+            );
+        assert_eq!(handle(&cfg, &put).status, 200);
+        assert_eq!(
+            handle(&cfg, &acct(&format!("/bookx/syncs/progress/{doc}"))).status,
+            200
+        );
+        // annotations need the account too
+        let path = format!("/bookx/annotations/{doc}");
+        let mut anon = Request::new("GET", &path);
+        anon.query = "since=0".into();
+        assert_eq!(handle(&cfg, &anon).status, 401);
+        let mut ok = acct(&path);
+        ok.query = "since=0".into();
+        assert_eq!(handle(&cfg, &ok).status, 200);
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn legacy_kosync_and_root_routes_are_gone() {
+        let root = tmp();
+        let mut cfg = sync_cfg(&root);
+        cfg.users = vec![User {
+            name: "u".into(),
+            password: "p".into(),
+        }];
+        let doc = "a".repeat(32);
+        for p in [
+            "/kosync/users/auth".to_string(),
+            "/kosync/healthcheck".to_string(),
+            "/kosync/syncs/progress/x".to_string(),
+            format!("/kosync/annotations/{doc}"),
+            "/users/auth".to_string(),
+            format!("/annotations/{doc}"),
+            format!("/syncs/progress/{doc}"),
+        ] {
+            // with the account headers: not served, and not a way around the library's Basic auth
+            assert_eq!(handle(&cfg, &acct(&p)).status, 401, "{p}");
+        }
+        cfg.users.clear();
+        for p in [
+            "/kosync/users/auth",
+            "/kosync/healthcheck",
+            "/users/auth",
+            "/syncs/progress/x",
+        ] {
+            assert_eq!(handle(&cfg, &acct(p)).status, 404, "{p}");
+        }
+        let create = Request::new("POST", "/kosync/users/create")
+            .with_body(br#"{"username":"z","password":"abc"}"#);
+        assert_ne!(handle(&cfg, &create).status, 201);
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn bookx_prefix_is_404_when_sync_is_off() {
+        let root = tmp();
+        let cfg = cfg_with(&root, vec![]);
+        for p in [
+            "/bookx/users/auth",
+            "/bookx/healthcheck",
+            "/bookx/annotations/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        ] {
+            assert_eq!(handle(&cfg, &Request::new("GET", p)).status, 404, "{p}");
+        }
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn sync_prefix_stripping() {
+        assert_eq!(strip_sync_prefix("/bookx/users/auth"), Some("/users/auth"));
+        assert_eq!(strip_sync_prefix("/bookx"), Some(""));
+        assert_eq!(strip_sync_prefix("/kosync/users/auth"), None);
+        assert_eq!(strip_sync_prefix("/users/auth"), None);
+        assert_eq!(strip_sync_prefix("/bookxish/x"), None);
     }
 
     #[test]
@@ -774,7 +885,7 @@ mod tests {
         let root = tmp();
         let cfg = cfg_with(&root, vec![]);
         assert_eq!(
-            handle(&cfg, &Request::new("GET", "/users/auth")).status,
+            handle(&cfg, &Request::new("GET", "/bookx/users/auth")).status,
             404
         );
         assert_eq!(
@@ -800,7 +911,7 @@ mod tests {
             assert_eq!(r.status, 405, "{m}");
             assert_eq!(r.header("allow"), Some("GET, HEAD"));
         }
-        let create = Request::new("POST", "/users/create")
+        let create = Request::new("POST", "/bookx/users/create")
             .with_body(br#"{"username":"k","password":"abc"}"#);
         assert_eq!(handle(&cfg, &create).status, 405);
         std::fs::remove_dir_all(root).ok();

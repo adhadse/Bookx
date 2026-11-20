@@ -5,7 +5,7 @@
 //! Everything is called on the GTK main thread (workers report to it through the channels they
 //! already have). A worker that can be stopped holds a [`CancelToken`] and checks it between steps.
 
-use crate::i18n::tr;
+use crate::i18n::{tr, trf};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -19,6 +19,7 @@ const KEEP_LOG: usize = 200;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     Import,
+    Export,
     Convert,
     Send,
     Fetch,
@@ -32,6 +33,7 @@ impl Kind {
     pub fn label(self) -> &'static str {
         match self {
             Kind::Import => "Import",
+            Kind::Export => "Export",
             Kind::Convert => "Conversion",
             Kind::Send => "Send",
             Kind::Fetch => "Metadata",
@@ -46,6 +48,7 @@ impl Kind {
     pub fn verb(self) -> String {
         match self {
             Kind::Import => tr("Importing"),
+            Kind::Export => tr("Exporting"),
             Kind::Convert => tr("Converting"),
             Kind::Send => tr("Sending"),
             Kind::Fetch => tr("Looking up metadata"),
@@ -58,6 +61,7 @@ impl Kind {
     pub fn icon(self) -> &'static str {
         match self {
             Kind::Import => "document-open-symbolic",
+            Kind::Export => "document-save-symbolic",
             Kind::Convert => "emblem-synchronizing-symbolic",
             Kind::Send => "send-to-symbolic",
             Kind::Fetch => "system-search-symbolic",
@@ -151,7 +155,7 @@ fn tidy_sizes(seg: &str) -> String {
     let parts: Vec<&str> = seg.split_whitespace().collect();
     if let [a, ua, "of", b, ub] = parts.as_slice() {
         if ua == ub {
-            return format!("{a} of {b} {ua}");
+            return trf("{} of {} {}", &[a, b, ua]);
         }
     }
     seg.to_string()
@@ -203,8 +207,13 @@ pub fn status_lines(job: &Job, now_ms: i64) -> StatusLines {
                 primary = format!("{primary} · {}", parts.join(" · "));
             }
             let secondary = match eta {
-                Some(e) if e.starts_with("about") => e,
-                Some(e) => format!("about {e}"),
+                Some(e) => {
+                    let amount = e
+                        .trim_start_matches("about")
+                        .trim_end_matches("left")
+                        .trim();
+                    trf("about {} left", &[&amount])
+                }
                 None => String::new(),
             };
             StatusLines { primary, secondary }

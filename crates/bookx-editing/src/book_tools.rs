@@ -132,6 +132,16 @@ impl FileNote {
 
 /// The notes for `path`, most important first.
 pub fn file_notes(book: &OpenBook, path: &str) -> Vec<FileNote> {
+    file_notes_with(book, path, &crate::semantics::read_semantics(book))
+}
+
+/// [`file_notes`] with the semantics read once by the caller (they parse the package and the navigation
+/// document, which is slow for a book of many files: a list of 20 files read them 20 times).
+pub fn file_notes_with(
+    book: &OpenBook,
+    path: &str,
+    semantics: &[crate::semantics::SemanticEntry],
+) -> Vec<FileNote> {
     let pkg = &book.package;
     let mut out = Vec::new();
     if path == pkg.opf_path {
@@ -154,7 +164,7 @@ pub fn file_notes(book: &OpenBook, path: &str) -> Vec<FileNote> {
     if pkg.nav_item().map(|i| pkg.item_path(i)).as_deref() == Some(path) {
         out.push(FileNote::Nav);
     }
-    if crate::semantics::read_semantics(book)
+    if semantics
         .iter()
         .any(|e| e.semantic == Semantic::TitlePage && e.href.split('#').next() == Some(path))
     {
@@ -1142,6 +1152,21 @@ mod tests {
         assert_eq!(file_notes(&b, &first), vec![]);
         mark_page(&mut b, &first, PageRole::TitlePage).unwrap();
         assert!(file_notes(&b, &first).contains(&FileNote::TitlePage));
+    }
+
+    #[test]
+    fn notes_with_given_semantics_equal_notes_that_read_them() {
+        let mut b = make_book(&["<p>1</p>", "<p>2</p>", "<p>3</p>"]);
+        let first = b.spine_paths()[0].clone();
+        mark_page(&mut b, &first, PageRole::TitlePage).unwrap();
+        let sem = crate::semantics::read_semantics(&b);
+        assert!(!sem.is_empty());
+        for f in b.file_list() {
+            assert_eq!(file_notes_with(&b, &f, &sem), file_notes(&b, &f), "{f}");
+        }
+        assert!(file_notes_with(&b, &first, &sem).contains(&FileNote::TitlePage));
+        // without the semantics the title page note is not there: the caller's list is what counts
+        assert!(!file_notes_with(&b, &first, &[]).contains(&FileNote::TitlePage));
     }
 
     #[test]

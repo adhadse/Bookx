@@ -65,18 +65,12 @@ thread_local! {
 }
 
 /// Ids and sort order of the built-in sections (sidebar order: lower first).
-pub const BUILTIN: [(&str, &str, &str, i32); 8] = [
+pub const BUILTIN: [(&str, &str, &str, i32); 7] = [
     ("general", N_("General"), "preferences-system-symbolic", 10),
     ("library", N_("Library"), "library-symbolic", 20),
     ("reading", N_("Reading"), "book-open-variant-symbolic", 30),
-    (
-        "devices",
-        N_("Devices and Sharing"),
-        "computer-symbolic",
-        40,
-    ),
+    ("sync", N_("Sync"), "view-refresh-symbolic", 40),
     ("email", N_("E-mail"), "mail-send-symbolic", 50),
-    ("sync", N_("Sync"), "view-refresh-symbolic", 60),
     (
         "extensions",
         N_("Extensions"),
@@ -127,11 +121,14 @@ fn external_registrations() {
     super::reader_extra::register();
     super::reader_footer::register();
     super::dict_settings::register();
+    super::vocab_settings::register();
     super::shortcuts_dialog::register();
     super::mcp_settings::register();
     super::editor::prefs_page::register();
     super::privacy_settings::register();
     super::reading_ruler::register();
+    super::comic_settings::register();
+    super::sync_prefs::register();
 }
 
 fn ensure_registry() {
@@ -197,6 +194,15 @@ pub fn show_at(
     }
 }
 
+/// Shows the section with this id in the open Preferences (nothing happens when it is closed).
+pub fn goto_page(id: &str) {
+    if let Some(view) = CURRENT.with(|c| c.borrow().clone()) {
+        if let Some(i) = view.sections.iter().position(|s| s.id == id) {
+            view.select(i);
+        }
+    }
+}
+
 /// Dev hook `prefs:ARG` (besides the plain `prefs:` that opens the dialog): `search=TEXT`,
 /// `pick=SECTION`, `dump`.
 pub fn dev(arg: &str) {
@@ -206,16 +212,33 @@ pub fn dev(arg: &str) {
     };
     if let Some(f) = arg.strip_prefix("ruler-") {
         super::reading_ruler::dev_prefs(f);
+    } else if let Some(f) = arg.strip_prefix("comic-") {
+        super::comic_settings::dev(f);
+    } else if let Some(f) = arg.strip_prefix("sync-account") {
+        super::kosync::dev_account(f);
+    } else if let Some(f) = arg.strip_prefix("sync-") {
+        super::sync_prefs::dev(f);
     } else if let Some(f) = arg.strip_prefix("privacy-") {
         super::privacy_settings::dev(f);
     } else if let Some(f) = arg.strip_prefix("dict-") {
         super::dict_settings::dev(f);
+    } else if let Some(f) = arg.strip_prefix("vocab-") {
+        super::vocab_settings::dev(f);
     } else if let Some(f) = arg.strip_prefix("footer-") {
         super::reader_footer::dev(f);
     } else if let Some(q) = arg.strip_prefix("search=") {
         view.search.set_text(q);
     } else if let Some(name) = arg.strip_prefix("pick=") {
-        if let Some(i) = view.sections.iter().position(|s| s.title == name) {
+        let by_number = name.strip_prefix('#').and_then(|n| n.parse::<usize>().ok());
+        let legacy = crate::sync_model::LEGACY_PAGES.contains(&name);
+        if let Some(i) = by_number.or_else(|| {
+            view.sections
+                .iter()
+                .position(|s| s.title == name || (legacy && s.id == crate::sync_model::PAGE_ID))
+        }) {
+            if i >= view.sections.len() {
+                return;
+            }
             view.select(i);
         }
     } else if arg == "icons" {
@@ -294,8 +317,12 @@ impl View {
         let q = query.trim();
         let mut first_visible = None;
         for (i, (s, row)) in self.sections.iter().zip(&self.rows).enumerate() {
-            let visible =
-                q.is_empty() || query_matches(q, &s.title) || self.filter_page(&s.page, q) > 0;
+            // the page was called "Devices and Sharing" once: that name still finds it, whole
+            let legacy = s.id == crate::sync_model::PAGE_ID && crate::sync_model::is_legacy_name(q);
+            let visible = q.is_empty()
+                || legacy
+                || query_matches(q, &s.title)
+                || self.filter_page(&s.page, q) > 0;
             row.set_visible(visible);
             if visible && first_visible.is_none() {
                 first_visible = Some(i);
@@ -329,7 +356,7 @@ impl View {
             }
             let mut any = false;
             for r in rows {
-                if query_matches(q, &row_text(&r)) {
+                if row_matches(q, &r) {
                     r.add_css_class("pref-hit");
                     self.hits.borrow_mut().push(r.clone().upcast());
                     any = true;
@@ -378,6 +405,33 @@ fn top_rows(w: &gtk::Widget, out: &mut Vec<adw::PreferencesRow>) {
         }
         c = child.next_sibling();
     }
+}
+
+/// Does the row match? An expander matches by its own header or by any single row inside it (the
+/// words of one query must meet in one row, not be spread over everything the expander holds).
+fn row_matches(q: &str, r: &adw::PreferencesRow) -> bool {
+    let Some(e) = r.downcast_ref::<adw::ExpanderRow>() else {
+        return query_matches(q, &row_text(r));
+    };
+    let own = format!("{} {}", e.title(), e.subtitle());
+    if query_matches(q, &own) {
+        return true;
+    }
+    fn inner(w: &gtk::Widget, q: &str) -> bool {
+        let mut c = w.first_child();
+        while let Some(child) = c {
+            if let Some(r) = child.downcast_ref::<adw::PreferencesRow>() {
+                if row_matches(q, r) {
+                    return true;
+                }
+            } else if inner(&child, q) {
+                return true;
+            }
+            c = child.next_sibling();
+        }
+        false
+    }
+    inner(e.upcast_ref(), q)
 }
 
 fn row_text(r: &adw::PreferencesRow) -> String {
@@ -625,9 +679,6 @@ fn build_sections(
     let reading = adw::PreferencesPage::new();
     reading.set_title(&tr("Reading"));
     reading.set_icon_name(Some("view-reader-symbolic"));
-    let devices_page = adw::PreferencesPage::new();
-    devices_page.set_title(&tr("Devices and Sharing"));
-    devices_page.set_icon_name(Some("computer-symbolic"));
     let extras = adw::PreferencesPage::new();
     extras.set_title(&tr("Extensions"));
     extras.set_icon_name(Some("application-x-addon-symbolic"));
@@ -729,7 +780,11 @@ fn build_sections(
         .build();
     let scheme = adw::ComboRow::builder()
         .title(tr("Color scheme"))
-        .model(&gtk::StringList::new(&["Follow system", "Light", "Dark"]))
+        .model(&gtk::StringList::new(&[
+            &tr("Follow system"),
+            &tr("Light"),
+            &tr("Dark"),
+        ]))
         .build();
     scheme.set_selected(match shared.cfg.borrow().scheme {
         Scheme::System => 0,
@@ -758,7 +813,12 @@ fn build_sections(
         .build();
     let theme = adw::ComboRow::builder()
         .title(tr("Theme"))
-        .model(&gtk::StringList::new(&ReaderTheme::ALL.map(|t| t.label())))
+        .model(&gtk::StringList::new(
+            &ReaderTheme::ALL
+                .map(|t| tr(t.label()))
+                .each_ref()
+                .map(|s| s.as_str()),
+        ))
         .build();
     theme.set_selected(
         ReaderTheme::ALL
@@ -769,9 +829,9 @@ fn build_sections(
     let layout = adw::ComboRow::builder()
         .title(tr("Layout"))
         .model(&gtk::StringList::new(&[
-            "Two columns",
-            "Single column",
-            "Continuous scroll",
+            &tr("Two columns"),
+            &tr("Single column"),
+            &tr("Continuous scroll"),
         ]))
         .build();
     layout.set_selected(match shared.cfg.borrow().reader.layout {
@@ -797,7 +857,10 @@ fn build_sections(
         .model(&gtk::StringList::new(
             &crate::gestures::TapZones::ALL
                 .iter()
-                .map(|z| z.label())
+                .map(|z| tr(z.label()))
+                .collect::<Vec<_>>()
+                .iter()
+                .map(|s| s.as_str())
                 .collect::<Vec<_>>(),
         ))
         .build();
@@ -812,7 +875,10 @@ fn build_sections(
         .model(&gtk::StringList::new(
             &crate::gestures::TouchUi::ALL
                 .iter()
-                .map(|t| t.label())
+                .map(|t| tr(t.label()))
+                .collect::<Vec<_>>()
+                .iter()
+                .map(|s| s.as_str())
                 .collect::<Vec<_>>(),
         ))
         .build();
@@ -915,9 +981,9 @@ fn build_sections(
     // ---- plugins: sandboxed extensions (WebAssembly) -------------------------------------
     let plugins = adw::PreferencesGroup::new();
     plugins.set_title(&tr("Plugins"));
-    plugins.set_description(Some(
+    plugins.set_description(Some(&tr(
         "Extensions run in a sandbox and can only do what their manifest asks for. They add metadata sources and file formats.",
-    ));
+    )));
     let list: Vec<bookx_plugin::PluginStatus> = shared.plugins.borrow().list();
     if list.is_empty() {
         let row = adw::ActionRow::new();
@@ -1021,47 +1087,12 @@ fn build_sections(
     // ---- patches: small TOML rule files (X9) -----------------------------------------------
     let patches = adw::PreferencesGroup::new();
     patches.set_title(&tr("Patches"));
-    patches.set_description(Some(
+    patches.set_description(Some(&tr(
         "Small rule files that fix text or style in books when they are imported, converted or opened. They only edit the book itself, never other files. Off until you switch them on; use the magnifier for a dry run on your first book.",
-    ));
+    )));
     let shown: Rc<RefCell<Vec<adw::PreferencesRow>>> = Rc::default();
     fill_patches(&patches, shared, &shown);
     patches_page.add(&patches);
-
-    // ---- devices ----------------------------------------------------------------------------
-    let devices = adw::PreferencesGroup::new();
-    devices.set_title(&tr("Devices"));
-    devices.set_description(Some(
-        "What happens when an e-reader is connected. Syncing is always progressive: progress only moves forward, highlights and notes are added to the side that lacks them, and nothing is ever deleted.",
-    ));
-    let auto_sync = adw::SwitchRow::builder()
-        .title(crate::device_sync::AUTO_SYNC_TITLE)
-        .subtitle(crate::device_sync::AUTO_SYNC_SUBTITLE)
-        .build();
-    auto_sync.add_suffix(&crate::ui::help_button(crate::device_sync::AUTO_SYNC_HELP));
-    auto_sync.set_active(shared.cfg.borrow().device_sync.auto_sync);
-    let include_notes = adw::SwitchRow::builder()
-        .title(crate::device_sync::NOTES_TITLE)
-        .subtitle(crate::device_sync::NOTES_SUBTITLE)
-        .build();
-    include_notes.set_active(shared.cfg.borrow().device_sync.include_notes);
-    {
-        let sh = shared.clone();
-        auto_sync.connect_active_notify(move |r| {
-            let mut c = sh.cfg.borrow_mut();
-            c.device_sync.auto_sync = r.is_active();
-            c.save();
-        });
-        let sh = shared.clone();
-        include_notes.connect_active_notify(move |r| {
-            let mut c = sh.cfg.borrow_mut();
-            c.device_sync.include_notes = r.is_active();
-            c.save();
-        });
-    }
-    devices.add(&auto_sync);
-    devices.add(&include_notes);
-    devices_page.add(&devices);
 
     // ---- e-mail: for "Send by E-mail" ------------------------------------------------------
     let mail = adw::PreferencesGroup::new();
@@ -1081,7 +1112,10 @@ fn build_sections(
     let enc = adw::ComboRow::new();
     enc.set_title(&tr("Mail encryption"));
     enc.set_model(Some(&gtk::StringList::new(
-        &crate::emailing::Encryption::ALL.map(|e| e.label()),
+        &crate::emailing::Encryption::ALL
+            .map(|e| tr(e.label()))
+            .each_ref()
+            .map(|s| s.as_str()),
     )));
     enc.set_selected(
         crate::emailing::Encryption::ALL
@@ -1148,15 +1182,12 @@ fn build_sections(
     }
     email_page.add(&mail);
 
-    sync_page.add(&super::kosync::preferences_group(shared));
-
     let built = [
         page,
         library_page,
         reading,
-        devices_page,
-        email_page,
         sync_page,
+        email_page,
         extras,
         patches_page,
     ];

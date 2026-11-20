@@ -884,6 +884,11 @@ pub fn browser_order(
 
 /// The text of the tooltip of a file row: path, size, type and what is special about it (CE-021, CE-022).
 pub fn file_tooltip(book: &OpenBook, path: &str) -> String {
+    file_tooltip_with(book, path, &book_tools::file_notes(book, path))
+}
+
+/// [`file_tooltip`] for notes the caller already has.
+pub fn file_tooltip_with(book: &OpenBook, path: &str, notes: &[book_tools::FileNote]) -> String {
     let mut lines = vec![path.to_string()];
     let size = book.archive.size_of(path);
     let mt = book
@@ -892,7 +897,7 @@ pub fn file_tooltip(book: &OpenBook, path: &str) -> String {
         .map(|i| i.media_type.clone())
         .unwrap_or_else(|| bookx_core::util::media_type_for(path).to_string());
     lines.push(format!("{} · {}", kib(size), mt));
-    for n in book_tools::file_notes(book, path) {
+    for n in notes {
         lines.push(n.tooltip().to_string());
     }
     lines.join("\n")

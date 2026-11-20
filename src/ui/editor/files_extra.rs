@@ -11,6 +11,18 @@ use crate::editor_state;
 
 const GROUPS: [&str; 5] = ["Text", "Styles", "Images", "Fonts", "Package"];
 
+/// An external editor may write the file in several steps, and not every file monitor backend sends
+/// the same final `ChangesDoneHint`. Any write/create event is a reason to look at the file again;
+/// the check is debounced below so a partial write cannot open the update dialog.
+fn external_file_changed(ev: gio::FileMonitorEvent) -> bool {
+    matches!(
+        ev,
+        gio::FileMonitorEvent::Changed
+            | gio::FileMonitorEvent::Created
+            | gio::FileMonitorEvent::ChangesDoneHint
+    )
+}
+
 fn install_css() {
     thread_local!(static DONE: Cell<bool> = const { Cell::new(false) });
     if DONE.with(|d| d.replace(true)) {
@@ -89,9 +101,10 @@ impl Editor {
             editor_tools::browser_order(&b, &files, group_of)
         };
         let spine = self.book.borrow().spine_paths();
+        let semantics = bookx_editing::semantics::read_semantics(&self.book.borrow());
         for (g, files) in groups {
             for f in files {
-                let row = self.file_row(&f, g, &spine, full_paths);
+                let row = self.file_row(&f, g, &spine, &semantics, full_paths);
                 self.w.files.append(&row.0);
                 self.file_rows.insert(f, row);
             }
@@ -109,6 +122,7 @@ impl Editor {
         f: &str,
         group: &'static str,
         spine: &[String],
+        semantics: &[bookx_editing::semantics::SemanticEntry],
         full_paths: bool,
     ) -> (gtk::ListBoxRow, gtk::Image) {
         let row = gtk::ListBoxRow::new();
@@ -124,7 +138,7 @@ impl Editor {
         name.set_hexpand(true);
         name.set_ellipsize(pango::EllipsizeMode::Middle);
         bx.append(&name);
-        let notes = book_tools::file_notes(&self.book.borrow(), f);
+        let notes = book_tools::file_notes_with(&self.book.borrow(), f, semantics);
         for n in notes.iter().take(3) {
             let img = gtk::Image::from_icon_name(n.icon());
             img.set_tooltip_text(Some(n.tooltip()));
@@ -152,7 +166,11 @@ impl Editor {
         dot.set_visible(self.modified.contains(f));
         bx.append(&dot);
         row.set_child(Some(&bx));
-        row.set_tooltip_text(Some(&editor_tools::file_tooltip(&self.book.borrow(), f)));
+        row.set_tooltip_text(Some(&editor_tools::file_tooltip_with(
+            &self.book.borrow(),
+            f,
+            &notes,
+        )));
         unsafe { row.set_data("path", f.to_string()) };
         if at.is_some() {
             self.make_draggable(&row, f);
@@ -427,13 +445,25 @@ impl Editor {
         if let Ok(mon) = file.monitor_file(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE) {
             let tx = self.sender.input_sender().clone();
             let (path, tmp2) = (p.clone(), tmp.clone());
+            let debounce: Rc<RefCell<Option<glib::SourceId>>> = Rc::new(RefCell::new(None));
             mon.connect_changed(move |_, _, _, ev| {
-                if ev == gio::FileMonitorEvent::ChangesDoneHint {
-                    tx.emit(Input::Ext(Cmd::Files(format!(
-                        "external|{path}|{}",
-                        tmp2.display()
-                    ))));
+                if !external_file_changed(ev) {
+                    return;
                 }
+                if let Some(id) = debounce.borrow_mut().take() {
+                    id.remove();
+                }
+                let (tx, path, tmp) = (tx.clone(), path.clone(), tmp2.clone());
+                let debounce = debounce.clone();
+                *debounce.borrow_mut() = Some(glib::timeout_add_local_once(
+                    std::time::Duration::from_millis(150),
+                    move || {
+                        tx.emit(Input::Ext(Cmd::Files(format!(
+                            "external|{path}|{}",
+                            tmp.display()
+                        ))));
+                    },
+                ));
             });
             self.ext.monitors.borrow_mut().push(mon);
         }
@@ -473,6 +503,9 @@ impl Editor {
 
     /// The other program saved the temporary file (or the dev hook says so).
     pub(super) fn external_changed(&mut self, path: &str, tmp: &std::path::Path) {
+        if self.ext.pending_external.borrow().is_some() {
+            return;
+        }
         let Ok(data) = std::fs::read(tmp) else { return };
         if self.book.borrow().archive.get(path) == Some(&data[..]) {
             return;
@@ -692,5 +725,23 @@ impl Editor {
             });
         }
         dialog.present(Some(&self.w.win));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn external_editor_write_events_are_recognised() {
+        assert!(external_file_changed(gio::FileMonitorEvent::Changed));
+        assert!(external_file_changed(gio::FileMonitorEvent::Created));
+        assert!(external_file_changed(
+            gio::FileMonitorEvent::ChangesDoneHint
+        ));
+        assert!(!external_file_changed(gio::FileMonitorEvent::Deleted));
+        assert!(!external_file_changed(
+            gio::FileMonitorEvent::AttributeChanged
+        ));
     }
 }

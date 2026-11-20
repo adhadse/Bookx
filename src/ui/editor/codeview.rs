@@ -159,6 +159,7 @@ fn add_extra_tags(table: &gtk::TextTagTable, dark: bool) {
         table.add(&t);
     }
     super::markup_hints::add_tags(table);
+    super::ctrl_hover::add_tag(table);
     recolor(table, dark);
 }
 
@@ -237,6 +238,32 @@ pub fn apply_scheme(buf: &sv::Buffer, dark: bool, eink: bool) {
     buf.set_style_scheme(id.and_then(|i| mgr.scheme(&i)).as_ref());
 }
 
+/// The longest line (bytes) GtkSourceView colours; its highlighter walks a line from its start for every
+/// match, so a single 500 KB line (an EPUB written without line breaks) takes seconds on the main thread.
+pub const MAX_COLOURED_LINE: usize = 50_000;
+/// The biggest file (bytes) that is coloured at all.
+pub const MAX_COLOURED_FILE: usize = 4_000_000;
+
+/// A line longer than this (bytes) freezes the text view (see `long_line.rs`).
+pub const HUGE_LINE: usize = 300_000;
+
+/// The length of the longest line when it is over [`HUGE_LINE`].
+pub fn huge_line(text: &str) -> Option<usize> {
+    if text.len() <= HUGE_LINE {
+        return None;
+    }
+    text.split('\n')
+        .map(str::len)
+        .max()
+        .filter(|n| *n > HUGE_LINE)
+}
+
+/// Whether syntax colouring is switched off for `text` (see [`MAX_COLOURED_LINE`]).
+pub fn too_big_to_colour(text: &str) -> bool {
+    text.len() > MAX_COLOURED_FILE
+        || (text.len() > MAX_COLOURED_LINE && text.split('\n').any(|l| l.len() > MAX_COLOURED_LINE))
+}
+
 /// Sets the highlighting language of the buffer from the file name. Returns `false` when
 /// GtkSourceView has no language for it; the caller then falls back to the built-in highlighter.
 pub fn apply_language(buf: &sv::Buffer, path: &str) -> bool {
@@ -259,9 +286,35 @@ pub fn apply_language(buf: &sv::Buffer, path: &str) -> bool {
     }
 }
 
+const PLAIN_TAG: &str = "bookx-plain";
+
+/// Switches colouring off for a buffer (both GtkSourceView's and the built-in highlighter). Called before
+/// the text is set: a language, even with `highlight-syntax` off, makes GtkSourceView scan the text.
+pub fn mark_plain(buf: &sv::Buffer) {
+    buf.set_highlight_syntax(false);
+    buf.set_highlight_matching_brackets(false);
+    buf.set_language(None::<&sv::Language>);
+    if buf.tag_table().lookup(PLAIN_TAG).is_none() {
+        buf.tag_table().add(&gtk::TextTag::new(Some(PLAIN_TAG)));
+    }
+}
+
+/// Colours the buffer again after its long lines were broken up.
+pub fn unmark_plain(buf: &sv::Buffer, path: &str) {
+    if let Some(t) = buf.tag_table().lookup(PLAIN_TAG) {
+        buf.tag_table().remove(&t);
+    }
+    buf.set_highlight_matching_brackets(true);
+    apply_language(buf, path);
+}
+
+pub fn is_plain(buf: &sv::Buffer) -> bool {
+    buf.tag_table().lookup(PLAIN_TAG).is_some()
+}
+
 /// Re-runs the fallback highlighter when the buffer has no GtkSourceView language.
 pub fn fallback_highlight(buf: &sv::Buffer, path: &str) {
-    if buf.language().is_none() {
+    if buf.language().is_none() && !is_plain(buf) {
         syntax::apply(buf.upcast_ref(), Lang::for_path(path));
     }
 }
@@ -398,5 +451,30 @@ mod tests {
             schemes.iter().any(|s| s == "Adwaita-dark"),
             "the dark scheme: {schemes:?}"
         );
+    }
+}
+
+#[cfg(test)]
+mod colour_tests {
+    use super::*;
+
+    #[test]
+    fn huge_lines_are_found() {
+        assert_eq!(huge_line("<p>short</p>"), None);
+        assert_eq!(huge_line(&"line\n".repeat(HUGE_LINE)), None);
+        let one = "x".repeat(HUGE_LINE + 5);
+        assert_eq!(huge_line(&format!("a\n{one}\nb")), Some(HUGE_LINE + 5));
+        assert_eq!(huge_line(&"x".repeat(HUGE_LINE)), None);
+    }
+
+    #[test]
+    fn long_lines_and_huge_files_are_not_coloured() {
+        assert!(!too_big_to_colour("<p>short</p>\n<p>lines</p>"));
+        let long = format!("<p>{}</p>", "x".repeat(MAX_COLOURED_LINE + 1));
+        assert!(too_big_to_colour(&long));
+        let many = "<p>a line of text</p>\n".repeat(MAX_COLOURED_FILE / 20);
+        assert!(many.len() > MAX_COLOURED_FILE && too_big_to_colour(&many));
+        let fine = "<p>a line of text</p>\n".repeat(MAX_COLOURED_LINE / 10);
+        assert!(!too_big_to_colour(&fine));
     }
 }
