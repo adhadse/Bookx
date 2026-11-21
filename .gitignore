@@ -6,7 +6,7 @@
 .flatpak-builder/
 .flatpak/
 flatpak_app/
-repo/
+/repo/
 
 # Editors
 .idea/
@@ -19,3 +19,6 @@ repo/
 # Python
 __pycache__/
 *.pyc
+/dist/
+/bookx.flatpak
+/bookx.flatpak.sha256
