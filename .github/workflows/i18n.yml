@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     container: fedora:latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install system dependencies
         run: |
           dnf install -y gcc gcc-c++ make pkgconf-pkg-config rust cargo \

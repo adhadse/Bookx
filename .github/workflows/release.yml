@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     container: fedora:latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install system dependencies
         run: |
           dnf install -y gcc gcc-c++ make pkgconf-pkg-config rust cargo \
@@ -68,7 +68,7 @@ jobs:
       image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
       options: --privileged
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Regenerate the offline cargo sources
         run: python3 build-aux/flatpak-cargo-sources.py
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6.8
