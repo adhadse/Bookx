@@ -283,9 +283,12 @@ impl Ctx {
             let Some(ctx) = weak.upgrade() else { return };
             ctx.backup_btn.set_sensitive(!read_only(&ctx.shared));
             match r {
-                Ok(books) => {
+                Ok((books, msg)) => {
                     ctx.refresh_snapshots();
-                    ctx.changed(trf("Backed up {}", &[&lh::plural(books, "book")]));
+                    // the Backups page already said what was copied; this says it for the button
+                    if msg.is_empty() {
+                        ctx.changed(trf("Backed up {}", &[&lh::plural(books, "book")]));
+                    }
                     eprintln!("health: backup ok books={books}");
                 }
                 Err(e) => {
@@ -1154,11 +1157,7 @@ pub fn show_tab(
     // backups
     let backups = adw::PreferencesGroup::new();
     backups.set_title(&tr("Backups"));
-    backups.set_description(Some(&format!(
-        "{} {}",
-        tr("Catalogue only: book files and covers stay in the library folder."),
-        bk::backup_incremental_note()
-    )));
+    backups.set_description(Some(&bk::backup_scope_description()));
     let prefs = shared.cfg.borrow().health.clone();
     let auto_switch = switch_row(
         &tr("Automatic backups"),
@@ -1171,7 +1170,9 @@ pub fn show_tab(
     keep_spin.set_value(prefs.keep as f64);
     let backup_row = adw::ActionRow::new();
     backup_row.set_title(&tr("Back up now"));
-    backup_row.set_subtitle(&tr("Catalogue only; book files stay in the library folder"));
+    backup_row.set_subtitle(&tr(
+        "Saves a snapshot here and copies new and changed books, covers and notes to your places",
+    ));
     let backup_btn = button(&tr("Back Up"));
     backup_btn.add_css_class("suggested-action");
     backup_row.add_suffix(&backup_btn);
@@ -1355,6 +1356,7 @@ pub fn show_tab(
     let panel = {
         let weak = Rc::downgrade(&ctx);
         let weak2 = weak.clone();
+        let weak3 = weak.clone();
         super::backup::Panel::new(
             &ctx.parent,
             shared,
@@ -1367,6 +1369,21 @@ pub fn show_tab(
             Rc::new(move || {
                 if let Some(c) = weak2.upgrade() {
                     c.refresh_snapshots();
+                }
+            }),
+            Rc::new(move || {
+                if let Some(c) = weak3.upgrade() {
+                    match reload_library(&c.shared) {
+                        Ok(()) => {
+                            let n = c.shared.lib.borrow().books.len();
+                            c.refresh_all();
+                            eprintln!("health: restored books={n}");
+                        }
+                        Err(e) => {
+                            c.changed(trf("Could not restore: {}", &[&format!("{e:#}")]));
+                            eprintln!("health: restore failed {e:#}");
+                        }
+                    }
                 }
             }),
         )
@@ -1545,7 +1562,7 @@ pub fn preferences_group(
     let health_row = adw::ActionRow::new();
     health_row.set_title(&tr("Backups, check, trash and history"));
     health_row.set_subtitle(&tr(
-        "Catalogue snapshots and library checks; book files are not copied",
+        "Backups of your books and notes, library checks and the trash",
     ));
     health_row.set_activatable(true);
     health_row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));

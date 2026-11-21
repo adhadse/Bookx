@@ -49,7 +49,7 @@ msgfmt -o /tmp/loc/fr/LC_MESSAGES/bookx.mo po/fr.po
 ```
 
 A `.mo` file in `$BOOKX_LOCALE_DIR`, `/app/share/locale` or `/usr/share/locale` wins over the embedded text, so you can
-try a translation without rebuilding. Or choose the language in *Preferences → General → Language* (menus and the main
+try a translation without rebuilding. Or choose the language under **Language** on the **General** page of Preferences (main menu → Preferences) (menus and the main
 window change after a restart). `make install` also installs the compiled files.
 
 ## Weblate

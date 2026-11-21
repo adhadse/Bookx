@@ -16,7 +16,8 @@ use bookx_backup::{
 use bookx_store::health::{self, Snapshot, SnapshotKind};
 use chrono::{DateTime, Utc};
 
-/// What happened at one destination.
+/// What happened at one destination (old whole-catalogue copies).
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Outcome {
     pub id: String,
@@ -26,6 +27,7 @@ pub struct Outcome {
 }
 
 /// The newest snapshot worth copying away (not the "before a restore" ones).
+#[allow(dead_code)] // the old whole-catalogue copies: kept for the legacy files and their tests
 pub fn newest_snapshot(root: &Path) -> Option<Snapshot> {
     health::list_snapshots(root)
         .into_iter()
@@ -33,11 +35,13 @@ pub fn newest_snapshot(root: &Path) -> Option<Snapshot> {
 }
 
 /// Whether `snap` has not been copied to `d` yet.
+#[allow(dead_code)] // the old whole-catalogue copies: kept for the legacy files and their tests
 pub fn needs_push(d: &Destination, snap: &Snapshot) -> bool {
     d.last_ok.is_none_or(|ok| snap.at > ok)
 }
 
 /// Copies `snap` to each destination in turn. A failure at one place does not stop the others.
+#[allow(dead_code)] // the old whole-catalogue copies: kept for the legacy files and their tests
 pub fn push_all(
     dests: &[Destination],
     passphrase: &str,
@@ -80,6 +84,7 @@ pub fn push_all(
 }
 
 /// Writes the outcomes into the destinations' status. A cancelled push changes nothing.
+#[allow(dead_code)] // the old whole-catalogue copies: kept for the legacy files and their tests
 pub fn apply(settings: &mut BackupSettings, outcomes: &[Outcome], now: DateTime<Utc>) {
     for o in outcomes.iter().filter(|o| !o.cancelled) {
         if let Some(d) = settings.destinations.iter_mut().find(|d| d.id == o.id) {
@@ -93,6 +98,7 @@ pub fn apply(settings: &mut BackupSettings, outcomes: &[Outcome], now: DateTime<
 
 /// The scheduled copy: the destinations that are due for `trigger` get the newest snapshot, if
 /// they do not have it yet.
+#[allow(dead_code)] // the old whole-catalogue copies: kept for the legacy files and their tests
 pub fn run_due(
     root: &Path,
     settings: &BackupSettings,
@@ -126,6 +132,7 @@ pub fn run_due(
 
 /// [`run_due`] on a worker thread that is given up on after `limit`, so closing the app never
 /// hangs on a NAS that went away. Places not finished in time are reported as failed.
+#[allow(dead_code)] // the old whole-catalogue copies: kept for the legacy files and their tests
 pub fn run_due_within(
     root: &Path,
     settings: &BackupSettings,
@@ -200,23 +207,23 @@ pub fn summary_line(count: usize, bytes: u64, newest: Option<DateTime<Utc>>) -> 
 /// Title of the scope row shown before the places, so the limits are clear before a backup is run.
 pub const BACKUP_SCOPE_TITLE: &str = N_("What is in a backup");
 /// Short scope line for that row.
-pub const BACKUP_SCOPE_SUBTITLE: &str =
-    N_("Catalogue only: titles, tags, reading progress and notes. Not book files or covers.");
-/// Full scope: one complete catalogue snapshot, and everything that stays behind.
+pub const BACKUP_SCOPE_SUBTITLE: &str = N_(
+    "Book files, covers and catalogue with your notes. Only new or changed files are copied after the first backup.",
+);
+/// Full scope: what is copied, how much is copied each time, and what stays behind.
 pub const BACKUP_SCOPE_DESCRIPTION: &str = N_(
-    "A backup is one complete snapshot of the catalogue: metadata, tags, collections, reading progress, bookmarks, highlights and notes, and the search index. Book files, covers, configuration, plugins and secrets, .bookx state, device copies, trash and caches are not copied.",
+    "Backups include your book files, covers and catalogue (titles, tags, collections, reading progress, bookmarks, highlights and notes). Only new or changed files are copied after the first backup. Not included: configuration, plugins and passwords, trash, device copies and caches.",
 );
 /// The included side of the scope, for the developer hooks.
 pub const BACKUP_INCLUDED_LABEL: &str = N_(
-    "Included: catalogue metadata, collections, tags, reading progress, bookmarks, highlights, notes and the search index.",
+    "Included: book files, covers and the catalogue (titles, tags, collections, reading progress, bookmarks, highlights and notes).",
 );
 /// The excluded side of the scope, for the developer hooks.
-pub const BACKUP_EXCLUDED_LABEL: &str = N_(
-    "Not included: book files, covers, configuration, plugins and secrets, .bookx state, trash, device copies and caches.",
-);
-/// What "not incremental", "skipped" and "verified" actually mean.
+pub const BACKUP_EXCLUDED_LABEL: &str =
+    N_("Not included: configuration, plugins and passwords, trash, device copies and caches.");
+/// What "incremental", "skipped" and "verified" actually mean.
 pub const BACKUP_INCREMENTAL_NOTE: &str = N_(
-    "Not incremental — each copy is a whole file. 'Skipped' means no new snapshot was needed or the place already has that snapshot. 'Verified' means the stored bytes were read back and hashed, not that a restore was tested.",
+    "After the first backup only new or changed files are copied; a renamed or moved book costs nothing. 'Skipped' means nothing had changed. 'Verified' means the stored bytes were read back and checked, not that a restore was tested.",
 );
 
 /// Translated [`BACKUP_SCOPE_TITLE`].
@@ -247,6 +254,21 @@ pub fn backup_excluded_label() -> String {
 /// Translated [`BACKUP_INCREMENTAL_NOTE`].
 pub fn backup_incremental_note() -> String {
     tr(BACKUP_INCREMENTAL_NOTE)
+}
+
+/// The place's choice of what goes in, in a few words.
+pub fn scope_label(d: &Destination) -> String {
+    let mut s = match (d.include_books, d.include_covers) {
+        (true, true) => tr("Books, covers and catalogue"),
+        (true, false) => tr("Books and catalogue, no covers"),
+        (false, true) => tr("Covers and catalogue, no book files"),
+        (false, false) => tr("Catalogue only"),
+    };
+    if d.include_books && d.max_file_mb > 0 {
+        s.push_str(" · ");
+        s.push_str(&trf("files up to {} MB", &[&d.max_file_mb]));
+    }
+    s
 }
 
 /// What kind of place a destination is, in words.
@@ -327,9 +349,847 @@ pub fn privacy_note(d: &Destination, found: &[Place]) -> Option<&'static str> {
         .then_some("Not encrypted: whoever runs this place can read your catalogue and notes.")
 }
 
+/// The incremental repository (D9): estimate, run, journal, restore. Called by the Backups page.
+pub mod repo {
+    use super::*;
+
+    use bookx_backup::repo::{
+        estimate_new, LibrarySource, Phase, Plan, Report, Repository, RestoreMode, RestoreOptions,
+        RestoreReport, RunOptions, RunProgress, Secrets,
+    };
+    use bookx_backup::{RemoteFile, RemoteName};
+
+    /// The first backup is a full copy (shown before it runs).
+    pub const BACKUP_PLAN_FIRST: &str =
+        N_("The first backup copies everything: about {} in {} files.");
+    /// What the next backup will copy.
+    pub const BACKUP_PLAN_NEXT: &str =
+        N_("{} of new or changed files ({} files) to copy; everything else is already there.");
+    /// Nothing to copy.
+    pub const BACKUP_PLAN_NOTHING: &str = N_("Everything is already backed up.");
+    /// The place is too small for the copy.
+    pub const BACKUP_PLAN_NO_SPACE: &str =
+        N_("Not enough free space in this place: {} needed, {} free.");
+    /// Files the backup could not or would not take.
+    pub const BACKUP_PLAN_LEFT_OUT: &str = N_("{} files are left out (too big or not readable).");
+    /// A finished run that copied something.
+    pub const BACKUP_DONE_NEW: &str = N_("Copied {} new files ({}); {} were already there.");
+    /// A finished run with nothing to copy.
+    pub const BACKUP_DONE_NOTHING: &str = N_("Nothing new to copy.");
+    /// Phases of a run, for the progress line.
+    pub const BACKUP_PHASE_SCAN: &str = N_("Looking at your library");
+    pub const BACKUP_PHASE_HASH: &str = N_("Finding what is new");
+    pub const BACKUP_PHASE_COPY: &str = N_("Copying new files");
+    pub const BACKUP_PHASE_FINISH: &str = N_("Writing the snapshot");
+
+    /// Translated name of a phase of a run.
+    pub fn phase_label(p: Phase) -> String {
+        match p {
+            Phase::Scanning => tr(BACKUP_PHASE_SCAN),
+            Phase::Hashing => tr(BACKUP_PHASE_HASH),
+            Phase::Uploading => tr(BACKUP_PHASE_COPY),
+            Phase::Finishing => tr(BACKUP_PHASE_FINISH),
+            Phase::Pruning => tr("Removing old backups"),
+            Phase::Done => tr("Done"),
+        }
+    }
+
+    /// The sentence under a place that says what the next backup will do.
+    pub fn plan_text(p: &Plan) -> String {
+        use crate::library_health::size_text;
+        let mut parts = Vec::new();
+        if !p.enough_space {
+            parts.push(trf(
+                BACKUP_PLAN_NO_SPACE,
+                &[
+                    &size_text(p.upload_bytes + p.catalogue_bytes),
+                    &size_text(p.free.unwrap_or(0)),
+                ],
+            ));
+        } else if p.first_run {
+            parts.push(trf(
+                BACKUP_PLAN_FIRST,
+                &[&size_text(p.new_bytes), &p.new_files],
+            ));
+        } else if p.new_files == 0 {
+            parts.push(tr(BACKUP_PLAN_NOTHING));
+        } else {
+            parts.push(trf(
+                BACKUP_PLAN_NEXT,
+                &[&size_text(p.new_bytes), &p.new_files],
+            ));
+        }
+        let left = p.too_big.len() + p.skipped.len();
+        if left > 0 {
+            parts.push(trf(BACKUP_PLAN_LEFT_OUT, &[&left]));
+        }
+        parts.join(" ")
+    }
+
+    /// The sentence after a run.
+    pub fn report_text(r: &Report) -> String {
+        use crate::library_health::size_text;
+        if r.up_to_date || r.new_files == 0 {
+            tr(BACKUP_DONE_NOTHING)
+        } else {
+            trf(
+                BACKUP_DONE_NEW,
+                &[&r.new_files, &size_text(r.new_bytes), &r.reused_files],
+            )
+        }
+    }
+
+    /// What a backup of the library would copy to one place.
+    #[derive(Debug, Clone)]
+    pub struct Estimate {
+        pub id: String,
+        pub name: String,
+        pub plan: Result<Plan, String>,
+    }
+
+    /// A folder place whose own folder is not there yet but whose parent is: typing a new folder name
+    /// is fine, it is created by the first backup. (A parent that is missing means a drive that is not
+    /// plugged in or a share that is not mounted: that is never created.)
+    pub fn will_be_created(d: &Destination) -> bool {
+        if d.kind != DestKind::Folder {
+            return false;
+        }
+        let p = Path::new(d.location.trim());
+        !d.location.trim().is_empty()
+            && !p.exists()
+            && p.parent()
+                .is_some_and(|x| x.as_os_str().is_empty() || x.is_dir())
+    }
+
+    fn prepare_place(d: &Destination) -> anyhow::Result<()> {
+        if will_be_created(d) {
+            std::fs::create_dir(d.location.trim())?;
+        }
+        Ok(())
+    }
+
+    /// Looks whether a place can be read without changing it (a plain `check` would create the
+    /// repository folder and leave a test file in it, which is not what a look should do).
+    fn check_readable(
+        d: &Destination,
+        store: &dyn bookx_backup::repo::store::RepoStore,
+    ) -> anyhow::Result<()> {
+        if d.kind == DestKind::Folder {
+            let loc = Path::new(d.location.trim());
+            if !loc.is_dir() {
+                anyhow::bail!(
+                    "{} is not there. Is the drive plugged in or the share mounted?",
+                    loc.display()
+                );
+            }
+            Ok(())
+        } else {
+            store.check()
+        }
+    }
+
+    fn secrets_for(d: &Destination, passphrase: &str) -> Secrets {
+        if d.encrypt {
+            Secrets::passphrase(passphrase)
+        } else {
+            Secrets::none()
+        }
+    }
+
+    /// How much each place would receive if a backup ran now, before the user starts one. Places
+    /// without a repository yet are estimated from file sizes; the others use what the library
+    /// remembers about its files. A place that cannot be reached says why instead.
+    pub fn estimate_for(
+        lib: &LibrarySource,
+        places: &[Destination],
+        passphrase: &str,
+        cancel: &AtomicBool,
+    ) -> Vec<Estimate> {
+        places
+            .iter()
+            .map(|d| {
+                let plan = (|| -> anyhow::Result<Plan> {
+                    if let Some(p) = d.problem(!passphrase.is_empty()) {
+                        anyhow::bail!(p);
+                    }
+                    if will_be_created(d) {
+                        return estimate_new(lib, &d.scope(), d.encrypt, None);
+                    }
+                    let store = d.repo_store()?;
+                    check_readable(d, store.as_ref())?;
+                    match Repository::is_encrypted_at(store.as_ref())? {
+                        None => estimate_new(lib, &d.scope(), d.encrypt, store.free_space()),
+                        Some(_) => {
+                            let repo = Repository::open(store, &secrets_for(d, passphrase))?;
+                            repo.plan(lib, &d.scope(), 3, cancel, &|_| {})
+                        }
+                    }
+                })();
+                Estimate {
+                    id: d.id.clone(),
+                    name: d.name.clone(),
+                    plan: plan.map_err(|e| format!("{e:#}")),
+                }
+            })
+            .collect()
+    }
+
+    /// What happened at one place in a repository run.
+    #[derive(Debug, Clone)]
+    pub struct RepoOutcome {
+        pub id: String,
+        pub name: String,
+        pub result: Result<Report, String>,
+        pub cancelled: bool,
+    }
+
+    /// Backs the library up to each place in turn (book files, covers, catalogue, notes: only what the
+    /// place lacks is copied). A failure at one place does not stop the others. `manual` snapshots are
+    /// never pruned; `progress` gets the place's name and the run's progress (from worker threads).
+    pub fn run_all(
+        lib: &LibrarySource,
+        places: &[Destination],
+        passphrase: &str,
+        manual: bool,
+        now: DateTime<Utc>,
+        kdf: Kdf,
+        cancel: &AtomicBool,
+        progress: &(dyn Fn(&str, &RunProgress) + Sync),
+    ) -> Vec<RepoOutcome> {
+        let mut out = Vec::new();
+        for d in places {
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                break;
+            }
+            let result = (|| -> anyhow::Result<Report> {
+                if let Some(p) = d.problem(!passphrase.is_empty()) {
+                    anyhow::bail!(p);
+                }
+                prepare_place(d)?;
+                let repo = Repository::open_or_create(
+                    d.repo_store()?,
+                    &secrets_for(d, passphrase),
+                    d.encrypt,
+                    kdf,
+                )?;
+                let opts = RunOptions {
+                    manual,
+                    scope: d.scope(),
+                    keep: d.keep,
+                    now,
+                    ..RunOptions::default()
+                };
+                repo.run(lib, &opts, &|p| progress(&d.name, p), cancel)
+            })();
+            let cancelled = result
+                .as_ref()
+                .err()
+                .is_some_and(|e| e.downcast_ref::<Cancelled>().is_some());
+            out.push(RepoOutcome {
+                id: d.id.clone(),
+                name: d.name.clone(),
+                result: result.map_err(|e| format!("{e:#}")),
+                cancelled,
+            });
+        }
+        out
+    }
+
+    /// Writes the outcomes into the places' status. A cancelled run changes nothing. A place that
+    /// got its first full copy may be copied to automatically from then on.
+    pub fn apply_repo(settings: &mut BackupSettings, outcomes: &[RepoOutcome], now: DateTime<Utc>) {
+        for o in outcomes.iter().filter(|o| !o.cancelled) {
+            if let Some(d) = settings.destinations.iter_mut().find(|d| d.id == o.id) {
+                match &o.result {
+                    Ok(_) => {
+                        d.record_ok(now);
+                        d.auto_ok = true;
+                    }
+                    Err(e) => d.record_error(e, now),
+                }
+            }
+        }
+    }
+
+    /// The places a scheduled copy (when Bookx closes, once a day) may use: those that are due and
+    /// either had their first full copy or were allowed to start it by themselves. The first copy
+    /// of a place is never a surprise: it runs when the user presses Back Up (or allows it in the
+    /// place's settings after seeing how big it is).
+    pub fn scheduled_places(
+        settings: &BackupSettings,
+        trigger: Trigger,
+        now: DateTime<Utc>,
+    ) -> Vec<Destination> {
+        settings
+            .due(trigger, now)
+            .into_iter()
+            .map(|i| settings.destinations[i].clone())
+            .filter(|d| d.auto_ok)
+            .collect()
+    }
+
+    /// The places whose notes are recorded between backups: switched on and already allowed.
+    pub fn journal_places(settings: &BackupSettings) -> Vec<Destination> {
+        settings
+            .destinations
+            .iter()
+            .filter(|d| d.enabled && d.auto_ok)
+            .cloned()
+            .collect()
+    }
+
+    /// The scheduled copy: the places due for `trigger` get a backup (which does nothing when
+    /// nothing changed).
+    pub fn run_due_repo(
+        lib: &LibrarySource,
+        settings: &BackupSettings,
+        trigger: Trigger,
+        now: DateTime<Utc>,
+        kdf: Kdf,
+        cancel: &AtomicBool,
+    ) -> Vec<RepoOutcome> {
+        let dests = scheduled_places(settings, trigger, now);
+        run_all(
+            lib,
+            &dests,
+            &settings.passphrase,
+            false,
+            now,
+            kdf,
+            cancel,
+            &|_, _| {},
+        )
+    }
+
+    /// [`run_due_repo`] on a worker thread that is given up on after `limit`, so closing the app never
+    /// hangs on a place that went away. Places not finished in time are reported as failed and the
+    /// run is cancelled (it leaves no half-written files).
+    pub fn run_due_repo_within(
+        lib: &LibrarySource,
+        settings: &BackupSettings,
+        trigger: Trigger,
+        now: DateTime<Utc>,
+        limit: Duration,
+    ) -> Vec<RepoOutcome> {
+        let (lib2, st) = (lib.clone(), settings.clone());
+        let cancel = std::sync::Arc::new(AtomicBool::new(false));
+        let c2 = cancel.clone();
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = tx.send(run_due_repo(&lib2, &st, trigger, now, Kdf::DEFAULT, &c2));
+        });
+        match rx.recv_timeout(limit) {
+            Ok(o) => o,
+            Err(_) => {
+                cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+                scheduled_places(settings, trigger, now)
+                    .into_iter()
+                    .map(|d| RepoOutcome {
+                        id: d.id.clone(),
+                        name: d.name.clone(),
+                        result: Err(format!(
+                            "could not finish in time ({} s); will try again next time",
+                            limit.as_secs()
+                        )),
+                        cancelled: false,
+                    })
+                    .collect()
+            }
+        }
+    }
+
+    /// Records the highlights, notes, bookmarks and progress that changed since the last record at
+    /// every place that is on (the caller passes [`journal_places`]), so they are protected between full backups. Cheap; call every few
+    /// minutes. Returns the places that failed, with the reason.
+    pub fn journal_all(
+        lib: &LibrarySource,
+        places: &[Destination],
+        passphrase: &str,
+        now: DateTime<Utc>,
+        kdf: Kdf,
+    ) -> Vec<(String, String)> {
+        let cancel = AtomicBool::new(false);
+        let mut failed = Vec::new();
+        for d in places.iter().filter(|d| d.enabled) {
+            let r = (|| -> anyhow::Result<()> {
+                if let Some(p) = d.problem(!passphrase.is_empty()) {
+                    anyhow::bail!(p);
+                }
+                prepare_place(d)?;
+                let repo = Repository::open_or_create(
+                    d.repo_store()?,
+                    &secrets_for(d, passphrase),
+                    d.encrypt,
+                    kdf,
+                )?;
+                repo.journal_append(lib, now, &cancel)?;
+                Ok(())
+            })();
+            if let Err(e) = r {
+                failed.push((d.name.clone(), format!("{e:#}")));
+            }
+        }
+        failed
+    }
+
+    // -- progress, summaries and the words for them (pure, unit tested) ------------------------------------
+
+    /// How far a run is, 0..1, weighing the phases: looking and hashing are quick, copying is the bulk.
+    pub fn progress_fraction(p: &RunProgress) -> f64 {
+        let part = |done: u64, total: u64| {
+            if total == 0 {
+                1.0
+            } else {
+                (done as f64 / total as f64).clamp(0.0, 1.0)
+            }
+        };
+        match p.phase {
+            Phase::Scanning => 0.02,
+            Phase::Hashing => 0.02 + 0.18 * part(p.files_done, p.files_total),
+            Phase::Uploading => {
+                let f = if p.bytes_total > 0 {
+                    part(p.bytes_done, p.bytes_total)
+                } else {
+                    part(p.files_done, p.files_total)
+                };
+                0.20 + 0.75 * f
+            }
+            Phase::Finishing => 0.96,
+            Phase::Pruning => 0.98,
+            Phase::Done => 1.0,
+        }
+    }
+
+    /// "A few seconds", "about 3 minutes" for a time left.
+    pub fn eta_phrase(left: Duration) -> String {
+        let s = left.as_secs_f64();
+        let amount = if s < 90.0 {
+            let n = (s.round() as usize).max(1);
+            crate::i18n::ntr("{} second", "{} seconds", n as u64).replace("{}", &n.to_string())
+        } else {
+            let n = ((s / 60.0).round() as usize).max(2);
+            crate::i18n::ntr("{} minute", "{} minutes", n as u64).replace("{}", &n.to_string())
+        };
+        trf("about {} left", &[&amount])
+    }
+
+    /// The line under the bar: "12 of 340 files · 120 MB of 2.1 GB · about 5 minutes left".
+    pub fn progress_detail(p: &RunProgress) -> String {
+        use crate::library_health::size_text;
+        let mut parts = Vec::new();
+        if p.files_total > 0 {
+            parts.push(trf("{} of {} files", &[&p.files_done, &p.files_total]));
+        }
+        if p.phase == Phase::Uploading && p.bytes_total > 0 {
+            parts.push(trf(
+                "{} of {}",
+                &[&size_text(p.bytes_done), &size_text(p.bytes_total)],
+            ));
+        }
+        if let Some(eta) = p.eta.filter(|_| p.phase == Phase::Uploading) {
+            parts.push(eta_phrase(eta));
+        }
+        parts.join(" · ")
+    }
+
+    /// "Offsite: Copying new files".
+    pub fn progress_stage(place: &str, p: &RunProgress) -> String {
+        format!("{place}: {}", phase_label(p.phase))
+    }
+
+    /// What a place holds, from its newest snapshot.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct RepoSummary {
+        pub snapshots: usize,
+        pub newest: Option<DateTime<Utc>>,
+        pub books: usize,
+        pub files: usize,
+        pub bytes: u64,
+        pub encrypted: bool,
+        /// Notes are known up to this time (the newest journal record).
+        pub notes_until: Option<DateTime<Utc>>,
+    }
+
+    /// What the place holds; `None` when it has no repository (yet).
+    pub fn repo_summary(d: &Destination, passphrase: &str) -> anyhow::Result<Option<RepoSummary>> {
+        if will_be_created(d) {
+            return Ok(None);
+        }
+        let store = d.repo_store()?;
+        check_readable(d, store.as_ref())?;
+        let Some(enc) = Repository::is_encrypted_at(store.as_ref())? else {
+            return Ok(None);
+        };
+        let repo = Repository::open(store, &Secrets::passphrase(passphrase))?;
+        let snaps = repo.list_snapshots()?;
+        let newest = snaps.first();
+        let (books, files, bytes) = match newest.map(|s| repo.manifest(&s.name)) {
+            Some(Ok(m)) => (m.books, m.files.len(), m.total_bytes()),
+            _ => (0, 0, 0),
+        };
+        Ok(Some(RepoSummary {
+            snapshots: snaps.len(),
+            newest: newest.map(|s| s.name.at),
+            books,
+            files,
+            bytes,
+            encrypted: enc,
+            notes_until: repo.list_journal()?.last().map(|j| j.1),
+        }))
+    }
+
+    /// "3 backups · 128 books · 1.2 GB · last 12 Nov 2026, 10:15".
+    pub fn summary_text(s: &RepoSummary) -> String {
+        match s.newest {
+            Some(t) if s.snapshots > 0 => trf(
+                "{} · {} · {} · last {}",
+                &[
+                    &crate::library_health::plural(s.snapshots, "backup"),
+                    &crate::library_health::plural(s.books, "book"),
+                    &crate::library_health::size_text(s.bytes),
+                    &crate::library_health::when(t),
+                ],
+            ),
+            _ => tr("No backups yet"),
+        }
+    }
+
+    /// The one-time row shown until a place has had its first copy: how big it is and that nothing
+    /// is copied until the user says so. `None` when there is nothing to say.
+    pub fn banner_text(plans: &[Plan]) -> Option<String> {
+        use crate::library_health::size_text;
+        let biggest = plans
+            .iter()
+            .filter(|p| p.first_run && p.new_files > 0)
+            .max_by_key(|p| p.new_bytes)?;
+        Some(trf(
+            "The first copy is about {} in {} files. Later copies only add what is new. Nothing is copied until you press Back Up.",
+            &[&size_text(biggest.new_bytes), &biggest.new_files],
+        ))
+    }
+
+    /// The message after a run over all places.
+    pub fn outcomes_text(outcomes: &[RepoOutcome]) -> String {
+        if outcomes.iter().any(|o| o.cancelled) {
+            return tr("Backup cancelled; nothing half-written is left behind");
+        }
+        let bad: Vec<String> = outcomes
+            .iter()
+            .filter_map(|o| o.result.as_ref().err().map(|e| format!("{}: {e}", o.name)))
+            .collect();
+        let good: Vec<(&str, &Report)> = outcomes
+            .iter()
+            .filter_map(|o| o.result.as_ref().ok().map(|r| (o.name.as_str(), r)))
+            .collect();
+        let mut parts = Vec::new();
+        match good.as_slice() {
+            [] => {}
+            [(_, r)] => parts.push(report_text(r)),
+            many => parts.push(
+                many.iter()
+                    .map(|(n, r)| format!("{n}: {}", report_text(r)))
+                    .collect::<Vec<_>>()
+                    .join(" "),
+            ),
+        }
+        let left: usize = good
+            .iter()
+            .map(|(_, r)| r.too_big.len() + r.skipped.len())
+            .max()
+            .unwrap_or(0);
+        if left > 0 {
+            parts.push(trf(BACKUP_PLAN_LEFT_OUT, &[&left]));
+        }
+        if !bad.is_empty() {
+            parts.push(trf("Could not copy to: {}", &[&bad.join("; ")]));
+        }
+        parts.join(" ")
+    }
+
+    /// Checks a place (every file is there with the right size; `deep` reads everything back).
+    pub fn check_place(
+        d: &Destination,
+        passphrase: &str,
+        deep: bool,
+        cancel: &AtomicBool,
+        progress: &(dyn Fn(u64, u64) + Sync),
+    ) -> anyhow::Result<bookx_backup::repo::VerifyReport> {
+        let repo = Repository::open(d.repo_store()?, &Secrets::passphrase(passphrase))?;
+        repo.verify(deep, 3, cancel, progress)
+    }
+
+    /// Words for a check.
+    pub fn check_text(r: &bookx_backup::repo::VerifyReport) -> String {
+        use crate::library_health::plural;
+        if r.ok() {
+            return if r.deep {
+                trf(
+                    "The backup is intact: {} files were read back and match.",
+                    &[&r.blobs_checked],
+                )
+            } else {
+                trf(
+                    "The backup is complete: all {} files are there with the right size. A deep check also reads their contents.",
+                    &[&r.blobs_checked],
+                )
+            };
+        }
+        let mut parts = Vec::new();
+        if !r.missing.is_empty() {
+            parts.push(trf("{} are missing", &[&plural(r.missing.len(), "file")]));
+        }
+        if !r.corrupt.is_empty() {
+            parts.push(trf("{} are damaged", &[&plural(r.corrupt.len(), "file")]));
+        }
+        if !r.snapshots_bad.is_empty() {
+            parts.push(trf(
+                "{} cannot be read",
+                &[&plural(r.snapshots_bad.len(), "backup")],
+            ));
+        }
+        if !r.journal_bad.is_empty() {
+            parts.push(trf(
+                "{} of the notes records are damaged",
+                &[&r.journal_bad.len()],
+            ));
+        }
+        trf(
+            "The backup has problems: {}. Press Back Up to copy missing files again.",
+            &[&parts.join(", ")],
+        )
+    }
+
+    /// What removing old backups did.
+    #[derive(Debug, Clone, Default, PartialEq, Eq)]
+    pub struct CleanReport {
+        pub snapshots_removed: usize,
+        pub files_removed: usize,
+        pub bytes_freed: u64,
+    }
+
+    /// Removes the snapshots a place no longer keeps (its "backups to keep" setting; manual ones
+    /// stay) and the files nothing uses any more.
+    pub fn clean_place(
+        d: &Destination,
+        passphrase: &str,
+        now: DateTime<Utc>,
+        cancel: &AtomicBool,
+    ) -> anyhow::Result<CleanReport> {
+        let repo = Repository::open(d.repo_store()?, &Secrets::passphrase(passphrase))?;
+        let snapshots_removed = repo.prune(d.keep, now)?;
+        repo.compact_journal()?;
+        // The user asked for this and this program is the only writer, so no waiting period.
+        let g = repo.gc(chrono::Duration::zero(), now, cancel)?;
+        let g = if g.newly_marked > 0 {
+            let again = repo.gc(chrono::Duration::zero(), now, cancel)?;
+            (
+                again.deleted_blobs + g.deleted_blobs,
+                again.deleted_bytes + g.deleted_bytes,
+            )
+        } else {
+            (g.deleted_blobs, g.deleted_bytes)
+        };
+        Ok(CleanReport {
+            snapshots_removed,
+            files_removed: g.0,
+            bytes_freed: g.1,
+        })
+    }
+
+    /// Words for a clean-up.
+    pub fn clean_text(r: &CleanReport) -> String {
+        if r.snapshots_removed == 0 && r.files_removed == 0 {
+            tr("Nothing to remove: the place only has backups it keeps.")
+        } else {
+            trf(
+                "Removed {} old backups and {} files no backup needs ({} freed).",
+                &[
+                    &r.snapshots_removed,
+                    &r.files_removed,
+                    &crate::library_health::size_text(r.bytes_freed),
+                ],
+            )
+        }
+    }
+
+    /// The dry run of a restore, in words: what would come back and what is already there.
+    pub fn restore_plan_text(r: &RestoreReport) -> String {
+        use crate::library_health::plural;
+        let mut parts = vec![trf(
+            "{} to restore, {} already present.",
+            &[
+                &plural(r.would_write, "file"),
+                &(r.skipped_existing + r.skipped_same),
+            ],
+        )];
+        match r.catalogue {
+            bookx_backup::repo::CatalogueAction::WouldRestore => parts.push(tr(
+                "The catalogue is replaced by the one in the backup; the current one is saved first.",
+            )),
+            bookx_backup::repo::CatalogueAction::KeptExisting => {
+                parts.push(tr("The current catalogue is kept."))
+            }
+            _ => {}
+        }
+        if !r.replaced_newer.is_empty() {
+            parts.push(trf(
+                "{} are newer here than in the backup and would be replaced.",
+                &[&plural(r.replaced_newer.len(), "file")],
+            ));
+        }
+        parts.join(" ")
+    }
+
+    /// The result of a restore, in words.
+    pub fn restore_done_text(r: &RestoreReport) -> String {
+        use crate::library_health::plural;
+        let mut s = trf("Restored {}.", &[&plural(r.files_written, "file")]);
+        if !r.failed.is_empty() {
+            s.push(' ');
+            s.push_str(&trf(
+                "{} could not be restored.",
+                &[&plural(r.failed.len(), "file")],
+            ));
+        }
+        s
+    }
+
+    /// The old catalogue files (`.db`, `.bookxbackup`) and the repository snapshots of a place.
+    /// The repository part may fail (needs a passphrase, damaged) without hiding the old files.
+    pub fn listing(
+        d: &Destination,
+        passphrase: &str,
+    ) -> (
+        Vec<(RemoteFile, RemoteName)>,
+        anyhow::Result<RestoreChoices>,
+    ) {
+        let legacy = d
+            .target()
+            .and_then(|t| bookx_backup::list_backups(t.as_ref()))
+            .unwrap_or_default();
+        let repo = restore_options(d, passphrase);
+        (legacy, repo)
+    }
+
+    /// [`journal_all`] on a worker thread that is given up on after `limit` (closing never hangs).
+    pub fn journal_within(
+        lib: &LibrarySource,
+        places: &[Destination],
+        passphrase: &str,
+        limit: Duration,
+    ) -> Vec<(String, String)> {
+        let (lib2, places2, pass) = (lib.clone(), places.to_vec(), passphrase.to_string());
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = tx.send(journal_all(
+                &lib2,
+                &places2,
+                &pass,
+                Utc::now(),
+                Kdf::DEFAULT,
+            ));
+        });
+        rx.recv_timeout(limit).unwrap_or_else(|_| {
+            places
+                .iter()
+                .map(|d| (d.name.clone(), "no answer in time".to_string()))
+                .collect()
+        })
+    }
+
+    /// One snapshot a place can restore.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct RestorePoint {
+        pub snapshot: String,
+        pub seq: u64,
+        pub at: DateTime<Utc>,
+        pub manual: bool,
+        pub books: usize,
+        pub files: usize,
+        pub bytes: u64,
+    }
+
+    /// What can be restored from a place: the repository's snapshots (books, covers, catalogue), the
+    /// time up to which notes are known, and the old whole-catalogue backups that may sit next to it.
+    #[derive(Debug, Clone, Default)]
+    pub struct RestoreChoices {
+        pub points: Vec<RestorePoint>,
+        /// The newest journal record: restoring "as of" a time up to this one includes the notes.
+        pub notes_until: Option<DateTime<Utc>>,
+        pub legacy: Vec<(RemoteFile, RemoteName)>,
+        pub encrypted: bool,
+        /// Snapshots that could not be read: (name, why).
+        pub unreadable: Vec<(String, String)>,
+    }
+
+    /// Lists what a place can restore. The old `.db`/`.bookxbackup` files stay restorable through
+    /// `bookx_backup::fetch_to_file` (the existing restore path).
+    pub fn restore_options(d: &Destination, passphrase: &str) -> anyhow::Result<RestoreChoices> {
+        let mut c = RestoreChoices::default();
+        if let Ok(t) = d.target() {
+            c.legacy = bookx_backup::list_backups(t.as_ref()).unwrap_or_default();
+        }
+        let store = d.repo_store()?;
+        let Some(enc) = Repository::is_encrypted_at(store.as_ref())? else {
+            return Ok(c);
+        };
+        c.encrypted = enc;
+        let repo = Repository::open(store, &Secrets::passphrase(passphrase))?;
+        for s in repo.list_snapshots()? {
+            match repo.manifest(&s.name) {
+                Ok(m) => c.points.push(RestorePoint {
+                    snapshot: s.file_name(),
+                    seq: s.name.seq,
+                    at: s.name.at,
+                    manual: s.name.manual,
+                    books: m.books,
+                    files: m.files.len(),
+                    bytes: m.total_bytes(),
+                }),
+                Err(e) => c.unreadable.push((s.file_name(), format!("{e:#}"))),
+            }
+        }
+        c.notes_until = repo.list_journal()?.last().map(|j| j.1);
+        Ok(c)
+    }
+
+    /// Restores `snapshot` (`None`: the newest) from a place into the library folder `target`.
+    /// `dry_run` reports without changing anything. Closing the library in the app first is the
+    /// caller's job.
+    #[allow(clippy::too_many_arguments)]
+    pub fn restore_from_place(
+        d: &Destination,
+        passphrase: &str,
+        snapshot: Option<&str>,
+        target: &Path,
+        mode: RestoreMode,
+        dry_run: bool,
+        until: Option<DateTime<Utc>>,
+        cancel: &AtomicBool,
+        progress: &(dyn Fn(&RunProgress) + Sync),
+    ) -> anyhow::Result<RestoreReport> {
+        let repo = Repository::open(d.repo_store()?, &Secrets::passphrase(passphrase))?;
+        let opts = RestoreOptions {
+            mode,
+            dry_run,
+            until,
+            // naming an older snapshot is a choice; only "the newest" must not be older than what this library saw
+            min_seq: snapshot
+                .is_none()
+                .then(|| bookx_backup::repo::source::last_seen_seq(target, repo.id())),
+            ..RestoreOptions::default()
+        };
+        repo.restore(snapshot, target, &opts, progress, cancel)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::repo::*;
     use super::*;
+    use bookx_backup::repo::{
+        LibrarySource, Phase, Plan, Report, RestoreMode, RestoreReport, RunProgress,
+    };
     use chrono::TimeZone;
 
     fn tmp() -> PathBuf {
@@ -468,53 +1328,65 @@ mod tests {
     }
 
     #[test]
-    fn scope_copy_says_catalogue_only_and_whole_file_not_incremental() {
+    fn scope_copy_says_books_covers_and_catalogue_are_kept_and_only_changes_are_copied() {
         // The constants are the msgids the UI and the developer hooks translate.
         assert_eq!(BACKUP_SCOPE_TITLE, "What is in a backup");
         assert_eq!(
-            BACKUP_SCOPE_SUBTITLE,
-            "Catalogue only: titles, tags, reading progress and notes. Not book files or covers."
+            BACKUP_SCOPE_DESCRIPTION,
+            "Backups include your book files, covers and catalogue (titles, tags, collections, reading progress, bookmarks, highlights and notes). Only new or changed files are copied after the first backup. Not included: configuration, plugins and passwords, trash, device copies and caches."
         );
-        assert_eq!(
-            BACKUP_INCREMENTAL_NOTE,
-            "Not incremental — each copy is a whole file. 'Skipped' means no new snapshot was needed or the place already has that snapshot. 'Verified' means the stored bytes were read back and hashed, not that a restore was tested."
-        );
-
-        let scope = format!(
-            "{} {} {} {}",
-            backup_scope_title(),
+        let included = backup_included_label().to_lowercase();
+        for word in [
+            "book files",
+            "covers",
+            "catalogue",
+            "collections",
+            "bookmarks",
+            "highlights",
+            "notes",
+        ] {
+            assert!(included.contains(word), "{word} in {included}");
+        }
+        let excluded = backup_excluded_label();
+        assert!(excluded.starts_with("Not included"), "{excluded}");
+        for word in [
+            "configuration",
+            "plugins",
+            "passwords",
+            "trash",
+            "device copies",
+            "caches",
+        ] {
+            assert!(excluded.contains(word), "{word} in {excluded}");
+        }
+        // what is now kept must not be listed as left out
+        for word in ["book files", "covers"] {
+            assert!(
+                !excluded.to_lowercase().contains(word),
+                "{word} in {excluded}"
+            );
+        }
+        let all = format!(
+            "{} {} {}",
             backup_scope_subtitle(),
             backup_scope_description(),
-            backup_included_label(),
+            backup_incremental_note()
+        )
+        .to_lowercase();
+        assert!(
+            !all.contains("catalogue only") && !all.contains("not incremental"),
+            "{all}"
         );
-        let excluded = backup_excluded_label();
-        assert!(scope.to_lowercase().contains("catalogue"), "{scope}");
-        assert!(scope.contains("search index"), "{scope}");
-        assert!(excluded.to_lowercase().contains("book files"), "{excluded}");
-        assert!(excluded.to_lowercase().contains("covers"), "{excluded}");
-        assert!(excluded.contains("Not included"), "{excluded}");
-        assert!(excluded.contains("trash"), "{excluded}");
-
-        let note = backup_incremental_note().to_lowercase();
-        assert!(note.contains("not incremental"), "{note}");
-        assert!(note.contains("whole file"), "{note}");
-        assert!(note.contains("'skipped' means"), "{note}");
-        assert!(note.contains("'verified' means"), "{note}");
-        // Never promise a delta, deduplication or an incremental transfer.
-        for claim in [
-            "delta",
-            "deduplic",
-            "incremental transfer",
-            "incremental copy",
-            "block-level",
-        ] {
-            assert!(!scope.to_lowercase().contains(claim), "{claim} in {scope}");
-            assert!(
-                !excluded.to_lowercase().contains(claim),
-                "{claim} in {excluded}"
-            );
-            assert!(!note.contains(claim), "{claim} in {note}");
-        }
+        assert!(all.contains("only new or changed files"), "{all}");
+        let note = backup_incremental_note();
+        assert!(
+            note.contains("'Skipped' means") && note.contains("'Verified' means"),
+            "{note}"
+        );
+        assert!(
+            note.contains("renamed or moved book costs nothing"),
+            "{note}"
+        );
     }
 
     #[test]
@@ -546,5 +1418,576 @@ mod tests {
             .contains("WebDAV"));
         assert!(uri_problem("//nas/books").is_some());
         assert!(!is_mountable_uri("smb://"));
+    }
+
+    // -- the repository glue ----------------------------------------------------------------------
+
+    fn library(root: &Path) -> LibrarySource {
+        bookx_store::open_library(root).unwrap();
+        LibrarySource::open(root).unwrap()
+    }
+
+    fn put(root: &Path, rel: &str, body: &str) {
+        let p = root.join(rel);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, body).unwrap();
+    }
+
+    #[test]
+    fn a_run_to_two_places_survives_one_being_gone_and_records_each_status() {
+        let root = tmp();
+        let lib = library(&root);
+        put(&root, "Ann/One/one.epub", "one");
+        put(&root, "Ann/Two/two.epub", "two");
+        let usb = tmp();
+        std::fs::create_dir_all(&usb).unwrap();
+        let dests = vec![
+            folder("gone", Path::new("/definitely-not-mounted/x")),
+            folder("usb", &usb),
+        ];
+        let out = run_all(
+            &lib,
+            &dests,
+            "",
+            false,
+            Utc::now(),
+            Kdf::TEST,
+            &AtomicBool::new(false),
+            &|_, _| {},
+        );
+        assert_eq!(out.len(), 2);
+        assert!(out[0].result.is_err());
+        let r = out[1].result.as_ref().unwrap();
+        assert_eq!((r.files, r.new_files), (2, 2));
+        let mut st = BackupSettings {
+            destinations: dests,
+            ..BackupSettings::default()
+        };
+        apply_repo(&mut st, &out, Utc::now());
+        assert!(matches!(
+            st.destinations[0].status(),
+            bookx_backup::DestStatus::Failed {
+                unreachable: true,
+                ..
+            }
+        ));
+        assert!(matches!(
+            st.destinations[1].status(),
+            bookx_backup::DestStatus::Ok(_)
+        ));
+        assert!(
+            usb.join("Bookx Backup/README.txt").exists(),
+            "the repository is next to any old backups"
+        );
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn the_estimate_says_first_everything_then_nothing_then_only_the_new_book() {
+        let root = tmp();
+        let lib = library(&root);
+        put(&root, "Ann/One/one.epub", &"x".repeat(5000));
+        let usb = tmp();
+        std::fs::create_dir_all(&usb).unwrap();
+        let d = folder("usb", &usb);
+        let no = AtomicBool::new(false);
+        let e = estimate_for(&lib, std::slice::from_ref(&d), "", &no);
+        let p = e[0].plan.as_ref().unwrap();
+        assert!(
+            p.first_run && p.new_files == 1 && p.new_bytes == 5000,
+            "{p:?}"
+        );
+        assert!(
+            plan_text(p).contains("The first backup copies everything"),
+            "{}",
+            plan_text(p)
+        );
+        run_all(
+            &lib,
+            std::slice::from_ref(&d),
+            "",
+            false,
+            Utc::now(),
+            Kdf::TEST,
+            &no,
+            &|_, _| {},
+        );
+        let e = estimate_for(&lib, std::slice::from_ref(&d), "", &no);
+        let p = e[0].plan.as_ref().unwrap();
+        assert_eq!((p.new_files, p.reused_files), (0, 1));
+        assert_eq!(plan_text(p), "Everything is already backed up.");
+        put(&root, "Ann/Two/two.epub", &"y".repeat(7000));
+        let p = estimate_for(&lib, std::slice::from_ref(&d), "", &no)
+            .remove(0)
+            .plan
+            .unwrap();
+        assert_eq!(p.new_files, 1);
+        assert!(
+            plan_text(&p).contains("1 files") || plan_text(&p).contains("(1 files)"),
+            "{}",
+            plan_text(&p)
+        );
+        // a place that is not there says why
+        let gone = folder("gone", Path::new("/definitely-not-mounted/x"));
+        let e = estimate_for(&lib, &[gone], "", &no);
+        assert!(e[0].plan.as_ref().unwrap_err().contains("mounted"));
+        // an encrypted place without the passphrase is a clear message, not a plain copy
+        let mut enc = folder("e", &usb);
+        enc.encrypt = true;
+        assert!(estimate_for(&lib, &[enc], "", &no)[0]
+            .plan
+            .as_ref()
+            .unwrap_err()
+            .contains("passphrase"));
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn scheduled_repository_runs_copy_when_due_and_say_nothing_new_otherwise() {
+        let root = tmp();
+        let lib = library(&root);
+        put(&root, "Ann/One/one.epub", "one");
+        let dir = tmp();
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut st = BackupSettings::default();
+        st.destinations.push(folder("drive", &dir));
+        let now = Utc::now();
+        let no = AtomicBool::new(false);
+        // the first copy of a place waits for the user (see the next test)
+        assert!(run_due_repo(&lib, &st, Trigger::Exit, now, Kdf::TEST, &no).is_empty());
+        st.destinations[0].auto_ok = true;
+        let out = run_due_repo(&lib, &st, Trigger::Exit, now, Kdf::TEST, &no);
+        assert_eq!(out.len(), 1);
+        let first = out[0].result.as_ref().unwrap();
+        assert_eq!(first.new_files, 1);
+        assert_eq!(
+            report_text(first),
+            "Copied 1 new files (1 KB); 0 were already there."
+        );
+        apply_repo(&mut st, &out, now);
+        let later = now + chrono::Duration::hours(2);
+        let out = run_due_repo(&lib, &st, Trigger::Exit, later, Kdf::TEST, &no);
+        let r = out[0].result.as_ref().unwrap();
+        assert!(r.up_to_date, "nothing changed, nothing copied: {r:?}");
+        assert_eq!(report_text(r), "Nothing new to copy.");
+        // closing never waits longer than the limit
+        let o = run_due_repo_within(
+            &lib,
+            &st,
+            Trigger::Exit,
+            later + chrono::Duration::hours(3),
+            Duration::from_millis(0),
+        );
+        assert!(o.len() <= 1);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn restore_options_list_snapshots_notes_and_the_old_backups_together() {
+        let root = tmp();
+        let lib = library(&root);
+        put(&root, "Ann/One/one.epub", "one");
+        let dir = tmp();
+        std::fs::create_dir_all(&dir).unwrap();
+        let d = folder("drive", &dir);
+        // an old whole-catalogue backup in the same place
+        let snap = store_with_snapshot(&root);
+        let t = d.target().unwrap();
+        bookx_backup::push(
+            t.as_ref(),
+            &snap,
+            &bookx_backup::PushOptions {
+                passphrase: None,
+                keep: 5,
+                now: Utc::now(),
+                kdf: Kdf::TEST,
+            },
+            &AtomicBool::new(false),
+            &|_| {},
+        )
+        .unwrap();
+        assert!(restore_options(&d, "").unwrap().points.is_empty());
+        assert_eq!(restore_options(&d, "").unwrap().legacy.len(), 1);
+        run_all(
+            &lib,
+            std::slice::from_ref(&d),
+            "",
+            true,
+            Utc::now(),
+            Kdf::TEST,
+            &AtomicBool::new(false),
+            &|_, _| {},
+        );
+        let c = restore_options(&d, "").unwrap();
+        assert_eq!((c.points.len(), c.legacy.len()), (1, 1));
+        assert!(c.points[0].manual && c.points[0].files == 1 && !c.encrypted);
+        // restore it into a new folder, dry run first
+        let to = tmp().join("restored");
+        let no = AtomicBool::new(false);
+        let dry = restore_from_place(
+            &d,
+            "",
+            None,
+            &to,
+            RestoreMode::MissingOnly,
+            true,
+            None,
+            &no,
+            &|_| {},
+        )
+        .unwrap();
+        assert!(dry.dry_run && !to.exists());
+        let r = restore_from_place(
+            &d,
+            "",
+            None,
+            &to,
+            RestoreMode::MissingOnly,
+            false,
+            None,
+            &no,
+            &|_| {},
+        )
+        .unwrap();
+        assert!(r.failed.is_empty() && r.files_written == 1, "{r:?}");
+        assert_eq!(
+            std::fs::read_to_string(to.join("Ann/One/one.epub")).unwrap(),
+            "one"
+        );
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn journal_all_protects_notes_for_every_place_and_isolates_failures() {
+        let root = tmp();
+        let lib = library(&root);
+        let dir = tmp();
+        std::fs::create_dir_all(&dir).unwrap();
+        let places = vec![
+            folder("gone", Path::new("/definitely-not-mounted/x")),
+            folder("drive", &dir),
+        ];
+        let failed = journal_all(&lib, &places, "", Utc::now(), Kdf::TEST);
+        assert_eq!(failed.len(), 1);
+        assert_eq!(failed[0].0, "gone");
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn the_first_copy_of_a_place_is_never_a_surprise() {
+        let mut st = BackupSettings::default();
+        st.destinations.push(folder("old", Path::new("/mnt/old")));
+        st.destinations.push(folder("new", Path::new("/mnt/new")));
+        let now = Utc::now();
+        // a place from before the update: nothing scheduled, nothing recorded
+        assert!(scheduled_places(&st, Trigger::Exit, now).is_empty());
+        assert!(scheduled_places(&st, Trigger::Tick, now).is_empty());
+        assert!(journal_places(&st).is_empty());
+        // the user allowed the first copy of one place after seeing the size
+        st.destinations[1].auto_ok = true;
+        let names: Vec<String> = scheduled_places(&st, Trigger::Exit, now)
+            .into_iter()
+            .map(|d| d.id)
+            .collect();
+        assert_eq!(names, ["new"]);
+        assert_eq!(journal_places(&st).len(), 1);
+        // a switched-off place gets neither
+        st.destinations[1].enabled = false;
+        assert!(scheduled_places(&st, Trigger::Exit, now).is_empty());
+        assert!(journal_places(&st).is_empty());
+        // a manual first copy that worked allows the automatic ones from then on
+        st.destinations[0].enabled = true;
+        let ok = RepoOutcome {
+            id: "old".into(),
+            name: "old".into(),
+            result: Ok(Report::default()),
+            cancelled: false,
+        };
+        apply_repo(&mut st, &[ok], now);
+        assert!(st.destinations[0].auto_ok);
+        // a failure or a cancel does not
+        let mut st2 = BackupSettings::default();
+        st2.destinations.push(folder("x", Path::new("/mnt/x")));
+        let bad = RepoOutcome {
+            id: "x".into(),
+            name: "x".into(),
+            result: Err("full".into()),
+            cancelled: false,
+        };
+        let stopped = RepoOutcome {
+            id: "x".into(),
+            name: "x".into(),
+            result: Err("stopped".into()),
+            cancelled: true,
+        };
+        apply_repo(&mut st2, &[bad, stopped], now);
+        assert!(!st2.destinations[0].auto_ok);
+    }
+
+    #[test]
+    fn progress_moves_forward_through_the_phases_and_says_where_it_is() {
+        let mk = |phase, fd, ft, bd, bt| RunProgress {
+            phase,
+            files_done: fd,
+            files_total: ft,
+            bytes_done: bd,
+            bytes_total: bt,
+            current: String::new(),
+            elapsed: Duration::from_secs(5),
+            eta: Some(Duration::from_secs(40)),
+        };
+        let seq = [
+            mk(Phase::Scanning, 0, 0, 0, 0),
+            mk(Phase::Hashing, 50, 100, 0, 0),
+            mk(Phase::Uploading, 0, 10, 0, 1000),
+            mk(Phase::Uploading, 5, 10, 500, 1000),
+            mk(Phase::Finishing, 10, 10, 1000, 1000),
+            mk(Phase::Done, 10, 10, 1000, 1000),
+        ];
+        let f: Vec<f64> = seq.iter().map(progress_fraction).collect();
+        assert!(f.windows(2).all(|w| w[0] <= w[1]), "{f:?}");
+        assert!(f.iter().all(|x| (0.0..=1.0).contains(x)));
+        assert_eq!(*f.last().unwrap(), 1.0);
+        // no bytes known (nothing to copy): files drive the bar
+        assert!(progress_fraction(&mk(Phase::Uploading, 5, 10, 0, 0)) > 0.5);
+        let d = progress_detail(&seq[3]);
+        assert!(
+            d.contains("5 of 10 files") && d.contains("500 of 1000") || d.contains("KB"),
+            "{d}"
+        );
+        assert!(d.contains("40 seconds left"), "{d}");
+        // a time left is only promised while copying
+        assert!(!progress_detail(&seq[1]).contains("left"));
+        assert_eq!(
+            progress_stage("Offsite", &seq[2]),
+            "Offsite: Copying new files"
+        );
+        assert!(eta_phrase(Duration::from_secs(300)).contains("5 minutes"));
+        assert!(eta_phrase(Duration::from_millis(100)).contains("1 second"));
+    }
+
+    #[test]
+    fn the_banner_says_how_big_the_first_copy_is_and_only_while_it_has_not_happened() {
+        let first = Plan {
+            first_run: true,
+            new_files: 120,
+            new_bytes: 3 * 1024 * 1024 * 1024,
+            ..Plan::default()
+        };
+        let t = banner_text(std::slice::from_ref(&first)).unwrap();
+        assert!(t.contains("3.0 GB") && t.contains("120 files"), "{t}");
+        assert!(t.contains("Nothing is copied until you press Back Up"));
+        let later = Plan {
+            first_run: false,
+            new_files: 2,
+            ..Plan::default()
+        };
+        assert!(banner_text(&[later]).is_none());
+        // an empty library has nothing to announce
+        assert!(banner_text(&[Plan {
+            first_run: true,
+            ..Plan::default()
+        }])
+        .is_none());
+        assert!(banner_text(&[]).is_none());
+        // with two places the bigger one is named
+        let small = Plan {
+            first_run: true,
+            new_files: 1,
+            new_bytes: 10,
+            ..Plan::default()
+        };
+        assert!(banner_text(&[small, first]).unwrap().contains("GB"));
+    }
+
+    #[test]
+    fn what_a_place_holds_is_in_words_and_the_check_and_cleanup_work_on_a_real_place() {
+        let root = tmp();
+        let lib = library(&root);
+        put(&root, "Ann/One/one.epub", "one");
+        let dir = tmp();
+        std::fs::create_dir_all(&dir).unwrap();
+        let d = folder("drive", &dir);
+        let no = AtomicBool::new(false);
+        assert_eq!(repo_summary(&d, "").unwrap(), None, "no repository yet");
+        for _ in 0..2 {
+            put(&root, &format!("Ann/N{}/n.epub", rand_name()), "more");
+            let out = run_all(
+                &lib,
+                std::slice::from_ref(&d),
+                "",
+                false,
+                Utc::now(),
+                Kdf::TEST,
+                &no,
+                &|_, _| {},
+            );
+            assert!(out[0].result.is_ok(), "{:?}", out[0].result);
+        }
+        let s = repo_summary(&d, "").unwrap().unwrap();
+        assert_eq!((s.snapshots, s.files), (2, 3));
+        let line = summary_text(&s);
+        assert!(
+            line.contains("2 backups") && line.contains("last "),
+            "{line}"
+        );
+        let rep = check_place(&d, "", false, &no, &|_, _| {}).unwrap();
+        assert!(rep.ok());
+        assert!(
+            check_text(&rep).contains("complete"),
+            "{}",
+            check_text(&rep)
+        );
+        let deep = check_place(&d, "", true, &no, &|_, _| {}).unwrap();
+        assert!(check_text(&deep).contains("intact"));
+        // a missing file is named in the words
+        let blob = std::fs::read_dir(dir.join("Bookx Backup/blobs"))
+            .unwrap()
+            .flatten()
+            .flat_map(|e| std::fs::read_dir(e.path()).unwrap().flatten())
+            .next()
+            .unwrap()
+            .path();
+        std::fs::remove_file(blob).unwrap();
+        let bad = check_place(&d, "", false, &no, &|_, _| {}).unwrap();
+        assert!(!bad.ok());
+        assert!(check_text(&bad).contains("missing"), "{}", check_text(&bad));
+        // keep one automatic backup: the other one goes
+        let mut one = d.clone();
+        one.keep = 1;
+        let c = clean_place(&one, "", Utc::now() + chrono::Duration::days(30), &no).unwrap();
+        assert!(clean_text(&c).contains("Removed") || clean_text(&c).contains("Nothing"));
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    fn rand_name() -> String {
+        uuid::Uuid::new_v4().simple().to_string()[..6].to_string()
+    }
+
+    #[test]
+    fn the_messages_after_a_run_name_the_failure_the_cancel_and_the_files_left_out() {
+        let ok = |name: &str, new_files: usize| RepoOutcome {
+            id: name.into(),
+            name: name.into(),
+            result: Ok(Report {
+                new_files,
+                new_bytes: 2048,
+                reused_files: 3,
+                up_to_date: new_files == 0,
+                too_big: vec!["big.pdf".into()],
+                ..Report::default()
+            }),
+            cancelled: false,
+        };
+        let bad = RepoOutcome {
+            id: "b".into(),
+            name: "NAS".into(),
+            result: Err("Not enough space in this place".into()),
+            cancelled: false,
+        };
+        let t = outcomes_text(&[ok("USB", 2), bad.clone()]);
+        assert!(t.contains("Copied 2 new files"), "{t}");
+        assert!(t.contains("1 files are left out"), "{t}");
+        assert!(t.contains("NAS: Not enough space"), "{t}");
+        assert!(outcomes_text(&[ok("USB", 0)]).contains("Nothing new"));
+        let two = outcomes_text(&[ok("A", 1), ok("B", 0)]);
+        assert!(
+            two.contains("A: ") && two.contains("B: Nothing new"),
+            "{two}"
+        );
+        let stopped = RepoOutcome {
+            cancelled: true,
+            ..bad
+        };
+        assert!(outcomes_text(&[stopped]).contains("cancelled"));
+        assert_eq!(outcomes_text(&[]), "");
+    }
+
+    #[test]
+    fn the_restore_preview_says_what_comes_back_and_what_is_there() {
+        let r = RestoreReport {
+            would_write: 3,
+            skipped_existing: 2,
+            skipped_same: 1,
+            catalogue: bookx_backup::repo::CatalogueAction::WouldRestore,
+            replaced_newer: vec!["a.epub".into()],
+            ..RestoreReport::default()
+        };
+        let t = restore_plan_text(&r);
+        assert!(t.contains("3 files to restore, 3 already present"), "{t}");
+        assert!(t.contains("catalogue is replaced"), "{t}");
+        assert!(t.contains("1 file are newer here"), "{t}");
+        let kept = RestoreReport {
+            catalogue: bookx_backup::repo::CatalogueAction::KeptExisting,
+            ..RestoreReport::default()
+        };
+        assert!(restore_plan_text(&kept).contains("current catalogue is kept"));
+        let done = RestoreReport {
+            files_written: 2,
+            failed: vec![("x".into(), "y".into())],
+            ..RestoreReport::default()
+        };
+        assert_eq!(
+            restore_done_text(&done),
+            "Restored 2 files. 1 file could not be restored."
+        );
+    }
+
+    #[test]
+    fn a_place_says_what_it_copies() {
+        let mut d = folder("d", Path::new("/x"));
+        assert_eq!(scope_label(&d), "Books, covers and catalogue");
+        d.include_covers = false;
+        d.max_file_mb = 50;
+        assert_eq!(
+            scope_label(&d),
+            "Books and catalogue, no covers · files up to 50 MB"
+        );
+        d.include_books = false;
+        assert_eq!(
+            scope_label(&d),
+            "Catalogue only",
+            "the size limit is about book files"
+        );
+    }
+
+    #[test]
+    fn a_new_folder_in_an_existing_one_is_created_but_a_missing_drive_is_not() {
+        let base = tmp();
+        std::fs::create_dir_all(&base).unwrap();
+        let fresh = folder("f", &base.join("new-name"));
+        assert!(will_be_created(&fresh));
+        assert!(!will_be_created(&folder("g", &base)), "it exists");
+        assert!(
+            !will_be_created(&folder("h", &base.join("no/such/deeper"))),
+            "the drive is not there"
+        );
+        assert!(!will_be_created(&folder("i", Path::new(""))));
+        // the estimate for it works without creating anything
+        let root = tmp();
+        let lib = library(&root);
+        put(&root, "Ann/One/one.epub", "one");
+        let e = estimate_for(
+            &lib,
+            std::slice::from_ref(&fresh),
+            "",
+            &AtomicBool::new(false),
+        );
+        assert!(e[0].plan.as_ref().unwrap().first_run);
+        assert!(!base.join("new-name").exists());
+        let out = run_all(
+            &lib,
+            std::slice::from_ref(&fresh),
+            "",
+            true,
+            Utc::now(),
+            Kdf::TEST,
+            &AtomicBool::new(false),
+            &|_, _| {},
+        );
+        assert!(out[0].result.is_ok(), "{:?}", out[0].result);
+        assert!(base.join("new-name/Bookx Backup/README.txt").exists());
+        let _ = std::fs::remove_dir_all(root);
+        let _ = std::fs::remove_dir_all(base);
     }
 }

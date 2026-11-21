@@ -285,6 +285,81 @@ impl WebDav {
         }
     }
 
+    /// Uploads exactly `len` bytes from `reader` to the file at `parts` (path below the base, the
+    /// folders must exist), without holding them in memory. A reader error aborts the request, so
+    /// nothing half-sent is kept by well-behaved servers (the caller uploads to a temporary name
+    /// and moves it into place).
+    pub fn put_stream(
+        &self,
+        parts: &[String],
+        reader: &mut dyn std::io::Read,
+        len: u64,
+    ) -> Result<()> {
+        check_segments(parts)?;
+        let u = url::Url::parse(&self.url_for(parts, false)).context("bad address")?;
+        let mut h: Vec<(&str, &str)> = vec![("Content-Type", "application/octet-stream")];
+        if let Some(a) = &self.auth {
+            h.push(("Authorization", a.as_str()));
+        }
+        let r = crate::httpc::request_stream(
+            "PUT",
+            &u,
+            &h,
+            crate::httpc::Body::Stream(reader, len),
+            Duration::from_secs(12 * 3600),
+            None,
+            crate::httpc::MAX_BODY,
+            None,
+        )?;
+        match r.status {
+            200 | 201 | 204 => Ok(()),
+            s => Err(Self::explain(s, "Uploading")),
+        }
+    }
+
+    /// Downloads the file at `parts` into `out` as it arrives; more than `max` bytes is an error.
+    pub fn get_to(&self, parts: &[String], out: &mut dyn std::io::Write, max: u64) -> Result<u64> {
+        check_segments(parts)?;
+        let u = url::Url::parse(&self.url_for(parts, false)).context("bad address")?;
+        let mut h: Vec<(&str, &str)> = Vec::new();
+        if let Some(a) = &self.auth {
+            h.push(("Authorization", a.as_str()));
+        }
+        let r = crate::httpc::request_stream(
+            "GET",
+            &u,
+            &h,
+            crate::httpc::Body::Bytes(&[]),
+            Duration::from_secs(12 * 3600),
+            None,
+            crate::httpc::MAX_BODY,
+            Some(crate::httpc::Sink { out, max }),
+        )?;
+        match r.status {
+            200 => Ok(r.streamed),
+            s => Err(Self::explain(s, "Downloading")),
+        }
+    }
+
+    /// Moves a file to a new path below the base, replacing what is there. `Ok(false)` when the
+    /// server does not do `MOVE` (405/501), so the caller can fall back.
+    pub fn move_file(&self, from: &[String], to: &[String]) -> Result<bool> {
+        check_segments(from)?;
+        check_segments(to)?;
+        let dest = self.url_for(to, false);
+        let (st, _) = self.request(
+            "MOVE",
+            &self.url_for(from, false),
+            &[("Destination", dest.as_str()), ("Overwrite", "T")],
+            Vec::new(),
+        )?;
+        match st {
+            200 | 201 | 204 => Ok(true),
+            405 | 501 => Ok(false),
+            s => Err(Self::explain(s, "Moving")),
+        }
+    }
+
     /// Deletes any file below the base (not a folder).
     pub fn delete_file(&self, subdirs: &[String], file_name: &str) -> Result<()> {
         let parts = checked_parts(subdirs, file_name)?;
@@ -351,6 +426,17 @@ fn checked_parts(subdirs: &[String], file_name: &str) -> Result<Vec<String>> {
         bail!("refusing the path {parts:?}");
     }
     Ok(parts)
+}
+
+fn check_segments(parts: &[String]) -> Result<()> {
+    if parts.is_empty()
+        || parts
+            .iter()
+            .any(|p| p.is_empty() || p == ".." || p == "." || p.contains(['/', '\\', '\0']))
+    {
+        bail!("refusing the path {parts:?}");
+    }
+    Ok(())
 }
 
 fn is_book(rel: &str) -> bool {

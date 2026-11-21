@@ -177,19 +177,29 @@ pub const BUILTIN: [(&str, &str, &str, i32); 6] = [
     ),
 ];
 
-/// Old names of sections that moved: `Patches` is a group of Extensions, `AI Assistants (MCP)` lost its suffix.
+/// Old names of sections that moved: `Patches` is a group of Extensions, `AI Assistants` and
+/// `AI Assistants (MCP)` are now `MCP`.
 pub fn legacy_section_id(name: &str) -> Option<&'static str> {
     match name {
         "Patches" => Some("extensions"),
-        "AI Assistants (MCP)" => Some("mcp"),
+        "AI Assistants (MCP)" | "AI Assistants" => Some("mcp"),
         _ => None,
+    }
+}
+
+/// Extra words that find a section in the search field besides its title (the MCP page is also
+/// "AI assistants", the Model Context Protocol and the tools that connect to it).
+fn section_aliases(id: &str) -> &'static str {
+    match id {
+        "mcp" => "AI assistants assistant Model Context Protocol Claude Cursor opencode",
+        _ => "",
     }
 }
 
 #[allow(dead_code)] // called by the modules that add a section
 /// Adds a section to the sidebar (nothing happens if the id exists). The orders in use: General 10, Library 20,
 /// Reading 30, Dictionaries 35, Editor 40, Text to Speech 50, Sync 60, E-mail 70, Extensions 80, Privacy 90,
-/// Keyboard Shortcuts 100, AI Assistants 110.
+/// Keyboard Shortcuts 100, MCP 110.
 pub fn register_page(id: &str, title: &str, icon: &str, order: i32) {
     REGISTRY.with(|r| {
         let mut r = r.borrow_mut();
@@ -316,6 +326,7 @@ pub fn goto_page(id: &str) {
 }
 
 thread_local! {
+    static PLUGINS: RefCell<Option<glib::WeakRef<adw::PreferencesGroup>>> = const { RefCell::new(None) };
     static PATCHES: RefCell<Option<glib::WeakRef<adw::PreferencesGroup>>> = const { RefCell::new(None) };
     static MAIL_ROWS: RefCell<Option<adw::ButtonRow>> = const { RefCell::new(None) };
     static MAIL_RESULT: RefCell<String> = const { RefCell::new(String::new()) };
@@ -333,7 +344,7 @@ fn dump_patches() {
         menus: &mut Vec<String>,
         empty: &mut bool,
     ) {
-        if w.is::<adw::StatusPage>() {
+        if is_empty_state(w) {
             *empty = true;
             return;
         }
@@ -479,6 +490,8 @@ pub fn dev(arg: &str) {
             }
         }
         eprintln!("prefs_titles: rows={rows} problems={}", bad.join(" | "));
+    } else if arg == "plugins-dump" {
+        dump_plugins();
     } else if arg == "patches-dump" {
         dump_patches();
     } else if let Some(dir) = arg.strip_prefix("libdir=") {
@@ -606,6 +619,7 @@ impl View {
             let visible = q.is_empty()
                 || legacy
                 || query_matches(q, &s.title)
+                || query_matches(q, &format!("{} {}", s.title, section_aliases(&s.id)))
                 || self.filter_page(&s.page, q) > 0;
             row.set_visible(visible);
             if visible && first_visible.is_none() {
@@ -1464,6 +1478,7 @@ fn build_sections(
     if !none_installed {
         plugins.add(&open_row);
     }
+    PLUGINS.with(|p| *p.borrow_mut() = Some(plugins.downgrade()));
     extras.add(&plugins);
 
     // ---- patches: small TOML rule files (X9) -----------------------------------------------
@@ -1800,22 +1815,100 @@ fn fill_patches(
 }
 
 /// A compact placeholder for an empty list: heading, how to fill it, and the action as a button.
+/// A plain box, not an `AdwStatusPage`: that one wraps its content in its own scrolled window, which
+/// scrolled and clipped the button when the group gave it less than its natural height.
 fn empty_state(
     title: &str,
     description: &str,
     button: &str,
     on_click: impl Fn() + 'static,
 ) -> gtk::Widget {
-    let page = adw::StatusPage::new();
-    page.add_css_class("compact");
-    page.set_title(title);
-    page.set_description(Some(&glib::markup_escape_text(description)));
+    let page = gtk::Box::new(gtk::Orientation::Vertical, 6);
+    page.add_css_class("empty-state");
+    page.set_margin_top(12);
+    page.set_margin_bottom(12);
+    let t = gtk::Label::new(Some(title));
+    t.add_css_class("title-3");
+    t.set_wrap(true);
+    t.set_justify(gtk::Justification::Center);
+    let d = gtk::Label::new(Some(description));
+    d.add_css_class("dim-label");
+    d.set_wrap(true);
+    d.set_justify(gtk::Justification::Center);
+    d.set_selectable(true);
     let b = gtk::Button::with_label(button);
     b.add_css_class("pill");
     b.set_halign(gtk::Align::Center);
+    b.set_margin_top(6);
     b.connect_clicked(move |_| on_click());
-    page.set_child(Some(&b));
+    page.append(&t);
+    page.append(&d);
+    page.append(&b);
     page.upcast()
+}
+
+/// Is `w` one of the placeholders made by `empty_state`?
+fn is_empty_state(w: &gtk::Widget) -> bool {
+    w.has_css_class("empty-state")
+}
+
+/// `prefs:plugins-dump`: `prefs_plugins: placeholder=B in_scrolled=B alloc_h=N natural_h=N button_visible=B fits=B`.
+fn dump_plugins() {
+    let Some(g) = PLUGINS.with(|p| p.borrow().as_ref().and_then(|w| w.upgrade())) else {
+        eprintln!("prefs_plugins: placeholder=false");
+        return;
+    };
+    let mut stack = vec![g.upcast::<gtk::Widget>()];
+    let mut found = None;
+    while let Some(x) = stack.pop() {
+        if is_empty_state(&x) {
+            found = Some(x);
+            break;
+        }
+        let mut c = x.first_child();
+        while let Some(ch) = c {
+            stack.push(ch.clone());
+            c = ch.next_sibling();
+        }
+    }
+    let Some(ph) = found else {
+        eprintln!("prefs_plugins: placeholder=false");
+        return;
+    };
+    let in_scrolled = {
+        let mut a = ph.parent();
+        let mut hit = false;
+        while let Some(w) = a {
+            if w.is::<gtk::ScrolledWindow>()
+                && w.ancestor(adw::PreferencesGroup::static_type()).is_some()
+            {
+                hit = true;
+                break;
+            }
+            if w.is::<adw::PreferencesGroup>() {
+                break;
+            }
+            a = w.parent();
+        }
+        hit
+    };
+    let alloc = ph.height();
+    // `measure` includes the margins, the allocated height does not
+    let natural =
+        ph.measure(
+            gtk::Orientation::Vertical,
+            if ph.width() > 0 { ph.width() } else { -1 },
+        )
+        .1 - ph.margin_top()
+            - ph.margin_bottom();
+    let button = ph
+        .last_child()
+        .map(|b| b.is_mapped() && b.height() > 0)
+        .unwrap_or(false);
+    eprintln!(
+        "prefs_plugins: placeholder=true in_scrolled={in_scrolled} alloc_h={alloc} natural_h={natural} button_visible={button} fits={}",
+        alloc >= natural
+    );
 }
 
 #[cfg(test)]
@@ -1889,6 +1982,7 @@ mod tests {
     fn old_section_names_still_find_their_page() {
         assert_eq!(legacy_section_id("Patches"), Some("extensions"));
         assert_eq!(legacy_section_id("AI Assistants (MCP)"), Some("mcp"));
+        assert_eq!(legacy_section_id("AI Assistants"), Some("mcp"));
         assert_eq!(legacy_section_id("General"), None);
     }
 

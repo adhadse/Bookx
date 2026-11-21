@@ -92,3 +92,40 @@ Decisions and caveats of wave 4:
   `search=`. Real use is unaffected.
 - The Notes window changes highlights in the shared library; a reader open on the same book keeps its own copy of the
   highlight list until it reloads.
+
+## Wave 10: bookmarks from devices, and a type filter in Notes & Highlights
+
+Owner question: "where in the library can I see the bookmarks, here or from the synced device?" Bookmarks lived only in the
+reader's sidebar, synced bookmarks were counted and thrown away.
+
+- **Model.** No change to `core::library::Bookmark` (id, spine, frac, label, created): 12 constructors in 5 crates and the
+  catalogue format stay as they are. What a bookmark needs more is kept in a ledger: `bookmark_sync::Entry` (book, bookmark id,
+  source `KOReader (device)` / `Kobo`, `approx`, the device's hint, `made_here`). Wireless: `Ledger::bookmarks`
+  (`annotation-sync.json`); cable: `bookmark_sync::Store` (`<library>/device-bookmarks.json`, same entry type). The words the
+  reader wrote on a device bookmark are its `label`; without them it is `Page N` (the device's page) or the chapter.
+- **Place** (`bookmark_sync::resolve_place`, a `Geometry` trait so it is unit tested without a book): xpointer ->
+  `DocFragment[N]` + `fraction_in_markup` (exact); Kobo dog-ear: chapter file + `ChapterProgress` (exact); chapter title (start of
+  the chapter, refined by the percentage when it falls inside); percentage of the book; device page / (text length / 2000)
+  as a share of the book. Everything but the first two is `approx` and shown as "approximate place". Nothing found: the start
+  of the book, flagged. The device's page numbers are in *its* layout, so the page guess is a guess.
+- **Duplicates.** Only exact places are compared with the book's bookmarks: same chapter and closer than 1 % of it, or closer
+  than 4 % and made the same day -> linked, nothing added, the bookmark of the reader untouched. A rough place never merges
+  (two pages named only by their chapter are two bookmarks). A Kobo dog-ear and a KOReader bookmark of the same page of one
+  book are one bookmark.
+- **Nothing is ever deleted.** The ledger entry stays when the reader deletes the bookmark (tombstone: `import` returns
+  `Known`) and when the device deletes it. An older sync only remembered bookmarks (`State::Bookmark` with no entry): they are
+  imported at the next merge.
+- **Notes & Highlights.** `NoteRow.kind` (`RowKind`) and `Filter.kind` (`KindFilter`: all, highlights, notes = highlights with
+  a note, bookmarks). The choice is `Config::notes_kind`. `notes_view::rows_of` lists bookmarks after the highlights of each
+  book, and the sidebar count is `rows().len()` (still identical to the list with *All*). Deleting a bookmark shows the Undo
+  toast (the highlight delete keeps its confirmation); the bulk delete handles both. Open: `notes::set_jump(book, bookmark id)`
+  -> `Input::GoHighlight(id)` finds a bookmark when no highlight has that id -> `load_chapter(spine, Some(frac))`.
+- **Dev hooks.** `library:notes:kind=`, `library:notes:kinds`, `reader:bm-where`, `reader:side-state` prints `side_bookmark:`
+  lines, `koannot:dump` prints `koannot_bm:` lines; scenarios `koreader_annotations_bookmarks*`.
+- **Not done / caveats.** The reader does not flash the landing line of a bookmark (it opens the page that holds the place).
+  Nothing was tried against a real KOReader or Kobo: the KOReader record shape (`page` xpointer, `pageno`, `datetime`) is from
+  the owner's sidecar (`a_page_bookmark_is_no_highlight`) and from the plugin's JSON; the Kobo dog-ear columns (`Type='dogear'`,
+  `ContentID` = `<volume>!<chapter path>`, `ChapterProgress`) are from the real schema in `kobo.rs` but the exact `ContentID`
+  form of a real device's dog-ear is unverified, and a `kepub` split of a chapter into several files would place it by file only.
+  The bookmark of a PDF is a page (`spine + 1`), bookmarks of PDFs are not synced from devices. Bookx -> device: Bookx's own
+  bookmarks are still not sent to KOReader.

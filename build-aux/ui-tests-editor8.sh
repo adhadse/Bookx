@@ -188,3 +188,28 @@ scenario editor_preview_head_900 'edit:1,wait:3000,editor:resize=900x600,wait:18
     sed -n 4p <<<"$L" | grep -q "vertical=true"; check "below 700sp the preview sits under the code" $?
     sed -n 4p <<<"$L" | sed -E "s/.*code_w=([0-9]+).*/\1/" | { read n; [ "$n" -ge 320 ]; }; check "and the code keeps at least 320 px" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# ---- Problems list rows and the main menu of the editor (owner issues UX4) ----
+# Dev commands: `editor:check:rows` prints `editor_check_rows: rows=N max_row_h=H headers=K max_header_h=H gap=G`,
+# `editor:book-menu-state` opens the Main Menu and prints `editor_book_menu: <entry>=on|off | … all_app=yes|no`,
+# `editor:book-menu-activate=<Preferences|Keyboard Shortcuts|About Bookx|Command Palette>` runs that entry's action and
+# prints `editor_book_menu_activate: <entry> activated=… dialog_over_editor=… dialog=<type>`.
+
+scenario editor_problems_compact 'edit:1,wait:3000,editor:addfile=stray.css,editor:check,wait:1500,editor:check:rows,editor:resize=1380x860,wait:800,editor:check:rows,quit' '
+    R=$(grep "^editor_check_rows:" <<<"$OUT" | tail -1)
+    num() { sed -E "s/.* $1=([0-9-]+).*/\1/" <<<"$R"; }
+    [ "$(num rows)" -ge 2 ]; check "the check found problems to list ($R)" $?
+    [ "$(num headers)" -ge 1 ]; check "grouped under a file header row" $?
+    [ "$(num max_row_h)" -le 32 ]; check "a problem row is at most 32px tall" $?
+    [ "$(num max_header_h)" -le 30 ]; check "a file header row is at most 30px tall" $?
+    [ "$(num gap)" -le 4 ]; check "no gap above 4px between consecutive rows" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario editor_book_menu_enabled 'edit:1,wait:3000,editor:book-menu-state,wait:900,editor:book-menu-activate=Preferences,wait:1500,editor:book-menu-activate=Keyboard Shortcuts,wait:1500,editor:book-menu-activate=About Bookx,wait:1500,editor:book-menu-activate=Command Palette,wait:1500,quit' '
+    M=$(grep "^editor_book_menu:" <<<"$OUT"); A=$(grep "^editor_book_menu_activate:" <<<"$OUT")
+    grep -q "all_app=yes" <<<"$M"; check "Preferences, Keyboard Shortcuts, Help, About and Command Palette are enabled ($M)" $?
+    ! grep -q "Preferences=off\|Keyboard Shortcuts=off\|About Bookx=off" <<<"$M"; check "none of the app entries is greyed" $?
+    grep -q "Preferences activated=true dialog_over_editor=true" <<<"$A"; check "Preferences opens over the editor" $?
+    grep -q "Keyboard Shortcuts activated=true dialog_over_editor=true" <<<"$A"; check "Keyboard Shortcuts opens over the editor" $?
+    grep -q "About Bookx activated=true dialog_over_editor=true" <<<"$A"; check "About opens over the editor" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'

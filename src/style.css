@@ -214,9 +214,9 @@ window.touch .bookx-sidebar .row-actions { opacity: 1; }
 .notes-chip { padding: 2px 10px; min-height: 24px; font-size: 12px; }
 .note-card.compact .note-meta { font-size: 12px; }
 .note-row { padding: 4px 8px; }
-/* selection mode: the check box of a note card shows on hover, on focus and while anything is selected */
-.note-check { opacity: 0; background: alpha(@card_bg_color, .9); border-radius: 99px; }
-flowboxchild.hovered .note-check, flowboxchild.selecting .note-check, flowboxchild:focus-within .note-check, .note-check:checked { opacity: 1; }
+/* selection mode: the check box of a note card has its own column at the start of the row; it is drawn on hover,
+   on keyboard focus and while anything is selected (its opacity is set in notes.rs, `sync_check`) */
+.note-check { min-width: 24px; min-height: 24px; }
 
 /* ---- editions of one work: the chip with the count on a cover ---------------------------------------- */
 .edition-badge { min-width: 0; min-height: 0; padding: 2px 8px; border-radius: 99px; background: alpha(black, .65); color: white;
@@ -259,3 +259,11 @@ window.eink .audio-badge { background: #ffffff; color: #000000; border: 2px soli
 }
 statuspage.compact { padding: 6px; }
 statuspage.compact > scrolledwindow > viewport > box { margin: 6px; }
+
+/* the book grid paints nothing of its own: the window's background shows, also beside a capped grid */
+scrolledwindow.library-grid, gridview.library-grid, gridview.library-grid.view { background: transparent; background-color: transparent; }
+
+/* the editor's Problems list: tight rows, no cards or gaps (a code editor's problems panel) */
+list.problems-list { background: transparent; }
+list.problems-list > row, window.touch list.problems-list > row { min-height: 0; padding: 0; margin: 0; }
+list.problems-list > row:not(:last-child) { border-bottom: none; }

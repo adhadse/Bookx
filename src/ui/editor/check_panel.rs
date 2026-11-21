@@ -210,7 +210,8 @@ pub fn build(sender: &ComponentSender<Editor>) -> Widgets {
     head.append(&close);
 
     let list = gtk::ListBox::new();
-    list.add_css_class("boxed-list-separate");
+    // a compact list like the problems panel of a code editor: no cards, no gaps between rows
+    list.add_css_class("problems-list");
     list.set_selection_mode(gtk::SelectionMode::Single);
     list.set_activate_on_single_click(false);
     list.update_property(&[gtk::accessible::Property::Label(&tr(
@@ -434,9 +435,12 @@ impl Editor {
             head.set_selectable(false);
             head.set_activatable(false);
             let b = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-            b.set_margin_all(6);
+            b.set_margin_top(2);
+            b.set_margin_bottom(2);
+            b.set_margin_start(8);
+            b.set_margin_end(8);
             let name = gtk::Label::new(Some(if file.is_empty() { "The book" } else { &file }));
-            name.add_css_class("heading");
+            name.add_css_class("caption-heading");
             name.set_xalign(0.0);
             name.set_hexpand(true);
             name.set_ellipsize(pango::EllipsizeMode::Start);
@@ -457,8 +461,10 @@ impl Editor {
                 let p = &list[i];
                 let row = gtk::ListBoxRow::new();
                 let b = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-                b.set_margin_all(6);
-                b.set_margin_start(18);
+                b.set_margin_top(3);
+                b.set_margin_bottom(3);
+                b.set_margin_end(8);
+                b.set_margin_start(20);
                 let (icon, class) = severity_look(p.severity);
                 let img = gtk::Image::from_icon_name(icon);
                 img.add_css_class(class);
@@ -905,6 +911,34 @@ impl Editor {
                         self.problems.stale_files.contains(&p.file)
                     );
                 }
+            }
+            "rows" => {
+                // `editor_check_rows: rows=N max_row_h=H headers=K max_header_h=H gap=G`: the real sizes of the list
+                let (mut rows, mut headers, mut max_row, mut max_head, mut gap) = (0, 0, 0, 0, 0);
+                let mut prev_end: Option<i32> = None;
+                for (r, idx) in self.problems.rows.iter().enumerate() {
+                    let Some(row) = self.w.problems.list.row_at_index(r as i32) else {
+                        continue;
+                    };
+                    let b = row.compute_bounds(&self.w.problems.list);
+                    let (y, h) = b.map_or((0, row.height()), |b| {
+                        (b.y().round() as i32, b.height().round() as i32)
+                    });
+                    if idx.is_some() {
+                        rows += 1;
+                        max_row = max_row.max(h);
+                    } else {
+                        headers += 1;
+                        max_head = max_head.max(h);
+                    }
+                    if let Some(e) = prev_end {
+                        gap = gap.max(y - e);
+                    }
+                    prev_end = Some(y + h);
+                }
+                eprintln!(
+                    "editor_check_rows: rows={rows} max_row_h={max_row} headers={headers} max_header_h={max_head} gap={gap}"
+                );
             }
             "help" => {
                 let w = &self.w.problems;

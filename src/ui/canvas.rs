@@ -284,6 +284,8 @@ struct State {
     active_hit: Option<usize>,
     pending_frac: Option<f64>,
     pending_anchor: Option<String>,
+    /// A character to bring on the page once the chapter is laid out (a highlight opened from a list).
+    pending_char: Option<i32>,
     pending_last: bool,
     drag_start: Option<(f64, f64)>,
     dragged: bool,
@@ -392,6 +394,7 @@ impl BookCanvas {
             active_hit: None,
             pending_frac: None,
             pending_anchor: None,
+            pending_char: None,
             pending_last: false,
             drag_start: None,
             dragged: false,
@@ -589,6 +592,7 @@ impl BookCanvas {
             s.focus_word = None;
             s.pending_frac = Some(frac.unwrap_or(0.0));
             s.pending_anchor = anchor;
+            s.pending_char = None;
             s.pending_last = last_page;
             s.cur = 0;
             s.scroll_y = 0.0;
@@ -1605,27 +1609,42 @@ impl BookCanvas {
     pub fn goto_char(&self, c: i32) {
         {
             let mut s = self.st.borrow_mut();
-            let y = s.items.iter().find_map(|i| match &i.kind {
-                Kind::Text(t) if c >= t.char_base && c <= t.char_base + t.char_len => {
-                    // find the line containing char c
-                    let lc = layout_char_of_canon(&t.text, (c - t.char_base) as usize);
-                    let byte = char_to_byte(&t.text, lc) as i32;
-                    let line_y = s
-                        .lines
-                        .iter()
-                        .find(|l| {
-                            std::ptr::eq(&s.items[l.item], i) && byte >= l.start && byte <= l.end
-                        })
-                        .map(|l| l.y);
-                    Some(line_y.unwrap_or(i.y))
-                }
-                _ => None,
-            });
-            if let Some(y) = y {
+            if let Some(y) = char_y(&s, c) {
                 goto_y(&mut s, y);
             }
         }
         self.after_move();
+    }
+
+    /// Like [`BookCanvas::goto_char`], but waits for the layout when the chapter has not been laid
+    /// out yet (the canvas has no size before the page is shown), and then wins over the position the
+    /// chapter was opened at.
+    pub fn goto_char_when_ready(&self, c: i32) {
+        let laid_out = {
+            let s = self.st.borrow();
+            s.width > 0 && s.height > 0 && s.pending_frac.is_none() && s.pending_anchor.is_none()
+        };
+        if laid_out {
+            self.goto_char(c);
+        } else {
+            self.st.borrow_mut().pending_char = Some(c);
+        }
+    }
+
+    /// Selects the characters `a..b` (what a highlight opened from a list shows).
+    pub fn select_chars(&self, a: i32, b: i32) {
+        self.st.borrow_mut().sel = Some((a.min(b), a.max(b)));
+        self.area.queue_draw();
+    }
+
+    /// The selected characters.
+    pub fn selection_range(&self) -> Option<(i32, i32)> {
+        self.st.borrow().sel
+    }
+
+    /// Whether any of the characters `a..b` is on the page that is shown.
+    pub fn range_visible(&self, a: i32, b: i32) -> bool {
+        !visible_range_rects(&self.st.borrow(), a, b).is_empty()
     }
 
     fn after_move(&self) {
@@ -1700,6 +1719,11 @@ impl BookCanvas {
                 }
             } else if let Some(f) = s.pending_frac.take() {
                 apply_fraction(&mut s, f);
+            }
+            if let Some(c) = s.pending_char.take() {
+                if let Some(y) = char_y(&s, c) {
+                    goto_y(&mut s, y);
+                }
             }
             clamp_pos(&mut s);
         }
@@ -2401,6 +2425,23 @@ fn pos_info(s: &State) -> PosInfo {
             frac: frac_of(s),
         }
     }
+}
+
+/// The `y` of the line that holds character `c` of the chapter.
+fn char_y(s: &State, c: i32) -> Option<f64> {
+    s.items.iter().find_map(|i| match &i.kind {
+        Kind::Text(t) if c >= t.char_base && c <= t.char_base + t.char_len => {
+            let lc = layout_char_of_canon(&t.text, (c - t.char_base) as usize);
+            let byte = char_to_byte(&t.text, lc) as i32;
+            let line_y = s
+                .lines
+                .iter()
+                .find(|l| std::ptr::eq(&s.items[l.item], i) && byte >= l.start && byte <= l.end)
+                .map(|l| l.y);
+            Some(line_y.unwrap_or(i.y))
+        }
+        _ => None,
+    })
 }
 
 fn goto_y(s: &mut State, y: f64) {

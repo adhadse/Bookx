@@ -13,6 +13,11 @@ pub struct EditorPrefs {
     pub minimap: bool,
     /// Scrolling the preview also scrolls the code view (the other way, code to preview, is always on). On by default.
     pub scroll_both: bool,
+    /// Marker of the one-time migration that switched `scroll_both` on: builds before it saved `false`
+    /// for everybody (that was the default then), so a file without the marker has no real choice in it.
+    /// Missing in a file = not migrated yet; the default of a new file is migrated.
+    #[serde(default)]
+    pub scroll_both_v2: bool,
     /// Draw spaces, tabs, line breaks and invisible characters (CE-338).
     pub show_whitespace: bool,
     /// Typing `;` after `&name` turns the entity into its character (CE-302). Off by default.
@@ -28,6 +33,7 @@ impl Default for EditorPrefs {
         EditorPrefs {
             minimap: true,
             scroll_both: true,
+            scroll_both_v2: true,
             show_whitespace: false,
             convert_entities: false,
             ignored_checks: BTreeMap::new(),
@@ -271,8 +277,19 @@ impl EditorPrefs {
     pub fn load_from(path: &Path) -> EditorPrefs {
         std::fs::read_to_string(path)
             .ok()
-            .and_then(|t| serde_json::from_str(&t).ok())
+            .and_then(|t| serde_json::from_str::<EditorPrefs>(&t).ok())
+            .map(EditorPrefs::migrated)
             .unwrap_or_default()
+    }
+
+    /// Applies the one-time migrations of an older file. A `scroll_both: false` written before the
+    /// marker existed was never a choice, so it becomes `true` once; later changes are respected.
+    pub fn migrated(mut self) -> EditorPrefs {
+        if !self.scroll_both_v2 {
+            self.scroll_both = true;
+            self.scroll_both_v2 = true;
+        }
+        self
     }
 
     pub fn save_to(&self, path: &Path) -> std::io::Result<()> {
@@ -285,8 +302,27 @@ impl EditorPrefs {
         )
     }
 
+    /// Loads the settings; an old file is migrated and written back at once, so the migration
+    /// runs once and the user's later choice is kept.
     pub fn load() -> EditorPrefs {
-        path().map(|p| Self::load_from(&p)).unwrap_or_default()
+        let Some(p) = path() else {
+            return EditorPrefs::default();
+        };
+        Self::load_and_persist(&p)
+    }
+
+    pub fn load_and_persist(path: &Path) -> EditorPrefs {
+        let prefs = Self::load_from(path);
+        if path.exists() {
+            let raw_marker = std::fs::read_to_string(path)
+                .ok()
+                .and_then(|t| serde_json::from_str::<EditorPrefs>(&t).ok())
+                .is_some_and(|p| p.scroll_both_v2);
+            if !raw_marker {
+                let _ = prefs.save_to(path);
+            }
+        }
+        prefs
     }
 
     pub fn save(&self) {
@@ -309,10 +345,10 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(&f, "{\"minimap\": false}").unwrap();
         assert!(EditorPrefs::load_from(&f).scroll_both, "key missing: on");
-        std::fs::write(&f, "{\"scroll_both\": false}").unwrap();
+        std::fs::write(&f, "{\"scroll_both\": false, \"scroll_both_v2\": true}").unwrap();
         assert!(
             !EditorPrefs::load_from(&f).scroll_both,
-            "explicit false is kept"
+            "explicit false after the migration is kept"
         );
         let off = EditorPrefs {
             scroll_both: false,
@@ -332,6 +368,34 @@ mod tests {
     }
 
     #[test]
+    fn an_old_false_becomes_true_once_and_a_later_choice_stays() {
+        let dir = std::env::temp_dir().join(format!("bookx-eprefs-mig-{}", uuid::Uuid::new_v4()));
+        let f = dir.join("editor.json");
+        // fresh: on, and nothing written by loading
+        assert!(EditorPrefs::load_and_persist(&f).scroll_both);
+        assert!(!f.exists(), "loading never creates the file");
+        // an older build saved false for everybody
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(&f, "{\"minimap\": false, \"scroll_both\": false}").unwrap();
+        let p = EditorPrefs::load_and_persist(&f);
+        assert!(
+            p.scroll_both && !p.minimap,
+            "false without marker becomes true"
+        );
+        // the migration was written back: the marker is in the file
+        assert!(std::fs::read_to_string(&f)
+            .unwrap()
+            .contains("\"scroll_both_v2\": true"));
+        // the user turns it off, restarts: still off
+        let mut p = EditorPrefs::load_and_persist(&f);
+        p.scroll_both = false;
+        p.save_to(&f).unwrap();
+        assert!(!EditorPrefs::load_and_persist(&f).scroll_both);
+        assert!(!EditorPrefs::load_from(&f).scroll_both);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
     fn defaults_round_trip_and_tolerate_damage() {
         let dir = std::env::temp_dir().join(format!("bookx-eprefs-{}", uuid::Uuid::new_v4()));
         let f = dir.join("editor.json");
@@ -339,6 +403,7 @@ mod tests {
         let p = EditorPrefs {
             minimap: false,
             scroll_both: true,
+            scroll_both_v2: true,
             show_whitespace: true,
             convert_entities: true,
             ignored_checks: BTreeMap::from([(

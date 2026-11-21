@@ -33,7 +33,7 @@ the *View options* popover. The smallest window is 360 × 294 px.
 | **Shelves** | your [shelves](#shelves-collections-and-tags) and smart shelves; the **+** makes a new one |
 | **Saved Searches** | searches you named; the pinned one is the virtual library |
 | **Series**, **Authors**, **Tags**, **Publishers**, **Languages**, **Ratings**, **Reading status** | click an entry to filter; the buttons on the *Series* and *Authors* rows open the series overview and the author manager |
-| **Library Health** | at the bottom: checks, duplicates, editions, books that need attention, backups, trash and history (a badge shows how many books need attention). Backups protect the catalogue, not the book files; see [Backup & Restore](backup-and-restore.md) |
+| **Library Health** | at the bottom: checks, duplicates, editions, books that need attention, backups, trash and history (a badge shows how many books need attention). Backups include your book files, covers, catalogue and notes, and copy only what is new after the first one; see [Backup & Restore](backup-and-restore.md) |
 
 The view you picked is remembered for the next start.
 
@@ -44,7 +44,7 @@ in the header is switched on, so it is clear a filter is active. The keyboard fo
 bar closes and the view shows all its books (also when you had typed a search by hand). Closing the bar clears the filter
 as well.
 
-The sidebar has its own header bar, as in Files: the **+** (add books, add a folder, news subscriptions), the library
+The sidebar has its own header bar, as in Files: the **+** (add books, add a folder, import a Calibre library or highlights), the library
 switcher, the search button and the main menu. The header bar of the books shows the name of what you look at
 (*Home*, a shelf, *Search results*), the view options (grid or table, sort, cover size) and the window buttons.
 
@@ -56,7 +56,11 @@ switcher, the search button and the main menu. The header bar of the books shows
 <figcaption markdown="1">The view uses the full width: the cards flow into two, three or four columns on a wide window.</figcaption>
 </figure>
 
-Highlights are grouped by book. A card is one or two lines of the quote drawn the way it looks on the page (its
+Highlights and bookmarks are grouped by book. A row of four buttons above the list picks what is listed: **All**,
+**Highlights**, **Notes** (highlights with a written note) or **Bookmarks**; Bookx remembers the choice. A bookmark is a card with a
+bookmark icon, its label, the chapter, the date and, when it came from an e-reader, where from; its **⋮** menu has **Open** and
+**Delete** (the message that follows has **Undo**). A bookmark that came from a device is not brought back by the next sync once you
+deleted it. The number next to *Notes & Highlights* in the sidebar counts highlights and bookmarks together. A card is one or two lines of the quote drawn the way it looks on the page (its
 colour and style), the note you wrote in its own **Note** line below it, and the chapter and date at the right next to the
 **⋮** menu (edit the note, copy, delete, colour, style; the same menu as in the reader). A tick box appears
 in the corner of a card when you hover it or focus it; ticking one starts selection: the header says **N selected** with a
@@ -67,8 +71,8 @@ at the passage.
 One toolbar row holds the search box, **Filter** and **View** (the order and the grouping). **Filter** opens a popover
 with colour, book, with or without a note, **From** and **To** (calendar buttons, *Any time* by default) and
 **Clear Filters**; a number on the button says how many filters are on, and each active filter also shows as a small
-chip under the toolbar that you can click to remove. The line at the right of the chips says how many highlights are
-shown.
+chip under the toolbar that you can click to remove. The line at the right of the chips says how many highlights (or
+bookmarks) are shown.
 
 ## Views
 
@@ -94,7 +98,7 @@ shown.
   selection is cleared. For one book it shows the cover, title, progress, *Read*, *Edit Metadata*, the star for
   Favourites, format, language, tags and comments, and a *Properties* button with every detail (path, identifiers,
   sources, annotations). For several books it shows how many are selected and the actions for all of them: bulk
-  edit, fetch metadata, favourites, mark read or unread, e-mail and remove. In a narrow window the panel would cover the
+  edit, fetch metadata, favourites, mark read or unread, e-mail and move to the Trash. In a narrow window the panel would cover the
   books, so the selection bar at the bottom has a *Details* button instead. The **Details** button at the right end of
   the header (++shift+f9++) shows or hides the panel; Bookx remembers what you chose, so a panel you closed stays closed.
 - **Continue Reading banner.** It is about the book you read last, and it changes with the situation:
@@ -161,7 +165,7 @@ The same as in Files:
 
 While a book is selected the title of the header becomes **N selected** and a **Cancel** button appears at its start
 (also ++escape++). For two or more books a bar at the bottom offers *Edit Metadata*, *Add to Shelf*, *Send to Device*,
-*Convert* and *Remove*; a single book keeps *Read*. In a window narrower than 600 sp the extra actions move into a **More**
+*Convert* and *Move to Trash*; a single book keeps *Read*. In a window narrower than 600 sp the extra actions move into a **More**
 menu (the three dots) so none is out of reach.
 
 <figure markdown="1">
@@ -217,16 +221,17 @@ The **Library** menu next to *View options* in the header holds *Reading Statist
 *Import Calibre Library* and *Import Highlights* are in the **+** menu; annotations are exported from *Notes &
 Highlights* → *Export*.
 
-Adding books (*Add Books*, *Add from the Web*, *Add Folder*, which also adds the books in its subfolders and says how many it added, *Add Audiobook*, the two imports) is in the **+** menu (and on the welcome page). *Saved Searches* are a group of the sidebar. *Series* and *Notes &
-Highlights* are in the sidebar. *Find Duplicates*, *Editions* and *Needs Attention* are pages of **Library
-Health** (next section).
+Adding books (*Add Books*, *Add from the Web*, *Add Folder*, which also adds the books in its subfolders and says how many it added, *Add Audiobook*, the two imports) is in the **+** menu (and on the welcome page). *Saved Searches* are a group of the sidebar. *Series* and *Authors* have a button on their row in the sidebar (the series overview and the author manager), and
+*Notes & Highlights* is a sidebar entry. *Duplicates*, *Editions* and *Needs Attention* are pages of **Library
+Health** (next section). *Export All Annotations* is only in the command palette (++ctrl+k++); use *Export* in *Notes &
+Highlights* or the book's menu otherwise.
 
 ## Library Health
 
-Open it from the sidebar or the main menu. Its pages are in a sidebar:
+Click **Library Health** at the bottom of the sidebar (or choose it in the main menu). Its pages are in a sidebar:
 
 - **Health**: the check of the database and the files (one *Check Library* row with a *Check Now* button; the list of
-  problems appears after the first check), the import folder, tidy names. The library folder row has an *Open* button.
+  problems appears after the first check), *Library files* (where the books are kept), the import folder, tidy names. The library folder row has an *Open* button.
 - **Duplicates**: copies of the same book, with a choice of which to keep (merge).
 - **Editions**: books that are the same work in other formats or editions; merge them as formats.
 - **Needs Attention**: books without an author, with a file-name title, no cover or no language, and identifiers that
@@ -370,7 +375,7 @@ you how many proposals are left. Anything that would replace a value waits for y
 
 ## Series
 
-Menu → *Series* lists every series with its books in reading order, how many you have read ("2 of 5 read"), the
+Click the button on the **Series** row of the sidebar (*Series overview*) to see every series with its books in reading order, how many you have read ("2 of 5 read"), the
 numbers that are missing ("missing #3, #4") and things worth a look (two books with the same number, books without
 a number). *Show* filters the library to the series; *Fetch Metadata* looks up just those books, and the
 review table then suggests series names and numbers from the sources.
@@ -384,7 +389,7 @@ review table then suggests series names and numbers from the sources.
 </figure>
 
 
-Menu → *Editions & Formats* groups books with the same title (ignoring "The", subtitles and punctuation) and the same
+Open *Library Health* from the sidebar and choose **Editions**: it groups books with the same title (ignoring "The", subtitles and punctuation) and the same
 author, whatever the edition: expand a work to see its editions with publisher, date, ISBN, size and formats. A book
 that holds several formats is listed too, with all of them (`epub + azw3`).
 
@@ -410,7 +415,7 @@ column.
 
 Books are grouped when they:
 
-* were **linked by you** (select two or more books → book menu → *Organise* → *Link as Editions*; linking turns the
+* were **linked by you** (select two or more books, right-click and choose *Editions* → *Link as Editions*; linking turns the
   grouping on);
 * share an **ISBN** or a work identifier (for example a Goodreads or Open Library work id);
 * or have the same **title and author**: "The" and punctuation are ignored, a subtitle may be missing on one of them,
@@ -423,7 +428,7 @@ while they have one language between them.
 
 What you can do with a card:
 
-* The **badge** (or book menu → *Organise* → *Show Editions*) opens the list of editions with the format, language,
+* The **badge** (or right-click the book → *Editions* → *Show Editions*) opens the list of editions with the format, language,
   size, publisher and reading progress of each, and four buttons per edition: **Open**, **Send** (to the connected
   device), **Open this edition first** and **Unlink**. The list is a button group you reach with *Tab*; *Esc* closes it.
   The details panel shows the same list under the *Read* button.
@@ -434,7 +439,7 @@ What you can do with a card:
 * **Unlink** takes one edition out of the card, and keeps it out: it is not grouped automatically again until you link
   it again. *Unlink All Editions* in the book menu splits the whole card.
 * **Selecting a card selects all its editions**, so bulk actions (*Mark as Read*, favourites, shelves, ratings, tags,
-  *Send*, *Convert*, *Remove*) reach every edition; *Remove* asks with the number of books. *Edit Metadata*, *Properties*
+  *Send*, *Convert*, *Move to Trash*) reach every edition. *Edit Metadata*, *Properties*
   and *Read* use the edition on top.
 * The sidebar counts, *3 books* in the header and the search still count and find **books**, not cards: searching for
   one publisher shows just the matching edition.
@@ -444,14 +449,14 @@ What you can do with a card:
 A book can hold **several format files** (EPUB, AZW3, PDF…) and still be one book in the library, with one cover, one
 reading position and one set of notes.
 
-* **Merge as formats of one book**: in *Editions & Formats* press *Merge as Formats* on a work, or select two or more
-  books and use the book menu → *Merge as Formats of One Book* (the first selected book stays). A preview shows the
+* **Merge as formats of one book**: open *Library Health* (bottom of the sidebar), go to *Editions* and press *Merge as
+  Formats* on a work, or select two or more books and right-click → *Editions* → *Merge as Formats of One Book* (the first selected book stays). A preview shows the
   result (`Dune: epub + azw3`), which books are merged, which are skipped and why, and what is not carried over. Books
   that have the same format are not merged this way, because they are copies or editions: use
-  [Find Duplicates](#duplicates). The collections, the reading status and the furthest reading progress of the merged
+  [Duplicates](#duplicates). The collections, the reading status and the furthest reading progress of the merged
   books move to the book that stays. Highlights, bookmarks and the reading position of the merged copies stay in the
   library's Trash record; **Undo** brings the merged books back exactly as they were.
-* **Find Duplicates** offers *Merge Formats* instead of deleting when the copies are in different formats.
+* **Duplicates** (in Library Health) offers *Merge Formats* instead of deleting when the copies are in different formats.
 * **Add as another format**: when you import a file that is another format of a book you already have (same
   identifier, or same title and author, in a format the book lacks), Bookx asks: *Add as Another Format*, *Import as
   Separate Books* or *Skip*. Adding copies the file next to the book (in a linked library it keeps pointing at the
@@ -478,7 +483,7 @@ are carried along, sent and opened with other applications.
 </figure>
 
 
-Menu → *Authors* lists people instead of spellings: `Mark Twain`, `Twain, Mark` and a pen name you merged are one
+The button on the **Authors** row of the sidebar (*Manage authors*) lists people instead of spellings: `Mark Twain`, `Twain, Mark` and a pen name you merged are one
 entry with all their books. Expand an entry to see the spellings.
 
 * **Rename** gives every book that lists one of the spellings the new name. The window first says how many books
@@ -512,7 +517,7 @@ DRM*. A protected file in another format is not imported and the same message is
 </figure>
 
 
-Menu → *Reading Trackers* exchanges reading data with Goodreads, StoryGraph and Hardcover.
+The **Library** menu in the header bar (next to *View options*) → *Reading Trackers* exchanges reading data with Goodreads, StoryGraph and Hardcover.
 
 * **Import**: choose the CSV export of the service. Books are matched by ISBN, then by title and author; the window
   tells you how many rows matched and how many would change before anything is written. Imported are the rating
@@ -537,7 +542,7 @@ Menu → *Reading Trackers* exchanges reading data with Goodreads, StoryGraph an
 Audiobooks are books of the library that Bookx plays itself: see [Audiobooks](audiobooks.md) (adding a folder, an
 `.m4b` or a zip, the player, speed, sleep timer, bookmarks).
 
-Menu → *Audiobooks* is for the other case: audio you already have next to your e-books. It finds `.m4b` files and
+Library menu → *Audiobooks* is for the other case: audio you already have next to your e-books. It finds `.m4b` files and
 folders of audio parts (`.mp3`, `.m4a`, `.ogg`, `.opus`, `.flac`) in your library folder and in folders you add, and
 pairs them with your books: an audiobook in a book's own folder, one with the same ISBN in its name, or one named like
 the book and its author (`Frank Herbert - Dune.m4b`). Bookx searches in the background (a spinner shows meanwhile). Every pairing has a tick box, all on at first: untick a
@@ -558,8 +563,8 @@ they are.
 
 
 A book needs attention when it has no author, a title that looks like a file name (`my_book_final`, `scan_0042.pdf`),
-no cover or no language. The sidebar of the browse panel shows *Needs Attention* with the number of such books; the
-search language knows them as `weak:` (`weak:author`, `weak:title`, `weak:cover`, `weak:language`). Menu →
+no cover or no language. *Library Health* at the bottom of the sidebar shows a badge with the number of such books; the
+search language knows them as `weak:` (`weak:author`, `weak:title`, `weak:cover`, `weak:language`). *Library Health* →
 *Needs Attention* lists them with the reasons, offers *Fetch Metadata* for all of them, and suggests identifier
 cleanups: `ISBN: 978-0-441-17271-9` becomes `isbn:9780441172719`, an ISBN-10 becomes an ISBN-13, store links and
 `urn:isbn:` forms become plain identifiers, and double entries are removed. A wrong ISBN check digit is only
@@ -577,7 +582,7 @@ pointed out. Nothing changes until you press *Clean Up*, and it can be undone.
 The **?** button of the search bar (*Search Tips*) explains the search words and has *Save This Search*; the **Saved Searches** group of the sidebar lists them, and its ⋯ button opens the window that keeps searches under a name. Type the name and a search (the window starts with what is in
 the search bar) and press *Save Search*. Then:
 
-- Click a saved search in the list, or in the **Saved Searches** group of the browse panel, to run it.
+- Click a saved search in the list, or in the **Saved Searches** group of the sidebar, to run it.
 - Write `search:name` (or `vl:name`) in any search to use it as a term: `search:"to read" tag:fantasy`. Saved searches
   can use each other, and `-search:name` excludes one: `search:a OR search:b`, `-vl:Finished`.
 - Switch on the pin button of a saved search to make it a **virtual library**: every view of the library, and every
@@ -608,12 +613,11 @@ spreading them over its alternatives.
 </figure>
 
 
-**Shelves** hold books you put there by hand; a book can be on several. They are in the browse panel under *Shelves*
-(open it with the sidebar button).
+**Shelves** hold books you put there by hand; a book can be on several. They are in the sidebar under *Shelves*.
 
-- **New shelf**: the **+** button of the *Shelves* row, or *Add to Shelf → New Shelf* in the book menu (which also
+- **New shelf**: the **+** button of the *Shelves* row in the sidebar, or *Add to Shelf* → *New Shelf* in the book menu (which also
   puts the selected books on it).
-- **Put books on a shelf**: drag them onto the shelf in the browse panel (a drag of a selected book takes the whole
+- **Put books on a shelf**: drag them onto the shelf in the sidebar (a drag of a selected book takes the whole
   selection), or choose *Add to Shelf* in the book menu (right-click).
 - **Open** a shelf by clicking it; the count beside it is its number of books. Under the hood a shelf is the search
   `shelf:"Name"`, so it combines with other terms (`shelf:"To read" tag:fantasy`, `-shelf:Finished`).
@@ -624,7 +628,7 @@ spreading them over its alternatives.
   (marked with a magnifier) with their number of books.
 
 The order of the shelves and of the books on them is kept in `shelves.json` next to the settings file, per library.
-Tags are the other way to group books. Add them in the metadata dialog or in bulk, then filter with the browse panel or
+Tags are the other way to group books. Add them in the metadata dialog or in bulk, then filter with the **Tags** group of the sidebar or
 `tag:`. News books made by [subscriptions](news-and-web.md) are tagged *News*.
 
 ## Several libraries
@@ -636,7 +640,7 @@ Tags are the other way to group books. Add them in the metadata dialog or in bul
 </figure>
 
 
-The button at the left of the header shows the library in use. Click it to switch:
+The button at the left of the sidebar's header shows the library in use. Click it to switch:
 
 - Click another library to open it. The list remembers every library you opened; the one in use is ticked.
 - **Open Folder as Library** adds a folder that already holds a Bookx library (or an empty one), named after the
@@ -696,14 +700,14 @@ fields come from the catalogue, so fix wrong titles or dates first. The same fro
 </figure>
 
 
-Menu → *Find Duplicates* groups copies of the same book. Pick the one to keep and merge: metadata, highlights,
+*Library Health* → *Duplicates* groups copies of the same book. Pick the one to keep and merge: metadata, highlights,
 bookmarks and reading progress are united. When the copies are in different formats (an EPUB and an AZW3 of the
 same book), the button says *Merge Formats* and keeps every file in one book instead (see
 [formats of one book](#formats-of-one-book)).
 
 ## Library files and layout
 
-*Preferences → Library files* decides where the books are kept:
+Open *Library Health* from the bottom of the sidebar; on the *Health* page the **Library files** group decides where the books are kept:
 
 - **Author/title folders** (default): `Author/Title (id)/Title - Author.epub`.
 - **One flat folder**.
@@ -722,14 +726,14 @@ Changing the layout shows what will move first, and it either moves everything o
 </figure>
 
 
-Menu → *Library Health* is the safety net of the library.
+*Library Health* (bottom of the sidebar, or the main menu) is the safety net of the library.
 
-- **Backups** of the catalogue: automatic snapshots at start-up and exit, *Back up now*, copies to other places (drives,
+- **Backups** of your books, covers, catalogue and notes: automatic snapshots at start-up and exit, *Back up now*, copies to other places (drives,
   network shares, cloud drives, WebDAV; optionally encrypted) and *Restore* from any of them, which first saves the
   current catalogue. See [Backup and restore](backup-and-restore.md).
 - **Library check**: database integrity, missing files and covers, book files nobody lists, and optionally books
   whose metadata differs from their file. Each problem comes with a fix.
-- **Import Calibre Library** (see [Getting started](getting-started.md#importing-a-calibre-library)).
+- To bring in a Calibre library use the **+** menu → *Import Calibre Library* (see [Getting started](getting-started.md#importing-a-calibre-library)).
 - **Watched import folder** with a review queue. Nothing is added on its own; files must stay unchanged for a few
   seconds before they are offered.
 - **History and Undo**: imports, deletions, edits and layout changes can be taken back.
@@ -738,7 +742,7 @@ Menu → *Library Health* is the safety net of the library.
 
 ### Exporting as a Calibre library
 
-Menu → *Export as Calibre Library* (or `bookx-cli library export-calibre DIR`) writes your library as a Calibre
+Library menu → *Export as Calibre Library* (or `bookx-cli library export-calibre DIR`) writes your library as a Calibre
 library: one `Author/Title (id)/` folder per book with every format file, `cover.jpg` and `metadata.opf`, and a
 `metadata.db` with titles, authors, tags, series, publisher, description, rating, language, identifiers, dates and
 the formats. Choose an empty folder (or one that does not exist yet); Bookx refuses a folder that has files in it
@@ -782,8 +786,166 @@ All of this is also available as `bookx-cli library backup | check | trash | und
 [Command line](command-line.md).
 
 !!! note "Limitations"
-    - The catalogue database can store collections, but the app has no screen for them yet. Use tags to group
-      books. There are no virtual libraries.
+    - Shelves hold books by hand and saved searches act as smart shelves or virtual libraries; there are no nested
+      shelves.
     - Locks from another computer are never taken over automatically; a lock left by a crashed Bookx on the same
       machine is.
     - Library check and name tidying report; always look at the preview before applying fixes.
+
+## Questions and answers
+
+??? question "How do I add books?"
+    Click the **+** button at the top of the sidebar and choose *Add Books* (++ctrl+o++), or drag files onto the
+    window. Bookx reads the metadata and cover of every file, converts other formats to EPUB on the way in and skips
+    duplicates. A large import shows a progress page and runs as a background job.
+
+??? question "How do I add a whole folder of books?"
+    **+** → *Add Folder*. It also adds the books in the subfolders and tells you how many it added. Dropping a folder
+    on the window does the same.
+
+??? question "How do I save a web page as a book, or add a book from a link?"
+    **+** → *Add from the Web* and paste the address, or copy the address and press ++ctrl+v++ on Home: the window
+    opens with it filled in. A page becomes a readable book with its images; a feed address becomes a news book. See
+    [News and Web](news-and-web.md).
+
+??? question "How do I import my Calibre library?"
+    **+** → *Import Calibre Library*, pick the Calibre folder (the one with `metadata.db`) and choose whether to copy
+    the files or keep them in the Calibre folder. A report tells you what was imported and what was skipped. See
+    [Getting started](getting-started.md#importing-a-calibre-library). To go the other way, use the **Library** menu
+    next to *View options* → *Export as Calibre Library*.
+
+??? question "How do I change where the library is kept?"
+    Open the main menu (the hamburger button, ++f10++) → *Preferences* → *Library* and press *Change* next to *Library
+    folder*. To keep several libraries, use the library switcher at the left of the sidebar's header: *New Library*
+    or *Open Folder as Library*. To change how the books are filed *inside* the library (by author and title, flat, a
+    template or linked in place), use *Library Health* → *Health* → *Library files*.
+
+??? question "How do I use more than one library?"
+    Click the library name at the left of the sidebar's header. The list shows every library you opened; click one to
+    switch. *New Library* and *Open Folder as Library* are at the bottom, and the **⋮** button of an entry renames it
+    or removes it from the list (your files stay).
+
+??? question "How do I see my reading statistics or set a reading goal?"
+    Click the **Library** button in the header bar (next to *View options*) and choose *Reading Statistics*. It
+    shows today, the streak, the last 7 days, your most read books and the year. Under *Goals*, switch on a *Daily
+    goal* (minutes a day) or a *Yearly goal* (books a year) and set the amount.
+
+??? question "How do I find a word I looked up, or study my vocabulary?"
+    **Library** menu → *Vocabulary* lists the words you saved while reading. See [Reading](reading.md).
+
+??? question "How do I send a book to my e-reader?"
+    Connect the e-reader; its name appears in the header bar. Right-click a book → *Send To* → *Send to Device*, or
+    open the **Devices** button, or main menu → *Devices*. Everything about devices (formats, Kobo and Kindle
+    behaviour, syncing) is on [Devices and sharing](devices-and-sharing.md). *Check Before Sending* in the same
+    submenu tells you what would go wrong first.
+
+??? question "How do I make shelves (collections)?"
+    In the sidebar press the **+** on the *Shelves* row and give the shelf a name. Then drag books onto it, or
+    right-click books → *Add to Shelf*. A book can be on several shelves; deleting a shelf never deletes books. Use
+    the **⋮** button of a shelf to rename, delete or reorder it. A [saved search](#saved-searches-and-virtual-libraries)
+    acts as a smart shelf that fills itself.
+
+??? question "How do I edit the metadata of one book?"
+    Select it and press *Edit Metadata* in the details panel, or right-click → *Edit* → *Edit Metadata* (++ctrl+e++).
+    Title, authors, series, tags, rating, description, cover and more are there. Changes are written into the EPUB
+    too.
+
+??? question "How do I edit the metadata of many books at once?"
+    Select them (++ctrl+click++, ++shift+click++ or ++ctrl+a++), then press *Edit Metadata* in the bar at the bottom
+    or in the details panel. You can set author, series, publisher, language or rating on all of them and add or
+    remove tags.
+
+??? question "How do I fetch metadata and covers from the internet?"
+    For one book, press *Fetch Metadata* inside *Edit Metadata*. For many, select the books and right-click → *Edit*
+    → *Fetch Metadata*: Bookx shows a review table and writes nothing until you press *Apply*. To do it for every new
+    import automatically (empty fields only), switch on *Preferences* → *Library* → *Fetch metadata for new books*.
+
+??? question "How do I find and merge duplicates?"
+    Open *Library Health* (bottom of the sidebar) → *Duplicates*. Pick the copy to keep and merge; highlights,
+    bookmarks and progress are combined. Copies in different formats are merged as formats of one book instead.
+
+??? question "How do I delete a book, and how do I undo it?"
+    Right-click → *Move to Trash* (or use the button in the bar at the bottom). No question is asked; a message appears
+    with **Undo**. Later, *Library Health* → *Trash* restores deleted books or empties the trash for good. Edits,
+    imports and layout changes can be taken back from *Library Health* → *Backups* (the history).
+
+??? question "How do I switch between grid and table, and change the cover size or columns?"
+    Click *View options* in the header bar (the button's icon shows the current view). There you pick grid or
+    table, the sort field and its direction, and the cover size. In the table, *Columns* chooses what to show and *Fit
+    to Window* goes back to automatic.
+
+??? question "How do I sort the books?"
+    *View options* → *Sort by*, with a button for the direction. In the table, click a column header (again to
+    reverse).
+
+??? question "How do I show or hide the details panel?"
+    Press the **Details** button at the right end of the header (++shift+f9++). The panel opens by itself when you
+    select a book; Bookx remembers if you closed it.
+
+??? question "How do I search, and how do I save a search?"
+    Press ++ctrl+f++ and type; results appear as you type. Click the **?** button in the search bar for the search
+    words (`author:`, `tag:`, `rating:>=4`, `status:unread`, `text:` for inside the books) and *Save This Search* to
+    keep it under a name. Saved searches are listed in the sidebar under *Saved Searches*; pin one to make it a
+    virtual library.
+
+??? question "How do I find only the books I have not read?"
+    Type `status:unread` in the search bar or click the **Reading status** group of the sidebar.
+
+??? question "How do I mark a book as read or favourite it?"
+    Right-click → *Reading Status* → *Mark as Read* / *Mark as Unread*. For a favourite, press the star in the details
+    panel, right-click → *Add to Favourites*, or press ++ctrl+d++. The sidebar's *Favourites* lists them.
+
+??? question "How do I rate books and tag them?"
+    Select a book and click the stars in the details panel; type a tag in *Add a tag* and press ++enter++. With
+    several books selected the panel adds a tag or a rating to all of them.
+
+??? question "How do I export my notes and highlights?"
+    Right-click a book → *Export Annotations* → a format, or click *Notes & Highlights* in the sidebar and press
+    *Export* (tick cards first to export only those). Markdown, HTML, JSON, text, Obsidian, Kindle clippings, Anki
+    and Readwise are offered. See [Highlights and notes](annotations.md).
+
+??? question "How do I bring in highlights from my Kindle, Kobo or KOReader?"
+    **+** → *Import Highlights*, then choose the files or the device's folder. You see a review before anything is
+    added. See [Highlights and notes](annotations.md#import-highlights).
+
+??? question "How do I export citations for a paper?"
+    For a few books, select them and right-click → *Send To* → *Copy Citation* (APA text). For a bibliography, use the
+    **Library** menu → *Export Citations* and pick BibTeX, RIS, CSL JSON or APA; it covers the whole library or the
+    books your current search shows.
+
+??? question "How do I back up my library?"
+    *Library Health* → *Backups*. Bookx takes a quick snapshot of the catalogue when it starts and when it closes. Add a
+    place (another drive, a network share, a cloud folder or WebDAV) and press *Back Up*: your book files, covers,
+    catalogue and notes are copied, the first time everything and afterwards only what is new. See
+    [Backup and restore](backup-and-restore.md).
+
+??? question "How do I convert a book to another format?"
+    Right-click → *Convert To* and choose the format. See [Converting and exporting](converting.md).
+
+??? question "How do I put a book's other formats together?"
+    Select the books and right-click → *Editions* → *Merge as Formats of One Book*. A preview shows the result and
+    **Undo** brings the books back.
+
+??? question "How do I find books that need fixing (no cover, no author)?"
+    *Library Health* → *Needs Attention* lists them with the reasons and offers *Fetch Metadata* for all. A badge on
+    *Library Health* shows how many there are.
+
+??? question "How do I listen to an audiobook?"
+    **+** → *Add Audiobook* and choose a folder or a file. See [Audiobooks](audiobooks.md).
+
+??? question "How do I change the language of the interface?"
+    Main menu → *Preferences* → *General* → *Interface language*. *System language* follows your desktop. See [Translating Bookx](translating.md) to help with a language.
+
+??? question "How do I find a command or setting quickly?"
+    Press ++ctrl+k++ to open the command palette and type a few letters: it finds commands, books and settings. The
+    main menu → *Keyboard Shortcuts* lists every key.
+
+??? question "How do I hide the *Continue Reading* banner?"
+    *Preferences* → *Library* → *Continue reading banner*: *Large*, *Compact*, *Hidden* or *Adaptive* (the default).
+
+??? question "Why is my library opened read-only?"
+    Another running Bookx has it open (the message says who). Close the other copy and reopen. A library on a network
+    share or a synced folder shows a warning, because two computers writing the same database can damage it.
+
+??? question "Does Bookx remove DRM?"
+    No. Bookx tells you that a file is protected and does not open it. See [Copy protection](#copy-protection).

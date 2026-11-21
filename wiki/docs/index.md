@@ -156,7 +156,7 @@ in step with KOReader. Device support is new: so far it has been tried on real h
 
     ---
 
-    Catalogue snapshots, restore, a trash and an undo list. Your book files need your normal document backup. [Backup and restore](backup-and-restore.md)
+    Backups of your books, covers and notes to drives, shares and clouds that copy only what is new, restore on a new computer, a trash and an undo list. [Backup and restore](backup-and-restore.md)
 
 - :material-swap-horizontal: **Convert**
 

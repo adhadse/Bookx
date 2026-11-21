@@ -41,7 +41,7 @@ The reading area shows a visible focus ring when you use the keyboard.
 
 ## Reading ruler
 
-*Reading Ruler* (a check item in the main menu of the reader, or the command palette) dims the page except for a band of one to five
+*Reading Ruler* (a check item in the reader's Main Menu, the hamburger at the far right of the header bar, or the command palette) dims the page except for a band of one to five
 lines, which keeps your eyes on the line you read. The band follows the pointer; ++alt+up++ and ++alt+down++ move it one
 line at a time (the first press turns it on). On a touch screen, drag the band with a finger, or tap the page to put the
 band there (the tap still turns the page). *Preferences → Reading → Reading ruler* sets the number of lines and how
@@ -93,3 +93,27 @@ left). Vertical writing (Japanese, Chinese) is not supported yet.
   does has a key (see [Comics and manga](reading.md#comics-and-manga)).
 - Links inside the page text cannot be followed with the keyboard yet (they have no focus); the contents list and the
   search are reachable with ++tab++.
+
+## Questions and answers
+
+??? question "How do I read a book with a screen reader?"
+    Open the book and turn pages with ++page-down++ and ++page-up++. The text of the visible page is exposed to Orca. If Orca's
+    browse mode takes the arrow keys, toggle focus mode. See [Screen reader](#screen-reader).
+
+??? question "How do I use Bookx without a mouse?"
+    Open books with ++ctrl+k++, turn pages with the arrow keys, select with ++shift+right++ and friends, and press ++enter++ for the
+    actions of the selection. The table in [Reading and selecting with the keyboard only](#reading-and-selecting-with-the-keyboard-only)
+    lists the keys, and [Keyboard shortcuts](shortcuts.md) has the rest.
+
+??? question "How do I make the text bigger?"
+    In the reader press ++ctrl+plus++, or use the size buttons in the **Text Appearance** popover (the text-format button in
+    the header bar). The rest of the interface follows your desktop's text scaling.
+
+??? question "How do I help my eyes follow a line?"
+    Open the reader's Main Menu and tick **Reading Ruler**; its number of lines and dimming are in **Preferences → Reading**.
+
+??? question "How do I get high contrast or fewer animations?"
+    Turn them on in your desktop's accessibility settings; Bookx follows them. See [Contrast, motion and size](#contrast-motion-and-size).
+
+??? question "How do I reach any command quickly?"
+    Press ++ctrl+k++ (or ++ctrl+shift+p++) and type a few letters of the command, a book or a setting.

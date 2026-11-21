@@ -107,12 +107,12 @@ LAN address) only when the proxy runs on another machine, and then firewall the 
 off when the proxy ends the HTTPS connection. `bookx-cli serve` does not offer the KOReader highlights-and-notes sync;
 that part is only in the app.
 
-**In the app** (*Preferences → Sync → Advanced*): choose whether the server is reachable from *this computer only* or from *all
-interfaces*. For a proxy on the same computer choose **this computer only**, leave HTTPS off and point the proxy at
-`127.0.0.1` and the port shown in the window. If the proxy is on another machine, you must choose *all interfaces*;
+**In the app** (main menu → Preferences → Sync, then the collapsed **Advanced** row): **Allow other devices on the network** decides whether the server is reachable from *this computer only* (off) or from *all
+interfaces* (on). For a proxy on the same computer leave it off, leave HTTPS off and point the proxy at
+`127.0.0.1` and the port shown there. If the proxy is on another machine, you must switch it on;
 Bookx has no setting for a single LAN address, so use the computer’s firewall to allow only the proxy (see below).
 
-**MCP**: `bookx-cli mcp --http 127.0.0.1:8765 --token "$(openssl rand -hex 24)"`. See [AI assistants](ai-assistants.md).
+**MCP**: `bookx-cli mcp --http 127.0.0.1:8765 --token "$(openssl rand -hex 24)"`. See [MCP](ai-assistants.md).
 
 ## Caddy (recommended)
 
@@ -254,7 +254,7 @@ Do not add a `stripPrefix` middleware. For a Bookx container, put the same rule 
 
 ## Accounts, headers and limits
 
-* **Keep Bookx’s accounts on.** Do not turn off the library password under Preferences → Sync → Advanced or leave `bookx-cli serve` without `--user`
+* **Keep Bookx’s accounts on.** Do not turn off the library password under main menu → Preferences → Sync → Advanced or leave `bookx-cli serve` without `--user`
   because "the proxy has a login". Do not let the proxy add its own `Authorization` header for Bookx either. The sync
   account (the key that KOReader sends) must reach Bookx unchanged.
 * **Pass `Host`, `X-Forwarded-For` and `X-Forwarded-Proto`.** Bookx does not use them for decisions, but your logs and the

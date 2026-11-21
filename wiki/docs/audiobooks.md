@@ -6,13 +6,13 @@ are not supported and never will be.
 
 ## Adding an audiobook
 
-The **+** menu has **Add Audiobook**. It asks for a folder or a file:
+Click the **+** button at the top of the sidebar and choose **Add Audiobook**. It asks for a folder or a file:
 
 | You have | Choose | What Bookx does |
 |---|---|---|
-| A folder of chapters (`01 - The Gate.mp3`, `02 - …`) | **Choose Folder…** | Reads every audio file in it (also in sub-folders such as `CD1`, `CD2`), puts them in natural order (`Chapter 2` before `Chapter 10`) and makes one book |
-| A single `.m4b` (or one long `.mp3`) | **Choose File…** | Reads its chapters from the file |
-| A `.zip` of chapters | **Choose File…** | Unpacks the audio into Bookx's data folder (`~/.config/bookx/audiobooks/unpacked`) and makes one book |
+| A folder of chapters (`01 - The Gate.mp3`, `02 - …`) | **Choose Folder** | Reads every audio file in it (also in sub-folders such as `CD1`, `CD2`), puts them in natural order (`Chapter 2` before `Chapter 10`) and makes one book |
+| A single `.m4b` (or one long `.mp3`) | **Choose File** | Reads its chapters from the file |
+| A `.zip` of chapters | **Choose File** | Unpacks the audio into Bookx's data folder (`~/.config/bookx/audiobooks/unpacked`) and makes one book |
 
 Dragging a folder of audio, or an audio file or zip, onto the library window does the same.
 
@@ -88,13 +88,13 @@ The saved state is in `~/.config/bookx/audiobooks/` (one small file per book).
 
 ## Listening statistics
 
-The statistics window has a **Listening** group: time listened today, in the last 7 days and in total, the audiobooks
+Click the **Library** button in the header bar (next to *View options*) and choose *Reading Statistics*; its **Listening** group shows time listened today, in the last 7 days and in total, the audiobooks
 finished this year, and the audiobooks you listened to most. Listening is counted by the clock (an hour at 2× is an
 hour); it is kept apart from reading time.
 
 ## An audiobook for an e-book you own
 
-An audiobook that is linked to a book (Menu → *Audiobooks*, see [the library](library.md#audiobooks)) also plays in
+An audiobook that is linked to a book (**Library** menu → *Audiobooks*, see [the library](library.md#audiobooks)) also plays in
 Bookx: select the book and use **Play in Bookx** in the details panel. Its place and bookmarks are kept separately from
 your reading place in the e-book. Bookx does not follow one place across the e-book and the audiobook.
 
@@ -108,3 +108,29 @@ your reading place in the e-book. Bookx does not follow one place across the e-b
 * The sleep timer does not fade the volume out; the sound stops.
 * Sound goes through `pacat` (PulseAudio/PipeWire), `pw-cat` or `aplay`, like read aloud does. If none is installed, the
   player shows an error when you press play.
+
+## Questions and answers
+
+??? question "How do I add an audiobook?"
+    Click **+** at the top of the sidebar → *Add Audiobook*, then *Choose Folder* (chapters as separate files) or
+    *Choose File* (an `.m4b`, a long `.mp3` or a `.zip`). You can also drag the folder or file onto the library.
+
+??? question "How do I play it?"
+    Double-click the audiobook, or select it and press *Read* (for a linked e-book, *Play in Bookx* in the details
+    panel). The back arrow returns to the library and saves your place.
+
+??? question "How do I set a sleep timer or change the speed?"
+    Both are in the player: the speed button (0.5× to 3×) and the clock button (5 minutes to 1 hour, or end of chapter).
+
+??? question "How do I add a bookmark?"
+    Open the bookmark icon in the player's header, type an optional note and press *Add*. Pick a bookmark to jump back.
+
+??? question "I already have the audiobook of an e-book. How do I connect them?"
+    **Library** menu (next to *View options*) → *Audiobooks*. Bookx pairs audio it finds next to your books; untick wrong
+    pairs and press *Link Selected*.
+
+??? question "How do I find only the audiobooks?"
+    Click **Audiobooks** in the sidebar or type `audiobook:yes` in the search bar.
+
+??? question "Can I send an audiobook to my e-reader?"
+    No: an e-reader receives only the small page that stands for it. Copy the audio files yourself.

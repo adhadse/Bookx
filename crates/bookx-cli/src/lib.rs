@@ -6,6 +6,7 @@
 //! `1` the command ran but found problems (for example `check` found errors),
 //! `2` usage or runtime failure.
 
+mod backup;
 mod catalogue;
 mod device_check;
 mod extras;
@@ -138,6 +139,10 @@ enum Cmd {
     },
     /// Serve the library over OPDS / the web (and KOSync)
     Serve(ServeArgs),
+    /// Back up the library (book files, covers, catalogue, notes) to a drive, share, cloud-drive
+    /// folder or WebDAV address, incrementally; list, restore and check backups
+    #[command(subcommand)]
+    Backup(backup::BackupCmd),
     /// Fix highlights: `highlights repair` corrects colours and styles from what the e-readers say
     #[command(subcommand)]
     Highlights(highlights::HighlightsCmd),
@@ -439,6 +444,7 @@ fn dispatch(
             migrate_note(root, err)?;
             highlights::run(c, root, out)
         }
+        Cmd::Backup(c) => backup::run(c, root, out, err),
         Cmd::Mcp(a) => mcp::run(a, root, env, out, err),
     }
 }

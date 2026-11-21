@@ -288,7 +288,7 @@ pub const COMMANDS: &[Cmd] = &[
         "edit.code::code"
     ),
     c!(
-        "editor.insert-link",
+        capture "editor.insert-link",
         N_("Insert Hyperlink"),
         &["<Control>k"],
         "link href anchor",
@@ -567,6 +567,20 @@ pub const COMMANDS: &[Cmd] = &[
 mod tests {
     use super::*;
     use crate::shortcuts::{self, Group, Shortcuts};
+
+    /// Ctrl+K is also the application's palette key; in the editor it stays Insert Hyperlink, which
+    /// only wins because its controller runs in the capture phase (session scenario editor_palette_keys).
+    #[test]
+    fn ctrl_k_is_insert_hyperlink_and_runs_before_the_app_palette_key() {
+        let link = COMMANDS
+            .iter()
+            .find(|c| c.id == "editor.insert-link")
+            .unwrap();
+        assert_eq!(link.defaults, &["<Control>k"]);
+        assert!(link.capture);
+        let pal = COMMANDS.iter().find(|c| c.id == "editor.palette").unwrap();
+        assert_eq!(pal.defaults, &["<Control><Shift>p"]);
+    }
 
     #[test]
     fn ids_are_unique_and_prefixed_and_keys_valid() {

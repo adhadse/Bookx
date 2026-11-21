@@ -107,6 +107,7 @@ class H(BaseHTTPRequestHandler):
         self.reply(404)
 
 
+ThreadingHTTPServer.request_queue_size = 64  # a real server queues more than 5 connections
 srv = ThreadingHTTPServer(("127.0.0.1", 0), H)
 with open(port_file, "w") as f:
     f.write(str(srv.server_address[1]))

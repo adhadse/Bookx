@@ -34,6 +34,7 @@ uuid = { version = "1", features = ["v4"] }
 zip = { version = "9", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
+percent-encoding = "2"
 url = "2"
 bookx-pdf = { path = "../bookx-pdf" }
 rusqlite = { version = "0.42", features = ["bundled"] }

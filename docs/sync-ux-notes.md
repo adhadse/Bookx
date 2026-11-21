@@ -162,3 +162,23 @@ Preferences → Sync
 - The plugin step is “done” when Bookx copied the plugin (a remembered flag); a hand-copied plugin is not detected.
 - At 900x600 the status card and the Wi-Fi card fit on the first screen; the two other cards are one scroll away.
 - Not tried on real hardware (no Kobo or KOReader device was used; the plugin copy goes to a fake device folder).
+
+## Server and login did not survive a restart (RCA)
+
+- **Cause 1:** only `share.kosync` ("answer Bookx sync") was saved; whether the server *ran* lived in
+  `Sharing` (memory) and nothing started it at launch. Step 1's switch shows `running && share.kosync`,
+  so after every restart it read Off.
+- **Fix:** `ShareSettings.running` (saved by `ui::share::set_server` through `ShareSettings::remember`:
+  off is always remembered, on only after a successful start, so a busy port keeps the wish);
+  `ui::share::restore` runs from `app.rs` at launch when `restore_at_launch()` (running and settings valid).
+  A failed restore shows its error on the page and keeps the wish. `Config::save` now writes through a
+  temp file and rename. No stale whole-`share` write-back was found (all other writers clone-modify one
+  field or use `..c.share.clone()`).
+- **Cause 2:** the account row of step 2 was a fixed "Log in" row with a fixed hint; the result of
+  Register/Log in was only shown until the page closed. Fix: `KoSyncPrefs.logged_in` (set on a successful
+  Register/Log in, cleared when server, user or password is edited) and `sync_model::account_status`
+  ("Logged in as X", "Account saved: X", "Password needed for X" with a keyring explanation when the
+  keyring is locked or missing).
+- **Tests:** unit tests in `sharing.rs`, `config.rs`, `sync_model.rs`; Broadway `sync_restart` (seeded
+  settings file as a previous run left it).
+- **Needs the real setup:** that the real keyring is unlocked at login (the password comes from it).

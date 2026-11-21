@@ -371,10 +371,20 @@ scenario() {
             mkdir -p "$d/cfg/bookx"
             printf '{"kosync":{"enabled":true,"server":"http://127.0.0.1:1","user":"u","password":"legacy-pw-123"}}' >"$d/cfg/bookx/config.json"
             ;;
+        sync_restart)
+            # the settings file a previous run left: the Bookx sync server was on, an account was logged in
+            mkdir -p "$d/cfg/bookx"
+            printf '{"share":{"running":true,"kosync":true,"lan":true,"password":"abcdef123456","port":0},"kosync":{"enabled":true,"server":"http://127.0.0.1:1/bookx","user":"alice","password":"secretpw","logged_in":true}}' >"$d/cfg/bookx/config.json"
+            ;;
         profiles_migrate)
             # a settings file of an older version: one profile pinned to book 1, one not used
             mkdir -p "$d/cfg/bookx"
             printf '{"reader":{"font_size":15.0},"profiles":{"list":[{"name":"Big","font_size":24.0},{"name":"Spare","margin":10.0}],"books":{"1":"Big"}}}' >"$d/cfg/bookx/config.json"
+            ;;
+        editor_scroll_sync_old)
+            # an editor.json of an older build, where "scrolling the preview scrolls the code" was off by default
+            mkdir -p "$d/cfg/bookx"
+            printf '{"minimap":true,"scroll_both":false}' >"$d/cfg/bookx/editor.json"
             ;;
         health_calibre | health_calibre_link) make_calibre "$d/calibre" ;;
         health_check)
@@ -416,6 +426,11 @@ scenario() {
             printf '{"pid":4194000,"host":"%s","since":1700000000,"app":"Bookx"}' "$(cat /proc/sys/kernel/hostname)" >"$d/lib/.bookx-lock"
             ;;
         health_sync_warning) touch "$d/.stfolder" ;;
+        backup_old_place_waits)
+            # settings of the version before books were backed up: a place that was already set up
+            mkdir -p "$d/cfg/bookx" "$d/usb"
+            printf '{"health":{"backup":{"on_exit":true,"daily":true,"destinations":[{"id":"d1","name":"USB","kind":"folder","location":"%s/usb","keep":10,"enabled":true}]}}}' "$d" >"$d/cfg/bookx/config.json"
+            ;;
         grid_reflow*)
             # enough books for several rows
             for n in 1 2 3 4 5 6 7 8 9 10; do
@@ -1488,21 +1503,21 @@ scenario annotations_export 'library:menus,library:annotate,library:export-all=m
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
 # Notes & Highlights: every highlight of the library in one window (docs/annotation-sync-notes.md)
-scenario notes_window 'library:annotate,library:annotate-more,library:notes,wait:800,library:notes:dump,library:notes:search=pdfquote,library:notes:dump,library:notes:search=,library:notes:group=color,library:notes:dump,library:notes:group=book,library:notes:color=green,library:notes:dump,library:notes:color=,library:notes:hasnote=yes,library:notes:dump,library:notes:hasnote=any,library:notes:book=2,library:notes:dump,library:notes:book=0,library:notes:from=2026-10-05,library:notes:dump,library:notes:from=,library:notes:search=nothing-like-this,library:notes:dump,library:notes:search=,quit' '
-    has "^notes_state: total=4 shown=4 selected=0 sections=\\[UI Test Book · Test Author=3;Second Book · Other Author=1\\] first=Some\\(\"UI Test Book\\|Chapter 1\\|devnote remember this\"\\)"; check "the window lists every highlight of every book, grouped by book, newest first" $?
-    has "^notes_state: total=4 shown=1 selected=0 sections=\\[UI Test Book · Test Author=1\\] first=Some\\(\"UI Test Book\\|page 5\\|pdfnote\"\\)"; check "searching finds the PDF highlight and shows its page" $?
-    has "^notes_state: total=4 shown=4 selected=0 sections=\\[Yellow=2;Blue=1;Green=1\\]"; check "grouping by colour makes a section per colour" $?
-    has "^notes_state: total=4 shown=1 .*first=Some\\(\"UI Test Book\\|Chapter 2\\|\"\\)"; check "the colour filter keeps the green one (no note, chapter 2)" $?
-    has "^notes_state: total=4 shown=3 "; check "the has-a-note filter keeps the three with notes" $?
-    has "^notes_state: total=4 shown=1 selected=0 sections=\\[Second Book"; check "the book filter keeps one book" $?
-    has "^notes_state: total=4 shown=2 "; check "the from-date filter drops the older ones (2 and 3 Oct)" $?
-    has "^notes_state: total=4 shown=0 "; check "a search with no match shows nothing" $?
+scenario notes_window 'library:annotate,library:annotate-more,library:notes,wait:800,library:notes:kind=highlights,library:notes:dump,library:notes:search=pdfquote,library:notes:dump,library:notes:search=,library:notes:group=color,library:notes:dump,library:notes:group=book,library:notes:color=green,library:notes:dump,library:notes:color=,library:notes:hasnote=yes,library:notes:dump,library:notes:hasnote=any,library:notes:book=2,library:notes:dump,library:notes:book=0,library:notes:from=2026-10-05,library:notes:dump,library:notes:from=,library:notes:search=nothing-like-this,library:notes:dump,library:notes:search=,quit' '
+    has "^notes_state: total=5 shown=4 selected=0 sections=\\[UI Test Book · Test Author=3;Second Book · Other Author=1\\] first=Some\\(\"UI Test Book\\|Chapter 1\\|devnote remember this\"\\)"; check "the window lists every highlight of every book, grouped by book, newest first" $?
+    has "^notes_state: total=5 shown=1 selected=0 sections=\\[UI Test Book · Test Author=1\\] first=Some\\(\"UI Test Book\\|page 5\\|pdfnote\"\\)"; check "searching finds the PDF highlight and shows its page" $?
+    has "^notes_state: total=5 shown=4 selected=0 sections=\\[Yellow=2;Blue=1;Green=1\\]"; check "grouping by colour makes a section per colour" $?
+    has "^notes_state: total=5 shown=1 .*first=Some\\(\"UI Test Book\\|Chapter 2\\|\"\\)"; check "the colour filter keeps the green one (no note, chapter 2)" $?
+    has "^notes_state: total=5 shown=3 "; check "the has-a-note filter keeps the three with notes" $?
+    has "^notes_state: total=5 shown=1 selected=0 sections=\\[Second Book"; check "the book filter keeps one book" $?
+    has "^notes_state: total=5 shown=2 "; check "the from-date filter drops the older ones (2 and 3 Oct)" $?
+    has "^notes_state: total=5 shown=0 "; check "a search with no match shows nothing" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
-scenario notes_edit_export 'library:annotate,library:annotate-more,library:notes,wait:800,library:notes:search=bluequote,wait:400,library:notes:edit-first=changed blue note,library:notes:dump,library:notes:search=bluequote,wait:400,library:notes:select-first,library:notes:search=,wait:400,library:notes:dump,library:notes:export=json:@D@/one.json,library:notes:clear,library:notes:export=md:@D@/all.md,library:notes:export=anki-apkg-basic:@D@/h.apkg,library:notes:export=anki-tsv-cloze:@D@/h.txt,library:notes:export=kindle:@D@/k.txt,library:notes:export=vocab-tsv-basic:@D@/v.txt,library:notes:search=greenquote,wait:400,library:notes:delete-first,library:notes:search=,wait:400,library:notes:dump,quit' '
+scenario notes_edit_export 'library:annotate,library:annotate-more,library:notes,wait:800,library:notes:kind=highlights,library:notes:search=bluequote,wait:400,library:notes:edit-first=changed blue note,library:notes:dump,library:notes:search=bluequote,wait:400,library:notes:select-first,library:notes:search=,wait:400,library:notes:dump,library:notes:export=json:@D@/one.json,library:notes:clear,library:notes:export=md:@D@/all.md,library:notes:export=anki-apkg-basic:@D@/h.apkg,library:notes:export=anki-tsv-cloze:@D@/h.txt,library:notes:export=kindle:@D@/k.txt,library:notes:export=vocab-tsv-basic:@D@/v.txt,library:notes:search=greenquote,wait:400,library:notes:delete-first,library:notes:search=,wait:400,library:notes:dump,quit' '
     has "^notes_edit: ok=true note=\"changed blue note\""; check "editing a note saves it" $?
-    has "^notes_state: total=4 shown=1 selected=0 sections=\\[Second Book · Other Author=1\\] first=Some\\(\"Second Book\\|Chapter 1\\|changed blue note\"\\)"; check "the list shows the new note" $?
-    has "^notes_state: total=4 shown=4 selected=1 "; check "selecting one highlight is counted" $?
+    has "^notes_state: total=5 shown=1 selected=0 sections=\\[Second Book · Other Author=1\\] first=Some\\(\"Second Book\\|Chapter 1\\|changed blue note\"\\)"; check "the list shows the new note" $?
+    has "^notes_state: total=5 shown=4 selected=1 "; check "selecting one highlight is counted" $?
     python3 -c "import json,sys; j=json.load(open(sys.argv[1])); a=[x for b in j[\"books\"] for x in b[\"annotations\"]]; assert len(a)==1 and a[0][\"text\"]==\"bluequote in the other book\" and a[0][\"id\"].startswith(\"bx-\") and a[0][\"note\"]==\"changed blue note\"" "$d/one.json"; check "exporting with one selected exports only it, with a stable id and the edited note" $?
     [ "$(grep -c "quote" "$d/all.md")" -ge 3 ] && grep -q "devhighlight text" "$d/all.md"; check "with nothing selected everything shown is exported (Markdown, all books)" $?
     python3 - "$d/h.apkg" <<'"'"'PY'"'"'
@@ -1522,12 +1537,62 @@ PY
     grep -q "Your Highlight" "$d/k.txt"; check "the Kindle clippings export works from the window too" $?
     has "^notes_export_result: .*There is nothing to turn into cards"; check "an empty vocabulary says so instead of writing an empty file" $?
     has "^notes_delete: ok=true"; check "deleting a highlight removes it" $?
-    has "^notes_state: total=3 shown=3 "; check "the list has one fewer" $?
+    has "^notes_state: total=4 shown=3 "; check "the list has one fewer" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
 scenario notes_open_passage 'library:annotate-more,library:notes,wait:800,library:notes:search=greenquote,wait:400,library:notes:open-first,wait:3500,reader:dump,quit' '
     has "^labels: .*"; check "the book opened in the reader" $?
     has "^goto_highlight: id=m1 spine=1"; check "the reader went to the chapter of the clicked highlight" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
+# Opening a book from a row of Notes & Highlights goes to that highlight: its page is shown and the quote is
+# selected. The highlights come in four kinds (`library:annotate-real`): made in Bookx, left by a KOReader sync
+# (no place, only the device's xpointer), the same words as 74 other paragraphs and a quote that is not in the book.
+scenario notes_open_native 'library:annotate-real,library:notes,wait:800,library:notes:search=Paragraph 20 of chapter 3,wait:400,library:notes:open-first,wait:3500,reader:hl-where,quit' '
+    has "^hl_where: spine=2 page=[0-9]+/[0-9]+ start=[0-9]+ end=[0-9]+ visible=true selected=true"; check "a highlight made in Bookx opens on its own page with the quote selected" $?
+    ! has "hl_where: spine=2 page=1/"; check "and that is not the first page of the chapter" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
+scenario notes_open_synced 'library:annotate-real,library:notes,wait:800,library:notes:search=Paragraph 12 of chapter 2,wait:400,library:notes:open-first,wait:3500,reader:hl-where,quit' '
+    has "^goto_highlight: id=real-sync spine=1 .* how=Xpointer"; check "a synced highlight without a place is found through the device xpointer" $?
+    has "^hl_where: spine=1 page=[0-9]+/[0-9]+ start=[0-9]+ end=[0-9]+ visible=true selected=true"; check "the book opens on it, not at the start or the saved place, and the quote is selected" $?
+    ! has "hl_where: spine=1 page=1/"; check "and that is not the first page of the chapter" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
+scenario notes_open_repeated 'library:annotate-real,library:notes,wait:800,library:notes:search=readers and the world,wait:400,library:notes:open-first,wait:3500,reader:hl-where,quit' '
+    has "^hl_where: spine=2 page=[0-9]+/[0-9]+ start=[0-9]+ .*visible=true selected=true"; check "words that are in every paragraph open at the paragraph the device pointed at (chapter 3)" $?
+    start=$(grep -E "^hl_where:" <<<"$OUT" | head -1 | sed -E "s/.* start=([0-9]+) .*/\1/")
+    [ -n "$start" ] && [ "$start" -ge 1738 ] && [ "$start" -le 1818 ]; check "at paragraph 18, not at the first occurrence (start=$start)" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
+scenario notes_open_missing 'library:annotate-real,library:notes,wait:800,library:notes:search=nowhere in the book,wait:400,library:notes:open-first,wait:3500,reader:hl-where,quit' '
+    has "^goto_highlight: id=real-missing spine=2 missing"; check "a quote that is not in the book says so and names the chapter the device had it in" $?
+    has "^hl_where: spine=2 page=1/"; check "and the book opens at the start of that chapter, not somewhere else" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
+# The check box of a card is in its own column at the start of the row, centred on it, inside the row and not
+# over the text; it is not drawn at rest and is drawn on hover and while anything is selected.
+scenario notes_check_geometry 'library:annotate,library:annotate-more,library:notes,wait:1000,library:notes:checkgeom,library:notes:hover=1,library:notes:checkgeom,library:notes:hover=-1,library:notes:select-first,wait:300,library:notes:checkgeom,quit' '
+    printf "%s\n" "$OUT" | python3 -c "
+import re,sys
+groups=[];cur=[]
+for l in sys.stdin:
+    if not l.startswith(\"notes_checkgeom:\"): continue
+    d={k:float(v) if re.match(r\"^-?[0-9.]+$\",v) else v for k,v in re.findall(r\"(\w+)=(\S+)\",l)}
+    if d[\"row\"]==0 and cur: groups.append(cur);cur=[]
+    cur.append(d)
+if cur: groups.append(cur)
+assert len(groups)==3 and len(groups[0])>=3,(len(groups),[len(g) for g in groups])
+rest,hover,sel=groups
+assert all(r[\"opacity\"]==0 for r in rest),\"drawn at rest\"
+assert hover[1][\"opacity\"]==1 and all(r[\"opacity\"]==0 for i,r in enumerate(hover) if i!=1),\"hover\"
+assert all(r[\"opacity\"]==1 for r in sel),\"selecting\"
+for g in groups:
+  for r in g:
+    assert r[\"x\"]>=0 and r[\"y\"]>=0 and r[\"x\"]+r[\"w\"]<=r[\"roww\"] and r[\"y\"]+r[\"h\"]<=r[\"rowh\"],(\"outside the row\",r)
+    assert r[\"x\"]+r[\"w\"]<=r[\"titlex\"]+0.5,(\"over the text\",r)
+    assert abs(r[\"cy\"]-r[\"rowcy\"])<=2,(\"not centred\",r)
+" 2>"$d/geom.err"; check "the check box is in a column before the text, inside the row, centred; drawn only on hover and while selecting ($(tail -1 "$d/geom.err"))" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
 if [ "${NET:-1}" != 0 ]; then
@@ -1661,6 +1726,11 @@ scenario favourites_rating_tags 'library:select1,wait:500,library:favourite,wait
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
 # every icon name that the sidebar, the headers, the menus, the details panel and Library Health use exists in the icon theme
+# the Devices window: the Books and Settings tabs of the view switcher have an icon, and it exists in the theme
+scenario devwin_icons 'devwin:show,wait:1200,devwin:icons,quit' '
+    has "^devwin_icons: checked=[0-9]+ pages=view-list-symbolic,emblem-system-symbolic missing=\\[\\]"; check "both tabs carry an icon and every icon of the Devices window exists in the theme" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
 scenario icons_exist 'library:select1,wait:600,library:icons,library:health=open,wait:800,library:icons,library:health=tab=duplicates,library:health=tab=attention,wait:300,library:icons,library:nav=notes,wait:600,library:icons,prefs:,wait:900,prefs:icons,quit' '
     [ "$(grep -c "^icons: checked=" <<<"$OUT")" -eq 4 ]; check "the walk over the windows ran four times" $?
     ! has "^icons: .*missing=\\[\"" ; check "no widget asks for an icon that is not in the theme" $?
@@ -2385,38 +2455,112 @@ scenario health_backup_restore 'library:health=open,wait:800,library:health=back
 
 scenario backup_scope_explanation 'library:health=open,wait:800,library:health=tab=backups,wait:500,library:health=backup-scope,a11y-audit:,quit' '
     has "^backup_scope: title=What is in a backup "; check "the Backups panel names what a backup contains before the user runs one" $?
-    has "description=A backup is one complete snapshot of the catalogue"; check "the description states it is a catalogue snapshot" $?
-    has "included=Included: catalogue metadata"; check "the included data is listed" $?
-    has "excluded=Not included: book files, covers"; check "book files and covers are explicitly excluded" $?
-    has "incremental=Not incremental — each copy is a whole file"; check "the copy says backups are whole-file, not incremental" $?
-    ! has "incremental=.*(delta|deduplicat|incremental transfer)"; check "it does not claim deltas, dedup or incremental transfer" $?
+    has "description=Backups include your book files, covers and catalogue"; check "the description says books, covers and the catalogue are included" $?
+    has "included=Included: book files, covers and the catalogue"; check "the included data is listed" $?
+    has "excluded=Not included: configuration, plugins and passwords, trash, device copies and caches"; check "what is left out is listed" $?
+    has "incremental=After the first backup only new or changed files are copied"; check "the copy says only new or changed files are copied after the first backup" $?
+    ! has "Catalogue only|Not incremental|stay in the library folder"; check "no stale text about catalogue-only or whole-file copies" $?
     ! has "^a11y-problem:"; check "the scope row has an accessible name" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
-scenario backup_destinations 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb,library:health=backup-add=Offsite|@D@/offsite|encrypt,library:health=backup-add=Gone|@D@/nope/deeper,library:health=backup-passphrase=secret-phrase-77,library:health=backup,wait:6000,library:health=dump,quit' '
+scenario backup_destinations 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb,library:health=backup-add=Offsite|@D@/offsite|encrypt,library:health=backup-add=Gone|@D@/nope/deeper,library:health=backup-passphrase=secret-phrase-77,library:health=backup,wait:9000,library:health=dump,quit' '
     has "^health: backup ok books=2"; check "Back up now still writes the local snapshot" $?
     has "^backup_place: USB drive \| OK \| enabled=true \| encrypt=false"; check "the plain folder destination is OK" $?
     has "^backup_place: Offsite \| OK \| enabled=true \| encrypt=true"; check "the encrypted destination is OK" $?
     has "^backup_place: Gone \| Unreachable"; check "a destination that is not there is reported unreachable, the others still got their copy" $?
     has "^backup: copied .*encrypted=true verified=true"; check "the encrypted copy was verified after writing" $?
-    ls "$d/usb" | grep -q "\.db$"; check "the plain copy is a .db file on the drive" $?
-    ls "$d/offsite" | grep -q "\.bookxbackup$"; check "the encrypted copy is a .bookxbackup file" $?
-    ! grep -aq "UI Test Book" "$d"/offsite/*.bookxbackup; check "the encrypted file does not contain the catalogue in clear" $?
-    head -c 15 "$d"/usb/*.db | grep -aq "SQLite format 3"; check "the plain copy is a SQLite database" $?
+    ls "$d"/usb/"Bookx Backup"/snapshots | grep -q "\.snap$"; check "the plain place holds a snapshot" $?
+    ls "$d"/offsite/"Bookx Backup"/snapshots | grep -q "\.snap$"; check "the encrypted place holds a snapshot" $?
+    EP=$(find "$d/lib" -name "*.epub" | head -1); H=$(sha256sum "$EP" | cut -c1-64)
+    [ -f "$d/usb/Bookx Backup/blobs/${H:0:2}/$H" ] && cmp -s "$EP" "$d/usb/Bookx Backup/blobs/${H:0:2}/$H"; check "the book file itself is in the plain place (a book can be recovered by hand)" $?
+    [ -n "$(find "$d/offsite/Bookx Backup/blobs" -type f)" ] && ! grep -raq "UI Test Book\|Test Author" "$d/offsite"; check "the encrypted place holds the books and the catalogue only as ciphertext" $?
+    grep -q "\"encrypted\": *true" "$d/offsite/Bookx Backup/bookx-repo.json"; check "the encrypted place says it is encrypted" $?
+    head -c 15 "$d"/usb/"Bookx Backup"/blobs/*/* 2>/dev/null | grep -aq "SQLite format 3"; check "the plain catalogue is a SQLite database" $?
     ! grep -rq "secret-phrase-77" "$d/cfg"; check "the backup passphrase is not in the settings file" $?
-    has "^backup_pass_set: true"; check "but the app still has the passphrase" $?'
+    has "^backup_pass_set: true"; check "but the app still has the passphrase" $?
+    has "^backup_place: USB drive .*books=true covers=true max_mb=0 auto=true"; check "a place that got its first copy may be copied to automatically from then on" $?'
 
-scenario backup_restore_from_destination 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb,library:health=backup,wait:3000,library:import='"$ROOT"'/fb2,wait:3000,library:health=backup-reload,wait:2500,library:health=dump,library:health=backup-restore-remote1,wait:3000,library:health=dump,quit' '
+scenario backup_restore_from_destination 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb,library:health=backup,wait:4000,library:import='"$ROOT"'/fb2,wait:3000,library:health=backup-reload,wait:2500,library:health=dump,library:health=backup-restore-remote1,wait:4000,library:health=dump,quit' '
     has "^backup_remote_buttons: [1-9]"; check "the backups at the destination are listed with Restore buttons" $?
+    has "^backup: restore plan \| [0-9]+ files? to restore"; check "a preview of what would come back is made before anything is restored" $?
     has "^health: restored books=2"; check "restoring from the destination brings back the 2-book catalogue" $?
     ! grep -q "Solaris Imported" <<<"$LIB"; check "the later import is gone after restoring from the drive" $?
     [ "$(ls "$d/lib/.bookx-backups" | grep -c prerestore)" -ge 1 ]; check "the catalogue before the restore was snapshotted" $?
-    [ ! -d "$d/lib/.bookx-backups/restore-tmp" ]; check "the downloaded copy was cleaned up" $?'
+    [ ! -d "$d/lib/.bookx-backups/restore-tmp" ]; check "no download is left behind" $?'
 
-scenario backup_restore_encrypted 'library:health=open,wait:800,library:health=backup-passphrase=an-offsite-secret,library:health=backup-add=Offsite|@D@/offsite|encrypt,library:health=backup,wait:6000,library:import='"$ROOT"'/fb2,wait:3000,library:health=backup-reload,wait:2500,library:health=backup-restore-remote1,wait:5000,library:health=dump,quit' '
-    ls "$d/offsite" | grep -q "\.bookxbackup$"; check "the off-site copy is encrypted" $?
+scenario backup_restore_encrypted 'library:health=open,wait:800,library:health=backup-passphrase=an-offsite-secret,library:health=backup-add=Offsite|@D@/offsite|encrypt,library:health=backup,wait:9000,library:import='"$ROOT"'/fb2,wait:3000,library:health=backup-reload,wait:9000,library:health=backup-restore-remote1,wait:9000,library:health=dump,quit' '
+    [ -f "$d/offsite/Bookx Backup/bookx-repo.json" ] && ! ls "$d/offsite" | grep -q "\.db$"; check "the off-site copy is an encrypted repository" $?
     has "^health: restored books=2"; check "restore decrypts the copy with the saved passphrase" $?
     ! grep -q "Solaris Imported" <<<"$LIB"; check "the catalogue is the one from the encrypted backup" $?'
+
+# books are in the backup; the second backup copies only what is new (counts from the engine report)
+scenario backup_incremental 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb,library:health=backup,wait:4000,library:import='"$ROOT"'/fb2,wait:3000,library:health=backup,wait:4000,library:health=backup,wait:4000,library:health=dump,quit' '
+    C=$(grep "^backup: copied USB drive" <<<"$OUT")
+    sed -n 1p <<<"$C" | grep -q "new_files=[2-9][0-9]* reused_files=0 "; check "the first backup copies every file (books and covers)" $?
+    sed -n 2p <<<"$C" | grep -Eq "new_files=[1-3] reused_files=[2-9]"; check "after one book was added only that book is copied, the rest is reused" $?
+    sed -n 3p <<<"$C" | grep -q "new_files=0 .*up_to_date=true"; check "a third backup with nothing new copies nothing and writes no snapshot" $?
+    [ "$(ls "$d/usb/Bookx Backup/snapshots" | wc -l)" = 2 ]; check "two snapshots exist (the no-op wrote none)" $?
+    grep -q "Solaris" "$d/usb/Bookx Backup/snapshots/"*.snap; check "the newest snapshot lists the added book" $?'
+
+scenario backup_catalogue_only 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb|nobooks|nocovers,library:health=backup,wait:4000,library:health=dump,quit' '
+    has "^backup_place: USB drive .*books=false covers=false"; check "the place is set to the catalogue only" $?
+    has "^backup: copied USB drive .*new_files=0 "; check "no book file or cover was copied" $?
+    [ "$(find "$d/usb/Bookx Backup/blobs" -type f | wc -l)" -le 2 ]; check "only the catalogue (and the notes list) is in the place" $?
+    ls "$d"/usb/"Bookx Backup"/snapshots | grep -q "\.snap$"; check "a snapshot was still written" $?'
+
+scenario backup_estimate_and_banner 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb,wait:1500,library:health=dump,library:health=backup,wait:4000,library:health=backup-reload,wait:2000,library:health=dump,quit' '
+    has "^backup_plan: USB drive \| The first backup copies everything: about"; check "the size of the first backup is shown before it runs" $?
+    has "^backup_banner: visible=true \| .*Nothing is copied until you press Back Up"; check "a one-time banner says the first copy waits for the user" $?
+    has "^backup_plan: USB drive \| Everything is already backed up"; check "afterwards the place says there is nothing new" $?
+    has "^backup_banner: visible=false"; check "the banner is gone once the first copy is made" $?
+    has "^backup_stats: USB drive \| 1 backup · 2 books"; check "the place row shows how many backups and books it holds" $?'
+
+scenario backup_old_place_waits 'library:health=open,wait:800,library:health=backup-reload,wait:1500,library:health=dump,quit' '
+    has "^backup_place: USB \| Not used yet .*auto=false"; check "a place from before the update starts without automatic copies" $?
+    has "^backup_banner: visible=true"; check "the banner offers the first copy" $?
+    [ ! -e "$d/usb/Bookx Backup" ]; check "nothing was copied on its own when Bookx closed (first copy waits for Back Up)" $?
+    ! has "exit copy to USB"; check "the close-time copy skipped the place" $?'
+
+scenario backup_restore_new_folder 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb,library:health=backup,wait:4000,library:health=backup-restore-to=@D@/restored,library:health=backup-reload,wait:2500,library:health=backup-restore-remote1,wait:4000,quit' '
+    has "^backup: restored files=[0-9]+ failed=0 .*restored"; check "the restore into another folder finished without failures" $?
+    [ "$(find "$d/restored" -name "*.epub" | wc -l)" = 2 ]; check "the book files are back in the empty folder" $?
+    "$CLI" --library "$d/restored" library dump | grep -q "UI Test Book"; check "and so is the catalogue" $?
+    cmp -s "$d/lib/bookx-library.db" "$d/restored/bookx-library.db" || [ -f "$d/restored/bookx-library.db" ]; check "the folder is a library of its own" $?
+    "$CLI" --library "$d/lib" library dump | grep -q "UI Test Book"; check "the open library was not touched" $?'
+
+scenario backup_restore_dialog 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb,library:health=backup,wait:4000,library:import='"$ROOT"'/fb2,wait:3000,library:health=backup-reload,wait:2500,library:health=backup-restore-dialog,wait:600,library:health=backup-dialog-dump,library:health=backup-dialog-restore,library:health=backup-dialog-mode=replace,library:health=backup-dialog-preview,wait:1500,library:health=backup-dialog-dump,library:health=backup-dialog-restore,wait:4000,library:health=backup-dialog-dump,library:health=dump,quit' '
+    D=$(grep "^backup_dialog:" <<<"$OUT")
+    sed -n 1p <<<"$D" | grep -q "restore_sensitive=false"; check "Restore stays off until the preview was made" $?
+    has "^backup: the dialog does not allow restoring yet"; check "pressing it early does nothing" $?
+    sed -n 2p <<<"$D" | grep -Eq "restore_sensitive=true mode=0 \| [0-9]+ files? to restore, [0-9]+ already present. The catalogue is replaced"; check "the preview says how many files come back, how many are present and that the catalogue is replaced" $?
+    has "^health: restored books=2"; check "Restore then brings the backup back (the later import is gone)" $?
+    sed -n 3p <<<"$D" | grep -q "closed"; check "the dialog closes when the restore starts" $?
+    ! grep -q "Solaris Imported" <<<"$LIB"; check "the catalogue on disk is the old one" $?'
+
+scenario backup_places_a11y 'library:health=open,wait:800,library:health=tab=backups,library:health=backup-add=USB drive|@D@/usb,library:health=backup-add=Cloud|@D@/cloud|encrypt,wait:1800,a11y-audit:,quit' '
+    ! has "^a11y-problem:"; check "every control of the place rows (switch, menu, edit, remove) has an accessible name" $?
+    has "^backup_plan: USB drive"; check "the page showed its places" $?'
+
+scenario backup_restore_missing_only 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb,library:health=backup,wait:4000,library:health=backup-restore-mode=missing,library:health=backup-reload,wait:2500,library:health=backup-restore-remote1,wait:4000,quit' '
+    has "^backup: restore plan \| [0-9]+ files? to restore, [0-9]+ already present"; check "the preview counts what is already there" $?
+    has "^backup: restored files=0 failed=0 catalogue=KeptExisting"; check "missing-only changes nothing when nothing is missing and keeps the catalogue" $?'
+
+scenario backup_journal 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb,library:health=backup,wait:4000,library:annotate,wait:500,library:health=backup-journal,wait:2500,quit' '
+    has "^backup: journal USB drive ok"; check "recording the notes works" $?
+    ls "$d"/usb/"Bookx Backup"/journal | grep -q "\.jrn$"; check "a small notes record sits in the place, without a new snapshot" $?
+    [ "$(ls "$d/usb/Bookx Backup/snapshots" | wc -l)" -le 2 ]; check "the notes are protected between snapshots" $?
+    grep -q "devnote remember this" "$d"/usb/"Bookx Backup"/journal/*.jrn; check "the new note is in the record" $?'
+
+scenario backup_check_and_clean 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb|keep=1,library:health=backup,wait:4000,library:health=backup-check=1,wait:2000,library:health=backup-check-deep=1,wait:2000,library:health=backup-clean=1,wait:2500,library:health=dump,quit' '
+    has "^backup: check USB drive ok=true"; check "Check Backup finds a complete backup complete" $?
+    [ "$(grep -c "^backup: check USB drive ok=true" <<<"$OUT")" = 2 ]; check "the deep check passes as well" $?
+    has "^backup: clean USB drive snapshots="; check "Remove Old Backups runs" $?
+    has "^backup_busy: false"; check "the window is free again afterwards" $?'
+
+scenario backup_cancel 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb,library:health=backup,library:health=backup-cancel,wait:3000,library:health=dump,quit' '
+    has "^backup_busy: false"; check "cancelling leaves the window usable" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?
+    [ -z "$(find "$d/usb" -name ".*part*" 2>/dev/null)" ]; check "no half-written file is left in the place" $?'
 
 scenario backup_remove 'library:health=open,wait:800,library:health=backup-add=A|@D@/a,library:health=backup-add=B|@D@/b,library:health=backup-remove1,wait:500,library:health=dump,quit' '
     has "^backup_places: 1"; check "removing a destination leaves the other one" $?
@@ -2434,10 +2578,10 @@ scenario secrets_in_keyring 'kosync:setup=http://127.0.0.1:1;bob;hunter2-pw,wait
 scenario secrets_no_keyring 'kosync:setup=http://127.0.0.1:1;bob;hunter2-pw,wait:500,quit' '
     grep -rq "hunter2-pw" "$d/cfg"; check "without a keyring the password stays in the settings file (nothing is lost)" $?'
 
-scenario backup_webdav 'library:health=open,wait:800,library:health=backup-add-dav=Nextcloud|http://127.0.0.1:@PORT@/files/bob/|bob|s3cret|Bookx backups|encrypt,library:health=backup-passphrase=dav-phrase-42,library:health=backup,wait:7000,library:import='"$ROOT"'/fb2,wait:3000,library:health=backup-reload,wait:3000,library:health=backup-restore-remote1,wait:6000,library:health=dump,quit' '
+scenario backup_webdav 'library:health=open,wait:800,library:health=backup-add-dav=Nextcloud|http://127.0.0.1:@PORT@/files/bob/|bob|s3cret|Bookx backups|encrypt,library:health=backup-passphrase=dav-phrase-42,library:health=backup,wait:12000,library:import='"$ROOT"'/fb2,wait:3000,library:health=backup-reload,wait:9000,library:health=backup-restore-remote1,wait:12000,library:health=dump,quit' '
     has "^backup_place: Nextcloud \| OK"; check "the WebDAV destination is OK" $?
-    ls "$d/dav-root/files/bob/Bookx backups" | grep -q "\.bookxbackup$"; check "the encrypted copy arrived on the WebDAV server in the chosen folder" $?
-    [ -n "$(ls "$d/dav-root/files/bob/Bookx backups")" ] && ! grep -aq "UI Test Book" "$d"/dav-root/files/bob/Bookx\ backups/*; check "the server only sees ciphertext" $?
+    [ -f "$d/dav-root/files/bob/Bookx backups/Bookx Backup/bookx-repo.json" ]; check "the encrypted repository arrived on the WebDAV server in the chosen folder" $?
+    [ -n "$(find "$d/dav-root" -type f)" ] && ! grep -raq "UI Test Book\|Test Author" "$d/dav-root"; check "the server only sees ciphertext" $?
     has "^health: restored books=2"; check "restoring from the WebDAV server downloads, decrypts and restores" $?
     ! grep -q "Solaris Imported" <<<"$LIB"; check "the catalogue is the one from the server" $?
     ! grep -rq "s3cret\|dav-phrase-42" "$d/cfg"; check "neither the WebDAV password nor the passphrase is in the settings file" $?'
@@ -2446,8 +2590,8 @@ scenario backup_webdav_wrong_password 'library:health=open,wait:800,library:heal
     has "^backup_place: Nextcloud \| Failed.*refused the user name or password"; check "a wrong password is reported as such, not as a vague failure" $?
     [ -z "$(ls "$d/dav-root/files/bob" 2>/dev/null)" ]; check "nothing was written to the server" $?'
 
-scenario backup_on_exit 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb,wait:300,quit' '
-    ls "$d/usb" | grep -q "\.db$"; check "closing Bookx copies the newest snapshot to the destinations" $?
+scenario backup_on_exit 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb|auto,wait:300,quit' '
+    ls "$d"/usb/"Bookx Backup"/snapshots | grep -q "\.snap$"; check "closing Bookx copies books, covers and catalogue to the places that may be copied to automatically" $?
     has "^backup: exit copy to USB drive ok"; check "the exit copy is reported" $?'
 
 scenario health_check 'library:health=open,wait:800,library:health=check,wait:1500,library:health=dump,library:health=fix1,wait:1000,library:health=check,wait:1500,library:health=dump,quit' '
@@ -3143,9 +3287,9 @@ scenario reading_goals 'stats:goal:1:2,read:1,wait:3500,reader:next,wait:500,rea
     has "^stats_review: Pages turned = [1-9]"; check "and the pages turned" $?
     grep -q "\"daily_minutes\": 0" "$d/cfg/bookx/config.json"; check "goals are stored in the settings file" $?'
 
-scenario mcp_settings_page 'prefs:,wait:900,prefs:pick=AI Assistants,wait:300,prefs:dump,mcp:dump,a11y-audit:,mcp:snippet=claude-code,mcp:snippet=opencode,mcp:snippet=opencode:http,mcp:copied,mcp:port=@MCPPORT@,mcp:enable=on,wait:500,mcp:dump,mcp:ping,wait:200,mcp:dump,mcp:token=regen,wait:500,mcp:ping,mcp:write=on,wait:300,mcp:ping,mcp:dump,mcp:enable=off,wait:300,mcp:ping,mcp:dump,quit' '
+scenario mcp_settings_page 'prefs:,wait:900,prefs:pick=MCP,wait:300,prefs:dump,mcp:dump,a11y-audit:,mcp:snippet=claude-code,mcp:snippet=opencode,mcp:snippet=opencode:http,mcp:copied,mcp:port=@MCPPORT@,mcp:enable=on,wait:500,mcp:dump,mcp:ping,wait:200,mcp:dump,mcp:token=regen,wait:500,mcp:ping,mcp:write=on,wait:300,mcp:ping,mcp:dump,mcp:enable=off,wait:300,mcp:ping,mcp:dump,quit' '
     P=$(grep "^prefs:" <<<"$OUT" | head -1)
-    grep -q "sections=.*AI Assistants" <<<"$P" && grep -q "selected=AI Assistants" <<<"$P"; check "Preferences has an AI Assistants section" $?
+    grep -q "sections=.*MCP" <<<"$P" && grep -q "selected=MCP" <<<"$P"; check "Preferences has an MCP section" $?
     M=$(grep "^mcp: " <<<"$OUT")
     sed -n 1p <<<"$M" | grep -q "running=0 .*enabled=0 .*write=0"; check "the server is off and read-only by default" $?
     ! has "^a11y-problem:"; check "every control of the page has an accessible name" $?

@@ -81,10 +81,13 @@ bookx-cli library authors --json            # people instead of spellings; renam
 Library health, the same features as the *Library Health* window:
 
 ```bash
-bookx-cli library backup                    # snapshot of the catalogue
+bookx-cli library backup                    # quick snapshot of the catalogue on this computer
 bookx-cli library snapshots
 bookx-cli library restore latest
-bookx-cli library backup --to /mnt/nas/bookx --encrypt   # also: --from on snapshots/restore; see Backup and restore
+bookx-cli backup plan --to /mnt/nas/bookx   # how big the next backup to a place is (books, covers, catalogue)
+bookx-cli backup run  --to /mnt/nas/bookx --encrypt   # only new or changed files are copied; see Backup and restore
+bookx-cli backup journal --to /mnt/nas/bookx          # record changed highlights, notes and bookmarks
+bookx-cli backup restore latest --to /mnt/nas/bookx --into ~/Books --dry-run   # also: list, verify [--deep], gc
 bookx-cli library check --drift             # database, files, covers, file vs catalogue; --fix applies fixes
 bookx-cli library import-calibre ~/Calibre\ Library --copy
 bookx-cli library export-calibre ~/Exports/calibre   # a Calibre library Calibre can open; the folder must be empty
@@ -151,9 +154,61 @@ bookx-cli mcp --allow-write --allow-dir ~/Downloads
 ```
 
 Lets AI assistants search and read the library. It is read-only unless `--allow-write` is given. See
-[AI assistants (MCP)](ai-assistants.md) for the options, the tools and the safety rules.
+[MCP (AI assistants)](ai-assistants.md) for the options, the tools and the safety rules.
 
 !!! note "Limitations"
     - `meta set` edits EPUB files.
     - `bookx-cli` is not installed by `run.sh` or `make install`, and the Flatpak does not include it.
     - The output above reflects the current `--help`; options may be added over time.
+
+## Questions and answers
+
+??? question "How do I install bookx-cli?"
+    Build it with `cargo build --release -p bookx-cli`. It is not installed by `run.sh` or `make install`, and the Flatpak
+    does not include it. See [Install](install.md#command-line-tool).
+
+??? question "Which library does it use?"
+    `--library DIR`, else the `BOOKX_LIBRARY` variable, else `~/Documents/Bookx Library`, the same default as the app.
+    Commands that change the library take its lock and stop with a message when Bookx has it open.
+
+??? question "How do I convert a book?"
+    `bookx-cli convert book.fb2 book.kepub.epub --smarten --device kobo`. The format comes from the output extension.
+    `bookx-cli presets` lists ready-made presets, for example `--preset "Kindle (MOBI)"`, and `--report` says what the
+    format lost.
+
+??? question "How do I see or change a book's metadata?"
+    `bookx-cli meta show book.epub --json` and `bookx-cli meta set book.epub --title "New" --author "A. Writer"`. Changing
+    metadata edits EPUB files.
+
+??? question "How do I check a book or a library?"
+    `bookx-cli check book.epub` lists structural problems (exit code 1 when it finds errors).
+    `bookx-cli library check --drift` does the same work as the Check Now button of main menu → Library Health → Health.
+
+??? question "How do I make a backup or restore one from a terminal?"
+    `bookx-cli backup run --to /mnt/nas/bookx --encrypt` copies the books, covers, catalogue and notes (only what is new
+    after the first run) and `bookx-cli backup restore latest --to /mnt/nas/bookx --into ~/Books --mode replace-all`
+    brings them back (add `--dry-run` to see what would happen). `backup plan`, `list`, `verify` and `journal` are
+    there too.
+    Passwords come from `BOOKX_WEBDAV_PASSWORD` and `BOOKX_BACKUP_PASSPHRASE`, never from the command line. See
+    [Backup and restore](backup-and-restore.md#command-line).
+
+??? question "How do I search from a script?"
+    `bookx-cli search 'author:le guin rating:>=4' --json`. The query language is the same as in the library search.
+
+??? question "How do I add a folder of books?"
+    `bookx-cli library add ~/Downloads -r`. Other formats are converted to EPUB; `--allow-duplicates` keeps duplicates.
+
+??? question "How do I check what is on my e-reader?"
+    `bookx-cli device-check /run/media/me/KOBOeReader`, with `--all` for every book. It never writes to the device.
+
+??? question "How do I run the library server without the app?"
+    `bookx-cli serve --port 8080 --user me:secret --kosync kosync.json`. It listens on `127.0.0.1` unless you add `--bind
+    0.0.0.0`, and you should always set `--user` when you do. The `--kosync` file keeps the Bookx sync accounts. To publish it
+    under a name, use a [reverse proxy](reverse-proxy.md).
+
+??? question "How do I let an AI assistant use my library?"
+    `bookx-cli mcp` starts the read-only MCP server over stdio; the MCP page of Bookx Preferences (main menu → Preferences)
+    has the setup for the app. Details are in [MCP](ai-assistants.md).
+
+??? question "What do the exit codes mean?"
+    `0` success, `1` the command found problems, `2` a usage or runtime error.

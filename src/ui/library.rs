@@ -841,7 +841,8 @@ struct W {
     table_cols: Vec<(&'static str, gtk::ColumnViewColumn)>,
     /// Set while the program moves the sort arrow of the table (the header handler then stays quiet).
     table_sync: Rc<Cell<bool>>,
-    grid_clamp: adw::Clamp,
+    grid_page: gtk::Box,
+    grid_scroll: gtk::ScrolledWindow,
     drop_hint: gtk::Box,
     cols_box: gtk::Box,
     sort_dd: gtk::DropDown,
@@ -1817,8 +1818,9 @@ impl LibraryView {
     fn ensure_notes(&self) {
         let mut slot = self.notes.borrow_mut();
         if slot.is_none() {
-            let (t1, t2) = (
+            let (t1, t2, t3) = (
                 self.sender.output_sender().clone(),
+                self.sender.input_sender().clone(),
                 self.sender.input_sender().clone(),
             );
             let v = super::notes::build(
@@ -1827,6 +1829,7 @@ impl LibraryView {
                     let _ = t1.send(Output::Read(id));
                 }),
                 Rc::new(move |m| t2.emit(Input::Toast(m))),
+                Rc::new(move |m, u| t3.emit(Input::ToastUndo(m, u))),
             );
             self.w.content.add_named(&v.widget, Some("notes"));
             let tx = self.sender.input_sender().clone();
@@ -4374,13 +4377,24 @@ impl SimpleComponent for LibraryView {
         let banner = banner_ctl.reveal.clone();
         let grid_page = gtk::Box::new(gtk::Orientation::Vertical, 0);
         grid_page.append(&banner_ctl.holder);
-        // on a very wide window the covers stop spreading
-        let grid_clamp = adw::Clamp::new();
-        grid_clamp.set_maximum_size(nav::GRID_MAX_WIDTH);
-        grid_clamp.set_tightening_threshold(nav::GRID_MAX_WIDTH);
-        grid_clamp.set_vexpand(true);
-        grid_clamp.set_child(Some(&grid_scroll));
-        grid_page.append(&grid_clamp);
+        // on a very wide window the covers stop spreading: the grid gets side margins, the scrolled window
+        // keeps the whole width (its background is the window's and a click on the margins still deselects)
+        grid_scroll.add_css_class("library-grid");
+        grid.view.add_css_class("library-grid");
+        {
+            let view = grid.view.clone();
+            let last = Cell::new(-1);
+            grid_scroll.add_tick_callback(move |sc, _| {
+                let m = nav::grid_side_margin(sc.width(), GRID_CAP.with(|c| c.get()));
+                if m != last.get() {
+                    last.set(m);
+                    view.set_margin_start(m);
+                    view.set_margin_end(m);
+                }
+                glib::ControlFlow::Continue
+            });
+        }
+        grid_page.append(&grid_scroll);
         {
             let sh = shared.clone();
             banner_ctl.connect(
@@ -5385,7 +5399,8 @@ impl SimpleComponent for LibraryView {
                 table_scroll,
                 table_cols,
                 table_sync: table_sync.clone(),
-                grid_clamp,
+                grid_page: grid_page.clone(),
+                grid_scroll: grid_scroll.clone(),
                 search,
                 details,
                 tags,
@@ -6941,6 +6956,68 @@ impl SimpleComponent for LibraryView {
                         let _ = lib.save();
                         eprintln!("annotate_more: done");
                     }
+                    // `annotate-real` gives the first book highlights whose text is really in it: one made in
+                    // Bookx (with its exact place), three the way a KOReader sync leaves them (no place, only
+                    // the device's xpointer in the ledger) and one whose text is not in the book at all
+                    "annotate-real" => {
+                        let mut lib = self.shared.lib.borrow_mut();
+                        let Some(id) = lib.books.first().map(|b| b.id) else {
+                            return;
+                        };
+                        let Ok(open) = lib.open_book(id) else { return };
+                        let chapters = bookx_core::anchor::BookChapters::new(open);
+                        let mk = |hid: &str, spine: usize, start: i32, end: i32, text: &str| {
+                            bookx_core::library::Highlight {
+                                id: hid.into(),
+                                spine,
+                                start,
+                                end,
+                                color: "teal".into(),
+                                style: String::new(),
+                                note: String::new(),
+                                text: text.into(),
+                                created: chrono::Utc::now(),
+                            }
+                        };
+                        let native = "Paragraph 20 of chapter 3 talks about functionality";
+                        let mut hs = Vec::new();
+                        if let Some(r) = bookx_core::anchor::resolve(&chapters, native, None, None) {
+                            hs.push(mk(
+                                "real-native",
+                                r.spine,
+                                r.found.start as i32,
+                                r.found.end as i32,
+                                native,
+                            ));
+                        }
+                        let (s, a, e) = bookx_core::anchor::unplaced(0);
+                        let sync = [
+                            (
+                                "real-sync",
+                                "Paragraph 12 of chapter 2 talks about functionality",
+                                "/body/DocFragment[2]/body/p[12]/text().0",
+                            ),
+                            (
+                                "real-dup",
+                                "talks about functionality, readers and the world around them in plain words.",
+                                "/body/DocFragment[3]/body/p[18]/text().26",
+                            ),
+                            (
+                                "real-missing",
+                                "this sentence is nowhere in the book at all",
+                                "/body/DocFragment[3]/body/p[2]/text().0",
+                            ),
+                        ];
+                        for (hid, text, pos) in sync {
+                            hs.push(mk(hid, s, a, e, text));
+                            crate::annotation_sync_ui::dev_seed_hint(id, hid, text, pos);
+                        }
+                        if let Some(b) = lib.get_mut(id) {
+                            b.highlights.extend(hs);
+                        }
+                        let _ = lib.save();
+                        eprintln!("annotate_real: done");
+                    }
                     // `sendnotes=<text in the device path>`: like `send=` but with the annotations
                     other if other.starts_with("sendnotes=") => {
                         let drv = crate::devices::driver();
@@ -7456,6 +7533,11 @@ fn sender_toast(sender: &ComponentSender<LibraryView>, msg: String) {
     sender.input(Input::Toast(msg));
 }
 
+thread_local! {
+    /// The widest the cover grid gets (a dev hook lowers it to test the margins on a small display).
+    static GRID_CAP: Cell<i32> = const { Cell::new(nav::GRID_MAX_WIDTH) };
+}
+
 /// Whether a point of a book list lies on a book, a column header or a scroll bar (the css nodes
 /// of the items of a grid view and a column view).
 fn hits_item(scroll: &gtk::ScrolledWindow, x: f64, y: f64) -> bool {
@@ -7503,7 +7585,7 @@ fn attach_empty_click(scroll: &gtk::ScrolledWindow, tx: relm4::Sender<Input>) {
 }
 
 /// The icon names used by a widget and everything under it (also what sits in menu button popovers).
-fn collect_icons(w: &gtk::Widget, out: &mut Vec<String>) {
+pub(super) fn collect_icons(w: &gtk::Widget, out: &mut Vec<String>) {
     fn add(out: &mut Vec<String>, n: Option<glib::GString>) {
         if let Some(n) = n.filter(|n| !n.is_empty()) {
             let n = n.to_string();

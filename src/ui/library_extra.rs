@@ -516,11 +516,56 @@ impl LibraryView {
                 self.w.details_toggle.icon_name().unwrap_or_default()
             ),
             "gridwidth" => eprintln!(
-                "gridwidth: max={} clamp={} window={}",
-                self.w.grid_clamp.maximum_size(),
-                self.w.grid_clamp.width(),
-                self.root.width()
+                "gridwidth: max={} clamp={} window={} scroll={} margin={}",
+                GRID_CAP.with(|g| g.get()),
+                self.grid.view.width(),
+                self.root.width(),
+                self.w.grid_scroll.width(),
+                self.grid.view.margin_start()
             ),
+            c if c.starts_with("gridcap=") => {
+                if let Ok(n) = c[8..].parse::<i32>() {
+                    GRID_CAP.with(|g| g.set(n));
+                }
+            }
+            "gridbg" => {
+                let bg = |w: &gtk::Widget| w.css_classes().join(".");
+                eprintln!(
+                    "gridbg: scroll=[{}] view=[{}] page=[{}]",
+                    bg(self.w.grid_scroll.upcast_ref()),
+                    bg(self.grid.view.upcast_ref()),
+                    bg(self.w.grid_page.upcast_ref())
+                );
+            }
+            c if c.starts_with("click-empty=") => {
+                // a click at `margin` (left of the capped grid), `below` (under the last row) or `inside`
+                // (on the first card): is it the book list's handler that gets it, and does it clear?
+                // points are in the coordinates of the whole grid page, as a click on the window would be
+                let sc = &self.w.grid_scroll;
+                let page = &self.w.grid_page;
+                let (pw, ph) = (page.width() as f64, page.height() as f64);
+                let (px, py) = match &c[12..] {
+                    "margin" => (3.0, ph / 2.0),
+                    "below" => (pw / 2.0, ph - 30.0),
+                    _ => (pw / 2.0, ph / 2.0 - sc.height() as f64 / 2.0 + 40.0),
+                };
+                let hit = page.pick(px, py, gtk::PickFlags::DEFAULT);
+                let reaches = hit
+                    .as_ref()
+                    .is_some_and(|h| h == sc.upcast_ref::<gtk::Widget>() || h.is_ancestor(sc));
+                let (x, y) = page
+                    .compute_point(sc, &gtk::graphene::Point::new(px as f32, py as f32))
+                    .map(|p| (p.x() as f64, p.y() as f64))
+                    .unwrap_or((px, py));
+                let clears = reaches && !hits_item(sc, x, y);
+                eprintln!(
+                    "click-empty: {} reaches_list={reaches} clears={clears}",
+                    &c[12..]
+                );
+                if clears {
+                    sender.input(Input::ClearSelection);
+                }
+            }
             _ => return self.dev_wave9_more(c, sender),
         }
         true

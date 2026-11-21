@@ -122,7 +122,7 @@ Text, HTML and Markdown files are not registered; add them from inside Bookx.
 
 | What | Where |
 |---|---|
-| Library | `~/Documents/Bookx Library` (change it in *Preferences*) |
+| Library | `~/Documents/Bookx Library` (change it in main menu → *Preferences* → *Library*) |
 | Settings | `~/.config/Bookx/config.json` |
 | Dictionaries | `~/.local/share/bookx/dictionaries/` |
 | Plugins and patches | `~/.local/share/bookx/plugins/`, `~/.local/share/bookx/patches/` |

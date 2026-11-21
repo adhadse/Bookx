@@ -1,6 +1,6 @@
 # Keyboard shortcuts
 
-Press ++ctrl+question++ in the app to see the main shortcuts. This page lists them all. Most of them can be changed:
+Press ++ctrl+question++ in the app (or choose *Keyboard Shortcuts* in the main menu, the hamburger button at the right of the header bar) to see the main shortcuts. This page lists them all. Most of them can be changed:
 see [Changing shortcuts](#changing-shortcuts).
 
 ## Everywhere
@@ -154,7 +154,7 @@ These are the defaults; every one of them can be changed under [Changing shortcu
 </figure>
 
 
-Open **Preferences → Keyboard Shortcuts**. Every action of the library, the reader and the book editor (and the application-wide ones)
+Open **Preferences** (++ctrl+comma++) and choose the **Keyboard Shortcuts** page in its list. Every action of the library, the reader and the book editor (and the application-wide ones)
 is listed with its keys.
 
 - **Find** an action with the *Filter shortcuts* field: type part of its name or of its keys (`bookmark`, `ctrl+b`).
@@ -185,3 +185,30 @@ window. They are kept in `shortcuts.json` next to the settings file.
     - When the reader's keys for turning pages are changed, the right-to-left mirroring of ++left++ / ++right++ no longer
       applies to the new keys.
     - ++ctrl+r++ in the reader reloads the book; it is not the library refresh.
+
+## Questions and answers
+
+??? question "How do I see all the shortcuts?"
+    Press ++ctrl+question++, or open the main menu (the hamburger button, or ++f10++) and choose **Keyboard Shortcuts**. This page
+    lists them too.
+
+??? question "How do I change a shortcut?"
+    Open **Preferences → Keyboard Shortcuts**, click the row of the action and press the new keys. ++escape++ cancels and
+    ++backspace++ removes the shortcut.
+
+??? question "What if two actions get the same keys?"
+    Bookx says which action has them and offers **Swap**, **Take It Away** or **Cancel**. Library and reader actions may share
+    keys because they never work in the same window.
+
+??? question "How do I go back to the default shortcuts?"
+    The arrow button on a row resets that action; *Reset All Shortcuts* under **Share and Reset** resets everything, with an
+    **Undo** message.
+
+??? question "How do I move my shortcuts to another computer?"
+    Use **Export Shortcuts** and **Import Shortcuts** on the same page.
+
+??? question "How do I find a command without knowing its shortcut?"
+    Press ++ctrl+k++ for the command palette and type a few letters.
+
+??? question "Why does a letter key do nothing?"
+    Single letters (++m++, ++t++, ++r++) only work while no text field has the focus.

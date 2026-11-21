@@ -292,7 +292,7 @@ def reader_read_aloud_stays(c):
 
 @scenario
 def editor_palette_keys(c):
-    """Ctrl+Shift+P in the editor window opens the editor's command palette (not the library's)."""
+    """Ctrl+Shift+P in the editor window opens the editor's command palette (not the library's); Ctrl+K stays Insert Hyperlink."""
     c.start()
     card = c.wait_node("table cell", rx="Alice")
     c.sb.right_click(*card.center())
@@ -314,6 +314,12 @@ def editor_palette_keys(c):
             not [n for n in c.find(None, rx="^Add Books") if n.role not in ("button", "toggle button")])
     c.sb.key("Escape")
     c.check("Escape closes it", c.gone(None, "Command palette search", timeout=4))
+    c.click_node(max(c.find("text"), key=lambda n: n.box[2] * n.box[3]))
+    c.sb.key("k", ("Control",))
+    c.check("Ctrl+K stays Insert Hyperlink in the editor (it does not open the palette)",
+            c.wait_node(None, rx=r"^Insert Hyperlink$", timeout=5) and not c.find(None, "Command palette search"))
+    c.sb.key("Escape")
+    c.gone(None, rx=r"^Insert Hyperlink$", timeout=4)
 
 
 @scenario

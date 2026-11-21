@@ -60,7 +60,7 @@ scenario lib8_notes_empty 'library:notes,wait:800,library:notes:search=nothing-l
 #   tablecols        `tablecols: width=N visible=a,b hscroll=<bool> custom=<bool>`
 #   sortcol=Name[:desc]   a click on that column header; sortstate prints key/dropdown/arrow/first rows
 #   hover=N | unhover=N | checks | check=N | longpress=N | cardclick=N | carddesc=N   (cards)
-#   details-click | details-state | gridwidth
+#   details-click | details-state | gridwidth | gridcap=N (lowers the grid cap, test only)
 # and `jobs:copy-error=ID`, `jobs:icon`; `jobs:rows` says `rows empty=No Background Jobs` when nothing is listed.
 
 scenario lib9_trash_undo 'library:wide,wait:300,library:dump,library:select1,wait:400,library:delete,wait:900,library:dump,library:undo-last,wait:900,library:dump,quit' '
@@ -78,7 +78,7 @@ scenario lib9_jobs 'jobs:clear,jobs:open,wait:500,jobs:rows,jobs:close,jobs:star
     sed -n 2p <<<"$R" | grep -q "Send Books / Failed: disk full"; check "a failed job lists its reason" $?
     ! sed -n 2p <<<"$R" | grep -q "After 0"; check "no \"After 0 ms\" for a job that failed at once" $?
     has "^jobs: copy-error 2 Send Books / disk full"; check "Copy Error puts the job and its reason on the clipboard" $?
-    has "^jobs: icon (emblem-synchronizing|process-working|view-refresh)-symbolic"; check "the Jobs button has its own icon (not the list icon of Shelves and the table)" $?
+    has "^jobs: icon (task-due|system-run)-symbolic"; check "the Jobs button has its own icon (not the list icon of Shelves and the table)" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
 scenario lib9_table_sort 'library:wide,wait:300,library:table,wait:700,library:sortstate,library:sortcol=Author(s):desc,wait:600,library:sortstate,library:sortcol=Author(s),wait:600,library:sortstate,library:sort=2,wait:600,library:sortstate,library:sort=3,wait:600,library:sortstate,quit' '
@@ -218,3 +218,33 @@ scenario lib9_focus 'library:wide,wait:500,library:focus-order,library:focus-gri
     echo "$O" | grep -q "ListBox\|Sidebar"; check "Tab starts in the sidebar" $?
     echo "$O" | grep -qi "search"; check "and reaches the search button" $?
     has "^focus_where: in_grid=true"; check "after a dialog closes the focus is back in the book grid" $?'
+
+# grid background and the click on empty space (the capped grid must not shrink the click target nor paint a darker strip)
+#   library:gridbg                 `gridbg: scroll=[classes] view=[classes] page=[classes]`
+#   library:click-empty=margin|below|inside   `click-empty: <where> reaches_list=<bool> clears=<bool>`
+scenario lib9_grid_empty_click 'library:wide,wait:1500,library:gridcap=500,wait:1800,library:gridwidth,library:gridbg,library:select1,wait:400,library:click-empty=margin,wait:400,library:works=selected,library:select1,wait:400,library:click-empty=below,wait:400,library:works=selected,library:select1,wait:400,library:click-empty=inside,wait:400,library:works=selected,quit' '
+    G=$(grep "^gridwidth:" <<<"$OUT")
+    grep -q "max=500" <<<"$G"; check "the test lowered the cap to 500 px" $?
+    W=$(sed "s/.*clamp=\([0-9]*\).*/\1/" <<<"$G")
+    [ "$W" -le 500 ]; check "the grid view is at most the cap wide ($W)" $?
+    S=$(sed "s/.*scroll=\([0-9]*\).*/\1/" <<<"$G")
+    [ "$S" -gt 500 ]; check "the scrolled window keeps the whole width ($S)" $?
+    grep "^gridbg:" <<<"$OUT" | grep -q "scroll=\[[^]]*library-grid.*view=\[[^]]*library-grid"; check "the scroll and the grid carry library-grid (transparent: the window background, no darker strip)" $?
+    has "^click-empty: margin reaches_list=true clears=true"; check "a click on the margin beside the capped grid reaches the list handler and clears" $?
+    has "^click-empty: below reaches_list=true clears=true"; check "a click below the last row clears" $?
+    has "^click-empty: inside reaches_list=true clears=false"; check "a click on a card does not clear" $?
+    M=$(grep "^works: selected=" <<<"$OUT")
+    sed -n 1p <<<"$M" | grep -q "selected=\[\]"; check "the selection is empty after the margin click" $?
+    sed -n 2p <<<"$M" | grep -q "selected=\[\]"; check "the selection is empty after the click below" $?
+    sed -n 3p <<<"$M" | grep -vq "selected=\[\]"; check "the selection is kept after a click on a card" $?'
+
+# the Jobs button of the header: nothing animates while no job runs (the theme has no emblem-synchronizing-symbolic and
+# GTK's process-working-symbolic is a spinner that never stops), the ring shows only while a job runs
+#   jobs:button   `jobs: jobs_button: spinning=<bool> icon=<name>`
+scenario lib9_jobs_button_idle 'wait:600,jobs:button,jobs:start=convert|Convert Book|cancel,wait:300,jobs:button,jobs:finish=2|ok,wait:300,jobs:button,quit' '
+    B=$(grep "jobs_button:" <<<"$OUT")
+    sed -n 1p <<<"$B" | grep -q "spinning=false"; check "idle: the Jobs button does not spin" $?
+    sed -n 1p <<<"$B" | grep -qv "process-working"; check "idle: the icon is a static one" $?
+    sed -n 2p <<<"$B" | grep -q "spinning=true"; check "a running job shows the spinner" $?
+    sed -n 3p <<<"$B" | grep -q "spinning=false"; check "after the job finished the button stops spinning" $?
+    sed -n 3p <<<"$B" | grep -qv "process-working"; check "and shows a static icon again" $?'

@@ -1,7 +1,8 @@
 # Editing
 
-The editor is for fixing and polishing EPUB files. Open it from the library with right-click → *Edit Book*
-(or the details panel). Each book opens in its own window.
+The editor is for fixing and polishing EPUB files. To open it, right-click a book in the library and choose
+**Edit → Edit Book** (the entry is missing when several books are selected). Each book opens in its own window. A
+book of another format can be opened too: see [Book menu](#book-menu) below.
 
 <figure markdown="1">
 ![The book editor](assets/editor-light.png#only-light)
@@ -11,13 +12,28 @@ The editor is for fixing and polishing EPUB files. Open it from the library with
 
 ## Overview
 
-The window has a file list on the left, a code editor in the middle and a **live preview** on the right. The preview
-is drawn by the same engine as the reader, so what you see is what the reader shows.
+The window has a Files list on the left, a code editor in the middle and a **live preview** on the right. The
+preview is drawn by the same engine as the reader, so what you see is what the reader shows.
 
-- The code editor handles XHTML, CSS, OPF and NCX with **syntax highlighting, line numbers and undo/redo**.
-  A one-click button reformats XML. See [The code view](#the-code-view) below.
-- Save with ++ctrl+s++. The book is saved back into the library.
-- *Metadata* and *Cover* editing is in the editor too, and any image can be used as the cover.
+The **header bar** at the top holds the buttons you use most:
+
+- at the start: **Save** (++ctrl+s++, writes the book back into the library), **Undo** and **Redo** (these two
+  undo and redo typing; undoing a whole tool is a different thing, see [Compare and checkpoints](#compare-and-checkpoints));
+- at the end, left to right: **Find** (++ctrl+f++), **Preview** (shows or hides the preview), **Tools**, **Markup**
+  and the **main menu** (☰, ++f10++), which this page calls the *Book menu*.
+
+The **sidebar** on the left has four tabs, shown as icons (hover for the name): *Files*, *Contents*, *Metadata*
+and *Live CSS*. The **Problems** panel, the search results and the spelling panel open below or beside the code when
+you ask for them, and a status line at the bottom shows the cursor position.
+
+- The code editor handles XHTML, CSS, OPF and NCX with **syntax highlighting, line numbers and undo/redo**. To
+  tidy XML, open the Tools menu in the header bar and choose Fix & Clean → *Reformat Markup*. See
+  [The code view](#the-code-view) below.
+- Press ++ctrl+shift+p++ to open the **command palette** and type what you want to do. It finds editor commands,
+  every item of the Tools, Markup and Files menus, and the files of the book (++ctrl+k++ opens the palette in the
+  library and reader, but in the editor it inserts a hyperlink).
+- *Metadata* and *Cover* editing is in the editor too: the *Metadata* tab of the sidebar, and any image of the book
+  can be used as the cover.
 
 ## The code view
 
@@ -34,9 +50,9 @@ The code view is built on GtkSourceView, the editing widget of GNOME's own edito
 - Line numbers, a highlight on the current line, **bracket matching**, automatic indent, Tab to indent, and *Home* /
   *End* that go to the first character of the line first. Tab inserts two spaces.
 - **Tag pair highlight:** with the caret inside a tag, that tag and its partner (`<p>` … `</p>`) are highlighted.
-- **Minimap** at the right edge shows the whole file; click it to jump. Switch it off with the Markup menu → *Show
-  Minimap*. The choice is remembered.
-- **Show Hidden Characters** (Markup menu) draws spaces, tabs and line breaks, and marks no-break spaces,
+- **Minimap** at the right edge shows the whole file; click it to jump. Switch it off in the header bar's Markup
+  menu → View → *Show Minimap*. The choice is remembered. (In a window narrower than about 1000 px it is hidden anyway.)
+- **Show Hidden Characters** (Markup menu → View) draws spaces, tabs and line breaks, and marks no-break spaces,
   zero-width characters, soft hyphens and other characters that are easy to miss in yellow. When the caret is on one,
   the status line names it.
 
@@ -60,7 +76,7 @@ The narrow column left of the line numbers shows, per line:
 | Red number | how many words on the line are possibly misspelled |
 
 Hover a mark for the text of the finding. Findings follow the text as you edit, but they are not re-checked until you
-run the check again.
+run the check again (++f7++, or Tools → *Check Book*).
 
 ### Spelling in the text
 
@@ -74,7 +90,9 @@ run the check again.
 Possibly misspelled words in XHTML files are underlined in red while you type, using the same Hunspell dictionary as
 Tools → *Check Spelling* (the book's language; none is bundled). Right-click a word for **Replace with**,
 **Ignore** (until the editor closes) and **Add to Dictionary** (kept in `spelling-words.txt` next to the settings).
-Files bigger than about 700 kB are not checked while typing.
+Files bigger than about 700 kB are not checked while typing. If you do not want the underlines, switch off
+*Underline misspelled words* in Preferences → Editor (see [Editor preferences](#editor-preferences)). The whole-book
+spelling panel is described under [Spelling](#spelling).
 
 ### Completion
 
@@ -118,11 +136,11 @@ the stop shows its default.
 **In the search fields.** Tab in *Find* or *Replace* expands a trigger there too, as plain text: stops show their
 default and nothing jumps.
 
-Edit menu → **Manage Snippets** adds your own: name, trigger, files it applies to and text. The **Test** box expands the
+The Markup menu in the header bar → Insert → **Manage Snippets** adds your own: name, trigger, files it applies to and text. The **Test** box expands the
 snippet in a scratch box (with sample selected text), so you see what you get before saving. The buttons in the title bar
 import and export your snippets as a JSON file to share them. A snippet of yours with the same trigger replaces a
 built-in one. They are stored as `snippets.json` next to the settings. The same dialog lists your **templates for new
-files** (XHTML or CSS; `{title}` is replaced by the name), the ones Files → **New File** offers.
+files** (XHTML or CSS; `{title}` is replaced by the name), the ones **New File** offers (see [Files and tabs](#files-and-tabs)).
 
 ### Editor preferences
 
@@ -133,8 +151,9 @@ files** (XHTML or CSS; `{title}` is replaced by the name), the ones Files → **
 </figure>
 
 
-**Preferences → Editor** (also *Editor Preferences* in the editor's command palette, ++ctrl+shift+p++) sets
-how the code looks and behaves; every open editor window follows at once.
+To change how the code looks and behaves, open the Book menu (☰ at the end of the header bar) and choose
+**Preferences** (++ctrl+comma++), then the **Editor** page. The command palette's *Editor Preferences* entry opens
+the same settings in a smaller window. Every open editor window follows a change at once.
 
 - **Code**: font and size, tab width, spaces or tabs, line numbers, highlight of the current line, a right margin guide
   at a column, wrapping, showing spaces and tabs, the overview map.
@@ -148,7 +167,9 @@ how the code looks and behaves; every open editor window follows at once.
   the code.
 
 The cursor's width and blinking follow your desktop settings. Keyboard shortcuts of the editor are under
-**Preferences → Keyboard Shortcuts → Editor**.
+**Preferences → Keyboard Shortcuts**, in the *Editor* group. *Reopen tabs and cursors* (the open tabs and the caret
+of each file, remembered per book) is the last switch of the *Editing* group, and *Wrap Long Lines* is also in the
+Book menu.
 
 ### Files with one very long line
 
@@ -169,21 +190,27 @@ coloured again.
 </figure>
 
 
-Files are grouped by type, with reading-order numbers.
+The **Files** tab (first icon of the sidebar) lists every file of the book, grouped by type, with reading-order
+numbers. The row of small buttons under the list adds files and moves a page up or down in the reading order; the
+`⋯` button next to them opens the **Files menu**, which is also what you get when you right-click a file. Most of what
+follows is in that menu.
 
-- Select several with Ctrl/Shift-click.
-- **Rename** with ++f2++. Every `href`, `src`, CSS `url()` and `#fragment` that points at the file is repaired; other
+- Select several files with Ctrl/Shift-click.
+- **Rename** with ++f2++ (or Rename in the Files menu). Every `href`, `src`, CSS `url()` and `#fragment` that points at the file is repaired; other
   files with similar names are left alone.
-- **Delete** with ++delete++. One file that nothing else refers to goes at once and a toast offers **Undo** for about
+- **Delete** with ++delete++ (or Delete Selected in the Files menu). One file that nothing else refers to goes at once and a toast offers **Undo** for about
   ten seconds. Two or more files, or a file a page, stylesheet or the contents still points to, ask first and say how
   many. The *Images* dialog does the same; its button says how many images are selected ("Delete 3 Images").
   Reorder the spine by moving files up or down.
-- From the `⋯` menu or a right-click: *New File* (templates, optional stylesheet links, ++ctrl+n++),
-  *Merge Selected*, *Bulk Rename*, *Link Stylesheets* and *Export Selected*.
+- In the Files menu (the `⋯` button or a right-click): *New File* (templates, optional stylesheet links, ++ctrl+n++),
+  *Add Files* (any file from your computer: a picture, font, stylesheet or audio file; Bookx puts it in the folder
+  that suits its type and lists it in the book's package), *Merge Selected*, *Bulk Rename*, *Link Stylesheets* and
+  *Export Selected*. [File list extras](#file-list-extras) below describes the rest of the menu.
 - Files you open get **tabs**. ++ctrl+w++ closes one, ++ctrl+alt+down++ / ++ctrl+alt+up++ step through the reading
   order.
-- **Quick open** with ++ctrl+p++.
-- The **command palette** (++ctrl+shift+p++) lists the editor's commands (save, find, check, go to line …), every
+- **Quick open** with ++ctrl+p++: type a few letters of a file name and press ++enter++.
+- The **command palette** (++ctrl+shift+p++, or *Command Palette* with your own keys under Preferences → Keyboard
+  Shortcuts) lists the editor's commands (save, find, check, go to line …), every
   item of the Tools, Markup and Files menus and the files of the book. Type a few letters and press ++enter++.
 
 ![The editor's command palette](assets/editor-palette-light.png#only-light)
@@ -191,13 +218,16 @@ Files are grouped by type, with reading-order numbers.
 
 Every change that touches the whole book first takes a checkpoint named "Before: …". The toast that reports the
 change (a tool, Replace All in the whole book, a restore) has an **Undo** button for about ten seconds: it puts the
-book back and removes that checkpoint again. *Revert to Before the Last Change* shows a **Redo** button, and
-*Revert to After (Redo)* an **Undo** button, the same way.
+book back and removes that checkpoint again. After the toast is gone, open the Book menu (☰) and choose *Revert to
+Before the Last Change* (++ctrl+alt+z++); it shows a **Redo** button, and *Revert to After (Redo)* an **Undo**
+button, the same way.
 
 ## Search and replace
 
-++ctrl+f++ opens the find bar, one row high. The **Search Options** button at its end holds the mode, match case, whole
-words, scope and the other options; ++ctrl+h++ adds the replace row.
+Press ++ctrl+f++ (or the **Find** button at the end of the header bar) to open the find bar, one row high above the
+code. The **Search Options** button at its end holds the mode, match case, whole words, scope and the other options;
+++ctrl+h++ adds the replace row. Inside that popover the `⋯` button has *Saved Searches*, *Save This Search* and
+*Functions*.
 
 <figure markdown="1">
 ![Find and replace in the editor](assets/editor-find-light.png#only-light)
@@ -238,7 +268,8 @@ browser.
 </figure>
 
 
-These are drawn while you type and can be switched off in the **View** part of the Markup menu:
+These are drawn while you type and can be switched off in the **View** part of the Markup menu (the `<>` button in
+the header bar):
 
 - **Invalid markup** has a red squiggle (unclosed or stray tags, duplicate or unquoted attributes, a bare `&`, unbalanced
   braces in CSS); hover for the reason. Tools → *Check Book* does the full validation.
@@ -260,7 +291,7 @@ open element when you type `</`; typing the rest of the closing tag yourself wor
 </figure>
 
 
-The `<>` button opens the **Markup menu**. It has short pages so it never needs scrolling: **Format** (text styles,
+The `<>` button in the header bar opens the **Markup menu**. It has short pages so it never needs scrolling: **Format** (text styles,
 colour, alignment, case, block type), **Insert** (hyperlink, image, special character, snippets), **Structure** (matching
 tags, wrap, rename, comment, and the split entries), three commands (*Split Tag at Caret*, *Go to Definition*, *Sort CSS
 Rules*) and **View** (the switches of the editor). Where a command has a key, the menu shows it next to the item; the label
@@ -315,20 +346,20 @@ or an on-screen keyboard).
 </figure>
 
 
-Press ++f7++ or use the check button. The **Problems** panel opens at the bottom of the editor: a list grouped by
-file, with a red, amber or blue icon per problem, the line and column, the check id (such as `OPF-003`) and count
+Press ++f7++, or open the Tools menu in the header bar and choose **Check Book**. The **Problems** panel opens at
+the bottom of the editor: a list grouped by file, with a red, amber or blue icon per problem, the line and column, the check id (such as `OPF-003`) and count
 badges for errors, warnings and notes.
 
 - **Click** a problem to read what it means, why it matters and how to fix it, in plain language.
 - **Double-click** it, or press ++enter++, to open the place in the editor.
-- ++f8++ and ++shift+f8++ go to the next and the previous problem (Tools → *Next Problem* / *Previous Problem*).
+- ++f8++ and ++shift+f8++ go to the next and the previous problem (the arrow buttons in the panel's header do the same).
 - **Fix** repairs the problem in its file; **Fix all of this kind** repairs every problem of that kind in the book.
-  Both take a checkpoint first ("Before: Fix …"), so Tools → *Restore Checkpoint* undoes them, and the list is
+  Both take a checkpoint first ("Before: Fix …"), so Tools → Checkpoints → *Restore Checkpoint* undoes them (or press **Undo** in the toast), and the list is
   checked again afterwards. Problems that cannot be repaired automatically show no Fix button.
-- **Ignore this kind** hides every problem of that kind in this book. The button with the crossed eye in the panel's
-  header lists the ignored kinds and shows them again. Problems with the markup or the package itself cannot be ignored.
-- **Also check accessibility** adds hints such as skipped heading levels, missing roles, missing accessibility
-  metadata and SVG pictures without a title.
+- **Ignore this kind** hides every problem of that kind in this book. The options menu (`⋯`) at the right of the
+  panel's header lists the ignored kinds and shows them again. Problems with the markup or the package itself cannot be ignored.
+- **Also check accessibility** (a switch in the same options menu) adds hints such as skipped heading levels,
+  missing roles, missing accessibility metadata and SVG pictures without a title.
 - After you edit a file, its entries are dimmed until you check again. Checking again keeps the selected problem selected.
 
 What each Fix does:
@@ -358,64 +389,6 @@ The check combines the quick checks of the editor with an EPUB validator and ext
 trip over: empty files, encodings, entities, ids, CSS declarations, fonts that cannot be read or may not be embedded,
 damaged or CMYK images, links to folders or with wrong case, unused files and more.
 
-## Spelling in the text
-
-Possibly misspelled words in XHTML files are underlined in red while you type, using the same Hunspell dictionary as
-Tools → *Check Spelling* (the book's language; none is bundled). Right-click a word for **Replace with**,
-**Ignore** (until the editor closes) and **Add to Dictionary** (kept in `spelling-words.txt` next to the settings).
-Files bigger than about 700 kB are not checked while typing.
-
-### Completion
-
-Completion pops up while you type, or press ++ctrl+space++.
-
-- after `<`: tag names; inside a tag: attribute names for that tag (picking one adds `=""` and puts the caret inside);
-- in `href`, `src`, `poster` and CSS `url()`: the files of the book, with the relative path worked out for you; after
-  `#` (or `file.xhtml#`): the ids in that file, including ones you typed and have not saved;
-- in `class="…"`: the classes your stylesheets define; in a CSS rule: property names;
-- in text: words from the open file and snippets whose trigger matches.
-
-### Snippets
-
-A snippet is a short word that expands into text with tab stops. Type the word and press ++tab++. Tab moves to the next
-stop, `${1:text}` stops hold a default, and the caret ends where `$0` is. Built in: `p` (paragraph), `h` (heading),
-`img`, `link`, `sec` (a section with `epub:type`), `fn` (footnote reference), `aside` (footnote), `Lorem` (three filler
-paragraphs), `<>` (self-closing tag), `<a` (link), `<i` (image), `<<` (any tag) and `<c` (tag with a class) and, in
-stylesheets, `rule`. Triggers may start with `<`: type `<a` and press ++tab++.
-
-**Wrapping the selection.** A stop written `${2*}` (or `${2*:default}`) takes the text that was selected when you expand
-the snippet: select a word, type nothing, and press ++ctrl+j++ (**Insert Snippet**, a searchable list), or type the
-trigger just before the selection and press ++tab++. `p`, `h`, `link`, `<<`, `<c` and `<a` use it. Without a selection
-the stop shows its default.
-
-**In the search fields.** Tab in *Find* or *Replace* expands a trigger there too, as plain text: stops show their
-default and nothing jumps.
-
-Edit menu → **Manage Snippets** adds your own: name, trigger, files it applies to and text. The **Test** box expands the
-snippet in a scratch box (with sample selected text), so you see what you get before saving. The buttons in the title bar
-import and export your snippets as a JSON file to share them. A snippet of yours with the same trigger replaces a
-built-in one. They are stored as `snippets.json` next to the settings. The same dialog lists your **templates for new
-files** (XHTML or CSS; `{title}` is replaced by the name), the ones Files → **New File** offers.
-
-### Editor preferences
-
-**Preferences → Editor** (also *Editor Preferences* in the editor's command palette, ++ctrl+shift+p++) sets
-how the code looks and behaves; every open editor window follows at once.
-
-- **Code**: font and size, tab width, spaces or tabs, line numbers, highlight of the current line, a right margin guide
-  at a column, wrapping, showing spaces and tabs, the overview map.
-- **Colour scheme**: a list of the available schemes with a preview of each, or *Follow light and dark mode*. Your own
-  GtkSourceView schemes (`*.xml`) go into the `styles` folder of the Bookx configuration (the page has a button that
-  opens it) and appear in the list.
-- **Editing**: close tags automatically (typing `>` after `<p` adds `</p>`), suggest completions while typing (or only
-  on ++ctrl+space++), paint colour codes such as `#1a2b3c` in style sheets in that colour, underline misspelled words,
-  turn typed entities into characters.
-- **Preview**: font, smallest text size, whether the preview follows the cursor, whether scrolling the preview scrolls
-  the code.
-
-The cursor's width and blinking follow your desktop settings. Keyboard shortcuts of the editor are under
-**Preferences → Keyboard Shortcuts → Editor**.
-
 ## Table of contents
 
 <figure markdown="1">
@@ -425,7 +398,9 @@ The cursor's width and blinking follow your desktop settings. Keyboard shortcuts
 </figure>
 
 
-The contents editor renames, indents, reorders and links entries, and writes both `toc.ncx` and `nav.xhtml`.
+The **Contents** tab (second icon of the sidebar) is the contents editor. It renames (type in the entry's title),
+indents, reorders and links entries, and writes both `toc.ncx` and `nav.xhtml`. Its toolbar at the bottom of the
+sidebar has *Add*, *Delete*, a *Move entry* menu (up, down, in, out), the pointer button described below and *Generate*.
 Selecting an entry opens its file at the anchor. *Generate* builds a contents from the headings (levels 1-6), from
 the links of a contents page, or one entry per file, replacing the current one or adding to it.
 
@@ -492,7 +467,7 @@ Tabs are built when you first open them; *Refresh* rebuilds them after edits.
 </figure>
 
 
-**Markup menu → Insert Special Character** (++ctrl+alt+i++) shows every Unicode character by block, with a search by name
+In the header bar, open the Markup menu and choose **Insert → Insert Special Character** (++ctrl+alt+i++); it shows every Unicode character by block, with a search by name
 or code (`acute`, `U+00E9`), your **favourites** (right-click a character to add, remove or move it) and the characters
 you used last. Click inserts the character at the caret, or into the find and replace field when that has the focus, and
 closes the window; ++ctrl+click++ inserts and keeps it open. `&`, `<` and `>` are inserted as entities. In a narrow window
@@ -504,7 +479,11 @@ Entities** switched on (off by default), typing `;` after `&eacute` or `&#233` r
 
 ## Preview
 
-The pane on the right shows the open chapter and follows what you do in the code.
+The pane on the right shows the open chapter and follows what you do in the code. The **Preview** button in the
+header bar (the second of the group at its end) hides and shows it. The pane has its own small header with a `⋯`
+options menu (follow the cursor, reload while typing, scrolling the preview scrolls the code, copy), *Refresh* and
+*Find*; the same choices are in Preferences → Editor → Preview. In a window narrower than about 700 px the preview
+sits under the code instead of beside it.
 
 ![The editor with the preview next to the code](assets/editor-preview-light.png#only-light)
 ![The editor with the preview next to the code](assets/editor-preview-dark.png#only-dark)
@@ -547,6 +526,11 @@ are repaired.
 
 Only well-formed XHTML can be split.
 
+Two more entries in the Tools menu → Structure: **Split File at Chapter Headings** splits the open chapter at its
+headings in one step, and **Merge with Next File** joins the open chapter with the next one in the reading order. In the
+Files list you can also select pages and choose *Merge Selected* in the Files menu, or drag a page onto another (see
+[File list extras](#file-list-extras)).
+
 ## Compare and checkpoints
 
 <figure markdown="1">
@@ -556,8 +540,9 @@ Only well-formed XHTML can be split.
 </figure>
 
 
-Every tool takes a snapshot of the book first. Tools → *Checkpoints* lists them with time, size and file count; there
-you can create a named checkpoint. Each row has **Compare** (with the book) and a `⋯` menu with *Revert the Book to
+Every tool takes a snapshot of the book first. Open the Tools menu in the header bar and choose **Checkpoints**:
+*Create Checkpoint* makes a named one, *Restore Checkpoint* and *Compare with Checkpoint* list them, and *Manage
+Checkpoints* opens the dialog above with time, size and file count of each. Each row has **Compare** (with the book) and a `⋯` menu with *Revert the Book to
 This State* (the state before the revert is kept too), *Rename*, *Keep* (the row then says "Kept"; it survives
 pruning of old checkpoints) and *Delete*. Delete takes the row away at once and a toast offers **Undo** for ten
 seconds; after that it is gone.
@@ -571,7 +556,7 @@ dark mode; with the e-ink theme changes are shown by weight and strike-through i
   pretty-printed text)
 - the spin button sets the lines of context; the search box finds text in the differences
 - double-click a line to go to it in the code
-- Tools → *Compare with Another Book* compares the open book with another EPUB file; use it to compare with the
+- Tools → Checkpoints → *Compare with Another Book* compares the open book with another EPUB file; use it to compare with the
   original of a book you converted
 
 Bookx does not keep the original file of an imported book, so the library has no *compare with the original* entry;
@@ -579,7 +564,7 @@ keep the original and compare with it as above.
 
 ## Live CSS
 
-The *Live CSS* tab in the sidebar shows the styles for the element at the cursor: the rules that match, strongest
+The *Live CSS* tab (the last icon of the sidebar) shows the styles for the element at the cursor: the rules that match, strongest
 first, with the file and line each is written at (click it to jump there), the rules of its parents that it inherits,
 and the resulting value of each property. A declaration that another rule overrides is struck through. It reads the
 book's stylesheets and `<style>` blocks; the reader's own defaults are not included, sizes in `em` are not converted,
@@ -594,7 +579,7 @@ and it is read only: edit the stylesheet itself.
 </figure>
 
 
-The Tools button is in the header, with **Find**, **Preview** and **Markup**; the main menu (☰) is the last button. At
+The Tools button is in the header bar, between **Preview** and **Markup**; the main menu (☰) is the last button. At
 the top of Tools are *Check Book* (++f7++) and *Fix Problems Automatically*; then the submenus *Fix & Clean*, *Styles*,
 *Media and Fonts*, *Structure*, *Accessibility* and *Links*; then *Check Spelling*, *Reports* and *Checkpoints*, and
 *Plugins* when a plugin adds something. Each tool is listed once.
@@ -742,7 +727,7 @@ does the same for all pages, stylesheets and package files, or for the open file
 - **Merge by dragging.** Drop a page onto the *middle* of another page (the row is highlighted instead of a line): Bookx
   asks, then adds the dragged page to the end of the other one, repairs the links to it and removes it. It runs on a
   checkpoint, so it can be undone. Only pages can be merged this way.
-- **Files menu (⋯ or right-click).** *Select* all text files, stylesheets, images or fonts, or none. *Use as Cover
+- **The rest of the Files menu** (the `⋯` button under the file list, or a right-click on a file). *Select* all text files, stylesheets, images or fonts, or none. *Use as Cover
   Image*, *Cover Page*, *Title Page* or *Table of Contents*. *Toggle Not in Main Reading Order*. *Change Extension*.
   *Move to Folder*. *Replace with File* (links follow when you change the name). *Open With* opens the file in
   another program and offers to update the book when you save it there. *Browse Images* shows thumbnails with their
@@ -763,21 +748,21 @@ The ☰ button at the right end of the header bar; ++f10++ opens it. At most 12 
 
 | Entry | Shortcut | What it does |
 |---|---|---|
-| Save a Copy | ++ctrl+shift+s++ | writes the book as it is now to a file; the library is not changed |
+| Save a Copy | ++ctrl+shift+s++ | asks for a file name and writes the book as it is now (unsaved edits included) as an EPUB file; the library is not changed |
 | Save a Copy and Edit It | ++ctrl+alt+shift+s++ | the same, adds the copy to the library and continues editing the copy |
 | Open Another Book | ++ctrl+o++ | shows another book of the library in this window |
 | New Book | | a book with one empty chapter |
 | More Ways to Open | | *Open an Unzipped Folder* (a folder with an unzipped EPUB, added to the library); *Open a Book of Another Format to Edit* (an AZW3, MOBI, KEPUB, FB2, FBZ, DOCX, ODT, RTF, HTMLZ or TXTZ file is converted to a temporary EPUB in memory, a KEPUB is edited as it is with its Kobo markup, and nothing is added to the library; a banner says you are editing a copy; *Save* asks whether to **save as an EPUB** (the safe choice) or to **convert back** into the original format, the old file is kept next to it as a backup (`book.azw3.bak`); a warning names what may be lost; formats Bookx cannot write, ODT and FBZ, can only be saved as EPUB); *Import as New Book* (an HTML, DOCX or text file) |
 | Revert to Before the Last Change / Revert to After (Redo) | ++ctrl+alt+z++ / ++ctrl+alt+shift+z++ | walks back and forth over the checkpoints (a new change ends the redo list); greyed out while there is nothing to revert or redo |
 | Wrap Long Lines | | wraps long lines in the code view |
-| Preferences | ++ctrl+comma++ | the Bookx preferences, with the editor settings |
-| Keyboard Shortcuts | ++ctrl+question++ | every shortcut, editable |
-| Help | ++f1++ | opens this page |
+| Preferences | ++ctrl+comma++ | the Bookx Preferences window; its **Editor** page holds the editor settings |
+| Keyboard Shortcuts | ++ctrl+question++ | every shortcut, editable (the Keyboard Shortcuts page of Preferences) |
+| Help | ++f1++ | opens this page in your browser |
 | About Bookx | | version and credits |
 
-*Close Other Tabs* and *Close Tabs to the Right* (++ctrl+shift+w++ / ++alt+shift+w++) are in the context menu of a tab.
-*Reopen tabs and cursors* (open tabs, the selected tab and the caret of each file, remembered per book) is a switch in
-the editor preferences.
+*Close Other Tabs* and *Close Tabs to the Right* (++ctrl+shift+w++ / ++alt+shift+w++) are in the context menu of a tab
+(right-click it). *Reopen tabs and cursors* (open tabs, the selected tab and the caret of each file, remembered per book)
+is a switch in Preferences → Editor.
 
 A save that fails shows a banner at the top of the window ("Could not save the book") with **Try Again**; it stays
 until the book is saved.
@@ -793,6 +778,228 @@ tooltips).
 Opening a book in the editor from a terminal: `bookx --edit book.epub OEBPS/ch1.xhtml --select-text "some words"` or
 `bookx-cli edit book.epub OEBPS/ch1.xhtml --select-text "some words"`. The file is added to the library if it is not
 there; the named files open in tabs and the text is selected in the last one.
+
+## Questions and answers
+
+Short how-tos for the jobs people ask about most. Menu names are the ones in the editor's header bar: **Tools**,
+**Markup** and the main menu (☰, called the Book menu above); the **Files** tab is the first icon of the sidebar.
+
+### Fonts and styles
+
+??? question "How do I change an embedded font?"
+    1. Open the Tools menu in the header bar → **Media and Fonts → Manage Fonts**. It lists the fonts the book carries.
+    2. To keep the font but call it something else, open it and use *rename its family*: every `@font-face`,
+       `font-family` and `font` rule and style attribute follows.
+    3. To swap in a different font file, go to the **Files** tab, right-click the font file (listed under the fonts),
+       choose **Replace with File**, pick the new font and confirm the name it keeps in the book (links follow if you
+       change it). If the new file has another format (`.otf` instead of `.ttf`), check the `src` and `format()` of
+       its `@font-face` rule in the stylesheet.
+    4. To embed a font that is installed on this computer, use Tools → Media and Fonts → **Embed Referenced Fonts**.
+       A font whose licence forbids embedding cannot be ticked.
+    5. To remove a font, open it in Manage Fonts and choose *remove*; its `@font-face` rules go with it.
+
+??? question "How do I change the font across the whole book?"
+    1. Tools → **Styles → Transform Styles**, then add a rule.
+    2. *Rename family* turns every use of one font name into another (`Georgia` → `Merriweather`).
+       *Set property* with the property `font-family` gives every `font-family` declaration the value you type.
+    3. Press **Preview** to see which files change, then **Apply**. One checkpoint is taken first.
+    4. *Set property* only changes declarations that already exist. If the book never sets a font, add a rule such as
+       `body { font-family: serif; }` to its stylesheet (open the `.css` file in the Files tab and type it).
+    5. To change only how *you* read the book, use the reader's text appearance settings instead; they do not touch the
+       file.
+
+??? question "How do I make all text bigger or smaller?"
+    Tools → Styles → **Transform Styles** → add the rule *Scale font sizes* and give a factor such as `1.2`.
+    Preview, then Apply.
+
+??? question "How do I change one CSS rule?"
+    1. In the **Files** tab click the `.css` file; it opens in the code view. Edit, then ++ctrl+s++. The preview follows as
+       you type.
+    2. If you do not know which rule styles an element, open the chapter, put the caret in the element and look at the
+       **Live CSS** tab (last icon of the sidebar): it lists the matching rules with the file and line of each. Click a
+       line to jump to it.
+    3. To rename a class everywhere, right-click it in the code and choose **Rename Class**.
+
+??? question "How do I change the whole stylesheet?"
+    - Edit it by hand: open the `.css` file and select all (++ctrl+a++), paste your version, save.
+    - Or replace the file: right-click it in the Files tab → **Replace with File** and choose the new `.css`.
+    - For rule-based changes (colours, margins, removing a property everywhere) use Tools → Styles → **Transform
+      Styles**; *Remove Unused CSS Rules* cleans up what nothing uses.
+
+??? question "How do I link a stylesheet to my pages?"
+    1. If the stylesheet is not in the book yet, add it (see "How do I add a new asset" below) or create it with **New
+       File** and the stylesheet template.
+    2. In the Files tab select the pages and the stylesheet, open the `⋯` menu (or right-click) and choose **Link
+       Stylesheets**.
+    3. Tick *Remove existing stylesheet links first* if the pages should use only the new sheet.
+    A new page made with **New File** can be linked at once with its *Link the book's stylesheets* box.
+
+### Files and assets
+
+??? question "How do I add a new file (chapter or page)?"
+    1. Open the Files tab, then the `⋯` menu → **New File** (++ctrl+n++).
+    2. Type a file name, pick a template (XHTML page or stylesheet, or one of your own) and press *Create*.
+    3. The page is added to the reading order after the file you have open. Move it with the up and down buttons under
+       the file list.
+    4. Add it to the table of contents in the **Contents** tab if readers should see it there.
+
+??? question "How do I add a new asset (image, font, stylesheet, audio)?"
+    1. In the Files tab open the `⋯` menu → **Add Files** and choose one or more files from your computer.
+    2. Bookx puts each file in the folder that suits its type and lists it in the book's package, so no manual
+       bookkeeping is needed.
+    3. Use it: for an image, put the caret where it belongs and choose Markup → **Insert → Insert Image**
+       (++ctrl+alt+m++). A stylesheet is attached with *Link Stylesheets*. A font needs an `@font-face` rule that points at
+       it. Audio and video have no dialog; type the `<audio>` or `<video>` tag yourself, and completion offers the file
+       names inside `src`.
+
+??? question "How do I rename a file and keep the links working?"
+    Select the file in the Files tab and press ++f2++ (or **Rename** in the `⋯` menu). Every `href`, `src`, CSS `url()` and
+    `#fragment` that pointed at it is rewritten. For many files at once use **Bulk Rename**, which numbers the selected
+    files in reading order and repairs the references too.
+
+??? question "How do I delete a file?"
+    Select it and press ++delete++ (or **Delete Selected** in the `⋯` menu). A file nothing refers to goes at once and a
+    toast offers **Undo** for about ten seconds. Several files, or a file something still points to, ask first. If links
+    broke, run Tools → **Links → Repair Broken Links** or check the book (++f7++).
+
+??? question "How do I remove files nothing uses?"
+    Tools → **Media and Fonts → Delete Unused Media** lists unused images, fonts, audio and video with their sizes (the
+    cover is never listed). Tools → **Styles → Remove Unused CSS Rules** removes style rules that match nothing. The
+    Check Book findings also offer *Fix* for unused files.
+
+??? question "How do I move files into folders?"
+    Select the files in the Files tab and choose **Move to Folder** in the `⋯` menu, or use Tools → **Links → Move Files
+    to a Folder**. Links are updated. Tools → **Structure → Arrange Files in Folders** sorts the whole book by type.
+
+### Cover, contents and metadata
+
+??? question "How do I change the cover?"
+    - Tools → **Media and Fonts → Set Cover**: pick an image of the book, a file from the computer, or a cover drawn from
+      the title and author; crop it and limit its size, then press *Set Cover*. *Remove Cover* is in the same dialog.
+    - Or right-click an image in the Files tab → **Use as Cover Image**, or open the image and press **Use as Cover**
+      under the picture.
+
+??? question "How do I edit the table of contents?"
+    1. Open the **Contents** tab (second icon of the sidebar).
+    2. Type in an entry to rename it, drag the grip at its left to move it (the middle of another row makes it a
+       sub-entry), or use the *Move entry* menu or ++alt+up++ / ++alt+down++ / ++alt+left++ / ++alt+right++.
+    3. *Add* puts a new entry after the selected one; *Delete* removes one (an **Undo** toast appears).
+    4. To rebuild everything, press *Generate*: from the headings, from the links of a contents page, or one entry per
+       file.
+    5. Save with ++ctrl+s++; `nav.xhtml` and `toc.ncx` are both written.
+
+??? question "How do I add a contents page that readers see inside the book?"
+    Tools → **Structure → Insert Contents Page** adds one; *Remove Contents Page* takes it away.
+
+??? question "How do I change the title, author or other metadata?"
+    Open the **Metadata** tab (third icon of the sidebar) and press **Edit Metadata**. The change is written to the file
+    when you save.
+
+### Checking and fixing
+
+??? question "How do I fix the Problems the checker reports?"
+    1. Press ++f7++ or choose Tools → **Check Book**. The **Problems** panel opens at the bottom.
+    2. Click a problem to read what it means and how to fix it; double-click it (or ++enter++) to jump to the place.
+    3. Press **Fix** for that problem or **Fix all of this kind** for the whole book. Only problems with a Fix button can
+       be repaired automatically; a checkpoint is taken first.
+    4. Tools → **Fix Problems Automatically** repairs everything the checker can fix in one go.
+    5. For the rest, edit by hand; ++f8++ and ++shift+f8++ step through the problems. Use *Ignore this kind* for
+       findings you do not care about (not for broken markup).
+
+??? question "How do I tidy messy markup?"
+    Tools → **Fix & Clean → Reformat Markup** pretty-prints the open file. *Reformat Markup in Files* does it for all
+    pages, stylesheets and package files, and *Fix HTML* repairs pages that are not well-formed.
+
+??? question "How do I find and repair broken links?"
+    Tools → **Links → Repair Broken Links** fixes links to files or anchors that moved or differ in capitals and lists
+    the rest. **Check External Links** visits every web address in the background and lists the broken ones. The
+    **Reports → Links** tab lists internal, external and broken links.
+
+??? question "How do I add alternative text to images?"
+    Tools → **Accessibility → Check Accessibility**, tab *Image descriptions*: type a text per image, or tick
+    *Decorative* for images a screen reader should skip.
+
+### Structure and history
+
+??? question "How do I split a chapter?"
+    - Put the caret where the new file should start, open the Markup menu and choose **Split at Cursor**.
+    - Or choose **Split by Picking in the Preview** and click the place in the preview.
+    - Or **Split at Several Places** to split at every heading down to a level, at page breaks or at elements you name.
+    - Tools → **Structure → Split File at Chapter Headings** does the common case in one step.
+    Links, the reading order and the contents are repaired, and a checkpoint is taken first.
+
+??? question "How do I merge chapters?"
+    Open the first one and choose Tools → **Structure → Merge with Next File**. To merge several, select the pages in the
+    Files tab and choose **Merge Selected** in the `⋯` menu, or drop one page onto the middle of another.
+
+??? question "How do I undo a tool run or restore a checkpoint?"
+    - Right after a tool, a toast says what changed; press **Undo** in it (about ten seconds).
+    - Later, open the Book menu (☰) and choose **Revert to Before the Last Change** (++ctrl+alt+z++); **Revert to After
+      (Redo)** goes forward again.
+    - For a named state, Tools → **Checkpoints → Restore Checkpoint**, or **Manage Checkpoints** for the full list with
+      *Compare*. *Create Checkpoint* makes one yourself before something risky.
+    - The header's Undo and Redo buttons only undo typing.
+
+??? question "How do I see what I changed?"
+    Tools → **Checkpoints → Compare with Checkpoint** shows the differences between the book and a checkpoint. The narrow
+    column left of the line numbers also marks new and changed lines (green and blue) since the last checkpoint.
+
+### Finding, saving and exporting
+
+??? question "How do I find and replace across the whole book?"
+    1. Press ++ctrl+h++ (find with the replace row), type the text and the replacement.
+    2. Open **Search Options** at the end of the find bar and set the *scope* to *All files* (or *Text files* for pages
+       only).
+    3. *Find All* lists every match, *Count* counts them, **Replace All** replaces them after taking a checkpoint; the
+       toast has **Undo**.
+    More in [Search and replace](search-and-replace.md).
+
+??? question "How do I save a copy or export to another format?"
+    - Book menu (☰) → **Save a Copy** (++ctrl+shift+s++) writes the book as it is now to an EPUB file you choose; the
+      library keeps its own version. **Save a Copy and Edit It** also adds the copy to the library and continues with it.
+    - The editor writes EPUB only. For KEPUB, AZW3, MOBI and the other formats, press **Save**, then in the library
+      right-click the book → **Convert To**. See [Converting and exporting](converting.md).
+
+??? question "How do I open a MOBI, AZW3, FB2 or Word file in the editor?"
+    Book menu (☰) → **More Ways to Open → Open a Book of Another Format to Edit**. It is converted to a temporary EPUB;
+    a banner says you are editing a copy, and **Save** asks whether to save as EPUB or convert back.
+
+??? question "What if saving fails?"
+    A banner "Could not save the book" stays at the top with **Try Again** until the book is saved. Your edits are not lost.
+
+### Working in the window
+
+??? question "How do I see the preview next to the code?"
+    Press the **Preview** button in the header bar (it shows or hides the pane). The preview scrolls with the code, and a click
+    in it puts the cursor at that element. Below about 700 px of window width it sits under the code instead. Its `⋯`
+    menu holds *follow the cursor*, *reload while typing* and *scroll the code with the preview*.
+
+??? question "How do I turn on spell check and add a word?"
+    - Misspelled words are underlined in red while you type. If they are not, switch on *Underline misspelled words* in
+      Preferences → Editor, and install a Hunspell dictionary for the book's language on your system (none is bundled).
+    - Right-click a word for **Replace with**, **Ignore** or **Add to Dictionary**.
+    - Tools → **Check Spelling** opens a panel with every misspelled word of the book and *Change All*.
+
+??? question "How do I open the command palette?"
+    Press ++ctrl+shift+p++ and type a few letters; it finds editor commands, every item of the Tools, Markup and Files menus
+    and the files of the book. (++ctrl+k++ is *Insert Hyperlink* in the editor; it opens the palette in the library and
+    reader.)
+
+??? question "How do I change editor settings (font, colours, tabs)?"
+    Book menu (☰) → **Preferences** (++ctrl+comma++) → the **Editor** page: code font and size, tab width, line numbers,
+    colour scheme, closing tags, completion, spelling underlines and the preview. The command palette's *Editor
+    Preferences* opens the same settings in a small window.
+
+??? question "How do I change a keyboard shortcut?"
+    Book menu (☰) → **Keyboard Shortcuts** (++ctrl+question++), group *Editor*. Menu items show the new key at once.
+
+??? question "How do I insert a link, an image or a special character?"
+    Markup menu → **Insert**: *Insert Hyperlink* (++ctrl+k++), *Insert Image* (++ctrl+alt+m++), *Insert Special
+    Character* (++ctrl+alt+i++), or type a hex code and press ++alt+x++. *Manage Snippets* is in the same place.
+
+??? question "How do I work in a small window?"
+    Below about 1000 px the sidebar hides; the button at the start of the header bar slides it over the code. Below
+    about 700 px the preview moves under the code.
 
 !!! note "Limitations"
     - The editor works on EPUB. Other formats are converted to EPUB first; see *Open a Book of Another Format to Edit* for the way back.

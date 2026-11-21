@@ -203,6 +203,7 @@ impl SimpleComponent for App {
         shared.start_indexing();
         crate::annotation_sync_ui::install(&shared);
         crate::ui::kosync::start_queue(&shared);
+        crate::ui::share::restore(&shared);
         {
             let root = shared.lib.borrow().root.clone();
             crate::mcp_host::autostart(&root);
@@ -603,6 +604,8 @@ impl SimpleComponent for App {
                         self.reader_id = Some(id);
                     }
                     Err(e) => {
+                        // a highlight asked for in a book that did not open must not jump the next time
+                        let _ = notes::take_jump(id);
                         self.restore_window();
                         self.show_open_error(false, &e);
                     }
@@ -820,7 +823,7 @@ impl SimpleComponent for App {
             Msg::ShowPrefs => {
                 let tx = sender.input_sender().clone();
                 preferences::show(
-                    &self.window,
+                    &self.front_window(),
                     &self.shared,
                     Rc::new(move |c| tx.emit(Msg::Prefs(c))),
                 );
@@ -834,7 +837,15 @@ impl SimpleComponent for App {
                     Some(&title),
                 );
             }
-            Msg::ShowPalette => self.show_palette(&sender),
+            Msg::ShowPalette => {
+                // in a book editor window the palette is the editor's own
+                let front = self.front_window();
+                if front != *self.window.upcast_ref::<gtk::Window>() {
+                    let _ = front.activate_action("ext.win", Some(&"palette".to_variant()));
+                } else {
+                    self.show_palette(&sender)
+                }
+            }
             Msg::PaletteBook(id) => {
                 if self.reader.is_some() || self.pdf.is_some() || self.comic.is_some() {
                     self.pending_read = Some(id);
@@ -885,7 +896,7 @@ impl SimpleComponent for App {
                     sender.input(Msg::Toast(msg));
                 }
             },
-            Msg::ShowShortcuts => show_shortcuts(&self.window),
+            Msg::ShowShortcuts => show_shortcuts(&self.front_window()),
             Msg::ShowStats => crate::ui::stats::show(&self.window, &self.shared),
             Msg::ShowShare => crate::ui::sync_window::show(&self.window, &self.shared),
             Msg::ShowSyncPrefs => {
@@ -1577,7 +1588,7 @@ impl SimpleComponent for App {
                     ))
                     .debug_info_filename("bookx-diagnostics.txt")
                     .build();
-                d.present(Some(&self.window));
+                d.present(Some(&self.front_window()));
             }
         }
     }
@@ -1702,6 +1713,15 @@ impl App {
 
 impl App {
     /// The command palette: commands of the window that is showing, books, recent books, settings.
+    /// The window a dialog opens over: the active window of the application (a book editor is its own window),
+    /// else the main one.
+    fn front_window(&self) -> gtk::Window {
+        relm4::main_adw_application()
+            .active_window()
+            .filter(|w| w.is_visible())
+            .unwrap_or_else(|| self.window.clone().upcast())
+    }
+
     fn show_palette(&self, sender: &ComponentSender<Self>) {
         use crate::palette::{self, Scope, Target};
         if !self.window.is_active() && !self.window.is_visible() {
@@ -1761,7 +1781,7 @@ impl App {
     }
 }
 
-fn show_shortcuts(parent: &adw::ApplicationWindow) {
+fn show_shortcuts(parent: &impl IsA<gtk::Widget>) {
     let dialog = adw::ShortcutsDialog::new();
     let section = |title: &str, items: &[(&str, &str)]| {
         let s = adw::ShortcutsSection::new(Some(&tr(title)));

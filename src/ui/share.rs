@@ -136,7 +136,24 @@ pub fn reapply(shared: &SharedRef) -> Option<Result<Vec<String>, String>> {
 /// Switches the server on or off with the saved settings.
 pub fn set_server(shared: &SharedRef, on: bool) -> Result<Vec<String>, String> {
     let s = shared.cfg.borrow().share.clone();
-    apply(shared, &s, on)
+    let r = apply(shared, &s, on);
+    let changed = shared.cfg.borrow_mut().share.remember(on, r.is_ok());
+    if changed {
+        shared.cfg.borrow().save();
+    }
+    r
+}
+
+/// At launch: starts the server again when it was on when Bookx last ran. A failure (the port is
+/// taken, the password is missing) is shown on the Sync page and keeps the wish for the next launch.
+pub fn restore(shared: &SharedRef) {
+    let s = shared.cfg.borrow().share.clone();
+    if !s.restore_at_launch() {
+        return;
+    }
+    if let Err(e) = apply(shared, &s, true) {
+        tracing::warn!("the sync server could not be started again: {e}");
+    }
 }
 
 /// Keeps `f` called on every change of the sync settings while `w` exists.

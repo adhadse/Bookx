@@ -93,6 +93,8 @@ pub struct DeviceReading {
     /// Whether Bookx can put notes next to this device copy (it never touches a notes file that
     /// the device already has).
     pub accepts_notes: bool,
+    /// The page bookmarks the device has (KOReader's, a Kobo's dog-ears).
+    pub bookmarks: Vec<crate::bookmark_sync::DeviceMark>,
 }
 
 /// What the library knows about one of its books.
@@ -107,6 +109,9 @@ pub struct LibraryBook {
     pub highlights: Vec<Highlight>,
     /// What the devices said the look of highlights was the last time (`devstyle::DeviceLooks`).
     pub looks: BTreeMap<String, crate::core::devstyle::Look>,
+    /// The device bookmarks an earlier sync handled (`bookmark_sync::Store::key`): they are never
+    /// imported again, not even when the reader deleted them here.
+    pub bookmark_keys: HashSet<String>,
 }
 
 pub fn library_books(books: &[Book]) -> Vec<LibraryBook> {
@@ -126,6 +131,7 @@ pub fn library_books(books: &[Book]) -> Vec<LibraryBook> {
                 .cloned()
                 .collect(),
             looks: BTreeMap::new(),
+            bookmark_keys: HashSet::new(),
         })
         .collect()
 }
@@ -134,8 +140,15 @@ pub fn library_books(books: &[Book]) -> Vec<LibraryBook> {
 /// what the reader changed in Bookx since.
 pub fn attach_looks(books: &mut [LibraryBook], root: &Path) {
     let ledger = crate::core::devstyle::DeviceLooks::load(root);
+    let marks = crate::bookmark_sync::Store::load(root);
     for b in books {
         b.looks = ledger.of_book(b.id);
+        b.bookmark_keys = marks
+            .entries
+            .iter()
+            .filter(|(_, e)| e.book_id == b.id)
+            .map(|(k, _)| k.clone())
+            .collect();
     }
 }
 
@@ -152,6 +165,28 @@ pub trait Locator {
         _chapter: Option<&str>,
     ) -> Option<(usize, i32, i32)> {
         self.locate(book_id, text)
+    }
+
+    /// Like [`Locator::locate_in`] when the device also said where it had the quote (xpointer, chapter
+    /// title): of several places that hold the words, the one it points at.
+    fn locate_hinted(
+        &self,
+        book_id: u64,
+        text: &str,
+        chapter: Option<&str>,
+        _hint: &crate::highlight_goto::Hint,
+    ) -> Option<(usize, i32, i32)> {
+        self.locate_in(book_id, text, chapter)
+    }
+
+    /// The place of a device bookmark (it has no quote to search for): [`Place::unknown`] when the
+    /// book cannot say.
+    fn locate_place(
+        &self,
+        _book_id: u64,
+        _mark: &crate::bookmark_sync::DeviceMark,
+    ) -> crate::bookmark_sync::Place {
+        crate::bookmark_sync::Place::unknown()
     }
 
     /// Like [`Locator::locate_in`] for a quote that is already highlighted at the places in `taken`
@@ -210,6 +245,17 @@ pub struct Incoming {
     pub end: i32,
 }
 
+/// A device bookmark that is new to the library, with the place it will be stored at.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BookmarkIn {
+    /// The ledger key (`bookmark_sync::Store::key`).
+    pub key: String,
+    pub mark: crate::bookmark_sync::DeviceMark,
+    pub place: crate::bookmark_sync::Place,
+    /// `KOReader` or `Kobo`.
+    pub source: String,
+}
+
 /// Highlights of the library that go to one device copy.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Outgoing {
@@ -235,6 +281,8 @@ pub struct BookPlan {
     /// The library is further along than the device; nothing is done about it.
     pub library_ahead: Option<(f64, f64)>,
     pub highlights_in: Vec<Incoming>,
+    /// Device bookmarks the library has not handled yet.
+    pub bookmarks_in: Vec<BookmarkIn>,
     /// The colour and style of highlights the library has and the device read says (see
     /// `look_sync`).
     pub looks_in: Vec<crate::look_sync::LookIn>,
@@ -258,6 +306,7 @@ impl BookPlan {
     pub fn is_empty(&self) -> bool {
         self.progress.is_none()
             && self.highlights_in.is_empty()
+            && self.bookmarks_in.is_empty()
             && !self.looks_in.iter().any(|l| l.set.is_some())
             && self.notes_in.is_empty()
             && self.out.is_empty()
@@ -549,6 +598,20 @@ pub fn plan(device: &[DeviceReading], library: &[LibraryBook], locator: &dyn Loc
                 bp.conflicts.push(c.clone());
             }
         }
+        // page bookmarks the library has not handled: each with the place the book gives it
+        for m in &reading.bookmarks {
+            let source = bookmark_source(m);
+            let key = crate::bookmark_sync::Store::key(bid, source, &m.id);
+            if book.bookmark_keys.contains(&key) || bp.bookmarks_in.iter().any(|i| i.key == key) {
+                continue;
+            }
+            bp.bookmarks_in.push(BookmarkIn {
+                place: locator.locate_place(bid, m),
+                key,
+                mark: m.clone(),
+                source: source.to_string(),
+            });
+        }
         // library -> device
         let missing: Vec<Highlight> = b
             .notes_to_device
@@ -587,6 +650,9 @@ pub struct Summary {
     pub progress: Vec<(String, f64, f64)>,
     pub highlights_to_library: usize,
     pub notes_to_library: usize,
+    pub bookmarks_to_library: usize,
+    /// Of those, the ones whose place in the book is a guess (a chapter, a percentage).
+    pub bookmarks_approx: usize,
     pub highlights_to_device: usize,
     pub notes_to_device: usize,
     pub library_ahead: usize,
@@ -659,6 +725,21 @@ impl Summary {
                 "{} {} device→Bookx",
                 plural(self.notes_to_library, "note", "notes"),
                 go(self.notes_to_library)
+            ));
+        }
+        if self.bookmarks_to_library > 0 {
+            v.push(format!(
+                "{} {} device→Bookx{}",
+                plural(self.bookmarks_to_library, "bookmark", "bookmarks"),
+                go(self.bookmarks_to_library),
+                if self.bookmarks_approx > 0 {
+                    format!(
+                        " ({} placed roughly, by chapter or page)",
+                        self.bookmarks_approx
+                    )
+                } else {
+                    String::new()
+                }
             ));
         }
         if self.highlights_to_device > 0 {
@@ -745,6 +826,8 @@ impl Plan {
             }
             s.highlights_to_library += b.highlights_in.len();
             s.notes_to_library += b.notes_in.len();
+            s.bookmarks_to_library += b.bookmarks_in.len();
+            s.bookmarks_approx += b.bookmarks_in.iter().filter(|i| !i.place.exact).count();
             s.restarted += b.restarted.is_some() as usize;
             s.conflicts
                 .extend(b.conflicts.iter().map(|c| (b.title.clone(), c.clone())));
@@ -777,6 +860,9 @@ pub struct Applied {
     pub progress: usize,
     pub highlights: usize,
     pub notes: usize,
+    /// Device bookmarks added to books, and the ones a book already had at that place.
+    pub bookmarks: usize,
+    pub bookmarks_linked: usize,
     /// Highlights that took a new colour or style from the device.
     pub recolored: usize,
     /// What the device said the look of highlights is: `(book id, highlight id, look)`, for the
@@ -845,12 +931,45 @@ pub fn apply_book(book: &mut Book, plan: &BookPlan, now: DateTime<Utc>) -> Appli
     done
 }
 
+/// Puts the device bookmarks of one book's plan into the book and the cable ledger. Returns
+/// `(added, linked to a bookmark that was there)`.
+pub fn apply_bookmarks(
+    book: &mut Book,
+    plan: &BookPlan,
+    store: &mut crate::bookmark_sync::Store,
+    now: DateTime<Utc>,
+) -> (usize, usize) {
+    use crate::bookmark_sync::{import, Outcome};
+    let (mut added, mut linked) = (0, 0);
+    for i in &plan.bookmarks_in {
+        match import(
+            book,
+            &mut store.entries,
+            &i.key,
+            &i.mark,
+            &i.place,
+            &i.source,
+            now,
+        ) {
+            Outcome::Added => added += 1,
+            Outcome::Linked => linked += 1,
+            Outcome::Known => {}
+        }
+    }
+    (added, linked)
+}
+
 pub fn apply_to_library(lib: &mut crate::core::library::Library, plan: &Plan) -> Applied {
     let now = Utc::now();
     let mut total = Applied::default();
     let mut before = Vec::new();
+    let mut store = crate::bookmark_sync::Store::load(&lib.root);
+    let store_before = store.clone();
     for b in &plan.books {
         if let Some(book) = lib.get_mut(b.book_id) {
+            let (added, linked) = apply_bookmarks(book, b, &mut store, now);
+            total.bookmarks += added;
+            total.bookmarks_linked += linked;
             let a = apply_book(book, b, now);
             total.progress += a.progress;
             total.highlights += a.highlights;
@@ -868,6 +987,9 @@ pub fn apply_to_library(lib: &mut crate::core::library::Library, plan: &Plan) ->
         }
     }
     finish_looks(lib, &total, before);
+    if store != store_before {
+        let _ = store.save(&lib.root);
+    }
     total
 }
 
@@ -1037,6 +1159,33 @@ fn note_of(n: &bookx_serve::reading::DeviceNote) -> DeviceNote {
     }
 }
 
+/// Where a device bookmark came from: a dog-ear names its chapter file, KOReader's does not.
+pub fn bookmark_source(m: &crate::bookmark_sync::DeviceMark) -> &'static str {
+    if m.href.is_some() {
+        "Kobo"
+    } else {
+        "KOReader"
+    }
+}
+
+fn mark_of(b: &bookx_serve::reading::DeviceBookmark) -> crate::bookmark_sync::DeviceMark {
+    crate::bookmark_sync::DeviceMark {
+        id: b.id.clone(),
+        note: b.note.clone(),
+        chapter: b.chapter.clone().unwrap_or_default(),
+        pos: b.pos.clone(),
+        page: b.page,
+        percentage: b.percentage,
+        href: b.href.clone(),
+        chapter_progress: b.chapter_progress,
+        created: b
+            .created
+            .as_deref()
+            .and_then(bookx_serve::reading::parse_time)
+            .unwrap_or(0),
+    }
+}
+
 /// Reads the reading state and notes of every book of `device`.
 pub fn read_device(
     drivers: &crate::devices::Drivers,
@@ -1071,6 +1220,9 @@ pub fn read_device(
                     })
                     .unwrap_or_default(),
                 accepts_notes: sidecars && !bookx_serve::reading::sidecar_file(&b.path).exists(),
+                bookmarks: d
+                    .map(|d| d.bookmarks.iter().map(mark_of).collect())
+                    .unwrap_or_default(),
             }
         })
         .collect())
@@ -1149,9 +1301,51 @@ impl BookLocator {
     }
 }
 
+impl crate::bookmark_sync::Geometry for OpenedBook {
+    fn count(&self) -> usize {
+        use crate::core::anchor::Chapters;
+        self.chapters.count()
+    }
+
+    fn weight(&self, spine: usize) -> f64 {
+        use crate::core::anchor::Chapters;
+        self.chapters
+            .texts(spine)
+            .first()
+            .map_or(0.0, |t| t.len() as f64)
+    }
+
+    fn xhtml(&self, spine: usize) -> Option<String> {
+        use crate::highlight_goto::Source;
+        Source::xhtml(&self.chapters, spine)
+    }
+
+    fn spine_of_title(&self, key: &str) -> Option<usize> {
+        self.toc.iter().find(|(t, _)| t == key).map(|(_, s)| *s)
+    }
+
+    fn spine_of_file(&self, href: &str) -> Option<usize> {
+        let href = href.trim_start_matches('/');
+        self.chapters.book().spine_paths().iter().position(|p| {
+            p == href || p.ends_with(&format!("/{href}")) || href.ends_with(&format!("/{p}"))
+        })
+    }
+}
+
 impl Locator for BookLocator {
     fn locate(&self, book_id: u64, text: &str) -> Option<(usize, i32, i32)> {
         self.locate_in(book_id, text, None)
+    }
+
+    fn locate_place(
+        &self,
+        book_id: u64,
+        mark: &crate::bookmark_sync::DeviceMark,
+    ) -> crate::bookmark_sync::Place {
+        match self.open(book_id) {
+            Some(opened) => crate::bookmark_sync::resolve_place(&*opened, mark),
+            None => crate::bookmark_sync::Place::unknown(),
+        }
     }
 
     fn locate_in(
@@ -1167,6 +1361,41 @@ impl Locator for BookLocator {
             .and_then(|k| opened.toc.iter().find(|(t, _)| *t == k).map(|(_, s)| *s));
         let r = crate::core::anchor::resolve(&opened.chapters, text, hint, None)?;
         Some((r.spine, r.found.start as i32, r.found.end as i32))
+    }
+
+    fn locate_hinted(
+        &self,
+        book_id: u64,
+        text: &str,
+        chapter: Option<&str>,
+        hint: &crate::highlight_goto::Hint,
+    ) -> Option<(usize, i32, i32)> {
+        if hint.pos0.trim().is_empty() && hint.pos1.trim().is_empty() {
+            return self.locate_in(book_id, text, chapter);
+        }
+        let opened = self.open(book_id)?;
+        let (spine, start, end) = crate::core::anchor::unplaced(0);
+        let h = Highlight {
+            id: String::new(),
+            spine,
+            start,
+            end,
+            color: String::new(),
+            style: String::new(),
+            note: String::new(),
+            text: text.to_string(),
+            created: Utc::now(),
+        };
+        let mut hint = hint.clone();
+        if hint.chapter.trim().is_empty() {
+            hint.chapter = chapter.unwrap_or_default().to_string();
+        }
+        match crate::highlight_goto::resolve(&opened.chapters, &h, Some(&hint), &opened.toc) {
+            crate::highlight_goto::Outcome::Found(t) => {
+                Some((t.spine, t.start as i32, t.end as i32))
+            }
+            _ => None,
+        }
     }
 
     fn locate_other(
@@ -1242,6 +1471,7 @@ mod tests {
             last_read: None,
             highlights: hs,
             looks: Default::default(),
+            bookmark_keys: Default::default(),
         }
     }
 
@@ -1260,6 +1490,7 @@ mod tests {
                 source: "Kobo",
             }),
             notes,
+            bookmarks: vec![],
             accepts_notes: accepts,
         }
     }
@@ -1886,5 +2117,148 @@ mod tests {
         assert!(!p.auto_sync && p.include_notes);
         let q: SyncPrefs = serde_json::from_str("{}").unwrap();
         assert_eq!(p, q);
+    }
+
+    /// A locator that gives every device bookmark the same exact place (chapter 3, 40 % in).
+    struct PlaceAt(crate::bookmark_sync::Place);
+
+    impl Locator for PlaceAt {
+        fn locate(&self, _: u64, _: &str) -> Option<(usize, i32, i32)> {
+            None
+        }
+        fn locate_place(
+            &self,
+            _: u64,
+            _: &crate::bookmark_sync::DeviceMark,
+        ) -> crate::bookmark_sync::Place {
+            self.0
+        }
+    }
+
+    fn exact_place(spine: usize, frac: f64) -> PlaceAt {
+        PlaceAt(crate::bookmark_sync::Place {
+            spine,
+            frac,
+            how: crate::bookmark_sync::How::Xpointer,
+            exact: true,
+        })
+    }
+
+    fn device_mark(id: &str, page: i64, kobo: bool) -> crate::bookmark_sync::DeviceMark {
+        crate::bookmark_sync::DeviceMark {
+            id: id.into(),
+            page: Some(page),
+            href: kobo.then(|| "OEBPS/c3.xhtml".to_string()),
+            created: 1_700_000_000,
+            ..Default::default()
+        }
+    }
+
+    fn with_marks(
+        marks: Vec<crate::bookmark_sync::DeviceMark>,
+    ) -> (Vec<DeviceReading>, Vec<LibraryBook>) {
+        let mut r = reading("Dune.epub", 0.5, vec![], true);
+        r.bookmarks = marks;
+        (vec![r], vec![lib_book(1, "Dune", 0.5, vec![])])
+    }
+
+    #[test]
+    fn device_bookmarks_are_planned_with_their_place_and_counted_in_the_summary() {
+        let (dev, lib) = with_marks(vec![device_mark("a", 7, false)]);
+        let p = plan(&dev, &lib, &exact_place(2, 0.4));
+        let b = &p.books[0];
+        assert_eq!(b.bookmarks_in.len(), 1);
+        assert_eq!(
+            (
+                b.bookmarks_in[0].place.spine,
+                b.bookmarks_in[0].source.as_str()
+            ),
+            (2, "KOReader")
+        );
+        assert!(!b.is_empty());
+        let t = p.summary().text();
+        assert!(t.contains("1 bookmark goes device→Bookx"), "{t}");
+        assert!(!t.contains("placed roughly"));
+        // a place the book could not give is said to be rough
+        let p = plan(&dev, &lib, &NoLocator);
+        assert!(
+            p.summary().text().contains("(1 placed roughly"),
+            "{}",
+            p.summary().text()
+        );
+    }
+
+    #[test]
+    fn the_cable_sync_adds_a_bookmark_once_and_never_again_after_the_reader_deleted_it() {
+        let (dev, mut lib) = with_marks(vec![
+            device_mark("a", 7, false),
+            device_mark("b", 30, false),
+        ]);
+        let loc = PlaceAt(crate::bookmark_sync::Place {
+            spine: 2,
+            frac: 0.4,
+            how: crate::bookmark_sync::How::Xpointer,
+            exact: true,
+        });
+        let mut bk = book(1, "Dune", 0.5, vec![]);
+        let mut store = crate::bookmark_sync::Store::default();
+        let p = plan(&dev, &lib, &loc);
+        // the two pages resolve to the same place here: one bookmark, the other is linked to it
+        let (added, linked) = apply_bookmarks(&mut bk, &p.books[0], &mut store, Utc::now());
+        assert_eq!((added, linked), (1, 1));
+        assert_eq!(bk.bookmarks.len(), 1);
+        assert_eq!(bk.bookmarks[0].created.timestamp(), 1_700_000_000);
+        // the next sync knows both keys: nothing to do
+        lib[0].bookmark_keys = store.entries.keys().cloned().collect();
+        assert!(plan(&dev, &lib, &loc).books[0].bookmarks_in.is_empty());
+        // the reader deletes the bookmark; a sync that does not know the ledger still cannot bring it back
+        bk.bookmarks.clear();
+        let again = apply_bookmarks(&mut bk, &p.books[0], &mut store, Utc::now());
+        assert_eq!(again, (0, 0));
+        assert!(bk.bookmarks.is_empty());
+    }
+
+    #[test]
+    fn a_kobo_dog_ear_and_a_koreader_bookmark_at_one_place_are_one_bookmark() {
+        let (dev, lib) = with_marks(vec![device_mark("k", 7, false), device_mark("d", 7, true)]);
+        let p = plan(&dev, &lib, &exact_place(1, 0.25));
+        let sources: Vec<&str> = p.books[0]
+            .bookmarks_in
+            .iter()
+            .map(|i| i.source.as_str())
+            .collect();
+        assert_eq!(sources, ["KOReader", "Kobo"]);
+        let mut bk = book(1, "Dune", 0.5, vec![]);
+        let mut store = crate::bookmark_sync::Store::default();
+        assert_eq!(
+            apply_bookmarks(&mut bk, &p.books[0], &mut store, Utc::now()),
+            (1, 1)
+        );
+        assert_eq!(bk.bookmarks.len(), 1);
+    }
+
+    #[test]
+    fn bookmark_keys_come_from_the_cable_ledger() {
+        let dir = std::env::temp_dir().join(format!("bookx-ds-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut store = crate::bookmark_sync::Store::default();
+        let key = crate::bookmark_sync::Store::key(1, "KOReader", "a");
+        store.entries.insert(
+            key.clone(),
+            crate::bookmark_sync::Entry {
+                book_id: 1,
+                bookmark: "bm-1".into(),
+                ..Default::default()
+            },
+        );
+        store.save(&dir).unwrap();
+        let mut books = vec![
+            lib_book(1, "Dune", 0.5, vec![]),
+            lib_book(2, "Other", 0.5, vec![]),
+        ];
+        attach_looks(&mut books, &dir);
+        assert!(books[0].bookmark_keys.contains(&key));
+        assert!(books[1].bookmark_keys.is_empty());
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

@@ -125,6 +125,8 @@ pub fn plural(n: usize, word: &str) -> String {
 pub fn size_text(bytes: u64) -> String {
     if bytes < 1024 * 1024 {
         format!("{:.0} KB", (bytes as f64 / 1024.0).max(1.0))
+    } else if bytes >= 1024 * 1024 * 1024 {
+        format!("{:.1} GB", bytes as f64 / 1024.0 / 1024.0 / 1024.0)
     } else {
         format!("{:.1} MB", bytes as f64 / 1024.0 / 1024.0)
     }
@@ -429,6 +431,10 @@ mod tests {
         assert_eq!(plural(0, "book"), "0 books");
         assert_eq!(size_text(100), "1 KB");
         assert_eq!(size_text(5 * 1024 * 1024 + 512 * 1024), "5.5 MB");
+        assert_eq!(
+            size_text(3 * 1024 * 1024 * 1024 + 512 * 1024 * 1024),
+            "3.5 GB"
+        );
         assert_eq!(check_summary(3, &[]), "3 books checked, no problems found");
         let f = Finding {
             severity: Severity::Error,

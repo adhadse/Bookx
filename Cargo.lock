@@ -559,16 +559,20 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "argon2",
+ "bookx-core",
  "bookx-serve",
  "bookx-store",
  "chacha20poly1305",
  "chrono",
  "getrandom 0.2.17",
+ "hmac",
  "percent-encoding",
  "serde",
  "serde_json",
  "sha2",
+ "subtle",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]
@@ -588,6 +592,7 @@ dependencies = [
  "chrono",
  "clap",
  "directories",
+ "percent-encoding",
  "rcgen",
  "roxmltree 0.21.2",
  "rusqlite",

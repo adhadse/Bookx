@@ -38,6 +38,9 @@ pub struct ShareSettings {
     pub cert_file: String,
     /// PEM private key for HTTPS.
     pub key_file: String,
+    /// The server was on when Bookx last ran: it is started again at launch. Set only by the
+    /// switches (see [`ShareSettings::remember`]), never by a failed start or by closing the app.
+    pub running: bool,
 }
 
 impl Default for ShareSettings {
@@ -52,6 +55,7 @@ impl Default for ShareSettings {
             https: false,
             cert_file: String::new(),
             key_file: String::new(),
+            running: false,
         }
     }
 }
@@ -74,6 +78,21 @@ impl ShareSettings {
             );
         }
         None
+    }
+
+    /// Notes what the user asked of the server, to be saved. Switching off is always remembered;
+    /// switching on only once it started (`started`), so a busy port keeps the earlier wish and the
+    /// next launch tries again. Returns whether the setting changed (the config needs saving).
+    pub fn remember(&mut self, on: bool, started: bool) -> bool {
+        let want = if on { started || self.running } else { false };
+        let changed = self.running != want;
+        self.running = want;
+        changed
+    }
+
+    /// Whether the server is started again at launch.
+    pub fn restore_at_launch(&self) -> bool {
+        self.running && self.problem().is_none()
     }
 
     /// True when the certificate comes from files the user chose (otherwise Bookx makes one).
@@ -287,6 +306,33 @@ fn lan_address() -> Option<std::net::IpAddr> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn the_server_wish_survives_a_failed_start_and_is_cleared_only_by_switching_off() {
+        let mut s = super::ShareSettings::default();
+        assert!(!s.restore_at_launch());
+        assert!(s.remember(true, true), "on and started: remembered");
+        assert!(s.restore_at_launch());
+        assert!(!s.remember(true, false), "a failed restart keeps the wish");
+        assert!(s.running);
+        assert!(s.remember(false, true), "switching off forgets it");
+        assert!(!s.restore_at_launch());
+        assert!(
+            !s.remember(true, false),
+            "a first start that fails is not remembered"
+        );
+        assert!(!s.running);
+    }
+
+    #[test]
+    fn a_server_that_cannot_start_with_these_settings_is_not_restored() {
+        let s = super::ShareSettings {
+            running: true,
+            lan: true,
+            ..Default::default()
+        };
+        assert!(!s.restore_at_launch(), "network access without a password");
+    }
+
     use super::*;
 
     #[test]

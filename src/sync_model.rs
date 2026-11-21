@@ -3,7 +3,7 @@
 //! the Sync window (task cards) and Preferences → Sync (setup checklist) show, as plain data so it
 //! is unit tested without GTK. See `docs/sync-ux-notes.md` for why it is shaped like this.
 
-use crate::i18n::{tr, N_};
+use crate::i18n::{tr, trf, N_};
 
 /// Title of the umbrella: menu entry, window and Preferences page.
 pub const TITLE: &str = N_("Sync");
@@ -131,6 +131,40 @@ pub fn account_block(
         Some(ACCOUNT_KOSYNC_OFF)
     } else {
         None
+    }
+}
+
+/// The title and text of the account row of step 2: who is logged in, or why not. The password
+/// can be missing although a user name is saved when the keyring was locked or is gone.
+pub fn account_status(
+    user: &str,
+    has_password: bool,
+    logged_in: bool,
+    keyring_ok: bool,
+) -> (String, String) {
+    let user = user.trim();
+    if user.is_empty() {
+        (
+            tr("Log in"),
+            tr("Register creates the account on the server; Log in checks it. The result shows here."),
+        )
+    } else if !has_password {
+        let why = if keyring_ok {
+            tr("Enter the password.")
+        } else {
+            tr("The password could not be read from the system keyring (locked or not running). Unlock it and restart Bookx, or type the password again.")
+        };
+        (trf("Password needed for {}", &[&user]), why)
+    } else if logged_in {
+        (
+            trf("Logged in as {}", &[&user]),
+            tr("Reading positions sync with this account. Press Log in to check it again."),
+        )
+    } else {
+        (
+            trf("Account saved: {}", &[&user]),
+            tr("Not checked yet. Press Log in to check it."),
+        )
     }
 }
 
@@ -567,6 +601,17 @@ pub const REQUIREMENTS: [Requirement; 5] = [
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn the_account_row_says_who_is_logged_in_and_why_it_cannot_tell() {
+        let t = |u, pw, li, k| super::account_status(u, pw, li, k).0;
+        assert_eq!(t("", false, false, true), "Log in");
+        assert_eq!(t("alice", true, true, true), "Logged in as alice");
+        assert_eq!(t("alice", true, false, true), "Account saved: alice");
+        assert_eq!(t("alice", false, true, true), "Password needed for alice");
+        let (_, why) = super::account_status("alice", false, true, false);
+        assert!(why.contains("keyring"), "a locked keyring is named: {why}");
+    }
+
     use super::*;
 
     fn running() -> Snapshot {

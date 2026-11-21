@@ -54,6 +54,9 @@ msgstr ""
 msgid ".⏎"
 msgstr ""
 
+msgid "0 means no limit. Bigger files are left out and listed."
+msgstr ""
+
 msgid "0 of {}"
 msgstr ""
 
@@ -96,7 +99,7 @@ msgstr ""
 msgid "A CSV file Anki can import."
 msgstr ""
 
-msgid "A backup is one complete snapshot of the catalogue: metadata, tags, collections, reading progress, bookmarks, highlights and notes, and the search index. Book files, covers, configuration, plugins and secrets, .bookx state, device copies, trash and caches are not copied."
+msgid "A backup cannot be read"
 msgstr ""
 
 msgid "A bibliography from the title, authors, publisher, date and ISBN of your books, for a reference manager or a paper."
@@ -156,9 +159,6 @@ msgstr ""
 msgid "A vertical line at a column, to keep lines short"
 msgstr ""
 
-msgid "AI Assistants"
-msgstr ""
-
 msgid "API key (if the server wants one)"
 msgstr ""
 
@@ -214,6 +214,9 @@ msgid "Account"
 msgstr ""
 
 msgid "Account and address for sending books to a Kindle or another address"
+msgstr ""
+
+msgid "Account saved: {}"
 msgstr ""
 
 msgid "Acknowledgements"
@@ -501,6 +504,9 @@ msgstr ""
 msgid "After an import, fill in the fields a new book has nothing in. Fields that already have a value are never changed."
 msgstr ""
 
+msgid "After the first backup only new or changed files are copied; a renamed or moved book costs nothing. 'Skipped' means nothing had changed. 'Verified' means the stored bytes were read back and checked, not that a restore was tested."
+msgstr ""
+
 msgid "After {}"
 msgstr ""
 
@@ -649,6 +655,9 @@ msgid "Annotations"
 msgstr ""
 
 msgid "Another book"
+msgstr ""
+
+msgid "Another folder"
 msgstr ""
 
 msgid "Another rule wins for this property"
@@ -816,6 +825,9 @@ msgstr ""
 msgid "Back Up"
 msgstr ""
 
+msgid "Back Up This Place"
+msgstr ""
+
 msgid "Back to Actions"
 msgstr ""
 
@@ -861,7 +873,7 @@ msgstr ""
 msgid "Backup"
 msgstr ""
 
-msgid "Backup cancelled; the copy in progress was removed"
+msgid "Backup cancelled; nothing half-written is left behind"
 msgstr ""
 
 msgid "Backup failed: {}"
@@ -871,6 +883,15 @@ msgid "Backup passphrase (for encrypted places)"
 msgstr ""
 
 msgid "Backups"
+msgstr ""
+
+msgid "Backups beyond the number this place keeps are removed, and so are the files only they needed. Manual backups and the newest ones stay."
+msgstr ""
+
+msgid "Backups include your book files, covers and catalogue (titles, tags, collections, reading progress, bookmarks, highlights and notes). Only new or changed files are copied after the first backup. Not included: configuration, plugins and passwords, trash, device copies and caches."
+msgstr ""
+
+msgid "Backups of your books and notes, library checks and the trash"
 msgstr ""
 
 msgid "Backups, check, trash and history"
@@ -936,6 +957,9 @@ msgstr ""
 msgid "Book files, annotations and citations only"
 msgstr ""
 
+msgid "Book files, covers and catalogue with your notes. Only new or changed files are copied after the first backup."
+msgstr ""
+
 msgid "Book filter"
 msgstr ""
 
@@ -966,6 +990,9 @@ msgstr ""
 msgid "Bookmark"
 msgstr ""
 
+msgid "Bookmark Actions"
+msgstr ""
+
 msgid "Bookmark added"
 msgstr ""
 
@@ -987,6 +1014,9 @@ msgstr ""
 msgid "Bookmarks and highlights"
 msgstr ""
 
+msgid "Bookmarks you add while reading, and the ones synced from your e-reader, appear here."
+msgstr ""
+
 msgid "Books"
 msgstr ""
 
@@ -994,6 +1024,9 @@ msgid "Books Finished This Year"
 msgstr ""
 
 msgid "Books a year"
+msgstr ""
+
+msgid "Books and catalogue, no covers"
 msgstr ""
 
 msgid "Books and the catalogue only"
@@ -1027,6 +1060,9 @@ msgid "Books with the same title and author, whatever the format or edition. Mer
 msgstr ""
 
 msgid "Books you open appear here, the latest first."
+msgstr ""
+
+msgid "Books, covers and catalogue"
 msgstr ""
 
 msgid "Books, reading progress, highlights and notes. Stock Kobo notes and progress are imported; stock firmware has no wireless sync with Bookx"
@@ -1146,6 +1182,9 @@ msgstr ""
 msgid "Cancel requested"
 msgstr ""
 
+msgid "Cancel the backup"
+msgstr ""
+
 msgid "Cancel {}"
 msgstr ""
 
@@ -1165,6 +1204,9 @@ msgid "Cannot be read: {}"
 msgstr ""
 
 msgid "Cannot connect"
+msgstr ""
+
+msgid "Cannot estimate the next backup: {}"
 msgstr ""
 
 msgid "Cannot merge: {}"
@@ -1188,6 +1230,9 @@ msgstr ""
 msgid "Cannot open {} for editing: {}"
 msgstr ""
 
+msgid "Cannot read the backups of the books here"
+msgstr ""
+
 msgid "Cannot read this place"
 msgstr ""
 
@@ -1195,6 +1240,9 @@ msgid "Cannot read this place now: {}"
 msgstr ""
 
 msgid "Cannot reformat: {}"
+msgstr ""
+
+msgid "Cannot restore: {}"
 msgstr ""
 
 msgid "Cannot save"
@@ -1215,16 +1263,7 @@ msgstr ""
 msgid "Careful with this folder"
 msgstr ""
 
-msgid "Catalogue only: book files and covers stay in the library folder."
-msgstr ""
-
-msgid "Catalogue only: titles, tags, reading progress and notes. Not book files or covers."
-msgstr ""
-
-msgid "Catalogue only; book files stay in the library folder"
-msgstr ""
-
-msgid "Catalogue snapshots and library checks; book files are not copied"
+msgid "Catalogue only"
 msgstr ""
 
 msgid "Certificate file (PEM, optional)"
@@ -1356,6 +1395,12 @@ msgstr ""
 msgid "Check Again"
 msgstr ""
 
+msgid "Check Backup"
+msgstr ""
+
+msgid "Check Backup in Depth"
+msgstr ""
+
 msgid "Check Before Sending"
 msgstr ""
 
@@ -1386,6 +1431,9 @@ msgstr ""
 msgid "Check book"
 msgstr ""
 
+msgid "Check cancelled"
+msgstr ""
+
 msgid "Check for"
 msgstr ""
 
@@ -1405,6 +1453,12 @@ msgid "Check {} again"
 msgstr ""
 
 msgid "Checking 0 of {}…"
+msgstr ""
+
+msgid "Checking the backup"
+msgstr ""
+
+msgid "Checking the backup at {}"
 msgstr ""
 
 msgid "Checking the book…"
@@ -1479,6 +1533,9 @@ msgstr ""
 msgid "Choose a cover image"
 msgstr ""
 
+msgid "Choose a folder first"
+msgstr ""
+
 msgid "Choose a folder for the audio files"
 msgstr ""
 
@@ -1522,6 +1579,9 @@ msgid "Choose the CSV file exported from Goodreads, StoryGraph or Hardcover. Boo
 msgstr ""
 
 msgid "Choose the Calibre Library Folder"
+msgstr ""
+
+msgid "Choose the Folder to Restore Into"
 msgstr ""
 
 msgid "Choose the Folder to Watch"
@@ -1854,16 +1914,21 @@ msgstr ""
 msgid "Copied to clipboard"
 msgstr ""
 
-msgid "Copied to {}"
-msgstr ""
-
 msgid "Copied to {} ({}). Restart KOReader, then open Bookx Sync in its top menu."
 msgstr ""
+
+msgid "Copied {} entry"
+msgid_plural "Copied {} entries"
+msgstr[0] ""
+msgstr[1] ""
 
 msgid "Copied {} highlight"
 msgid_plural "Copied {} highlights"
 msgstr[0] ""
 msgstr[1] ""
+
+msgid "Copied {} new files ({}); {} were already there."
+msgstr ""
 
 msgid "Copies the plugin into KOReader’s plugins folder on the connected e-reader, or into a folder you choose. Restart KOReader afterwards. Without the plugin only the reading position is synced."
 msgstr ""
@@ -1946,7 +2011,13 @@ msgstr ""
 msgid "Copy to this place"
 msgstr ""
 
+msgid "Copy to {}"
+msgstr ""
+
 msgid "Copy when Bookx closes"
+msgstr ""
+
+msgid "Copying new files"
 msgstr ""
 
 msgid "Copyright"
@@ -1968,6 +2039,9 @@ msgid "Could not be located in the book"
 msgstr ""
 
 msgid "Could not change the editions: {}"
+msgstr ""
+
+msgid "Could not check: {}"
 msgstr ""
 
 msgid "Could not compare: {}"
@@ -2001,6 +2075,9 @@ msgid "Could not export the file"
 msgstr ""
 
 msgid "Could not export: {}"
+msgstr ""
+
+msgid "Could not find this highlight in the book"
 msgstr ""
 
 msgid "Could not fix: {}"
@@ -2067,6 +2144,9 @@ msgid "Could not read {}: {}"
 msgstr ""
 
 msgid "Could not redo: {}"
+msgstr ""
+
+msgid "Could not remove old backups: {}"
 msgstr ""
 
 msgid "Could not remove the word: {}"
@@ -2187,6 +2267,9 @@ msgid "Cover updated"
 msgstr ""
 
 msgid "Covers"
+msgstr ""
+
+msgid "Covers and catalogue, no book files"
 msgstr ""
 
 msgid "Create Checkpoint"
@@ -2329,6 +2412,11 @@ msgstr ""
 
 msgid "Delete {} Book Permanently?"
 msgid_plural "Delete {} Books Permanently?"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Delete {} Entry?"
+msgid_plural "Delete {} Entries?"
 msgstr[0] ""
 msgstr[1] ""
 
@@ -2627,6 +2715,9 @@ msgstr ""
 msgid "Edit theme {}"
 msgstr ""
 
+msgid "Edit {}"
+msgstr ""
+
 msgid "Edit {} Books"
 msgstr ""
 
@@ -2735,6 +2826,9 @@ msgstr ""
 msgid "Enter the password of the mail account in Preferences → E-mail"
 msgstr ""
 
+msgid "Enter the password."
+msgstr ""
+
 msgid "Enter your own e-mail address in Preferences → E-mail"
 msgstr ""
 
@@ -2796,6 +2890,9 @@ msgid "Everything"
 msgstr ""
 
 msgid "Everything in the catalogue matches the files."
+msgstr ""
+
+msgid "Everything is already backed up."
 msgstr ""
 
 msgid "Exclude This File from Spell Check"
@@ -3092,6 +3189,9 @@ msgid "Find next"
 msgstr ""
 
 msgid "Find small covers"
+msgstr ""
+
+msgid "Finding what is new"
 msgstr ""
 
 msgid "Finds covers that are small or blurry. The lookup proposes a larger one; you choose what to keep."
@@ -3504,6 +3604,9 @@ msgstr ""
 msgid "Highlights, notes and bookmarks (KOReader)"
 msgstr ""
 
+msgid "Highlights, notes and bookmarks up to {} come back with a restore."
+msgstr ""
+
 msgid "History"
 msgstr ""
 
@@ -3731,7 +3834,16 @@ msgstr ""
 msgid "In “{}”"
 msgstr ""
 
-msgid "Included: catalogue metadata, collections, tags, reading progress, bookmarks, highlights, notes and the search index."
+msgid "Include book files"
+msgstr ""
+
+msgid "Include covers"
+msgstr ""
+
+msgid "Include your books in backups"
+msgstr ""
+
+msgid "Included: book files, covers and the catalogue (titles, tags, collections, reading progress, bookmarks, highlights and notes)."
 msgstr ""
 
 msgid "Indent (Make a Sub-Entry)"
@@ -3801,6 +3913,9 @@ msgid "Inverted"
 msgstr ""
 
 msgid "Issues to keep"
+msgstr ""
+
+msgid "It is in {}. Open that folder as a library to use it."
 msgstr ""
 
 msgid "Italic"
@@ -3915,6 +4030,9 @@ msgid "Larger Text (Ctrl++)"
 msgstr ""
 
 msgid "Larger text"
+msgstr ""
+
+msgid "Largest file to copy, in MB"
 msgstr ""
 
 msgid "Last 30 Days"
@@ -4130,6 +4248,9 @@ msgstr ""
 msgid "Log in with the user name and password"
 msgstr ""
 
+msgid "Logged in as {}"
+msgstr ""
+
 msgid "Logged in. Reading positions will sync."
 msgstr ""
 
@@ -4175,7 +4296,16 @@ msgstr ""
 msgid "Look-ups use dictionaries on this computer. Bookx can download a free one for the language of a book."
 msgstr ""
 
+msgid "Looking"
+msgstr ""
+
+msgid "Looking at the backup"
+msgstr ""
+
 msgid "Looking at the covers…"
+msgstr ""
+
+msgid "Looking at your library"
 msgstr ""
 
 msgid "Looking for Audiobooks"
@@ -4190,10 +4320,10 @@ msgstr ""
 msgid "Looking up metadata"
 msgstr ""
 
-msgid "Looking…"
+msgid "Looks for damage in the database, missing files and covers, and book files nobody lists."
 msgstr ""
 
-msgid "Looks for damage in the database, missing files and covers, and book files nobody lists."
+msgid "MCP"
 msgstr ""
 
 msgid "MTP (mounted by the desktop)"
@@ -4248,6 +4378,12 @@ msgid "Make a new token"
 msgstr ""
 
 msgid "Make a theme"
+msgstr ""
+
+msgid "Make the first backup of your books"
+msgstr ""
+
+msgid "Make the first copy automatically"
 msgstr ""
 
 msgid "Manage Checkpoints"
@@ -4431,6 +4567,12 @@ msgid "More actions"
 msgstr ""
 
 msgid "More file actions: rename, delete, merge, bulk rename, link stylesheets, export"
+msgstr ""
+
+msgid "More for this place"
+msgstr ""
+
+msgid "More for {}"
 msgstr ""
 
 msgid "More search actions"
@@ -4976,6 +5118,9 @@ msgstr ""
 msgid "Not checked yet"
 msgstr ""
 
+msgid "Not checked yet. Press Log in to check it."
+msgstr ""
+
 msgid "Not created yet"
 msgstr ""
 
@@ -4985,13 +5130,13 @@ msgstr ""
 msgid "Not enough data yet"
 msgstr ""
 
+msgid "Not enough free space in this place: {} needed, {} free."
+msgstr ""
+
 msgid "Not found. Kokoro and Piper need it (package espeak-ng, GPL-3.0); install it with your system's software manager."
 msgstr ""
 
-msgid "Not included: book files, covers, configuration, plugins and secrets, .bookx state, trash, device copies and caches."
-msgstr ""
-
-msgid "Not incremental — each copy is a whole file. 'Skipped' means no new snapshot was needed or the place already has that snapshot. 'Verified' means the stored bytes were read back and hashed, not that a restore was tested."
+msgid "Not included: configuration, plugins and passwords, trash, device copies and caches."
 msgstr ""
 
 msgid "Not installed on this computer"
@@ -5034,6 +5179,9 @@ msgid "Notes & Highlights"
 msgstr ""
 
 msgid "Notes and highlights"
+msgstr ""
+
+msgid "Notes are protected"
 msgstr ""
 
 msgid "Notes: any"
@@ -5084,6 +5232,9 @@ msgstr ""
 msgid "Nothing new"
 msgstr ""
 
+msgid "Nothing new to copy."
+msgstr ""
+
 msgid "Nothing new to import ({} already in your library)"
 msgstr ""
 
@@ -5127,6 +5278,9 @@ msgid "Nothing to read here"
 msgstr ""
 
 msgid "Nothing to redo"
+msgstr ""
+
+msgid "Nothing to remove: the place only has backups it keeps."
 msgstr ""
 
 msgid "Nothing to replace"
@@ -5184,6 +5338,15 @@ msgid "Off: a book that has a rating keeps it"
 msgstr ""
 
 msgid "Off: completions open with Ctrl+Space"
+msgstr ""
+
+msgid "Off: nothing is copied until you press Back Up."
+msgstr ""
+
+msgid "Off: nothing is copied until you press Back Up. Switch on to let Bookx make the first copy when it closes."
+msgstr ""
+
+msgid "Off: only the catalogue with your notes is copied, not the books"
 msgstr ""
 
 msgid "Off: the books stay in the Calibre folder and are only listed here"
@@ -5271,6 +5434,9 @@ msgid "Only pages can be merged"
 msgstr ""
 
 msgid "Only the fields you fill in are changed"
+msgstr ""
+
+msgid "Only the missing books"
 msgstr ""
 
 msgid "Only when no page uses it any more"
@@ -5397,6 +5563,9 @@ msgid "Open plugins folder"
 msgstr ""
 
 msgid "Open setup guide"
+msgstr ""
+
+msgid "Open the book at this bookmark"
 msgstr ""
 
 msgid "Open the library folder"
@@ -5567,6 +5736,9 @@ msgstr ""
 msgid "Password needed"
 msgstr ""
 
+msgid "Password needed for {}"
+msgstr ""
+
 msgid "Paste a Glossary"
 msgstr ""
 
@@ -5727,6 +5899,9 @@ msgid "Press Ctrl+B to bookmark the current page"
 msgstr ""
 
 msgid "Press Ctrl+B to bookmark the page"
+msgstr ""
+
+msgid "Press Preview to see it first"
 msgstr ""
 
 msgid "Press Preview to see what this would do."
@@ -6005,6 +6180,9 @@ msgstr ""
 msgid "Reading position, highlights, notes and bookmarks, over the same connection, when the Bookx plugin is installed. Without the plugin: reading position only."
 msgstr ""
 
+msgid "Reading positions sync with this account. Press Log in to check it again."
+msgstr ""
+
 msgid "Reading progress (KOReader)"
 msgstr ""
 
@@ -6030,6 +6208,9 @@ msgid "Reading today"
 msgstr ""
 
 msgid "Reads a sentence with the settings above"
+msgstr ""
+
+msgid "Reads every file back and compares it. Slow on a network place."
 msgstr ""
 
 msgid "Reads the metadata.db of a Calibre library. Your Calibre library is not changed."
@@ -6170,6 +6351,9 @@ msgstr ""
 msgid "Remove Narration"
 msgstr ""
 
+msgid "Remove Old Backups"
+msgstr ""
+
 msgid "Remove Selected Books"
 msgstr ""
 
@@ -6210,6 +6394,9 @@ msgid "Remove from List"
 msgstr ""
 
 msgid "Remove from This Shelf"
+msgstr ""
+
+msgid "Remove old backups?"
 msgstr ""
 
 msgid "Remove rules left empty"
@@ -6313,6 +6500,9 @@ msgstr ""
 msgid "Removed {} from “{}”"
 msgstr ""
 
+msgid "Removed {} old backups and {} files no backup needs ({} freed)."
+msgstr ""
+
 msgid "Removed {}."
 msgstr ""
 
@@ -6320,6 +6510,12 @@ msgid "Removed {}; could not remove: {}"
 msgstr ""
 
 msgid "Removes the ticked properties from stylesheets, <style> blocks and style attributes."
+msgstr ""
+
+msgid "Removing old backups"
+msgstr ""
+
+msgid "Removing old backups at {}"
 msgstr ""
 
 msgid "Removing…"
@@ -6418,6 +6614,9 @@ msgstr ""
 msgid "Replace and Find Previous"
 msgstr ""
 
+msgid "Replace everything"
+msgstr ""
+
 msgid "Replace existing values"
 msgstr ""
 
@@ -6446,6 +6645,9 @@ msgid "Replacement function"
 msgstr ""
 
 msgid "Replaces the font chosen above"
+msgstr ""
+
+msgid "Replacing saves the current catalogue first. Missing only never changes a file or the catalogue that is already there."
 msgstr ""
 
 msgid "Report"
@@ -6478,7 +6680,13 @@ msgstr ""
 msgid "Restore"
 msgstr ""
 
+msgid "Restore Backup"
+msgstr ""
+
 msgid "Restore Checkpoint"
+msgstr ""
+
+msgid "Restore cancelled; files already restored are complete"
 msgstr ""
 
 msgid "Restore from a backup"
@@ -6490,13 +6698,31 @@ msgstr ""
 msgid "Restore from another place"
 msgstr ""
 
+msgid "Restore into"
+msgstr ""
+
+msgid "Restore the backup of {}"
+msgstr ""
+
+msgid "Restore the catalogue backup of {}"
+msgstr ""
+
 msgid "Restore this backup?"
 msgstr ""
 
 msgid "Restored the backup ({})"
 msgstr ""
 
+msgid "Restored {}."
+msgstr ""
+
 msgid "Restored “{}”"
+msgstr ""
+
+msgid "Restoring files"
+msgstr ""
+
+msgid "Restoring from {}"
 msgstr ""
 
 msgid "Resulting files"
@@ -6542,6 +6768,9 @@ msgid "Reverse proxy and remote access"
 msgstr ""
 
 msgid "Reverse proxy, port and firewall, every setting"
+msgstr ""
+
+msgid "Revert"
 msgstr ""
 
 msgid "Revert the Book to This State"
@@ -6745,6 +6974,9 @@ msgstr ""
 msgid "Saved “{}” to your vocabulary."
 msgstr ""
 
+msgid "Saves a snapshot here and copies new and changed books, covers and notes to your places"
+msgstr ""
+
 msgid "Saving a snapshot"
 msgstr ""
 
@@ -6755,6 +6987,9 @@ msgid "Scan Covers"
 msgstr ""
 
 msgid "Schedule"
+msgstr ""
+
+msgid "Scheduled backup"
 msgstr ""
 
 msgid "Scroll"
@@ -7303,6 +7538,9 @@ msgid "Show the full player"
 msgstr ""
 
 msgid "Show the reading ruler"
+msgstr ""
+
+msgid "Show {}"
 msgstr ""
 
 msgid "Show {} again"
@@ -7890,6 +8128,15 @@ msgstr ""
 msgid "The attribute {} appears twice"
 msgstr ""
 
+msgid "The backup has problems: {}. Press Back Up to copy missing files again."
+msgstr ""
+
+msgid "The backup is complete: all {} files are there with the right size. A deep check also reads their contents."
+msgstr ""
+
+msgid "The backup is intact: {} files were read back and match."
+msgstr ""
+
 msgid "The book does not use any font it does not already carry"
 msgstr ""
 
@@ -7947,6 +8194,9 @@ msgstr ""
 msgid "The catalogue goes back to how it was then. The current one is saved first as a \"Before a restore\" backup, so you can undo this."
 msgstr ""
 
+msgid "The catalogue is replaced by the one in the backup; the current one is saved first."
+msgstr ""
+
 msgid "The check did not finish"
 msgstr ""
 
@@ -7960,6 +8210,9 @@ msgid "The content of “{}” is replaced by “{}”. If you change the name, 
 msgstr ""
 
 msgid "The copy on the device gets an extra “My notes” section at the end (readable in any e-reader app) and a KOReader notes file, so KOReader lists them too. Your library copy is not changed."
+msgstr ""
+
+msgid "The current catalogue is kept."
 msgstr ""
 
 msgid "The current search ({})"
@@ -8031,6 +8284,12 @@ msgstr ""
 msgid "The final output was added after the marked text"
 msgstr ""
 
+msgid "The first backup copies everything: about {} in {} files."
+msgstr ""
+
+msgid "The first copy is about {} in {} files. Later copies only add what is new. Nothing is copied until you press Back Up."
+msgstr ""
+
 msgid "The folder of “{}” is not available. Is the drive connected?"
 msgstr ""
 
@@ -8050,6 +8309,9 @@ msgid "The highlight and its note are removed from the book. This cannot be undo
 msgstr ""
 
 msgid "The highlights and their notes are removed from their books. This cannot be undone."
+msgstr ""
+
+msgid "The highlights, notes and bookmarks are removed from their books. This cannot be undone."
 msgstr ""
 
 msgid "The images are already as small as they can get"
@@ -8080,6 +8342,9 @@ msgid "The open page only"
 msgstr ""
 
 msgid "The page whose links are used"
+msgstr ""
+
+msgid "The password could not be read from the system keyring (locked or not running). Unlock it and restart Bookx, or type the password again."
 msgstr ""
 
 msgid "The password must not contain a colon."
@@ -8308,6 +8573,9 @@ msgid "This is about a device plugged in with a USB cable (or mounted in Files).
 msgstr ""
 
 msgid "This is the last file; there is nothing to merge it with"
+msgstr ""
+
+msgid "This library"
 msgstr ""
 
 msgid "This page cannot be shown"
@@ -8898,7 +9166,16 @@ msgstr ""
 msgid "What the tool will change"
 msgstr ""
 
+msgid "What to copy"
+msgstr ""
+
+msgid "What to restore"
+msgstr ""
+
 msgid "What will change"
+msgstr ""
+
+msgid "What will happen"
 msgstr ""
 
 msgid "When Read Aloud is pressed and no voice is installed, download Kokoro in the background"
@@ -9015,6 +9292,9 @@ msgstr ""
 msgid "Writes the library with reading status, rating and date read. Goodreads and Hardcover import the Goodreads layout; StoryGraph has its own."
 msgstr ""
 
+msgid "Writing the snapshot"
+msgstr ""
+
 msgid "XTTS API server (XTTS v2)"
 msgstr ""
 
@@ -9052,6 +9332,9 @@ msgid "Your dictionaries"
 msgstr ""
 
 msgid "Your library ({} books) now lives in a database; the old catalogue was kept as bookx-library.json.migrated"
+msgstr ""
+
+msgid "Your notes could not be copied to {}: {}"
 msgstr ""
 
 msgid "Your own definitions · {} terms · works offline, always first"
@@ -9096,10 +9379,16 @@ msgstr ""
 msgid "and {} more"
 msgstr ""
 
+msgid "approximate place"
+msgstr ""
+
 msgid "book files or encrypted backups"
 msgstr ""
 
 msgid "can be fixed"
+msgstr ""
+
+msgid "catalogue only"
 msgstr ""
 
 msgid "connected"
@@ -9117,6 +9406,9 @@ msgstr ""
 msgid "favourite"
 msgstr ""
 
+msgid "files up to {} MB"
+msgstr ""
+
 msgid "finished"
 msgstr ""
 
@@ -9127,6 +9419,9 @@ msgid "gutenberg.org, standardebooks.org and the catalogues you add"
 msgstr ""
 
 msgid "https://example.com/article"
+msgstr ""
+
+msgid "manual"
 msgstr ""
 
 msgid "new token; copy the new settings into your assistants"
@@ -9240,6 +9535,9 @@ msgstr ""
 msgid "{} % · {} min left"
 msgstr ""
 
+msgid "{} (catalogue only)"
+msgstr ""
+
 msgid "{} (highlights and notes) from the device"
 msgstr ""
 
@@ -9253,6 +9551,15 @@ msgid "{} added, {} already in the library, {} failed"
 msgstr ""
 
 msgid "{} and {} more"
+msgstr ""
+
+msgid "{} are damaged"
+msgstr ""
+
+msgid "{} are missing"
+msgstr ""
+
+msgid "{} are newer here than in the backup and would be replaced."
 msgstr ""
 
 msgid "{} article"
@@ -9288,12 +9595,25 @@ msgid_plural "{} books restored"
 msgstr[0] ""
 msgstr[1] ""
 
+msgid "{} bookmark already in your library"
+msgid_plural "{} bookmarks already in your library"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "{} bookmark from KOReader"
+msgid_plural "{} bookmarks from KOReader"
+msgstr[0] ""
+msgstr[1] ""
+
 msgid "{} bookmark or note without a highlighted quote"
 msgid_plural "{} bookmarks or notes without a highlighted quote"
 msgstr[0] ""
 msgstr[1] ""
 
 msgid "{} books not in your library"
+msgstr ""
+
+msgid "{} cannot be read"
 msgstr ""
 
 msgid "{} change"
@@ -9340,6 +9660,9 @@ msgstr ""
 msgid "{} could not be opened: {}"
 msgstr ""
 
+msgid "{} could not be restored."
+msgstr ""
+
 msgid "{} day"
 msgid_plural "{} days"
 msgstr[0] ""
@@ -9354,6 +9677,9 @@ msgid "{} element"
 msgid_plural "{} elements"
 msgstr[0] ""
 msgstr[1] ""
+
+msgid "{} failed"
+msgstr ""
 
 msgid "{} failed: {}"
 msgstr ""
@@ -9371,6 +9697,9 @@ msgstr[1] ""
 msgid "{} files"
 msgstr ""
 
+msgid "{} files are left out (too big or not readable)."
+msgstr ""
+
 msgid "{} files in different formats. Merge keeps every file as a format of one book."
 msgstr ""
 
@@ -9383,6 +9712,9 @@ msgid "{} found, no numbers missing in between."
 msgstr ""
 
 msgid "{} found. Audio files and folders next to the books or in a folder you choose, paired by ISBN, title and author. Bookx only links them; Open starts your audio player."
+msgstr ""
+
+msgid "{} free"
 msgstr ""
 
 msgid "{} h {} min"
@@ -9501,13 +9833,28 @@ msgid_plural "{} occurrences"
 msgstr[0] ""
 msgstr[1] ""
 
+msgid "{} of new or changed files ({} files) to copy; everything else is already there."
+msgstr ""
+
+msgid "{} of the notes records are damaged"
+msgstr ""
+
 msgid "{} of {}"
+msgstr ""
+
+msgid "{} of {} bookmarks · {} books"
 msgstr ""
 
 msgid "{} of {} books"
 msgstr ""
 
 msgid "{} of {} covers are small"
+msgstr ""
+
+msgid "{} of {} entries · {} books · {} with notes"
+msgstr ""
+
+msgid "{} of {} files"
 msgstr ""
 
 msgid "{} of {} highlights"
@@ -9618,6 +9965,9 @@ msgstr[1] ""
 msgid "{} terms added, {} updated"
 msgstr ""
 
+msgid "{} to restore, {} already present."
+msgstr ""
+
 msgid "{} to the device"
 msgstr ""
 
@@ -9693,6 +10043,9 @@ msgid "{} · {} · {}"
 msgstr ""
 
 msgid "{} · {} · {}\n{}"
+msgstr ""
+
+msgid "{} · {} · {} · last {}"
 msgstr ""
 
 msgid "{} · {} — binary file, cannot be edited"

@@ -366,6 +366,55 @@ def library_notes_dark_small(c):
     _notes_case(c, "notes-dark", DARK, (900, 600))
 
 
+def _check_column_case(c, name, settings):
+    """The check box of a note is in its own column at the start of the row: not drawn at rest (no ring over the
+    text or the corner), drawn when the pointer is over the row, never over the quote."""
+    from PIL import ImageStat
+    origin = _origin(1280, 800)
+    env = {"BOOKX_DEV_SCRIPT": "wait:2500,library:annotate,library:annotate-more"}
+    c.start(books=("alice", "tiny"), settings=settings, extra_env=env)
+    time.sleep(4)
+    _click(c, c.wait_node(None, "Notes & Highlights"), origin)
+    time.sleep(1.5)
+    c.sb.move_to(640, 760)  # away from every row
+    time.sleep(0.6)
+    boxes = [n for n in c.find("check box") if n.name == "Select this highlight"]
+    if not c.check("the notes are listed", len(boxes) >= 3, str(len(boxes))):
+        return
+    boxes.sort(key=lambda n: (n.box[1], n.box[0]))
+    first = boxes[0]
+    bx, by, bw, bh = first.box
+    rest_png = c.shot(f"{name}-rest")
+    rest = c.image()
+    crop = (bx + origin[0] - 2, by + origin[1] - 2, bx + bw + origin[0] + 2, by + bh + origin[1] + 2)
+    rest_spread = max(ImageStat.Stat(rest.crop(crop)).stddev)
+    c.check("at rest the check box column is empty: no ring is drawn there", rest_spread < 3.0, f"{rest_spread:.1f} {rest_png}")
+    quote = [n for n in c.find("label", rx="devhighlight|greenquote|bluequote") if n.box[1] <= by + bh and n.box[1] + n.box[3] >= by]
+    if quote:
+        c.check("the quote starts after the check box column", min(q.box[0] for q in quote) >= bx + bw - 1, f"{[q.box for q in quote]} vs {first.box}")
+    cx, cy = first.center(origin)
+    c.sb.move_to(cx + 200, cy)
+    time.sleep(0.8)
+    hover_png = c.shot(f"{name}-hover")
+    hover = c.image()
+    hover_spread = max(ImageStat.Stat(hover.crop(crop)).stddev)
+    c.check("with the pointer over the row the check box is drawn in its column", hover_spread > 6.0, f"{hover_spread:.1f} {hover_png}")
+    c.sb.move_to(640, 760)
+    time.sleep(0.6)
+    after = c.image()
+    c.check("and it goes away again when the pointer leaves", max(ImageStat.Stat(after.crop(crop)).stddev) < 3.0)
+
+
+@scenario
+def library_notes_check_column_light(c):
+    _check_column_case(c, "checkcol-light", "")
+
+
+@scenario
+def library_notes_check_column_dark(c):
+    _check_column_case(c, "checkcol-dark", DARK)
+
+
 def _fav_case(c, name, settings):
     """A favourite: the star badge on its cover, the star toggle, the rating and the tags in the
     details panel and in Properties."""

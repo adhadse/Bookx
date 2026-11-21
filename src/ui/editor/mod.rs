@@ -803,7 +803,9 @@ impl SimpleComponent for Editor {
     type Widgets = ();
 
     fn init_root() -> Self::Root {
+        // An application window: its `app.` actions (Preferences, Keyboard Shortcuts, About) resolve and are enabled
         adw::Window::builder()
+            .application(&relm4::main_adw_application())
             .default_width(1380)
             .default_height(860)
             .build()

@@ -17,7 +17,8 @@
 
 While a Kobo, Kindle, other e-reader or a phone is connected, a **Devices** button with the device's name appears in
 the library's header bar (it is hidden when nothing is connected). Its tooltip is **Connected e-reader: sync, send and
-manage books**. It opens the Devices window. The book's right-click menu has one device entry, **Send to Device**: it
+manage books**. It opens the Devices window; the main menu has a **Devices** entry too, which works with or without a
+device. The book's right-click menu has one device entry, **Send to Device**: it
 opens the Devices window with the books you selected already in its *Books to send* list. It is always there; without a
 device it is greyed out, with the hint “No device connected”.
 
@@ -27,11 +28,11 @@ device it is greyed out, with the hint “No device connected”.
 <figcaption markdown="1">The Devices button and the connection banner.</figcaption>
 </figure>
 
-When a device connects, an `adw::Banner` says **“E-reader connected”** and offers **Sync**. Pressing Sync shows what
+When a device connects, a banner at the top of the library says **“E-reader connected”** and offers **Sync**. Pressing Sync shows what
 will happen, then syncs this once. Highlights come with the colour and style they have on the device (see *Colours and
 styles from your e-reader* in [Annotations](annotations.md)). The banner can be dismissed; there is no **Always** or
 **Not now** answer. To sync every time a device connects, switch on **Always sync when connected** in
-[Devices → Settings](#settings-page) instead.
+the Settings page of the Devices window ([below](#settings-page)) instead.
 
 ## Syncing progress, highlights and notes
 
@@ -54,13 +55,15 @@ the device and is reported in the summary. Highlights go to the device as a KORe
 and only when the device copy has none: **a notes file that is already there is never touched**. The summary says
 how many highlights stay in Bookx for that reason. Reading progress is never written to the device.
 
-**Devices → Settings → Sync → Always sync when connected** is off by default. With it on, syncing starts as soon as a
-device appears, without asking, and a message tells you what was done. The banner's Sync button never turns this on;
-it only syncs once. *Preferences → Sync* still holds the other sync settings.
+**Always sync when connected** is off by default. You find it in the Devices window (the Devices button, or main menu →
+**Devices**): switch to its **Settings** page and look under **Sync**. With it on, syncing starts as soon as a device
+appears, without asking, and a message tells you what was done. The banner's Sync button never turns this on; it only
+syncs once. Bookx Preferences → Sync has a *USB device sync* group with the notes switch and a button that opens the
+Devices window; the other sync settings (the Bookx sync server, the account, the library server) live there too.
 
 ## Send to device
 
-Select books in the library, right-click → **Send to Device** (or open the Devices window with the Devices button).
+Select books in the library, right-click → **Send to Device** (or open the Devices window with the Devices button or from the main menu).
 On the **Books** page, the **Books to send** group shows exactly what will happen to each book, before anything is
 copied:
 
@@ -79,9 +82,9 @@ the very format decisions the list shows. If a conversion fails, the next format
 **Your notes go along.** A book that has highlights, notes or bookmarks is sent with them: the copy **on the device**
 gets an extra “My notes” section at the end (readable in any e-reader app), and for EPUB and KEPUB readers a KOReader
 notes file is written next to it, so KOReader lists them too (as bookmarks and notes; KOReader keeps jump targets at
-chapter level, so they jump to the start of the chapter; Bookx never writes a position inside the chapter that it cannot work out, so nothing can end up at the wrong words). Your library copy is not changed. Switch **Add my notes to
-the copy sent to the device** off under [Devices → Settings → Sending options](#settings-page) to send books without
-them.
+chapter level, so they jump to the start of the chapter; Bookx never writes a position inside the chapter that it cannot work out, so nothing can end up at the wrong words). Your library copy is not changed. Switch **Add notes to
+the copy sent to the device** off to send books without them. It is under *Sending options* on the Settings page of the
+Devices window, and also in Preferences → Sync under *USB device sync*.
 
 This is **one-way, library → device**. The merge in both directions is the sync that runs when a device connects
 (above); sending never reads anything back.
@@ -144,7 +147,7 @@ Books**.
   **Save path** template such as `{author}/{series}/{title}`, and for Kobo an optional **Shelf** for sent books (the
   Kobo database is backed up before it is changed). **Add notes to the copy sent to the device** adds your
   highlights and notes to the copy on the device.
-- **Sync**: **Always sync when connected**, off by default. The “?” explains that this syncs in the background every
+- **Sync**: **Always sync when connected**, off by default (this is the only place for it). The “?” explains that this syncs in the background every
   time a device appears; the banner's Sync button stays a one-shot action.
 - **Cloud folder (WebDAV)**: enter the URL, user name and password to use a WebDAV folder as a device. Sending never
   overwrites an existing file and the password is kept in the system keyring. To keep *backups* in a WebDAV folder,
@@ -184,15 +187,15 @@ Kobo database handling.
 
 ### Cloud folders (WebDAV)
 
-The *Cloud folder (WebDAV)* section is under [Devices → Settings](#settings-page): enter the URL, user name and
-password and the folder behaves like a device. Sending never overwrites an existing file. The password is kept in the
+Open the Devices window (main menu → **Devices**), go to its **Settings** page and fill in **Cloud folder (WebDAV)**:
+enter the address, user name and password, press **Check Connection**, and the folder behaves like a device. Sending never overwrites an existing file. The password is kept in the
 system keyring. To keep *backups* in a WebDAV folder, see [Backup and restore](backup-and-restore.md).
 
 ## Which sync do I need?
 
 Everything that moves books, progress, highlights or notes between Bookx and another device is under one name,
-**Sync**: **main menu → Sync** answers *what should I use, when* with a status card and three choices; **Preferences →
-Sync** holds the setup.
+**Sync**: **main menu → Sync** answers *what should I use, when* with a status card and three choices; **Bookx Preferences →
+Sync** holds the setup (the main menu has **Preferences**).
 
 | Use this when… | **Bookx sync with KOReader (Wi-Fi)** | **USB device** | **Share books (OPDS)** |
 |---|---|---|---|
@@ -210,8 +213,10 @@ checklist, the account, how books are matched) and [KOReader highlights and note
 Bookx’s own reader uses the same account: it asks “Continue from *Kobo Libra* at 63%?” when you open a book that was read
 further elsewhere.
 
-**USB device** (cable): Bookx reads the progress and the highlights and notes the device keeps, from the Kobo’s own
-database or from KOReader’s `.sdr` files if KOReader is installed on it, and merges them with the library. Without any
+**USB device** (cable): Bookx reads the progress and the highlights, notes and bookmarks the device keeps (a Kobo’s dog-ears,
+KOReader’s page bookmarks), from the Kobo’s own database or from KOReader’s `.sdr` files if KOReader is installed on it, and
+merges them with the library. A bookmark becomes a Bookx bookmark at the same place (a rough one is marked *approximate place*),
+is added once, and is not brought back once you delete it in Bookx. Without any
 readable state nothing happens. Progress only moves forward, notes are united, nothing is deleted, and reading progress
 is never written to the device. *Notes sent with a book* (Devices window, *Send to Device*) add your highlights and notes
 to the copy on the device as a “My notes” section and a KOReader notes file; your library copy is never changed.
@@ -230,7 +235,7 @@ calibre into the library; see [Highlights and notes](annotations.md).
 </figure>
 
 
-Fill in *Preferences → E-mail* (mail server, port, encryption STARTTLS or TLS, user name, password, your address and the
+Open the main menu → **Preferences**, choose the **E-mail** page and fill it in (mail server, port, encryption STARTTLS or TLS, user name, password, your address and the
 address to send to, for example your Send-to-Kindle address). Then right-click a book → *Send by E-mail*. Bookx checks the
 50 MB Kindle limit before sending.
 
@@ -245,10 +250,10 @@ The password is kept in the system keyring (see [Backup and restore → Password
 </figure>
 
 Main menu → **Sync** → **Share books (OPDS)** → **Start library server** serves the library to other devices on your
-network; **Preferences → Sync → Library servers (OPDS)** has the same switch and the address with a copy button:
+network; Bookx **Preferences → Sync** has a *Library servers (OPDS)* group with the same switch and the address with a copy button:
 
 - **OPDS** catalogue and a **web page** to browse and download books. Any OPDS reader app can use it.
-- A **password is required** before other devices can connect. The user name is `bookx`. Under **Advanced** you find
+- A **password is required** before other devices can connect. The user name is `bookx`. In Preferences → Sync, the collapsed **Advanced** row holds
   *Allow other devices on the network*, the library password, the **port** (allow it in your firewall) and **HTTPS**.
 - **Bookx sync** shares the server: the setup checklist turns on network access for you and makes the library password
   if there is none. See [Bookx sync (extended KOSync)](progress-sync.md).
@@ -272,3 +277,73 @@ reverse proxy in front of it: [Put Bookx behind a reverse proxy](reverse-proxy.m
     - MTP works through gvfs only; direct USB MTP is not done.
     - WebDAV was tested against an in-process server, not Nextcloud or another real service.
     - Without a keyring (GNOME Keyring, KWallet, KeePassXC) the passwords stay in the settings file, unencrypted; Bookx says so next to each one.
+
+## Questions and answers
+
+??? question "How do I send books to my Kobo or Kindle?"
+    Plug the reader in with its USB cable. In the library select the books, right-click and choose **Send to Device**
+    (or open main menu → **Devices**). On the **Books** page the *Books to send* list shows, for every book, the format it
+    will have on the device, for example *EPUB → KEPUB (converted)* for a Kobo or *EPUB → AZW3 (converted)* for a
+    Kindle, plus its size and any warning. Untick what you do not want and press **Send 1 Book** or **Send N Books**.
+    Your library copy is never changed.
+
+??? question "The Devices button is not there. What is wrong?"
+    The **Devices** button in the header bar only appears while a device is connected. Make sure the reader is
+    mounted (GNOME Files shows it); for a phone, unlock it and choose file transfer. The main menu → **Devices** entry is
+    always there and opens the same window, with a *No Device Connected* page until something shows up. If it still does
+    not appear, run `bookx-cli device-check <mount>` and look at what it reports.
+
+??? question "How do I sync reading progress and highlights over USB?"
+    When a device connects, a banner says **E-reader connected** with a **Sync** button. Press it: Bookx shows what
+    will go where and then syncs once. You can also open the Devices window and press **Sync Reading State** in the *Books
+    on the device* group. Progress only moves forward, highlights and notes from both sides are united and nothing is
+    deleted. Reading progress is never written to the device.
+
+??? question "How do I make it sync every time I plug the reader in?"
+    Open main menu → **Devices**, switch to the **Settings** page and turn on **Always sync when connected** under
+    **Sync**. It is off by default. Answering the banner with Sync never turns it on, that is a one-time sync.
+
+??? question "Will my highlights and notes go onto the device when I send a book?"
+    Yes, by default. The copy on the device gets an extra “My notes” section at the end, and for EPUB and KEPUB a KOReader
+    notes file next to it. If you do not want that, switch off **Add notes to the copy sent to the device** on the Devices
+    window's Settings page (*Sending options*) or in Bookx Preferences → Sync under *USB device sync*. A notes file
+    that is already on the device is never overwritten.
+
+??? question "How do I remove books from the device?"
+    In the Devices window, on the Books page, tick the books in *Books on the device* (the grid/list button switches the
+    view, Shift-click ticks a range) and press **Remove from Device**. Bookx asks “Remove N Books from the Device?” first.
+    This cannot be undone.
+
+??? question "How do I choose the format or folder layout on the device?"
+    Devices window → **Settings** page → *Sending options*. **Format** is *Automatic (best for the device)* unless you pick
+    one. **Save path** is a template such as `{author}/{series}/{title}`. On a Kobo you can give a **Shelf name** for sent
+    books. If a conversion fails, Bookx tries the next format the device opens.
+
+??? question "How do I add a WebDAV folder (Nextcloud and similar) as a device?"
+    Open main menu → **Devices** and switch to **Settings**. Under **Cloud folder (WebDAV)** type the address, user name
+    and password and press **Check Connection**. The folder then behaves like a device on the Books page. Sending never
+    overwrites an existing file, and the password goes to the system keyring. Backups to WebDAV are set up separately,
+    see [Backup and restore](backup-and-restore.md).
+
+??? question "Which sync should I use: USB, KOReader or sharing?"
+    Open main menu → **Sync**. It offers three choices: *Bookx sync with KOReader (Wi-Fi)* for readers that run KOReader,
+    *USB device* for a cable, and *Share books (OPDS)* to let reader apps browse your library. Stock Kobo and Kindle
+    firmware has no wireless sync with Bookx; use the cable for those. See [Which sync do I need?](#which-sync-do-i-need).
+
+??? question "How do I send a book to my Kindle by e-mail?"
+    Open main menu → **Preferences**, choose **E-mail** and fill in your mail server, account and your Send-to-Kindle
+    address (use an app password). Then right-click a book → **Send by E-mail**. Bookx checks the 50 MB Kindle limit
+    first.
+
+??? question "How do I share my library with an OPDS reader app?"
+    Open main menu → **Sync** and press **Start library server** in the *Share books (OPDS)* card, or use the switch in
+    Bookx Preferences → Sync under *Library servers (OPDS)*. The address appears with a copy button. The user name is
+    `bookx` and a password is required; port, HTTPS and network access are in the collapsed **Advanced** row. Keep it on
+    your own network or put a [reverse proxy](reverse-proxy.md) in front.
+
+??? question "Does it work with my phone?"
+    An Android phone mounted through GNOME Files (MTP) appears as a device. A locked phone shows nothing, free space is
+    often unknown and there is no Kobo database handling. Direct USB MTP without GNOME's mount is not supported.
+
+??? question "Can I drag books onto the Devices button?"
+    No. Select them in the library and use **Send to Device**.

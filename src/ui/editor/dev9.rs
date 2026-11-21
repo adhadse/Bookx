@@ -48,7 +48,38 @@ fn duplicates(labels: &[String]) -> Vec<String> {
     dup
 }
 
+fn collect_model_buttons(w: &gtk::Widget, out: &mut Vec<(String, bool)>) {
+    if w.type_().name() == "GtkModelButton" {
+        let text: String = w.property("text");
+        out.push((text, w.is_sensitive()));
+    }
+    let mut c = w.first_child();
+    while let Some(x) = c {
+        collect_model_buttons(&x, out);
+        c = x.next_sibling();
+    }
+}
+
 impl Editor {
+    /// The header's Main Menu button.
+    fn main_menu_button(&self) -> Option<gtk::MenuButton> {
+        let header = self.w.title.ancestor(adw::HeaderBar::static_type())?;
+        let mut stack = vec![header];
+        while let Some(w) = stack.pop() {
+            if let Some(b) = w.downcast_ref::<gtk::MenuButton>() {
+                if b.is_primary() {
+                    return Some(b.clone());
+                }
+            }
+            let mut c = w.first_child();
+            while let Some(x) = c {
+                stack.push(x.clone());
+                c = x.next_sibling();
+            }
+        }
+        None
+    }
+
     fn print_menu(&self, name: &str, menu: &gio::MenuModel) {
         let top = window_features::top_level_labels(menu);
         let mut all = Vec::new();
@@ -108,6 +139,71 @@ impl Editor {
             }
             "book-menu" => {
                 self.print_menu("book", window_features::book_menu().upcast_ref());
+                true
+            }
+            "book-menu-state" => {
+                // `editor_book_menu: Preferences=on Keyboard Shortcuts=on … all_app=yes|no`: opens the real Main Menu
+                // popover and reads the sensitivity of each entry, which is what the user sees greyed or not
+                let Some(btn) = self.main_menu_button() else {
+                    eprintln!("editor_book_menu: no main menu button");
+                    return true;
+                };
+                btn.popup();
+                glib::timeout_add_local_once(std::time::Duration::from_millis(500), move || {
+                    let mut entries: Vec<(String, bool)> = Vec::new();
+                    if let Some(pop) = btn.popover() {
+                        collect_model_buttons(pop.upcast_ref(), &mut entries);
+                    }
+                    btn.popdown();
+                    let on = |l: &str| entries.iter().any(|(n, e)| n == l && *e);
+                    let all = [
+                        "Preferences",
+                        "Keyboard Shortcuts",
+                        "Help",
+                        "About Bookx",
+                        "Command Palette",
+                    ]
+                    .iter()
+                    .all(|l| on(l));
+                    eprintln!(
+                        "editor_book_menu: {} all_app={}",
+                        entries
+                            .iter()
+                            .map(|(n, e)| format!("{n}={}", if *e { "on" } else { "off" }))
+                            .collect::<Vec<_>>()
+                            .join(" | "),
+                        if all { "yes" } else { "no" }
+                    );
+                });
+                true
+            }
+            "book-menu-activate=Preferences"
+            | "book-menu-activate=Keyboard Shortcuts"
+            | "book-menu-activate=About Bookx"
+            | "book-menu-activate=Command Palette" => {
+                // runs the action of the entry from the editor window and reports whether a dialog opened over it
+                let label = c.trim_start_matches("book-menu-activate=").to_string();
+                let (action, target) = match label.as_str() {
+                    "Preferences" => ("app.preferences", None),
+                    "Keyboard Shortcuts" => ("app.shortcuts", None),
+                    "About Bookx" => ("app.about", None),
+                    _ => ("ext.win", Some("palette".to_variant())),
+                };
+                let ok =
+                    gtk::prelude::WidgetExt::activate_action(&self.w.win, action, target.as_ref())
+                        .is_ok();
+                let win = self.w.win.clone();
+                glib::timeout_add_local_once(std::time::Duration::from_millis(900), move || {
+                    let d = win.visible_dialog();
+                    eprintln!(
+                        "editor_book_menu_activate: {label} activated={ok} dialog_over_editor={} dialog={}",
+                        d.is_some(),
+                        d.as_ref().map(|d| d.type_().name()).unwrap_or("-")
+                    );
+                    if let Some(d) = d {
+                        d.close();
+                    }
+                });
                 true
             }
             "revert-state" => {

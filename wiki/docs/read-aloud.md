@@ -18,7 +18,7 @@ computer, unless you point Bookx at a server somewhere else.
 
 ## The first time: the voice downloads by itself
 
-1. Press the speaker button in the reader header, then play. If no voice is installed yet, Bookx asks once whether to
+1. Click the speaker button in the reader's header bar (the right-hand side, next to the Text Appearance button), then play. If no voice is installed yet, Bookx asks once whether to
    download the default voice (Kokoro, about 130 MB; the dialog shows the licence and the size). Tick **Always do this**
    to stop being asked. A voice that is already installed is always used: Bookx looks at what is on disk (any complete
    Kokoro model, small or full, and any Piper voice; packs from older versions are moved in) and never offers a download
@@ -60,8 +60,8 @@ While reading aloud, a small player floats over the page (it is not a menu, so c
 It is **small by default** (at most about 360 × 120 px, so it hides little text): the cover, the title and the sentence
 on one line, **previous / next sentence** and **play / pause**. The arrow button opens the **full player**: the
 sentence on two lines, a **seek bar** for the chapter (drag it to jump to a sentence) with the sentence number,
-**previous / next chapter**, **speed** (− and +, 0.75× to 2×), the **voice** (a list for the language of the book and
-*Voice settings…*), the **sleep timer** and **volume**. The **X** in the top right corner (*Close read aloud*) stops
+**previous / next chapter**, **speed** (− and +, in steps from 0.75× to 2×), the **voice** (the voice button opens a list for the language of the book and
+a *Voice settings* button), the **sleep timer** and **volume**. The **X** in the top right corner (*Close read aloud*) stops
 reading and closes the card; **Esc** does the same while the card has the keyboard focus.
 
 **Move it anywhere**: drag the card by any part of its background (a finger works too); it stays inside the window and
@@ -107,8 +107,8 @@ The speaker button is small on purpose: the controls are on the [player card](#t
 * **Voice Settings** opens the settings page; **pitch** is set there.
 * **Save Chapter as Audio** / **Save Book as Audio** write WAV files with the voice you chose (see below).
 
-On the card: **previous / next sentence** (the double arrows), **previous / next chapter** (the arrows with a bar),
-**speed** from 0.5 to 2.5 times, the **voice** (the voices that speak the language of the book; your choice is remembered
+The rest is on the card, whose arrow button opens the full player: **previous / next sentence** (the double arrows), **previous / next chapter** (the arrows with a bar),
+**speed** (the − and + buttons, from 0.75× to 2×; the slider in the settings goes from 0.5 to 2.5), the **voice** (the voices that speak the language of the book; your choice is remembered
 per engine and language), the **sleep timer** (the alarm clock: stop after 15, 30, 45 or 60 minutes, or at the end of the
 chapter) and **volume**. *Try again* shows only after an error.
 
@@ -130,7 +130,7 @@ leaves no half-written file. WAV files are large (about 3 MB per minute with Kok
 </figure>
 
 
-*Tools → Add Narration* in the editor reads the whole book with your voice and stores the audio **inside the EPUB** as
+*Tools → Add Narration* in the book editor reads the whole book with your voice and stores the audio **inside the EPUB** as
 an EPUB 3 *media overlay*: one audio file per chapter, a SMIL file that says which sentence is spoken when, and the
 sentences wrapped in invisible `<span id>` tags (the page looks the same). Reading systems with overlay support, such as
 Thorium, then play the book with the sentence highlighted.
@@ -159,7 +159,7 @@ takes a few times longer than listening on a slow computer.
 </figure>
 
 
-**Preferences → Text to Speech**:
+**Preferences → Text to Speech** (a page of its own in the Preferences list; *Voice Settings* in the speaker popover or on the card jumps straight to it):
 
 ![The Text to Speech settings](assets/read-aloud-settings-light.png#only-light)
 ![The Text to Speech settings](assets/read-aloud-settings-dark.png#only-dark)
@@ -197,7 +197,7 @@ Server types:
 
 **Voice, speaker or reference id** is the voice the server should use (a speaker name for XTTS, a reference id for Fish
 Speech, a voice name for OpenAI-style servers). Servers that list their voices (OpenAI-style `GET /v1/audio/voices`, XTTS
-`/speakers_list`) show them in the speaker popover. **Test** speaks a short sentence and tells how long the server took.
+`/speakers_list`) show them in the voice list of the player card. **Test** speaks a short sentence and tells how long the server took.
 If the server wants a key, enter it in **API key** on the same page. It is kept in the system keyring. A key given in
 `BOOKX_TTS_API_KEY` is moved there the first time Bookx starts with it.
 
@@ -261,3 +261,39 @@ same way in their folders.
 | Piper voices | huggingface.co (rhasspy/piper-voices) | per voice, see its model card |
 
 `espeak-ng` (GPL-3.0-or-later, the same family as Bookx) is run as a separate program and not included.
+
+## Questions and answers
+
+??? question "How do I start reading aloud?"
+    Click the speaker button in the reader's header bar and press play, or press ++r++. It starts at your selection, or at the
+    top of the page.
+
+??? question "How do I pause, skip a sentence or skip a chapter?"
+    Use the player card that floats over the page: play / pause, the double arrows for the previous and next sentence, and (in
+    the full player, opened with the arrow button) the arrows with a bar for the previous and next chapter. ++r++ also pauses, and
+    the media keys of your keyboard work.
+
+??? question "How do I change the speed?"
+    Open the full player (the arrow button on the card) and use **Slower** and **Faster**, from 0.75× to 2×. A speed you would
+    like as the default is set in **Preferences → Text to Speech**.
+
+??? question "How do I change the voice?"
+    Open the full player and click the voice button: it lists the voices that speak the language of the book. To download
+    more voices or switch between Kokoro, Piper and a voice server, press **Voice Settings** (in the speaker popover or the
+    voice list).
+
+??? question "How do I change the pitch?"
+    Pitch is only in **Voice Settings** (**Preferences → Text to Speech**), not on the card.
+
+??? question "How do I set a sleep timer?"
+    In the full player click the alarm-clock button: after 15, 30, 45 or 60 minutes, or at the end of the chapter.
+
+??? question "How do I save the book as audio?"
+    Click the speaker button and choose **Save Chapter as Audio** or **Save Book as Audio**. The files are WAV.
+
+??? question "Why does it ask me to download something?"
+    The first time there is no voice on your computer yet. Bookx offers the default voice (Kokoro, about 130 MB); you can
+    cancel, tick *Always do this*, or use a voice server instead.
+
+??? question "How do I move or close the player card?"
+    Drag it by its background; double-click the background to put it back. The X in its corner closes it and stops reading.

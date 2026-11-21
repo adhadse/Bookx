@@ -306,6 +306,12 @@ pub struct Reader {
     fixed: bool,
     /// The first chapter has not been laid out yet (a big one shows "Opening Book" first).
     first_layout_pending: bool,
+    /// The position the book was opened at (the saved one): dropped when a highlight was asked for.
+    initial_start: (usize, Option<f64>),
+    /// A highlight opened from a list is being shown: the saved position must not win over it.
+    landing: bool,
+    /// The characters of the highlight that was opened from a list (test hook).
+    hl_target: Option<(i32, i32)>,
     /// "Opening Book" was shown (test hook).
     opening_shown: bool,
     /// (reading speed in words per minute, seconds read today) from the statistics, for the footer.
@@ -904,6 +910,9 @@ impl Reader {
                 });
             }
             "side-state" => {
+                for l in self.w.side.dev_bookmarks() {
+                    eprintln!("side_bookmark: {l}");
+                }
                 eprintln!(
                     "side: shown={} collapsed={} {}",
                     self.w.split.shows_sidebar(),
@@ -1213,13 +1222,23 @@ impl Reader {
             .chain(b.highlights.iter().map(|h| h.spine))
             .map(|i| (i, self.chapter_title(i)))
             .collect();
+        // the bookmarks a device brought say where from (the ledgers are read only when there are any)
+        let infos = if b.bookmarks.iter().any(|m| m.id.starts_with("bm-")) {
+            crate::annotation_sync_ui::bookmark_infos(&lib.root)
+        } else {
+            Default::default()
+        };
         let bms = b
             .bookmarks
             .iter()
             .map(|m| super::reader_side::BmItem {
                 id: m.id.clone(),
                 title: titles.get(&m.spine).cloned().unwrap_or_default(),
-                sub: format!("{} · {}", m.label, m.created.format("%d %b %Y")),
+                sub: crate::notes_view::bookmark_line(
+                    &m.label,
+                    m.created,
+                    infos.get(&(self.book_id, m.id.clone())),
+                ),
             })
             .collect();
         self.w.side.set_bookmarks(bms);
@@ -5108,6 +5127,12 @@ impl SimpleComponent for Reader {
             tweaks_ui: Rc::new(RefCell::new(Some(tweaks_ui))),
             fixed,
             first_layout_pending: true,
+            initial_start: {
+                let start = shared.lib.borrow().get(book_id).and_then(|b| b.position);
+                start.map(|p| (p.spine, Some(p.frac))).unwrap_or((0, None))
+            },
+            landing: false,
+            hl_target: None,
             opening_shown: false,
             live: Cell::new((None, 0)),
             opened: std::time::Instant::now(),
@@ -5245,6 +5270,11 @@ impl SimpleComponent for Reader {
                 }
             },
             Input::GoSpine(i, f, a) => {
+                if self.landing && a.is_none() && (i, f) == self.initial_start {
+                    // the book was opened at a highlight: the saved position does not win over it
+                    self.landing = false;
+                    return;
+                }
                 // a big first chapter takes a while to lay out: the page says so first, and the layout
                 // starts after the frame that shows it
                 if std::mem::take(&mut self.first_layout_pending)
@@ -5552,19 +5582,71 @@ impl SimpleComponent for Reader {
                 self.update_bookmark_button();
             }
             Input::GoHighlight(id) => {
-                let target = self.shared.lib.borrow().get(self.book_id).and_then(|b| {
-                    b.highlights
-                        .iter()
-                        .find(|h| h.id == id)
-                        .map(|h| (h.spine, h.start))
-                });
-                if let Some((spine, start)) = target {
-                    self.note_jump();
-                    eprintln!("goto_highlight: id={id} spine={spine}");
-                    if spine != self.spine_idx {
-                        self.load_chapter(spine, Some(0.0), None, false);
+                // the Notes list also opens a bookmark by its id: its chapter and how far into it
+                let mark = self.shared.lib.borrow().get(self.book_id).and_then(|b| {
+                    if b.highlights.iter().any(|h| h.id == id) {
+                        return None;
                     }
-                    self.canvas.goto_char(start);
+                    b.bookmarks
+                        .iter()
+                        .find(|m| m.id == id)
+                        .map(|m| (m.spine, m.frac))
+                });
+                if let Some((spine, frac)) = mark {
+                    self.note_jump();
+                    self.landing = self.opened.elapsed() < std::time::Duration::from_secs(3);
+                    eprintln!("goto_bookmark: id={id} spine={spine} frac={frac:.3}");
+                    self.first_layout_pending = false;
+                    self.w.opening.set_visible(false);
+                    self.hl_target = None;
+                    self.load_chapter(spine, Some(frac), None, false);
+                    return;
+                }
+                let hint = crate::annotation_sync_ui::hint_for(self.book_id, &id);
+                let out = {
+                    let mut lib = self.shared.lib.borrow_mut();
+                    crate::highlight_goto::go_to(&mut lib, self.book_id, &id, hint.as_ref())
+                };
+                use crate::highlight_goto::Outcome;
+                self.note_jump();
+                self.landing = self.opened.elapsed() < std::time::Duration::from_secs(3);
+                match out {
+                    Some(Outcome::Found(t)) => {
+                        eprintln!(
+                            "goto_highlight: id={id} spine={} start={} end={} how={:?}",
+                            t.spine, t.start, t.end, t.how
+                        );
+                        self.first_layout_pending = false;
+                        self.w.opening.set_visible(false);
+                        self.load_chapter(t.spine, Some(0.0), None, false);
+                        self.refresh_highlights();
+                        self.canvas.goto_char_when_ready(t.start as i32);
+                        self.canvas.select_chars(t.start as i32, t.end as i32);
+                        self.hl_target = Some((t.start as i32, t.end as i32));
+                    }
+                    other => {
+                        let chapter = match other {
+                            Some(Outcome::Missing { chapter }) => chapter,
+                            _ => None,
+                        };
+                        eprintln!(
+                            "goto_highlight: id={id} spine={} missing",
+                            chapter.map_or("none".to_string(), |c| c.to_string())
+                        );
+                        let _ = sender.output(Output::Toast(tr(
+                            "Could not find this highlight in the book",
+                        )));
+                        self.first_layout_pending = false;
+                        self.w.opening.set_visible(false);
+                        let to = chapter.unwrap_or(self.initial_start.0);
+                        let frac = if chapter.is_some() {
+                            Some(0.0)
+                        } else {
+                            self.initial_start.1
+                        };
+                        self.load_chapter(to, frac, None, false);
+                        self.hl_target = None;
+                    }
                 }
             }
             Input::Copy => {
@@ -6848,6 +6930,29 @@ impl SimpleComponent for Reader {
                     }
                     // `reader:hl-count` prints `marks: highlights=N notes=N bookmarks=N`;
                     // `reader:remove-highlight` presses the Remove Highlight button of the open selection popover
+                    // `reader:hl-where` prints where a highlight that was opened from a list went:
+                    // `hl_where: spine=S page=P/N start=A end=B visible=bool selected=bool`
+                    "hl-where" => {
+                        let (a, b) = self.hl_target.unwrap_or((-1, -1));
+                        eprintln!(
+                            "hl_where: spine={} page={}/{} start={a} end={b} visible={} selected={}",
+                            self.spine_idx,
+                            self.pos.page,
+                            self.pos.pages,
+                            self.canvas.range_visible(a, b),
+                            self.canvas.selection_range() == Some((a, b))
+                        );
+                        return;
+                    }
+                    // `reader:bm-where` prints where a bookmark that was opened from a list went:
+                    // `bm_where: spine=S page=P/N frac=F`
+                    "bm-where" => {
+                        eprintln!(
+                            "bm_where: spine={} page={}/{} frac={:.3}",
+                            self.spine_idx, self.pos.page, self.pos.pages, self.pos.frac
+                        );
+                        return;
+                    }
                     "hl-count" => {
                         let lib = self.shared.lib.borrow();
                         let (h, n, b) = lib.get(self.book_id).map_or((0, 0, 0), |bk| {

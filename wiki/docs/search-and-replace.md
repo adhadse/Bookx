@@ -1,11 +1,20 @@
 # Search and replace
 
-The book editor's find bar (++ctrl+f++; ++ctrl+h++ adds the replace row) searches one file or the whole book. It has four modes, five
+The book editor's find bar searches one file or the whole book. To open it, press ++ctrl+f++ in the editor, or press
+the **Find** button at the end of the header bar; ++ctrl+h++ opens it with the replace row. The bar has several modes,
 scopes of files, saved searches, and a **function mode** in which a small script decides every replacement.
 
 Every *Replace All* first takes a checkpoint named "Before: Replace All" (see [Checkpoints](editing.md#compare-and-checkpoints) to go back).
 
 ## The find bar
+
+The bar sits above the code and is one row high: the *Find* box, previous and next, *Find All*, *Count*, a count of
+matches and the **Search Options** button (a cog) at its end. ++ctrl+h++ adds a second row with the *Replace with* box, *Replace* and
+*Replace All*. The close button at its right end hides it again.
+
+Everything that is a setting rather than an action lives in the **Search Options** popover: the mode, *Aa*, *W*,
+*.⏎*, *<>*, the scope, the function list (in Function mode), the special-character button and a `⋯` button with *Saved
+Searches*, *Save This Search*, *Functions* and *Replace & Find Previous*.
 
 | Control | What it does |
 |---|---|
@@ -15,15 +24,18 @@ Every *Replace All* first takes a checkpoint named "Before: Replace All" (see [C
 | *Replace All* | Replaces in the whole scope. |
 | *Find All* | Lists every match of the scope; click one to jump to it. |
 | *Count* | Counts the matches over the whole scope and says "12 matches in 3 files" in the bar. Hover the text for the count per file. |
-| *Aa* | Match case. |
-| *W* | Whole words only. |
-| *.⏎* | Dot matches line breaks (Regex and Function modes). |
-| *<>* | Ignore HTML markup (see below). |
-| Insert character button | Special characters (no-break space, dashes, quotes) and, in regex mode, escapes such as `\n`, `\t`, `\s`. |
+| *Aa* (Search Options) | Match case. |
+| *W* (Search Options) | Whole words only. |
+| *.⏎* (Search Options) | Dot matches line breaks (Regex and Function modes). |
+| *<>* (Search Options) | Ignore HTML markup (see below). |
+| Insert character button (Search Options) | Special characters (no-break space, dashes, quotes) and, in regex mode, escapes such as `\n`, `\t`, `\s`. |
 
 All matches in the open file are highlighted while you type, and "n of m in this file" is shown in the bar.
+Saved searches (below) keep a search with all its settings for later.
 
 ## Modes
+
+Choose the mode in the first dropdown of the Search Options popover.
 
 **Text** searches for exactly what you type.
 
@@ -59,7 +71,7 @@ The match is `on <i>a</i> word`. The rules:
 
 ### Tag search
 
-Type a query in the Find box, in Tag mode. The syntax is a small part of CSS selectors:
+Choose *Tag* in the mode dropdown of the Search Options popover, then type a query in the Find box. The syntax is a small part of CSS selectors:
 
 | Query | Matches |
 |---|---|
@@ -85,19 +97,21 @@ Example: `a[href^=http://]` with `=https://` turns every `http://` link into an 
 
 ## Scopes
 
+The scope is the *Search in* dropdown of the Search Options popover.
+
 | Scope | Files |
 |---|---|
 | This file | the open file |
 | Text files | the XHTML/HTML files |
 | Style files | the stylesheets (`.css`) |
 | All files | every text file: XHTML, CSS, XML, OPF, NCX, SVG |
-| Selected files | the files selected in the file list (hold ++ctrl++ or ++shift++ to select several) |
+| Selected files | the files selected in the Files tab of the sidebar (hold ++ctrl++ or ++shift++ to select several) |
 | Open files | the files that have a tab |
-| Marked text | only the regions you marked with ++ctrl+shift+m++; **Clear Marked Text** (command palette) removes the marks of all files; ++ctrl+shift+m++ with nothing selected clears the open file. Marks are tinted in the text and in the overview map and stay when you switch tabs |
+| Marked text | only the regions you marked with ++ctrl+shift+m++ (or *Mark Selection* in the command palette); **Clear Marked Text** (command palette, ++ctrl+shift+p++) removes the marks of all files; ++ctrl+shift+m++ with nothing selected clears the open file. Marks are tinted in the text and in the overview map and stay when you switch tabs |
 
 ## Saved searches
 
-Menu (the three dots in the find bar) → **Save This Search** stores the find and replace texts, the mode, the
+Open Search Options and press its `⋯` button → **Save This Search** stores the find and replace texts, the mode, the
 options, the scope and, in Function mode, the function. **Saved Searches** opens the list:
 
 - *Add Current* saves the bar's search; *Edit* changes any part; *Delete*, *Up* and *Down* manage the list.
@@ -114,7 +128,7 @@ They are stored as `saved-searches.json` next to your settings.
 
 In Function mode the replacement is the result of a function written in [Rhai](https://rhai.rs), a small scripting
 language that looks like Rust and JavaScript. (Calibre uses Python for this; Bookx does not, and functions are not
-interchangeable.) Choose a function in the list that appears in the bar, type the regular expression whose matches it
+interchangeable.) Choose *Function* in the mode dropdown, choose a function in the list that appears next to it, type the regular expression whose matches it
 should handle, and press *Replace All*.
 
 A function looks like this:
@@ -174,7 +188,7 @@ An endless loop or a huge allocation stops the run with an error message and cha
 
 ### Writing and testing functions
 
-Menu → **Functions** lists the built-in functions and yours. *Use* selects one in the find bar (and fills in its
+Search Options → `⋯` → **Functions** lists the built-in functions and yours. *Use* selects one in the find bar (and fills in its
 suggested expression if the Find box is empty). *Edit* opens the **function editor** with a source editor,
 the suggested regular expression, and a **Test on Sample** button. The sample is the current selection (or the first part
 of the open file); the test shows how many replacements were made, the first changes as *before → after*, the debug output
@@ -266,3 +280,58 @@ contents page. (The contents tab's *Generate* does this without a script; the ex
 | Replace and find next / previous | ++ctrl+r++ or `Ctrl+]` / `Ctrl+[` |
 | Go to line | ++ctrl+l++ |
 | Mark selected text | ++ctrl+shift+m++ |
+
+## Questions and answers
+
+??? question "How do I find and replace across the whole book?"
+    1. Press ++ctrl+h++ in the editor, type the text and the replacement.
+    2. Press the Search Options button (the cog at the end of the first row) and set *Search in* to *All files*, or *Text
+       files* to leave stylesheets and package files alone.
+    3. Check with *Find All* (a list of every match; click one to jump) or *Count*, then press **Replace All**.
+    4. A checkpoint "Before: Replace All" is taken first and the toast has an **Undo** button.
+
+??? question "How do I search only some files?"
+    Select the files in the **Files** tab (Ctrl or Shift-click), then set *Search in* to *Selected files*. *Open files*
+    searches the files that have a tab, *Style files* the stylesheets only.
+
+??? question "How do I search only part of a file?"
+    Select the text and press ++ctrl+shift+m++ to mark it (repeat for other places, in any file), then set *Search in* to
+    *Marked text*. ++ctrl+shift+m++ with nothing selected clears the marks of the open file; *Clear Marked Text* in the
+    command palette (++ctrl+shift+p++) clears all of them.
+
+??? question "How do I use a regular expression?"
+    Open Search Options and choose *Regex* in the mode dropdown. In the *Replace with* box use `\1` or `$1` for groups
+    and `\n` for a line break. The insert button in the same popover lists the escapes such as `\t` and `\s`.
+
+??? question "How do I find text that is split by italic or bold tags?"
+    In Search Options (Text or Regex mode) switch on `<>` (ignore HTML markup). The phrase is found even when a `<i>` or
+    `<b>` sits in the middle; replacing keeps the tags.
+
+??? question "How do I change an attribute in many places, such as http to https links?"
+    Choose *Tag* mode, type `a[href^=http://]` in Find and `=https://` in *Replace with*. `alt=Picture` sets an attribute
+    and `-title` removes one.
+
+??? question "How do I keep a search and run it again later?"
+    Search Options → `⋯` → **Save This Search**, give it a name. **Saved Searches** in the same menu lists them: load one,
+    or select several and press *Count* or *Replace All* to run them in order (one checkpoint is taken first).
+
+??? question "How do I search with a script?"
+    Choose *Function* mode, pick a function in the list next to the mode (five come built in), write the regular
+    expression in Find and press *Replace All*. Search Options → `⋯` → **Functions** opens the list where you write
+    your own and test them on a sample before using them.
+
+??? question "How do I jump to the next or previous match?"
+    ++enter++, ++f3++ or ++ctrl+g++ go forward; ++shift+f3++ or ++ctrl+shift+g++ go back. The search wraps around.
+
+??? question "How do I undo a Replace All?"
+    Press **Undo** in the toast that appears (about ten seconds). Afterwards, open the main menu (☰ at the end of the
+    header bar) and choose *Revert to Before the Last Change* (++ctrl+alt+z++), or Tools → Checkpoints → *Restore
+    Checkpoint*.
+
+??? question "How do I go to a line number?"
+    Press ++ctrl+l++ and type the number.
+
+??? question "Can I search the text of all my books, not only the open one?"
+    Not from the editor's find bar, which works inside the open book. To find which books contain a phrase, use the
+    `text:` search word in the library's search box; see [Search](library.md#search).
+

@@ -10,6 +10,7 @@ license = "GPL-3.0-or-later"
 [dependencies]
 anyhow = "1"
 percent-encoding = "2"
+bookx-core = { path = "../bookx-core" }
 bookx-serve = { path = "../bookx-serve" }
 bookx-store = { path = "../bookx-store" }
 chrono = { version = "0.4", features = ["serde"] }
@@ -19,6 +20,9 @@ chacha20poly1305 = { version = "0.10", features = ["stream"] }
 argon2 = "0.5"
 sha2 = "0.10"
 getrandom = "0.2"
+hmac = "0.12"
+subtle = "2"
+zeroize = "1"
 
 [dev-dependencies]
 uuid = { version = "1", features = ["v4"] }

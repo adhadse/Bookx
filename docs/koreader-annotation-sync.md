@@ -64,8 +64,12 @@ A timer (4 s, only when the server's `seq` moved) or *Sync now* merges the store
   counted and the library keeps its note. A deletion on the device removes a highlight only if this sync made it
   (`made_here`) and its note is untouched; a highlight the reader made in Bookx is never removed by a device. A highlight deleted
   in the library does not come back unless the device changes it later.
-* Bookmarks are remembered (counted) but **not imported**: a Bookx bookmark needs an exact place and KOReader gives a
-  page in its own layout.
+* **Bookmarks are imported** as real Bookx bookmarks (`Book::bookmarks`: chapter + fraction of it), see
+  `src/bookmark_sync.rs` and `docs/annotation-sync-notes.md` (wave 10). The place is worked out from the device's xpointer
+  (exact), a Kobo chapter file + `ChapterProgress` (exact), the chapter title, the percentage, the page number against Bookx's
+  page estimate (these are rough and flagged `approx`). The ledger entry of a bookmark (`Ledger::bookmarks`, key
+  `document/annotation id`) is what makes it idempotent and is also the **tombstone**: a bookmark deleted in Bookx is not
+  imported again, one deleted on the device is never deleted here.
 * **Bookx → device**: for books a device has synced (only those: nothing is published for other books), highlights that did
   not come from that device, are anchored and not PDF go to the server under their own id with colour/style; edits bump
   `updated`; deletions become tombstones. Highlights made on one device reach a second device's document of the same book through Bookx.

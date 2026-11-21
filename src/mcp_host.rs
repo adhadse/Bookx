@@ -1,4 +1,4 @@
-//! The MCP server inside the app (Preferences → AI Assistants): settings, the token in the system
+//! The MCP server inside the app (Preferences → MCP): settings, the token in the system
 //! keyring, starting and stopping the HTTP server, and the connection snippets for assistants.
 //! The server itself is the `bookx-mcp` crate; the page is `ui/mcp_settings.rs`.
 

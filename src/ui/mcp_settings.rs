@@ -1,4 +1,4 @@
-//! The "AI Assistants" page of Preferences: run the assistant server inside Bookx, its
+//! The "MCP" page (AI assistants) of Preferences: run the assistant server inside Bookx, its
 //! token, whether assistants may change the library, ready-made connection snippets and the
 //! assistants that are connected. The logic is in `mcp_host.rs`, the server in `bookx-mcp`.
 
@@ -47,7 +47,7 @@ pub fn register() {
     if REGISTERED.with(|r| r.replace(true)) {
         return;
     }
-    register_page("mcp", &tr("AI Assistants"), "network-server-symbolic", 110);
+    register_page("mcp", &tr("MCP"), "network-server-symbolic", 110);
     register_group("mcp", 10, server_group);
     register_group("mcp", 20, token_group);
     register_group("mcp", 30, connect_group);

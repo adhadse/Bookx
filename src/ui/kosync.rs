@@ -494,12 +494,13 @@ pub fn dev_account(cmd: &str) {
             a.login.emit_clicked();
         } else if cmd == "-dump" {
             eprintln!(
-                "prefs_account: server={:?} user={:?} register={} login={} status={:?} register_sensitive={} login_sensitive={} login_tip={:?} status_controls={}",
+                "prefs_account: server={:?} user={:?} register={} login={} status={:?} status_title={:?} register_sensitive={} login_sensitive={} login_tip={:?} status_controls={}",
                 a.server.text(),
                 a.user.text(),
                 a.register.is_visible(),
                 a.login.is_visible(),
                 a.status.subtitle().unwrap_or_default(),
+                a.status.title(),
                 a.register.is_sensitive(),
                 a.login.is_sensitive(),
                 a.login.tooltip_text().unwrap_or_default(),
@@ -535,7 +536,25 @@ pub fn account_rows(shared: &SharedRef) -> (Vec<gtk::Widget>, adw::EntryRow) {
         "Register creates the account on the server; Log in checks it. The result shows here.",
     ));
     status.set_subtitle_lines(0);
-    status.set_title(&tr("Log in"));
+    let show_status = {
+        let (shared, status) = (shared.clone(), status.clone());
+        Rc::new(move || {
+            let c = shared.cfg.borrow().kosync.clone();
+            let (title, text) = crate::sync_model::account_status(
+                &c.user,
+                !c.password.is_empty(),
+                c.logged_in,
+                crate::secrets::vault().available(),
+            );
+            status.set_title(&glib::markup_escape_text(&title));
+            status.set_subtitle(&glib::markup_escape_text(&text));
+        })
+    };
+    show_status();
+    {
+        let f = show_status.clone();
+        super::share::follow(&status, move || f());
+    }
     let register = adw::ButtonRow::new();
     register.set_title(&tr("Register"));
     register.add_css_class("suggested-action");
@@ -551,11 +570,25 @@ pub fn account_rows(shared: &SharedRef) -> (Vec<gtk::Widget>, adw::EntryRow) {
             let changed = {
                 let mut c = shared.cfg.borrow_mut();
                 let before = (c.kosync.user.clone(), c.kosync.password.is_empty());
+                let creds = (
+                    c.kosync.server.clone(),
+                    c.kosync.user.clone(),
+                    c.kosync.password.clone(),
+                );
                 c.kosync.server = server.text().trim().to_string();
                 c.kosync.user = user.text().trim().to_string();
                 c.kosync.password = pass.text().to_string();
+                let edited = creds
+                    != (
+                        c.kosync.server.clone(),
+                        c.kosync.user.clone(),
+                        c.kosync.password.clone(),
+                    );
+                if edited {
+                    c.kosync.logged_in = false;
+                }
                 c.save();
-                before != (c.kosync.user.clone(), c.kosync.password.is_empty())
+                edited || before != (c.kosync.user.clone(), c.kosync.password.is_empty())
             };
             // the Account step shows “Done” as soon as a user name and a password are there
             if changed {
@@ -676,8 +709,9 @@ pub fn account_rows(shared: &SharedRef) -> (Vec<gtk::Widget>, adw::EntryRow) {
                     // the account works: reading positions sync from now on
                     let was = {
                         let mut c = sh.cfg.borrow_mut();
-                        let was = c.kosync.enabled;
+                        let was = c.kosync.enabled && c.kosync.logged_in;
                         c.kosync.enabled = true;
+                        c.kosync.logged_in = true;
                         c.save();
                         was
                     };

@@ -14,11 +14,14 @@
 //!   restoring from a place, and what is due when.
 //! * [`settings`]: the destinations the user configured.
 //!
+//! * [`repo`]: the incremental repository (book files, covers, catalogue, notes journal; decision D9).
+//!
 //! Snapshots themselves (SQLite online backup, local retention) stay in `bookx_store::health`.
 
 pub mod crypto;
 pub mod places;
 pub mod push;
+pub mod repo;
 pub mod settings;
 pub mod target;
 

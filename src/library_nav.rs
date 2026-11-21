@@ -789,6 +789,11 @@ pub fn set_open(open: &mut Vec<String>, library: &str, group: &str, on: bool) {
 /// Past this width the cover grid stops growing (one row would hold too many covers).
 pub const GRID_MAX_WIDTH: i32 = 1800;
 
+/// The margin on each side of the grid that keeps it at most `cap` wide and centred.
+pub fn grid_side_margin(width: i32, cap: i32) -> i32 {
+    ((width - cap).max(0)) / 2
+}
+
 /// The description a card gives to assistive technology: author, progress, favourite and shelves.
 pub fn card_description(
     authors: &str,
@@ -844,6 +849,14 @@ pub fn grid_only_options_visible(table: bool) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn grid_margin_centres_a_capped_grid() {
+        assert_eq!(grid_side_margin(1000, GRID_MAX_WIDTH), 0);
+        assert_eq!(grid_side_margin(GRID_MAX_WIDTH, GRID_MAX_WIDTH), 0);
+        assert_eq!(grid_side_margin(2200, GRID_MAX_WIDTH), 200);
+        assert_eq!(grid_side_margin(2201, GRID_MAX_WIDTH), 200);
+    }
 
     fn st(id: u64, last: Option<i64>, added: i64) -> Stamp {
         Stamp {

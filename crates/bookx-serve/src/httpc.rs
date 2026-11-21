@@ -110,6 +110,46 @@ pub fn request_limited(
     trusted_pem: Option<&[u8]>,
     max_body: usize,
 ) -> Result<Reply> {
+    let r = request_stream(
+        method,
+        url,
+        headers,
+        Body::Bytes(body),
+        timeout,
+        trusted_pem,
+        max_body,
+        None,
+    )?;
+    Ok(Reply {
+        status: r.status,
+        body: r.body,
+    })
+}
+
+/// The request body of [`request_stream`].
+pub enum Body<'a> {
+    Bytes(&'a [u8]),
+    /// Exactly this many bytes are read from the reader and sent; fewer is an error.
+    Stream(&'a mut dyn Read, u64),
+}
+
+/// An answer whose body may have gone to a writer instead of memory.
+#[derive(Debug)]
+pub struct StreamReply {
+    pub status: u16,
+    /// The body, unless it went to the sink.
+    pub body: Vec<u8>,
+    /// Bytes written to the sink.
+    pub streamed: u64,
+}
+
+/// Where a `200` answer body goes, and how much of it is accepted.
+pub struct Sink<'a> {
+    pub out: &'a mut dyn Write,
+    pub max: u64,
+}
+
+fn connect(url: &url::Url, timeout: Duration, trusted_pem: Option<&[u8]>) -> Result<Conn> {
     let host = url
         .host_str()
         .ok_or_else(|| anyhow!("no host in the address"))?;
@@ -117,7 +157,6 @@ pub fn request_limited(
     let port = url
         .port_or_known_default()
         .unwrap_or(if tls { 443 } else { 80 });
-    let deadline = Instant::now() + timeout;
     let addr = (host, port)
         .to_socket_addrs()
         .with_context(|| format!("looking up {host}"))?
@@ -128,14 +167,117 @@ pub fn request_limited(
     tcp.set_nodelay(true).ok();
     tcp.set_read_timeout(Some(timeout.min(Duration::from_secs(30))))?;
     tcp.set_write_timeout(Some(timeout.min(Duration::from_secs(30))))?;
-    let mut conn = if tls {
+    Ok(if tls {
         let name = rustls::pki_types::ServerName::try_from(host.to_string())
             .map_err(|_| anyhow!("{host} is not a valid server name"))?;
         let c = rustls::ClientConnection::new(tls_config(trusted_pem)?, name)?;
         Conn::Tls(Box::new(rustls::StreamOwned::new(c, tcp)))
     } else {
         Conn::Plain(tcp)
-    };
+    })
+}
+
+/// Incremental decoder of a chunked body.
+#[derive(Default)]
+struct ChunkedDecoder {
+    pending: Vec<u8>,
+    remaining: usize,
+    state: ChunkState,
+}
+
+#[derive(Default, PartialEq, Eq, Clone, Copy)]
+enum ChunkState {
+    #[default]
+    Size,
+    Data,
+    DataEnd,
+    Trailer,
+    Done,
+}
+
+impl ChunkedDecoder {
+    fn done(&self) -> bool {
+        self.state == ChunkState::Done
+    }
+
+    /// Feeds raw bytes; decoded data goes to `out`.
+    fn feed(&mut self, data: &[u8], out: &mut dyn FnMut(&[u8]) -> Result<()>) -> Result<()> {
+        self.pending.extend_from_slice(data);
+        loop {
+            match self.state {
+                ChunkState::Done => return Ok(()),
+                ChunkState::Size | ChunkState::Trailer => {
+                    let Some(i) = self.pending.windows(2).position(|w| w == b"\r\n") else {
+                        if self.pending.len() > 4096 {
+                            bail!("the server's answer is malformed");
+                        }
+                        return Ok(());
+                    };
+                    let line: Vec<u8> = self.pending.drain(..i + 2).take(i).collect();
+                    if self.state == ChunkState::Trailer {
+                        if line.is_empty() {
+                            self.state = ChunkState::Done;
+                        }
+                        continue;
+                    }
+                    let text = std::str::from_utf8(&line)
+                        .map_err(|_| anyhow!("the server's answer is malformed"))?;
+                    let size =
+                        usize::from_str_radix(text.split(';').next().unwrap_or("").trim(), 16)
+                            .map_err(|_| anyhow!("the server's answer is malformed"))?;
+                    if size == 0 {
+                        self.state = ChunkState::Trailer;
+                    } else {
+                        self.remaining = size;
+                        self.state = ChunkState::Data;
+                    }
+                }
+                ChunkState::Data => {
+                    if self.pending.is_empty() {
+                        return Ok(());
+                    }
+                    let n = self.remaining.min(self.pending.len());
+                    let part: Vec<u8> = self.pending.drain(..n).collect();
+                    out(&part)?;
+                    self.remaining -= n;
+                    if self.remaining == 0 {
+                        self.state = ChunkState::DataEnd;
+                    }
+                }
+                ChunkState::DataEnd => {
+                    if self.pending.len() < 2 {
+                        return Ok(());
+                    }
+                    if &self.pending[..2] != b"\r\n" {
+                        bail!("the server's answer is malformed");
+                    }
+                    self.pending.drain(..2);
+                    self.state = ChunkState::Size;
+                }
+            }
+        }
+    }
+}
+
+/// The general request: a body from memory or from a reader, and an answer that is kept in memory
+/// (up to `max_body`) or, for a `200`, written to `sink` as it arrives. Redirects are not
+/// followed. A reader that fails (a cancelled upload) makes the request fail with its error.
+#[allow(clippy::too_many_arguments)]
+pub fn request_stream(
+    method: &str,
+    url: &url::Url,
+    headers: &[(&str, &str)],
+    body: Body,
+    timeout: Duration,
+    trusted_pem: Option<&[u8]>,
+    max_body: usize,
+    mut sink: Option<Sink>,
+) -> Result<StreamReply> {
+    let host = url
+        .host_str()
+        .ok_or_else(|| anyhow!("no host in the address"))?;
+    let deadline = Instant::now() + timeout;
+    let mut conn = connect(url, timeout, trusted_pem)?;
 
     let mut target = url.path().to_string();
     if let Some(q) = url.query() {
@@ -146,9 +288,12 @@ pub fn request_limited(
         Some(p) => format!("{host}:{p}"),
         None => host.to_string(),
     };
+    let body_len = match &body {
+        Body::Bytes(b) => b.len() as u64,
+        Body::Stream(_, n) => *n,
+    };
     let mut head = format!(
-        "{method} {target} HTTP/1.1\r\nHost: {host_header}\r\nConnection: close\r\nContent-Length: {}\r\n",
-        body.len()
+        "{method} {target} HTTP/1.1\r\nHost: {host_header}\r\nConnection: close\r\nContent-Length: {body_len}\r\n"
     );
     for (k, v) in headers {
         if k.contains(['\r', '\n', ':']) || v.contains(['\r', '\n']) {
@@ -158,8 +303,32 @@ pub fn request_limited(
     }
     head.push_str("\r\n");
     conn.write_all(head.as_bytes())?;
-    conn.write_all(body)?;
-    conn.flush()?;
+    let mut send_error: Option<anyhow::Error> = None;
+    match body {
+        Body::Bytes(b) => conn.write_all(b)?,
+        Body::Stream(r, n) => {
+            let mut left = n;
+            let mut buf = vec![0u8; 64 * 1024];
+            while left > 0 {
+                let want = buf.len().min(left as usize);
+                let got = match r.read(&mut buf[..want]) {
+                    Ok(0) => bail!("the data to send ended early"),
+                    Ok(g) => g,
+                    Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+                    Err(e) => return Err(anyhow::Error::new(e)),
+                };
+                if let Err(e) = conn.write_all(&buf[..got]) {
+                    // the server may have refused early and say why
+                    send_error = Some(anyhow!("sending: {e}"));
+                    break;
+                }
+                left -= got as u64;
+            }
+        }
+    }
+    if send_error.is_none() {
+        conn.flush()?;
+    }
 
     let mut buf = Vec::new();
     let mut chunk = [0u8; 16 * 1024];
@@ -174,9 +343,13 @@ pub fn request_limited(
             bail!("the server took too long to answer");
         }
         match conn.read(&mut chunk) {
-            Ok(0) => bail!("the server closed the connection without answering"),
+            Ok(0) => {
+                return Err(send_error.unwrap_or_else(|| {
+                    anyhow!("the server closed the connection without answering")
+                }))
+            }
             Ok(n) => buf.extend_from_slice(&chunk[..n]),
-            Err(e) => return Err(anyhow!("reading the answer: {e}")),
+            Err(e) => return Err(send_error.unwrap_or_else(|| anyhow!("reading the answer: {e}"))),
         }
     };
     let head_text = String::from_utf8_lossy(&buf[..head_end]).into_owned();
@@ -186,6 +359,11 @@ pub fn request_limited(
         .and_then(|l| l.split_whitespace().nth(1))
         .and_then(|c| c.parse().ok())
         .ok_or_else(|| anyhow!("the server's answer is not HTTP"))?;
+    if let Some(e) = send_error {
+        if status < 400 {
+            return Err(e);
+        }
+    }
     let header = |name: &str| -> Option<String> {
         head_text.lines().skip(1).find_map(|l| {
             let (k, v) = l.split_once(':')?;
@@ -197,7 +375,70 @@ pub fn request_limited(
     let chunked =
         header("transfer-encoding").is_some_and(|v| v.to_ascii_lowercase().contains("chunked"));
     let length: Option<usize> = header("content-length").and_then(|v| v.parse().ok());
-    let mut raw = buf[head_end..].to_vec();
+    let leftover = buf[head_end..].to_vec();
+
+    if status == 200 && sink.is_some() {
+        let Sink { out, max } = sink.take().unwrap();
+        let mut streamed: u64 = 0;
+        let mut put = |data: &[u8]| -> Result<()> {
+            streamed += data.len() as u64;
+            if streamed > max {
+                bail!("the server's answer is too big");
+            }
+            out.write_all(data).map_err(anyhow::Error::new)
+        };
+        if chunked {
+            let mut dec = ChunkedDecoder::default();
+            dec.feed(&leftover, &mut put)?;
+            while !dec.done() {
+                if Instant::now() > deadline {
+                    bail!("the server took too long to answer");
+                }
+                match conn.read(&mut chunk) {
+                    Ok(0) => bail!("the server's answer is cut short"),
+                    Ok(n) => dec.feed(&chunk[..n], &mut put)?,
+                    Err(e) => return Err(anyhow!("reading the answer: {e}")),
+                }
+            }
+        } else {
+            let mut got = 0usize;
+            if !leftover.is_empty() {
+                got += leftover.len();
+                put(&leftover)?;
+            }
+            loop {
+                if length.is_some_and(|n| got >= n) {
+                    break;
+                }
+                if Instant::now() > deadline {
+                    bail!("the server took too long to answer");
+                }
+                match conn.read(&mut chunk) {
+                    Ok(0) => {
+                        if length.is_some() {
+                            bail!("the server's answer is cut short");
+                        }
+                        break;
+                    }
+                    Ok(n) => {
+                        got += n;
+                        put(&chunk[..n])?;
+                    }
+                    Err(e) if length.is_none() && e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                        break
+                    }
+                    Err(e) => return Err(anyhow!("reading the answer: {e}")),
+                }
+            }
+        }
+        return Ok(StreamReply {
+            status,
+            body: Vec::new(),
+            streamed,
+        });
+    }
+
+    let mut raw = leftover;
     let want_all = chunked || length.is_none();
     loop {
         let done = if chunked {
@@ -238,7 +479,11 @@ pub fn request_limited(
     if body.len() > max_body {
         bail!("the server's answer is too big");
     }
-    Ok(Reply { status, body })
+    Ok(StreamReply {
+        status,
+        body,
+        streamed: 0,
+    })
 }
 
 /// The body of a complete chunked message, `None` while it is incomplete or malformed.

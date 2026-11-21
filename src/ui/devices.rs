@@ -58,6 +58,9 @@ fn library_selection() -> Vec<u64> {
     LIBRARY_SELECTION.with(|s| s.borrow().clone())
 }
 
+/// The icons of the Books and Settings pages in the view switcher.
+const PAGE_ICONS: [&str; 2] = ["view-list-symbolic", "emblem-system-symbolic"];
+
 struct DevWin {
     dialog: adw::Dialog,
     parent: adw::ApplicationWindow,
@@ -363,6 +366,7 @@ impl DevWin {
         books.append(&no_device_page);
         books.append(&books_content);
         let books_page = stack.add_titled(&books, Some("books"), &tr("Books"));
+        books_page.set_icon_name(Some(PAGE_ICONS[0]));
 
         // ---- Settings page ------------------------------------------------------------------
         let settings_page_widget = adw::PreferencesPage::new();
@@ -439,6 +443,7 @@ impl DevWin {
         settings_page_widget.add(&dav_group);
         let settings_page =
             stack.add_titled(&settings_page_widget, Some("settings"), &tr("Settings"));
+        settings_page.set_icon_name(Some(PAGE_ICONS[1]));
         root.append(&stack);
 
         let view = adw::ToolbarView::new();
@@ -1528,6 +1533,31 @@ pub fn dev_command(
     match cmd {
         "dump" => w.dump(),
         "layout" => w.dump_layout(),
+        "icons" => {
+            let mut seen: Vec<String> = Vec::new();
+            if let Some(c) = w.dialog.child() {
+                super::library::collect_icons(&c, &mut seen);
+            }
+            for page in [&w.books_page, &w.settings_page] {
+                if let Some(n) = page.icon_name() {
+                    if !seen.contains(&n.to_string()) {
+                        seen.push(n.to_string());
+                    }
+                }
+            }
+            let theme = gtk::IconTheme::for_display(&gtk::gdk::Display::default().unwrap());
+            let missing: Vec<&String> = seen.iter().filter(|n| !theme.has_icon(n)).collect();
+            let pages: Vec<String> = [&w.books_page, &w.settings_page]
+                .iter()
+                .map(|p| p.icon_name().map(|n| n.to_string()).unwrap_or_default())
+                .collect();
+            eprintln!(
+                "devwin_icons: checked={} pages={} missing={:?}",
+                seen.len(),
+                pages.join(","),
+                missing
+            );
+        }
         "reload" => w.reload_devices(),
         "remove" => w.remove_selected(false),
         "sync" => w.sync_state(false),

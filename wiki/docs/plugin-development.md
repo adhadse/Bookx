@@ -188,7 +188,7 @@ Try it by hand:
 wat2wasm examples/plugins/rawcopy-writer/plugin.wat -o plugin.wasm     # or: cargo test -p bookx-plugin --test example_plugin
 mkdir -p ~/.local/share/bookx/plugins/rawcopy
 cp examples/plugins/rawcopy-writer/plugin.toml plugin.wasm ~/.local/share/bookx/plugins/rawcopy/
-# Preferences → Extensions → switch it on; the library's Convert To menu now offers “EPUB copy (example writer)”
+# main menu → Preferences → Extensions → switch it on; the library's Convert To menu now offers “EPUB copy (example writer)”
 ```
 
 ### Writing a plugin in Rust
@@ -248,11 +248,11 @@ name; with `/` the whole path. Matching ignores case.
 Safety rules: only `.xhtml .html .htm .css .svg .txt .ncx .xml` files are edited, never `mimetype`,
 `META-INF/` or the package (`.opf`). Limits: 64 KiB per patch file, 100 rules, patterns of at most 2000
 characters, files up to 8 MiB, 100 000 replacements per file. Invalid files (unknown keys, bad regex, braces
-in CSS, unknown hook) are listed in Preferences with the reason and cannot be switched on.
+in CSS, unknown hook) are listed on the Extensions page of Preferences with the reason and cannot be switched on.
 
 ### Managing patches
 
-Preferences → **Patches** lists the files in application order. Per patch: a switch (off by
+The **Patches** group on the Extensions page of Preferences (main menu → Preferences) lists the files in application order. Per patch: a switch (off by
 default), buttons to apply it earlier or later, and a **dry run**: it shows how many changes the patch would
 make in your first library book (or a built-in sample) and a before → after excerpt per file, without changing
 anything. The switch state and the order are kept in `patches.json` next to the other settings.

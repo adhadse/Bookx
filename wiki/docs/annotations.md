@@ -5,7 +5,7 @@ KOReader, on a Kobo or in calibre, and take yours out as Markdown, HTML, JSON, a
 
 ## Notes & Highlights
 
-*Sidebar → **Notes & Highlights*** shows every highlight and note of every book in the main area of the library.
+Click **Notes & Highlights** in the sidebar to see every highlight and note of every book in the main area of the library.
 
 - **Search** looks in the quote, your note, the book title, the author and the chapter. Every word you type has to
   be found (any case).
@@ -65,7 +65,7 @@ Kindle’s *My Clippings.txt* has no colours: those highlights come in yellow. A
 </figure>
 
 
-*Main menu → **Import Highlights*** (also in the right-click menu of a book). Press **Choose Files** or
+Click the **+** button at the top of the sidebar and choose **Import Highlights**. Press **Choose Files** or
 **Choose Folder** (a folder can be a Kindle or a KOReader device); Bookx reads what it finds and shows a **review before anything is added**:
 
 > **Import Highlights** (a window with *Cancel* at the start and **Add 3 Highlights** at the end)
@@ -100,7 +100,7 @@ How it decides:
 - **A quote that cannot be found is never painted at a guess.** It is added as a **note without a place**: it keeps
   its text and your note, shows in *Notes & Highlights* and in the reader’s notes list marked *Could not be located in the book*,
   and is not drawn on any page. Highlights from a different edition of the book are often like this. In *Notes &
-  Highlights*, its menu has **Locate again**, which searches the book once more (after you changed the file or
+  Highlights*, its **⋮** menu has **Locate Again**, which searches the book once more (after you changed the file or
   fixed the title); if the text is not in this book, select the passage and highlight it yourself and delete the note.
 - Bookmarks and notes without a highlighted quote have no place to attach to and are not imported.
 - It only ever **adds**. Importing the same file twice adds nothing the second time.
@@ -115,7 +115,7 @@ How it decides:
 
 
 - **One book:** right-click → *Export Annotations* → a format.
-- **The whole library:** *Main menu → **Export All Annotations*** → a format → a folder. One file per book that has
+- **Several books or the whole library:** click *Notes & Highlights* in the sidebar and press **Export**; with nothing ticked it exports everything shown. The command palette (++ctrl+k++) also has *Export All Annotations* → a format → a folder, with one file per book that has
   highlights, notes or bookmarks, named `<title> - annotations.<ext>`.
 
 | Format | Use it for |
@@ -129,12 +129,13 @@ How it decides:
 Every highlight in the JSON export carries an `id` that comes from the book and the quote (`bx-…`), so it is the
 same on every export and on every computer. Importing a file you exported never adds a quote twice.
 
-Highlights come in book order with their chapter and note; bookmarks follow. A book’s own Bookx JSON is different
+Highlights come in book order with their chapter and note; bookmarks follow (the same in *Notes & Highlights* with
+**Bookmarks** or **All** chosen: **Export** and **Copy** include the bookmarks that are shown or ticked, and *Anki* and *Readwise* leave them out). A book’s own Bookx JSON is different
 from calibre’s or KOReader’s; Bookx reads all of them.
 
 ### Anki flashcards
 
-In Notes & Highlights, **Export → Anki Package / Anki Text File / Anki CSV** asks for the card type (front and back, or cloze) and the source (highlights or vocabulary) and makes cards from the highlights shown or ticked, or from
+In *Notes & Highlights*, **Export** → *Anki Package*, *Anki Text File* or *Anki CSV* asks for the card type (front and back, or cloze) and the source (highlights or vocabulary) and makes cards from the highlights shown or ticked, or from
 your [vocabulary](reading.md) list.
 
 | Choice | What you get |
@@ -170,3 +171,36 @@ are a binary format that Bookx does not read; the clippings file has the same hi
 
 See also [Devices and sharing](devices-and-sharing.md) for syncing notes with a connected e-reader and
 [Sync your reading position](progress-sync.md) for the position.
+
+## Questions and answers
+
+??? question "Where do I see all my highlights?"
+    Click **Notes & Highlights** in the sidebar. They are grouped by book; click one to open the book at that passage.
+
+??? question "Where do I see my bookmarks?"
+    Click **Notes & Highlights** in the sidebar and choose **Bookmarks** in the row of buttons at the top (*All*,
+    *Highlights*, *Notes*, *Bookmarks*); Bookx remembers your choice. A bookmark shows a bookmark icon, its label (*Page 12*, or the
+    words you wrote), the chapter, the date and, for one that came from your e-reader, where from (for example *KOReader (Kobo
+    Libra)*). Click it, or press Enter, to open the book there. The bookmarks of one book are also in the reader’s sidebar under
+    **Bookmarks**. Bookmarks from KOReader and from a cable-connected Kobo or KOReader device are brought in by the sync;
+    see [KOReader sync](koreader-sync.md).
+
+??? question "How do I export the highlights of one book?"
+    Right-click the book in the library → *Export Annotations* → a format (Markdown, HTML, JSON, plain text, Obsidian
+    note or Kindle clippings).
+
+??? question "How do I export everything, or only some highlights?"
+    In *Notes & Highlights* tick the cards you want and press **Export**; with nothing ticked it exports everything
+    shown, so you can first narrow the list with **Filter** or the search box.
+
+??? question "How do I bring in highlights from a Kindle, Kobo or KOReader?"
+    **+** at the top of the sidebar → *Import Highlights*, then *Choose Files* or *Choose Folder*. You see a review
+    first, and nothing is added twice.
+
+??? question "Some imported highlights are not drawn on the page. Why?"
+    Their text was not found in your edition of the book, so they stay as notes without a place. Open the card's **⋮**
+    menu in *Notes & Highlights* and choose *Locate Again* after fixing the title or file.
+
+??? question "How do I make flashcards or send highlights to Readwise?"
+    In *Notes & Highlights* press **Export** and use the *Anki Flashcards* entries or *Send to Readwise*. The first
+    Readwise send asks for your access token.

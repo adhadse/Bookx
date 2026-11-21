@@ -79,11 +79,35 @@ pub struct DeviceNote {
     pub bookmark: bool,
 }
 
+/// A page bookmark found on a device (a KOReader annotation without a range, a Kobo dog-ear).
+/// Only places: Bookx stores it as a bookmark at a chapter and a fraction of the chapter.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct DeviceBookmark {
+    /// What names it on the device: stays the same between reads (`datetime|page`, a Kobo's
+    /// `BookmarkID`).
+    pub id: String,
+    /// The reader's own words (empty when none).
+    pub note: String,
+    pub chapter: Option<String>,
+    /// `YYYY-MM-DD HH:MM:SS` or ISO 8601, whatever the device wrote.
+    pub created: Option<String>,
+    /// KOReader's xpointer of the page (`/body/DocFragment[7]/body/p[3]/text().0`).
+    pub pos: String,
+    /// The device's own page number (its layout, not Bookx's).
+    pub page: Option<i64>,
+    /// 0..=1 in the book, when the device says.
+    pub percentage: Option<f64>,
+    /// A Kobo: the chapter file the dog-ear is in (`OEBPS/ch1.xhtml`) and how far into it.
+    pub href: Option<String>,
+    pub chapter_progress: Option<f64>,
+}
+
 /// Everything a KOReader sidecar says.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Sidecar {
     pub state: Option<DeviceState>,
     pub notes: Vec<DeviceNote>,
+    pub bookmarks: Vec<DeviceBookmark>,
 }
 
 /// Reads KOReader's sidecar of `book`, if there is one that says anything.
@@ -106,6 +130,7 @@ pub fn parse_sidecar(text: &str) -> Sidecar {
         return Sidecar {
             state: parse_koreader_scan(text),
             notes: Vec::new(),
+            bookmarks: Vec::new(),
         };
     };
     let percent = root.num("percent_finished");
@@ -131,6 +156,7 @@ pub fn parse_sidecar(text: &str) -> Sidecar {
         })
     };
     let mut notes = Vec::new();
+    let mut bookmarks = Vec::new();
     // KOReader before 2024 kept the look of a highlight (`drawer`, `color`) in `highlight` (page ->
     // list of highlights) and only the text and note in `bookmarks`; the two belong together by
     // their `datetime`
@@ -154,15 +180,31 @@ pub fn parse_sidecar(text: &str) -> Sidecar {
                 let text = a.str("text").or_else(|| a.str("notes")).unwrap_or("");
                 // `note` is the reader's own words; legacy bookmarks repeat the text in `notes`
                 let note = a.str("note").unwrap_or("");
-                if text.trim().is_empty() && note.trim().is_empty() {
-                    continue;
-                }
                 // KOReader's current format: a highlight has a range (`pos1`) and a `drawer`; a page
                 // bookmark has neither. The legacy `bookmarks` list does not say it that way.
                 let bookmark = key == "annotations"
                     && a.get("pos1").is_none()
                     && a.str("drawer").is_none()
                     && a.get("page").is_some();
+                if bookmark {
+                    let pos = a.str("page").unwrap_or("").to_string();
+                    let page = a.num("pageno").map(|p| p as i64);
+                    let created = a.str("datetime").map(str::to_string);
+                    bookmarks.push(DeviceBookmark {
+                        id: format!("{}|{}", created.as_deref().unwrap_or(""), pos),
+                        note: note.trim().to_string(),
+                        chapter: a.str("chapter").map(str::to_string),
+                        created,
+                        pos,
+                        page,
+                        percentage: None,
+                        href: None,
+                        chapter_progress: None,
+                    });
+                }
+                if text.trim().is_empty() && note.trim().is_empty() {
+                    continue;
+                }
                 let old = a.str("datetime").and_then(|d| legacy.get(d)).copied();
                 notes.push(DeviceNote {
                     bookmark,
@@ -184,7 +226,11 @@ pub fn parse_sidecar(text: &str) -> Sidecar {
             break;
         }
     }
-    Sidecar { state, notes }
+    Sidecar {
+        state,
+        notes,
+        bookmarks,
+    }
 }
 
 fn status_of(status: Option<&str>, progress: f64) -> Status {
@@ -260,6 +306,7 @@ pub struct DeviceBookData {
     pub path: PathBuf,
     pub state: Option<DeviceState>,
     pub notes: Vec<DeviceNote>,
+    pub bookmarks: Vec<DeviceBookmark>,
 }
 
 /// Reading state and notes of the given device books: the Kobo database for books it knows,
@@ -275,6 +322,7 @@ pub fn collect_data(mount: &Path, books: &[DeviceBook]) -> Vec<DeviceBookData> {
                     path,
                     state: None,
                     notes: Vec::new(),
+                    bookmarks: Vec::new(),
                 });
                 out.len() - 1
             }
@@ -303,12 +351,23 @@ pub fn collect_data(mount: &Path, books: &[DeviceBook]) -> Vec<DeviceBookData> {
                 }
             }
         }
+        if let Ok(rows) = crate::kobo::read_bookmarks(&db) {
+            for (id, mark) in rows {
+                if let Some(rel) = crate::kobo::rel_of_content_id(&id) {
+                    let path = mount.join(rel);
+                    if books.iter().any(|b| b.path == path) {
+                        let i = slot(&mut out, path);
+                        out[i].bookmarks.push(mark);
+                    }
+                }
+            }
+        }
     }
     for b in books {
         let Some(side) = koreader_sidecar(&b.path) else {
             continue;
         };
-        if side.state.is_none() && side.notes.is_empty() {
+        if side.state.is_none() && side.notes.is_empty() && side.bookmarks.is_empty() {
             continue;
         }
         let i = slot(&mut out, b.path.clone());
@@ -320,6 +379,7 @@ pub fn collect_data(mount: &Path, books: &[DeviceBook]) -> Vec<DeviceBookData> {
             }
         }
         d.notes.extend(side.notes);
+        d.bookmarks.extend(side.bookmarks);
     }
     out.sort_by(|a, b| a.path.cmp(&b.path));
     out
@@ -386,6 +446,13 @@ return {
         assert_eq!(n.len(), 2);
         assert!(n[0].bookmark && n[0].text == "in Domain Coupling");
         assert!(!n[1].bookmark);
+        let b = parse_sidecar(lua).bookmarks;
+        assert_eq!(b.len(), 1, "the highlight is not a bookmark");
+        assert_eq!(b[0].page, Some(77));
+        assert_eq!(b[0].chapter.as_deref(), Some("Domain Coupling"));
+        assert!(b[0].pos.starts_with("/body/DocFragment[7]/"));
+        assert_eq!(b[0].created.as_deref(), Some("2026-08-23 07:09:10"));
+        assert!(b[0].id.contains("2026-08-23 07:09:10"));
         assert_eq!(n[1].created.as_deref(), Some("2026-08-17 11:22:15"));
         assert_eq!(n[1].updated.as_deref(), Some("2026-08-17 11:30:00"));
         assert_eq!(n[1].color.as_deref(), Some("cyan"));

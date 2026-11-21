@@ -6,13 +6,15 @@ use std::collections::HashMap;
 
 use bookx_lookup::anki::{self, CardKind, Options as AnkiOptions, Separator};
 use bookx_lookup::export::AnnotationItem;
-use bookx_lookup::notes_query::NoteRow;
+use bookx_lookup::notes_query::{NoteRow, RowKind};
 use chrono::{DateTime, Utc};
 
 use crate::core::library::{Book, Library};
 
-/// Every highlight of `books` as a row. A PDF highlight carries its page, others the chapter
-/// number (titles are only looked up for exports, they need the book opened).
+/// Every highlight and bookmark of `books` as a row (a book's highlights, then its bookmarks). A PDF
+/// highlight carries its page, others the chapter number (titles are only looked up for exports,
+/// they need the book opened). A bookmark row has its label as its text and its place as a
+/// chapter and how far into it.
 pub fn rows_of(books: &[Book]) -> Vec<NoteRow> {
     let mut out = Vec::new();
     for b in books {
@@ -20,6 +22,8 @@ pub fn rows_of(books: &[Book]) -> Vec<NoteRow> {
         for h in &b.highlights {
             let pdf = crate::pdf::is_pdf(h);
             out.push(NoteRow {
+                kind: RowKind::Highlight,
+                frac: 0.0,
                 book_id: b.id,
                 highlight_id: h.id.clone(),
                 book_title: b.meta.title.clone(),
@@ -34,6 +38,31 @@ pub fn rows_of(books: &[Book]) -> Vec<NoteRow> {
                 created: h.created,
                 page: pdf.then_some(h.spine + 1),
                 unplaced: !pdf && crate::core::anchor::is_unanchored(h),
+            });
+        }
+        for m in &b.bookmarks {
+            out.push(NoteRow {
+                kind: RowKind::Bookmark,
+                frac: m.frac,
+                book_id: b.id,
+                highlight_id: m.id.clone(),
+                book_title: b.meta.title.clone(),
+                book_author: author.clone(),
+                book_tags: b.meta.tags.clone(),
+                spine: m.spine,
+                chapter: None,
+                text: m.label.clone(),
+                note: String::new(),
+                color: String::new(),
+                style: bookx_lookup::export::HighlightStyle::Bookmark,
+                created: m.created,
+                // a PDF bookmark is a page
+                page: b
+                    .file
+                    .to_lowercase()
+                    .ends_with(".pdf")
+                    .then_some(m.spine + 1),
+                unplaced: false,
             });
         }
     }
@@ -92,6 +121,34 @@ pub fn delete(books: &mut [Book], book_id: u64, highlight_id: &str) -> bool {
         }
         None => false,
     }
+}
+
+/// The line under a bookmark's title in the reader's sidebar and in the Notes list: the label, the
+/// day, where it came from (`KOReader (Kobo Libra)`) and, for a rough place, that it is rough.
+/// `from` is `(source, approximate)` of a bookmark a device brought.
+pub fn bookmark_line(label: &str, created: DateTime<Utc>, from: Option<&(String, bool)>) -> String {
+    let mut s = format!("{label} · {}", created.format("%d %b %Y"));
+    if let Some((src, approx)) = from {
+        if !src.is_empty() {
+            s.push_str(&format!(" · {src}"));
+        }
+        if *approx {
+            s.push_str(&format!(" · {}", crate::i18n::tr("approximate place")));
+        }
+    }
+    s
+}
+
+/// Removes one bookmark (what [`delete`] does for a highlight). The sync's ledger keeps its entry,
+/// so a bookmark that came from a device is not brought back by the next sync. `None` when it is
+/// not there.
+pub fn delete_bookmark(
+    books: &mut [Book],
+    book_id: u64,
+    bookmark_id: &str,
+) -> Option<crate::remove_undo::Removed> {
+    let b = books.iter_mut().find(|b| b.id == book_id)?;
+    crate::remove_undo::take_bookmark(&mut b.bookmarks, bookmark_id)
 }
 
 /// Export items for `rows` (chapter titles filled in for EPUB highlights, which opens each book
@@ -325,5 +382,79 @@ mod tests {
     fn file_names_follow_the_selection() {
         assert_eq!(file_name("md", 1, Some("Dune")), "Dune - annotations.md");
         assert_eq!(file_name("json", 3, None), "Notes and highlights.json");
+    }
+
+    fn with_bookmarks(b: &mut Book) {
+        for (i, (id, label)) in [("bm-1", "Page 7"), ("bm-2", "where I stopped")]
+            .into_iter()
+            .enumerate()
+        {
+            b.bookmarks.push(crate::core::library::Bookmark {
+                id: id.into(),
+                spine: i + 1,
+                frac: 0.25 * (i + 1) as f64,
+                label: label.into(),
+                created: Utc.with_ymd_and_hms(2026, 11, 20, 9, 0, 0).unwrap(),
+            });
+        }
+    }
+
+    #[test]
+    fn bookmarks_are_rows_after_the_highlights_of_their_book() {
+        let mut b = book(1, "Dune", &[("a", "Fear is the mind-killer", "n")]);
+        with_bookmarks(&mut b);
+        let r = rows_of(&[b]);
+        assert_eq!(r.len(), 3, "the count of the sidebar is rows().len()");
+        assert_eq!(r[1].kind, RowKind::Bookmark);
+        assert_eq!(
+            (r[1].text.as_str(), r[1].highlight_id.as_str()),
+            ("Page 7", "bm-1")
+        );
+        assert_eq!(r[1].place(), "Chapter 2");
+        assert_eq!(r[2].frac, 0.5);
+        assert!(r[1].note.is_empty() && r[1].color.is_empty());
+    }
+
+    #[test]
+    fn a_bookmark_is_deleted_by_id_and_can_be_put_back() {
+        let mut b = book(1, "Dune", &[]);
+        with_bookmarks(&mut b);
+        let mut books = vec![b];
+        let removed = delete_bookmark(&mut books, 1, "bm-1").expect("it is there");
+        assert_eq!(books[0].bookmarks.len(), 1);
+        assert!(delete_bookmark(&mut books, 1, "bm-1").is_none());
+        assert!(delete_bookmark(&mut books, 2, "bm-2").is_none());
+        let b = &mut books[0];
+        assert!(crate::remove_undo::restore(
+            &mut b.highlights,
+            &mut b.bookmarks,
+            removed
+        ));
+        assert_eq!(b.bookmarks[0].id, "bm-1", "back at its place");
+    }
+
+    #[test]
+    fn a_bookmark_line_says_where_it_came_from_and_when_the_place_is_rough() {
+        let day = Utc.with_ymd_and_hms(2026, 11, 20, 9, 0, 0).unwrap();
+        assert_eq!(bookmark_line("Page 7", day, None), "Page 7 · 20 Nov 2026");
+        let from = ("KOReader (Kobo Libra)".to_string(), false);
+        assert_eq!(
+            bookmark_line("Page 7", day, Some(&from)),
+            "Page 7 · 20 Nov 2026 · KOReader (Kobo Libra)"
+        );
+        let rough = ("Kobo".to_string(), true);
+        assert!(bookmark_line("Page 7", day, Some(&rough)).ends_with("Kobo · approximate place"));
+    }
+
+    #[test]
+    fn bookmarks_go_into_an_export_after_the_highlights() {
+        let mut b = book(1, "Dune", &[("a", "Fear is the mind-killer", "n")]);
+        with_bookmarks(&mut b);
+        let rows = rows_of(&[b]);
+        let items: Vec<_> = rows.iter().map(|r| r.to_item()).collect();
+        let md = crate::annotation_export::render(&items, "md", Utc::now()).unwrap();
+        let (h, m) = (md.find("mind-killer").unwrap(), md.find("Page 7").unwrap());
+        assert!(h < m, "highlights first:\n{md}");
+        assert!(md.contains("where I stopped"));
     }
 }

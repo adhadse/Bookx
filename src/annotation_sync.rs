@@ -39,7 +39,8 @@ use serde::{Deserialize, Serialize};
 use crate::core::devstyle::{self, Look};
 use crate::core::library::{Book, Highlight};
 use crate::device_sync::Locator;
-use crate::i18n::{tr, trf};
+use crate::highlight_goto::Hint;
+use crate::i18n::{ntr, tr, trf};
 
 /// What became of one KOReader annotation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -49,7 +50,8 @@ pub enum State {
     Linked,
     /// Deleted on the device (and here, or kept because the reader changed it here).
     Removed,
-    /// A bookmark: remembered, not imported (a Bookx bookmark needs an exact place).
+    /// A bookmark. One that was imported has its Bookx bookmark in [`Ledger::bookmarks`]; the
+    /// entry is what remembers it (an older sync only remembered it, and imports it now).
     Bookmark,
 }
 
@@ -76,6 +78,10 @@ pub struct Incoming {
     /// highlight the reader already had is only linked and never removed by a device.
     #[serde(default)]
     pub made_here: bool,
+    /// Where the device had it (xpointers, chapter, page): used to open the book at the exact
+    /// occurrence of a quote that is in the book more than once.
+    #[serde(default)]
+    pub hint: Hint,
 }
 
 /// One highlight of the library that was sent to the server.
@@ -106,6 +112,10 @@ pub struct Ledger {
     /// document digest -> library book id
     pub docs: BTreeMap<String, u64>,
     pub digests: BTreeMap<u64, Digest>,
+    /// `document/annotation id` -> the Bookx bookmark a device bookmark became. An entry stays
+    /// when the reader deletes the bookmark here (it is the tombstone: it is never imported
+    /// again) and when the device deletes it (nothing is ever deleted by a sync).
+    pub bookmarks: BTreeMap<String, crate::bookmark_sync::Entry>,
     /// Unix seconds of the last merge.
     pub last_merge: i64,
 }
@@ -159,7 +169,10 @@ pub struct Report {
     pub kept: usize,
     pub conflicts: usize,
     pub unplaced: usize,
+    /// Bookmarks added to books.
     pub bookmarks: usize,
+    /// Bookmarks that were already in the book at that place (linked, not added again).
+    pub bookmarks_skipped: usize,
     /// Books of the device that are not in the library.
     pub unmatched: usize,
     /// Highlights and tombstones sent to the server.
@@ -176,6 +189,20 @@ impl Report {
             parts.push(trf(
                 "{} highlights from KOReader",
                 &[&(self.added + self.linked)],
+            ));
+        }
+        if self.bookmarks > 0 {
+            parts.push(ntr(
+                "{} bookmark from KOReader",
+                "{} bookmarks from KOReader",
+                self.bookmarks,
+            ));
+        }
+        if self.bookmarks_skipped > 0 {
+            parts.push(ntr(
+                "{} bookmark already in your library",
+                "{} bookmarks already in your library",
+                self.bookmarks_skipped,
             ));
         }
         if self.notes > 0 {
@@ -369,6 +396,21 @@ fn same_quote(a: &str, b: &str) -> bool {
     syncplan::same_highlight(&x(a), &x(b))
 }
 
+/// A device bookmark as the place resolver reads it.
+fn mark_of(a: &Annotation) -> crate::bookmark_sync::DeviceMark {
+    crate::bookmark_sync::DeviceMark {
+        id: a.id.clone(),
+        note: a.note.trim().to_string(),
+        chapter: a.chapter.trim().to_string(),
+        pos: a.pos0.trim().to_string(),
+        page: a.page,
+        percentage: a.percentage,
+        href: None,
+        chapter_progress: None,
+        created: a.created,
+    }
+}
+
 fn source_name(device: &str) -> String {
     let d = device.trim();
     if d.is_empty() {
@@ -410,20 +452,37 @@ pub fn merge_incoming(
         };
         let k = key(&c.document, &a.id);
         let prev = ledger.incoming.get(&k).cloned();
+        let is_mark = a.kind == KIND_BOOKMARK;
         if let Some(p) = &prev {
-            // handled before
-            if p.seq >= r.seq {
+            // handled before; an older sync only remembered a bookmark: it is imported now
+            let unimported = is_mark && !a.deleted && !ledger.bookmarks.contains_key(&k);
+            if p.seq >= r.seq && !unimported {
                 continue;
             }
         }
         let source = source_name(&r.device);
-        let entry = if a.kind == KIND_BOOKMARK {
-            if !a.deleted && prev.is_none() {
-                rep.bookmarks += 1;
+        let entry = if is_mark {
+            // a bookmark the device deleted is not removed here, and one never seen is not added
+            if !a.deleted {
+                let m = mark_of(a);
+                let place = locator.locate_place(book_id, &m);
+                match crate::bookmark_sync::import(
+                    book,
+                    &mut ledger.bookmarks,
+                    &k,
+                    &m,
+                    &place,
+                    &source,
+                    now,
+                ) {
+                    crate::bookmark_sync::Outcome::Added => rep.bookmarks += 1,
+                    crate::bookmark_sync::Outcome::Linked => rep.bookmarks_skipped += 1,
+                    crate::bookmark_sync::Outcome::Known => {}
+                }
             }
             Incoming {
                 book_id,
-                highlight: None,
+                highlight: ledger.bookmarks.get(&k).map(|e| e.bookmark.clone()),
                 source,
                 note: a.note.clone(),
                 device_look: Look::default(),
@@ -432,6 +491,7 @@ pub fn merge_incoming(
                 state: State::Bookmark,
                 text: String::new(),
                 made_here: false,
+                hint: Hint::default(),
             }
         } else if a.deleted {
             let mut e = prev.clone().unwrap_or(Incoming {
@@ -445,6 +505,7 @@ pub fn merge_incoming(
                 state: State::Removed,
                 text: String::new(),
                 made_here: false,
+                hint: Hint::default(),
             });
             if let (State::Linked, Some(hid)) = (e.state, e.highlight.clone()) {
                 if a.updated >= e.updated && e.made_here {
@@ -505,6 +566,11 @@ pub fn repair_looks(books: &mut [Book], changes: &[Change], ledger: &mut Ledger)
         };
         if entry.state != State::Linked {
             continue;
+        }
+        // highlights imported before the device's place was kept get it now
+        let hint = hint_of(&c.record.annotation);
+        if entry.hint != hint {
+            entry.hint = hint;
         }
         let Some(highlight_id) = entry.highlight.clone() else {
             continue;
@@ -567,9 +633,11 @@ fn live(
         state: State::Removed,
         text: a.text.clone(),
         made_here: false,
+        hint: Hint::default(),
     });
     e.seq = seq;
     e.text = a.text.clone();
+    e.hint = hint_of(a);
     let want = look_want(a);
     let device_look = with_want(&e.device_look, &want);
     let look_changed = device_look != e.device_look;
@@ -661,7 +729,7 @@ fn live(
         return e;
     }
     let chapter = Some(a.chapter.as_str()).filter(|c| !c.trim().is_empty());
-    let mut spot = locator.locate_in(book_id, &a.text, chapter);
+    let mut spot = locator.locate_hinted(book_id, &a.text, chapter, &e.hint);
     if let Some(first) = spot {
         // the words may be highlighted at several places: a second highlight goes to another one
         let taken: Vec<(usize, i32, i32)> = book
@@ -843,10 +911,34 @@ pub fn commit_outgoing(ledger: &mut Ledger, entries: Vec<(String, Outgoing)>) {
     }
 }
 
+/// Where the device had an annotation: the hints that are worth keeping.
+pub fn hint_of(a: &Annotation) -> Hint {
+    Hint {
+        chapter: a.chapter.trim().to_string(),
+        pos0: a.pos0.trim().to_string(),
+        pos1: a.pos1.trim().to_string(),
+        page: a.page,
+    }
+}
+
+/// The device's place for the highlights that a sync added, by `(book id, highlight id)`.
+pub fn hints(ledger: &Ledger) -> HashMap<(u64, String), Hint> {
+    ledger
+        .incoming
+        .values()
+        .filter(|i| i.state == State::Linked && i.made_here && !i.hint.is_empty())
+        .filter_map(|i| {
+            i.highlight
+                .clone()
+                .map(|h| ((i.book_id, h), i.hint.clone()))
+        })
+        .collect()
+}
+
 /// Which book (id) each library highlight id belongs to, for the notes list: nothing to do with
 /// the server, kept here so the Notes view can show the source.
 pub fn sources(ledger: &Ledger) -> HashMap<(u64, String), String> {
-    ledger
+    let mut map: HashMap<(u64, String), String> = ledger
         .incoming
         .values()
         .filter(|i| i.state == State::Linked)
@@ -855,7 +947,15 @@ pub fn sources(ledger: &Ledger) -> HashMap<(u64, String), String> {
                 .clone()
                 .map(|h| ((i.book_id, h), i.source.clone()))
         })
-        .collect()
+        .collect();
+    // the bookmarks the devices brought (their ids are not highlight ids)
+    map.extend(
+        ledger
+            .bookmarks
+            .values()
+            .map(|e| ((e.book_id, e.bookmark.clone()), e.source.clone())),
+    );
+    map
 }
 
 #[cfg(test)]
@@ -949,6 +1049,97 @@ mod tests {
         assert_eq!(h.style, "underline");
         assert_eq!(l.source_of(1, &h.id), Some("KOReader (Kobo Libra)"));
         assert_eq!(sources(&l).len(), 1);
+    }
+
+    /// A locator that places a quote where the device's xpointer says (`DocFragment[N]` is chapter N-1).
+    struct ByPointer;
+
+    impl Locator for ByPointer {
+        fn locate(&self, _: u64, _: &str) -> Option<(usize, i32, i32)> {
+            Some((0, 0, 5))
+        }
+
+        fn locate_hinted(
+            &self,
+            _: u64,
+            _: &str,
+            _: Option<&str>,
+            hint: &Hint,
+        ) -> Option<(usize, i32, i32)> {
+            let x = crate::highlight_goto::parse_xpointer(&hint.pos0)?;
+            Some((x.fragment - 1, 7, 12))
+        }
+    }
+
+    fn with_pointer(mut c: Change, pos0: &str, chapter: &str) -> Change {
+        c.record.annotation.pos0 = pos0.into();
+        c.record.annotation.chapter = chapter.into();
+        c.record.annotation.page = Some(42);
+        c
+    }
+
+    #[test]
+    fn where_the_device_had_a_highlight_is_remembered_and_places_it() {
+        let (mut books, mut l, _) = setup();
+        let c = with_pointer(
+            change("a", "Fear is the mind-killer.", "", 100, 1),
+            "/body/DocFragment[12]/body/div/p[3]/text().5",
+            "Litany",
+        );
+        merge_incoming(&mut books, &[c], &mut l, &ByPointer, now());
+        let h = &books[0].highlights[0];
+        assert_eq!(
+            (h.spine, h.start),
+            (11, 7),
+            "placed through the device's xpointer"
+        );
+        let hint = hints(&l).remove(&(1, h.id.clone())).expect("a hint");
+        assert_eq!(hint.chapter, "Litany");
+        assert_eq!(hint.pos0, "/body/DocFragment[12]/body/div/p[3]/text().5");
+        assert_eq!(hint.page, Some(42));
+    }
+
+    #[test]
+    fn a_highlight_the_library_already_had_has_no_hint_to_override_its_place() {
+        let (mut books, mut l, loc) = setup();
+        books[0].highlights.push(Highlight {
+            id: "own".into(),
+            spine: 2,
+            start: 10,
+            end: 34,
+            color: "yellow".into(),
+            style: String::new(),
+            note: String::new(),
+            text: "Fear is the mind-killer.".into(),
+            created: now(),
+        });
+        let c = with_pointer(
+            change("a", "Fear is the mind-killer.", "", 100, 1),
+            "/body/DocFragment[9]/body/p/text().0",
+            "",
+        );
+        merge_incoming(&mut books, &[c], &mut l, &loc, now());
+        assert!(
+            hints(&l).is_empty(),
+            "only a highlight the sync made is placed by the device"
+        );
+    }
+
+    #[test]
+    fn highlights_synced_before_places_were_kept_get_them_on_the_next_merge() {
+        let (mut books, mut l, loc) = setup();
+        let plain = change("a", "Fear is the mind-killer.", "", 100, 1);
+        merge_incoming(
+            &mut books,
+            std::slice::from_ref(&plain),
+            &mut l,
+            &loc,
+            now(),
+        );
+        assert!(hints(&l).is_empty());
+        let c = with_pointer(plain, "/body/DocFragment[3]/body/p/text().0", "");
+        repair_looks(&mut books, &[c], &mut l);
+        assert_eq!(hints(&l).len(), 1);
     }
 
     #[test]
@@ -1292,14 +1483,248 @@ mod tests {
         assert_eq!(books[0].highlights.len(), 1);
     }
 
+    /// A locator that gives every device bookmark the same exact place (chapter 3, 40 % in).
+    struct Marks(crate::bookmark_sync::Place);
+
+    impl Locator for Marks {
+        fn locate(&self, _: u64, _: &str) -> Option<(usize, i32, i32)> {
+            None
+        }
+
+        fn locate_place(
+            &self,
+            _: u64,
+            _: &crate::bookmark_sync::DeviceMark,
+        ) -> crate::bookmark_sync::Place {
+            self.0
+        }
+    }
+
+    fn exact(spine: usize, frac: f64) -> Marks {
+        Marks(crate::bookmark_sync::Place {
+            spine,
+            frac,
+            how: crate::bookmark_sync::How::Xpointer,
+            exact: true,
+        })
+    }
+
+    /// A locator that puts a bookmark in chapter 3 at its page number in a hundred.
+    struct ByPage;
+
+    impl Locator for ByPage {
+        fn locate(&self, _: u64, _: &str) -> Option<(usize, i32, i32)> {
+            None
+        }
+
+        fn locate_place(
+            &self,
+            _: u64,
+            m: &crate::bookmark_sync::DeviceMark,
+        ) -> crate::bookmark_sync::Place {
+            crate::bookmark_sync::Place {
+                spine: 2,
+                frac: m.page.unwrap_or(0) as f64 / 100.0,
+                how: crate::bookmark_sync::How::Xpointer,
+                exact: true,
+            }
+        }
+    }
+
+    fn mark_change(id: &str, page: i64, updated: i64, seq: u64) -> Change {
+        let mut c = change(id, "", "", updated, seq);
+        let a = &mut c.record.annotation;
+        a.kind = KIND_BOOKMARK.into();
+        a.page = Some(page);
+        a.color.clear();
+        a.drawer.clear();
+        c
+    }
+
     #[test]
-    fn bookmarks_are_remembered_not_imported() {
+    fn a_synced_bookmark_becomes_a_bookx_bookmark_with_its_place_and_origin() {
+        let (mut books, mut l, _) = setup();
+        let mut c = mark_change("b", 7, 100, 1);
+        c.record.annotation.chapter = "Litany".into();
+        let r = merge_incoming(&mut books, &[c], &mut l, &exact(2, 0.4), now());
+        assert_eq!((r.bookmarks, r.bookmarks_skipped), (1, 0));
+        assert!(books[0].highlights.is_empty(), "a bookmark is no highlight");
+        let b = &books[0].bookmarks[0];
+        assert_eq!((b.spine, b.frac, b.label.as_str()), (2, 0.4, "Page 7"));
+        assert_eq!(b.created.timestamp(), 1_700_000_000, "the device's date");
+        assert_eq!(
+            sources(&l).get(&(1, b.id.clone())).map(String::as_str),
+            Some("KOReader (Kobo Libra)")
+        );
+        let e = &l.bookmarks[&key(DOC, "b")];
+        assert!(!e.approx);
+        assert_eq!(e.hint.chapter, "Litany");
+        assert!(
+            r.text().contains("1 bookmark from KOReader"),
+            "{}",
+            r.text()
+        );
+    }
+
+    #[test]
+    fn the_note_on_a_device_bookmark_is_what_the_bookmark_says() {
+        let (mut books, mut l, _) = setup();
+        let mut c = mark_change("b", 7, 100, 1);
+        c.record.annotation.note = "where I stopped".into();
+        merge_incoming(&mut books, &[c], &mut l, &exact(2, 0.4), now());
+        assert_eq!(books[0].bookmarks[0].label, "where I stopped");
+    }
+
+    #[test]
+    fn a_repeat_of_the_same_bookmarks_changes_nothing() {
+        let (mut books, mut l, _) = setup();
+        let c = [mark_change("b", 7, 100, 1)];
+        merge_incoming(&mut books, &c, &mut l, &exact(2, 0.4), now());
+        let before = (books[0].bookmarks.clone(), l.clone());
+        let r = merge_incoming(&mut books, &c, &mut l, &exact(2, 0.4), now());
+        assert_eq!(r, Report::default());
+        assert_eq!((books[0].bookmarks.clone(), l.clone()), before);
+        // even a newer version of it is the same bookmark
+        let r = merge_incoming(
+            &mut books,
+            &[mark_change("b", 7, 900, 5)],
+            &mut l,
+            &exact(2, 0.4),
+            now(),
+        );
+        assert_eq!(r, Report::default());
+        assert_eq!(books[0].bookmarks.len(), 1);
+    }
+
+    #[test]
+    fn a_bookmark_the_book_has_at_that_place_is_not_added_again_and_stays_as_it_is() {
+        let (mut books, mut l, _) = setup();
+        books[0].bookmarks.push(crate::core::library::Bookmark {
+            id: "mine".into(),
+            spine: 2,
+            frac: 0.405,
+            label: "my label".into(),
+            created: now(),
+        });
+        let r = merge_incoming(
+            &mut books,
+            &[mark_change("b", 7, 100, 1)],
+            &mut l,
+            &exact(2, 0.4),
+            now(),
+        );
+        assert_eq!((r.bookmarks, r.bookmarks_skipped), (0, 1));
+        assert_eq!(books[0].bookmarks.len(), 1);
+        assert_eq!(books[0].bookmarks[0].label, "my label");
+        assert_eq!(books[0].bookmarks[0].frac, 0.405);
+        assert!(r.text().contains("1 bookmark already in your library"));
+    }
+
+    #[test]
+    fn a_bookmark_that_cannot_be_placed_is_kept_at_the_start_and_flagged() {
         let (mut books, mut l, loc) = setup();
-        let mut c = change("b", "", "", 100, 1);
-        c.record.annotation.kind = KIND_BOOKMARK.into();
-        let r = merge_incoming(&mut books, &[c], &mut l, &loc, now());
+        let r = merge_incoming(
+            &mut books,
+            &[mark_change("b", 7, 100, 1)],
+            &mut l,
+            &loc,
+            now(),
+        );
         assert_eq!(r.bookmarks, 1);
-        assert!(books[0].highlights.is_empty());
+        let b = &books[0].bookmarks[0];
+        assert_eq!((b.spine, b.frac), (0, 0.0));
+        assert!(
+            l.bookmarks[&key(DOC, "b")].approx,
+            "flagged as a rough place"
+        );
+    }
+
+    #[test]
+    fn a_bookmark_deleted_in_bookx_is_not_brought_back_and_one_deleted_on_the_device_is_kept() {
+        let (mut books, mut l, _) = setup();
+        let loc = ByPage;
+        merge_incoming(
+            &mut books,
+            &[mark_change("b", 7, 100, 1), mark_change("c", 30, 100, 2)],
+            &mut l,
+            &loc,
+            now(),
+        );
+        assert_eq!(books[0].bookmarks.len(), 2);
+        // the reader deletes the first one; the device sends it again, changed
+        books[0].bookmarks.retain(|b| b.label != "Page 7");
+        let r = merge_incoming(
+            &mut books,
+            &[mark_change("b", 7, 500, 3)],
+            &mut l,
+            &loc,
+            now(),
+        );
+        assert_eq!(r.bookmarks, 0);
+        assert_eq!(books[0].bookmarks.len(), 1, "the tombstone holds");
+        // the device deletes the other one: it stays here
+        let mut gone = mark_change("c", 30, 600, 4);
+        gone.record.annotation.deleted = true;
+        let r = merge_incoming(&mut books, &[gone], &mut l, &loc, now());
+        assert_eq!(r.removed, 0);
+        assert_eq!(books[0].bookmarks.len(), 1);
+        assert_eq!(books[0].bookmarks[0].label, "Page 30");
+    }
+
+    #[test]
+    fn a_bookmark_an_older_sync_only_remembered_is_imported_now() {
+        let (mut books, mut l, _) = setup();
+        l.incoming.insert(
+            key(DOC, "b"),
+            Incoming {
+                book_id: 1,
+                highlight: None,
+                source: "KOReader (Kobo Libra)".into(),
+                note: String::new(),
+                device_look: Look::default(),
+                updated: 100,
+                seq: 1,
+                state: State::Bookmark,
+                text: String::new(),
+                made_here: false,
+                hint: Hint::default(),
+            },
+        );
+        let r = merge_incoming(
+            &mut books,
+            &[mark_change("b", 7, 100, 1)],
+            &mut l,
+            &exact(2, 0.4),
+            now(),
+        );
+        assert_eq!(r.bookmarks, 1);
+        // and only once
+        let r = merge_incoming(
+            &mut books,
+            &[mark_change("b", 7, 100, 1)],
+            &mut l,
+            &exact(2, 0.4),
+            now(),
+        );
+        assert_eq!(r.bookmarks, 0);
+        assert_eq!(books[0].bookmarks.len(), 1);
+    }
+
+    #[test]
+    fn bookmarks_do_not_disturb_highlights_and_their_colours() {
+        let (mut books, mut l, loc) = setup();
+        let mut hl = change("a", "Fear is the mind-killer.", "n", 100, 1);
+        hl.record.annotation.color = "purple".into();
+        let r = merge_incoming(
+            &mut books,
+            &[hl, mark_change("b", 7, 100, 2)],
+            &mut l,
+            &loc,
+            now(),
+        );
+        assert_eq!((r.added, r.bookmarks), (1, 1));
+        assert_eq!(books[0].highlights[0].color, "purple");
+        assert_eq!(books[0].highlights.len(), 1);
     }
 
     #[test]

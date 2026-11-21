@@ -36,7 +36,7 @@ nav = [
   { "Extend" = [
     "plugins-and-patches.md",
     "plugin-development.md",
-    "ai-assistants.md",
+    { "MCP" = "ai-assistants.md" },
     "command-line.md",
   ] },
   { "Reference" = [

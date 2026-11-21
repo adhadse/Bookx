@@ -360,3 +360,21 @@ Per-change checklist (§8) for the wireless sync and editor fixes in the final w
 - **Widens a capability?** No. The sync plugin is unchanged in scope; the UI edits only configuration.
 - **Regression tests?** `docs/bugs.md` rows 17–21: plugin exceptions and MD5, device colour preservation, preview follow race,
   external-editor events, and the virtual Contents list scroll. Each has a test that fails without its fix.
+
+### 2026-11-21: incremental backup repository with book files (D9)
+
+Checklist (§8) for `crates/bookx-backup/src/repo/`, `bookx-serve` streaming WebDAV, `bookx-cli backup`; the full text with
+test names is in `docs/backup-notes.md` (D9).
+
+* **Untrusted bytes:** repository config, manifests, journal records, blobs and WebDAV answers; budgets and bad-input tests
+  as listed there (manifest 128 MiB / 1 000 000 files, bounded blob reads, Argon2 limits, no decompression).
+* **Paths:** manifest paths validated twice (`validate_rel`), restored component by component without following links,
+  temp-name-then-rename; repository paths limited to `[A-Za-z0-9._-]`, three segments.
+* **Executes something:** no. **Listener / URL:** no listener; user-typed WebDAV address as before.
+* **New dependency:** `hmac`, `subtle`, `zeroize` (already in the lock file). **Secret:** passphrase from the keyring only,
+  zeroized keys, never in state/logs/manifests.
+* **Capability:** Bookx now copies book files to user-chosen places and can write book files into a chosen folder on
+  restore; the capability statement above still needs updating and a second reviewer.
+* **Regression tests:** `a_hostile_manifest_cannot_write_outside_the_target`, `a_link_in_the_target_is_never_followed_on_restore`,
+  `an_old_snapshot_renamed_to_look_new_is_refused`, `tampered_truncated_and_missing_blobs_are_caught_for_both_kinds_of_place`.
+

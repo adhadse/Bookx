@@ -99,7 +99,7 @@ fn unhex(s: &str) -> Result<Vec<u8>> {
         .collect()
 }
 
-fn derive(pass: &str, salt: &[u8], kdf: Kdf) -> Result<[u8; 32]> {
+pub(crate) fn derive(pass: &str, salt: &[u8], kdf: Kdf) -> Result<[u8; 32]> {
     let params = Params::new(kdf.memory_kib, kdf.passes, kdf.lanes, Some(32))
         .map_err(|e| anyhow!("bad key derivation settings: {e}"))?;
     let mut key = [0u8; 32];

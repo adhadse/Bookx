@@ -9,7 +9,7 @@ where everything is, so another tool (or you, with a script) can read it, and ho
 |---|---|
 | `<author>/<title> (id)/…` (or the layout you chose) | The book files (EPUB and the other formats you added) and their `cover.jpg`. They are normal files: open them with any reader. Metadata edits are written **into the EPUB** as well as the catalogue. |
 | `bookx-library.db` | The catalogue (SQLite, WAL mode). See below. |
-| `.bookx-backups/` | Whole-file snapshots of the catalogue (SQLite files). They hold catalogue data, not the book files or covers; see [Backup and restore](backup-and-restore.md). |
+| `.bookx-backups/` | Quick snapshots of the catalogue on this computer (SQLite files), not of the book files. Backups to other places are separate and do include the books, covers and notes; see [Backup and restore](backup-and-restore.md). |
 | `.bookx-trash/` | Deleted books waiting for *Empty Trash*: the files and an `entry.json` with the catalogue record. |
 | `.bookx/` | Small JSON state files: `oplog.json` (the undo log), `layout.json` (where books are filed), `inbox.json` (the watched import folder), `fixity.json` (file checksums), `not-duplicates.json` (pairs you said are different books), `cover-backups/` (covers replaced by a lookup). Safe to delete; you lose the undo history and these memories only. |
 | `.bookx-lock` | Which Bookx has the library open ([read-only mode](library.md#locking-and-read-only)). |
@@ -36,12 +36,12 @@ version is in `PRAGMA user_version`; a newer database than the app knows is refu
 
 - **`bookx-cli library dump`** prints the whole catalogue (every field of every book) as JSON.
 - **`bookx-cli library cite`** writes a bibliography ([BibTeX, RIS, CSL JSON, APA](library.md#export-citations)).
-- **Export Annotations** (main menu) writes your highlights and notes for the library as Markdown, HTML, JSON, text,
+- **Export** in *Notes & Highlights* (sidebar) writes your highlights and notes as Markdown, HTML, JSON, text,
   Kindle clippings or a Readwise file; see [Highlights and notes](annotations.md).
-- **Reading Trackers** exports your status, rating and dates in the Goodreads and StoryGraph layouts
+- **Reading Trackers** (the **Library** menu next to *View options*) exports your status, rating and dates in the Goodreads and StoryGraph layouts
   ([library](library.md#reading-trackers)).
 - **The files themselves** are in the library folder (or, with *Link in place*, where they always were).
 
-- **Export as Calibre Library** (main menu, or `bookx-cli library export-calibre DIR`) writes the whole library as a
+- **Export as Calibre Library** (the **Library** menu next to *View options*, or `bookx-cli library export-calibre DIR`) writes the whole library as a
   Calibre folder that Calibre opens, so there is always a way back; see
   [Exporting to Calibre](library.md#exporting-as-a-calibre-library).

@@ -700,6 +700,18 @@ impl Side {
         });
     }
 
+    /// For the dev hooks: the bookmark rows as `title / line`, in list order.
+    pub fn dev_bookmarks(&self) -> Vec<String> {
+        let store = &self.st.bm_store;
+        (0..store.n_items())
+            .filter_map(|i| store.item(i).and_downcast::<glib::BoxedAnyObject>())
+            .map(|o| {
+                let b = o.borrow::<BmItem>();
+                format!("{} / {}", b.title, b.sub)
+            })
+            .collect()
+    }
+
     /// For the dev hooks: `toc=2000 bookmarks=3 notes_rows=510 notes=500 rebuilds=2 ...`.
     pub fn dev_summary(&self) -> String {
         let st = &self.st;
@@ -784,6 +796,7 @@ fn build_note_row(li: &gtk::ListItem, send: Send) {
                 s4(Cmd::Restyle(c4.borrow().clone(), n.to_string()))
             })),
             relocate: None,
+            open: None,
         }
     };
     let card = NoteCard::new(&actions);
@@ -827,6 +840,7 @@ fn build_note_row(li: &gtk::ListItem, send: Send) {
                     } else {
                         side_notes::date_text(e.created)
                     },
+                    bookmark: false,
                 });
             }
         }

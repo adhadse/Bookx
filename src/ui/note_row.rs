@@ -24,6 +24,8 @@ pub struct NoteData {
     pub note: String,
     /// The small dim line: `Book · Chapter · 13 Nov 2026`.
     pub meta: String,
+    /// A bookmark: a bookmark icon before the words, which are not painted like a highlight.
+    pub bookmark: bool,
 }
 
 /// What the buttons of the card do. `recolor` and `restyle` are `None` for highlights whose look
@@ -36,11 +38,15 @@ pub struct NoteActions {
     pub restyle: Option<Rc<dyn Fn(&str)>>,
     /// A note whose text could not be found in the book: look for it again.
     pub relocate: Option<Rc<dyn Fn()>>,
+    /// Set for a bookmark: the menu is *Open* and *Delete* (nothing to edit, no colour or style).
+    pub open: Option<Rc<dyn Fn()>>,
 }
 
 /// The pieces of a card that change when a row is reused for another highlight.
 pub struct NoteCard {
     pub root: gtk::Box,
+    icon: gtk::Image,
+    menu: gtk::MenuButton,
     quote: gtk::Label,
     note_block: gtk::Box,
     note: gtk::Label,
@@ -89,6 +95,11 @@ impl NoteCard {
         if compact {
             root.add_css_class("compact");
         }
+        let mark_icon = gtk::Image::from_icon_name("user-bookmarks-symbolic");
+        mark_icon.add_css_class("note-bookmark-icon");
+        mark_icon.set_valign(gtk::Align::Start);
+        mark_icon.set_margin_top(3);
+        mark_icon.set_visible(false);
         let quote = gtk::Label::new(None);
         quote.add_css_class("note-quote");
         quote.set_xalign(0.0);
@@ -147,6 +158,7 @@ impl NoteCard {
             meta.set_valign(gtk::Align::Start);
             meta.set_max_width_chars(24);
             meta.set_margin_top(3);
+            foot.append(&mark_icon);
             foot.append(&quote);
         }
         foot.append(&meta);
@@ -199,8 +211,21 @@ impl NoteCard {
         }
         let acts = gtk::Box::new(gtk::Orientation::Horizontal, 4);
         acts.set_halign(gtk::Align::Center);
-        acts.append(&edit);
-        acts.append(&copy);
+        if let Some(open) = &actions.open {
+            let b = gtk::Button::with_label(&tr("Open"));
+            b.add_css_class("flat");
+            b.set_tooltip_text(Some(&tr("Open the book at this bookmark")));
+            super::audit::label(&b, &tr("Open the book at this bookmark"));
+            let (f, p) = (open.clone(), close(&pop));
+            b.connect_clicked(move |_| {
+                p();
+                f();
+            });
+            col.append(&b);
+        } else {
+            acts.append(&edit);
+            acts.append(&copy);
+        }
         acts.append(&delete);
         col.append(&acts);
         if let Some(relocate) = &actions.relocate {
@@ -310,6 +335,8 @@ impl NoteCard {
 
         NoteCard {
             root,
+            icon: mark_icon,
+            menu,
             quote,
             note_block,
             note,
@@ -325,8 +352,19 @@ impl NoteCard {
         *self.full.borrow_mut() = d.text.clone();
         self.quote
             .set_label(&crate::side_notes::shorten(&d.text, 500));
-        self.quote
-            .set_attributes(Some(&quote_attrs(&d.color, &d.style)));
+        if d.bookmark {
+            self.quote.set_attributes(None);
+        } else {
+            self.quote
+                .set_attributes(Some(&quote_attrs(&d.color, &d.style)));
+        }
+        self.icon.set_visible(d.bookmark);
+        let tip = if d.bookmark {
+            tr("Bookmark Actions")
+        } else {
+            tr("Highlight Actions")
+        };
+        self.menu.set_tooltip_text(Some(&tip));
         self.note.set_label(d.note.trim());
         self.note.set_tooltip_text(Some(d.note.trim()));
         self.quote.set_tooltip_text(Some(d.text.trim()));

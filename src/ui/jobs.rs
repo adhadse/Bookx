@@ -23,14 +23,11 @@ thread_local! {
 
 /// The icon of the header button: only the jobs use it (Shelves has `bookmark-new-symbolic`, the table
 /// view `view-list-symbolic`).
-pub const JOBS_ICON: &str = "emblem-synchronizing-symbolic";
+pub const JOBS_ICON: &str = "task-due-symbolic";
 
 /// The icons the Jobs button may take, the first the theme has (not every theme ships the first).
-pub const JOBS_ICONS: [&str; 3] = [
-    JOBS_ICON,
-    "process-working-symbolic",
-    "view-refresh-symbolic",
-];
+/// `process-working-symbolic` is not one of them: GTK draws it as a spinner that never stops.
+pub const JOBS_ICONS: [&str; 2] = [JOBS_ICON, "system-run-symbolic"];
 
 /// The Jobs icon this theme has.
 pub fn jobs_icon() -> &'static str {
@@ -38,7 +35,7 @@ pub fn jobs_icon() -> &'static str {
     JOBS_ICONS
         .into_iter()
         .find(|n| theme.as_ref().is_some_and(|t| t.has_icon(n)))
-        .unwrap_or(JOBS_ICONS[2])
+        .unwrap_or(JOBS_ICONS[1])
 }
 
 /// The width of the popover (bounded by the window when that is narrower).
@@ -542,6 +539,7 @@ pub fn dev(cmd: &str) -> String {
             }
         }
         "icon" => format!("icon {}", jobs_icon()),
+        "button" => button_report(),
         "dump" => {
             let lines: Vec<String> = jobs::with(|h| {
                 h.jobs()
@@ -568,6 +566,30 @@ pub fn dev(cmd: &str) -> String {
         }
         _ => format!("unknown {cmd}"),
     }
+}
+
+/// `jobs_button: spinning=<bool> icon=<name>`: does anything in the header button animate (the ring
+/// is visible, or the icon is the animated `process-working`), and the icon the button shows.
+fn button_report() -> String {
+    let report = PANEL.with(|p| {
+        let panel = p.borrow();
+        let panel = panel.as_ref()?;
+        let button = panel.button.upgrade()?;
+        let mut icons = Vec::new();
+        let mut c = button.child().and_then(|b| b.first_child());
+        while let Some(w) = c {
+            if let Some(i) = w.downcast_ref::<gtk::Image>() {
+                if let Some(n) = i.icon_name() {
+                    icons.push(n.to_string());
+                }
+            }
+            c = w.next_sibling();
+        }
+        let icon = icons.first().cloned().unwrap_or_default();
+        let spinning = panel.ring.widget.is_visible() || icon == "process-working-symbolic";
+        Some(format!("jobs_button: spinning={spinning} icon={icon}"))
+    });
+    report.unwrap_or_else(|| "jobs_button: none".into())
 }
 
 fn collect_rows(w: &gtk::Widget, out: &mut Vec<String>) {

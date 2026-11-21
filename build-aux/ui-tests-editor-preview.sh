@@ -126,3 +126,9 @@ scenario editor_scroll_sync 'edit:1,wait:3000,editor:open=OEBPS/chapter-1.xhtml,
     t=$(f 7 step_us); [ "${t:-99999}" -lt 2000 ]; check "a sync step takes under 2 ms (${t} us)" $?
     grep -q "\"scroll_both\": true" "$d/cfg/bookx/editor.json"; check "the option is remembered in the editor settings" $?
     ! has "panicked|CRITICAL|Gtk-WARNING|GLib-GObject"; check "scroll sync runs without errors or GTK warnings" $?'
+
+scenario editor_scroll_sync_old 'edit:1,wait:3000,editor:open=OEBPS/chapter-1.xhtml,wait:600,editor:pv-sync-state,quit' '
+    S=$(grep "^editor_sync:" <<<"$OUT")
+    sed -n 1p <<<"$S" | grep -q "^editor_sync: both=true "; check "an old editor.json with the option off is switched on once" $?
+    grep -q "\"scroll_both\": true" "$d/cfg/bookx/editor.json" && grep -q "\"scroll_both_v2\": true" "$d/cfg/bookx/editor.json"; check "the migration is written once (marker in editor.json)" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING|GLib-GObject"; check "no errors or GTK warnings" $?'

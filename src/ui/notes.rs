@@ -5,11 +5,11 @@
 use crate::i18n::{ntr, trf};
 use crate::i18n::{tr, N_};
 use std::cell::{Cell, RefCell};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
-use bookx_lookup::notes_query::{self as nq, Filter, Group, NoteRow, Sort};
+use bookx_lookup::notes_query::{self as nq, Filter, Group, KindFilter, NoteRow, RowKind, Sort};
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio, glib, pango};
 use relm4::RelmWidgetExt;
@@ -35,6 +35,91 @@ thread_local! {
 /// Remembers that the reader of `book` should go to `highlight` when it opens.
 pub fn set_jump(book: u64, highlight: &str) {
     JUMP.with(|j| *j.borrow_mut() = Some((book, highlight.to_string())));
+}
+
+/// The check box of a card: the first child of the row's line.
+fn check_of(row: &gtk::Widget) -> Option<gtk::CheckButton> {
+    row.downcast_ref::<gtk::FlowBoxChild>()?
+        .child()?
+        .first_child()?
+        .downcast::<gtk::CheckButton>()
+        .ok()
+}
+
+/// Shows the check box of a card while the pointer is over it, while it has the keyboard focus, while
+/// it is checked and while anything is selected; otherwise it is not drawn (it still takes the click).
+fn sync_check(row: &impl IsA<gtk::Widget>) {
+    let row = row.as_ref();
+    let Some(check) = check_of(row) else { return };
+    let focus = gtk::StateFlags::FOCUS_VISIBLE;
+    let show = row.has_css_class("hovered")
+        || row.has_css_class("selecting")
+        || check.is_active()
+        || row.state_flags().intersects(focus)
+        || check.state_flags().intersects(focus);
+    let want = if show { 1.0 } else { 0.0 };
+    if check.opacity() != want {
+        check.set_opacity(want);
+    }
+}
+
+/// `row=N x= y= w= h= rowh= titlex= cy= rowcy= opacity= visible= hovered= selecting=` of every card:
+/// where the check box is, in the coordinates of its row (test hook).
+fn check_geometry(list: &gtk::Widget) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut n = 0;
+    let mut c = list.first_child();
+    while let Some(w) = c {
+        if let Some(flow) = w.downcast_ref::<gtk::FlowBox>() {
+            let mut ch = flow.first_child();
+            while let Some(row) = ch {
+                if let (Some(check), Some(line)) = (
+                    check_of(&row),
+                    row.downcast_ref::<gtk::FlowBoxChild>()
+                        .and_then(|r| r.child()),
+                ) {
+                    // the visual row is the line inside the cell (the cell may be taller: all cells of a
+                    // line of the grid are as tall as the tallest)
+                    let b = check.compute_bounds(&line);
+                    let quote =
+                        find_class(&line, "note-quote").and_then(|q| q.compute_bounds(&line));
+                    let (x, y, w, h) = b.map_or((0.0, 0.0, 0.0, 0.0), |b| {
+                        (b.x(), b.y(), b.width(), b.height())
+                    });
+                    out.push(format!(
+                        "notes_checkgeom: row={n} x={x:.0} y={y:.0} w={w:.0} h={h:.0} rowh={:.0} roww={:.0} titlex={:.0} cy={:.0} rowcy={:.0} opacity={:.1} visible={} hovered={} selecting={}",
+                        line.height(),
+                        line.width(),
+                        quote.map_or(-1.0, |q| q.x()),
+                        y + h / 2.0,
+                        line.height() as f32 / 2.0,
+                        check.opacity(),
+                        check.is_visible(),
+                        row.has_css_class("hovered"),
+                        row.has_css_class("selecting"),
+                    ));
+                    n += 1;
+                }
+                ch = row.next_sibling();
+            }
+        }
+        c = w.next_sibling();
+    }
+    out
+}
+
+fn find_class(w: &gtk::Widget, class: &str) -> Option<gtk::Widget> {
+    if w.has_css_class(class) {
+        return Some(w.clone());
+    }
+    let mut c = w.first_child();
+    while let Some(x) = c {
+        if let Some(f) = find_class(&x, class) {
+            return Some(f);
+        }
+        c = x.next_sibling();
+    }
+    None
 }
 
 /// The highlight to go to in `book`, once.
@@ -89,6 +174,14 @@ struct State {
     color_names: RefCell<Vec<String>>,
     /// Search, Filter and View: one row.
     toolbar: gtk::Box,
+    /// All, Highlights, Notes, Bookmarks: the type of entry that is listed.
+    kinds: Vec<(KindFilter, gtk::ToggleButton)>,
+    /// The empty page: it says what is missing for the kind that is listed.
+    empty: adw::StatusPage,
+    /// Where the bookmarks that devices brought came from, and whether their place is a rough one.
+    marks: RefCell<HashMap<Key, (String, bool)>>,
+    /// Shows a message with an Undo button.
+    undo: Rc<dyn Fn(String, crate::app::UndoFn)>,
 }
 
 /// How many entries a menu shows at its first level (sections are flattened).
@@ -124,7 +217,15 @@ fn date_text(r: &NoteRow) -> String {
 
 impl State {
     fn reload(self: &Rc<Self>) {
-        *self.rows.borrow_mut() = nv::rows(&self.shared.lib.borrow());
+        {
+            let lib = self.shared.lib.borrow();
+            *self.rows.borrow_mut() = nv::rows(&lib);
+            *self.marks.borrow_mut() = if lib.books.iter().any(|b| !b.bookmarks.is_empty()) {
+                crate::annotation_sync_ui::bookmark_infos(&lib.root)
+            } else {
+                HashMap::new()
+            };
+        }
         // forget selections of highlights that are gone
         let have: HashSet<Key> = self.rows.borrow().iter().map(key_of).collect();
         self.selected.borrow_mut().retain(|k| have.contains(k));
@@ -254,10 +355,37 @@ impl State {
             .iter()
             .filter(|&&i| !rows[i].note.trim().is_empty())
             .count();
-        self.summary.set_label(&trf(
-            "{} of {} highlights · {} books · {} with notes",
-            &[&order.len(), &total, &books.len(), &with_notes],
-        ));
+        let any_bookmark = rows.iter().any(|r| r.kind == RowKind::Bookmark);
+        self.summary.set_label(&match self.filter.borrow().kind {
+            KindFilter::Bookmarks => trf(
+                "{} of {} bookmarks · {} books",
+                &[
+                    &order.len(),
+                    &rows.iter().filter(|r| r.kind == RowKind::Bookmark).count(),
+                    &books.len(),
+                ],
+            ),
+            _ if any_bookmark => trf(
+                "{} of {} entries · {} books · {} with notes",
+                &[&order.len(), &total, &books.len(), &with_notes],
+            ),
+            _ => trf(
+                "{} of {} highlights · {} books · {} with notes",
+                &[&order.len(), &total, &books.len(), &with_notes],
+            ),
+        });
+        let (title, text) = match self.filter.borrow().kind {
+            KindFilter::Bookmarks => (
+                tr("No bookmarks"),
+                tr("Bookmarks you add while reading, and the ones synced from your e-reader, appear here."),
+            ),
+            _ => (
+                tr("No highlights"),
+                tr("Highlights and notes you make while reading appear here, with the books they come from."),
+            ),
+        };
+        self.empty.set_title(&title);
+        self.empty.set_description(Some(&text));
         let mut counts: Vec<(String, usize)> = Vec::new();
         for &i in order.iter() {
             let c = rows[i].color.clone();
@@ -305,6 +433,7 @@ impl State {
                     } else {
                         card.remove_css_class("selecting");
                     }
+                    sync_check(&card);
                     ch = card.next_sibling();
                 }
             }
@@ -365,11 +494,11 @@ impl State {
         let rows = self.targets();
         let text = copy_text(&rows);
         self.host.clipboard().set_text(&text);
-        (self.toast)(ntr(
-            "Copied {} highlight",
-            "Copied {} highlights",
-            rows.len(),
-        ));
+        (self.toast)(if rows.iter().any(|r| r.kind == RowKind::Bookmark) {
+            ntr("Copied {} entry", "Copied {} entries", rows.len())
+        } else {
+            ntr("Copied {} highlight", "Copied {} highlights", rows.len())
+        });
     }
 
     fn confirm_delete_selected(self: &Rc<Self>) {
@@ -378,28 +507,43 @@ impl State {
             return;
         }
         let st = self.clone();
-        super::alert(
-            &self.host,
-            &ntr(
-                "Delete {} Highlight?",
-                "Delete {} Highlights?",
-                keys.len(),
-            ),
-            &tr("The highlights and their notes are removed from their books. This cannot be undone."),
-            &tr("Delete"),
-            true,
-            move || {
-                {
-                    let mut lib = st.shared.lib.borrow_mut();
-                    for k in &keys {
+        let marks: HashSet<Key> = self
+            .rows
+            .borrow()
+            .iter()
+            .filter(|r| r.kind == RowKind::Bookmark)
+            .map(key_of)
+            .collect();
+        let (title, body) = if marks.is_empty() {
+            (
+                ntr(
+                    "Delete {} Highlight?",
+                    "Delete {} Highlights?",
+                    keys.len(),
+                ),
+                tr("The highlights and their notes are removed from their books. This cannot be undone."),
+            )
+        } else {
+            (
+                ntr("Delete {} Entry?", "Delete {} Entries?", keys.len()),
+                tr("The highlights, notes and bookmarks are removed from their books. This cannot be undone."),
+            )
+        };
+        super::alert(&self.host, &title, &body, &tr("Delete"), true, move || {
+            {
+                let mut lib = st.shared.lib.borrow_mut();
+                for k in &keys {
+                    if marks.contains(k) {
+                        nv::delete_bookmark(&mut lib.books, k.0, &k.1);
+                    } else {
                         nv::delete(&mut lib.books, k.0, &k.1);
                     }
-                    let _ = lib.save();
                 }
-                st.selected.borrow_mut().clear();
-                st.reload();
-            },
-        );
+                let _ = lib.save();
+            }
+            st.selected.borrow_mut().clear();
+            st.reload();
+        });
     }
 
     /// One highlight: a check box for export, the shared card (quote in its colour and style,
@@ -417,63 +561,96 @@ impl State {
                 k.clone(),
                 k.clone(),
             );
-            let can_look = r.page.is_none();
+            let can_look = r.page.is_none() && r.kind == RowKind::Highlight;
+            let bookmark = r.kind == RowKind::Bookmark;
             NoteActions {
                 edit: Rc::new(move || s1.edit_note(&k1)),
-                delete: Rc::new(move || s2.confirm_delete(&k2)),
+                delete: Rc::new(move || {
+                    if bookmark {
+                        s2.delete_bookmark(&k2)
+                    } else {
+                        s2.confirm_delete(&k2)
+                    }
+                }),
+                open: bookmark.then(|| {
+                    let (s6, k6) = (self.clone(), k.clone());
+                    Rc::new(move || s6.open_at(&k6)) as Rc<dyn Fn()>
+                }),
                 recolor: can_look.then(|| {
                     Rc::new(move |c: &str| s3.apply_look(&k3, Some(c), None)) as Rc<dyn Fn(&str)>
                 }),
                 restyle: can_look.then(|| {
                     Rc::new(move |st: &str| s4.apply_look(&k4, None, Some(st))) as Rc<dyn Fn(&str)>
                 }),
-                relocate: r.unplaced.then(|| {
+                relocate: (r.unplaced && !bookmark).then(|| {
                     let (s5, k5) = (self.clone(), k.clone());
                     Rc::new(move || s5.relocate(&k5)) as Rc<dyn Fn()>
                 }),
             }
         };
         let card = NoteCard::compact(&actions);
-        card.set(&NoteData {
-            color: r.color.clone(),
-            style: self
-                .shared
-                .lib
-                .borrow()
-                .get(r.book_id)
-                .and_then(|b| b.highlights.iter().find(|h| h.id == r.highlight_id))
-                .map(|h| h.style.clone())
-                .unwrap_or_default(),
-            text: r.text.trim().to_string(),
-            note: r.note.clone(),
-            meta: {
-                let m = format!(
-                    "{} · {}",
-                    if r.unplaced {
-                        tr("Could not be located in the book")
-                    } else {
-                        r.place()
-                    },
-                    date_text(r)
-                );
-                match crate::annotation_sync_ui::source_label(r.book_id, &r.highlight_id) {
-                    Some(src) => format!("{m} · {src}"),
-                    None => m,
+        if r.kind == RowKind::Bookmark {
+            let from = self.marks.borrow().get(&k).cloned();
+            let mut meta = format!("{} · {}", r.place(), date_text(r));
+            if let Some((src, approx)) = from {
+                if !src.is_empty() {
+                    meta.push_str(&format!(" · {src}"));
                 }
-            },
-        });
+                if approx {
+                    meta.push_str(&format!(" · {}", tr("approximate place")));
+                }
+            }
+            card.set(&NoteData {
+                text: r.text.trim().to_string(),
+                meta,
+                bookmark: true,
+                ..Default::default()
+            });
+        } else {
+            card.set(&NoteData {
+                color: r.color.clone(),
+                style: self
+                    .shared
+                    .lib
+                    .borrow()
+                    .get(r.book_id)
+                    .and_then(|b| b.highlights.iter().find(|h| h.id == r.highlight_id))
+                    .map(|h| h.style.clone())
+                    .unwrap_or_default(),
+                text: r.text.trim().to_string(),
+                note: r.note.clone(),
+                meta: {
+                    let m = format!(
+                        "{} · {}",
+                        if r.unplaced {
+                            tr("Could not be located in the book")
+                        } else {
+                            r.place()
+                        },
+                        date_text(r)
+                    );
+                    match crate::annotation_sync_ui::source_label(r.book_id, &r.highlight_id) {
+                        Some(src) => format!("{m} · {src}"),
+                        None => m,
+                    }
+                },
+                bookmark: false,
+            });
+        }
         let row = gtk::FlowBoxChild::new();
         row.set_widget_name(&format!("{}\t{}", k.0, k.1));
         row.set_size_request(360, -1);
         row.set_hexpand(true);
-        let line = gtk::Overlay::new();
+        // selection mode as GNOME does it: the check box has its own column at the start of the row,
+        // centred on it, and never covers the text; it is only drawn on hover, on keyboard focus and
+        // while anything is selected
+        let line = gtk::Box::new(gtk::Orientation::Horizontal, 4);
         let check = gtk::CheckButton::new();
         check.add_css_class("selection-mode");
         check.add_css_class("note-check");
-        check.set_halign(gtk::Align::Start);
-        check.set_valign(gtk::Align::Start);
-        check.set_margin_start(10);
-        check.set_margin_top(10);
+        check.set_halign(gtk::Align::Center);
+        check.set_valign(gtk::Align::Center);
+        check.set_margin_start(2);
         check.set_active(self.selected.borrow().contains(&k));
         super::audit::label(&check, &tr("Select this highlight"));
         {
@@ -494,23 +671,38 @@ impl State {
             });
         }
         card.root.set_hexpand(true);
-        line.set_child(Some(&card.root));
-        line.add_overlay(&check);
+        line.append(&check);
+        line.append(&card.root);
         // no check boxes at rest: they appear on hover, on focus and while something is selected
         line.add_css_class("note-row");
         line.set_valign(gtk::Align::Start);
         {
             let motion = gtk::EventControllerMotion::new();
             let c = row.clone();
-            motion.connect_enter(move |_, _, _| c.add_css_class("hovered"));
+            motion.connect_enter(move |_, _, _| {
+                c.add_css_class("hovered");
+                sync_check(&c);
+            });
             let c = row.clone();
-            motion.connect_leave(move |_| c.remove_css_class("hovered"));
+            motion.connect_leave(move |_| {
+                c.remove_css_class("hovered");
+                sync_check(&c);
+            });
             row.add_controller(motion);
         }
         if !self.selected.borrow().is_empty() {
             row.add_css_class("selecting");
         }
         row.set_child(Some(&line));
+        {
+            let c = row.clone();
+            row.connect_state_flags_changed(move |_, _| sync_check(&c));
+            let c = row.clone();
+            check.connect_state_flags_changed(move |_, _| sync_check(&c));
+            let c = row.clone();
+            check.connect_toggled(move |_| sync_check(&c));
+        }
+        sync_check(&row);
         row
     }
 
@@ -658,7 +850,49 @@ impl State {
         self.reload();
     }
 
+    /// Takes a bookmark away with an Undo that puts it back. A bookmark that came from a device is
+    /// not brought back by the next sync: the sync's ledger remembers it was handled.
+    fn delete_bookmark(self: &Rc<Self>, k: &Key) {
+        let removed = {
+            let mut lib = self.shared.lib.borrow_mut();
+            let r = nv::delete_bookmark(&mut lib.books, k.0, &k.1);
+            if r.is_some() {
+                let _ = lib.save();
+            }
+            r
+        };
+        self.selected.borrow_mut().remove(k);
+        self.reload();
+        let Some(r) = removed else { return };
+        eprintln!("notes_delete: ok=true bookmark=true");
+        let stash = Rc::new(RefCell::new(Some(r)));
+        let (st, book) = (self.clone(), k.0);
+        let undo = crate::app::UndoFn::new(move || {
+            let Some(r) = stash.borrow_mut().take() else {
+                return;
+            };
+            {
+                let mut lib = st.shared.lib.borrow_mut();
+                if let Some(b) = lib.get_mut(book) {
+                    crate::remove_undo::restore(&mut b.highlights, &mut b.bookmarks, r);
+                }
+                let _ = lib.save();
+            }
+            st.reload();
+        });
+        (self.undo)(tr("Bookmark removed"), undo);
+    }
+
     fn apply_delete(self: &Rc<Self>, k: &Key) {
+        if self
+            .rows
+            .borrow()
+            .iter()
+            .any(|r| key_of(r) == *k && r.kind == RowKind::Bookmark)
+        {
+            self.delete_bookmark(k);
+            return;
+        }
         let ok = {
             let mut lib = self.shared.lib.borrow_mut();
             let ok = nv::delete(&mut lib.books, k.0, &k.1);
@@ -1122,7 +1356,12 @@ pub struct View {
 
 /// Builds the view of every highlight of the library, with search, filters and export. `open`
 /// reads a book (the library's Read), `toast` shows a message.
-pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)>) -> View {
+pub fn build(
+    shared: &SharedRef,
+    open: Rc<dyn Fn(u64)>,
+    toast: Rc<dyn Fn(String)>,
+    undo: Rc<dyn Fn(String, crate::app::UndoFn)>,
+) -> View {
     let search = gtk::SearchEntry::new();
     search.set_placeholder_text(Some(&tr("Search quotes, notes, books")));
     search.set_hexpand(true);
@@ -1220,6 +1459,34 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
     toolbar.append(&filter_btn);
     toolbar.append(&view_btn);
 
+    // the type of entry: a segmented control of four toggle buttons, the choice is remembered
+    let saved_kind = KindFilter::parse(&shared.cfg.borrow().notes_kind);
+    let kinds_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    kinds_box.add_css_class("linked");
+    kinds_box.set_halign(gtk::Align::Start);
+    kinds_box.set_margin_start(12);
+    kinds_box.set_margin_end(12);
+    kinds_box.set_margin_top(8);
+    super::audit::label(&kinds_box, &tr("Show"));
+    let mut kinds: Vec<(KindFilter, gtk::ToggleButton)> = Vec::new();
+    for k in KindFilter::ALL {
+        let label = match k {
+            KindFilter::All => tr("All"),
+            KindFilter::Highlights => tr("Highlights"),
+            KindFilter::Notes => tr("Notes"),
+            KindFilter::Bookmarks => tr("Bookmarks"),
+        };
+        let b = gtk::ToggleButton::with_label(&label);
+        b.set_active(k == saved_kind);
+        b.set_widget_name(&format!("notes-kind-{}", k.name()));
+        super::audit::label(&b, &trf("Show {}", &[&label]));
+        if let Some((_, first)) = kinds.first() {
+            b.set_group(Some(first));
+        }
+        kinds_box.append(&b);
+        kinds.push((k, b));
+    }
+
     let chips = adw::WrapBox::new();
     chips.set_child_spacing(6);
     chips.set_line_spacing(4);
@@ -1299,6 +1566,7 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
     let body = gtk::Box::new(gtk::Orientation::Vertical, 0);
     body.add_css_class("notes-view");
     body.append(&toolbar);
+    body.append(&kinds_box);
     body.append(&info);
     body.append(&legend);
     body.append(&stack);
@@ -1316,7 +1584,10 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
         open,
         toast,
         rows: RefCell::new(Vec::new()),
-        filter: RefCell::new(Filter::default()),
+        filter: RefCell::new(Filter {
+            kind: saved_kind,
+            ..Default::default()
+        }),
         group: Cell::new(Group::Book),
         sort: Cell::new(Sort::Newest),
         selected: RefCell::new(HashSet::new()),
@@ -1340,7 +1611,29 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
         book_ids: RefCell::new(Vec::new()),
         color_names: RefCell::new(Vec::new()),
         toolbar: toolbar.clone(),
+        kinds: kinds.clone(),
+        empty: empty.clone(),
+        marks: RefCell::new(HashMap::new()),
+        undo,
     });
+    for (k, b) in &kinds {
+        let (st, k) = (st.clone(), *k);
+        b.connect_toggled(move |b| {
+            if !b.is_active() {
+                return;
+            }
+            st.filter.borrow_mut().kind = k;
+            {
+                let mut c = st.shared.cfg.borrow_mut();
+                if c.notes_kind != k.name() {
+                    c.notes_kind = k.name().to_string();
+                    c.save();
+                }
+            }
+            st.limit.set(PAGE);
+            st.refresh();
+        });
+    }
 
     let changed = |st: &Rc<State>| {
         st.limit.set(PAGE);
@@ -1510,6 +1803,26 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
                     _ => 0,
                 }),
                 "from" => from.set_text(arg),
+                // `library:notes:kind=bookmarks` picks the type of entry (all, highlights, notes, bookmarks)
+                "kind" => {
+                    let want = KindFilter::parse(arg);
+                    if let Some((_, b)) = st.kinds.iter().find(|(k, _)| *k == want) {
+                        b.set_active(true);
+                    }
+                }
+                // `library:notes:kinds` prints the type buttons and the one that is on
+                "kinds" => eprintln!(
+                    "notes_kinds: {} on={}",
+                    st.kinds
+                        .iter()
+                        .map(|(_, b)| b.label().unwrap_or_default().to_string())
+                        .collect::<Vec<_>>()
+                        .join("|"),
+                    st.kinds
+                        .iter()
+                        .find(|(_, b)| b.is_active())
+                        .map_or("none", |(k, _)| k.name())
+                ),
                 "select-all" => st.select_all(),
                 "select-first" => {
                     let k = st
@@ -1530,6 +1843,33 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
                     }
                 }
                 "clear" => st.clear_selection(),
+                "checkgeom" => {
+                    for l in check_geometry(st.list.upcast_ref()) {
+                        eprintln!("{l}");
+                    }
+                }
+                // `library:notes:hover=N` marks card N as under the pointer (`hover=-1` clears it)
+                "hover" => {
+                    let n: i64 = arg.parse().unwrap_or(-1);
+                    let mut i = 0;
+                    let mut c = st.list.first_child();
+                    while let Some(w) = c {
+                        if let Some(flow) = w.downcast_ref::<gtk::FlowBox>() {
+                            let mut ch = flow.first_child();
+                            while let Some(row) = ch {
+                                if i == n {
+                                    row.add_css_class("hovered");
+                                } else {
+                                    row.remove_css_class("hovered");
+                                }
+                                sync_check(&row);
+                                i += 1;
+                                ch = row.next_sibling();
+                            }
+                        }
+                        c = w.next_sibling();
+                    }
+                }
                 "open-first" => {
                     let k = st
                         .shown
@@ -1669,12 +2009,14 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
                         format!("{}|{}|{}", r.book_title, r.place(), r.note)
                     });
                     eprintln!(
-                        "notes_state: total={} shown={} selected={} sections=[{}] first={:?}",
+                        "notes_state: total={} shown={} selected={} sections=[{}] first={:?} bookmarks={} kind={}",
                         rows.len(),
                         shown.len(),
                         st.selected.borrow().len(),
                         titles.join(";"),
-                        first
+                        first,
+                        shown.iter().filter(|&&i| rows[i].kind == RowKind::Bookmark).count(),
+                        st.filter.borrow().kind.name()
                     );
                 }
                 "selbar" => eprintln!(
@@ -1835,6 +2177,8 @@ mod tests {
 
     fn row(text: &str, note: &str) -> NoteRow {
         NoteRow {
+            kind: RowKind::Highlight,
+            frac: 0.0,
             book_id: 1,
             highlight_id: "h".into(),
             book_title: "B".into(),

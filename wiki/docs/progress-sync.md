@@ -6,7 +6,7 @@ protocol, so KOReader’s built-in *Progress sync* works against it too; Bookx�
 bookmarks over the same connection when the [Bookx plugin](koreader-sync.md) is installed in KOReader. From here on it is
 just **Bookx sync**.
 
-Everything is under **main menu → Sync** (what to use when, and one button) and **Preferences → Sync** (the setup).
+Everything is under **Sync** in the library's main menu (the hamburger button at the right of the library's header bar: what to use when, and one button) and **Preferences → Sync** (the setup).
 Nothing goes to a cloud: the server is your own computer, a self-hosted server you enter, or the public one at
 `sync.koreader.rocks` if you choose it.
 
@@ -22,7 +22,7 @@ Nothing goes to a cloud: the server is your own computer, a self-hosted server y
 
 1. **Turn on the Bookx sync server.** Starts the Bookx sync server on this computer, opens it to your local network so
    the e-reader can reach it, and creates a library password if you have none (shown under **Advanced**). Turning the
-   switch off stops the server again. While the server is open to the network, the Sync window of the main menu shows
+   switch off stops the server again. While the server is open to the network, the Sync window (library main menu → Sync) shows
    the banner *Other devices on your network can reach this server*. The address for the e-reader appears below the switch, ending in `/bookx`
    (for example `http://192.168.1.5:8080/bookx`) with a copy button.
 2. **Create your sync account.** Type any **User name** and **Password** and press **Register** (this also logs in).
@@ -82,3 +82,33 @@ Bookx plugin is installed, see [KOReader highlights and notes](koreader-sync.md)
 
 To serve the sync endpoint under a name and real HTTPS (`https://bookx.lan/bookx`), see
 [Put Bookx behind a reverse proxy](reverse-proxy.md). Keep the `/bookx` prefix.
+
+## Questions and answers
+
+??? question "How do I start syncing with KOReader?"
+    Open **Preferences → Sync** and work down the setup checklist: turn on the sync server, create an account, install the
+    Bookx plugin on KOReader and test on the device. See [Set it up](#set-it-up).
+
+??? question "Where do I see what is synced?"
+    Open **Sync** in the library's main menu (the hamburger button in the library's header bar).
+
+??? question "Which address do I type on the e-reader?"
+    The address appears under the first switch of the checklist, ending in `/bookx`, with a copy button.
+
+??? question "Why does Bookx ask me to continue from another device?"
+    Another device read further than you are here by more than 1 %. Choose **Continue** to jump there or **Stay Here**; nothing
+    moves unless you choose Continue.
+
+??? question "Do I get my highlights and notes too?"
+    Yes, with the Bookx plugin installed in KOReader and **Sync highlights, notes and bookmarks** on (the default). Without
+    the plugin only the position is synced. See [KOReader highlights and notes](koreader-sync.md).
+
+??? question "Why did the position land a few lines off?"
+    The position travels as a percentage, so expect to land within a page or two of where the other device was.
+
+??? question "What if I am offline?"
+    Your position is kept and sent later. Opening a book still needs the network to ask where you were.
+
+??? question "Which books match between devices?"
+    Books match by the partial MD5 of the file (the default) or by file name; choose the same method in
+    **Preferences → Sync → Advanced** and in KOReader.

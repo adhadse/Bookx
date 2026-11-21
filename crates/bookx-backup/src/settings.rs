@@ -6,6 +6,8 @@
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::repo::store::{RepoStore, REPO_DIR};
+use crate::repo::{DavStore, FolderStore, Scope};
 use crate::target::{FolderTarget, Target, WebDavTarget};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -34,6 +36,16 @@ pub struct Destination {
     /// How many automatic backups this place keeps (plus one per day for a week; manual ones stay).
     pub keep: usize,
     pub encrypt: bool,
+    /// Copy the book files, not just the catalogue (decision D9). On for new and old places.
+    pub include_books: bool,
+    /// Copy the covers (when books are included, or alone).
+    pub include_covers: bool,
+    /// Leave out files bigger than this many megabytes; 0 means no limit.
+    pub max_file_mb: u64,
+    /// The scheduled copies (when Bookx closes, once a day) may use this place. Off until the first
+    /// full copy was made by hand (or the user allowed it after seeing how big it is), so an update
+    /// never starts a surprise upload of the whole library.
+    pub auto_ok: bool,
     pub enabled: bool,
     pub last_ok: Option<DateTime<Utc>>,
     pub last_error: Option<String>,
@@ -52,6 +64,10 @@ impl Default for Destination {
             folder: "Bookx backups".into(),
             keep: 10,
             encrypt: false,
+            include_books: true,
+            include_covers: true,
+            max_file_mb: 0,
+            auto_ok: false,
             enabled: true,
             last_ok: None,
             last_error: None,
@@ -123,6 +139,32 @@ impl Destination {
                 &self.folder,
             )?),
         })
+    }
+
+    /// The place of the incremental repository: the folder [`REPO_DIR`] inside the destination
+    /// (next to any old whole-catalogue backups).
+    pub fn repo_store(&self) -> anyhow::Result<Box<dyn RepoStore>> {
+        Ok(match self.kind {
+            DestKind::Folder => Box::new(FolderStore::new(
+                std::path::Path::new(self.location.trim()).join(REPO_DIR),
+            )),
+            DestKind::Webdav => Box::new(DavStore::new(
+                &self.location,
+                &self.user,
+                &self.password,
+                &self.folder,
+            )?),
+        })
+    }
+
+    /// What the walk over the library includes for this place.
+    pub fn scope(&self) -> Scope {
+        Scope {
+            include_books: self.include_books,
+            include_covers: self.include_covers,
+            max_file_size: (self.max_file_mb > 0)
+                .then(|| self.max_file_mb.saturating_mul(1024 * 1024)),
+        }
     }
 
     /// A problem with the settings themselves, before anything is tried.
@@ -349,5 +391,33 @@ mod tests {
         assert_eq!(s.new_id(), "d2");
         let loaded: BackupSettings = serde_json::from_str("{}").unwrap();
         assert!(loaded.on_exit && loaded.destinations.is_empty());
+    }
+
+    #[test]
+    fn old_destinations_gain_book_backup_and_the_scope_follows_the_settings() {
+        let old = r#"{"destinations":[{"id":"d1","name":"USB","kind":"folder","location":"/mnt/usb","keep":4}]}"#;
+        let st: BackupSettings = serde_json::from_str(old).unwrap();
+        let d = &st.destinations[0];
+        assert!(d.include_books && d.include_covers && d.max_file_mb == 0);
+        assert!(
+            !d.auto_ok,
+            "an old place does not start a big upload on its own"
+        );
+        assert_eq!(d.keep, 4, "old keys still load");
+        let sc = d.scope();
+        assert!(sc.include_books && sc.include_covers && sc.max_file_size.is_none());
+        let mut d = d.clone();
+        d.include_books = false;
+        d.max_file_mb = 2;
+        let sc = d.scope();
+        assert!(!sc.include_books);
+        assert_eq!(sc.max_file_size, Some(2 * 1024 * 1024));
+        assert_eq!(d.repo_store().unwrap().label(), "/mnt/usb/Bookx Backup");
+        let w = Destination::webdav("d2", "n", "https://c.example/dav", "u", "p");
+        assert!(w
+            .repo_store()
+            .unwrap()
+            .label()
+            .ends_with("Bookx backups/Bookx Backup"));
     }
 }

@@ -566,6 +566,7 @@ mod tests {
             last_read: None,
             highlights: hs,
             looks: Default::default(),
+            bookmark_keys: Default::default(),
         }
     }
 

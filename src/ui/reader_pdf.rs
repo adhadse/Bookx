@@ -3394,11 +3394,21 @@ impl SimpleComponent for ReaderPdf {
             }
             Input::GoHighlight(id) => {
                 let page = self.shared.lib.borrow().get(self.book_id).and_then(|b| {
-                    b.highlights.iter().find(|h| h.id == id).map(|h| {
-                        let y = pdf::parse_pdf_style(&h.style)
-                            .and_then(|(_, r)| r.first().map(|r| r[1]));
-                        (h.spine, y)
-                    })
+                    b.highlights
+                        .iter()
+                        .find(|h| h.id == id)
+                        .map(|h| {
+                            let y = pdf::parse_pdf_style(&h.style)
+                                .and_then(|(_, r)| r.first().map(|r| r[1]));
+                            (h.spine, y)
+                        })
+                        // the Notes list also opens a bookmark by its id
+                        .or_else(|| {
+                            b.bookmarks
+                                .iter()
+                                .find(|m| m.id == id)
+                                .map(|m| (m.spine, None))
+                        })
                 });
                 if let Some((p, y)) = page {
                     self.goto_page(p, y);

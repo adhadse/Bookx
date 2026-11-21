@@ -306,6 +306,8 @@ pub struct Config {
     pub kosync: crate::kosync_sync::KoSyncPrefs,
     /// Readwise access token (kept in the keyring, see `secret_fields`).
     pub readwise_token: String,
+    /// Notes & Highlights: which kind of entry is listed (`all`, `highlights`, `notes`, `bookmarks`).
+    pub notes_kind: String,
     /// The Device window lists books instead of showing covers.
     pub device_list_view: bool,
     /// E-ink mode: pure black on white, no animations, bars that stay.
@@ -389,6 +391,7 @@ impl Default for Config {
             device_sync: crate::device_sync::SyncPrefs::default(),
             kosync: crate::kosync_sync::KoSyncPrefs::default(),
             readwise_token: String::new(),
+            notes_kind: "all".into(),
             device_list_view: false,
             eink: false,
             window_width: 1280,
@@ -588,13 +591,38 @@ impl Config {
             let _ = std::fs::create_dir_all(dir);
         }
         if let Some(json) = self.file_text(crate::secrets::vault()) {
-            let _ = std::fs::write(p, json);
+            // written next to the file and renamed, so a crash never leaves half a file
+            let tmp = p.with_extension("json.tmp");
+            if std::fs::write(&tmp, json).is_ok() && std::fs::rename(&tmp, &p).is_err() {
+                let _ = std::fs::remove_file(&tmp);
+            }
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn the_sync_server_and_the_login_survive_a_save_and_a_load() {
+        let vault = bookx_secrets::Vault::new(Box::new(bookx_secrets::MemoryStore::new()));
+        let mut c = super::Config::default();
+        c.share.running = true;
+        c.share.kosync = true;
+        c.kosync.user = "alice".into();
+        c.kosync.password = "pw-123".into();
+        c.kosync.logged_in = true;
+        let text = c.file_text(&vault).unwrap();
+        assert!(
+            !text.contains("pw-123"),
+            "the password stays in the keyring"
+        );
+        let (back, _) = super::Config::from_text(Some(&text), &vault);
+        assert!(back.share.running && back.share.kosync && back.share.restore_at_launch());
+        assert!(back.kosync.logged_in && back.kosync.password == "pw-123");
+        let (old, _) = super::Config::from_text(Some("{}"), &vault);
+        assert!(!old.share.running && !old.kosync.logged_in);
+    }
+
     #[test]
     fn an_old_stored_footer_position_goes_back_to_the_default_once() {
         use crate::footer_stats::{Align, Preset};
@@ -796,6 +824,23 @@ mod clean_ui_tests {
         assert!(c.sidebar_view.is_empty() && c.favourites.is_empty());
         assert!(!c.device_sync.auto_sync && c.device_sync.include_notes);
         assert!(!c.device_list_view);
+    }
+
+    #[test]
+    fn the_notes_view_lists_everything_until_a_kind_is_chosen_and_remembers_it() {
+        use bookx_lookup::notes_query::KindFilter;
+        assert_eq!(
+            KindFilter::parse(&Config::default().notes_kind),
+            KindFilter::All
+        );
+        let old: Config = serde_json::from_str("{}").unwrap();
+        assert_eq!(KindFilter::parse(&old.notes_kind), KindFilter::All);
+        let c = Config {
+            notes_kind: KindFilter::Bookmarks.name().into(),
+            ..Default::default()
+        };
+        let back: Config = serde_json::from_str(&serde_json::to_string(&c).unwrap()).unwrap();
+        assert_eq!(KindFilter::parse(&back.notes_kind), KindFilter::Bookmarks);
     }
 
     #[test]

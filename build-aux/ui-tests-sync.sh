@@ -86,3 +86,9 @@ scenario sync_notes_default 'prefs:,wait:900,prefs:pick=Sync,wait:300,prefs:sync
     sed -n 3p <<<"$N" | grep -q "switch=true config=true listening=false store=false"; check "stopping the server stops everything; the choice stays on" $?
     sed -n 4p <<<"$N" | grep -q "switch=false config=false listening=true store=false"; check "the switch can still be turned off: the server then serves no annotation store" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario sync_restart 'wait:1200,prefs:,wait:900,prefs:pick=Sync,wait:300,prefs:sync-dump,prefs:sync-account-dump,share:kodump,quit' '
+    has "^prefs_sync: server=true opds=true wifi=on .* state=ready steps=1100"; check "a server that was on when Bookx last ran is on again after the restart (switch on, account step done)" $?
+    has "^share_ko: visible=true address=http://[0-9.]+:[0-9]+/bookx$"; check "and it answers on its address" $?
+    has "^prefs_account: .*status_title=\"Logged in as alice\""; check "the account row says Logged in as alice instead of Log in" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'

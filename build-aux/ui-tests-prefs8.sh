@@ -21,7 +21,7 @@ scenario prefs8_ruler_rows 'prefs:,wait:900,prefs:pick=Reading,wait:300,prefs:ru
     sed -n 3p <<<"$R" | grep -q "on=false lines_sensitive=false"; check "and off disables them again" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
-scenario prefs8_mcp_page 'prefs:,wait:900,prefs:pick=AI Assistants,wait:300,mcp:dump,mcp:token=regen-confirm,wait:400,mcp:dump,dialog:state,mcp:port=@MCPPORT@,mcp:enable=on,wait:500,mcp:dump,mcp:enable=off,wait:300,mcp:dump,a11y-audit:,quit' '
+scenario prefs8_mcp_page 'prefs:,wait:900,prefs:pick=MCP,wait:300,mcp:dump,mcp:token=regen-confirm,wait:400,mcp:dump,dialog:state,mcp:port=@MCPPORT@,mcp:enable=on,wait:500,mcp:dump,mcp:enable=off,wait:300,mcp:dump,a11y-audit:,quit' '
     M=$(grep "^mcp: " <<<"$OUT")
     sed -n 1p <<<"$M" | grep -q "running=0 .*port_sensitive=1 copy_sensitive=0"; check "off: the port can be changed and there is no address to copy" $?
     has "^mcp_token_confirm: shown=1 token_unchanged=1"; check "making a new token asks first" $?
@@ -67,14 +67,14 @@ scenario prefs8_sync_banner 'share:port0,action:sync,wait:800,sync:dump,sync:car
 
 scenario prefs9_sidebar_titles 'prefs:,wait:900,prefs:dump,prefs:icons,prefs:titles,prefs:pick=Patches,wait:300,prefs:dump,prefs:pick=AI Assistants (MCP),wait:300,prefs:dump,quit' '
     P=$(grep "^prefs: query" <<<"$OUT")
-    sed -n 1p <<<"$P" | grep -q "sections=General|Library|Reading|Dictionaries|Editor|Text to Speech|Sync|E-mail|Extensions|Privacy|Keyboard Shortcuts|AI Assistants"; check "the sidebar has twelve pages in the decided order, Dictionaries is its own page and Patches is part of Extensions" $?
+    sed -n 1p <<<"$P" | grep -q "sections=General|Library|Reading|Dictionaries|Editor|Text to Speech|Sync|E-mail|Extensions|Privacy|Keyboard Shortcuts|MCP"; check "the sidebar has twelve pages in the decided order, Dictionaries is its own page and Patches is part of Extensions" $?
     sed -n 2p <<<"$P" | grep -q "selected=Extensions"; check "the old name Patches still opens Extensions" $?
-    sed -n 3p <<<"$P" | grep -q "selected=AI Assistants"; check "the old name AI Assistants (MCP) still opens the page" $?
+    sed -n 3p <<<"$P" | grep -q "selected=MCP"; check "the old name AI Assistants (MCP) still opens the page" $?
     has "^prefs_icons: .*missing=\\[\\]"; check "every page has an icon that exists" $?
     has "^prefs_titles: rows=[1-9][0-9]* problems=$"; check "no row title is longer than 48 characters, says my or ends in an ellipsis" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
-scenario prefs9_900x600 'prefs:,wait:900,prefs:pick=Reading,wait:400,prefs:fit,prefs:pick=AI Assistants,wait:400,prefs:fit,prefs:pick=Keyboard Shortcuts,wait:400,prefs:fit,prefs:pick=Privacy,wait:400,prefs:fit,prefs:pick=Sync,wait:400,prefs:fit,quit' '
+scenario prefs9_900x600 'prefs:,wait:900,prefs:pick=Reading,wait:400,prefs:fit,prefs:pick=MCP,wait:400,prefs:fit,prefs:pick=Keyboard Shortcuts,wait:400,prefs:fit,prefs:pick=Privacy,wait:400,prefs:fit,prefs:pick=Sync,wait:400,prefs:fit,quit' '
     [ "$(grep -c "^prefs_fit: .* fits=true" <<<"$OUT")" = 5 ]; check "at 900x600 the dialog fits inside the window and the longest pages need no sideways scrolling" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
@@ -128,4 +128,17 @@ scenario prefs9_email_test_sends 'library:mailcfg,prefs:,wait:900,prefs:pick=E-m
     MAIL=$(cat "$d/mail.txt" 2>/dev/null)
     grep -q "RCPT TO:<me@example.com>" <<<"$MAIL"; check "the server got a message for your own address" $?
     grep -q "Bookx test message" <<<"$MAIL"; check "it is the test message" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario prefs10_plugins_placeholder 'prefs:,wait:900,prefs:pick=Extensions,wait:1500,prefs:plugins-dump,prefs:patches-dump,quit' '
+    has "^prefs_plugins: placeholder=true in_scrolled=false .* button_visible=true fits=true"; check "the empty Plugins list is plain content: no inner scroll area, not clipped, the button is visible" $?
+    has "^prefs_patches: rows=0 .*empty_state=true"; check "the empty Patches list shows the same placeholder" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario prefs10_mcp_search 'prefs:,wait:900,prefs:search=assistant,wait:300,prefs:dump,prefs:search=AI,wait:300,prefs:dump,prefs:search=MCP,wait:300,prefs:dump,prefs:search=,wait:200,prefs:pick=AI Assistants,wait:300,prefs:dump,quit' '
+    P=$(grep "^prefs: query" <<<"$OUT")
+    sed -n 1p <<<"$P" | grep -q "sections=.*MCP"; check "searching assistant finds the MCP page" $?
+    sed -n 2p <<<"$P" | grep -q "sections=.*MCP"; check "searching AI finds the MCP page" $?
+    sed -n 3p <<<"$P" | grep -q "sections=.*MCP"; check "searching MCP finds the page" $?
+    sed -n 4p <<<"$P" | grep -q "selected=MCP"; check "the old name AI Assistants still opens the page" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'

@@ -15,6 +15,7 @@ use std::sync::{Arc, Mutex};
 
 use bookx_backup::crypto::Kdf;
 use bookx_backup::places::{self, Place, PlaceKind};
+use bookx_backup::repo::{LibrarySource, Plan, RestoreMode};
 use bookx_backup::{DestKind, Destination};
 use bookx_store::health::{self, SnapshotKind};
 use chrono::Utc;
@@ -58,6 +59,78 @@ fn autoconfirm() -> bool {
     !crate::devtools::script().is_empty()
 }
 
+/// What the worker of a long operation reports and the window shows.
+#[derive(Debug, Clone, Default)]
+struct Prog {
+    stage: String,
+    detail: String,
+    fraction: f64,
+}
+
+/// What the developer script chose for the next restore (the real window asks the user).
+#[derive(Debug, Clone, Default)]
+struct DevRestore {
+    missing_only: bool,
+    target: Option<PathBuf>,
+}
+
+/// The widgets of the open restore dialog, for the developer script.
+#[derive(Clone)]
+struct Dlg {
+    mode: adw::ComboRow,
+    preview_btn: gtk::Button,
+    restore: gtk::Button,
+    preview: adw::ActionRow,
+}
+
+/// The lines under a place: what it holds, what the next copy does, the last check.
+#[derive(Debug, Clone, Default)]
+struct PlaceExtra {
+    stats: String,
+    plan: String,
+    note: String,
+}
+
+/// A long operation in progress: its stop flag, its entry in the Jobs panel and the timer that
+/// keeps the window and the panel up to date.
+struct Op {
+    cancel: Arc<AtomicBool>,
+    job: u64,
+    tick: glib::SourceId,
+    progress: Arc<Mutex<Prog>>,
+}
+
+/// Keeps the Jobs panel entry in step with what the worker reports, and passes a Cancel from the panel
+/// on to the worker. `extra` updates whatever else shows the progress.
+fn watch(
+    job: u64,
+    token: crate::jobs::CancelToken,
+    cancel: Arc<AtomicBool>,
+    prog: Arc<Mutex<Prog>>,
+    extra: impl Fn(&Prog, bool) -> bool + 'static,
+) -> glib::SourceId {
+    glib::timeout_add_local(std::time::Duration::from_millis(150), move || {
+        if token.is_cancelled() {
+            cancel.store(true, Ordering::Relaxed);
+        }
+        let p = prog.lock().unwrap().clone();
+        let asked = cancel.load(Ordering::Relaxed);
+        if !asked {
+            let text = if p.detail.is_empty() {
+                p.stage.clone()
+            } else {
+                format!("{} · {}", p.stage, p.detail)
+            };
+            crate::jobs::progress(job, Some(p.fraction), &text);
+        }
+        if extra(&p, asked) {
+            glib::ControlFlow::Continue
+        } else {
+            glib::ControlFlow::Break
+        }
+    })
+}
+
 pub struct Panel {
     shared: SharedRef,
     notify: Notify,
@@ -66,6 +139,17 @@ pub struct Panel {
     on_restore: Rc<dyn Fn(PathBuf)>,
     /// After the snapshot list on this computer changed.
     on_local_change: Rc<dyn Fn()>,
+    /// After the catalogue of the open library was replaced by a restore.
+    on_reloaded: Rc<dyn Fn()>,
+    banner: adw::ActionRow,
+    estimates: RefCell<HashMap<String, Result<Plan, String>>>,
+    bases: RefCell<HashMap<String, String>>,
+    extras: RefCell<HashMap<String, PlaceExtra>>,
+    dev_restore: RefCell<DevRestore>,
+    dlg: RefCell<Option<Dlg>>,
+    points: RefCell<Vec<(Destination, bk::repo::RestorePoint, bool)>>,
+    detail: gtk::Label,
+    job: Cell<Option<u64>>,
     pub where_group: adw::PreferencesGroup,
     pub schedule_group: adw::PreferencesGroup,
     pub restore_group: adw::PreferencesGroup,
@@ -81,7 +165,7 @@ pub struct Panel {
     cancel_btn: gtk::Button,
     cancel: RefCell<Arc<AtomicBool>>,
     busy: Cell<bool>,
-    progress: Arc<Mutex<(String, f64)>>,
+    progress: Arc<Mutex<Prog>>,
     pass_row: adw::PasswordEntryRow,
     exit_switch: adw::SwitchRow,
     daily_switch: adw::SwitchRow,
@@ -96,6 +180,7 @@ impl Panel {
         notify: Notify,
         on_restore: Rc<dyn Fn(PathBuf)>,
         on_local_change: Rc<dyn Fn()>,
+        on_reloaded: Rc<dyn Fn()>,
     ) -> Rc<Panel> {
         let where_group = adw::PreferencesGroup::new();
         where_group.set_title(&tr("Where backups go"));
@@ -109,6 +194,17 @@ impl Panel {
         let scope = row(&bk::backup_scope_title(), &bk::backup_scope_subtitle());
         scope.set_selectable(false);
         where_group.add(&scope);
+        let banner = adw::ActionRow::new();
+        banner.set_title(&tr("Include your books in backups"));
+        banner.set_subtitle_lines(4);
+        banner.set_visible(false);
+        banner.add_css_class("card");
+        banner.add_prefix(&gtk::Image::from_icon_name("dialog-information-symbolic"));
+        let banner_btn = button(&tr("Back Up"));
+        banner_btn.add_css_class("suggested-action");
+        super::audit::label(&banner_btn, &tr("Make the first backup of your books"));
+        banner.add_suffix(&banner_btn);
+        where_group.add(&banner);
         let schedule_group = adw::PreferencesGroup::new();
         schedule_group.set_title(&tr("Copies to other places"));
         let cfg = shared.cfg.borrow();
@@ -140,10 +236,17 @@ impl Panel {
         let stage = gtk::Label::new(None);
         stage.set_xalign(0.0);
         let bar = gtk::ProgressBar::new();
+        let detail = gtk::Label::new(None);
+        detail.set_xalign(0.0);
+        detail.add_css_class("dim-label");
+        detail.add_css_class("caption");
+        detail.set_wrap(true);
         let cancel_btn = button(&tr("Cancel"));
         cancel_btn.set_halign(gtk::Align::End);
+        super::audit::label(&cancel_btn, &tr("Cancel the backup"));
         box_busy.append(&stage);
         box_busy.append(&bar);
+        box_busy.append(&detail);
         box_busy.append(&cancel_btn);
         box_busy.set_visible(false);
 
@@ -162,6 +265,16 @@ impl Panel {
             parent: parent.clone(),
             on_restore,
             on_local_change,
+            on_reloaded,
+            banner: banner.clone(),
+            estimates: RefCell::new(HashMap::new()),
+            bases: RefCell::new(HashMap::new()),
+            extras: RefCell::new(HashMap::new()),
+            dev_restore: RefCell::new(DevRestore::default()),
+            dlg: RefCell::new(None),
+            points: RefCell::new(Vec::new()),
+            detail,
+            job: Cell::new(None),
             where_group,
             schedule_group,
             restore_group,
@@ -177,7 +290,7 @@ impl Panel {
             cancel_btn,
             cancel: RefCell::new(Arc::new(AtomicBool::new(false))),
             busy: Cell::new(false),
-            progress: Arc::new(Mutex::new((String::new(), 0.0))),
+            progress: Arc::new(Mutex::new(Prog::default())),
             pass_row,
             exit_switch,
             daily_switch,
@@ -185,6 +298,14 @@ impl Panel {
             kdf: Kdf::DEFAULT,
         });
         p.schedule_group.add(&p.box_busy);
+        {
+            let weak = Rc::downgrade(&p);
+            banner_btn.connect_clicked(move |_| {
+                if let Some(p) = weak.upgrade() {
+                    p.run_now(Rc::new(|_| {}));
+                }
+            });
+        }
         p.wire();
         p.refresh();
         p
@@ -241,7 +362,11 @@ impl Panel {
             move |_| {
                 if let Some(p) = weak.upgrade() {
                     p.cancel.borrow().store(true, Ordering::Relaxed);
+                    if let Some(j) = p.job.get() {
+                        crate::jobs::cancel(j);
+                    }
                     p.stage.set_text(&tr("Cancelling…"));
+                    p.detail.set_text("");
                 }
             }
         });
@@ -272,6 +397,7 @@ impl Panel {
     pub fn refresh(self: &Rc<Self>) {
         *self.found.borrow_mut() = places::detect_places();
         self.clear_rows();
+        self.bases.borrow_mut().clear();
         let root = self.shared.lib.borrow().root.clone();
         let local = bk::local_summary(&root);
         let r = row(
@@ -291,14 +417,14 @@ impl Panel {
             let note = bk::privacy_note(d, &found)
                 .map(|n| format!("\n{n}"))
                 .unwrap_or_default();
-            let r = row(
-                &d.name,
-                &format!(
-                    "{}\n{}{note}",
-                    bk::destination_subtitle(d, &found),
-                    bk::status_text(d)
-                ),
+            let base = format!(
+                "{}\n{}\n{}{note}",
+                bk::destination_subtitle(d, &found),
+                bk::scope_label(d),
+                bk::status_text(d)
             );
+            let r = row(&d.name, &base);
+            self.bases.borrow_mut().insert(d.id.clone(), base);
             r.add_prefix(&gtk::Image::from_icon_name(match d.kind {
                 DestKind::Webdav => "network-server-symbolic",
                 DestKind::Folder => match places::classify(Path::new(d.location.trim()), &found) {
@@ -311,16 +437,27 @@ impl Panel {
             on.set_valign(gtk::Align::Center);
             on.set_active(d.enabled);
             on.set_tooltip_text(Some(&tr("Copy to this place")));
+            super::audit::label(&on, &trf("Copy to {}", &[&d.name]));
+            let more = gtk::MenuButton::new();
+            more.set_icon_name("view-more-symbolic");
+            more.set_valign(gtk::Align::Center);
+            more.add_css_class("flat");
+            more.set_tooltip_text(Some(&tr("More for this place")));
+            super::audit::label(&more, &trf("More for {}", &[&d.name]));
             let edit = icon_button("document-edit-symbolic", &tr("Edit"));
+            super::audit::label(&edit, &trf("Edit {}", &[&d.name]));
             let del = icon_button(
                 "user-trash-symbolic",
                 &tr("Remove this place (the copies stay)"),
             );
+            super::audit::label(&del, &trf("Remove {}", &[&d.name]));
             r.add_suffix(&on);
+            r.add_suffix(&more);
             r.add_suffix(&edit);
             r.add_suffix(&del);
             let weak = Rc::downgrade(self);
             let id = d.id.clone();
+            self.fill_menu(&more, &id);
             on.connect_active_notify({
                 let (weak, id) = (weak.clone(), id.clone());
                 move |s| {
@@ -384,31 +521,129 @@ impl Panel {
         self.load_stats(&dests);
     }
 
-    /// Asks every destination what it holds, one worker each, and puts it under its name.
+    /// The actions of one place, in a small popover.
+    fn fill_menu(self: &Rc<Self>, more: &gtk::MenuButton, id: &str) {
+        let pop = gtk::Popover::new();
+        let col = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        let items: [(String, u8); 4] = [
+            (tr("Back Up This Place"), 0),
+            (tr("Check Backup"), 1),
+            (tr("Check Backup in Depth"), 2),
+            (tr("Remove Old Backups"), 3),
+        ];
+        for (label, what) in items {
+            let b = gtk::Button::with_label(&label);
+            b.add_css_class("flat");
+            if what == 2 {
+                b.set_tooltip_text(Some(&tr(
+                    "Reads every file back and compares it. Slow on a network place.",
+                )));
+            }
+            let (weak, id, pop2) = (Rc::downgrade(self), id.to_string(), pop.clone());
+            b.connect_clicked(move |_| {
+                pop2.popdown();
+                let Some(p) = weak.upgrade() else { return };
+                match what {
+                    0 => p.run_places(Some(id.clone()), Rc::new(|_| {})),
+                    1 => p.check_place(&id, false),
+                    2 => p.check_place(&id, true),
+                    _ => p.ask_clean(&id),
+                }
+            });
+            col.append(&b);
+        }
+        pop.set_child(Some(&col));
+        more.set_popover(Some(&pop));
+    }
+
+    fn passphrase(&self) -> String {
+        self.shared.cfg.borrow().health.backup.passphrase.clone()
+    }
+
+    fn place(&self, id: &str) -> Option<Destination> {
+        self.shared
+            .cfg
+            .borrow()
+            .health
+            .backup
+            .destinations
+            .iter()
+            .find(|d| d.id == id)
+            .cloned()
+    }
+
+    /// Rebuilds the text of a place from its fixed part and what was learned about it.
+    fn render_place(&self, id: &str) {
+        let row = self.detail_rows.borrow().get(id).cloned();
+        let (Some(row), Some(base)) = (row, self.bases.borrow().get(id).cloned()) else {
+            return;
+        };
+        let ex = self.extras.borrow().get(id).cloned().unwrap_or_default();
+        let mut text = esc(&base);
+        for line in [&ex.stats, &ex.plan, &ex.note] {
+            if !line.is_empty() {
+                text.push('\n');
+                text.push_str(&esc(line));
+            }
+        }
+        row.set_subtitle(&text);
+    }
+
+    fn set_extra(&self, id: &str, f: impl FnOnce(&mut PlaceExtra)) {
+        f(self.extras.borrow_mut().entry(id.to_string()).or_default());
+        self.render_place(id);
+    }
+
+    /// Asks every place what it holds and what the next backup would copy, one worker each, and puts
+    /// it under its name. The estimate is shown before anything is copied.
     fn load_stats(self: &Rc<Self>, dests: &[Destination]) {
+        self.extras.borrow_mut().clear();
+        self.estimates.borrow_mut().clear();
+        self.update_banner();
+        let pass = self.passphrase();
+        let (root, store) = (
+            self.shared.lib.borrow().root.clone(),
+            self.shared.guard.borrow().store.clone(),
+        );
         for d in dests.iter().filter(|d| d.enabled) {
-            let d2 = d.clone();
+            let (d2, pass2) = (d.clone(), pass.clone());
+            let (d3, pass3, root3, store3) = (d.clone(), pass.clone(), root.clone(), store.clone());
             let weak = Rc::downgrade(self);
             glib::spawn_future_local(async move {
-                let id = d2.id.clone();
+                let (id, name) = (d2.id.clone(), d2.name.clone());
                 let r = gio::spawn_blocking(move || {
-                    d2.target()
-                        .and_then(|t| bookx_backup::summarize(t.as_ref()))
-                        .map_err(|e| format!("{e:#}"))
+                    let r: anyhow::Result<String> = match bk::repo::repo_summary(&d2, &pass2) {
+                        Ok(Some(s)) => Ok(bk::repo::summary_text(&s)),
+                        Ok(None) => d2
+                            .target()
+                            .and_then(|t| bookx_backup::summarize(t.as_ref()))
+                            .map(|s| {
+                                let mut t = if s.count == 0 {
+                                    tr("No backups yet")
+                                } else {
+                                    trf(
+                                        "{} (catalogue only)",
+                                        &[&bk::summary_line(s.count, s.bytes, s.newest)],
+                                    )
+                                };
+                                if let Some(f) = s.free {
+                                    t.push_str(&format!(
+                                        " · {}",
+                                        trf("{} free", &[&lh::size_text(f)])
+                                    ));
+                                }
+                                t
+                            }),
+                        Err(e) => Err(e),
+                    };
+                    r.map_err(|e| format!("{e:#}"))
                 })
                 .await
                 .unwrap_or_else(|_| Err("stopped unexpectedly".into()));
                 let Some(p) = weak.upgrade() else { return };
-                let row = p.detail_rows.borrow().get(&id).cloned();
-                let Some(row) = row else { return };
-                let base = row.subtitle().unwrap_or_default().to_string();
                 let line = match r {
-                    Ok(s) => {
-                        let mut t = bk::summary_line(s.count, s.bytes, s.newest);
-                        if let Some(f) = s.free {
-                            t.push_str(&format!(" · {} free", lh::size_text(f)));
-                        }
-                        eprintln!("backup: place {id} count={} ", s.count);
+                    Ok(t) => {
+                        eprintln!("backup_stats: {name} | {t}");
                         t
                     }
                     Err(e) => {
@@ -416,8 +651,53 @@ impl Panel {
                         trf("Cannot read this place now: {}", &[&e])
                     }
                 };
-                row.set_subtitle(&format!("{base}\n{}", esc(&line)));
+                p.set_extra(&id, |x| x.stats = line);
+                drop(p);
+                // one request stream per place: what it holds first, then what the next copy would add
+                let id = d3.id.clone();
+                let id2 = id.clone();
+                let (name, plan) = gio::spawn_blocking(move || {
+                    let lib = LibrarySource::with_store(&root3, store3);
+                    bk::repo::estimate_for(&lib, &[d3], &pass3, &AtomicBool::new(false))
+                        .into_iter()
+                        .find(|e| e.id == id2)
+                        .map(|e| (e.name, e.plan))
+                        .unwrap_or_else(|| (String::new(), Err("no answer".into())))
+                })
+                .await
+                .unwrap_or_else(|_| (String::new(), Err("stopped unexpectedly".into())));
+                let Some(p) = weak.upgrade() else { return };
+                let text = match &plan {
+                    Ok(pl) => bk::repo::plan_text(pl),
+                    Err(e) => trf("Cannot estimate the next backup: {}", &[e]),
+                };
+                eprintln!("backup_plan: {name} | {text}");
+                p.estimates.borrow_mut().insert(id.clone(), plan);
+                p.set_extra(&id, |x| x.plan = text);
+                p.update_banner();
             });
+        }
+    }
+
+    /// The one-time row that says what the first copy is and that it waits for the user.
+    fn update_banner(&self) {
+        let waiting: Vec<Plan> = {
+            let c = self.shared.cfg.borrow();
+            let est = self.estimates.borrow();
+            c.health
+                .backup
+                .destinations
+                .iter()
+                .filter(|d| d.enabled && !d.auto_ok && d.include_books)
+                .filter_map(|d| est.get(&d.id).and_then(|r| r.as_ref().ok()).cloned())
+                .collect()
+        };
+        match bk::repo::banner_text(&waiting) {
+            Some(t) => {
+                self.banner.set_subtitle(&esc(&t));
+                self.banner.set_visible(true);
+            }
+            None => self.banner.set_visible(false),
         }
     }
 
@@ -460,14 +740,80 @@ impl Panel {
         self.refresh();
     }
 
+    // -- long operations: one at a time, with progress, Cancel and an entry in the Jobs panel ----------
+
+    /// Starts an operation, or `None` when another one is running.
+    fn op_begin(self: &Rc<Self>, title: &str, stage: &str) -> Option<Op> {
+        if self.busy.replace(true) {
+            return None;
+        }
+        let (job, token) = crate::jobs::start(crate::jobs::Kind::Backup, title, true);
+        self.job.set(Some(job));
+        let cancel = Arc::new(AtomicBool::new(false));
+        *self.cancel.borrow_mut() = cancel.clone();
+        let progress = self.progress.clone();
+        *progress.lock().unwrap() = Prog {
+            stage: stage.to_string(),
+            detail: String::new(),
+            fraction: 0.02,
+        };
+        self.box_busy.set_visible(true);
+        self.cancel_btn.set_sensitive(true);
+        self.bar.set_fraction(0.0);
+        self.stage.set_text(stage);
+        self.detail.set_text("");
+        let weak = Rc::downgrade(self);
+        let tick = watch(
+            job,
+            token,
+            cancel.clone(),
+            progress.clone(),
+            move |p, asked| {
+                let Some(w) = weak.upgrade() else {
+                    return false;
+                };
+                if !w.busy.get() {
+                    return false;
+                }
+                if !asked {
+                    w.stage.set_text(&p.stage);
+                    w.detail.set_text(&p.detail);
+                }
+                w.bar.set_fraction(p.fraction);
+                true
+            },
+        );
+        Some(Op {
+            cancel,
+            job,
+            tick,
+            progress,
+        })
+    }
+
+    fn op_end(&self, op: Op, result: Result<(), String>) {
+        op.tick.remove();
+        crate::jobs::log(op.job, &self.stage.text());
+        crate::jobs::finish(op.job, result);
+        self.job.set(None);
+        self.busy.set(false);
+        self.box_busy.set_visible(false);
+    }
+
     // -- back up now -------------------------------------------------------------------------------
 
-    /// A snapshot on this computer, then a copy to every switched-on place, with progress.
-    /// `done` is called with (books, per-place results) when finished.
-    pub fn run_now(self: &Rc<Self>, done: Rc<dyn Fn(Result<usize, String>)>) {
-        if self.busy.replace(true) {
-            return;
-        }
+    /// A snapshot on this computer, then a backup to every switched-on place, with progress. `done`
+    /// is called with (books, what to tell the user) when finished.
+    pub fn run_now(self: &Rc<Self>, done: Rc<dyn Fn(Result<(usize, String), String>)>) {
+        self.run_places(None, done);
+    }
+
+    /// As [`Panel::run_now`], for one place (`Some(id)`) or all of them.
+    pub fn run_places(
+        self: &Rc<Self>,
+        only: Option<String>,
+        done: Rc<dyn Fn(Result<(usize, String), String>)>,
+    ) {
         let store = self.shared.guard.borrow().store.clone();
         let root = self.shared.lib.borrow().root.clone();
         let (dests, pass) = {
@@ -477,110 +823,212 @@ impl Panel {
                     .backup
                     .destinations
                     .iter()
-                    .filter(|d| d.enabled)
+                    .filter(|d| d.enabled && only.as_ref().is_none_or(|o| *o == d.id))
                     .cloned()
                     .collect::<Vec<_>>(),
                 c.health.backup.passphrase.clone(),
             )
         };
-        let cancel = Arc::new(AtomicBool::new(false));
-        *self.cancel.borrow_mut() = cancel.clone();
-        let progress = self.progress.clone();
-        *progress.lock().unwrap() = ("Saving a snapshot".into(), 0.02);
-        self.box_busy.set_visible(true);
-        self.cancel_btn.set_sensitive(!dests.is_empty());
-        self.bar.set_fraction(0.0);
-        self.stage.set_text(&tr("Saving a snapshot"));
-        // the bar follows what the worker reports
-        let weak = Rc::downgrade(self);
-        let tick = glib::timeout_add_local(std::time::Duration::from_millis(120), {
-            let progress = progress.clone();
-            move || {
-                let Some(p) = weak.upgrade() else {
-                    return glib::ControlFlow::Break;
-                };
-                if !p.busy.get() {
-                    return glib::ControlFlow::Break;
-                }
-                let (t, f) = progress.lock().unwrap().clone();
-                if !p.cancel.borrow().load(Ordering::Relaxed) {
-                    p.stage.set_text(&t);
-                }
-                p.bar.set_fraction(f);
-                glib::ControlFlow::Continue
-            }
-        });
+        let Some(op) = self.op_begin(&tr("Backing up"), &tr("Saving a snapshot")) else {
+            return;
+        };
+        let (cancel, progress) = (op.cancel.clone(), op.progress.clone());
         let kdf = self.kdf;
         let weak = Rc::downgrade(self);
         glib::spawn_future_local(async move {
             let r = gio::spawn_blocking(move || {
                 let snap = health::take_snapshot(&store, &root, SnapshotKind::Manual, Utc::now())
                     .map_err(|e| format!("{e:#}"))?;
+                let lib = LibrarySource::with_store(&root, store);
+                let names: Vec<String> = dests.iter().map(|d| d.name.clone()).collect();
                 let n = dests.len().max(1) as f64;
-                let seen = std::cell::Cell::new(0usize);
-                let outcomes = bk::push_all(
+                let outcomes = bk::repo::run_all(
+                    &lib,
                     &dests,
                     &pass,
-                    &snap,
+                    true,
                     Utc::now(),
                     kdf,
                     &cancel,
                     &|name, p| {
-                        if p.stage == bookx_backup::PushStage::Done {
-                            seen.set(seen.get() + 1);
-                        }
-                        *progress.lock().unwrap() = (
-                            format!("{}: {}", name, p.stage.label()),
-                            0.05 + 0.95 * (seen.get() as f64 + p.fraction.min(0.99)) / n,
-                        );
+                        let i = names.iter().position(|x| x == name).unwrap_or(0) as f64;
+                        *progress.lock().unwrap() = Prog {
+                            stage: bk::repo::progress_stage(name, p),
+                            detail: bk::repo::progress_detail(p),
+                            fraction: (i + bk::repo::progress_fraction(p)) / n,
+                        };
                     },
                 );
                 Ok::<_, String>((snap.books, outcomes))
             })
             .await
             .unwrap_or_else(|_| Err("the backup stopped unexpectedly".into()));
-            tick.remove();
             let Some(p) = weak.upgrade() else { return };
-            p.busy.set(false);
-            p.box_busy.set_visible(false);
             match r {
-                Err(e) => done(Err(e)),
+                Err(e) => {
+                    p.op_end(op, Err(e.clone()));
+                    done(Err(e));
+                }
                 Ok((books, outcomes)) => {
-                    p.finish(&outcomes);
+                    let failed = outcomes
+                        .iter()
+                        .filter(|o| o.result.is_err() && !o.cancelled)
+                        .count();
+                    p.op_end(
+                        op,
+                        if failed > 0 {
+                            Err(trf("{} failed", &[&lh::plural(failed, "place")]))
+                        } else {
+                            Ok(())
+                        },
+                    );
+                    let msg = p.finish(&outcomes);
                     (p.on_local_change)();
-                    done(Ok(books));
+                    done(Ok((books, msg)));
                 }
             }
         });
     }
 
-    fn finish(self: &Rc<Self>, outcomes: &[bk::Outcome]) {
+    /// Records the outcomes, logs them and says what happened. Returns the message.
+    fn finish(self: &Rc<Self>, outcomes: &[bk::repo::RepoOutcome]) -> String {
         let now = Utc::now();
-        self.save_cfg(|c| bk::apply(&mut c.health.backup, outcomes, now));
-        let ok = outcomes.iter().filter(|o| o.result.is_ok()).count();
-        let bad: Vec<String> = outcomes
-            .iter()
-            .filter(|o| o.result.is_err() && !o.cancelled)
-            .map(|o| format!("{}: {}", o.name, o.result.as_ref().unwrap_err()))
-            .collect();
+        self.save_cfg(|c| bk::repo::apply_repo(&mut c.health.backup, outcomes, now));
         for o in outcomes {
+            let enc = self.place(&o.id).is_some_and(|d| d.encrypt);
             match &o.result {
                 Ok(r) => eprintln!(
-                    "backup: copied {} encrypted={} verified={}",
-                    o.name, r.encrypted, r.verified
+                    "backup: copied {} encrypted={} verified={} new_files={} reused_files={} up_to_date={} left_out={}",
+                    o.name,
+                    enc,
+                    r.verified,
+                    r.new_files,
+                    r.reused_files,
+                    r.up_to_date,
+                    r.too_big.len() + r.skipped.len()
                 ),
                 Err(_) if o.cancelled => eprintln!("backup: cancelled {}", o.name),
                 Err(e) => eprintln!("backup: failed {} {e}", o.name),
             }
         }
-        if outcomes.iter().any(|o| o.cancelled) {
-            self.say(tr("Backup cancelled; the copy in progress was removed"));
-        } else if !bad.is_empty() {
-            self.say(trf("Could not copy to: {}", &[&bad.join("; ")]));
-        } else if ok > 0 {
-            self.say(trf("Copied to {}", &[&lh::plural(ok, "place")]));
+        let msg = bk::repo::outcomes_text(outcomes);
+        if !msg.is_empty() {
+            self.say(msg.clone());
         }
         self.refresh();
+        msg
+    }
+
+    // -- check a place, remove its old backups ---------------------------------------------------------
+
+    fn check_place(self: &Rc<Self>, id: &str, deep: bool) {
+        let Some(d) = self.place(id) else { return };
+        let pass = self.passphrase();
+        let Some(op) = self.op_begin(
+            &trf("Checking the backup at {}", &[&d.name]),
+            &tr("Checking the backup"),
+        ) else {
+            return;
+        };
+        let (cancel, progress) = (op.cancel.clone(), op.progress.clone());
+        let (weak, id) = (Rc::downgrade(self), id.to_string());
+        glib::spawn_future_local(async move {
+            let d2 = d.clone();
+            let r = gio::spawn_blocking(move || {
+                bk::repo::check_place(&d2, &pass, deep, &cancel, &|done, total| {
+                    let f = if total == 0 {
+                        1.0
+                    } else {
+                        done as f64 / total as f64
+                    };
+                    let mut g = progress.lock().unwrap();
+                    g.fraction = f.clamp(0.0, 1.0);
+                    g.detail = trf("{} of {}", &[&lh::size_text(done), &lh::size_text(total)]);
+                })
+                .map_err(|e| format!("{e:#}"))
+            })
+            .await
+            .unwrap_or_else(|_| Err("stopped unexpectedly".into()));
+            let Some(p) = weak.upgrade() else { return };
+            let cancelled = p.cancel.borrow().load(Ordering::Relaxed);
+            let (text, res) = match r {
+                Ok(rep) => {
+                    let t = bk::repo::check_text(&rep);
+                    eprintln!("backup: check {} ok={} | {t}", d.name, rep.ok());
+                    let res = if rep.ok() { Ok(()) } else { Err(t.clone()) };
+                    (t, res)
+                }
+                Err(_) if cancelled => (tr("Check cancelled"), Ok(())),
+                Err(e) => {
+                    eprintln!("backup: check {} failed {e}", d.name);
+                    (trf("Could not check: {}", &[&e]), Err(e))
+                }
+            };
+            p.op_end(op, res);
+            p.set_extra(&id, |x| x.note = text.clone());
+            p.say(text);
+        });
+    }
+
+    fn ask_clean(self: &Rc<Self>, id: &str) {
+        let (weak, id) = (Rc::downgrade(self), id.to_string());
+        let go = move || {
+            if let Some(p) = weak.upgrade() {
+                p.clean_place(&id);
+            }
+        };
+        if autoconfirm() {
+            go();
+        } else {
+            super::alert(
+                &self.parent,
+                &tr("Remove old backups?"),
+                &tr("Backups beyond the number this place keeps are removed, and so are the files only they needed. Manual backups and the newest ones stay."),
+                &tr("Remove"),
+                true,
+                go,
+            );
+        }
+    }
+
+    fn clean_place(self: &Rc<Self>, id: &str) {
+        let Some(d) = self.place(id) else { return };
+        let pass = self.passphrase();
+        let Some(op) = self.op_begin(
+            &trf("Removing old backups at {}", &[&d.name]),
+            &tr("Removing old backups"),
+        ) else {
+            return;
+        };
+        let cancel = op.cancel.clone();
+        let (weak, id) = (Rc::downgrade(self), id.to_string());
+        glib::spawn_future_local(async move {
+            let d2 = d.clone();
+            let r = gio::spawn_blocking(move || {
+                bk::repo::clean_place(&d2, &pass, Utc::now(), &cancel).map_err(|e| format!("{e:#}"))
+            })
+            .await
+            .unwrap_or_else(|_| Err("stopped unexpectedly".into()));
+            let Some(p) = weak.upgrade() else { return };
+            let text = match &r {
+                Ok(rep) => {
+                    let t = bk::repo::clean_text(rep);
+                    eprintln!(
+                        "backup: clean {} snapshots={} files={} | {t}",
+                        d.name, rep.snapshots_removed, rep.files_removed
+                    );
+                    t
+                }
+                Err(e) => {
+                    eprintln!("backup: clean {} failed {e}", d.name);
+                    trf("Could not remove old backups: {}", &[e])
+                }
+            };
+            p.op_end(op, r.map(|_| ()));
+            p.say(text.clone());
+            p.refresh();
+            p.set_extra(&id, |x| x.note = text);
+        });
     }
 
     // -- restore from a destination ---------------------------------------------------------------------
@@ -636,7 +1084,8 @@ impl Panel {
             .cloned()
     }
 
-    /// Lists the backups at the destination chosen in the combo.
+    /// Lists the backups at the place chosen in the combo: the snapshots of the book backup first,
+    /// then the old whole-catalogue files that may sit next to them.
     fn show_remote_backups(self: &Rc<Self>) {
         // the rows after the combo are replaced; the combo itself stays
         let keep: Vec<gtk::Widget> = self.restore_rows.borrow_mut().drain(..).collect();
@@ -649,26 +1098,27 @@ impl Panel {
         let Some(d) = self.selected_destination() else {
             return;
         };
-        let loading = row(&tr("Looking…"), &d.name);
+        let loading = row(&tr("Looking"), &d.name);
         self.restore_group.add(&loading);
         self.restore_rows
             .borrow_mut()
             .push(loading.clone().upcast());
+        let pass = self.passphrase();
         let weak = Rc::downgrade(self);
         glib::spawn_future_local(async move {
             let d2 = d.clone();
-            let r = gio::spawn_blocking(move || {
-                d2.target()
-                    .and_then(|t| bookx_backup::list_backups(t.as_ref()))
-                    .map(|v| {
-                        v.into_iter()
-                            .map(|(f, n)| (f.name, f.size, n))
-                            .collect::<Vec<_>>()
-                    })
-                    .map_err(|e| format!("{e:#}"))
+            let (legacy, repo) = gio::spawn_blocking(move || {
+                let (legacy, repo) = bk::repo::listing(&d2, &pass);
+                (
+                    legacy
+                        .into_iter()
+                        .map(|(f, n)| (f.name, f.size, n))
+                        .collect::<Vec<_>>(),
+                    repo.map_err(|e| format!("{e:#}")),
+                )
             })
             .await
-            .unwrap_or_else(|_| Err("stopped unexpectedly".into()));
+            .unwrap_or_else(|_| (Vec::new(), Err("stopped unexpectedly".into())));
             let Some(p) = weak.upgrade() else { return };
             // another place was picked (or the list rebuilt) meanwhile
             if p.generation.get() != gen {
@@ -676,46 +1126,453 @@ impl Panel {
             }
             p.restore_group.remove(&loading);
             p.restore_rows.borrow_mut().clear();
-            match r {
-                Err(e) => {
-                    let r = row(&tr("Cannot read this place"), &e);
-                    p.restore_group.add(&r);
-                    p.restore_rows.borrow_mut().push(r.upcast());
-                }
-                Ok(list) if list.is_empty() => {
-                    let r = row(&tr("No backups here yet"), &d.name);
-                    p.restore_group.add(&r);
-                    p.restore_rows.borrow_mut().push(r.upcast());
-                }
-                Ok(list) => {
-                    eprintln!("backup: remote list {} count={}", d.id, list.len());
-                    for (name, size, n) in list.into_iter().take(12) {
+            let read_only = p.shared.lib.borrow().is_read_only();
+            let mut shown = 0usize;
+            match repo {
+                Ok(choices) => {
+                    eprintln!(
+                        "backup: remote list {} count={} legacy={}",
+                        d.id,
+                        choices.points.len(),
+                        legacy.len()
+                    );
+                    if let Some(t) = choices.notes_until {
                         let r = row(
-                            &lh::when(n.at),
+                            &tr("Notes are protected"),
+                            &trf(
+                                "Highlights, notes and bookmarks up to {} come back with a restore.",
+                                &[&lh::when(t)],
+                            ),
+                        );
+                        p.restore_group.add(&r);
+                        p.restore_rows.borrow_mut().push(r.upcast());
+                    }
+                    *p.points.borrow_mut() = choices
+                        .points
+                        .iter()
+                        .map(|pt| (d.clone(), pt.clone(), choices.encrypted))
+                        .collect();
+                    for pt in choices.points.iter().take(12) {
+                        let r = row(
+                            &lh::when(pt.at),
                             &format!(
-                                "{} · {}{} · {}",
-                                lh::plural(n.books, "book"),
-                                n.kind.label(),
-                                if n.encrypted { " · encrypted" } else { "" },
-                                lh::size_text(size)
+                                "{} · {} · {}{}",
+                                lh::plural(pt.books, "book"),
+                                lh::plural(pt.files, "file"),
+                                lh::size_text(pt.bytes),
+                                if pt.manual {
+                                    format!(" · {}", tr("manual"))
+                                } else {
+                                    String::new()
+                                },
                             ),
                         );
                         let b = button(&tr("Restore"));
-                        b.set_sensitive(!p.shared.lib.borrow().is_read_only());
+                        super::audit::label(
+                            &b,
+                            &trf("Restore the backup of {}", &[&lh::when(pt.at)]),
+                        );
+                        b.set_sensitive(!read_only);
                         r.add_suffix(&b);
-                        let (weak, d, name) = (Rc::downgrade(&p), d.clone(), name.clone());
+                        let (weak, d, pt) = (Rc::downgrade(&p), d.clone(), pt.clone());
+                        let enc = choices.encrypted;
                         b.connect_clicked(move |_| {
                             if let Some(p) = weak.upgrade() {
-                                p.ask_restore_remote(d.clone(), name.clone(), n.encrypted);
+                                p.ask_restore_repo(d.clone(), pt.clone(), enc);
                             }
                         });
                         p.restore_btns.borrow_mut().push(b);
                         p.restore_group.add(&r);
                         p.restore_rows.borrow_mut().push(r.upcast());
+                        shown += 1;
+                    }
+                    for (name, why) in choices.unreadable.iter().take(3) {
+                        let r = row(&tr("A backup cannot be read"), &format!("{name}: {why}"));
+                        p.restore_group.add(&r);
+                        p.restore_rows.borrow_mut().push(r.upcast());
                     }
                 }
+                Err(e) if legacy.is_empty() => {
+                    let r = row(&tr("Cannot read this place"), &e);
+                    p.restore_group.add(&r);
+                    p.restore_rows.borrow_mut().push(r.upcast());
+                    shown += 1;
+                }
+                Err(e) => {
+                    let r = row(&tr("Cannot read the backups of the books here"), &e);
+                    p.restore_group.add(&r);
+                    p.restore_rows.borrow_mut().push(r.upcast());
+                }
+            }
+            for (name, size, n) in legacy.into_iter().take(12) {
+                let r = row(
+                    &lh::when(n.at),
+                    &format!(
+                        "{} · {}{} · {} · {}",
+                        lh::plural(n.books, "book"),
+                        n.kind.label(),
+                        if n.encrypted { " · encrypted" } else { "" },
+                        lh::size_text(size),
+                        tr("catalogue only"),
+                    ),
+                );
+                let b = button(&tr("Restore"));
+                super::audit::label(
+                    &b,
+                    &trf("Restore the catalogue backup of {}", &[&lh::when(n.at)]),
+                );
+                b.set_sensitive(!read_only);
+                r.add_suffix(&b);
+                let (weak, d, name) = (Rc::downgrade(&p), d.clone(), name.clone());
+                b.connect_clicked(move |_| {
+                    if let Some(p) = weak.upgrade() {
+                        p.ask_restore_remote(d.clone(), name.clone(), n.encrypted);
+                    }
+                });
+                p.restore_btns.borrow_mut().push(b);
+                p.restore_group.add(&r);
+                p.restore_rows.borrow_mut().push(r.upcast());
+                shown += 1;
+            }
+            if shown == 0 {
+                let r = row(&tr("No backups here yet"), &d.name);
+                p.restore_group.add(&r);
+                p.restore_rows.borrow_mut().push(r.upcast());
             }
             p.add_file_row();
+        });
+    }
+
+    // -- restoring a book backup ---------------------------------------------------------------------
+
+    fn ask_restore_repo(self: &Rc<Self>, d: Destination, pt: bk::repo::RestorePoint, enc: bool) {
+        self.with_passphrase(enc, move |p, pass| {
+            let pass = pass.unwrap_or_default();
+            if autoconfirm() {
+                let dev = p.dev_restore.borrow().clone();
+                let root = p.shared.lib.borrow().root.clone();
+                let target = dev.target.unwrap_or(root);
+                let mode = if dev.missing_only {
+                    RestoreMode::MissingOnly
+                } else {
+                    RestoreMode::ReplaceAll
+                };
+                p.restore_flow(d.clone(), pass, pt.snapshot.clone(), target, mode, true);
+            } else {
+                p.restore_dialog(d.clone(), pass, pt.clone());
+            }
+        });
+    }
+
+    /// Asks where to restore to and how, shows what would change, and only then restores.
+    fn restore_dialog(self: &Rc<Self>, d: Destination, pass: String, pt: bk::repo::RestorePoint) {
+        let root = self.shared.lib.borrow().root.clone();
+        let empty = self.shared.lib.borrow().books.is_empty();
+        let dialog = adw::Dialog::new();
+        dialog.set_title(&tr("Restore Backup"));
+        dialog.set_content_width(480);
+        let group = adw::PreferencesGroup::new();
+        group.set_description(Some(&esc(&format!(
+            "{} — {} · {} · {}",
+            d.name,
+            lh::when(pt.at),
+            lh::plural(pt.books, "book"),
+            lh::size_text(pt.bytes)
+        ))));
+        let into = adw::ComboRow::builder()
+            .title(tr("Restore into"))
+            .model(&gtk::StringList::new(&[
+                &tr("This library"),
+                &tr("Another folder"),
+            ]))
+            .build();
+        into.set_subtitle(&esc(&root.display().to_string()));
+        let folder = adw::EntryRow::new();
+        folder.set_title(&tr("Folder"));
+        folder.set_visible(false);
+        let pick = button(&tr("Choose"));
+        folder.add_suffix(&pick);
+        let mode = adw::ComboRow::builder()
+            .title(tr("What to restore"))
+            .model(&gtk::StringList::new(&[
+                &tr("Replace everything"),
+                &tr("Only the missing books"),
+            ]))
+            .build();
+        mode.set_subtitle(&tr(
+            "Replacing saves the current catalogue first. Missing only never changes a file or the catalogue that is already there.",
+        ));
+        mode.set_selected(if empty { 0 } else { 1 });
+        let preview = row(
+            &tr("What will happen"),
+            &tr("Press Preview to see it first"),
+        );
+        let preview_btn = button(&tr("Preview"));
+        preview.add_suffix(&preview_btn);
+        group.add(&into);
+        group.add(&folder);
+        group.add(&mode);
+        group.add(&preview);
+        let page = adw::PreferencesPage::new();
+        page.add(&group);
+        let restore = button(&tr("Restore"));
+        restore.add_css_class("destructive-action");
+        restore.set_sensitive(false);
+        let cancel = button(&tr("Cancel"));
+        let header = adw::HeaderBar::new();
+        header.set_show_end_title_buttons(false);
+        header.pack_start(&cancel);
+        header.pack_end(&restore);
+        let view = adw::ToolbarView::new();
+        view.add_top_bar(&header);
+        view.set_content(Some(&page));
+        dialog.set_child(Some(&view));
+        {
+            let dialog = dialog.clone();
+            cancel.connect_clicked(move |_| {
+                dialog.close();
+            });
+        }
+        let target = {
+            let (into, folder, root) = (into.clone(), folder.clone(), root.clone());
+            move || -> Option<PathBuf> {
+                if into.selected() == 0 {
+                    Some(root.clone())
+                } else {
+                    let t = folder.text().trim().to_string();
+                    (!t.is_empty()).then(|| PathBuf::from(t))
+                }
+            }
+        };
+        let mode_of = {
+            let mode = mode.clone();
+            move || {
+                if mode.selected() == 0 {
+                    RestoreMode::ReplaceAll
+                } else {
+                    RestoreMode::MissingOnly
+                }
+            }
+        };
+        let reset: Rc<dyn Fn()> = {
+            let (restore, preview) = (restore.clone(), preview.clone());
+            Rc::new(move || {
+                restore.set_sensitive(false);
+                preview.set_subtitle(&tr("Press Preview to see it first"));
+            })
+        };
+        {
+            let (folder2, reset1) = (folder.clone(), reset.clone());
+            into.connect_selected_notify(move |c| {
+                folder2.set_visible(c.selected() == 1);
+                reset1();
+            });
+            let reset2 = reset.clone();
+            mode.connect_selected_notify(move |_| reset2());
+            let reset3 = reset.clone();
+            folder.connect_changed(move |_| reset3());
+        }
+        {
+            let (folder, parent) = (folder.clone(), self.parent.clone());
+            pick.connect_clicked(move |_| {
+                let dlg = gtk::FileDialog::builder()
+                    .title(tr("Choose the Folder to Restore Into"))
+                    .build();
+                let folder = folder.clone();
+                dlg.select_folder(
+                    window_of(&parent).as_ref(),
+                    gio::Cancellable::NONE,
+                    move |res| {
+                        if let Some(p) = res.ok().and_then(|f| f.path()) {
+                            folder.set_text(&p.display().to_string());
+                        }
+                    },
+                );
+            });
+        }
+        {
+            let (d, pass, pt, target, mode_of) = (
+                d.clone(),
+                pass.clone(),
+                pt.clone(),
+                target.clone(),
+                mode_of.clone(),
+            );
+            let (preview, restore, btn) = (preview.clone(), restore.clone(), preview_btn.clone());
+            btn.connect_clicked(move |b| {
+                let Some(to) = target() else {
+                    preview.set_subtitle(&tr("Choose a folder first"));
+                    return;
+                };
+                b.set_sensitive(false);
+                preview.set_subtitle(&tr("Looking"));
+                let (d, pass, snap, mode) =
+                    (d.clone(), pass.clone(), pt.snapshot.clone(), mode_of());
+                let (preview, restore, b) = (preview.clone(), restore.clone(), b.clone());
+                glib::spawn_future_local(async move {
+                    let r = gio::spawn_blocking(move || {
+                        bk::repo::restore_from_place(
+                            &d,
+                            &pass,
+                            Some(&snap),
+                            &to,
+                            mode,
+                            true,
+                            None,
+                            &AtomicBool::new(false),
+                            &|_| {},
+                        )
+                        .map_err(|e| format!("{e:#}"))
+                    })
+                    .await
+                    .unwrap_or_else(|_| Err("stopped unexpectedly".into()));
+                    b.set_sensitive(true);
+                    match r {
+                        Ok(rep) => {
+                            preview.set_subtitle(&esc(&bk::repo::restore_plan_text(&rep)));
+                            restore.set_sensitive(true);
+                        }
+                        Err(e) => preview.set_subtitle(&esc(&trf("Cannot restore: {}", &[&e]))),
+                    }
+                });
+            });
+        }
+        {
+            let weak = Rc::downgrade(self);
+            let dialog = dialog.clone();
+            let (d, pass, pt) = (d.clone(), pass.clone(), pt.clone());
+            restore.connect_clicked(move |_| {
+                let (Some(p), Some(to)) = (weak.upgrade(), target()) else {
+                    return;
+                };
+                dialog.close();
+                p.restore_flow(
+                    d.clone(),
+                    pass.clone(),
+                    pt.snapshot.clone(),
+                    to,
+                    mode_of(),
+                    false,
+                );
+            });
+        }
+        *self.dlg.borrow_mut() = Some(Dlg {
+            mode: mode.clone(),
+            preview_btn: preview_btn.clone(),
+            restore: restore.clone(),
+            preview: preview.clone(),
+        });
+        let weak = Rc::downgrade(self);
+        dialog.connect_closed(move |_| {
+            if let Some(p) = weak.upgrade() {
+                *p.dlg.borrow_mut() = None;
+            }
+        });
+        dialog.present(Some(&self.parent));
+    }
+
+    /// Restores (after a dry run when `dry_first`: the developer script has no one to ask), with
+    /// progress and Cancel, then reloads the library when it was the one that changed.
+    fn restore_flow(
+        self: &Rc<Self>,
+        d: Destination,
+        pass: String,
+        snapshot: String,
+        target: PathBuf,
+        mode: RestoreMode,
+        dry_first: bool,
+    ) {
+        let Some(op) = self.op_begin(
+            &trf("Restoring from {}", &[&d.name]),
+            &tr("Looking at the backup"),
+        ) else {
+            return;
+        };
+        let (cancel, progress) = (op.cancel.clone(), op.progress.clone());
+        let into_library = target == self.shared.lib.borrow().root;
+        let (weak, to2) = (Rc::downgrade(self), target.clone());
+        glib::spawn_future_local(async move {
+            let r = gio::spawn_blocking(move || {
+                let report = |p: &bookx_backup::repo::RunProgress| {
+                    *progress.lock().unwrap() = Prog {
+                        stage: tr("Restoring files"),
+                        detail: bk::repo::progress_detail(p),
+                        fraction: bk::repo::progress_fraction(p),
+                    };
+                };
+                let dry = if dry_first {
+                    let r = bk::repo::restore_from_place(
+                        &d,
+                        &pass,
+                        Some(&snapshot),
+                        &target,
+                        mode,
+                        true,
+                        None,
+                        &cancel,
+                        &|_| {},
+                    )
+                    .map_err(|e| format!("{e:#}"))?;
+                    Some(r)
+                } else {
+                    None
+                };
+                let done = bk::repo::restore_from_place(
+                    &d,
+                    &pass,
+                    Some(&snapshot),
+                    &target,
+                    mode,
+                    false,
+                    None,
+                    &cancel,
+                    &report,
+                )
+                .map_err(|e| format!("{e:#}"))?;
+                Ok::<_, String>((dry, done))
+            })
+            .await
+            .unwrap_or_else(|_| Err("stopped unexpectedly".into()));
+            let Some(p) = weak.upgrade() else { return };
+            let cancelled = p.cancel.borrow().load(Ordering::Relaxed);
+            match r {
+                Ok((dry, rep)) => {
+                    p.op_end(op, Ok(()));
+                    if let Some(dry) = dry {
+                        eprintln!(
+                            "backup: restore plan | {}",
+                            bk::repo::restore_plan_text(&dry)
+                        );
+                    }
+                    let mut msg = bk::repo::restore_done_text(&rep);
+                    eprintln!(
+                        "backup: restored files={} failed={} catalogue={:?} into={}",
+                        rep.files_written,
+                        rep.failed.len(),
+                        rep.catalogue,
+                        to2.display()
+                    );
+                    if into_library {
+                        (p.on_reloaded)();
+                    } else {
+                        msg.push(' ');
+                        msg.push_str(&trf(
+                            "It is in {}. Open that folder as a library to use it.",
+                            &[&to2.display()],
+                        ));
+                    }
+                    p.say(msg);
+                }
+                Err(_) if cancelled => {
+                    p.op_end(op, Ok(()));
+                    p.say(tr("Restore cancelled; files already restored are complete"));
+                }
+                Err(e) => {
+                    eprintln!("backup: restore failed {e}");
+                    p.op_end(op, Err(e.clone()));
+                    p.say(trf("Could not restore: {}", &[&e]));
+                }
+            }
         });
     }
 
@@ -952,8 +1809,41 @@ impl Panel {
         encrypt.set_title(&tr("Encrypt the copies"));
         encrypt.set_subtitle(&tr("With the backup passphrase (ChaCha20-Poly1305, key from Argon2id). Recommended for any place other people run."));
         encrypt.set_active(d0.encrypt);
+        let books = adw::SwitchRow::new();
+        books.set_title(&tr("Include book files"));
+        books.set_subtitle(&tr(
+            "Off: only the catalogue with your notes is copied, not the books",
+        ));
+        books.set_active(d0.include_books);
+        let covers = adw::SwitchRow::new();
+        covers.set_title(&tr("Include covers"));
+        covers.set_active(d0.include_covers);
+        let max_mb = adw::SpinRow::with_range(0.0, 100_000.0, 10.0);
+        max_mb.set_title(&tr("Largest file to copy, in MB"));
+        max_mb.set_subtitle(&tr(
+            "0 means no limit. Bigger files are left out and listed.",
+        ));
+        max_mb.set_value(d0.max_file_mb as f64);
+        let auto_first = adw::SwitchRow::new();
+        auto_first.set_title(&tr("Make the first copy automatically"));
+        auto_first.set_subtitle(&esc(&match self.estimates.borrow().get(&d0.id) {
+            Some(Ok(p)) => format!(
+                "{} {}",
+                bk::repo::plan_text(p),
+                tr("Off: nothing is copied until you press Back Up.")
+            ),
+            _ => tr("Off: nothing is copied until you press Back Up. Switch on to let Bookx make the first copy when it closes."),
+        }));
+        auto_first.set_active(d0.auto_ok);
+        auto_first.set_visible(!d0.auto_ok);
         let result = row("", "");
         result.set_visible(false);
+        let scope_group = adw::PreferencesGroup::new();
+        scope_group.set_title(&tr("What to copy"));
+        scope_group.add(&books);
+        scope_group.add(&covers);
+        scope_group.add(&max_mb);
+        scope_group.add(&auto_first);
         common.add(&keep);
         common.add(&encrypt);
         common.add(&result);
@@ -1119,6 +2009,12 @@ impl Panel {
 
         // build the destination from the fields
         let collect = {
+            let (books, covers, max_mb, auto_first) = (
+                books.clone(),
+                covers.clone(),
+                max_mb.clone(),
+                auto_first.clone(),
+            );
             let (kind, name, folder, url, user, pass, dav_folder, keep, encrypt) = (
                 kind.clone(),
                 name.clone(),
@@ -1149,6 +2045,10 @@ impl Panel {
                 d.folder = dav_folder.text().trim().to_string();
                 d.keep = keep.value() as usize;
                 d.encrypt = encrypt.is_active();
+                d.include_books = books.is_active();
+                d.include_covers = covers.is_active();
+                d.max_file_mb = max_mb.value() as u64;
+                d.auto_ok = d0.auto_ok || auto_first.is_active();
                 let n = name.text().trim().to_string();
                 d.name = if n.is_empty() {
                     d.location
@@ -1256,6 +2156,7 @@ impl Panel {
         page.add(&net_group);
         page.add(&cloud_group);
         page.add(&dav_group);
+        page.add(&scope_group);
         page.add(&common);
         let view = adw::ToolbarView::new();
         view.add_top_bar(&header);
@@ -1274,8 +2175,14 @@ impl Panel {
             let id = self.shared.cfg.borrow().health.backup.new_id();
             let mut d = Destination::folder(&id, parts[0], parts.get(1).copied().unwrap_or(""));
             d.encrypt = parts.contains(&"encrypt");
+            d.auto_ok = parts.contains(&"auto");
+            d.include_books = !parts.contains(&"nobooks");
+            d.include_covers = !parts.contains(&"nocovers");
             if let Some(k) = parts.iter().find_map(|p| p.strip_prefix("keep=")) {
                 d.keep = k.parse().unwrap_or(10);
+            }
+            if let Some(m) = parts.iter().find_map(|p| p.strip_prefix("maxmb=")) {
+                d.max_file_mb = m.parse().unwrap_or(0);
             }
             self.upsert(d);
             return true;
@@ -1304,6 +2211,84 @@ impl Panel {
         }
         if let Some(n) = cmd.strip_prefix("backup-pick=") {
             self.restore_pick.set_selected(n.parse().unwrap_or(0));
+            return true;
+        }
+        if let Some(m) = cmd.strip_prefix("backup-dialog-mode=") {
+            if let Some(d) = self.dlg.borrow().as_ref() {
+                d.mode.set_selected(if m == "missing" { 1 } else { 0 });
+            }
+            return true;
+        }
+        if let Some(m) = cmd.strip_prefix("backup-restore-mode=") {
+            self.dev_restore.borrow_mut().missing_only = m == "missing";
+            return true;
+        }
+        if let Some(t) = cmd.strip_prefix("backup-restore-to=") {
+            self.dev_restore.borrow_mut().target = Some(PathBuf::from(t));
+            return true;
+        }
+        if let Some(n) = cmd.strip_prefix("backup-place=") {
+            // `backup-place=N` backs up only the Nth place (1-based)
+            let id = n
+                .parse::<usize>()
+                .ok()
+                .and_then(|n| n.checked_sub(1))
+                .and_then(|i| {
+                    self.shared
+                        .cfg
+                        .borrow()
+                        .health
+                        .backup
+                        .destinations
+                        .get(i)
+                        .map(|d| d.id.clone())
+                });
+            if let Some(id) = id {
+                self.run_places(Some(id), Rc::new(|_| {}));
+            }
+            return true;
+        }
+        if let Some(n) = cmd
+            .strip_prefix("backup-check=")
+            .or_else(|| cmd.strip_prefix("backup-check-deep="))
+        {
+            let id = n
+                .parse::<usize>()
+                .ok()
+                .and_then(|n| n.checked_sub(1))
+                .and_then(|i| {
+                    self.shared
+                        .cfg
+                        .borrow()
+                        .health
+                        .backup
+                        .destinations
+                        .get(i)
+                        .map(|d| d.id.clone())
+                });
+            if let Some(id) = id {
+                self.check_place(&id, cmd.starts_with("backup-check-deep="));
+            }
+            return true;
+        }
+        if let Some(n) = cmd.strip_prefix("backup-clean=") {
+            let id = n
+                .parse::<usize>()
+                .ok()
+                .and_then(|n| n.checked_sub(1))
+                .and_then(|i| {
+                    self.shared
+                        .cfg
+                        .borrow()
+                        .health
+                        .backup
+                        .destinations
+                        .get(i)
+                        .map(|d| d.id.clone())
+                });
+            if let Some(id) = id {
+                self.ask_clean(&id);
+            }
             return true;
         }
         match cmd {
@@ -1346,6 +2331,49 @@ impl Panel {
                 self.refresh();
                 true
             }
+            "backup-restore-dialog" => {
+                // the real window, not the script's shortcut
+                let first = self.points.borrow().first().cloned();
+                match first {
+                    Some((d, pt, enc)) => {
+                        let saved = self.passphrase();
+                        let _ = enc;
+                        self.restore_dialog(d, saved, pt);
+                    }
+                    None => eprintln!("backup: no snapshot to restore"),
+                }
+                true
+            }
+            "backup-dialog-preview" => {
+                if let Some(d) = self.dlg.borrow().as_ref() {
+                    d.preview_btn.emit_clicked();
+                }
+                true
+            }
+            "backup-dialog-restore" => {
+                let b = self.dlg.borrow().as_ref().map(|d| d.restore.clone());
+                match b {
+                    Some(b) if b.is_sensitive() => b.emit_clicked(),
+                    _ => eprintln!("backup: the dialog does not allow restoring yet"),
+                }
+                true
+            }
+            "backup-dialog-dump" => {
+                match self.dlg.borrow().as_ref() {
+                    Some(d) => eprintln!(
+                        "backup_dialog: restore_sensitive={} mode={} | {}",
+                        d.restore.is_sensitive(),
+                        d.mode.selected(),
+                        d.preview.subtitle().unwrap_or_default()
+                    ),
+                    None => eprintln!("backup_dialog: closed"),
+                }
+                true
+            }
+            "backup-journal" => {
+                journal_now(&self.shared, self.kdf);
+                true
+            }
             _ => false,
         }
     }
@@ -1369,7 +2397,7 @@ impl Panel {
         eprintln!("backup_places: {}", b.destinations.len());
         for d in &b.destinations {
             eprintln!(
-                "backup_place: {} | {} | enabled={} | encrypt={} | {}",
+                "backup_place: {} | {} | enabled={} | encrypt={} | {} | books={} covers={} max_mb={} auto={}",
                 d.name,
                 d.status().label(),
                 d.enabled,
@@ -1377,7 +2405,11 @@ impl Panel {
                 match d.status() {
                     bookx_backup::DestStatus::Failed { error, .. } => error,
                     _ => String::new(),
-                }
+                },
+                d.include_books,
+                d.include_covers,
+                d.max_file_mb,
+                d.auto_ok
             );
         }
         eprintln!(
@@ -1385,6 +2417,12 @@ impl Panel {
             self.restore_btns.borrow().len()
         );
         eprintln!("backup_on_exit: {}", b.on_exit);
+        eprintln!(
+            "backup_banner: visible={} | {}",
+            self.banner.is_visible(),
+            self.banner.subtitle().unwrap_or_default()
+        );
+        eprintln!("backup_job: {:?}", self.job.get().is_some());
         eprintln!("backup_busy: {}", self.busy.get());
         eprintln!("backup_pass_set: {}", !b.passphrase.is_empty());
     }
@@ -1434,19 +2472,43 @@ fn mount_uri(
     );
 }
 
-// -- scheduled copies (on exit, once a day) --------------------------------------------------------------
+// -- scheduled copies (on exit, once a day, notes every few minutes) -----------------------------------
 
-/// The daily timer: every ten minutes, copy to the places that are due. Starts after `first` seconds.
+/// The timers: every ten minutes look at what is due for the daily copy, every five minutes record
+/// the notes that changed. Both stay quiet when nothing is switched on.
 pub fn start_timer(shared: &SharedRef, toast: Notify) {
-    let weak = Rc::downgrade(shared);
     let busy = Rc::new(Cell::new(false));
-    glib::timeout_add_seconds_local(600, move || {
+    let weak = Rc::downgrade(shared);
+    glib::timeout_add_seconds_local(600, {
+        let (toast, busy) = (toast.clone(), busy.clone());
+        move || {
+            let Some(shared) = weak.upgrade() else {
+                return glib::ControlFlow::Break;
+            };
+            tick(&shared, toast.clone(), busy.clone());
+            glib::ControlFlow::Continue
+        }
+    });
+    let weak = Rc::downgrade(shared);
+    let warned = Rc::new(Cell::new(false));
+    glib::timeout_add_seconds_local(JOURNAL_EVERY_SECS, move || {
         let Some(shared) = weak.upgrade() else {
             return glib::ControlFlow::Break;
         };
-        tick(&shared, toast.clone(), busy.clone());
+        journal_tick(&shared, toast.clone(), busy.clone(), warned.clone());
         glib::ControlFlow::Continue
     });
+}
+
+/// How often the notes are recorded at the places that are on.
+pub const JOURNAL_EVERY_SECS: u32 = 300;
+
+/// The books of the open library, for the engine.
+fn source_of(shared: &SharedRef) -> LibrarySource {
+    LibrarySource::with_store(
+        &shared.lib.borrow().root,
+        shared.guard.borrow().store.clone(),
+    )
 }
 
 /// One look at what is due. Also called by the developer hook.
@@ -1462,43 +2524,70 @@ pub fn tick(shared: &SharedRef, toast: Notify, busy: Rc<Cell<bool>>) {
             c.health.clone(),
         )
     };
-    if settings
-        .due(bookx_backup::Trigger::Tick, Utc::now())
-        .is_empty()
-    {
+    if bk::repo::scheduled_places(&settings, bookx_backup::Trigger::Tick, Utc::now()).is_empty() {
         return;
     }
     busy.set(true);
     let store = shared.guard.borrow().store.clone();
+    let lib = source_of(shared);
     let shared = shared.clone();
-    let (job, _) = crate::jobs::start(crate::jobs::Kind::Backup, "Scheduled backup", false);
+    let (job, token) = crate::jobs::start(crate::jobs::Kind::Backup, &tr("Scheduled backup"), true);
+    let cancel = Arc::new(AtomicBool::new(false));
+    let prog = Arc::new(Mutex::new(Prog {
+        stage: tr("Looking at your library"),
+        ..Prog::default()
+    }));
+    let watcher = watch(job, token, cancel.clone(), prog.clone(), |_, _| true);
     glib::spawn_future_local(async move {
         let out = gio::spawn_blocking(move || {
-            // a fresh automatic snapshot when something changed, then copy the newest
+            // a fresh automatic snapshot when something changed, then the places that are due
             let _ = lh::auto_snapshot(&store, &root, &prefs);
-            bk::run_due(
-                &root,
-                &settings,
-                bookx_backup::Trigger::Tick,
+            let names: Vec<String> =
+                bk::repo::scheduled_places(&settings, bookx_backup::Trigger::Tick, Utc::now())
+                    .into_iter()
+                    .map(|d| d.name)
+                    .collect();
+            let n = names.len().max(1) as f64;
+            let dests =
+                bk::repo::scheduled_places(&settings, bookx_backup::Trigger::Tick, Utc::now());
+            bk::repo::run_all(
+                &lib,
+                &dests,
+                &settings.passphrase,
+                false,
                 Utc::now(),
                 Kdf::DEFAULT,
-                &AtomicBool::new(false),
+                &cancel,
+                &|name, p| {
+                    let i = names.iter().position(|x| x == name).unwrap_or(0) as f64;
+                    *prog.lock().unwrap() = Prog {
+                        stage: bk::repo::progress_stage(name, p),
+                        detail: bk::repo::progress_detail(p),
+                        fraction: (i + bk::repo::progress_fraction(p)) / n,
+                    };
+                },
             )
         })
         .await
         .unwrap_or_default();
+        watcher.remove();
         busy.set(false);
         for o in &out {
             match &o.result {
-                Ok(_) => crate::jobs::log(job, &format!("{}: copied", o.name)),
+                Ok(r) => {
+                    crate::jobs::log(job, &format!("{}: {}", o.name, bk::repo::report_text(r)))
+                }
                 Err(e) => crate::jobs::log(job, &format!("{}: {e}", o.name)),
             }
         }
-        let failed = out.iter().filter(|o| o.result.is_err()).count();
+        let failed = out
+            .iter()
+            .filter(|o| o.result.is_err() && !o.cancelled)
+            .count();
         crate::jobs::finish(
             job,
             if failed > 0 {
-                Err(format!("{failed} place(s) failed"))
+                Err(trf("{} failed", &[&lh::plural(failed, "place")]))
             } else {
                 Ok(())
             },
@@ -1508,12 +2597,15 @@ pub fn tick(shared: &SharedRef, toast: Notify, busy: Rc<Cell<bool>>) {
         }
         {
             let mut c = shared.cfg.borrow_mut();
-            bk::apply(&mut c.health.backup, &out, Utc::now());
+            bk::repo::apply_repo(&mut c.health.backup, &out, Utc::now());
             c.save();
         }
         for o in &out {
             match &o.result {
                 Ok(_) => eprintln!("backup: scheduled copy to {} ok", o.name),
+                Err(e) if o.cancelled => {
+                    eprintln!("backup: scheduled copy to {} cancelled {e}", o.name)
+                }
                 Err(e) => {
                     eprintln!("backup: scheduled copy to {} failed {e}", o.name);
                     toast(trf("Could not back up to {}: {}", &[&o.name, &e]));
@@ -1523,29 +2615,113 @@ pub fn tick(shared: &SharedRef, toast: Notify, busy: Rc<Cell<bool>>) {
     });
 }
 
-/// Closing the app: copy to the places that are due, but give up after twenty seconds.
-pub fn on_exit(shared: &SharedRef) {
-    let (root, settings) = {
+/// Records the notes that changed at the places that are on. Quiet unless it fails (once).
+fn journal_tick(shared: &SharedRef, toast: Notify, busy: Rc<Cell<bool>>, warned: Rc<Cell<bool>>) {
+    if busy.get() || shared.lib.borrow().is_read_only() {
+        return;
+    }
+    let (places, pass) = {
         let c = shared.cfg.borrow();
-        (shared.lib.borrow().root.clone(), c.health.backup.clone())
+        (
+            bk::repo::journal_places(&c.health.backup),
+            c.health.backup.passphrase.clone(),
+        )
     };
-    let out = bk::run_due_within(
-        &root,
+    if places.is_empty() {
+        return;
+    }
+    busy.set(true);
+    let lib = source_of(shared);
+    glib::spawn_future_local(async move {
+        let failed = gio::spawn_blocking(move || {
+            bk::repo::journal_all(&lib, &places, &pass, Utc::now(), Kdf::DEFAULT)
+        })
+        .await
+        .unwrap_or_default();
+        busy.set(false);
+        for (name, why) in &failed {
+            eprintln!("backup: journal to {name} failed {why}");
+        }
+        if let Some((name, why)) = failed.first() {
+            if !warned.replace(true) {
+                toast(trf(
+                    "Your notes could not be copied to {}: {}",
+                    &[name, why],
+                ));
+            }
+        } else {
+            warned.set(false);
+        }
+    });
+}
+
+/// The developer hook: record the notes now and say how it went.
+fn journal_now(shared: &SharedRef, kdf: Kdf) {
+    let (places, pass) = {
+        let c = shared.cfg.borrow();
+        (
+            bk::repo::journal_places(&c.health.backup),
+            c.health.backup.passphrase.clone(),
+        )
+    };
+    let lib = source_of(shared);
+    glib::spawn_future_local(async move {
+        let names: Vec<String> = places.iter().map(|d| d.name.clone()).collect();
+        let failed = gio::spawn_blocking(move || {
+            bk::repo::journal_all(&lib, &places, &pass, Utc::now(), kdf)
+        })
+        .await
+        .unwrap_or_default();
+        for n in names {
+            match failed.iter().find(|f| f.0 == n) {
+                Some((_, why)) => eprintln!("backup: journal {n} failed {why}"),
+                None => eprintln!("backup: journal {n} ok"),
+            }
+        }
+    });
+}
+
+/// Closing the app: copy to the places that are due, record the notes, but give up after twenty seconds.
+pub fn on_exit(shared: &SharedRef) {
+    let (settings, lib) = (shared.cfg.borrow().health.backup.clone(), source_of(shared));
+    let started = std::time::Instant::now();
+    let limit = std::time::Duration::from_secs(20);
+    let out = bk::repo::run_due_repo_within(
+        &lib,
         &settings,
         bookx_backup::Trigger::Exit,
         Utc::now(),
-        std::time::Duration::from_secs(20),
+        limit,
     );
-    if out.is_empty() {
-        return;
+    if !out.is_empty() {
+        let mut c = shared.cfg.borrow_mut();
+        bk::repo::apply_repo(&mut c.health.backup, &out, Utc::now());
+        c.save();
+        for o in &out {
+            match &o.result {
+                Ok(_) => eprintln!("backup: exit copy to {} ok", o.name),
+                Err(e) => eprintln!("backup: exit copy to {} failed {e}", o.name),
+            }
+        }
     }
-    let mut c = shared.cfg.borrow_mut();
-    bk::apply(&mut c.health.backup, &out, Utc::now());
-    c.save();
-    for o in &out {
-        match &o.result {
-            Ok(_) => eprintln!("backup: exit copy to {} ok", o.name),
-            Err(e) => eprintln!("backup: exit copy to {} failed {e}", o.name),
+    // notes of places that were not copied just now (the copy already holds them for the others)
+    let left = limit.saturating_sub(started.elapsed());
+    if left >= std::time::Duration::from_secs(1) {
+        let settings = shared.cfg.borrow().health.backup.clone();
+        let done: Vec<&str> = out
+            .iter()
+            .filter(|o| o.result.is_ok())
+            .map(|o| o.id.as_str())
+            .collect();
+        let places: Vec<Destination> = bk::repo::journal_places(&settings)
+            .into_iter()
+            .filter(|d| !done.contains(&d.id.as_str()))
+            .collect();
+        if !places.is_empty() {
+            let failed = bk::repo::journal_within(&lib, &places, &settings.passphrase, left);
+            for (name, why) in failed {
+                eprintln!("backup: exit journal to {name} failed {why}");
+            }
         }
     }
 }

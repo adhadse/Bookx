@@ -7,9 +7,66 @@ use chrono::{DateTime, Datelike, NaiveDate, TimeZone, Utc};
 
 use crate::export::{AnnotationItem, HighlightStyle};
 
-/// One highlight with what is needed to show, find and export it.
+/// What a row is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum RowKind {
+    #[default]
+    Highlight,
+    /// A bookmark: `text` is its label, `highlight_id` its id, `frac` how far into the chapter.
+    Bookmark,
+}
+
+/// The type filter of the window: *All*, *Highlights*, *Notes* (highlights that have a written
+/// note) and *Bookmarks*.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum KindFilter {
+    #[default]
+    All,
+    Highlights,
+    Notes,
+    Bookmarks,
+}
+
+impl KindFilter {
+    pub const ALL: [KindFilter; 4] = [
+        KindFilter::All,
+        KindFilter::Highlights,
+        KindFilter::Notes,
+        KindFilter::Bookmarks,
+    ];
+
+    /// The word the choice is stored and tested by.
+    pub fn name(self) -> &'static str {
+        match self {
+            KindFilter::All => "all",
+            KindFilter::Highlights => "highlights",
+            KindFilter::Notes => "notes",
+            KindFilter::Bookmarks => "bookmarks",
+        }
+    }
+
+    /// The choice named `s` (anything unknown is *All*).
+    pub fn parse(s: &str) -> KindFilter {
+        Self::ALL
+            .into_iter()
+            .find(|k| k.name() == s.trim().to_lowercase())
+            .unwrap_or_default()
+    }
+
+    pub fn accepts(self, r: &NoteRow) -> bool {
+        match self {
+            KindFilter::All => true,
+            KindFilter::Highlights => r.kind == RowKind::Highlight,
+            KindFilter::Notes => r.kind == RowKind::Highlight && !r.note.trim().is_empty(),
+            KindFilter::Bookmarks => r.kind == RowKind::Bookmark,
+        }
+    }
+}
+
+/// One highlight or bookmark with what is needed to show, find and export it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct NoteRow {
+    pub kind: RowKind,
     pub book_id: u64,
     pub highlight_id: String,
     pub book_title: String,
@@ -26,6 +83,8 @@ pub struct NoteRow {
     pub page: Option<usize>,
     /// The text could not be found in the book: the note has no place on the page.
     pub unplaced: bool,
+    /// A bookmark: how far into its chapter (0..1). Highlights: 0.
+    pub frac: f64,
 }
 
 impl NoteRow {
@@ -39,6 +98,19 @@ impl NoteRow {
     }
 
     pub fn to_item(&self) -> AnnotationItem {
+        if self.kind == RowKind::Bookmark {
+            return AnnotationItem {
+                book_title: self.book_title.clone(),
+                book_author: self.book_author.clone(),
+                chapter: self.chapter.clone(),
+                text: self.text.clone(),
+                note: None,
+                style: HighlightStyle::Bookmark,
+                color: None,
+                created: self.created,
+                location: Some(format!("{:.0}%", self.frac * 100.0)),
+            };
+        }
         AnnotationItem {
             book_title: self.book_title.clone(),
             book_author: self.book_author.clone(),
@@ -59,6 +131,8 @@ impl NoteRow {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Filter {
+    /// Which kind of row.
+    pub kind: KindFilter,
     /// Words that must all occur in the quote, note, title, author or chapter (any case).
     pub text: String,
     /// Keep only these colours (empty: all).
@@ -78,6 +152,9 @@ impl Filter {
     }
 
     pub fn matches(&self, r: &NoteRow) -> bool {
+        if !self.kind.accepts(r) {
+            return false;
+        }
         if let Some(b) = self.book {
             if r.book_id != b {
                 return false;
@@ -171,6 +248,7 @@ pub fn query(rows: &[NoteRow], f: &Filter, sort: Sort) -> Vec<usize> {
                 .cmp(&y.book_title.to_lowercase())
                 .then(x.book_id.cmp(&y.book_id))
                 .then(x.spine.cmp(&y.spine))
+                .then(x.frac.total_cmp(&y.frac))
                 .then(x.page.cmp(&y.page))
                 .then(x.created.cmp(&y.created))
         }),
@@ -221,7 +299,9 @@ pub fn group(rows: &[NoteRow], order: &[usize], by: Group) -> Vec<Section> {
             ),
             Group::Month => put(month_title(r.created), i),
             Group::Color => put(
-                if r.color.is_empty() {
+                if r.kind == RowKind::Bookmark {
+                    "Bookmarks".into()
+                } else if r.color.is_empty() {
                     "No colour".into()
                 } else {
                     let mut c = r.color.clone();
@@ -270,6 +350,8 @@ mod tests {
 
     fn row(book: u64, title: &str, text: &str, note: &str, color: &str, day: u32) -> NoteRow {
         NoteRow {
+            kind: RowKind::Highlight,
+            frac: 0.0,
             book_id: book,
             highlight_id: format!("h{book}-{day}"),
             book_title: title.into(),
@@ -414,5 +496,83 @@ mod tests {
         assert_eq!(colors_of(&rows()), vec!["yellow", "green"]);
         assert_eq!(parse_day("nope"), None);
         assert_eq!(day_start(parse_day("2026-11-03").unwrap()).day(), 3);
+    }
+
+    fn bookmark(book: u64, title: &str, label: &str, spine: usize, frac: f64, day: u32) -> NoteRow {
+        let mut r = row(book, title, label, "", "", day);
+        r.kind = RowKind::Bookmark;
+        r.highlight_id = format!("bm{book}-{day}");
+        r.spine = spine;
+        r.frac = frac;
+        r.style = HighlightStyle::Bookmark;
+        r
+    }
+
+    #[test]
+    fn the_type_filter_tells_highlights_notes_and_bookmarks_apart() {
+        let mut v = rows();
+        let with_note = v.iter().filter(|r| !r.note.is_empty()).count();
+        let highlights = v.len();
+        v.push(bookmark(1, "Alpha", "Page 7", 2, 0.4, 5));
+        v.push(bookmark(2, "Beta", "where I stopped", 0, 0.1, 6));
+        let count = |k: KindFilter| {
+            query(
+                &v,
+                &Filter {
+                    kind: k,
+                    ..Default::default()
+                },
+                Sort::Newest,
+            )
+            .len()
+        };
+        assert_eq!(count(KindFilter::All), highlights + 2);
+        assert_eq!(count(KindFilter::Highlights), highlights);
+        assert_eq!(count(KindFilter::Notes), with_note);
+        assert_eq!(count(KindFilter::Bookmarks), 2);
+        assert_eq!(KindFilter::parse("Bookmarks"), KindFilter::Bookmarks);
+        assert_eq!(KindFilter::parse("nonsense"), KindFilter::All);
+        for k in KindFilter::ALL {
+            assert_eq!(KindFilter::parse(k.name()), k);
+        }
+    }
+
+    #[test]
+    fn a_bookmark_is_found_by_its_words_and_listed_in_book_order() {
+        let mut v = vec![
+            bookmark(1, "Alpha", "Page 40", 2, 0.5, 5),
+            bookmark(1, "Alpha", "Page 9", 2, 0.1, 6),
+            bookmark(1, "Alpha", "Page 2", 0, 0.9, 7),
+        ];
+        let f = Filter {
+            text: "stopped".into(),
+            ..Default::default()
+        };
+        assert!(query(&v, &f, Sort::Newest).is_empty());
+        v.push(bookmark(1, "Alpha", "where I stopped", 3, 0.0, 8));
+        assert_eq!(query(&v, &f, Sort::Newest), vec![3]);
+        let order: Vec<&str> = query(&v, &Filter::default(), Sort::InBook)
+            .into_iter()
+            .map(|i| v[i].text.as_str())
+            .collect();
+        assert_eq!(order, ["Page 2", "Page 9", "Page 40", "where I stopped"]);
+    }
+
+    #[test]
+    fn a_bookmark_exports_as_a_bookmark_and_groups_apart_from_the_colours() {
+        let b = bookmark(1, "Alpha", "Page 7", 2, 0.4, 5);
+        let i = b.to_item();
+        assert_eq!(i.style, HighlightStyle::Bookmark);
+        assert_eq!(i.text, "Page 7");
+        assert_eq!(i.location.as_deref(), Some("40%"));
+        assert!(i.note.is_none() && i.color.is_none());
+        let v = vec![b, row(1, "Alpha", "q", "", "green", 1)];
+        let order = query(&v, &Filter::default(), Sort::Newest);
+        let titles: Vec<String> = group(&v, &order, Group::Color)
+            .into_iter()
+            .map(|s| s.title)
+            .collect();
+        assert!(titles.contains(&"Bookmarks".to_string()), "{titles:?}");
+        assert!(titles.contains(&"Green".to_string()));
     }
 }

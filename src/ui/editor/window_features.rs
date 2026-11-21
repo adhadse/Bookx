@@ -97,16 +97,27 @@ pub(super) fn book_menu() -> gio::Menu {
     books.append_submenu(Some(&tr("More Ways to Open")), &more);
     m.append_section(None, &books);
     let hist = gio::Menu::new();
-    hist.append(
+    let revert = gio::Menu::new();
+    revert.append(
         Some(&tr("Revert to Before the Last Change")),
         Some("ext.undo-checkpoint"),
     );
-    hist.append(
+    revert.append(
         Some(&tr("Revert to After (Redo)")),
         Some("ext.redo-checkpoint"),
     );
+    hist.append_submenu(Some(&tr("Revert")), &revert);
     m.append_section(None, &hist);
     let view = gio::Menu::new();
+    let palette = menu_item(&tr("Command Palette"), "ext.win", "palette");
+    if let Some(a) = crate::shortcuts::current()
+        .effective("editor.palette")
+        .into_iter()
+        .next()
+    {
+        palette.set_attribute_value("accel", Some(&a.to_variant()));
+    }
+    view.append_item(&palette);
     view.append(Some(&tr("Wrap Long Lines")), Some("ext.wrap"));
     m.append_section(None, &view);
     let app = gio::Menu::new();
@@ -304,6 +315,7 @@ impl Editor {
                 self.close_tabs(mode, path);
             }
             "help" => self.open_help(),
+            "palette" => self.show_palette(),
             "restore-state" => self.restore_state(),
             "save-state" => self.save_state(),
             other => self.toast(&trf("Unknown action {}", &[&other])),

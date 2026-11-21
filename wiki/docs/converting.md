@@ -1,7 +1,8 @@
 # Converting and exporting
 
-EPUB is Bookx's native format. Other formats are **converted to EPUB when you add them**, and EPUB books can be
-converted to other formats on the way out.
+EPUB is Bookx's native format. Other formats are **converted to EPUB when you add them** (the **+** button in the
+library's header bar → *Add Books*, or drag files onto the window), and EPUB books can be converted to other formats
+on the way out with *Convert To* in the book's right-click menu.
 
 ## Input formats
 
@@ -22,7 +23,9 @@ converted to other formats on the way out.
 
 ## Output formats (Convert To)
 
-Right-click a book → *Convert To* and pick a format.
+Right-click a book in the library → *Convert To* and pick a format. Bookx asks where to write the file (a file name
+for one book, a folder when several books are selected), shows the progress in the background jobs list and leaves the
+copy in your library as it is.
 
 | Format | Extension | For |
 |---|---|---|
@@ -37,7 +40,7 @@ Right-click a book → *Convert To* and pick a format.
 | Plain text, Markdown, HTML | `txt`, `md`, `html` | |
 
 Plug-ins can add more entries, shown as "name (.ext, plugin)". See [Plugins and patches](plugins-and-patches.md).
-Right-click also offers *Save a Copy* and *Show in Files*.
+The same right-click menu has *Send To → Save a Copy* (the book as it is, no conversion) and *Show in Files*.
 
 When you send a book to a device, Bookx converts it to the device's format automatically. A book that holds
 several [formats](library.md#formats-of-one-book) sends the one that suits the device (KEPUB to a Kobo, AZW3 or MOBI to a
@@ -73,7 +76,7 @@ can undo. Details for contributors are in `docs/convert-parity.md`.
 
 ## Check before sending or converting
 
-Right-click one or more books → *Check Before Sending*. Bookx runs the EPUB validator and the rules of the place the
+Right-click one or more books → *Send To → Check Before Sending*. Bookx runs the EPUB validator and the rules of the place the
 book is going to (choose *Any device*, *Kindle*, *Kobo* or *E-mail* at the top) and lists, per book, the **blocking
 problems** (the device or converter will refuse or break the book: a broken `mimetype`, no language for Amazon,
 DRM, a file over 25 MB for e-mail) and **warnings** (no cover, no author, validator warnings). Problems that can be
@@ -81,7 +84,7 @@ repaired automatically are marked *can be fixed*; **Fix All** repairs them and k
 library's `.bookx/preflight-backups` folder.
 
 Switch on *Check automatically before converting or e-mailing* in the same window to make this a step of *Convert To*
-and *Send by E-mail*: the window only appears when something was found, and *Continue Anyway* goes on. Sending
+and *Send To → Send by E-mail*: the window only appears when something was found, and *Continue Anyway* goes on. Sending
 to a device in the Device window does not run this check yet.
 
 ## Conversion report
@@ -110,10 +113,64 @@ Options include `--smarten`/`--unsmarten`, `--unwrap-lines`, `--remove-unused-cs
 
 ## Exporting annotations
 
-Right-click → *Export Annotations* writes your highlights, notes and bookmarks as Markdown, HTML, JSON, plain text,
-an Obsidian note, Kindle clippings or Readwise data; *Main menu → Export All Annotations* does it for the whole
-library. *Import Highlights* brings in the ones from a Kindle, KOReader, a Kobo or calibre. See
-[Highlights and notes](annotations.md).
+Right-click a book → *Export Annotations* writes your highlights, notes and bookmarks as Markdown, HTML, JSON, plain
+text, an Obsidian note, Kindle clippings or Readwise data. The *Notes & Highlights* view of the library sidebar has an
+**Export** button for everything shown there. *Import Highlights* (the **+** button's menu) brings in the ones from a
+Kindle, KOReader, a Kobo or calibre. See [Highlights and notes](annotations.md).
+
+## Questions and answers
+
+??? question "How do I convert a book to another format?"
+    1. Right-click the book in the library → **Convert To** and pick the format (KEPUB for Kobo, AZW3 for Kindle, and so on).
+    2. Choose where to save the result. With several books selected you choose a folder instead.
+    3. Watch the progress in the background jobs button of the header bar. A toast says when it is done.
+    A small `.report.txt` is saved next to the result; see [Conversion report](#conversion-report).
+
+??? question "How do I convert many books at once?"
+    Select them (Ctrl or Shift-click), right-click → **Convert To** → format, then choose one folder. A book that fails is
+    named in the final message; the others still convert.
+
+??? question "How do I add a book that is not an EPUB?"
+    Use the **+** button in the library's header bar → **Add Books** (or drop the files on the window). Bookx reads the
+    formats in [Input formats](#input-formats) and stores an EPUB. A file with copy protection is refused with a message.
+
+??? question "How do I check a book before sending or converting it?"
+    Right-click → **Send To → Check Before Sending**, pick *Any device*, *Kindle*, *Kobo* or *E-mail* at the top, read the
+    blocking problems and warnings, and press **Fix All** for those marked *can be fixed*. The original of each book is
+    kept in the library's `.bookx/preflight-backups` folder.
+
+??? question "How do I make the check run on its own?"
+    Open Check Before Sending once and switch on *Check automatically before converting or e-mailing*. From then on the
+    window only appears when something was found, and *Continue Anyway* goes on.
+
+??? question "How do I get a report of what the conversion changed?"
+    Bookx saves `<output>.report.txt` next to every converted file. To switch it off, untick *Save a report next to
+    converted files* in the Check Before Sending window. On the command line add `--report`.
+
+??? question "How do I save a copy without converting?"
+    Right-click → **Send To → Save a Copy** writes the book as it is. In the editor use the main menu (☰) → **Save a
+    Copy** (++ctrl+shift+s++); see [Editing](editing.md#book-menu).
+
+??? question "How do I edit a book that is not an EPUB?"
+    In the book editor open the main menu (☰) → **More Ways to Open → Open a Book of Another Format to Edit**. See
+    [Editing](editing.md#book-menu).
+
+??? question "How do I convert from the command line?"
+    `bookx-cli convert book.fb2 book.kepub.epub --device kobo`; the output extension picks the format. `bookx-cli formats`
+    lists what is available and `bookx-cli presets` the saved settings. See [Command line](command-line.md).
+
+??? question "How do I send a book to my e-reader in the right format?"
+    Bookx converts automatically when you send to a device (KEPUB to a Kobo, AZW3 or MOBI to a Kindle). See
+    [Devices and sharing](devices-and-sharing.md).
+
+??? question "How do I convert a PDF?"
+    A PDF is read page by page in the reader. Adding it also reflows the text into an EPUB (experimental), which then
+    converts like any other book; scanned PDFs without text and fixed layouts do not convert well. Converting *to* PDF
+    is not available.
+
+??? question "How do I export my highlights?"
+    Right-click a book → **Export Annotations** and choose the format; for all books use the **Export** button in the
+    library's *Notes & Highlights* view.
 
 !!! note "Limitations"
     - Converting **from** PDF reflows the text into an EPUB (experimental: columns, tables, formulas and images are not

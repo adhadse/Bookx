@@ -556,6 +556,76 @@ fn read_notes_in(c: &Connection) -> Result<Vec<(String, DeviceNote)>> {
     Ok(out)
 }
 
+/// Page bookmarks (the Kobo's dog-ears) the reader made: `(content id of the book, bookmark)`.
+/// A dog-ear names the chapter file it is in and how far into it (`ChapterProgress`, 0..1).
+pub fn read_bookmarks(db: &Path) -> Result<Vec<(String, crate::reading::DeviceBookmark)>> {
+    with_copy(db, read_bookmarks_in)
+}
+
+fn read_bookmarks_in(c: &Connection) -> Result<Vec<(String, crate::reading::DeviceBookmark)>> {
+    let cols = require(c, "Bookmark", &["VolumeID", "Type"])?;
+    let has = |n: &str| cols.iter().any(|c| c == n);
+    let opt = |n: &'static str| if has(n) { n } else { "NULL" };
+    let sql = format!(
+        "SELECT VolumeID, {}, {}, {}, {}, {} FROM Bookmark WHERE Type IN ('dogear', 'bookmark') {}",
+        opt("BookmarkID"),
+        opt("ContentID"),
+        opt("ChapterProgress"),
+        opt("DateCreated"),
+        opt("Annotation"),
+        if has("Hidden") {
+            "AND COALESCE(Hidden, 0) = 0"
+        } else {
+            ""
+        },
+    );
+    let mut st = c.prepare(&sql)?;
+    let rows = st
+        .query_map([], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, Option<String>>(1)?,
+                r.get::<_, Option<String>>(2)?,
+                r.get::<_, Option<f64>>(3)?,
+                r.get::<_, Option<String>>(4)?,
+                r.get::<_, Option<String>>(5)?,
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut out = Vec::new();
+    for (vol, id, content, progress, created, note) in rows {
+        // `<volume>!OEBPS!ch1.xhtml` is the chapter file of the volume
+        let href = content
+            .as_deref()
+            .and_then(|c| c.strip_prefix(vol.as_str()))
+            .and_then(|r| r.strip_prefix('!'))
+            .map(|r| r.replace('!', "/"))
+            .filter(|r| !r.is_empty());
+        let id = id.filter(|i| !i.is_empty()).unwrap_or_else(|| {
+            format!(
+                "{}|{}",
+                created.as_deref().unwrap_or(""),
+                href.as_deref().unwrap_or("")
+            )
+        });
+        out.push((
+            vol,
+            crate::reading::DeviceBookmark {
+                id,
+                note: note.unwrap_or_default().trim().to_string(),
+                chapter: None,
+                created,
+                pos: String::new(),
+                page: None,
+                percentage: None,
+                href,
+                chapter_progress: progress.filter(|p| (0.0..=1.0).contains(p)),
+            },
+        ));
+    }
+    Ok(out)
+}
+
 /// A highlight or note together with the book it belongs to, as the Kobo database names it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BookNote {
@@ -971,6 +1041,29 @@ mod tests {
         assert_eq!(n[0].1.note, "my thought");
         assert_eq!(n[0].1.created.as_deref(), Some("2026-11-01T08:00:00Z"));
         assert_eq!(n[0].1.updated.as_deref(), Some("2026-11-02T08:00:00Z"));
+    }
+
+    #[test]
+    fn dog_ears_are_page_bookmarks_with_their_chapter_file_and_progress() {
+        let t = Tmp::new();
+        let db = real_db(&t);
+        let m = read_bookmarks(&db).unwrap();
+        assert_eq!(m.len(), 1, "only the dog-ear, not the highlights");
+        assert_eq!(m[0].0, "file:///mnt/onboard/Bookx/Sent.kepub.epub");
+        assert_eq!(m[0].1.id, "b2");
+        assert_eq!(m[0].1.href, None, "a content id without a chapter file");
+        sql(
+            &db,
+            "UPDATE Bookmark SET ContentID='file:///mnt/onboard/Bookx/Sent.kepub.epub!OEBPS!ch2.xhtml', ChapterProgress=0.25, Annotation='back here' WHERE BookmarkID='b2'",
+        );
+        let m = read_bookmarks(&db).unwrap();
+        assert_eq!(m[0].1.href.as_deref(), Some("OEBPS/ch2.xhtml"));
+        assert_eq!(m[0].1.chapter_progress, Some(0.25));
+        assert_eq!(m[0].1.note, "back here");
+        assert_eq!(m[0].1.created.as_deref(), Some("2026-11-01T08:00:00Z"));
+        // a hidden one is not listed
+        sql(&db, "UPDATE Bookmark SET Hidden=1 WHERE BookmarkID='b2'");
+        assert!(read_bookmarks(&db).unwrap().is_empty());
     }
 
     #[test]

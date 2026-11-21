@@ -19,7 +19,7 @@ stay in files on your computer (see [Library files](library.md#library-files-and
 </figure>
 
 
-*Preferences → Privacy → Offline mode* refuses every online look-up and download: metadata and covers, Wikipedia,
+The **Offline mode** switch on the **Privacy** page of Bookx Preferences (main menu → Preferences) refuses every online look-up and download: metadata and covers, Wikipedia,
 translation, online catalogues, web articles and news, link checks, dictionary and voice downloads. Features then say
 that offline mode is on instead of failing slowly. Books, notes, search, conversion, editing, reading aloud with a voice
 you already have and your backups keep working.
@@ -43,12 +43,12 @@ other devices connect to it, only while it is on and only with the password. The
 | Voice and model downloads | huggingface.co, github.com | the file you ask for | stopped |
 | Read aloud with a voice server | the server address you enter | the text being read | not stopped |
 | Send by e-mail | the mail server you enter | the book and the message | not stopped |
-| Cloud folders (WebDAV) for devices and backups | the WebDAV address you enter | book files or encrypted backups | not stopped |
+| Cloud folders (WebDAV) for devices and backups | the WebDAV address you enter | book files; backups of your books, covers, catalogue and notes (encrypted if you chose to) | not stopped |
 | Bookx sync (reading position, highlights, notes) | the sync server you enter, or your own Bookx | a book fingerprint and your position | not stopped |
 | Sync: library server (OPDS, KOReader) | nothing: other devices connect to this computer | the books you share | not stopped |
 | Readwise upload | readwise.io | your highlights, when you press Upload | not stopped |
 
-The same list is in Preferences → Privacy. Translate sends the selected text to Google's translation service; if that
+The same list is on the Privacy page of Preferences. Translate sends the selected text to Google's translation service; if that
 is not acceptable for a book, leave the feature alone or turn offline mode on. The look-ups never send your library,
 your reading history or any identifier of your computer.
 

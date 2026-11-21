@@ -98,9 +98,6 @@ msgstr "Una instantánea .db o un archivo .bookxbackup cifrado"
 msgid "A CSV file Anki can import."
 msgstr "Un archivo CSV que Anki puede importar."
 
-msgid "A backup is one complete snapshot of the catalogue: metadata, tags, collections, reading progress, bookmarks, highlights and notes, and the search index. Book files, covers, configuration, plugins and secrets, .bookx state, device copies, trash and caches are not copied."
-msgstr "Una copia de seguridad es una instantánea completa del catálogo: metadatos, etiquetas, colecciones, progreso de lectura, marcadores, subrayados y notas, y el índice de búsqueda. No se copian los archivos de los libros, las portadas, la configuración, los complementos ni sus secretos, el estado .bookx, las copias en dispositivos, la papelera ni las cachés."
-
 msgid "A bibliography from the title, authors, publisher, date and ISBN of your books, for a reference manager or a paper."
 msgstr "Una bibliografía con el título, los autores, la editorial, la fecha y el ISBN de tus libros, para un gestor de referencias o un trabajo."
 
@@ -157,9 +154,6 @@ msgstr "Un archivo de texto que Anki puede importar, separado por tabuladores."
 
 msgid "A vertical line at a column, to keep lines short"
 msgstr "Una línea vertical en una columna, para mantener las líneas cortas"
-
-msgid "AI Assistants"
-msgstr "Asistentes de IA"
 
 msgid "API key (if the server wants one)"
 msgstr "Clave de API (si el servidor la pide)"
@@ -863,9 +857,6 @@ msgstr "Haciendo copia de seguridad"
 msgid "Backup"
 msgstr "Copia de seguridad"
 
-msgid "Backup cancelled; the copy in progress was removed"
-msgstr "Copia cancelada; se eliminó la copia en curso"
-
 msgid "Backup failed: {}"
 msgstr "Error en la copia: {}"
 
@@ -1224,18 +1215,6 @@ msgstr "Tarjetas de"
 
 msgid "Careful with this folder"
 msgstr "Cuidado con esta carpeta"
-
-msgid "Catalogue only: book files and covers stay in the library folder."
-msgstr "Solo el catálogo: los archivos de los libros y las portadas se quedan en la carpeta de la biblioteca."
-
-msgid "Catalogue only: titles, tags, reading progress and notes. Not book files or covers."
-msgstr "Solo el catálogo: títulos, etiquetas, progreso de lectura y notas. Ni archivos de libros ni portadas."
-
-msgid "Catalogue only; book files stay in the library folder"
-msgstr "Solo el catálogo; los archivos de los libros se quedan en la carpeta de la biblioteca"
-
-msgid "Catalogue snapshots and library checks; book files are not copied"
-msgstr "Instantáneas del catálogo y comprobaciones de la biblioteca; no se copian los archivos de los libros"
 
 msgid "Certificate file (PEM, optional)"
 msgstr "Archivo de certificado (PEM, opcional)"
@@ -1863,9 +1842,6 @@ msgstr "Copiado al portapapeles"
 
 msgid "Copied to clipboard"
 msgstr "Copiado al portapapeles"
-
-msgid "Copied to {}"
-msgstr "Copiado en {}"
 
 msgid "Copied to {} ({}). Restart KOReader, then open Bookx Sync in its top menu."
 msgstr "Copiado a {} ({}). Reinicia KOReader y abre Bookx Sync en su menú superior."
@@ -3749,9 +3725,6 @@ msgstr "En el diseño de dos páginas, la primera página va sola"
 msgid "In “{}”"
 msgstr "En «{}»"
 
-msgid "Included: catalogue metadata, collections, tags, reading progress, bookmarks, highlights, notes and the search index."
-msgstr "Incluido: metadatos del catálogo, colecciones, etiquetas, progreso de lectura, marcadores, subrayados, notas y el índice de búsqueda."
-
 msgid "Indent (Make a Sub-Entry)"
 msgstr "Sangrar (crear una subentrada)"
 
@@ -4207,9 +4180,6 @@ msgstr "Buscando los libros…"
 
 msgid "Looking up metadata"
 msgstr "Buscando metadatos"
-
-msgid "Looking…"
-msgstr "Buscando…"
 
 msgid "Looks for damage in the database, missing files and covers, and book files nobody lists."
 msgstr "Busca daños en la base de datos, archivos y portadas que faltan, y archivos de libros que nadie enumera."
@@ -5013,12 +4983,6 @@ msgstr "Aún no hay datos suficientes"
 
 msgid "Not found. Kokoro and Piper need it (package espeak-ng, GPL-3.0); install it with your system's software manager."
 msgstr "No encontrado. Kokoro y Piper lo necesitan (paquete espeak-ng, GPL-3.0); instálalo con el gestor de software de tu sistema."
-
-msgid "Not included: book files, covers, configuration, plugins and secrets, .bookx state, trash, device copies and caches."
-msgstr "No incluido: archivos de libros, portadas, configuración, complementos y secretos, estado .bookx, papelera, copias en dispositivos y cachés."
-
-msgid "Not incremental — each copy is a whole file. 'Skipped' means no new snapshot was needed or the place already has that snapshot. 'Verified' means the stored bytes were read back and hashed, not that a restore was tested."
-msgstr "No es incremental: cada copia es un archivo completo. «Omitido» significa que no se necesitaba una nueva instantánea o que ese lugar ya tiene esa instantánea. «Verificado» significa que los bytes almacenados se leyeron de nuevo y se calculó su hash, no que se probara una restauración."
 
 msgid "Not installed on this computer"
 msgstr "No instalado en este equipo"
@@ -9807,3 +9771,392 @@ msgstr "★ Favoritos"
 
 msgid "Select {}"
 msgstr "Seleccionar {}"
+
+msgid "0 means no limit. Bigger files are left out and listed."
+msgstr "0 significa sin límite. Los archivos más grandes se omiten y se enumeran."
+
+msgid "A backup cannot be read"
+msgstr "No se puede leer una copia de seguridad"
+
+msgid "Account saved: {}"
+msgstr "Cuenta guardada: {}"
+
+msgid "After the first backup only new or changed files are copied; a renamed or moved book costs nothing. 'Skipped' means nothing had changed. 'Verified' means the stored bytes were read back and checked, not that a restore was tested."
+msgstr "Después de la primera copia solo se copian los archivos nuevos o modificados; un libro renombrado o movido no cuesta nada. «Omitida» significa que nada había cambiado. «Verificada» significa que los bytes almacenados se leyeron de nuevo y se comprobaron, no que se probara una restauración."
+
+msgid "Another folder"
+msgstr "Otra carpeta"
+
+msgid "Back Up This Place"
+msgstr "Copiar a este lugar"
+
+msgid "Backup cancelled; nothing half-written is left behind"
+msgstr "Copia cancelada; no queda nada escrito a medias"
+
+msgid "Backups beyond the number this place keeps are removed, and so are the files only they needed. Manual backups and the newest ones stay."
+msgstr "Se eliminan las copias que superen el número que conserva este lugar, junto con los archivos que solo ellas necesitaban. Las copias manuales y las más recientes se conservan."
+
+msgid "Backups include your book files, covers and catalogue (titles, tags, collections, reading progress, bookmarks, highlights and notes). Only new or changed files are copied after the first backup. Not included: configuration, plugins and passwords, trash, device copies and caches."
+msgstr "Las copias de seguridad incluyen los archivos de tus libros, las portadas y el catálogo (títulos, etiquetas, colecciones, progreso de lectura, marcadores, subrayados y notas). Después de la primera copia solo se copian los archivos nuevos o modificados. No se incluyen: la configuración, los complementos ni las contraseñas, la papelera, las copias en dispositivos ni las cachés."
+
+msgid "Backups of your books and notes, library checks and the trash"
+msgstr "Copias de seguridad de tus libros y notas, comprobaciones de la biblioteca y la papelera"
+
+msgid "Book files, covers and catalogue with your notes. Only new or changed files are copied after the first backup."
+msgstr "Archivos de los libros, portadas y catálogo con tus notas. Después de la primera copia solo se copian los archivos nuevos o modificados."
+
+msgid "Bookmark Actions"
+msgstr "Acciones del marcador"
+
+msgid "Bookmarks you add while reading, and the ones synced from your e-reader, appear here."
+msgstr "Aquí aparecen los marcadores que añades mientras lees y los sincronizados desde tu lector electrónico."
+
+msgid "Books and catalogue, no covers"
+msgstr "Libros y catálogo, sin portadas"
+
+msgid "Books, covers and catalogue"
+msgstr "Libros, portadas y catálogo"
+
+msgid "Cancel the backup"
+msgstr "Cancelar la copia de seguridad"
+
+msgid "Cannot estimate the next backup: {}"
+msgstr "No se puede estimar la próxima copia: {}"
+
+msgid "Cannot read the backups of the books here"
+msgstr "No se pueden leer aquí las copias de seguridad de los libros"
+
+msgid "Cannot restore: {}"
+msgstr "No se puede restaurar: {}"
+
+msgid "Catalogue only"
+msgstr "Solo el catálogo"
+
+msgid "Check Backup"
+msgstr "Comprobar la copia"
+
+msgid "Check Backup in Depth"
+msgstr "Comprobar la copia a fondo"
+
+msgid "Check cancelled"
+msgstr "Comprobación cancelada"
+
+msgid "Checking the backup"
+msgstr "Comprobando la copia"
+
+msgid "Checking the backup at {}"
+msgstr "Comprobando la copia en {}"
+
+msgid "Choose a folder first"
+msgstr "Elige primero una carpeta"
+
+msgid "Choose the Folder to Restore Into"
+msgstr "Elige la carpeta donde restaurar"
+
+msgid "Copied {} entry"
+msgid_plural "Copied {} entries"
+msgstr[0] "Se copió {} entrada"
+msgstr[1] "Se copiaron {} entradas"
+
+msgid "Copied {} new files ({}); {} were already there."
+msgstr "Se copiaron {} archivos nuevos ({}); {} ya estaban."
+
+msgid "Copy to {}"
+msgstr "Copiar a {}"
+
+msgid "Copying new files"
+msgstr "Copiando archivos nuevos"
+
+msgid "Could not check: {}"
+msgstr "No se pudo comprobar: {}"
+
+msgid "Could not find this highlight in the book"
+msgstr "No se encontró este subrayado en el libro"
+
+msgid "Could not remove old backups: {}"
+msgstr "No se pudieron eliminar las copias antiguas: {}"
+
+msgid "Covers and catalogue, no book files"
+msgstr "Portadas y catálogo, sin archivos de libros"
+
+msgid "Delete {} Entry?"
+msgid_plural "Delete {} Entries?"
+msgstr[0] "¿Eliminar {} entrada?"
+msgstr[1] "¿Eliminar {} entradas?"
+
+msgid "Edit {}"
+msgstr "Editar {}"
+
+msgid "Enter the password."
+msgstr "Introduce la contraseña."
+
+msgid "Everything is already backed up."
+msgstr "Todo está ya en una copia de seguridad."
+
+msgid "Finding what is new"
+msgstr "Buscando lo que es nuevo"
+
+msgid "Highlights, notes and bookmarks up to {} come back with a restore."
+msgstr "Los subrayados, las notas y los marcadores hasta {} vuelven con una restauración."
+
+msgid "Include book files"
+msgstr "Incluir archivos de libros"
+
+msgid "Include covers"
+msgstr "Incluir portadas"
+
+msgid "Include your books in backups"
+msgstr "Incluir tus libros en las copias de seguridad"
+
+msgid "Included: book files, covers and the catalogue (titles, tags, collections, reading progress, bookmarks, highlights and notes)."
+msgstr "Incluido: los archivos de los libros, las portadas y el catálogo (títulos, etiquetas, colecciones, progreso de lectura, marcadores, subrayados y notas)."
+
+msgid "It is in {}. Open that folder as a library to use it."
+msgstr "Está en {}. Abre esa carpeta como biblioteca para usarla."
+
+msgid "Largest file to copy, in MB"
+msgstr "Archivo más grande a copiar, en MB"
+
+msgid "Logged in as {}"
+msgstr "Sesión iniciada como {}"
+
+msgid "Looking"
+msgstr "Buscando"
+
+msgid "Looking at the backup"
+msgstr "Examinando la copia de seguridad"
+
+msgid "Looking at your library"
+msgstr "Examinando tu biblioteca"
+
+msgid "MCP"
+msgstr "MCP"
+
+msgid "Make the first backup of your books"
+msgstr "Hacer la primera copia de seguridad de tus libros"
+
+msgid "Make the first copy automatically"
+msgstr "Hacer la primera copia automáticamente"
+
+msgid "More for this place"
+msgstr "Más para este lugar"
+
+msgid "More for {}"
+msgstr "Más para {}"
+
+msgid "Not checked yet. Press Log in to check it."
+msgstr "Aún sin comprobar. Pulsa Iniciar sesión para comprobarlo."
+
+msgid "Not enough free space in this place: {} needed, {} free."
+msgstr "No hay espacio libre suficiente en este lugar: se necesitan {} y hay {} libres."
+
+msgid "Not included: configuration, plugins and passwords, trash, device copies and caches."
+msgstr "No se incluyen: la configuración, los complementos ni las contraseñas, la papelera, las copias en dispositivos ni las cachés."
+
+msgid "Notes are protected"
+msgstr "Las notas están protegidas"
+
+msgid "Nothing new to copy."
+msgstr "No hay nada nuevo que copiar."
+
+msgid "Nothing to remove: the place only has backups it keeps."
+msgstr "Nada que eliminar: el lugar solo tiene copias que conserva."
+
+msgid "Off: nothing is copied until you press Back Up."
+msgstr "Desactivado: no se copia nada hasta que pulses Copia de seguridad."
+
+msgid "Off: nothing is copied until you press Back Up. Switch on to let Bookx make the first copy when it closes."
+msgstr "Desactivado: no se copia nada hasta que pulses Copia de seguridad. Actívalo para que Bookx haga la primera copia al cerrarse."
+
+msgid "Off: only the catalogue with your notes is copied, not the books"
+msgstr "Desactivado: solo se copia el catálogo con tus notas, no los libros"
+
+msgid "Only the missing books"
+msgstr "Solo los libros que faltan"
+
+msgid "Open the book at this bookmark"
+msgstr "Abrir el libro en este marcador"
+
+msgid "Password needed for {}"
+msgstr "Se necesita la contraseña de {}"
+
+msgid "Press Preview to see it first"
+msgstr "Pulsa Vista previa para verlo antes"
+
+msgid "Reading positions sync with this account. Press Log in to check it again."
+msgstr "Las posiciones de lectura se sincronizan con esta cuenta. Pulsa Iniciar sesión para comprobarlo de nuevo."
+
+msgid "Reads every file back and compares it. Slow on a network place."
+msgstr "Lee de nuevo cada archivo y lo compara. Lento en un lugar de red."
+
+msgid "Remove Old Backups"
+msgstr "Eliminar copias antiguas"
+
+msgid "Remove old backups?"
+msgstr "¿Eliminar las copias antiguas?"
+
+msgid "Removed {} old backups and {} files no backup needs ({} freed)."
+msgstr "Se eliminaron {} copias antiguas y {} archivos que ninguna copia necesita ({} liberados)."
+
+msgid "Removing old backups"
+msgstr "Eliminando copias antiguas"
+
+msgid "Removing old backups at {}"
+msgstr "Eliminando copias antiguas en {}"
+
+msgid "Replace everything"
+msgstr "Reemplazar todo"
+
+msgid "Replacing saves the current catalogue first. Missing only never changes a file or the catalogue that is already there."
+msgstr "Al reemplazar se guarda primero el catálogo actual. «Solo los que faltan» nunca modifica un archivo ni el catálogo que ya existe."
+
+msgid "Restore Backup"
+msgstr "Restaurar copia de seguridad"
+
+msgid "Restore cancelled; files already restored are complete"
+msgstr "Restauración cancelada; los archivos ya restaurados están completos"
+
+msgid "Restore into"
+msgstr "Restaurar en"
+
+msgid "Restore the backup of {}"
+msgstr "Restaurar la copia de seguridad de {}"
+
+msgid "Restore the catalogue backup of {}"
+msgstr "Restaurar la copia del catálogo de {}"
+
+msgid "Restored {}."
+msgstr "Se restauró {}."
+
+msgid "Restoring files"
+msgstr "Restaurando archivos"
+
+msgid "Restoring from {}"
+msgstr "Restaurando desde {}"
+
+msgid "Revert"
+msgstr "Revertir"
+
+msgid "Saves a snapshot here and copies new and changed books, covers and notes to your places"
+msgstr "Guarda aquí una instantánea y copia a tus lugares los libros, portadas y notas nuevos y modificados"
+
+msgid "Scheduled backup"
+msgstr "Copia de seguridad programada"
+
+msgid "Show {}"
+msgstr "Mostrar {}"
+
+msgid "The backup has problems: {}. Press Back Up to copy missing files again."
+msgstr "La copia tiene problemas: {}. Pulsa Copia de seguridad para copiar de nuevo los archivos que faltan."
+
+msgid "The backup is complete: all {} files are there with the right size. A deep check also reads their contents."
+msgstr "La copia está completa: los {} archivos están ahí con el tamaño correcto. Una comprobación a fondo también lee su contenido."
+
+msgid "The backup is intact: {} files were read back and match."
+msgstr "La copia está intacta: se volvieron a leer {} archivos y coinciden."
+
+msgid "The catalogue is replaced by the one in the backup; the current one is saved first."
+msgstr "El catálogo se reemplaza por el de la copia; el actual se guarda antes."
+
+msgid "The current catalogue is kept."
+msgstr "Se conserva el catálogo actual."
+
+msgid "The first backup copies everything: about {} in {} files."
+msgstr "La primera copia lo copia todo: unos {} en {} archivos."
+
+msgid "The first copy is about {} in {} files. Later copies only add what is new. Nothing is copied until you press Back Up."
+msgstr "La primera copia ocupa unos {} en {} archivos. Las siguientes solo añaden lo nuevo. No se copia nada hasta que pulses Copia de seguridad."
+
+msgid "The highlights, notes and bookmarks are removed from their books. This cannot be undone."
+msgstr "Los subrayados, las notas y los marcadores se eliminan de sus libros. Esto no se puede deshacer."
+
+msgid "The password could not be read from the system keyring (locked or not running). Unlock it and restart Bookx, or type the password again."
+msgstr "No se pudo leer la contraseña del llavero del sistema (bloqueado o sin ejecutarse). Desbloquéalo y reinicia Bookx, o escribe la contraseña de nuevo."
+
+msgid "This library"
+msgstr "Esta biblioteca"
+
+msgid "What to copy"
+msgstr "Qué copiar"
+
+msgid "What to restore"
+msgstr "Qué restaurar"
+
+msgid "What will happen"
+msgstr "Qué ocurrirá"
+
+msgid "Writing the snapshot"
+msgstr "Escribiendo la instantánea"
+
+msgid "Your notes could not be copied to {}: {}"
+msgstr "No se pudieron copiar tus notas a {}: {}"
+
+msgid "approximate place"
+msgstr "lugar aproximado"
+
+msgid "catalogue only"
+msgstr "solo catálogo"
+
+msgid "files up to {} MB"
+msgstr "archivos de hasta {} MB"
+
+msgid "manual"
+msgstr "manual"
+
+msgid "{} (catalogue only)"
+msgstr "{} (solo catálogo)"
+
+msgid "{} are damaged"
+msgstr "{} están dañados"
+
+msgid "{} are missing"
+msgstr "{} faltan"
+
+msgid "{} are newer here than in the backup and would be replaced."
+msgstr "{} son más recientes aquí que en la copia y se reemplazarían."
+
+msgid "{} bookmark already in your library"
+msgid_plural "{} bookmarks already in your library"
+msgstr[0] "{} marcador ya está en tu biblioteca"
+msgstr[1] "{} marcadores ya están en tu biblioteca"
+
+msgid "{} bookmark from KOReader"
+msgid_plural "{} bookmarks from KOReader"
+msgstr[0] "{} marcador de KOReader"
+msgstr[1] "{} marcadores de KOReader"
+
+msgid "{} cannot be read"
+msgstr "{} no se pueden leer"
+
+msgid "{} could not be restored."
+msgstr "{} no se pudieron restaurar."
+
+msgid "{} failed"
+msgstr "{} fallaron"
+
+msgid "{} files are left out (too big or not readable)."
+msgstr "{} archivos se omiten (demasiado grandes o ilegibles)."
+
+msgid "{} free"
+msgstr "{} libres"
+
+msgid "{} of new or changed files ({} files) to copy; everything else is already there."
+msgstr "{} de archivos nuevos o modificados ({} archivos) por copiar; todo lo demás ya está ahí."
+
+msgid "{} of the notes records are damaged"
+msgstr "{} de los registros de notas están dañados"
+
+msgid "{} of {} bookmarks · {} books"
+msgstr "{} de {} marcadores · {} libros"
+
+msgid "{} of {} entries · {} books · {} with notes"
+msgstr "{} de {} entradas · {} libros · {} con notas"
+
+msgid "{} of {} files"
+msgstr "{} de {} archivos"
+
+msgid "{} to restore, {} already present."
+msgstr "{} por restaurar, {} ya presentes."
+
+msgid "{} · {} · {} · last {}"
+msgstr "{} · {} · {} · última {}"

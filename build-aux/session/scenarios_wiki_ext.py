@@ -384,7 +384,7 @@ def _wiki_lib_health(c):
         health_tab(c, name, label)
         if name == "Backups":
             ui(c, labels=True)
-            c.check("the Backups panel explains the catalogue-only scope before a run",
+            c.check("the Backups panel explains what a backup contains (books, covers, catalogue) before a run",
                     c.find(None, "What is in a backup"))
     c.check("health shot", True)
 
@@ -403,7 +403,7 @@ def _wiki_lib_empty(c):
 PREFS_PAGES = [("General", "general"), ("Library", "library"), ("Reading", "reading"), ("Sync", "sync"),
                ("Editor", "editor"), ("E-mail", "email"), ("Extensions", "extensions"),
                ("Text to Speech", "tts"), ("Keyboard Shortcuts", "shortcuts"),
-               ("Privacy", "privacy"), ("AI Assistants", "mcp")]
+               ("Privacy", "privacy"), ("MCP", "mcp")]
 
 
 @scenario

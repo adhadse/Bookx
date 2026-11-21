@@ -24,8 +24,10 @@ them back. Your position is remembered per book.
 - Turn pages with ++left++ / ++right++, the mouse wheel, swipes or tap zones. ++ctrl+left++ / ++ctrl+right++ jump a
   chapter.
 - Double-click the margin or press ++f11++ for fullscreen. Pinch or ++ctrl++ + wheel zooms.
-- The sidebar (++f9++) has the book, its table of contents, bookmarks and notes (see [The sidebar](#the-sidebar));
-  **full-book search** is ++ctrl+f++. Links and footnotes have a *Back* button.
+- The sidebar button at the left of the header bar (or ++f9++) opens the book, its table of contents, bookmarks and notes
+  (see [The sidebar](#the-sidebar)). The magnifier at the right of the header bar, or ++ctrl+f++, searches the whole
+  book. The bookmark button next to it adds a bookmark at your place (++ctrl+d++). Links and footnotes have
+  a *Back* button.
 - ++escape++ puts away the first thing that is open: the selection popover, a handle you are dragging, the selection, the
   sidebar, full screen, and only then returns to the library. ++ctrl+r++ reloads the book.
 - **Removing is not asking.** Removing a highlight (with its note), a bookmark or a word of your vocabulary happens at
@@ -41,12 +43,12 @@ them back. Your position is remembered per book.
 </figure>
 
 
-The **Main Menu** (the button at the top right, or ++f10++) has twelve entries in three groups and no submenus. *This
+The **Main Menu** (the hamburger button at the far right of the header bar, or ++f10++) has twelve entries in three groups and no submenus. *This
 book*: *Go to*, *Speed Reading*, *Book Map*, *Terms in This Book*, *Footer Statistics* and *Reading Ruler*, which has a
 check mark while the ruler is on. *File*: *Open Book* and *Reload*. Then *Preferences*, *Keyboard Shortcuts*, *Help*
 (the online manual, ++f1++) and *About Bookx*. The keys are written next to the entries. (*Properties* of the book is a
 button in the sidebar.) Everything about how the text looks, the themes and the size included, is in the **Text
-Appearance** button next to it (see [Text appearance](#text-appearance)).
+Appearance** button a little to its left in the header bar (see [Text appearance](#text-appearance)).
 
 **Narrow windows.** In a window narrower than about 600 px (a phone, or a half-screen window) the header gives up
 *Fullscreen* and *Read Aloud*, and *Text Appearance* moves into the menu: they are its first three entries, and the
@@ -84,7 +86,7 @@ The search box at the top finds highlights by words of the quote, the note or th
 **Filter** narrows the list by colour, by style and to highlights **with a note**; the line under the box says
 "12 of 40 highlights" and *Clear filters* shows them all again.
 
-### Go to…
+### Go to and search
 
 <figure markdown="1">
 ![The Go to dialog](assets/reader-goto-light.png#only-light)
@@ -99,10 +101,10 @@ The search box at the top finds highlights by words of the quote, the note or th
 </figure>
 
 
-The search popover fits the window (it is narrower and shorter in a small window). The line under the field counts
+The search popover opens from the magnifier in the header bar and fits the window (it is narrower and shorter in a small window). The line under the field counts
 the matches while it searches ("12 results so far…"); a search with no match shows a *No Results* page.
 
-++ctrl+g++ or ++ctrl+l++ (or *Go to* in the menu) asks where to go. The field says *Page, percent, location or chapter*;
+To jump somewhere, open the Main Menu and choose *Go to* (or press ++ctrl+l++ or ++ctrl+g++). It asks where to go. The field says *Page, percent, location or chapter*;
 the line under it tells what the book has and, as you type, where the text leads. A text that does not work turns the
 field red and explains why. Type:
 
@@ -121,10 +123,8 @@ advertise them.)
 **Printed pages.** Some EPUBs carry their paper page numbers (an EPUB *page-list*). Then the footer shows *Page iv*
 instead of "12 of 340", and *Go to* takes those labels. Books without a page-list keep the layout page count.
 
-The *Font* list of the text popover shows only the families installed on your computer (plus Serif, Sans and
-Monospace), so a font that is not there cannot be picked by mistake. The highlight colours, the highlight styles and the
-sleep timer entries are translated like the rest of the app. The *View options* button of PDFs and comics has a display
-icon now; the speed-reading button keeps the eye.
+The *Font* list in the Text Appearance popover shows only the families installed on your computer (plus Serif, Sans and
+Monospace), so a font that is not there cannot be picked by mistake.
 
 ### Back and forward
 
@@ -188,7 +188,7 @@ kept on this computer (`dwell.json` next to the settings) and is not shared.
 
 ### Themes and your own themes
 
-Themes: follow the system, **light**, **sepia**, **dark** and **black** are swatches at the top of the *Text Appearance* popover. A
+The themes (follow the system, **light**, **sepia**, **dark** and **black**) are swatches at the top of the *Text Appearance* popover (the text-format button in the header bar). A
 **+** swatch next to them makes a **custom theme**: pick the text and page colour, see the preview (with a warning when
 the contrast is too low to read), name it and **Save Theme**. Your themes get their own swatch with a small **pencil**
 to edit or delete them; the editor also **exports** and **imports** themes as JSON. Themes are shared by all your books.
@@ -214,14 +214,14 @@ to edit or delete them; the editor also **exports** and **imports** themes as JS
 </figure>
 
 
-Themes: follow the system, **light**, **sepia**, **dark** and **black**. In the reader menu the colours section
-offers three modes:
+Whichever theme you pick, **More Text Options** (a button in the Text Appearance popover) has a
+**Colours** section with three modes:
 
 - **Theme**: the colours of the chosen theme.
 - **Original**: the text and page colours the book itself asks for.
 - **Custom**: pick your own text and page colours.
 
-The editor's live preview has the same control (the palette button above the preview).
+The editor's live preview has the same control (the palette button above the preview), see [Editing](editing.md).
 
 ### Text appearance
 
@@ -232,11 +232,11 @@ The editor's live preview has the same control (the palette button above the pre
 </figure>
 
 
-The **Text Appearance** button (the "A" in the header) keeps the basics in a small popover: the **theme swatches**, the
+The **Text Appearance** button (the text-format button in the header bar, next to the magnifier) keeps the basics in a small popover: the **theme swatches**, the
 **text size** (smaller, bigger, back to 100 %), the **font**, **columns** (two, single, scroll), **line spacing** and
 **margins** with their values written next to the sliders, and **justify text**.
 
-**More Text Options** opens a window with the rest:
+The **More Text Options** button in that popover opens a window with the rest:
 
 - **Colours**: *Theme / Original / Custom* and the colour pickers.
 - **Text**: hyphenate words, paragraph spacing, optimal line breaking and the hyphenation language.
@@ -254,7 +254,7 @@ from your defaults:
 (Older named *reading profiles* were replaced by this: a profile pinned to a book became that book's own look; the
 others were saved to `reading-profiles-backup.json` next to the settings.)
 
-*Preferences → Use the book's own styling* applies the book's CSS classes (italic, bold, underline, small caps,
+*Preferences → Reading → Use the book's own styling* applies the book's CSS classes (italic, bold, underline, small caps,
 monospace, alignment, hidden text, first-line indents and paragraph spacing) on top of the plain structure.
 
 ## The footer
@@ -297,9 +297,10 @@ Handles work in two columns and in vertical text; in e-ink mode they are black a
 
 ## Typography
 
-- **Hyphenation** in the language of the book (*Preferences → Hyphenate words*), for justified text without rivers.
+- **Hyphenation** in the language of the book: switch *Hyphenate words* on in **More Text Options** (for this book) or in
+  *Preferences → Reading* (for every book), for justified text without rivers.
 - **Optimal line breaking** (Knuth-Plass, as in TeX) in justified text. Pango's own breaking is the fallback for
-  right-to-left text, or when you switch optimal breaking off in *Text appearance*.
+  right-to-left text, or when you switch optimal breaking off in **More Text Options**.
 - **Drop caps and floats** from the book's CSS: `::first-letter { float: left }` and floated images, with the text
   wrapping around them.
 
@@ -392,7 +393,7 @@ A look-up uses **StarDict dictionaries on your computer**, so it works offline. 
 - **In the look-up popover.** If there is no dictionary for the language of the book (its `dc:language`; `en-GB` and
   `pt-BR` count as `en` and `pt`; without one Bookx guesses from the text), the popover says *No dictionary for German
   yet* and offers **Download dictionary (7 MB)**. One click downloads and installs it, shows the progress, and then
-  shows the definition of the word you looked up in the same popover. *Choose another* opens Preferences → Reading →
+  shows the definition of the word you looked up in the same popover. *Choose another* opens Preferences →
   Dictionaries, *Learn more* opens this page.
 - **By itself.** With *Preferences → Dictionaries → Download dictionaries automatically* on (the default), adding a book in a language that has no dictionary (import, Add from the Web, news,
   device) starts a download in the background, and so does opening such a book. Each language is one job in the
@@ -429,9 +430,10 @@ A look-up uses **StarDict dictionaries on your computer**, so it works offline. 
 </figure>
 
 
-Select text to highlight it. There are **5 colours** and **4 styles** (background, underline, strikethrough,
-squiggly). A highlight can carry a note, which is saved when you click away; you can also remove it. Add
-bookmarks with ++ctrl+b++. Highlights, notes and bookmarks are listed in [the sidebar](#the-sidebar), where you can also
+Select text and a small popover appears next to it: click one of the **5 colours** to highlight it, and pick one of the
+**4 styles** (background, underline, strikethrough, squiggly). The pencil button adds a note, which is saved when you
+click away. Click an existing highlight to open the same popover again: change its colour or style there, edit the note,
+or remove it with the bin. Add a bookmark with the bookmark button at the left of the header bar (or ++ctrl+d++). Highlights, notes and bookmarks are listed in [the sidebar](#the-sidebar), where you can also
 search and filter them and change a highlight's note, colour or style.
 
 Export them from the library (right-click → *Export Annotations*) to JSON, Markdown or plain text.
@@ -459,11 +461,11 @@ Export them from the library (right-click → *Export Annotations*) to JSON, Mar
 </figure>
 
 
-- **Reading Statistics** (main menu): time today, this week and this month, streaks, reading speed, a 7-day chart and
+- **Reading Statistics** (in the **Library** menu of the library's header bar): time today, this week and this month, streaks, reading speed, a 7-day chart and
   your most-read books. It also holds your **goals** (a switch for *Daily goal* and for *Yearly goal*; switching one on shows the amount and a progress bar, off means
   no goal), a **calendar of the year** that shades the days you read, and a **review of the year** (time, days read,
   pages, books finished, longest streak, best day).
-- **Vocabulary** (main menu): two pages. **Review** is the spaced-repetition flashcards of the words you looked up.
+- **Vocabulary** (also in the **Library** menu): two pages. **Review** is the spaced-repetition flashcards of the words you looked up.
   **Words** is the list of everything in your vocabulary, with a search, the filter *All / Mine / From dictionary*, and
   the buttons to add, edit and remove terms, paste or import a glossary, and export. See
   [My own words and definitions](#my-own-words-and-definitions).
@@ -524,8 +526,9 @@ part of the library backups and not synced).
 
 ## Read aloud
 
-The speaker button in the header reads the book sentence by sentence, highlighting the sentence. There are play, pause,
-stop and skip buttons, speed and pitch controls, a voice choice (voices of the book's language) and a sleep timer. It
+The speaker button in the header bar opens a small popover with play / pause, *Voice Settings* and *Save Chapter as
+Audio* / *Save Book as Audio*. Play reads the book sentence by sentence and highlights the sentence; a player card then
+floats over the page with the skip buttons, the speed, the voice and the sleep timer (pitch is in *Voice Settings*). It
 goes on with the next chapter, and starts at the selection or the top of the page.
 
 The voice can be a natural one that runs on your computer (Kokoro, Piper), a voice server you run (XTTS v2, Fish
@@ -534,7 +537,7 @@ licences and limits.
 
 ## E-ink mode and touch
 
-*Preferences* has settings for tablets and e-ink screens:
+*Preferences → Reading* has the settings for tablets and e-ink screens:
 
 - **Touch**: swipe to turn pages, long-press to select a word, configurable **tap zones** (edges, thirds,
   left-handed, wide, off) and large touch controls.
@@ -566,8 +569,8 @@ licences and limits.
 A PDF opens **as pages**, the way it was made. Next to the PDF the library keeps a reflowed EPUB of its text, which is
 what search, the library index and *Convert To* use.
 
-- **Layout**: continuous scrolling or one page at a time (*View* menu, the eye button). Zoom with Ctrl+plus,
-  Ctrl+minus, Ctrl+scroll or a pinch; *Fit width*, *Fit page* and *100 %* are in the same menu, Ctrl+0 fits the width.
+- **Layout**: continuous scrolling or one page at a time (the **View Options** button, the display icon at the right of the header bar). Zoom with Ctrl+plus,
+  Ctrl+minus, Ctrl+scroll or a pinch; *Fit width*, *Fit page* and *100 %* are in the same popover, Ctrl+0 fits the width.
 - **Crop margins** cuts the white edges (it looks at a sample of pages). **Dark pages** inverts the colours for night
   reading or an e-ink screen with a dark theme.
 - **Sidebar** (F9): page thumbnails, the PDF's own contents (bookmarks), your bookmarks and your notes. The footer has a
@@ -579,7 +582,7 @@ what search, the library index and *Convert To* use.
   the page and are included in *Export Annotations*. Underline, strikethrough and squiggly styles work too.
 - **Password-protected** PDFs ask for the password when opened.
 - Your **position** and progress are remembered; the library shows the reading progress.
-- **Reflow as text (experimental)** in the same menu opens the reflowed EPUB in the book reader: two columns are read
+- **Reflow as text (experimental)** in the Main Menu (*Reflow as Text*) opens the reflowed EPUB in the book reader: two columns are read
   one after the other, running headers, footers and page numbers are dropped, hyphenated words are joined. Tables,
   formulas, footnotes and images are not reconstructed. Switch the default in `pdf.json` (`"pages": false`) to open
   PDFs as reflowed text.
@@ -609,7 +612,7 @@ CBZ and CBT comics (and CBR files that are really zip archives) open in a **comi
 text of ComicInfo.xml fills the library: title, series, number, writer, publisher, year, summary and genre. The same
 file says which pages are double pages or covers. Real RAR archives cannot be read (convert them to CBZ first).
 
-- **Layout** (*View* menu, the eye button, or the **M** key): *Single page*, *Two pages* (like an open book) or
+- **Layout** (the **View Options** button, the display icon in the header bar, or the **M** key): *Single page*, *Two pages* (like an open book) or
   *Vertical scroll* for webtoons, where the pages follow each other as one long strip. In the two-page layout
   *Cover alone* keeps the first page alone and *Wide pages alone* gives a double-page picture the
   whole screen; the pairs then continue after it.
@@ -622,7 +625,7 @@ file says which pages are double pages or covers. Real RAR archives cannot be re
   from the defaults) forgets them.
 - **Smart zoom**: double-click (or double-tap) a panel to zoom to it, double-click again to go back. Bookx finds the
   panels by the gutters between them; on a page without gutters it zooms to the region around the pointer.
-- **Guided view** (**G** key, or the *View* menu; the menu says only *Guided view*, its tooltip says what it does): Space goes to the next panel, Shift+Space to the one before, across
+- **Guided view** (**G** key, or the View Options popover; the menu says only *Guided view*, its tooltip says what it does): Space goes to the next panel, Shift+Space to the one before, across
   pages, in reading order (right to left in manga). The panel is outlined. Without guided view Space reads on a screenful
   at a time.
 - **Moving and zooming**: arrow keys turn pages, or move a zoomed page; Page Up and Page Down turn pages; Home and End go
@@ -706,3 +709,149 @@ combining.
     - Touch gestures and e-ink mode have been tested with simulated input, not on a real touch or e-ink screen.
     - There is no cloud sync of reading progress; the only sync is [Bookx sync](progress-sync.md),
       which you switch on yourself.
+
+## Questions and answers
+
+??? question "How do I change the font, the size or the line spacing?"
+    Click the **Text Appearance** button in the reader's header bar (the text-format icon, next to the magnifier). The
+    popover has the **Font** list, the size buttons (smaller, bigger, back to 100 %) and a **Line spacing** slider with its
+    value next to it. The change applies at once and is kept for this book only. ++ctrl+plus++, ++ctrl+minus++ and
+    ++ctrl+0++ change the size from the keyboard.
+
+??? question "How do I change the margins or the number of columns?"
+    Open **Text Appearance** in the header bar: **Margins** is a slider, and **Columns** chooses two columns, a single
+    column or continuous scroll. If the window is narrow the button moves into the Main Menu (the hamburger at the far right).
+
+??? question "How do I switch to a dark or sepia theme?"
+    Open **Text Appearance**: the round swatches at the top are *follow the system*, *light*, *sepia*, *dark* and *black*.
+    Pressing ++t++ with nothing selected cycles through them. The **+** swatch makes your own theme.
+
+??? question "How do I use the colours the book itself asks for?"
+    Open **Text Appearance**, then **More Text Options**. Under **Colours** choose *Original* (the book's own colours) or
+    *Custom* (your own text and page colours). *Theme* goes back to the theme you picked.
+
+??? question "How do I turn on hyphenation?"
+    Open **Text Appearance**, then **More Text Options**, and switch on **Hyphenate words** in the *Text* group; the same
+    window has *Paragraph spacing* and *Optimal line breaking*. To switch hyphenation on for every book, use
+    **Preferences → Reading → Hyphenate words**. It uses the language of the book and works best with **Justify text**.
+
+??? question "How do I use my own CSS or make my look the default for new books?"
+    **More Text Options** has an *Advanced and custom CSS* section (collapsed) for your own style sheet, and a *This book*
+    section: **Use as Default for New Books** copies the current look to books you have not changed, **Reset This Book to
+    Defaults** forgets this book's look.
+
+??? question "How do I highlight text?"
+    Select a word or a passage (double-click, drag, long-press on a touch screen, or ++shift+right++ on the keyboard).
+    A small popover appears: click one of the five colours. ++h++ highlights the selection from the keyboard.
+
+??? question "How do I add a note to a passage?"
+    Select the text and click the pencil (*Add Note*) in the popover, or press ++n++. Type the note and click away or press
+    ++ctrl+enter++ to save it. Click the highlight later to edit the note.
+
+??? question "How do I change a highlight's colour or style?"
+    Click the highlight on the page: the same popover opens, with the five colours and the four styles (background,
+    underline, strikethrough, squiggly). Pick another one. In the sidebar, the **⋮** button of a note offers the same colours
+    and styles.
+
+??? question "How do I remove a highlight?"
+    Click the highlight and press the bin (*Remove Highlight*) in the popover, or use the bin in the sidebar's **Notes** list.
+    The note goes with it. A message with **Undo** stays on screen for ten seconds.
+
+??? question "How do I see all my highlights and notes?"
+    Press ++f9++ (or the sidebar button at the left of the header bar) and open the **Notes** tab. You can search them and
+    filter them by colour, by style and by notes only. To save them as a file, see [Export Annotations](annotations.md).
+
+??? question "How do I look up a word in the dictionary?"
+    Double-click the word, or select a phrase, and click the dictionary button in the popover (or press ++d++). Bookx uses
+    offline dictionaries; if there is none for the language of the book, the popover offers a download. Dictionaries are
+    managed in **Preferences → Dictionaries**.
+
+??? question "How do I look something up on Wikipedia or translate it?"
+    Select the text and click the Wikipedia or Translate button in the popover, or press ++w++ or ++t++. Both need a network
+    connection. Translate has a language picker.
+
+??? question "How do I save a word to my vocabulary?"
+    Looked-up words are added automatically. To add a term of your own with your own definition, select it and click the **+** button
+    of the popover (or press ++v++). The **Vocabulary** window is in the **Library** menu of the library's header bar.
+
+??? question "How do I bookmark a page and go back to it?"
+    Click the bookmark button at the left of the header bar, or press ++ctrl+d++. Press it again to remove the bookmark. Open
+    the sidebar (++f9++) and the **Bookmarks** tab to see them all; click one to go there.
+
+??? question "How do I search in the book?"
+    Click the magnifier in the header bar, or press ++ctrl+f++, and type. Every match is listed with its chapter; ++enter++ or
+    a click jumps to it and highlights it on the page.
+
+??? question "How do I jump to a page, a percentage or a chapter?"
+    Open the Main Menu and choose **Go to** (or press ++ctrl+l++ or ++ctrl+g++). Type `45` for a page, `37%` for a percentage,
+    or part of a chapter name. The line under the field says where it will go. You can also drag the slider under the page,
+    or use the contents in the sidebar.
+
+??? question "How do I go back to where I was after a jump?"
+    After a link, a search result or *Go to*, a **Previous Position** button appears at the left of the header bar. Click it, or
+    press ++alt+left++; ++alt+right++ goes forward again.
+
+??? question "How do I see where I am in the whole book?"
+    Open the Main Menu and choose **Book Map** (or press ++m++): every page as a small block, with the pages you have read,
+    your highlights and your bookmarks. Click a block to go there.
+
+??? question "How do I change what the footer shows?"
+    Right-click the footer, or open the Main Menu and choose **Footer Statistics**. Choose a preset, switch items on and off
+    and move them up or down. **Only for this book** gives the open book a footer of its own.
+
+??? question "How do I use the reading ruler?"
+    Open the Main Menu and tick **Reading Ruler**. The page is dimmed except for a band that follows the pointer (or your finger);
+    ++alt+up++ and ++alt+down++ move it line by line. The number of lines and the dimming are in **Preferences → Reading**.
+
+??? question "How do I use speed reading?"
+    Open the Main Menu and choose **Speed Reading**. A small card with play / pause and faster / slower appears over the page;
+    ++space++ starts and pauses, ++up++ and ++down++ change the speed, ++escape++ closes it.
+
+??? question "How do I make Bookx read the book aloud?"
+    Click the speaker button in the header bar and press play (or press ++r++). It reads from your selection or the top of the
+    page and highlights the sentence. See [Read aloud](read-aloud.md).
+
+??? question "How do I change the voice or the speed of read aloud?"
+    On the player card that floats over the page, open the full player with the arrow button: **Slower** and **Faster** set the
+    speed, and the voice button chooses a voice for the language of the book. *Voice Settings* (in the speaker popover or the
+    voice list) opens **Preferences → Text to Speech** with pitch and engine.
+
+??? question "How do I set a sleep timer?"
+    Open the full player (the arrow button on the card) and click the alarm-clock button: stop after 15, 30, 45 or 60 minutes,
+    or at the end of the chapter.
+
+??? question "How do I read a PDF?"
+    Open it from the library like any book. It opens as pages. The **View Options** button (display icon) in the header bar
+    sets continuous or single-page layout, zoom, crop margins and dark pages; *Reflow as Text* in the Main Menu opens the
+    reflowed text instead. See [PDF](#pdf).
+
+??? question "How do I read a comic or manga?"
+    Open the CBZ or CBT file from the library. The **View Options** button in the header bar chooses single page, two pages or
+    vertical scroll, the fit and the reading direction; double-click a panel to zoom to it, ++g++ starts guided view. See
+    [Comics and manga](#comics-and-manga).
+
+??? question "How do I listen to an audiobook?"
+    Audiobooks are added with **Add Audiobook** in the **+** menu of the library and open in their own player. See
+    [Audiobooks](audiobooks.md).
+
+??? question "How do I keep my reading position in step with KOReader?"
+    Switch on Bookx sync in **Preferences → Sync**; on the e-reader use KOReader's progress sync or the Bookx plugin. The steps
+    are in [Bookx sync](progress-sync.md) and [KOReader highlights and notes](koreader-sync.md).
+
+??? question "How do I use e-ink mode or a touch screen?"
+    Switch on **E-ink mode** in **Preferences → Reading**: black on white, no animations, bars that stay and wide tap zones.
+    The same page has **Tap zones** for touch screens. There is nothing to switch on in the reader itself.
+
+??? question "How do I read with the keyboard only?"
+    ++right++ / ++left++ turn pages, ++ctrl+right++ / ++ctrl+left++ change chapter, ++ctrl+f++ searches, ++ctrl+l++ goes to a page,
+    ++f9++ opens the sidebar, ++f10++ the Main Menu, ++ctrl+k++ the command palette. You can even select, look up and highlight
+    with the keyboard: see [Accessibility](accessibility.md#reading-and-selecting-with-the-keyboard-only) and
+    [Keyboard shortcuts](shortcuts.md).
+
+??? question "How do I make the header and bars go away?"
+    They fade by themselves after a few idle seconds. Press ++f11++ (or double-click the margin) for fullscreen. In e-ink mode
+    the bars stay.
+
+??? question "What if a book will not open?"
+    The page says why and has a **Back to Library** button. Damaged or missing files are the usual reason; check the book with
+    *Library Health* in the library's main menu.

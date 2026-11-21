@@ -21,10 +21,10 @@ use clap::Subcommand;
 pub struct RemoteArgs {
     /// WebDAV user name
     #[arg(long)]
-    user: Option<String>,
+    pub(crate) user: Option<String>,
     /// WebDAV: the folder below the address
     #[arg(long, default_value = "Bookx backups")]
-    folder: String,
+    pub(crate) folder: String,
 }
 
 fn destination(spec: &str, r: &RemoteArgs) -> Result<Box<dyn bookx_backup::Target>> {

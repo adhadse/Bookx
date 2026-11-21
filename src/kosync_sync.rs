@@ -40,6 +40,9 @@ pub struct KoSyncPrefs {
     pub device_name: String,
     /// Tells this installation apart from the others; made on first use.
     pub device_id: String,
+    /// Register or Log in worked for this server, user name and password; cleared when one of
+    /// them is edited. Lets the page say “Logged in as …” after a restart.
+    pub logged_in: bool,
 }
 
 impl KoSyncPrefs {

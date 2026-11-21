@@ -116,6 +116,50 @@ pub fn source_label(book_id: u64, highlight_id: &str) -> Option<String> {
     })
 }
 
+/// The bookmarks the devices brought, by `(book id, bookmark id)`: where from (`KOReader (Kobo
+/// Libra)`, `Kobo`) and whether the place is a rough one. Both syncs (wireless and cable) are read.
+pub fn bookmark_infos(root: &Path) -> std::collections::HashMap<(u64, String), (String, bool)> {
+    let ledger = Ledger::load(&sync::ledger_path(&data_dir()));
+    let mut map = crate::bookmark_sync::infos(&ledger.bookmarks);
+    map.extend(crate::bookmark_sync::infos(
+        &crate::bookmark_sync::Store::load(root).entries,
+    ));
+    map
+}
+
+/// Where the device had a highlight that a sync added (read from the ledger each time: it is only
+/// used when a note is opened in the book).
+pub fn hint_for(book_id: u64, highlight_id: &str) -> Option<crate::highlight_goto::Hint> {
+    let ledger = Ledger::load(&sync::ledger_path(&data_dir()));
+    sync::hints(&ledger).remove(&(book_id, highlight_id.to_string()))
+}
+
+/// Test hook: remembers a device's xpointer for a highlight the way a sync would.
+pub fn dev_seed_hint(book_id: u64, highlight_id: &str, text: &str, pos0: &str) {
+    let path = sync::ledger_path(&data_dir());
+    let mut ledger = Ledger::load(&path);
+    ledger.incoming.insert(
+        format!("dev/{highlight_id}"),
+        sync::Incoming {
+            book_id,
+            highlight: Some(highlight_id.to_string()),
+            source: "KOReader (test)".into(),
+            note: String::new(),
+            device_look: Default::default(),
+            updated: 1,
+            seq: 1,
+            state: sync::State::Linked,
+            text: text.to_string(),
+            made_here: true,
+            hint: crate::highlight_goto::Hint {
+                pos0: pos0.to_string(),
+                ..Default::default()
+            },
+        },
+    );
+    let _ = ledger.save(&path);
+}
+
 /// Merges what the devices sent into the library and publishes the library's highlights for the
 /// books the devices know. `None` when the server does not serve annotations. Does nothing and
 /// returns `None` if nothing changed since the last merge and `force` is off.
@@ -136,7 +180,14 @@ pub fn sync_once(shared: &SharedRef, force: bool) -> Option<Report> {
     ledger.seen = ann.seq();
     SEEN.with(|s| s.set(ledger.seen));
     let _ = ledger.save(&path);
-    if report.added + report.removed + report.notes + report.linked + report.looks > 0 {
+    if report.added
+        + report.removed
+        + report.notes
+        + report.linked
+        + report.looks
+        + report.bookmarks
+        > 0
+    {
         let _ = lib.save();
     }
     SOURCES.with(|s| *s.borrow_mut() = Some(sync::sources(&ledger)));
@@ -453,8 +504,8 @@ pub fn dev_command(shared: &SharedRef, arg: &str) {
         },
         "merge" => match sync_once(shared, true) {
             Some(r) => eprintln!(
-                "koannot_merge: added={} linked={} notes={} removed={} kept={} conflicts={} unplaced={} bookmarks={} unmatched={} sent={} looks={}",
-                r.added, r.linked, r.notes, r.removed, r.kept, r.conflicts, r.unplaced, r.bookmarks, r.unmatched, r.sent, r.looks
+                "koannot_merge: added={} linked={} notes={} removed={} kept={} conflicts={} unplaced={} bookmarks={} unmatched={} sent={} looks={} bookmarks_skipped={}",
+                r.added, r.linked, r.notes, r.removed, r.kept, r.conflicts, r.unplaced, r.bookmarks, r.unmatched, r.sent, r.looks, r.bookmarks_skipped
             ),
             None => eprintln!("koannot_merge: not running"),
         },
@@ -475,6 +526,16 @@ pub fn dev_command(shared: &SharedRef, arg: &str) {
                         h.text,
                         h.color,
                         h.style
+                    );
+                }
+            }
+            let infos = bookmark_infos(&lib.root);
+            for b in &lib.books {
+                for m in &b.bookmarks {
+                    let (src, approx) = infos.get(&(b.id, m.id.clone())).cloned().unwrap_or_default();
+                    eprintln!(
+                        "koannot_bm: book={} id={} spine={} frac={:.2} label={:?} source={:?} approx={}",
+                        b.id, m.id, m.spine, m.frac, m.label, src, approx
                     );
                 }
             }
