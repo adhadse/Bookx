@@ -21,7 +21,7 @@ jobs:
     # Bookx needs GTK >= 4.20 and libadwaita >= 1.8, which current Fedora ships.
     container: fedora:latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install system dependencies
         run: |
           dnf install -y gcc gcc-c++ make pkgconf-pkg-config rust cargo rustfmt clippy \
@@ -82,7 +82,7 @@ jobs:
       image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
       options: --privileged
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Static checks
         run: CHECK_ONLY=1 build-aux/flatpak.sh
       - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
@@ -95,7 +95,7 @@ jobs:
     name: Dependency advisories, licences, sources (cargo-deny)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check advisories bans licenses sources
