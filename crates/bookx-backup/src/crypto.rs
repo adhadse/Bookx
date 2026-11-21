@@ -32,8 +32,20 @@ const CHUNK: usize = 64 * 1024;
 const TAG: usize = 16;
 const NONCE: usize = 7;
 const SALT: usize = 16;
-/// The most memory a file may ask the key derivation for.
-const MAX_KDF_KIB: u32 = 1024 * 1024;
+/// The most memory a file may ask the key derivation for (Bookx itself uses 19 MiB).
+pub const MAX_KDF_KIB: u32 = 256 * 1024;
+/// The most passes a file may ask for (Bookx itself uses 2).
+pub const MAX_KDF_PASSES: u32 = 10;
+/// The most lanes a file may ask for (Bookx itself uses 1).
+pub const MAX_KDF_LANES: u32 = 8;
+
+/// Are the key derivation settings read from a file within what Bookx would ever write? A hostile
+/// backup or repository must not make restoring it take gigabytes and minutes.
+pub fn kdf_is_reasonable(memory_kib: u32, passes: u32, lanes: u32) -> bool {
+    (8..=MAX_KDF_KIB).contains(&memory_kib)
+        && (1..=MAX_KDF_PASSES).contains(&passes)
+        && (1..=MAX_KDF_LANES).contains(&lanes)
+}
 
 /// Key derivation cost.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -230,7 +242,7 @@ pub fn decrypt(data: &[u8], passphrase: &str) -> Result<Vec<u8>> {
             h.cipher
         );
     }
-    if h.memory_kib > MAX_KDF_KIB || h.passes > 64 || h.lanes == 0 || h.lanes > 16 {
+    if !kdf_is_reasonable(h.memory_kib, h.passes, h.lanes) {
         bail!("the backup asks for unreasonable key settings; refusing to open it");
     }
     let salt = unhex(&h.salt)?;
@@ -407,6 +419,28 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("unreasonable"));
+    }
+
+    #[test]
+    fn key_settings_beyond_what_bookx_writes_are_refused() {
+        assert!(kdf_is_reasonable(
+            Kdf::DEFAULT.memory_kib,
+            Kdf::DEFAULT.passes,
+            Kdf::DEFAULT.lanes
+        ));
+        assert!(kdf_is_reasonable(
+            Kdf::TEST.memory_kib,
+            Kdf::TEST.passes,
+            Kdf::TEST.lanes
+        ));
+        // used to be accepted: 1 GiB and 64 passes is minutes of work and a gigabyte of RAM
+        assert!(!kdf_is_reasonable(1024 * 1024, 2, 1));
+        assert!(!kdf_is_reasonable(19 * 1024, 64, 1));
+        assert!(!kdf_is_reasonable(19 * 1024, 2, 16));
+        assert!(!kdf_is_reasonable(0, 2, 1));
+        assert!(!kdf_is_reasonable(19 * 1024, 0, 1));
+        assert!(!kdf_is_reasonable(19 * 1024, 2, 0));
+        assert!(!kdf_is_reasonable(u32::MAX, u32::MAX, u32::MAX));
     }
 
     #[test]
