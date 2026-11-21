@@ -63,6 +63,9 @@ msgstr ""
 msgid "0 of {}"
 msgstr ""
 
+msgid "0 uses the limit of the subscription"
+msgstr ""
+
 msgid "1 hour"
 msgstr ""
 
@@ -165,10 +168,16 @@ msgstr ""
 msgid "A saved search that matches everything cannot be excluded"
 msgstr ""
 
+msgid "A section title is too long."
+msgstr ""
+
 msgid "A tag written like Fiction.Fantasy sits under Fiction; choosing Fiction shows every book below it"
 msgstr ""
 
 msgid "A text file Anki can import, tab separated."
+msgstr ""
+
+msgid "A user name and password for sites that need a login. Sent only to that site."
 msgstr ""
 
 msgid "A value does not fit"
@@ -181,6 +190,9 @@ msgid "A warm tint and the dark theme between the two times"
 msgstr ""
 
 msgid "API key (if the server wants one)"
+msgstr ""
+
+msgid "API token"
 msgstr ""
 
 msgid "Aa"
@@ -240,6 +252,12 @@ msgstr ""
 msgid "Account saved: {}"
 msgstr ""
 
+msgid "Account “{}” removed"
+msgstr ""
+
+msgid "Accounts"
+msgstr ""
+
 msgid "Acknowledgements"
 msgstr ""
 
@@ -265,6 +283,9 @@ msgid "Adaptive: a slim card on small windows, a large centred card on big ones"
 msgstr ""
 
 msgid "Add"
+msgstr ""
+
+msgid "Add Account"
 msgstr ""
 
 msgid "Add All"
@@ -297,6 +318,9 @@ msgstr ""
 msgid "Add Empty Book"
 msgstr ""
 
+msgid "Add Feed"
+msgstr ""
+
 msgid "Add Files"
 msgstr ""
 
@@ -327,6 +351,12 @@ msgstr ""
 msgid "Add Rule"
 msgstr ""
 
+msgid "Add Site"
+msgstr ""
+
+msgid "Add Site Account"
+msgstr ""
+
 msgid "Add Snippet"
 msgstr ""
 
@@ -334,6 +364,9 @@ msgid "Add Template"
 msgstr ""
 
 msgid "Add Term"
+msgstr ""
+
+msgid "Add Web Site"
 msgstr ""
 
 msgid "Add Your Definition"
@@ -394,6 +427,9 @@ msgid "Add as Another Format"
 msgstr ""
 
 msgid "Add as another format?"
+msgstr ""
+
+msgid "Add at least one feed."
 msgstr ""
 
 msgid "Add at least one rule"
@@ -526,6 +562,9 @@ msgstr ""
 msgid "Address for the e-reader"
 msgstr ""
 
+msgid "Address with {word}"
+msgstr ""
+
 msgid "Address, e.g. https://cloud.example.com/remote.php/dav/files/me/"
 msgstr ""
 
@@ -640,6 +679,9 @@ msgstr ""
 msgid "Allow changes to the library"
 msgstr ""
 
+msgid "Allow guests"
+msgstr ""
+
 msgid "Allow other devices on the network"
 msgstr ""
 
@@ -647,6 +689,9 @@ msgid "Allow this port in your firewall for the e-reader to connect."
 msgstr ""
 
 msgid "Allow {} to run?"
+msgstr ""
+
+msgid "Allowed collections"
 msgstr ""
 
 msgid "Allowed host names"
@@ -799,6 +844,9 @@ msgstr ""
 msgid "Articles"
 msgstr ""
 
+msgid "Articles from this feed"
+msgstr ""
+
 msgid "Articles per feed"
 msgstr ""
 
@@ -830,6 +878,18 @@ msgid "At most 1600 pixels high"
 msgstr ""
 
 msgid "At most 800 pixels high"
+msgstr ""
+
+msgid "At most {} accounts can be added."
+msgstr ""
+
+msgid "At most {} articles per feed."
+msgstr ""
+
+msgid "At most {} feeds."
+msgstr ""
+
+msgid "At most {} sites can be added."
 msgstr ""
 
 msgid "At the end of the chapter"
@@ -1225,6 +1285,9 @@ msgstr ""
 msgid "Bookx remembers a SHA-256 checksum of every book file and tells you when a file changed without being edited, which is what a failing disk or a bad sync looks like."
 msgstr ""
 
+msgid "Bookx signs in with HTTP Basic authentication, only to the exact site you name and only over https. Passwords are kept in your keyring, never in the settings file."
+msgstr ""
+
 msgid "Bookx sync (extended KOSync) is compatible with KOReader’s KOSync progress protocol. Bookx’s extension also syncs highlights, notes and bookmarks when the Bookx plugin is installed in KOReader. Everything goes over one connection to this computer; no cloud service is involved."
 msgstr ""
 
@@ -1301,6 +1364,12 @@ msgid "Bulk Rename"
 msgstr ""
 
 msgid "Bulk edit failed: {}"
+msgstr ""
+
+msgid "CSS selectors, one per line, for full articles. Empty keeps what Bookx finds."
+msgstr ""
+
+msgid "CSS selectors, one per line, removed from full articles (ads, share bars)."
 msgstr ""
 
 msgid "CSS that is applied after the styling of the book."
@@ -1460,6 +1529,9 @@ msgid "Change every occurrence of the word in the book"
 msgstr ""
 
 msgid "Change how the book looks without editing every stylesheet by hand. The rules apply to stylesheets, <style> blocks and style attributes."
+msgstr ""
+
+msgid "Change it with Edit in the list of subscriptions."
 msgstr ""
 
 msgid "Change library folder"
@@ -1659,6 +1731,9 @@ msgstr ""
 msgid "Checks of the accessibility metadata"
 msgstr ""
 
+msgid "Checks that Bookx can read your lists"
+msgstr ""
+
 msgid "Checks, duplicates, editions, books that need attention, backups, trash"
 msgstr ""
 
@@ -1740,6 +1815,9 @@ msgstr ""
 msgid "Choose files, or a folder or e-reader, with notes from Kindle, KOReader, Kobo, calibre or Bookx; you review them before anything is added."
 msgstr ""
 
+msgid "Choose guest collections"
+msgstr ""
+
 msgid "Choose the Backup Folder"
 msgstr ""
 
@@ -1753,6 +1831,9 @@ msgid "Choose the Folder to Restore Into"
 msgstr ""
 
 msgid "Choose the Folder to Watch"
+msgstr ""
+
+msgid "Choose the collections guests can read"
 msgstr ""
 
 msgid "Choose the folder for the plugin"
@@ -1889,6 +1970,12 @@ msgstr ""
 msgid "Collapse All"
 msgstr ""
 
+msgid "Collections are tags. This account sees books with any chosen tag. Choose none for all books."
+msgstr ""
+
+msgid "Collections are the tags of your books. Add tags to books to offer them here."
+msgstr ""
+
 msgid "Colophon"
 msgstr ""
 
@@ -2022,6 +2109,9 @@ msgid "Connected with the cable and mounted. Bookx reads the Kobo’s own readin
 msgstr ""
 
 msgid "Connected."
+msgstr ""
+
+msgid "Connected. Your lists can be read."
 msgstr ""
 
 msgid "Connecting"
@@ -2274,6 +2364,9 @@ msgstr ""
 msgid "Could not add “{}”: {}"
 msgstr ""
 
+msgid "Could not apply: {}"
+msgstr ""
+
 msgid "Could not back up to {}: {}"
 msgstr ""
 
@@ -2391,6 +2484,9 @@ msgstr ""
 msgid "Could not read the file: {}"
 msgstr ""
 
+msgid "Could not read your lists from Hardcover: {}"
+msgstr ""
+
 msgid "Could not read {}: {}"
 msgstr ""
 
@@ -2431,6 +2527,9 @@ msgid "Could not save the folder: {}"
 msgstr ""
 
 msgid "Could not save the image"
+msgstr ""
+
+msgid "Could not save the order: {}"
 msgstr ""
 
 msgid "Could not save the plugin: {}"
@@ -2780,6 +2879,12 @@ msgstr ""
 msgid "Dictionaries"
 msgstr ""
 
+msgid "Dictionaries are asked from the top, so the first one that knows a word answers first."
+msgstr ""
+
+msgid "Dictionaries you install or copy to the dictionary folder are listed here."
+msgstr ""
+
 msgid "Dictionary"
 msgstr ""
 
@@ -2793,6 +2898,9 @@ msgid "Dictionary for {}"
 msgstr ""
 
 msgid "Dictionary for {} ready"
+msgstr ""
+
+msgid "Dictionary order"
 msgstr ""
 
 msgid "Dictionary to add the word to"
@@ -2877,6 +2985,9 @@ msgid "Download the default voice without asking"
 msgstr ""
 
 msgid "Download the dictionary of the chosen language"
+msgstr ""
+
+msgid "Download this feed"
 msgstr ""
 
 msgid "Downloaded when you ask, never bundled. Every file is checked against a checksum. They are kept in {}"
@@ -2969,13 +3080,19 @@ msgstr ""
 msgid "EPUB, PDF, MOBI, FB2, comics, audiobooks, plain text and more"
 msgstr ""
 
-msgid "Each subscription makes a new book from its feeds on its schedule. Old issues are removed."
+msgid "Each account has its own password and sees only the collections you choose. The shared library password keeps seeing everything. Changes restart the running server."
+msgstr ""
+
+msgid "Each subscription makes a new book from its feeds on its schedule. Old issues are removed. Press a subscription to edit its feeds and filters."
 msgstr ""
 
 msgid "Edges (narrow strips)"
 msgstr ""
 
 msgid "Edit"
+msgstr ""
+
+msgid "Edit Account"
 msgstr ""
 
 msgid "Edit Book"
@@ -2985,6 +3102,9 @@ msgid "Edit Book — {}"
 msgstr ""
 
 msgid "Edit Column"
+msgstr ""
+
+msgid "Edit Feeds of {}"
 msgstr ""
 
 msgid "Edit Metadata"
@@ -3002,6 +3122,9 @@ msgstr ""
 msgid "Edit Saved Search"
 msgstr ""
 
+msgid "Edit Site Account"
+msgstr ""
+
 msgid "Edit Snippet"
 msgstr ""
 
@@ -3011,10 +3134,16 @@ msgstr ""
 msgid "Edit Template"
 msgstr ""
 
+msgid "Edit Web Site"
+msgstr ""
+
 msgid "Edit Your Definition"
 msgstr ""
 
 msgid "Edit Your Definition of {}"
+msgstr ""
+
+msgid "Edit account {}"
 msgstr ""
 
 msgid "Edit book"
@@ -3024,6 +3153,12 @@ msgid "Edit metadata"
 msgstr ""
 
 msgid "Edit note"
+msgstr ""
+
+msgid "Edit the feeds and filters"
+msgstr ""
+
+msgid "Edit the login for {}"
 msgstr ""
 
 msgid "Edit the sufficient modes as text"
@@ -3430,6 +3565,12 @@ msgstr ""
 msgid "Feed addresses"
 msgstr ""
 
+msgid "Feed text only"
+msgstr ""
+
+msgid "Feeds"
+msgstr ""
+
 msgid "Fetch Metadata"
 msgstr ""
 
@@ -3794,6 +3935,12 @@ msgstr ""
 msgid "Get a dictionary"
 msgstr ""
 
+msgid "Give the account a name."
+msgstr ""
+
+msgid "Give the issue a title."
+msgstr ""
+
 msgid "Give the library a name."
 msgstr ""
 
@@ -3804,6 +3951,9 @@ msgid "Give the search a name."
 msgstr ""
 
 msgid "Give the shelf a name."
+msgstr ""
+
+msgid "Give the site a name."
 msgstr ""
 
 msgid "Give the template a name"
@@ -3923,10 +4073,28 @@ msgstr ""
 msgid "Grouping"
 msgstr ""
 
+msgid "Guest collections"
+msgstr ""
+
+msgid "Guests"
+msgstr ""
+
+msgid "Guests can read books with any of the chosen tags. Choose at least one, or guests stay off."
+msgstr ""
+
 msgid "Guided view"
 msgstr ""
 
 msgid "HTML, DOCX, text and other documents"
+msgstr ""
+
+msgid "Hardcover"
+msgstr ""
+
+msgid "Hardcover did not accept the token. Copy a new one from your account settings."
+msgstr ""
+
+msgid "Hardcover import undone"
 msgstr ""
 
 msgid "Hazards"
@@ -3994,6 +4162,11 @@ msgstr ""
 
 msgid "History"
 msgstr ""
+
+msgid "History cleared ({} word)"
+msgid_plural "History cleared ({} words)"
+msgstr[0] ""
+msgstr[1] ""
 
 msgid "Home"
 msgstr ""
@@ -4151,6 +4324,12 @@ msgstr ""
 msgid "Import functions from a JSON file"
 msgstr ""
 
+msgid "Import reading status"
+msgstr ""
+
+msgid "Import reading status from Hardcover"
+msgstr ""
+
 msgid "Import searches"
 msgstr ""
 
@@ -4251,6 +4430,9 @@ msgstr ""
 msgid "Include covers"
 msgstr ""
 
+msgid "Include images"
+msgstr ""
+
 msgid "Include your books in backups"
 msgstr ""
 
@@ -4329,6 +4511,9 @@ msgstr ""
 msgid "Inverted"
 msgstr ""
 
+msgid "Issue"
+msgstr ""
+
 msgid "Issues to keep"
 msgstr ""
 
@@ -4377,7 +4562,16 @@ msgstr ""
 msgid "Keep Mine"
 msgstr ""
 
+msgid "Keep a history of look-ups"
+msgstr ""
+
+msgid "Keep only articles matching"
+msgstr ""
+
 msgid "Keep only the characters the book uses"
+msgstr ""
+
+msgid "Keep only these parts"
 msgstr ""
 
 msgid "Keep the size"
@@ -4441,6 +4635,9 @@ msgid "Language (e.g. en)"
 msgstr ""
 
 msgid "Language changed"
+msgstr ""
+
+msgid "Language code"
 msgstr ""
 
 msgid "Language of the book"
@@ -4570,6 +4767,9 @@ msgid "Library name"
 msgstr ""
 
 msgid "Library password (user name: bookx)"
+msgstr ""
+
+msgid "Library server accounts"
 msgstr ""
 
 msgid "Library switched to {}"
@@ -4710,6 +4910,12 @@ msgstr ""
 msgid "Logging in"
 msgstr ""
 
+msgid "Login for {} removed"
+msgstr ""
+
+msgid "Login saved"
+msgstr ""
+
 msgid "Long text"
 msgstr ""
 
@@ -4746,7 +4952,16 @@ msgstr ""
 msgid "Look these books up online; series names and numbers appear in the review"
 msgstr ""
 
+msgid "Look this up on a web site, or see the history"
+msgstr ""
+
+msgid "Look up on the web"
+msgstr ""
+
 msgid "Look up, Wikipedia, translate"
+msgstr ""
+
+msgid "Look-up history"
 msgstr ""
 
 msgid "Look-ups use dictionaries on this computer. Bookx can download a free one for the language of a book."
@@ -4845,6 +5060,9 @@ msgstr ""
 msgid "Make the first copy automatically"
 msgstr ""
 
+msgid "Manage"
+msgstr ""
+
 msgid "Manage Checkpoints"
 msgstr ""
 
@@ -4858,6 +5076,18 @@ msgid "Manage Snippets"
 msgstr ""
 
 msgid "Manage authors"
+msgstr ""
+
+msgid "Manage library server accounts"
+msgstr ""
+
+msgid "Manage site accounts"
+msgstr ""
+
+msgid "Manage the accounts of the library server"
+msgstr ""
+
+msgid "Manage the site accounts for news downloads"
 msgstr ""
 
 msgid "Manga Order: Pages and Panels Run from Right to Left"
@@ -5117,6 +5347,12 @@ msgstr ""
 msgid "Move {} Up"
 msgstr ""
 
+msgid "Move {} down"
+msgstr ""
+
+msgid "Move {} up"
+msgstr ""
+
 msgid "Moved {}"
 msgstr ""
 
@@ -5259,6 +5495,9 @@ msgid "New passphrase"
 msgstr ""
 
 msgid "New passphrase again"
+msgstr ""
+
+msgid "New password, empty keeps the old one"
 msgstr ""
 
 msgid "New rule"
@@ -5411,6 +5650,9 @@ msgstr ""
 msgid "No account yet? Open Preferences → Sync and press Register."
 msgstr ""
 
+msgid "No accounts yet"
+msgstr ""
+
 msgid "No assistant has connected recently."
 msgstr ""
 
@@ -5463,6 +5705,9 @@ msgid "No dictionaries installed"
 msgstr ""
 
 msgid "No dictionaries installed.\n\nCopy StarDict dictionaries (folders with .ifo, .idx and .dict files) into:\n{}"
+msgstr ""
+
+msgid "No dictionaries yet"
 msgstr ""
 
 msgid "No dictionary for {} yet"
@@ -5549,6 +5794,9 @@ msgstr ""
 msgid "No misspelled words in this file"
 msgstr ""
 
+msgid "No more site accounts can be added."
+msgstr ""
+
 msgid "No new books to import"
 msgstr ""
 
@@ -5579,6 +5827,9 @@ msgstr ""
 msgid "No shelves yet. Drag books onto a shelf to fill it."
 msgstr ""
 
+msgid "No site accounts yet"
+msgstr ""
+
 msgid "No style matched the rules"
 msgstr ""
 
@@ -5603,6 +5854,9 @@ msgstr ""
 msgid "No tags"
 msgstr ""
 
+msgid "No tags yet"
+msgstr ""
+
 msgid "No templates yet"
 msgstr ""
 
@@ -5612,6 +5866,9 @@ msgstr ""
 msgid "No themes yet"
 msgstr ""
 
+msgid "No token yet"
+msgstr ""
+
 msgid "No unused media to delete"
 msgstr ""
 
@@ -5619,6 +5876,9 @@ msgid "No voice is installed. Download one in Preferences → Text to Speech, th
 msgstr ""
 
 msgid "No voice yet: it is downloaded when you first press Read Aloud (or below)"
+msgstr ""
+
+msgid "No words yet"
 msgstr ""
 
 msgid "None"
@@ -5825,6 +6085,9 @@ msgstr ""
 msgid "Nothing to look up"
 msgstr ""
 
+msgid "Nothing to look up."
+msgstr ""
+
 msgid "Nothing to merge yet. The Bookx sync server (step 1) and “Sync highlights, notes and bookmarks” must be on in Preferences → Sync. Reading position syncs by itself as you read."
 msgstr ""
 
@@ -5874,6 +6137,9 @@ msgid "Nothing: the other side only receives a file"
 msgstr ""
 
 msgid "Number with decimals"
+msgstr ""
+
+msgid "Number {} of {}"
 msgstr ""
 
 msgid "OK"
@@ -5933,10 +6199,16 @@ msgstr ""
 msgid "Offered by Files → New File. {title} in the text is replaced by the name of the new file."
 msgstr ""
 
+msgid "Offered next to a look-up in the reader. In the address, {word} stands for the selected text."
+msgstr ""
+
 msgid "Offline mode"
 msgstr ""
 
 msgid "Offline mode and the list of connections"
+msgstr ""
+
+msgid "Offline mode is on (Preferences → Privacy)."
 msgstr ""
 
 msgid "Offline mode refuses online look-ups; your own servers keep working. The list names everything Bookx can connect to, and when."
@@ -6009,6 +6281,9 @@ msgid "Only fills fields that are empty. Everything else waits here for review."
 msgstr ""
 
 msgid "Only for this book"
+msgstr ""
+
+msgid "Only http and https sites can be used."
 msgstr ""
 
 msgid "Only pages can be merged"
@@ -6099,6 +6374,9 @@ msgid "Open With"
 msgstr ""
 
 msgid "Open a chapter first"
+msgstr ""
+
+msgid "Open a feed to change its section title, address and how its articles are downloaded."
 msgstr ""
 
 msgid "Open a file"
@@ -6359,6 +6637,9 @@ msgstr ""
 msgid "Paste the token from readwise.io/access_token. It is kept in the system keyring."
 msgstr ""
 
+msgid "Paste your Hardcover API token first."
+msgstr ""
+
 msgid "Paste, Import and Export"
 msgstr ""
 
@@ -6375,6 +6656,12 @@ msgid "Path"
 msgstr ""
 
 msgid "Path template"
+msgstr ""
+
+msgid "Patterns (regular expressions), one per line, tried on the title and the address. Empty keeps all."
+msgstr ""
+
+msgid "Patterns, one per line. An article that matches any of them is left out."
 msgstr ""
 
 msgid "Pause"
@@ -6504,6 +6791,12 @@ msgid "Preparing voice {}%"
 msgstr ""
 
 msgid "Preset"
+msgstr ""
+
+msgid "Press Add Account to give someone their own login."
+msgstr ""
+
+msgid "Press Add Site to save a login for a news site."
 msgstr ""
 
 msgid "Press Add to subscribe to a news feed."
@@ -6686,6 +6979,12 @@ msgstr ""
 msgid "Put plugin folders (plugin.toml and plugin.wasm) into {}"
 msgstr ""
 
+msgid "Put {word} after the site name, for example https://example.com/search?q={word}."
+msgstr ""
+
+msgid "Put {word} where the selected text goes, for example https://dictionary.example.com/search?q={word}. Only http and https addresses are accepted."
+msgstr ""
+
 msgid "Puts the tags on separate lines. Only the white space between tags changes"
 msgstr ""
 
@@ -6776,6 +7075,9 @@ msgstr ""
 msgid "Read this library right to left"
 msgstr ""
 
+msgid "Read your Hardcover lists and show what would change"
+msgstr ""
+
 msgid "Read {}"
 msgstr ""
 
@@ -6854,6 +7156,9 @@ msgstr ""
 msgid "Reading status"
 msgstr ""
 
+msgid "Reading status from Hardcover"
+msgstr ""
+
 msgid "Reading the Calibre catalogue"
 msgstr ""
 
@@ -6869,6 +7174,9 @@ msgstr ""
 msgid "Reading today"
 msgstr ""
 
+msgid "Reading your lists"
+msgstr ""
+
 msgid "Reads a sentence with the settings above"
 msgstr ""
 
@@ -6879,6 +7187,9 @@ msgid "Reads the metadata.db of a Calibre library. Your Calibre library is not c
 msgstr ""
 
 msgid "Reads with {}"
+msgstr ""
+
+msgid "Reads your lists and ratings from hardcover.app and never changes your account. Copy the API token from your Hardcover account settings."
 msgstr ""
 
 msgid "Readwise"
@@ -7049,6 +7360,9 @@ msgstr ""
 msgid "Remove a property when it has a value"
 msgstr ""
 
+msgid "Remove account {}"
+msgstr ""
+
 msgid "Remove an attribute"
 msgstr ""
 
@@ -7056,6 +7370,9 @@ msgid "Remove blank paragraphs"
 msgstr ""
 
 msgid "Remove empty style attributes"
+msgstr ""
+
+msgid "Remove every word from the history"
 msgstr ""
 
 msgid "Remove existing stylesheet links first"
@@ -7100,6 +7417,9 @@ msgstr ""
 msgid "Remove the jacket"
 msgstr ""
 
+msgid "Remove the login for {}"
+msgstr ""
+
 msgid "Remove the shortcut"
 msgstr ""
 
@@ -7115,7 +7435,13 @@ msgstr ""
 msgid "Remove the tag, keep its content"
 msgstr ""
 
+msgid "Remove these parts"
+msgstr ""
+
 msgid "Remove this catalogue"
+msgstr ""
+
+msgid "Remove this feed"
 msgstr ""
 
 msgid "Remove this font"
@@ -7137,6 +7463,9 @@ msgid "Remove {} Book from the Device?"
 msgid_plural "Remove {} Books from the Device?"
 msgstr[0] ""
 msgstr[1] ""
+
+msgid "Remove {} from the history"
+msgstr ""
 
 msgid "Remove {} from the vocabulary"
 msgstr ""
@@ -7279,6 +7608,9 @@ msgstr ""
 msgid "Repeat the master password"
 msgstr ""
 
+msgid "Repeat the password"
+msgstr ""
+
 msgid "Replace"
 msgstr ""
 
@@ -7301,6 +7633,9 @@ msgid "Replace and Find Previous"
 msgstr ""
 
 msgid "Replace everything"
+msgstr ""
+
+msgid "Replace existing ratings"
 msgstr ""
 
 msgid "Replace existing values"
@@ -7525,6 +7860,9 @@ msgstr ""
 msgid "Safe mode: plugins, patches and network features are off, settings are at their defaults and are not saved."
 msgstr ""
 
+msgid "Same as the subscription"
+msgstr ""
+
 msgid "Same author"
 msgstr ""
 
@@ -7693,6 +8031,15 @@ msgstr ""
 msgid "Saved “{}” to your vocabulary."
 msgstr ""
 
+msgid "Saved, but the server could not restart: {}"
+msgstr ""
+
+msgid "Saved. The server restarted, so this applies now."
+msgstr ""
+
+msgid "Saved. This applies when the server starts."
+msgstr ""
+
 msgid "Saves a snapshot here and copies new and changed books, covers and notes to your places"
 msgstr ""
 
@@ -7852,7 +8199,19 @@ msgstr ""
 msgid "Seconds between pages when Auto-Turn Pages is on (command palette)"
 msgstr ""
 
+msgid "Section title"
+msgstr ""
+
 msgid "Sections"
+msgstr ""
+
+msgid "Sees all books"
+msgstr ""
+
+msgid "Sees only: {}"
+msgstr ""
+
+msgid "Sees only: {}, and {} more"
 msgstr ""
 
 msgid "Select"
@@ -8316,10 +8675,16 @@ msgstr ""
 msgid "Show the full player"
 msgstr ""
 
+msgid "Show the look-up history"
+msgstr ""
+
 msgid "Show the reading ruler"
 msgstr ""
 
 msgid "Show the sections"
+msgstr ""
+
+msgid "Show the words you looked up"
 msgstr ""
 
 msgid "Show this book in Notes and Highlights"
@@ -8345,6 +8710,9 @@ msgstr ""
 msgid "Showing full file paths"
 msgstr ""
 
+msgid "Shows what would change first. One Undo takes it all back."
+msgstr ""
+
 msgid "Shrank {}, saved {}"
 msgstr ""
 
@@ -8363,10 +8731,25 @@ msgstr ""
 msgid "Single pages"
 msgstr ""
 
+msgid "Site accounts"
+msgstr ""
+
+msgid "Site address"
+msgstr ""
+
+msgid "Site “{}” removed"
+msgstr ""
+
+msgid "Sites with a login"
+msgstr ""
+
 msgid "Size"
 msgstr ""
 
 msgid "Skip"
+msgstr ""
+
+msgid "Skip articles matching"
 msgstr ""
 
 msgid "Sleep Timer"
@@ -8723,6 +9106,9 @@ msgstr ""
 msgid "Switch library"
 msgstr ""
 
+msgid "Switch on “Let AI assistants connect” first: that makes the token"
+msgstr ""
+
 msgid "Switch on “Let AI assistants connect” to start it. Assistants can still use the command-line tool below."
 msgstr ""
 
@@ -8852,6 +9238,12 @@ msgstr ""
 msgid "Test"
 msgstr ""
 
+msgid "Test Connection"
+msgstr ""
+
+msgid "Test connection"
+msgstr ""
+
 msgid "Test item removed"
 msgstr ""
 
@@ -8978,7 +9370,19 @@ msgstr ""
 msgid "The OPDS server on"
 msgstr ""
 
+msgid "The address is too long."
+msgstr ""
+
+msgid "The address must contain {word} where the text goes."
+msgstr ""
+
+msgid "The address must not contain spaces."
+msgstr ""
+
 msgid "The address must not contain spaces. After it only “full” or “summary” may follow, not “{}”."
+msgstr ""
+
+msgid "The address must start with https:// or http://."
 msgstr ""
 
 msgid "The address of an OPDS catalogue, such as a Calibre server (http://host:8080/opds) or another Bookx. A user name and password are only needed when the server asks for them."
@@ -9134,6 +9538,9 @@ msgstr ""
 msgid "The factor must be between 0.05 and 20"
 msgstr ""
 
+msgid "The feed {} is in the list twice."
+msgstr ""
+
 msgid "The file cannot be read: {}"
 msgstr ""
 
@@ -9191,6 +9598,12 @@ msgstr ""
 msgid "The images are already as small as they can get"
 msgstr ""
 
+msgid "The import stopped unexpectedly."
+msgstr ""
+
+msgid "The language is a code such as en, de or pt-BR."
+msgstr ""
+
 msgid "The layout was not changed: {}"
 msgstr ""
 
@@ -9203,10 +9616,16 @@ msgstr ""
 msgid "The metadata is complete and matches the book."
 msgstr ""
 
+msgid "The name can have at most {} characters."
+msgstr ""
+
 msgid "The name cannot contain quotes or colons"
 msgstr ""
 
 msgid "The name is unchanged"
+msgstr ""
+
+msgid "The name must not contain a colon."
 msgstr ""
 
 msgid "The new passphrase is saved. No encrypted backup exists yet, so nothing had to be re-encrypted."
@@ -9227,13 +9646,25 @@ msgstr ""
 msgid "The passphrase was not changed everywhere: {}. The old passphrase is still saved; change it again to finish."
 msgstr ""
 
+msgid "The password can have at most {} characters."
+msgstr ""
+
+msgid "The password could not be prepared. Try again."
+msgstr ""
+
 msgid "The password could not be read from the system keyring (locked or not running). Unlock it and restart Bookx, or type the password again."
 msgstr ""
 
 msgid "The password must not contain a colon."
 msgstr ""
 
+msgid "The password needs at least {} characters."
+msgstr ""
+
 msgid "The password store was deleted"
+msgstr ""
+
+msgid "The password was not prepared. Try again."
 msgstr ""
 
 msgid "The pitch of the voice stays the same."
@@ -9308,6 +9739,9 @@ msgstr ""
 msgid "The template name may not be empty or contain / \\ or a dot"
 msgstr ""
 
+msgid "The test stopped unexpectedly."
+msgstr ""
+
 msgid "The text changed since it was checked: refreshing"
 msgstr ""
 
@@ -9332,6 +9766,12 @@ msgstr ""
 msgid "The two passwords are different."
 msgstr ""
 
+msgid "The two passwords are not the same."
+msgstr ""
+
+msgid "The user name must not contain a colon."
+msgstr ""
+
 msgid "The value each property gets from the book's styles"
 msgstr ""
 
@@ -9344,6 +9784,9 @@ msgid "The value of {} needs quotes"
 msgstr ""
 
 msgid "The voice needs espeak-ng, which is not installed. See Preferences → Text to Speech."
+msgstr ""
+
+msgid "The words you look up, newest first. They stay on this computer."
 msgstr ""
 
 msgid "The {} dictionary is big ({}). Open a book in that language and press Download dictionary."
@@ -9380,6 +9823,12 @@ msgid "There are no links on this page"
 msgstr ""
 
 msgid "There are no problems to go to"
+msgstr ""
+
+msgid "There is a site with this name already."
+msgstr ""
+
+msgid "There is already an account with this name."
 msgstr ""
 
 msgid "There is no colour here to remove"
@@ -9454,6 +9903,12 @@ msgstr ""
 msgid "This Shelf"
 msgstr ""
 
+msgid "This account is gone."
+msgstr ""
+
+msgid "This address cannot be used."
+msgstr ""
+
 msgid "This address is not encrypted, so the password would be sent in the clear"
 msgstr ""
 
@@ -9490,6 +9945,9 @@ msgstr ""
 msgid "This device is called"
 msgstr ""
 
+msgid "This dictionary is gone."
+msgstr ""
+
 msgid "This edition opens first now"
 msgstr ""
 
@@ -9506,6 +9964,9 @@ msgid "This highlight was removed on your e-reader"
 msgstr ""
 
 msgid "This is about a device plugged in with a USB cable (or mounted in Files).\n\nWhen you plug in a Kobo, Kindle or similar reader, Bookx reads the reading progress and the highlights and notes the device keeps: from the Kobo’s own database, or from KOReader’s “.sdr” files if KOReader is installed on it. It merges them with your library. Progress only moves forward, highlights and notes are united, and nothing is deleted on either side.\n\nA Kobo needs no KOReader for this; its own reading state is read. A Kindle’s own state is not readable, only KOReader’s files. If the device has no readable state, nothing happens. Reading progress is never written to the device; notes go to it only as a new KOReader notes file where there is none.\n\nOff by default: the connection banner offers a one-time Sync. Answering it never changes this setting. Turn the switch on to sync on every connection without asking."
+msgstr ""
+
+msgid "This is not a site address."
 msgstr ""
 
 msgid "This is not a valid regular expression"
@@ -9551,6 +10012,12 @@ msgid "This search is too complicated"
 msgstr ""
 
 msgid "This series ({})"
+msgstr ""
+
+msgid "This site has an account already."
+msgstr ""
+
+msgid "This subscription is gone."
 msgstr ""
 
 msgid "This tag has no closing >"
@@ -9605,6 +10072,9 @@ msgid "Title Case"
 msgstr ""
 
 msgid "Title Page"
+msgstr ""
+
+msgid "Title of the issue"
 msgstr ""
 
 msgid "Title of the new book"
@@ -9763,16 +10233,28 @@ msgstr ""
 msgid "Type something in Find first"
 msgstr ""
 
+msgid "Type the address of the site as in the feed, for example news.example.com."
+msgstr ""
+
+msgid "Type the address of the site."
+msgstr ""
+
 msgid "Type the new name"
 msgstr ""
 
 msgid "Type the number as it is written on the book; it is turned into the number above"
 msgstr ""
 
+msgid "Type the password."
+msgstr ""
+
 msgid "Type the term first."
 msgstr ""
 
 msgid "Type the text to search for"
+msgstr ""
+
+msgid "Type the user name."
 msgstr ""
 
 msgid "Typing ; after &name now turns the entity into its character"
@@ -9902,6 +10384,11 @@ msgstr ""
 
 msgid "Updated {}"
 msgstr ""
+
+msgid "Updated {} book from Hardcover"
+msgid_plural "Updated {} books from Hardcover"
+msgstr[0] ""
+msgstr[1] ""
 
 msgid "Updated {} books"
 msgstr ""
@@ -10059,6 +10546,9 @@ msgstr ""
 msgid "User name"
 msgstr ""
 
+msgid "User: {}"
+msgstr ""
+
 msgid "Uses the same account as the reading position. Highlights are placed by their text; one that is not found in the book is kept as a note without a place."
 msgstr ""
 
@@ -10102,6 +10592,9 @@ msgid "Virtual library off"
 msgstr ""
 
 msgid "Virtual library: {}"
+msgstr ""
+
+msgid "Visitors without a login can read the collections below, and nothing else"
 msgstr ""
 
 msgid "Visits the {} web address(es) the book links to, one every few moments, and lists the ones that do not answer. Nothing in the book changes."
@@ -10171,6 +10664,12 @@ msgid "Ways to read the whole book: one set of modes each"
 msgstr ""
 
 msgid "Weak metadata"
+msgstr ""
+
+msgid "Web"
+msgstr ""
+
+msgid "Web look-up sites"
 msgstr ""
 
 msgid "WebDAV folder"
@@ -10336,6 +10835,12 @@ msgid "Words that are not in the dictionary get a wavy red line"
 msgstr ""
 
 msgid "Words you added. Choose which ones are used; the Personal dictionary cannot be deleted."
+msgstr ""
+
+msgid "Words you look up in a book appear here."
+msgstr ""
+
+msgid "Words you looked up"
 msgstr ""
 
 msgid "Works"
@@ -10653,6 +11158,9 @@ msgstr ""
 msgid "{ is never closed"
 msgstr ""
 
+msgid "{title} is the name of the subscription and {date} the day of the download"
+msgstr ""
+
 msgid "{}\n"
 msgstr ""
 
@@ -10682,6 +11190,11 @@ msgstr ""
 
 msgid "{} Books Selected"
 msgstr ""
+
+msgid "{} account"
+msgid_plural "{} accounts"
+msgstr[0] ""
+msgstr[1] ""
 
 msgid "{} added, {} already in the library, {} failed"
 msgstr ""
@@ -10732,6 +11245,11 @@ msgid_plural "{} books moved to Trash"
 msgstr[0] ""
 msgstr[1] ""
 
+msgid "{} book on your lists"
+msgid_plural "{} books on your lists"
+msgstr[0] ""
+msgstr[1] ""
+
 msgid "{} book restored"
 msgid_plural "{} books restored"
 msgstr[0] ""
@@ -10744,6 +11262,11 @@ msgstr[1] ""
 
 msgid "{} book will change"
 msgid_plural "{} books will change"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "{} book would change"
+msgid_plural "{} books would change"
 msgstr[0] ""
 msgstr[1] ""
 
@@ -11071,6 +11594,9 @@ msgstr ""
 msgid "{} of {} {}"
 msgstr ""
 
+msgid "{} on your Hardcover lists, {} found in your library. Reading status for {}, ratings for {}."
+msgstr ""
+
 msgid "{} on {} · {}"
 msgstr ""
 
@@ -11215,6 +11741,11 @@ msgstr[1] ""
 msgid "{} without a number"
 msgstr ""
 
+msgid "{} word"
+msgid_plural "{} words"
+msgstr[0] ""
+msgstr[1] ""
+
 msgid "{} words"
 msgstr ""
 
@@ -11287,10 +11818,19 @@ msgstr ""
 msgid "{}, page text"
 msgstr ""
 
+msgid "{}. Own logins that see only chosen collections, and guests."
+msgstr ""
+
 msgid "{}/s"
 msgstr ""
 
+msgid "{}: a line is longer than {} characters."
+msgstr ""
+
 msgid "{}: already up to date"
+msgstr ""
+
+msgid "{}: at most {} lines."
 msgstr ""
 
 msgid "{}: nothing needed to change"
@@ -11348,6 +11888,9 @@ msgid "“{}” is not an address of a proxy. Use an IP address or a network suc
 msgstr ""
 
 msgid "“{}” is not in {}"
+msgstr ""
+
+msgid "“{}” is the name of the library password; choose another name."
 msgstr ""
 
 msgid "“{}” removed from the list; its files were not touched"

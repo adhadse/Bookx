@@ -6,9 +6,17 @@ versioned heading, `Cargo.toml` and the AppStream metainfo disagree.
 
 ## [Unreleased]
 
-Waves 5 to 10 since 0.2.0, grouped by what you see.
+## [0.3.0] - 2026-11-22
+
+The first public release. Everything since 0.2.0 (waves 5 to 11), grouped by what you see.
 
 ### Added
+- Library: custom columns; live updates of highlights and progress while a KOReader sync runs; QR code to open the
+  OPDS server from a phone; Wallabag read-later; safe mode for a damaged settings folder; French and Hindi translations
+  (Spanish and German were already there).
+- Reading: more typography settings and reading aids; CBR and DJVU through helper programs when installed.
+- Backups: lock, change password and rekey of a backup repository.
+- Plugins: a trust sheet before a plugin is enabled (the signature format exists; verification is not built yet).
 - Editor: syntax-highlighted code editing (GtkSourceView 5), editor preferences, shortcuts and snippets, structure
   tools, editor plugins (plugin ABI v2, `editor-action`), narration while editing, a Problems panel, a command palette
   (Ctrl+Shift+P) and a Main Menu with Preferences, Keyboard Shortcuts, Help and About.
@@ -107,5 +115,6 @@ editor.
 - `bookx://` links and a diagnostics report for bug reports.
 - Flatpak manifest (GNOME 50 runtime, offline crates), CI workflow.
 
-[Unreleased]: https://github.com/adhadse/Bookx/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/adhadse/Bookx/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/adhadse/Bookx/releases/tag/v0.3.0
 [0.2.0]: https://github.com/adhadse/Bookx/releases/tag/v0.2.0

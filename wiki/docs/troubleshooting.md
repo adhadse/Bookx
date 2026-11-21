@@ -59,7 +59,7 @@ These look-ups go to the web. Check your network connection.
 
 - Make sure it is mounted (GNOME Files shows it). For phones, unlock the phone and choose file transfer.
 - Run `bookx-cli device-check <mount>` and look at what it reports.
-- Device support is tested only with simulated devices. Please report what you see, including the output of
+- Device support has been tried on real hardware with one Kobo (a Kobo Libra Colour) only; everything else is tested with simulated devices. Please report what you see, including the output of
   `bookx-cli device-check --json <mount>`.
 
 ## Where are my settings and data?

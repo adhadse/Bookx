@@ -330,7 +330,12 @@ pub fn build(shared: &SharedRef) -> Groups {
     for g in [&unmatched, &devices, &activity] {
         g.set_widget_name(BLOCK_NAME);
     }
-    let all = gtk::Button::with_label(&tr("Show All"));
+    // the visible word is a child that screen readers skip: a button takes its name from its own label
+    // first, so the longer name below would never reach them
+    let all = gtk::Button::new();
+    let shown = gtk::Label::new(Some(&tr("Show All")));
+    shown.update_state(&[gtk::accessible::State::Hidden(true)]);
+    all.set_child(Some(&shown));
     all.add_css_class("flat");
     all.set_valign(gtk::Align::Center);
     super::audit::label(&all, &tr("Show all sync activity"));

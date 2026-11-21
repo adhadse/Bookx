@@ -34,6 +34,8 @@ struct Handles {
     copy: gtk::Button,
     parent: gtk::Widget,
     token: adw::ActionRow,
+    token_copy: gtk::Button,
+    token_renew: gtk::Button,
     clients: adw::ActionRow,
     guard: Rc<Cell<bool>>,
 }
@@ -91,7 +93,10 @@ fn apply(h: &Handles) {
         let root = root_of(&h.shared);
         let result = host::start(&root, &mut st.borrow_mut());
         match result {
-            Ok(_) => refresh_status(h),
+            Ok(_) => {
+                refresh_status(h);
+                refresh_token();
+            }
             Err(e) => {
                 host::stop();
                 st.borrow_mut().enabled = false;
@@ -107,6 +112,22 @@ fn apply(h: &Handles) {
         refresh_status(h);
     }
     host::save(&st.borrow());
+}
+
+/// What the token row says: the end of the token, or that there is none yet. Looking never makes one.
+fn refresh_token() {
+    // the handles in the closures of the server group were made before the token row existed
+    let Some(h) = HANDLES.with(|x| x.borrow().clone()) else {
+        return;
+    };
+    let token = host::existing_token(&mut state().borrow_mut());
+    h.token.set_subtitle(&token_text(token.as_deref()));
+    h.token_copy.set_sensitive(token.is_some());
+    h.token_renew.set_sensitive(token.is_some());
+}
+
+fn token_text(token: Option<&str>) -> String {
+    token.map_or_else(|| tr("No token yet"), host::masked)
 }
 
 fn set_enabled(h: &Handles, on: bool) {
@@ -180,6 +201,8 @@ fn server_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
         copy: copy.clone(),
         parent: ctx.parent.clone(),
         token: adw::ActionRow::new(),
+        token_copy: gtk::Button::new(),
+        token_renew: gtk::Button::new(),
         clients: adw::ActionRow::new(),
         guard: Rc::new(Cell::new(false)),
     };
@@ -268,21 +291,27 @@ fn token_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
         &[&crate::secrets::caption_now()],
     )));
     let row = adw::ActionRow::builder().title(tr("Token")).build();
-    let token = host::token(&mut st.borrow_mut());
-    row.set_subtitle(&host::masked(&token));
+    // the token is made when the server is switched on, never by opening this page
+    let token = host::existing_token(&mut st.borrow_mut());
+    row.set_subtitle(&token_text(token.as_deref()));
     let copy = icon_button("edit-copy-symbolic", &tr("Copy the Token"));
     let renew = icon_button("view-refresh-symbolic", &tr("Make a New Token"));
+    copy.set_sensitive(token.is_some());
+    renew.set_sensitive(token.is_some());
     row.add_suffix(&copy);
     row.add_suffix(&renew);
     g.add(&row);
     HANDLES.with(|x| {
         if let Some(h) = x.borrow_mut().as_mut() {
             h.token = row.clone();
+            h.token_copy = copy.clone();
+            h.token_renew = renew.clone();
         }
     });
     copy.connect_clicked(|b| {
-        let t = host::token(&mut state().borrow_mut());
-        copy_text(b, &t);
+        if let Some(t) = host::existing_token(&mut state().borrow_mut()) {
+            copy_text(b, &t);
+        }
     });
     renew.connect_clicked({
         let (row, parent) = (row.clone(), ctx.parent.clone());
@@ -346,7 +375,12 @@ fn connect_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
             super::audit::label(&b, &format!("{name}: {tip}"));
             let shared = ctx.shared.clone();
             b.connect_clicked(move |b| {
-                let text = snippet_for(&shared, id, kind);
+                let Some(text) = snippet_for(&shared, id, kind) else {
+                    super::preferences::toast(&tr(
+                        "Switch on “Let AI assistants connect” first: that makes the token",
+                    ));
+                    return;
+                };
                 copy_text(b, &text);
                 super::preferences::toast(&if kind {
                     trf("Copied the {} server setting", &[&name])
@@ -362,17 +396,18 @@ fn connect_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
 }
 
 /// The text to paste for `client`: the command form, or the server form with the token.
-fn snippet_for(shared: &super::SharedRef, client: &str, http: bool) -> String {
+/// `None` for the server form while there is no token yet (it is made when the server is switched on).
+fn snippet_for(shared: &super::SharedRef, client: &str, http: bool) -> Option<String> {
     let root = root_of(shared);
     let cli = host::cli_path();
     if http {
         let st = state();
         let url =
             host::url().unwrap_or_else(|| format!("http://127.0.0.1:{}/mcp", st.borrow().port));
-        let token = host::token(&mut st.borrow_mut());
-        host::snippet(client, &cli, &root, Some((&url, &token)))
+        let token = host::existing_token(&mut st.borrow_mut())?;
+        Some(host::snippet(client, &cli, &root, Some((&url, &token))))
     } else {
-        host::snippet(client, &cli, &root, None)
+        Some(host::snippet(client, &cli, &root, None))
     }
 }
 
@@ -419,32 +454,36 @@ pub fn dev(arg: &str) {
             Some(id) => (id, true),
             None => (v, false),
         };
-        let text = snippet_for(&h.shared, id, http);
-        copy_text(&h.on, &text);
-        let token = host::token(&mut state().borrow_mut());
+        let text = snippet_for(&h.shared, id, http).unwrap_or_default();
+        if !text.is_empty() {
+            copy_text(&h.on, &text);
+        }
+        let token = host::existing_token(&mut state().borrow_mut()).unwrap_or_default();
         eprintln!(
             "mcp_snippet: client={id} http={} has_token={} has_url={} json={} first={:?}",
             http as u8,
-            text.contains(&token) as u8,
+            (!token.is_empty() && text.contains(&token)) as u8,
             text.contains("/mcp") as u8,
             serde_json::from_str::<serde_json::Value>(&text).is_ok() as u8,
             text.lines().next().unwrap_or("")
         );
     } else if arg == "copied" {
         let t = LAST_COPY.with(|l| l.borrow().clone());
-        let token = host::token(&mut state().borrow_mut());
+        let token = host::existing_token(&mut state().borrow_mut()).unwrap_or_default();
         eprintln!(
             "mcp_copied: len={} has_token={}",
             t.len(),
-            t.contains(&token) as u8
+            (!token.is_empty() && t.contains(&token)) as u8
         );
     } else if arg == "token=regen-confirm" {
         confirm_new_token(&h.parent, &h.token);
         eprintln!("mcp_token_confirm: shown=1 token_unchanged=1");
     } else if arg == "token=regen" {
-        let before = host::token(&mut state().borrow_mut());
+        let before = host::existing_token(&mut state().borrow_mut()).unwrap_or_default();
         let after = host::regenerate_token(&mut state().borrow_mut());
         h.token.set_subtitle(&host::masked(&after));
+        h.token_copy.set_sensitive(true);
+        h.token_renew.set_sensitive(true);
         if host::running() {
             apply(&h);
         }
@@ -458,11 +497,11 @@ pub fn dev(arg: &str) {
     } else if arg == "dump" {
         h.clients
             .set_subtitle(&host::clients_text(&host::clients()));
-        let token = host::token(&mut state().borrow_mut());
+        let token = host::existing_token(&mut state().borrow_mut()).unwrap_or_default();
         let st = state();
         let s = st.borrow();
         eprintln!(
-            "mcp: running={} url={} enabled={} port={} write={} status={:?} token_shown={:?} clients={:?} leaked={} saved={} port_sensitive={} copy_sensitive={}",
+            "mcp: running={} url={} enabled={} port={} write={} status={:?} token_shown={:?} clients={:?} leaked={} saved={} port_sensitive={} copy_sensitive={} token_buttons={}",
             host::running() as u8,
             host::url().unwrap_or_default(),
             s.enabled as u8,
@@ -471,10 +510,11 @@ pub fn dev(arg: &str) {
             h.status.title(),
             h.token.subtitle().unwrap_or_default(),
             h.clients.subtitle().unwrap_or_default().replace('\n', " | "),
-            h.token.subtitle().unwrap_or_default().contains(&token) as u8,
+            (!token.is_empty() && h.token.subtitle().unwrap_or_default().contains(&token)) as u8,
             host::settings_path().map(|p| p.exists() as u8).unwrap_or(0),
             h.port.is_sensitive() as u8,
             h.copy.is_sensitive() as u8,
+            (h.token_copy.is_sensitive() && h.token_renew.is_sensitive()) as u8,
         );
     }
 }
@@ -487,7 +527,9 @@ fn ping() -> String {
     let Ok(u) = url::Url::parse(&url) else {
         return "bad url".into();
     };
-    let token = host::token(&mut state().borrow_mut());
+    let Some(token) = host::existing_token(&mut state().borrow_mut()) else {
+        return "no token".into();
+    };
     let bearer = format!("Bearer {token}");
     let call = |auth: Option<&str>, body: serde_json::Value| {
         let mut headers = vec![("Content-Type", "application/json")];

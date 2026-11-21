@@ -98,6 +98,23 @@ fn text_search_over_two_thousand_texts() {
     assert!(hits.len() <= 20);
 }
 
+#[test]
+fn loading_ten_thousand_records_keeps_the_order_on_several_threads() {
+    let s = SqliteStore::open_in_memory().unwrap();
+    let books: Vec<_> = (1..=10_000u64)
+        .map(|id| book(id, &format!("Title {id}"), &format!("Author {}", id % 50)))
+        .collect();
+    s.put_many(&books).unwrap();
+    let all = timed("load 10 000 records", 300, || s.all_books().unwrap());
+    assert_eq!(all.len(), 10_000);
+    assert!(all.windows(2).all(|w| w[0].id < w[1].id));
+    assert_eq!(all[4_321].meta.title, "Title 4322");
+    assert!(all
+        .iter()
+        .zip(&books)
+        .all(|(a, b)| a.id == b.id && a.meta.title == b.meta.title));
+}
+
 fn library_of_10k(root: &std::path::Path) -> bookx_store::OpenedLibrary {
     let mut o = bookx_store::open_library(root).unwrap();
     o.library.books = (1..=10_000u64)
@@ -224,7 +241,7 @@ fn a_hundred_thousand_book_library() {
         });
     }
     let rss_before = synth::rss_kb();
-    let o = timed("opening a 100 000 book library", 1_500, || {
+    let o = timed("opening a 100 000 book library", 500, || {
         bookx_store::open_library(&root).unwrap()
     });
     assert_eq!(o.library.books.len(), N100K as usize);

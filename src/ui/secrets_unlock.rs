@@ -93,6 +93,8 @@ fn unlock_dialog(
     d.set_response_appearance("unlock", adw::ResponseAppearance::Suggested);
     d.set_default_response(Some("unlock"));
     d.set_close_response("later");
+    // the keyboard starts in the field (it was on the Unlock button, so typing went nowhere)
+    d.set_focus(Some(&entry));
     let (shared, window2) = (shared.clone(), window.clone());
     let e2 = entry.clone();
     d.connect_response(None, move |_, id| match id {

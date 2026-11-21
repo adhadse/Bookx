@@ -1,0 +1,8 @@
+# Languages a native speaker has reviewed (one code per line, `#` starts a comment).
+#
+# The Flathub build (`--features reviewed-locales-only`) embeds English and only the languages listed here,
+# because Flathub does not accept machine-generated translations. Every other build embeds all of po/*.po.
+# po/STATUS.md is the human record of who reviewed what; add a code here in the same pull request that
+# marks the language `reviewed` there (docs/translations-hosting.md, "Promoting a language").
+#
+# Empty for now: de, es, fr and hi are machine-translated and unreviewed.

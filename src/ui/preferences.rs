@@ -251,6 +251,8 @@ fn external_registrations() {
     super::library_sidebar::register();
     super::custom_columns::register();
     super::index_status::register();
+    super::hardcover::register();
+    super::lookup_settings::register();
 }
 
 fn ensure_registry() {
@@ -408,6 +410,10 @@ pub fn dev(arg: &str) {
         super::reading_ruler::dev_prefs(f);
     } else if let Some(f) = arg.strip_prefix("comic-") {
         super::comic_settings::dev(f);
+    } else if let Some(f) = arg.strip_prefix("hardcover-") {
+        super::hardcover::dev(f);
+    } else if let Some(f) = arg.strip_prefix("accounts-") {
+        super::accounts::dev(f);
     } else if let Some(f) = arg.strip_prefix("sync-account") {
         super::kosync::dev_account(f);
     } else if let Some(f) = arg.strip_prefix("sync-") {

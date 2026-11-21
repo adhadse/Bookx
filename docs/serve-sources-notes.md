@@ -14,9 +14,9 @@ Internal. Written by the T6/T8 agent. User pages: `wiki/docs/{reverse-proxy,devi
 | Per-feed full article (S5) | `FeedSpec::full_article`, `news::split_feed_line` (`url full|summary`) | unit |
 | Per-field source priority (S6), name order | `source_priority.rs`, `ui/source_settings.rs`, `sources::{Field::ALL, FieldPriority::overlay}`, `authors::NameOrder` | unit, Broadway `sources_priority_ui` |
 | Wikipedia as a book (S8) | `bookx-sources/src/wikipedia.rs` (`wikipedia:Title` in Add from the Web) | unit |
-| Hardcover (read only) | `bookx-sources/src/hardcover.rs`, token in `Config::secret_fields` | unit with a stub fetcher; **not** tried against the real service; **no screen, nothing applied to the library yet** (`hardcover::plan` only says what would change) |
+| Hardcover (read only) | `bookx-sources/src/hardcover.rs` (now also the rating and `test_connection`), `hardcover_sync.rs`, `ui/hardcover.rs`, token in `Config::secret_fields` | unit with a stub fetcher, Broadway `hardcover_screen`, `hardcover_undo`; **not** tried against the real service |
 | Web client (PP-G-26/27) | `bookx-serve/src/pwa.rs` + `pwa/` | unit (CSP, no inline/foreign content), cli; **not run in a real browser** (JS only syntax-checked with node) |
-| Accounts and guest (PP-C-10) | `bookx-serve/src/accounts.rs`, `--account`, `--guest-collection`, `ShareSettings::{accounts, guest_collections}` | unit, cli |
+| Accounts and guest (PP-C-10) | `bookx-serve/src/accounts.rs`, `--account`, `--guest-collection`, `ShareSettings::{accounts, guest_collections}`; screen `ui/accounts.rs` + `account_model.rs` | unit, cli, Broadway `accounts_screen` |
 | Check before send in the Device window | `ui/devices.rs::send_checked` | Broadway `meta_preflight_device` |
 
 Collections are the tags of a book (the library has no other group a server could name). Accounts have no screen yet: the settings file holds
@@ -24,16 +24,14 @@ Collections are the tags of a book (the library has no other group a server coul
 
 ## Not built, with reasons
 
-* **S4 recipe editor UI / accounts for news** (`ui/news_recipes.rs`): not started. The subscription form already edits the common fields; a recipe editor needs
-  fields for selectors, include/exclude, image limits and, for accounts, a login flow for paywalled feeds (cookies/headers), which needs a design decision
-  (where the secret lives, what is sent to which host).
+* **S4 recipe editor UI / accounts for news**: built (`ui/news_recipes.rs`, `news_recipe_form.rs`, `news_sites.rs`), see `docs/screens-notes.md`. Logins are HTTP Basic only; cookies and sign-in forms are not supported.
 * **P7 direct MTP**: gvfs mounts work (`devices` accept `/run/user/.../gvfs/mtp:...`); libmtp would add a C dependency and `unsafe` FFI, against
   `#![forbid(unsafe_code)]` in the library crates. Documented as "through gvfs only" on the wiki.
 * **Kindle native reading state**: the position of a Kindle book lives in binary sidecar files whose layout is neither public nor stable between
   firmware versions; nothing here can be verified without a device. Not feasible without a real Kindle and a format reference. KOReader on a Kindle works.
 * **Unifying `devices::full_sync_plan` with the `device_sync` plan**: not done. The KOReader state is written through the safe paths that exist
   (`look_sync`, `kosync_sync`, `annotation_sync_ui`); merging two planners touches device files and has no hardware to try on. Needs a design of its own.
-* Hardcover screen, apply step and a real-service check; accounts screen; the web client in a real browser (install prompt, offline); translation of the web client.
+* A real-service check of Hardcover; the web client in a real browser (install prompt, offline); translation of the web client.
 * The wiki build (`build-aux/wiki.sh`) could not be run here (the environment has no Zensical and `wiki/site` assets were missing); links were written by hand.
 
 ## Open checks

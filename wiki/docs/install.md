@@ -80,14 +80,14 @@ See [Command line](command-line.md).
 
 ## Flatpak
 
-The repository builds a Flatpak for the **GNOME 50** runtime (`build-aux/com.adhadse.Bookx.json`). Bookx is **not on
+The repository builds a Flatpak for the **GNOME 51** runtime (`build-aux/com.adhadse.Bookx.json`). Bookx is **not on
 Flathub** yet, so you build it yourself, or download `bookx.flatpak` from a [release](https://github.com/adhadse/Bookx/releases)
 once one is published.
 
 === "Build it"
 
     ```bash
-    flatpak install flathub org.gnome.Platform//50 org.gnome.Sdk//50 org.freedesktop.Sdk.Extension.rust-stable//25.08
+    flatpak install flathub org.gnome.Platform//51 org.gnome.Sdk//51 org.freedesktop.Sdk.Extension.rust-stable//26.08
     BUNDLE=1 build-aux/flatpak.sh      # or: make flatpak
     flatpak install --user bookx.flatpak
     flatpak run com.adhadse.Bookx
@@ -170,7 +170,7 @@ as the tag: compare `git rev-parse v0.3.0` with the commit shown on the release 
 | What | Where |
 |---|---|
 | Library | `~/Documents/Bookx Library` (change it in main menu → *Preferences* → *Library*) |
-| Settings | `~/.config/Bookx/config.json` |
+| Settings | `~/.config/bookx/config.json` |
 | Dictionaries | `~/.local/share/bookx/dictionaries/` |
 | Plugins and patches | `~/.local/share/bookx/plugins/`, `~/.local/share/bookx/patches/` |
 
@@ -180,7 +180,7 @@ as the tag: compare `git rev-parse v0.3.0` with the commit shown on the release 
       [Verify your download](#verify-your-download). The packages have not been tested on other distributions than the build machine's.
     - The Flatpak has been built and started on one machine only; devices and the natural voices are not tested inside
       the sandbox. The Flatpak translations are the built-in ones (see [Translating Bookx](translating.md)).
-    - Older GNOME releases (before 49) are not supported when you build from source; the Flatpak needs the GNOME 50
+    - Older GNOME releases (before 49) are not supported when you build from source; the Flatpak needs the GNOME 51
       runtime.
 
 ## Running servers

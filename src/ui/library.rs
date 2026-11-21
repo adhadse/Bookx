@@ -1283,10 +1283,15 @@ impl LibraryView {
         );
         NEWS_JOBS.with(|m| m.borrow_mut().insert(sub.key.clone(), job));
         let now = self.shared.now();
+        let site_accounts = self.shared.cfg.borrow().news_sites.clone();
         let (res_tx, res_rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
-            let r = crate::news::run_subscription(&sub, &*crate::web_import::fetcher(), now)
-                .map_err(|e| format!("{e:#}"));
+            let r = crate::news::run_subscription(
+                &sub,
+                &*crate::news_sites::fetcher_with(&site_accounts),
+                now,
+            )
+            .map_err(|e| format!("{e:#}"));
             let _ = res_tx.send((sub.key, r));
         });
         let key = sub_key;
@@ -1466,13 +1471,20 @@ impl LibraryView {
         if !self.selected.is_empty() {
             let model = self.active_model();
             let want: HashSet<u64> = self.selected.iter().copied().collect();
+            // one change of the selection for the piece (a signal per book, each of which reads the
+            // selection, is quadratic when everything is selected)
+            let bits = gtk::Bitset::new_empty();
             for i in before..fill.loaded() {
                 if self
                     .id_at_model(&model, i as u32)
                     .is_some_and(|id| want.contains(&id))
                 {
-                    model.select_item(i as u32, false);
+                    bits.add(i as u32);
                 }
+            }
+            if !bits.is_empty() {
+                let mask = gtk::Bitset::new_range(before as u32, (fill.loaded() - before) as u32);
+                model.set_selection(&bits, &mask);
             }
         }
         if let Some(v) = fill.scroll {
@@ -1646,8 +1658,11 @@ impl LibraryView {
                 }
             }
         }
+        // only the model that is on show is built (the other is filled when its view is chosen, which requeries)
+        let grid_mode = self.shared.cfg.borrow().view_mode == ViewMode::Grid;
         let items: Vec<BookItem> = shown
             .iter()
+            .filter(|_| grid_mode)
             .map(|(b, prog, n, fav)| BookItem {
                 description: nav::card_description(
                     &b.meta.authors.join(" & "),
@@ -1669,6 +1684,7 @@ impl LibraryView {
             .collect();
         let rows: Vec<BookRow> = shown
             .iter()
+            .filter(|_| !grid_mode)
             .map(|(b, prog, n, fav)| {
                 let mut r = BookRow::from(b, *fav);
                 r.progress = (prog.progress * 100.0).round() as u32;
@@ -1750,10 +1766,15 @@ impl LibraryView {
         self.w.title.set_subtitle(&sub);
         // a book that is now hidden inside a card is selected through its card
         let mut sel: Vec<u64> = Vec::new();
-        for id in &self.selected {
-            let id = self.card_of.get(id).copied().unwrap_or(*id);
-            if ids.contains(&id) && !sel.contains(&id) {
-                sel.push(id);
+        if !self.selected.is_empty() {
+            // sets, not `contains` on the lists: with 100,000 books selected that is 10^10 comparisons
+            let shown: HashSet<u64> = ids.iter().copied().collect();
+            let mut seen: HashSet<u64> = HashSet::new();
+            for id in &self.selected {
+                let id = self.card_of.get(id).copied().unwrap_or(*id);
+                if shown.contains(&id) && seen.insert(id) {
+                    sel.push(id);
+                }
             }
         }
         self.selected = sel;
@@ -1919,15 +1940,22 @@ impl LibraryView {
 
     fn restore_selection(&self) {
         let model = self.active_model();
+        if self.selected.is_empty() {
+            model.unselect_all();
+            return;
+        }
         let want: HashSet<u64> = self.selected.iter().copied().collect();
-        model.unselect_all();
+        // one change of the selection, not one (and a pass over the whole list in the handler) per book
+        let bits = gtk::Bitset::new_empty();
         for i in 0..model.n_items() {
             if let Some(id) = self.id_at_model(&model, i) {
                 if want.contains(&id) {
-                    model.select_item(i, false);
+                    bits.add(i);
                 }
             }
         }
+        let mask = gtk::Bitset::new_range(0, model.n_items());
+        model.set_selection(&bits, &mask);
     }
 
     fn id_at_model(&self, model: &gtk::MultiSelection, pos: u32) -> Option<u64> {
@@ -1935,16 +1963,7 @@ impl LibraryView {
     }
 
     fn current_selection(&self) -> Vec<u64> {
-        let model = self.active_model();
-        let mut out = Vec::new();
-        for i in 0..model.n_items() {
-            if model.is_selected(i) {
-                if let Some(id) = self.id_at_model(&model, i) {
-                    out.push(id);
-                }
-            }
-        }
-        out
+        selected_ids(&self.active_model())
     }
 
     /// The details panel follows the selection: it slides in when a book is selected and out when
@@ -4681,21 +4700,13 @@ impl SimpleComponent for LibraryView {
             let tx = sender.input_sender().clone();
             grid.selection_model
                 .connect_selection_changed(move |m, _, _| {
-                    let ids: Vec<u64> = (0..m.n_items())
-                        .filter(|i| m.is_selected(*i))
-                        .filter_map(|i| id_from_model(m.upcast_ref(), i))
-                        .collect();
-                    tx.emit(Input::Selection(ids));
+                    tx.emit(Input::Selection(selected_ids(m)));
                 });
             let tx = sender.input_sender().clone();
             table
                 .selection_model
                 .connect_selection_changed(move |m, _, _| {
-                    let ids: Vec<u64> = (0..m.n_items())
-                        .filter(|i| m.is_selected(*i))
-                        .filter_map(|i| id_from_model(m.upcast_ref(), i))
-                        .collect();
-                    tx.emit(Input::Selection(ids));
+                    tx.emit(Input::Selection(selected_ids(m)));
                 });
             let tx = sender.input_sender().clone();
             let model = grid.selection_model.clone();
@@ -6167,6 +6178,7 @@ impl SimpleComponent for LibraryView {
                             run_keys: Rc::new(move |k| tx.emit(Input::NewsRun(k))),
                             run_due: Rc::new(move || tx2.emit(Input::NewsDue)),
                             slot: self.news.slot.clone(),
+                            shared: self.shared.clone(),
                         },
                     );
                 }
@@ -7036,6 +7048,13 @@ impl SimpleComponent for LibraryView {
                             self.w.split_details.shows_sidebar()
                         );
                     }
+                    // `selcount: model=N selected=M items=K`: what Select All did, without listing 100,000 ids
+                    "selcount" => eprintln!(
+                        "selcount: model={} selected={} items={}",
+                        self.selected.len(),
+                        self.current_selection().len(),
+                        self.active_model().n_items()
+                    ),
                     // the size of the cover tiles, how many fit in a row and how often the list was
                     // rebuilt (opening a panel must change the columns, never the tile)
                     "tiles" => eprintln!("tiles: {}", self.tile_report()),
@@ -8003,6 +8022,20 @@ impl SimpleComponent for LibraryView {
             }
         }
     }
+}
+
+/// The ids of the selected rows, read from the bitset of the selection: one lookup for a click, not a pass
+/// over the whole list (100,000 books) for every change.
+fn selected_ids(m: &gtk::MultiSelection) -> Vec<u64> {
+    let bits = m.selection();
+    let mut out = Vec::with_capacity(bits.size() as usize);
+    if let Some((iter, first)) = gtk::BitsetIter::init_first(&bits) {
+        out.extend(id_from_model(m.upcast_ref(), first));
+        for pos in iter {
+            out.extend(id_from_model(m.upcast_ref(), pos));
+        }
+    }
+    out
 }
 
 fn id_from_model(model: &gio::ListModel, pos: u32) -> Option<u64> {

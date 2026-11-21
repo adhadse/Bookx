@@ -2719,8 +2719,6 @@ msgstr "EPUB → {} (convertido)"
 msgid "EPUB, PDF, MOBI, FB2, comics, audiobooks, plain text and more"
 msgstr "EPUB, PDF, MOBI, FB2, cómics, audiolibros, texto plano y más"
 
-msgid "Each subscription makes a new book from its feeds on its schedule. Old issues are removed."
-msgstr "Cada suscripción crea un libro nuevo a partir de sus fuentes según su programación. Los números antiguos se eliminan."
 
 msgid "Edges (narrow strips)"
 msgstr "Bordes (franjas estrechas)"
@@ -11439,3 +11437,549 @@ msgstr "Tu {} está en el {}% (página {})"
 
 msgid "another device"
 msgstr "otro dispositivo"
+
+msgid "0 uses the limit of the subscription"
+msgstr "0 usa el límite de la suscripción"
+
+msgid "A section title is too long."
+msgstr "El título de una sección es demasiado largo."
+
+msgid "A user name and password for sites that need a login. Sent only to that site."
+msgstr "Un nombre de usuario y una contraseña para sitios que piden inicio de sesión. Solo se envían a ese sitio."
+
+msgid "API token"
+msgstr "Token de API"
+
+msgid "Account “{}” removed"
+msgstr "Cuenta «{}» eliminada"
+
+msgid "Accounts"
+msgstr "Cuentas"
+
+msgid "Add Account"
+msgstr "Añadir cuenta"
+
+msgid "Add Feed"
+msgstr "Añadir canal"
+
+msgid "Add Site"
+msgstr "Añadir sitio"
+
+msgid "Add Site Account"
+msgstr "Añadir cuenta de sitio"
+
+msgid "Add Web Site"
+msgstr "Añadir sitio web"
+
+msgid "Add at least one feed."
+msgstr "Añade al menos un canal."
+
+msgid "Address with {word}"
+msgstr "Dirección con {word}"
+
+msgid "Allow guests"
+msgstr "Permitir invitados"
+
+msgid "Allowed collections"
+msgstr "Colecciones permitidas"
+
+msgid "Articles from this feed"
+msgstr "Artículos de este canal"
+
+msgid "At most {} accounts can be added."
+msgstr "Se pueden añadir como máximo {} cuentas."
+
+msgid "At most {} articles per feed."
+msgstr "Como máximo {} artículos por canal."
+
+msgid "At most {} feeds."
+msgstr "Como máximo {} canales."
+
+msgid "At most {} sites can be added."
+msgstr "Se pueden añadir como máximo {} sitios."
+
+msgid "Bookx signs in with HTTP Basic authentication, only to the exact site you name and only over https. Passwords are kept in your keyring, never in the settings file."
+msgstr "Bookx inicia sesión con autenticación HTTP Basic, solo en el sitio exacto que indiques y solo mediante https. Las contraseñas se guardan en tu llavero, nunca en el archivo de ajustes."
+
+msgid "CSS selectors, one per line, for full articles. Empty keeps what Bookx finds."
+msgstr "Selectores CSS, uno por línea, para artículos completos. Si está vacío, se mantiene lo que Bookx encuentre."
+
+msgid "CSS selectors, one per line, removed from full articles (ads, share bars)."
+msgstr "Selectores CSS, uno por línea, que se quitan de los artículos completos (anuncios, barras para compartir)."
+
+msgid "Change it with Edit in the list of subscriptions."
+msgstr "Cámbialo con Editar en la lista de suscripciones."
+
+msgid "Checks that Bookx can read your lists"
+msgstr "Comprueba que Bookx puede leer tus listas"
+
+msgid "Choose guest collections"
+msgstr "Elegir colecciones para invitados"
+
+msgid "Choose the collections guests can read"
+msgstr "Elige las colecciones que pueden leer los invitados"
+
+msgid "Collections are tags. This account sees books with any chosen tag. Choose none for all books."
+msgstr "Las colecciones son etiquetas. Esta cuenta ve los libros con cualquiera de las etiquetas elegidas. No elijas ninguna para ver todos los libros."
+
+msgid "Collections are the tags of your books. Add tags to books to offer them here."
+msgstr "Las colecciones son las etiquetas de tus libros. Añade etiquetas a los libros para ofrecerlos aquí."
+
+msgid "Connected. Your lists can be read."
+msgstr "Conectado. Se pueden leer tus listas."
+
+msgid "Could not apply: {}"
+msgstr "No se pudo aplicar: {}"
+
+msgid "Could not read your lists from Hardcover: {}"
+msgstr "No se pudieron leer tus listas de Hardcover: {}"
+
+msgid "Could not save the order: {}"
+msgstr "No se pudo guardar el orden: {}"
+
+msgid "Dictionaries are asked from the top, so the first one that knows a word answers first."
+msgstr "Los diccionarios se consultan de arriba abajo, así que responde primero el primero que conozca la palabra."
+
+msgid "Dictionaries you install or copy to the dictionary folder are listed here."
+msgstr "Los diccionarios que instales o copies en la carpeta de diccionarios aparecen aquí."
+
+msgid "Dictionary order"
+msgstr "Orden de los diccionarios"
+
+msgid "Download this feed"
+msgstr "Descargar este canal"
+
+msgid "Each account has its own password and sees only the collections you choose. The shared library password keeps seeing everything. Changes restart the running server."
+msgstr "Cada cuenta tiene su propia contraseña y ve solo las colecciones que elijas. La contraseña compartida de la biblioteca sigue viéndolo todo. Los cambios reinician el servidor en marcha."
+
+msgid "Each subscription makes a new book from its feeds on its schedule. Old issues are removed. Press a subscription to edit its feeds and filters."
+msgstr "Cada suscripción crea un libro nuevo a partir de sus canales según su programación. Los números antiguos se eliminan. Pulsa una suscripción para editar sus canales y filtros."
+
+msgid "Edit Account"
+msgstr "Editar cuenta"
+
+msgid "Edit Feeds of {}"
+msgstr "Editar los canales de {}"
+
+msgid "Edit Site Account"
+msgstr "Editar cuenta de sitio"
+
+msgid "Edit Web Site"
+msgstr "Editar sitio web"
+
+msgid "Edit account {}"
+msgstr "Editar la cuenta {}"
+
+msgid "Edit the feeds and filters"
+msgstr "Editar los canales y filtros"
+
+msgid "Edit the login for {}"
+msgstr "Editar el inicio de sesión de {}"
+
+msgid "Feed text only"
+msgstr "Solo el texto del canal"
+
+msgid "Feeds"
+msgstr "Canales"
+
+msgid "Give the account a name."
+msgstr "Dale un nombre a la cuenta."
+
+msgid "Give the issue a title."
+msgstr "Dale un título al número."
+
+msgid "Give the site a name."
+msgstr "Dale un nombre al sitio."
+
+msgid "Guest collections"
+msgstr "Colecciones para invitados"
+
+msgid "Guests"
+msgstr "Invitados"
+
+msgid "Guests can read books with any of the chosen tags. Choose at least one, or guests stay off."
+msgstr "Los invitados pueden leer libros con cualquiera de las etiquetas elegidas. Elige al menos una o los invitados quedarán desactivados."
+
+msgid "Hardcover"
+msgstr "Hardcover"
+
+msgid "Hardcover did not accept the token. Copy a new one from your account settings."
+msgstr "Hardcover no aceptó el token. Copia uno nuevo desde los ajustes de tu cuenta."
+
+msgid "Hardcover import undone"
+msgstr "Importación de Hardcover deshecha"
+
+msgid "History cleared ({} word)"
+msgid_plural "History cleared ({} words)"
+msgstr[0] "Historial borrado ({} palabra)"
+msgstr[1] "Historial borrado ({} palabras)"
+
+msgid "Import reading status"
+msgstr "Importar estado de lectura"
+
+msgid "Import reading status from Hardcover"
+msgstr "Importar el estado de lectura desde Hardcover"
+
+msgid "Include images"
+msgstr "Incluir imágenes"
+
+msgid "Issue"
+msgstr "Número"
+
+msgid "Keep a history of look-ups"
+msgstr "Guardar un historial de consultas"
+
+msgid "Keep only articles matching"
+msgstr "Conservar solo los artículos que coincidan con"
+
+msgid "Keep only these parts"
+msgstr "Conservar solo estas partes"
+
+msgid "Language code"
+msgstr "Código de idioma"
+
+msgid "Library server accounts"
+msgstr "Cuentas del servidor de la biblioteca"
+
+msgid "Login for {} removed"
+msgstr "Inicio de sesión de {} eliminado"
+
+msgid "Login saved"
+msgstr "Inicio de sesión guardado"
+
+msgid "Look this up on a web site, or see the history"
+msgstr "Consulta esto en un sitio web o mira el historial"
+
+msgid "Look up on the web"
+msgstr "Consultar en la web"
+
+msgid "Look-up history"
+msgstr "Historial de consultas"
+
+msgid "Manage"
+msgstr "Gestionar"
+
+msgid "Manage library server accounts"
+msgstr "Gestionar las cuentas del servidor de la biblioteca"
+
+msgid "Manage site accounts"
+msgstr "Gestionar las cuentas de sitios"
+
+msgid "Manage the accounts of the library server"
+msgstr "Gestionar las cuentas del servidor de la biblioteca"
+
+msgid "Manage the site accounts for news downloads"
+msgstr "Gestionar las cuentas de sitios para las descargas de noticias"
+
+msgid "Move {} down"
+msgstr "Mover {} hacia abajo"
+
+msgid "Move {} up"
+msgstr "Mover {} hacia arriba"
+
+msgid "New password, empty keeps the old one"
+msgstr "Contraseña nueva; si está vacío se mantiene la anterior"
+
+msgid "No accounts yet"
+msgstr "Aún no hay cuentas"
+
+msgid "No dictionaries yet"
+msgstr "Aún no hay diccionarios"
+
+msgid "No more site accounts can be added."
+msgstr "No se pueden añadir más cuentas de sitios."
+
+msgid "No site accounts yet"
+msgstr "Aún no hay cuentas de sitios"
+
+msgid "No tags yet"
+msgstr "Aún no hay etiquetas"
+
+msgid "No token yet"
+msgstr "Aún no hay token"
+
+msgid "No words yet"
+msgstr "Aún no hay palabras"
+
+msgid "Nothing to look up."
+msgstr "No hay nada que consultar."
+
+msgid "Number {} of {}"
+msgstr "Número {} de {}"
+
+msgid "Offered next to a look-up in the reader. In the address, {word} stands for the selected text."
+msgstr "Se ofrece junto a una consulta en el lector. En la dirección, {word} representa el texto seleccionado."
+
+msgid "Offline mode is on (Preferences → Privacy)."
+msgstr "El modo sin conexión está activado (Preferencias → Privacidad)."
+
+msgid "Only http and https sites can be used."
+msgstr "Solo se pueden usar sitios http y https."
+
+msgid "Open a feed to change its section title, address and how its articles are downloaded."
+msgstr "Abre un canal para cambiar el título de su sección, su dirección y cómo se descargan sus artículos."
+
+msgid "Paste your Hardcover API token first."
+msgstr "Pega primero tu token de API de Hardcover."
+
+msgid "Patterns (regular expressions), one per line, tried on the title and the address. Empty keeps all."
+msgstr "Patrones (expresiones regulares), uno por línea, aplicados al título y a la dirección. Si está vacío, se conserva todo."
+
+msgid "Patterns, one per line. An article that matches any of them is left out."
+msgstr "Patrones, uno por línea. Se omite un artículo que coincida con cualquiera de ellos."
+
+msgid "Press Add Account to give someone their own login."
+msgstr "Pulsa Añadir cuenta para dar a alguien su propio inicio de sesión."
+
+msgid "Press Add Site to save a login for a news site."
+msgstr "Pulsa Añadir sitio para guardar un inicio de sesión de un sitio de noticias."
+
+msgid "Put {word} after the site name, for example https://example.com/search?q={word}."
+msgstr "Pon {word} después del nombre del sitio, por ejemplo https://example.com/search?q={word}."
+
+msgid "Put {word} where the selected text goes, for example https://dictionary.example.com/search?q={word}. Only http and https addresses are accepted."
+msgstr "Pon {word} donde va el texto seleccionado, por ejemplo https://dictionary.example.com/search?q={word}. Solo se aceptan direcciones http y https."
+
+msgid "Read your Hardcover lists and show what would change"
+msgstr "Lee tus listas de Hardcover y muestra qué cambiaría"
+
+msgid "Reading status from Hardcover"
+msgstr "Estado de lectura de Hardcover"
+
+msgid "Reading your lists"
+msgstr "Leyendo tus listas"
+
+msgid "Reads your lists and ratings from hardcover.app and never changes your account. Copy the API token from your Hardcover account settings."
+msgstr "Lee tus listas y valoraciones de hardcover.app y nunca modifica tu cuenta. Copia el token de API desde los ajustes de tu cuenta de Hardcover."
+
+msgid "Remove account {}"
+msgstr "Eliminar la cuenta {}"
+
+msgid "Remove every word from the history"
+msgstr "Quitar todas las palabras del historial"
+
+msgid "Remove the login for {}"
+msgstr "Eliminar el inicio de sesión de {}"
+
+msgid "Remove these parts"
+msgstr "Quitar estas partes"
+
+msgid "Remove this feed"
+msgstr "Eliminar este canal"
+
+msgid "Remove {} from the history"
+msgstr "Quitar {} del historial"
+
+msgid "Repeat the password"
+msgstr "Repite la contraseña"
+
+msgid "Replace existing ratings"
+msgstr "Reemplazar las valoraciones existentes"
+
+msgid "Same as the subscription"
+msgstr "Igual que la suscripción"
+
+msgid "Saved, but the server could not restart: {}"
+msgstr "Guardado, pero el servidor no pudo reiniciarse: {}"
+
+msgid "Saved. The server restarted, so this applies now."
+msgstr "Guardado. El servidor se reinició, así que se aplica ahora."
+
+msgid "Saved. This applies when the server starts."
+msgstr "Guardado. Se aplica cuando el servidor se inicie."
+
+msgid "Section title"
+msgstr "Título de la sección"
+
+msgid "Sees all books"
+msgstr "Ve todos los libros"
+
+msgid "Sees only: {}"
+msgstr "Solo ve: {}"
+
+msgid "Sees only: {}, and {} more"
+msgstr "Solo ve: {} y {} más"
+
+msgid "Show the look-up history"
+msgstr "Mostrar el historial de consultas"
+
+msgid "Show the words you looked up"
+msgstr "Mostrar las palabras que has consultado"
+
+msgid "Shows what would change first. One Undo takes it all back."
+msgstr "Primero muestra qué cambiaría. Un solo Deshacer lo revierte todo."
+
+msgid "Site accounts"
+msgstr "Cuentas de sitios"
+
+msgid "Site address"
+msgstr "Dirección del sitio"
+
+msgid "Site “{}” removed"
+msgstr "Sitio «{}» eliminado"
+
+msgid "Sites with a login"
+msgstr "Sitios con inicio de sesión"
+
+msgid "Skip articles matching"
+msgstr "Omitir los artículos que coincidan con"
+
+msgid "Switch on “Let AI assistants connect” first: that makes the token"
+msgstr "Activa primero «Let AI assistants connect»: eso crea el token"
+
+msgid "Test Connection"
+msgstr "Probar conexión"
+
+msgid "Test connection"
+msgstr "Probar conexión"
+
+msgid "The address is too long."
+msgstr "La dirección es demasiado larga."
+
+msgid "The address must contain {word} where the text goes."
+msgstr "La dirección debe contener {word} donde va el texto."
+
+msgid "The address must not contain spaces."
+msgstr "La dirección no debe contener espacios."
+
+msgid "The address must start with https:// or http://."
+msgstr "La dirección debe empezar por https:// o http://."
+
+msgid "The feed {} is in the list twice."
+msgstr "El canal {} está dos veces en la lista."
+
+msgid "The import stopped unexpectedly."
+msgstr "La importación se detuvo inesperadamente."
+
+msgid "The language is a code such as en, de or pt-BR."
+msgstr "El idioma es un código como en, de o pt-BR."
+
+msgid "The name can have at most {} characters."
+msgstr "El nombre puede tener como máximo {} caracteres."
+
+msgid "The name must not contain a colon."
+msgstr "El nombre no debe contener dos puntos."
+
+msgid "The password can have at most {} characters."
+msgstr "La contraseña puede tener como máximo {} caracteres."
+
+msgid "The password could not be prepared. Try again."
+msgstr "No se pudo preparar la contraseña. Inténtalo de nuevo."
+
+msgid "The password needs at least {} characters."
+msgstr "La contraseña necesita al menos {} caracteres."
+
+msgid "The password was not prepared. Try again."
+msgstr "No se preparó la contraseña. Inténtalo de nuevo."
+
+msgid "The test stopped unexpectedly."
+msgstr "La prueba se detuvo inesperadamente."
+
+msgid "The two passwords are not the same."
+msgstr "Las dos contraseñas no coinciden."
+
+msgid "The user name must not contain a colon."
+msgstr "El nombre de usuario no debe contener dos puntos."
+
+msgid "The words you look up, newest first. They stay on this computer."
+msgstr "Las palabras que consultas, las más recientes primero. Se quedan en este equipo."
+
+msgid "There is a site with this name already."
+msgstr "Ya hay un sitio con este nombre."
+
+msgid "There is already an account with this name."
+msgstr "Ya hay una cuenta con este nombre."
+
+msgid "This account is gone."
+msgstr "Esta cuenta ya no existe."
+
+msgid "This address cannot be used."
+msgstr "Esta dirección no se puede usar."
+
+msgid "This dictionary is gone."
+msgstr "Este diccionario ya no existe."
+
+msgid "This is not a site address."
+msgstr "Esta no es la dirección de un sitio."
+
+msgid "This site has an account already."
+msgstr "Este sitio ya tiene una cuenta."
+
+msgid "This subscription is gone."
+msgstr "Esta suscripción ya no existe."
+
+msgid "Title of the issue"
+msgstr "Título del número"
+
+msgid "Type the address of the site as in the feed, for example news.example.com."
+msgstr "Escribe la dirección del sitio tal como aparece en el canal, por ejemplo news.example.com."
+
+msgid "Type the address of the site."
+msgstr "Escribe la dirección del sitio."
+
+msgid "Type the password."
+msgstr "Escribe la contraseña."
+
+msgid "Type the user name."
+msgstr "Escribe el nombre de usuario."
+
+msgid "Updated {} book from Hardcover"
+msgid_plural "Updated {} books from Hardcover"
+msgstr[0] "Se actualizó {} libro desde Hardcover"
+msgstr[1] "Se actualizaron {} libros desde Hardcover"
+
+msgid "User: {}"
+msgstr "Usuario: {}"
+
+msgid "Visitors without a login can read the collections below, and nothing else"
+msgstr "Los visitantes sin inicio de sesión pueden leer las colecciones siguientes y nada más"
+
+msgid "Web"
+msgstr "Web"
+
+msgid "Web look-up sites"
+msgstr "Sitios web de consulta"
+
+msgid "Words you look up in a book appear here."
+msgstr "Las palabras que consultes en un libro aparecerán aquí."
+
+msgid "Words you looked up"
+msgstr "Palabras consultadas"
+
+msgid "{title} is the name of the subscription and {date} the day of the download"
+msgstr "{title} es el nombre de la suscripción y {date} el día de la descarga"
+
+msgid "{} account"
+msgid_plural "{} accounts"
+msgstr[0] "{} cuenta"
+msgstr[1] "{} cuentas"
+
+msgid "{} book on your lists"
+msgid_plural "{} books on your lists"
+msgstr[0] "{} libro en tus listas"
+msgstr[1] "{} libros en tus listas"
+
+msgid "{} book would change"
+msgid_plural "{} books would change"
+msgstr[0] "Cambiaría {} libro"
+msgstr[1] "Cambiarían {} libros"
+
+msgid "{} on your Hardcover lists, {} found in your library. Reading status for {}, ratings for {}."
+msgstr "{} en tus listas de Hardcover, {} encontrados en tu biblioteca. Estado de lectura para {}, valoraciones para {}."
+
+msgid "{} word"
+msgid_plural "{} words"
+msgstr[0] "{} palabra"
+msgstr[1] "{} palabras"
+
+msgid "{}. Own logins that see only chosen collections, and guests."
+msgstr "{}. Inicios de sesión propios que ven solo las colecciones elegidas, e invitados."
+
+msgid "{}: a line is longer than {} characters."
+msgstr "{}: una línea tiene más de {} caracteres."
+
+msgid "{}: at most {} lines."
+msgstr "{}: como máximo {} líneas."
+
+msgid "“{}” is the name of the library password; choose another name."
+msgstr "«{}» es el nombre de la contraseña de la biblioteca; elige otro nombre."

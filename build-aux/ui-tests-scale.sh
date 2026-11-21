@@ -38,6 +38,9 @@ for i in range(1, n + 1):
     c.execute("INSERT INTO books VALUES(?,?,?,?,?,?,?,?,?,0)", (i, t, t, "2020-01-01 00:00:00+00:00", "2020-01-01 00:00:00+00:00", "0101-01-01 00:00:00+00:00", 1.0, authors[a], f"x/{i}"))
     c.execute("INSERT INTO data VALUES(?,?,?,?,?)", (i, i, "EPUB", 1000, f"b{i}"))
     c.execute("INSERT INTO books_authors_link VALUES(?,?,?)", (i, i, a + 1))
+# a real Calibre database indexes its link tables by book; without them the importer scans a table per book
+for tbl in ("data", "books_authors_link", "books_tags_link", "books_series_link", "books_publishers_link", "books_languages_link", "books_ratings_link", "comments", "identifiers"):
+    c.execute(f"CREATE INDEX {tbl}_book ON {tbl}(book)")
 c.commit()
 PY
 }
@@ -83,6 +86,18 @@ scenario scale_grid_20k 'wait:2500,library:grid,wait:1500,library:requery-time,l
     has "^requery_time: books=20002 "; check "20 000 books are in the grid and table" $?
     R=$(grep "^requery_time:" <<<"$OUT" | tail -1 | sed -E "s/.*ms=([0-9]+).*/\\1/")
     [ -n "$R" ] && [ "$R" -le "$((${BOOKX_PERF_SCALE:-1} * 8000))" ]; check "rebuilding the grid model of 20 000 books stays within budget (${R}ms, debug build)" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+# 100 000 books (X18): Select All used to stall for seven seconds in a release build (a signal per book that read the
+# whole selection), a rebuild with everything selected was quadratic; both are now a few tens of milliseconds
+# of main-loop stall. Budgets are for the debug build the suite runs; BOOKX_PERF_SCALE scales them.
+scenario scale_library_100k 'wait:3000,library:grid,wait:12000,library:selcount,library:selectall,wait:6000,library:selcount,library:requery-time,library:selcount,library:search=tal,wait:5000,library:selcount,library:search=,wait:6000,quit' '
+    has "^selcount: model=0 selected=0 items=10000[0-9]"; check "the cold start shows all 100 000 books of the library" $?
+    has "^selcount: model=10000([0-9]) selected=10000\\1 items=10000\\1"; check "Select All selects all 100 000 books, the details model and the list agree" $?
+    L=$(grep -E "^stall: [0-9]+ ms after library:selectall" <<<"$OUT" | sed -E "s/^stall: ([0-9]+) ms.*/\\1/" | sort -n | tail -1 | grep . || echo 0)
+    [ "$L" -le "$((${BOOKX_PERF_SCALE:-1} * 3000))" ]; check "Select All of 100 000 books blocks the main loop for at most ${BOOKX_PERF_SCALE:-1}x3000 ms in a debug build (${L} ms; seven seconds in a release build before the fix)" $?
+    R=$(grep "^requery_time:" <<<"$OUT" | tail -1 | sed -E "s/.*ms=([0-9]+).*/\\1/")
+    [ -n "$R" ] && [ "$R" -le "$((${BOOKX_PERF_SCALE:-1} * 15000))" ]; check "rebuilding 100 000 books with all of them selected stays within budget (${R} ms, debug build)" $?
+    has "^selcount: model=[0-9]+ selected=[0-9]+ items=[0-9]+"; check "the selection survives the search" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 # 2000 books: sorting, searching and clearing the search fill the grid in idle pieces; `library:stalls` measures the
 # longest block of the main loop in each (BOOKX_STALL_WATCH also reports them as `stall: N ms after ...`)

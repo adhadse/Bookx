@@ -463,3 +463,46 @@ scenario meta_preflight_device 'library:selectall,wait:600,library:send-to-devic
     has "^preflight_book: Broken Mimetype \| 1 blocking"; check "the report names the broken book" $?
     has "^devwin_sent: Sent [0-9]+ books? to "; check "after Continue the books are sent" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# ---- News recipes editor and site accounts (src/ui/news_recipes.rs) ------------------------------------------------
+# Dev commands: `news:recipes=open;KEY|save|close|feed;N;TITLE|ADDRESS|MODE|MAX|ON|remove-feed;N|filters;INCLUDE|EXCLUDE|KEEP|
+# REMOVE (~ is a new line)|issue;LANGUAGE|TEMPLATE|IMAGES|dump` (`news_recipes: open=B feeds=N modes=… on=… max=… language=…
+# error=…`) and `news:recipes=sites|site-new|site-fill;HOST;USER;PASSWORD|site-save|site-edit;HOST|site-remove;HOST|site-undo|
+# sites-dump` (`news_sites: open=B count=N hosts=… users=… form=B last=…`). Passwords are never printed.
+
+scenario news_recipes_editor 'library:newsadd=Mock Daily|https://mock.example/feed.xml|manual|3,wait:300,library:newsshow,wait:900,news:recipes=open;mock-daily,wait:700,news:recipes=dump,news:recipes=feed;0;Front page|https://mock.example/feed.xml|1|5|1,news:recipes=feed;1;Second|https://mock.example/other.xml|2|0|0,news:recipes=filters;^First~Item|sponsored|article|.ad~.promo,news:recipes=issue;de|{title} {date}|0,news:recipes=dump,a11y-audit:,news:recipes=filters;(|||,news:recipes=save,wait:400,news:recipes=dump,news:recipes=filters;^First~Item|sponsored|article|.ad~.promo,news:recipes=feed;1;Second|ftp://other.example/x|2|0|0,news:recipes=save,wait:400,news:recipes=dump,news:recipes=feed;1;Second|https://mock.example/other.xml|2|0|0,news:recipes=save,wait:900,news:recipes=dump,library:newsdump,news:recipes=open;mock-daily,wait:700,news:recipes=dump,news:recipes=remove-feed;1,news:recipes=save,wait:600,library:newsdump,quit' '
+    R=$(grep "^news_recipes: " <<<"$OUT")
+    sed -n 1p <<<"$R" | grep -q "feeds=1 modes=0 on=1 max=0 language=en .*images=true include=0"; check "the editor shows the feed of the subscription with its defaults" $?
+    sed -n 2p <<<"$R" | grep -q "feeds=2 modes=1+2 on=1+0 max=5+0 language=de template=\"{title} {date}\" images=false include=2 exclude=1 keep=1 remove=2"; check "two feeds (full articles with a limit, feed text switched off), the filters and the issue settings are collected" $?
+    sed -n 3p <<<"$R" | grep -q "banner=true error=\".*invalid regex"; check "a pattern that is not valid is refused with a reason and the editor stays open" $?
+    sed -n 4p <<<"$R" | grep -q "banner=true error=\".*http"; check "an address that is not http or https is refused" $?
+    sed -n 5p <<<"$R" | grep -q "open=false"; check "Save closes the editor" $?
+    N=$(find "$d/cfg" -name news.json | head -1)
+    grep -q "Front page" "$N" && grep -q "sponsored" "$N" && grep -q "\\.promo" "$N"; check "the recipe is saved in news.json (section title, filters, selectors)" $?
+    grep -q "\"language\": \"de\"" "$N" && grep -q "\"include_images\": false" "$N"; check "language and images are saved" $?
+    ! grep -q "other.xml" "$N"; check "and the feed removed in the last edit is gone from it" $?
+    grep "^news_sub:" <<<"$OUT" | sed -n 1p | grep -q "feeds=2 off=1"; check "after the edit: two feeds, one switched off (the switch is kept)" $?
+    grep "^news_sub:" <<<"$OUT" | tail -1 | grep -q "feeds=1 off=0"; check "a feed can be removed again in the editor" $?
+    sed -n 6p <<<"$R" | grep -q "feeds=2"; check "the saved feeds come back when the editor is opened again" $?
+    ! has "^a11y-problem:"; check "every control of the editor has a name" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario news_sites_accounts 'library:newsshow,wait:900,news:recipes=sites,wait:600,news:recipes=sites-dump,news:recipes=site-new,wait:500,news:recipes=site-fill;https://News.Example.com/feed;reader;SENT-site-pw-5,news:recipes=site-save,wait:700,news:recipes=sites-dump,a11y-audit:,news:recipes=site-new,wait:400,news:recipes=site-fill;news.example.com;other;SENT-site-pw-6,news:recipes=site-save,wait:400,news:recipes=sites-dump,news:recipes=site-fill;intranet;me;SENT-site-pw-7,news:recipes=site-save,wait:400,news:recipes=sites-dump,dialog:close,wait:300,news:recipes=site-remove;news.example.com,wait:500,news:recipes=sites-dump,news:recipes=site-undo,wait:500,news:recipes=sites-dump,quit' '
+    S=$(grep "^news_sites: " <<<"$OUT")
+    sed -n 1p <<<"$S" | grep -q "open=true count=0 hosts= users= form=false"; check "the site accounts open empty" $?
+    sed -n 2p <<<"$S" | grep -q "count=1 hosts=news.example.com users=reader form=false"; check "an address is reduced to its host (lower case) and saved with the user" $?
+    sed -n 3p <<<"$S" | grep -q "count=1 .*form=true last=\"This site has an account already\\.\""; check "a second account for the same site is refused" $?
+    sed -n 4p <<<"$S" | grep -q "count=1 .*form=true last=\"This is not a site address\\.\""; check "a name that is not a site address is refused" $?
+    sed -n 5p <<<"$S" | grep -q "count=0 hosts= "; check "Remove takes the account away" $?
+    sed -n 6p <<<"$S" | grep -q "count=1 hosts=news.example.com users=reader"; check "Undo puts it back" $?
+    grep -q "news.example.com" "$d/cfg/bookx/config.json" && grep -q "\"user\": \"reader\"" "$d/cfg/bookx/config.json"; check "config.json keeps the host and the user name" $?
+    ! grep -rqa "SENT-site-pw" "$d/cfg" "$d/cache"; check "no password is in any file (it is a secret field of the keyring)" $?
+    ! has "SENT-site-pw"; check "no password is printed" $?
+    ! has "^a11y-problem:"; check "every control of the site accounts has a name" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario news_recipes_win11_fit 'library:newsadd=Mock Daily|https://mock.example/feed.xml|manual|3,wait:300,app:win-size=900x600,app:text-scale=1.5,wait:600,library:newsshow,wait:900,a11y-audit:,news:recipes=open;mock-daily,wait:700,a11y-audit:,dialog:close,wait:300,news:recipes=sites,wait:500,a11y-audit:,news:recipes=site-new,wait:500,a11y-audit:,quit' '
+    [ "$(grep -c "^dialog_fit: " <<<"$OUT")" -ge 4 ]; check "the window, the editor, the site accounts and the form report their size" $?
+    ! grep "^dialog_fit: " <<<"$OUT" | grep -q "fits=false"; check "at 900x600 and 1.5 times the text every dialog fits the window" $?
+    ! has "^a11y-problem:"; check "every control has a name" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'

@@ -38,8 +38,9 @@ groups, top to bottom:
    the server off first), and every request needs the **access token**. The address can be copied once the server runs.
    Just below, **Allow changes to the library** (off by default) decides whether assistants may change anything; see
    [What assistants can change](#what-assistants-can-change). Switching it on asks for confirmation.
-2. **Access token.** Bookx makes a random token the first time and keeps it in the system keyring (the
-   page says so; without a keyring it is kept in Bookx's encrypted password store, or only in memory until Bookx closes, and a new one is made at the next start; it is never written to a file in clear text). The row shows it hidden. The first button
+2. **Access token.** The token is made when you switch **Let AI assistants connect** on; until then the row says
+   *No token yet* and its buttons are off, and opening Preferences never asks for a password. Bookx makes a random token and keeps it in the system keyring (the
+   page says so; without a keyring Bookx offers its encrypted password store at that moment, or keeps the token only in memory until Bookx closes, and a new one is made at the next start; it is never written to a file in clear text). The row shows it hidden. The first button
    copies the token, the second, **Make a New Token**, asks first, because every assistant that has the old token stops
    working until you paste the new settings into it; then it replaces the token (the server restarts) and says
    *New token made*.
@@ -221,7 +222,7 @@ HTTP endpoint does not push messages, so it does not offer subscriptions.
     assistant**. Do this if the token was ever shared by mistake.
 
 ??? question "How do I copy my token?"
-    The token is hidden on the page; use the copy button on the **Access token** row. Never paste it into a chat or a
+    Switch **Let AI assistants connect** on first (that makes the token). The token is hidden on the page; use the copy button on the **Access token** row. Never paste it into a chat or a
     shared file.
 
 ??? question "How do I keep assistants from changing my library?"

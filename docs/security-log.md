@@ -18,3 +18,4 @@ the last threat-model review. Newest first. The owner of advisories is @adhadse.
   core, CSS, sync wire, Lua sidecar, backup, plugin, comic and PDF entry points; not yet audiobook tags, StarDict, Calibre import.
 * **Open items:** `// SAFETY:` comments (G5), plugin signing (G10), non-Flatpak sandbox (G11), SBOM and first signed release
   (G13), trusted-proxy setting, a nightly fuzz job, a shared `Limits` type, a UI field for allowed host names.
+* **Re-check 2026-11-22:** done since: `// SAFETY:` comments (G5; 9 `unsafe` uses recounted), trusted-proxy setting and allowed host names UI (`ui/proxy_settings.rs`), shared limits module, plugin capability sheet and pin by hash (G10 part). Still open: ed25519 verification (G10, decision B9), non-Flatpak sandbox (G11), SBOM, unpinned actions in `release.yml`/`i18n.yml`/`package-*.yml` and the first signed release (G13), a nightly fuzz job.

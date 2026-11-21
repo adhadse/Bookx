@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag like v0.2.0: checks that the tag, Cargo.toml, the metainfo and CHANGELOG.md agree, builds the release
+# Push a tag like v0.3.0: checks that the tag, Cargo.toml, the metainfo and CHANGELOG.md agree, builds the release
 # binaries, a tarball, a .deb, an .rpm and a Flatpak bundle, and attaches them with SHA256SUMS to a GitHub release.
 # Nothing here creates or pushes a tag. This workflow has never run on GitHub: it was only parsed locally.
 # Signing (docs/security.md, "Release signing"): there is no signing key to keep. The publish job signs every file with
@@ -65,13 +65,13 @@ jobs:
     name: Flatpak bundle
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
       options: --privileged
     steps:
       - uses: actions/checkout@v4
       - name: Regenerate the offline cargo sources
         run: python3 build-aux/flatpak-cargo-sources.py
-      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6.8
         with:
           bundle: bookx.flatpak
           manifest-path: build-aux/com.adhadse.Bookx.json

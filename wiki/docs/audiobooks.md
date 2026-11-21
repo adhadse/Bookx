@@ -109,6 +109,7 @@ few paragraphs or minutes. The two places are not kept in step by themselves: ch
 * *Send to device* and *Export* of an audiobook use the small generated page that stands for it in the library, not the
   audio; copy the audio files yourself.
 * No Opus playback yet.
+* The player has been tested with generated audio and a silent output, not yet listened to on a real sound card.
 * No sync of the listening place to other devices or a server (the reading sync of Bookx is for e-books).
 * The sleep timer does not fade the volume out; the sound stops.
 * Sound goes through `pacat` (PulseAudio/PipeWire), `pw-cat` or `aplay`, like read aloud does. If none is installed, the

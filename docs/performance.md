@@ -103,11 +103,10 @@ About 2.3 kB of catalogue per book on disk (JSON record plus two full-text index
   would need about 1.8 GB; not a target. Opening takes about 200 ms at 100,000 because every record is parsed.
 - **`SqliteStore::search_ids` for a very common word** (250 ms at 100,000) loads every candidate record. The app does
   not use it (the library view filters in memory); only API users do. Not changed.
-- **Cold start of the whole app** (GTK, plugins, fonts) was not measured on a 100,000 book library; only the catalogue
-  part (open 205 ms), the model rebuild and, at 20,000 books in a real session, the first frame (0.6 s, debug) are known.
+- **Cold start of the whole app** at 100,000 books is measured since X18 (below); a real session (GNOME Shell) was not.
 - **Grouped editions (`work_groups::group`)** and the table view's model were not measured at 100,000 books.
-- **Selecting all** of 100,000 books runs per-book `Library::get` lookups in a few actions (selection sized, not
-  library sized); a Select All followed by a bulk action on 100,000 books has not been profiled.
+- **Selecting all** of 100,000 books: profiled and fixed in X18 (below). A bulk action on the selection (edit metadata of
+  100,000 books at once) was not profiled.
 - The page cache was warm for all "open" numbers; a real cold start from a spinning disk reads the 235 MB file once.
 - Broadway cannot time frames at all (no frame clock without a browser). The real-session scroll test uses 20,000
   books, not 100,000, in a debug build, with a virtual monitor (software GL), so it catches multi-second stalls, not
@@ -127,8 +126,101 @@ frames after it).
 | open a chapter that is one 450 KB line | 2.4 s (debug) + repeated 150-300 ms | page with "Add Line Breaks and Open" at once | GtkTextView lays a line out as one Pango paragraph; the file is no longer put in the view until the user chooses |
 | open the 1.2 MB navigation document | 25 s (hints applied 20 000 link tags, each one splits the line again) + 7 s of text view layout | 0.6 s, then the same page | no hints and no spelling for a file with one huge line; text view not used |
 
-Not done: the 0.6-0.9 s of laying out the first chapter (reader and editor preview) stays on the main thread. A chapter is
-laid out as a whole because page numbers, anchors and the saved position depend on the complete layout; laying out in
-slices with a progress indicator needs the position restore, selection and page count to learn to cope with a
-chapter that is still growing. The numbers above are for chapters of 1500 paragraphs (450 KB); a book with the same
-10 MB in 200 chapters lays out each chapter in a few milliseconds.
+The 0.6-0.9 s of laying out the first chapter was left on the main thread at that time; it is gone since X18 (next
+section). The numbers above are for chapters of 1500 paragraphs (450 KB); a book with the same 10 MB in 200 chapters
+lays out each chapter in a few milliseconds.
+
+## X18: large books and large libraries (2026-11-22)
+
+Same machine and rules as above (Ryzen 9 9950X, release build, Broadway display, `BOOKX_STALL_WATCH` = longest stretch
+in which the main loop did not run). Every "before" was measured on the build just before the change, with the old
+behaviour kept behind an environment variable where one exists (`BOOKX_LAYOUT_SYNC=1`).
+
+### What was done
+
+- **Chapters are laid out in slices** (`canvas.rs`: `flow_slice`, `FlowCursor`, `Job`). `build_flow` is now a loop that
+  can stop between two blocks and carry on later; a chapter of 120 blocks or more (`flow_window::SLICE_FROM`) runs in
+  slices of 8 ms (`SLICE_MS`) on an idle source below the redraw priority, so input and drawing go first. The page is
+  shown as soon as the place it was opened at is laid out (`Ready`: the first two screens, an anchor and a screen after
+  it, a character and a screen after it, or the whole chapter for "last page"), then the rest follows. While it is
+  incomplete `pos_info` reports an estimate of the page count (from the characters laid out so far) and the fraction of
+  the estimated height; the exact numbers replace them when the chapter is complete, and the position callback is fired
+  again then (the reader marks vocabulary and refreshes the page count at that report).
+- **Windowed layout** (`src/flow_window.rs`, pure, unit tested): a saved position beyond 3 % of a chapter of 240 blocks or
+  more is not reached by laying out everything before it. The height of every block is estimated from its characters and
+  the measured font (one wrapped sample paragraph), corrected by laying out 16 blocks spread over the chapter for real
+  (`calibrate`), the block where the target should be (a screen before it) is found by `window_start`, and a window of
+  about three screens is laid out from there and shown (`y_off` is how far down the chapter the window starts). The
+  whole chapter is then laid out from its start beside the window (`Job::buf`, swapped in and out of `State` per slice).
+  When it is complete it replaces the window: the exact fraction if the page was not touched, otherwise the very same line
+  (found through the block starts of both layouts). Not used for vertical text, fixed layout and chapters below the threshold.
+- **A move completes the layout first.** `BookCanvas::finish_layout` runs the rest in one go; it is called by everything
+  that needs the whole chapter (search, anchors, characters, `canonical_text`, selection by keyboard, dev hooks) and by
+  `settle_for_move` before a page turn or wheel step when a window is shown or the page is within three pages of the end of
+  what is laid out. The reader asks `text_sample` (laid out text only) for the language instead of `canonical_text`, and
+  marks vocabulary only when `layout_complete()`.
+- **Pango is not thread safe in gtk-rs** (`pango::Layout` is neither `Send` nor `Sync`, and the layouts are what the page
+  draws from), so "a worker thread" was not an option; slices on the main loop give the same result for input (nothing
+  blocks longer than one slice) without a second text engine.
+- **Library, 100,000 books**: Select All / click selection (`library.rs`): the `selection-changed` handlers walked all
+  100,000 rows for every change and every change was one book (`select_item` per book in `restore_selection` and in each
+  piece of the fill: 10^10 steps); the handler now reads the bitset of the selection (`selected_ids`), the selection is
+  restored with one `set_selection` and one change per piece; `requery` kept the selection with two `Vec::contains`
+  (5 x 10^9 comparisons with everything selected, replaced by sets); `Library::get` / `get_mut` are a binary search
+  (books are appended with rising ids; a list out of order or a missing id falls back to the scan) instead of a scan per
+  selected book in the details, shelves and device code; the model that is not shown is no longer built (`requery` built
+  the 100,000 `BookItem`s and the 100,000 `BookRow`s); the JSON records of the catalogue are parsed on up to 8 threads.
+- **Test fixture**: `make_scale_calibre` created a Calibre database without the indexes a real one has, so the importer
+  scanned a link table per book (100,000 books took 4 min 26 s, now 9 s); the fixture has the indexes now.
+
+### Numbers
+
+| What (release) | Before | After |
+|---|---|---|
+| Open the 10 MB book (`big_book_reader`): longest main-loop stall | **591 ms** | 54 ms (the rest is parsing the chapter and filling the 20,020 contents rows); first screen after 7.6 ms of layout |
+| The same chapter laid out | 540 ms in one call | 540 ms in about 70 slices of 8 ms, behind the page |
+| Open a chapter at 60 % (saved position), first page | after the whole chapter: 540 ms | **4 to 6 ms of layout** (estimate + 16 calibration blocks + window), exact position after 540 ms in the background; estimate of the height 316,797 px against 332,970 px (-4.9 %), position 0.598 against 0.599, page count 587 against 601 |
+| Open a 52 MB EPUB (100,000 contents entries, chapters of 2,200 paragraphs) | one stall of about 2.6 s | longest stall 154 ms; 2.6 s of layout in the background; RSS 571 MB |
+| Select All, 100,000 books (`library:selectall`) | **6,976 ms** stall | longest stall 61 ms (49, 32, 61) |
+| Rebuild the list with all 100,000 selected (`library:requery-time`) | **more than 290 s** (killed at the 300 s limit) | 216 to 280 ms |
+| Cold start with 100,000 books: library window with the first books | 509 ms after the process started | **376 ms** (0.19 s for a library of two books); the other 100,000 follow in pieces for 1.25 s without blocking; RSS 600 MB |
+| Open the catalogue in the app (`library_health::open`, 100,000 books) | 156 ms | 100 ms |
+| Build the items of the grid (`requery`, 100,000) | 114 ms | 60 ms |
+| Typing in the search box, 100,000 books (`t`, `ta`, `tal`, `talko`, clear) | not measured | longest stall 91 ms per key |
+| Calibre importer on the 100,000 book test database | 266 s | 9.4 s (test fixture, see above) |
+
+Rough timeline of a cold start with 100,000 books (ms after the process started, Broadway, release): `main` 20,
+catalogue open 120 to 220, window built 290, first request of the book list 310, first books in the model 376, all
+100,000 in the model 1,630.
+
+### Budgets added
+
+- `crates/bookx-core/tests/perf_budgets.rs`: `a_get_per_selected_book_is_not_quadratic` (100,000 `get` and `get_mut`,
+  100 ms), `get_finds_books_in_any_order_and_misses_cleanly`.
+- `crates/bookx-store/tests/perf_budgets.rs`: `loading_ten_thousand_records_keeps_the_order_on_several_threads` (300 ms),
+  the 100,000 book open budget is 500 ms (was 1,500).
+- `src/flow_window.rs`, module `perf`: the estimate for a chapter of 50,000 blocks (10 ms).
+- Broadway: `big_book_window` (`build-aux/ui-tests-bigbook.sh`: window first, exact position later, a page turn at once,
+  stall budget), `scale_library_100k` (`build-aux/ui-tests-scale.sh`: cold start shows all books, Select All stall, rebuild
+  with everything selected, selection survives a search). `big_book_reader` keeps its 4 s debug budget (0 ms reported now).
+- Everything in the families `big_*`, `reader_*`, `library_*`, `lib9_*`, `lib10_*`, `notes_*`, `grid_*`, `comic_*`, `pdf_*`
+  passes (562 checks), and a second pass with `BOOKX_SLICE_FROM=1 BOOKX_WINDOW_FROM=1` (every chapter laid out in slices,
+  every saved position from a window; 912 checks over 161 scenarios) passes too.
+
+### Not done / limits
+
+- **The estimate is visible for about a second** after opening a long chapter in the middle: page "351 of 587" becomes
+  "361 of 601". The text on the page is the text of the saved position, the page numbers are what moves.
+- **A page turn right after opening completes the layout first** (a stall as long as the layout, 0.5 s at 1500
+  paragraphs, once); only the first screen is guaranteed not to block. Turning pages in the background would need the pages
+  after the window, which do not exist before the paragraphs before them are laid out.
+- **Search, highlights jump, text to speech** need the whole chapter and complete the layout when asked for it.
+- **Scroll frames** (fps) of the grid at 100,000 books and of the reader were not measured: Broadway has no frame clock,
+  and no real GNOME session was run for this change (`library_scroll_20k` exists for 20,000 books).
+- **Memory**: 600 MB resident after opening 100,000 books (catalogue 182 MB, the rest the grid models, GTK and the
+  fill), 746 to 880 MB after a few rebuilds (allocator, not a leak that was chased). A 52 MB EPUB opened in the reader
+  is 571 MB (the contents model of 100,000 entries and the Pango layouts of a chapter). `BookItem` strings could be built
+  per piece instead of for the whole list (60 ms and some tens of MB at 100,000 books).
+- **PDF open time** was not measured in the app (`bookx-pdf` has its own budgets: 500 pages in 400 ms).
+- Closing the window with 100,000 books takes about 0.4 s (the models are dropped).
+- `library:selection` (a dev hook) is quadratic by itself (`position` per id); use `library:selcount` for large libraries.

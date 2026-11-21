@@ -1,7 +1,7 @@
 name: Translations
 
 # Keeps po/ in step with the source: the template is current, POTFILES.in is current, every
-# shipped language is complete (de, es) or a valid starter (fr, hi), LINGUAS = LANGUAGES, and
+# shipped language is complete (de, es) or a valid starter (fr, hi), LINGUAS = the table in build.rs, and
 # po/STATUS.md lists each language with a review state. Never run before it was written.
 
 on:
@@ -66,10 +66,12 @@ jobs:
         run: build-aux/gen-potfiles.sh --check
       - name: Every shipped language is complete and well formed
         run: "cargo test -p bookx --locked --quiet i18n::"
-      - name: po/LINGUAS matches LANGUAGES in src/i18n.rs
+      - name: The Flathub build (reviewed languages only) passes the same tests
+        run: "cargo test -p bookx --locked --quiet --features reviewed-locales-only i18n::"
+      - name: po/LINGUAS matches the language table in build.rs
         run: |
-          from_code=$(sed -n '/pub const LANGUAGES/,/^\];/p' src/i18n.rs \
-            | grep -o '("[a-z_A-Z]*", "[^"]*", Some' | cut -d'"' -f2 | LC_ALL=C sort)
+          from_code=$(sed -n '/const ALL/,/^\];/p' build.rs \
+            | grep -o '^    ("[a-z_A-Z]*"' | cut -d'"' -f2 | LC_ALL=C sort)
           from_files=$(grep -v '^#' po/LINGUAS | LC_ALL=C sort)
           from_dir=$(ls po/*.po | sed 's#po/##; s#\.po$##' | LC_ALL=C sort)
           [ "$from_code" = "$from_files" ] || { echo "::error::LANGUAGES in src/i18n.rs and po/LINGUAS differ"; echo "$from_code"; echo --; echo "$from_files"; exit 1; }

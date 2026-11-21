@@ -468,6 +468,11 @@ scenario() {
             make_scale_calibre "$d/scalecal" 20000
             "$CLI" --library "$d/lib" library import-calibre "$d/scalecal" >/dev/null 2>&1
             ;;
+        scale_library_100k)
+            # 100 000 books: cold start, Select All and a search with everything selected (docs/performance.md)
+            make_scale_calibre "$d/scalecal" 100000
+            "$CLI" --library "$d/lib" library import-calibre "$d/scalecal" >/dev/null 2>&1
+            ;;
         big_book_*)
             # the 10 MB book with 20 000 contents entries is book 1
             "$CLI" --library "$d/lib" library add "$ROOT/big20k/big.epub" >/dev/null 2>&1
@@ -550,6 +555,15 @@ PY
             printf '</article><footer>Copyright</footer></body></html>'
         } >"$d/webmock/page.html"
         printf '%s' '<?xml version="1.0"?><rss version="2.0"><channel><title>Mock Feed</title><link>https://mock.example/</link><item><title>First Item</title><link>https://mock.example/one</link><description>&lt;p&gt;The first item of the mocked feed has a handful of words in it for the reader.&lt;/p&gt;</description></item><item><title>Second Item</title><link>https://mock.example/two</link><description>&lt;p&gt;The second item adds a few more words so the news book has some content.&lt;/p&gt;</description></item></channel></rss>' >"$d/webmock/feed.xml"
+        printf '%s' '{"data":{"me":[{"user_books":[{"status_id":3,"rating":4.5,"book":{"title":"UI Test Book","contributions":[{"author":{"name":"Test Author"}}]},"edition":{"isbn_13":null,"isbn_10":null}},{"status_id":1,"rating":null,"book":{"title":"Second Book","contributions":[{"author":{"name":"Other Author"}}]},"edition":{"isbn_13":null,"isbn_10":null}},{"status_id":2,"rating":null,"book":{"title":"Not In The Library","contributions":[{"author":{"name":"Nobody"}}]},"edition":{"isbn_13":null,"isbn_10":null}}]}]}}' >"$d/webmock/hardcover.json"
+        # the look-up scenarios have three dictionaries to put in order (alpha, mini, zeta)
+        if [[ "$name" == lookup_* ]]; then
+            for n in alpha zeta; do
+                mkdir -p "$d/dicts/$n"
+                cp "$d/dicts/mini"/* "$d/dicts/$n/"
+                sed -i "s/Mini Test Dict/${n^} Dict/" "$d/dicts/$n/mini.ifo"
+            done
+        fi
         printf '%s' '{"access_token":"MOCKTOKEN","expires_in":3600}' >"$d/webmock/wallabag-token.json"
         printf '%s' '{"page":1,"limit":30,"pages":1,"total":2,"_embedded":{"items":[{"id":501,"url":"https://blog.example/saved-one","title":"Saved Article One","content":"<p>The first saved article has plenty of readable words so that it becomes a book.</p>","language":"en","published_by":["Wally Bag"],"created_at":"2024-05-01T10:00:00+0000","tags":[],"is_archived":0},{"id":502,"url":"https://blog.example/saved-two","title":"Saved Article Two","content":"<p>The second saved article is also long enough to be turned into a book of its own.</p>","language":"en","published_by":[],"created_at":"2024-05-02T10:00:00+0000","tags":[],"is_archived":0}]}}' >"$d/webmock/wallabag-entries.json"
         if [ "$name" = news_opml ]; then
@@ -898,7 +912,7 @@ PY
             [[ "$name" == wiki_image_cached || "$name" == wiki_image_offline ]] && export BOOKX_OFFLINE=1
             [[ "$name" == dict_offline ]] && export BOOKX_OFFLINE=1
             [[ "$name" == *safe_mode* ]] && export BOOKX_SAFE_MODE=1
-            [[ "$name" == grid_stalls_* || "$name" == big_book_* ]] && export BOOKX_STALL_WATCH=${STALL_WATCH_MS:-100}
+            [[ "$name" == grid_stalls_* || "$name" == big_book_* || "$name" == scale_library_* ]] && export BOOKX_STALL_WATCH=${STALL_WATCH_MS:-100}
             # automatic dictionary downloads are off in every scenario but the ones that test them
             if [ -n "${dictauto-off}" ]; then export BOOKX_DICT_AUTO=${dictauto-off}; fi
             [ -n "${dictcat:-}" ] && export BOOKX_DICT_CATALOG=$dictcat
@@ -3366,17 +3380,21 @@ scenario reading_goals 'stats:goal:1:2,read:1,wait:3500,reader:next,wait:500,rea
     has "^stats_review: Pages turned = [1-9]"; check "and the pages turned" $?
     grep -q "\"daily_minutes\": 0" "$d/cfg/bookx/config.json"; check "goals are stored in the settings file" $?'
 
-scenario mcp_settings_page 'prefs:,wait:900,prefs:pick=MCP,wait:300,prefs:dump,mcp:dump,a11y-audit:,mcp:snippet=claude-code,mcp:snippet=opencode,mcp:snippet=opencode:http,mcp:copied,mcp:port=@MCPPORT@,mcp:enable=on,wait:500,mcp:dump,mcp:ping,wait:200,mcp:dump,mcp:token=regen,wait:500,mcp:ping,mcp:write=on,wait:300,mcp:ping,mcp:dump,mcp:enable=off,wait:300,mcp:ping,mcp:dump,quit' '
+scenario mcp_settings_page 'prefs:,wait:900,prefs:pick=MCP,wait:300,prefs:dump,mcp:dump,a11y-audit:,mcp:snippet=claude-code,mcp:snippet=opencode,mcp:snippet=opencode:http,mcp:copied,mcp:port=@MCPPORT@,mcp:enable=on,wait:500,mcp:dump,mcp:snippet=opencode:http,mcp:copied,mcp:ping,wait:200,mcp:dump,mcp:token=regen,wait:500,mcp:ping,mcp:write=on,wait:300,mcp:ping,mcp:dump,mcp:enable=off,wait:300,mcp:ping,mcp:dump,quit' '
     P=$(grep "^prefs:" <<<"$OUT" | head -1)
     grep -q "sections=.*MCP" <<<"$P" && grep -q "selected=MCP" <<<"$P"; check "Preferences has an MCP section" $?
     M=$(grep "^mcp: " <<<"$OUT")
     sed -n 1p <<<"$M" | grep -q "running=0 .*enabled=0 .*write=0"; check "the server is off and read-only by default" $?
     ! has "^a11y-problem:"; check "every control of the page has an accessible name" $?
+    sed -n 1p <<<"$M" | grep -q "token_shown=\"No token yet\".*token_buttons=0"; check "opening the page makes no token: it says so and the token buttons are off" $?
     S=$(grep "^mcp_snippet:" <<<"$OUT")
     sed -n 1p <<<"$S" | grep -q "first=\"claude mcp add bookx -- "; check "the Claude Code snippet is a claude mcp add command" $?
     sed -n 2p <<<"$S" | grep -q "has_token=0 .*json=1"; check "the opencode command snippet is JSON without a token" $?
-    sed -n 3p <<<"$S" | grep -q "json=1" && sed -n 3p <<<"$S" | grep -q "has_token=1" && sed -n 3p <<<"$S" | grep -q "has_url=1"; check "the server snippet has the address and the token" $?
+    sed -n 3p <<<"$S" | grep -q "http=1 has_token=0 has_url=0 json=0"; check "the server snippet is refused while there is no token" $?
+    grep -q "^mcp_copied: .*has_token=0" <<<"$OUT"; check "nothing with a token was copied before the server was switched on" $?
+    sed -n 4p <<<"$S" | grep -q "json=1" && sed -n 4p <<<"$S" | grep -q "has_token=1" && sed -n 4p <<<"$S" | grep -q "has_url=1"; check "after switching on, the server snippet has the address and the token" $?
     grep -q "^mcp_copied: .*has_token=1" <<<"$OUT"; check "copying puts the snippet on the clipboard" $?
+    sed -n 2p <<<"$M" | grep -q "token_shown=\"••••••••[0-9a-f]\{4\}\".*token_buttons=1"; check "switching on made the token and turned its buttons on" $?
     sed -n 2p <<<"$M" | grep -q "running=1 url=http://127.0.0.1:[0-9]*/mcp enabled=1" && sed -n 2p <<<"$M" | grep -q "status=\"Listening\""; check "switching it on starts the server and shows its address" $?
     G=$(grep "^mcp_ping:" <<<"$OUT")
     sed -n 1p <<<"$G" | grep -q "init=200 search=200 total=[1-9][0-9]* no_token=401 write=no-such-tool"; check "a real assistant request works with the token, is refused without it, and has no write tools" $?

@@ -31,6 +31,10 @@ impl Reader {
         if self.vocab_key.get() == Some(want) {
             return;
         }
+        // a long chapter that is still being laid out is marked when it is done (the position is reported then)
+        if !self.canvas.layout_complete() {
+            return;
+        }
         let series = self.vocab_series();
         let marks = {
             let hub = self.shared.vocab.borrow();

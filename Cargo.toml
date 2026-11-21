@@ -4,7 +4,7 @@ exclude = ["fuzz"]
 
 [package]
 name = "bookx"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Anurag Dhadse <hello@adhadse.com>"]
 edition = "2021"
 rust-version = "1.85"
@@ -59,6 +59,11 @@ sourceview5 = { version = "0.11", features = ["v5_6"] }
 [dependencies.relm4]
 version = "0.11"
 features = ["libadwaita", "gnome_49"]
+
+[features]
+# Embed only English and the languages in po/reviewed-locales.txt (the Flathub build: Flathub refuses
+# machine-translated locales). Default off: every other channel keeps all languages. See build.rs.
+reviewed-locales-only = []
 
 [dev-dependencies]
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }

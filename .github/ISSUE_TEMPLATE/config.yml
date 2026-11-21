@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/adhadse/Bookx/security/advisories/new
+    about: Report it privately. Please do not open a public issue for an unfixed vulnerability.
+  - name: Documentation
+    url: https://bookx.adhadse.com
+    about: Install, use and troubleshoot Bookx.

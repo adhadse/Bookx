@@ -119,3 +119,36 @@ scenario sources_priority_ui 'prefs:,wait:900,prefs:pick=Library,wait:400,prefs:
     sed -n 3p <<<"$S" | grep -q "description=auto .* series=google"; check "Automatic goes back to the built-in order" $?
     has "^a11y: controls=[0-9]+ problems=0"; check "every row has a name" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# ---- Library server accounts (Preferences -> Sync -> Advanced, src/ui/accounts.rs) ---------------------------------
+# Dev commands: `prefs:accounts-open|close|new|edit=NAME|remove=NAME|undo|fill=NAME;PW;REPEAT;tag+tag|save|guests=tag+tag|
+# verify=NAME;PW|dump` (`prefs_accounts: count=N accounts=name[tags]hashed=B guests=… restarts=N window=B form=B rows=N last=…`).
+# Passwords and hashes are never printed.
+
+scenario accounts_screen 'library:select1,wait:500,library:tags=+Kids;Public,wait:900,prefs:,wait:900,prefs:pick=Sync,wait:400,prefs:sync-port=38747,prefs:sync-server=on,wait:900,prefs:sync-advanced=open,wait:500,prefs:accounts-open,wait:600,prefs:accounts-dump,a11y-audit:,prefs:accounts-new,wait:600,prefs:accounts-fill=kid;SENT-acct-pw-9;SENT-acct-mismatch;kids,prefs:accounts-save,wait:600,prefs:accounts-dump,a11y-audit:,prefs:accounts-fill=kid;short;short;kids,prefs:accounts-save,wait:400,prefs:accounts-dump,prefs:accounts-fill=bookx;SENT-acct-pw-9;SENT-acct-pw-9;kids,prefs:accounts-save,wait:400,prefs:accounts-dump,prefs:accounts-fill=kid;SENT-acct-pw-9;SENT-acct-pw-9;kids,prefs:accounts-save,wait:3500,prefs:accounts-dump,prefs:accounts-verify=kid;SENT-acct-pw-9,prefs:accounts-verify=kid;SENT-acct-wrong,prefs:accounts-new,wait:500,prefs:accounts-fill=Kid;SENT-acct-pw-7;SENT-acct-pw-7;,prefs:accounts-save,wait:500,prefs:accounts-dump,dialog:close,wait:400,prefs:accounts-edit=kid,wait:600,prefs:accounts-fill=kid;;;kids+public,prefs:accounts-save,wait:2500,prefs:accounts-dump,prefs:accounts-verify=kid;SENT-acct-pw-9,prefs:accounts-remove=kid,wait:2500,prefs:accounts-dump,prefs:accounts-undo,wait:2500,prefs:accounts-dump,prefs:accounts-guests=public,wait:2500,prefs:accounts-dump,a11y-audit:,prefs:accounts-guests=,wait:2500,prefs:accounts-dump,quit' '
+    A=$(grep "^prefs_accounts: " <<<"$OUT")
+    sed -n 1p <<<"$A" | grep -q "count=0 accounts= guests= restarts=0 window=true form=false rows=1"; check "the window opens with no accounts and an empty-state row" $?
+    sed -n 2p <<<"$A" | grep -q "count=0 .* form=true"; check "two passwords that differ are refused and nothing is added" $?
+    sed -n 3p <<<"$A" | grep -q "count=0"; check "a password that is too short is refused" $?
+    sed -n 4p <<<"$A" | grep -q "count=0"; check "the name of the shared login (bookx) is refused" $?
+    sed -n 5p <<<"$A" | grep -q "count=1 accounts=kid\\[kids\\]hashed=true guests= restarts=1 window=true form=false rows=1"; check "a valid account is added, hashed, and the running server restarted once" $?
+    has "^prefs_accounts_verify: name=kid ok=true"; check "the stored hash accepts the password (the hash of the command line)" $?
+    has "^prefs_accounts_verify: name=kid ok=false"; check "and refuses another one" $?
+    sed -n 6p <<<"$A" | grep -q "count=1 .*form=true"; check "a second account whose name differs only in case is refused" $?
+    sed -n 7p <<<"$A" | grep -q "count=1 accounts=kid\\[kids+public\\]hashed=true .*restarts=2"; check "editing changes the collections, keeps the password when none is typed and restarts the server" $?
+    has "^prefs_accounts_verify: name=kid ok=true"; check "the old password still works after the edit" $?
+    sed -n 8p <<<"$A" | grep -q "count=0 .*rows=1"; check "Remove takes the account away at once" $?
+    sed -n 9p <<<"$A" | grep -q "count=1 accounts=kid\\[kids+public\\]hashed=true"; check "Undo brings it back with its collections and password" $?
+    sed -n 10p <<<"$A" | grep -q "guests=public"; check "guests can be allowed for a collection" $?
+    sed -n 11p <<<"$A" | grep -q "guests= "; check "and switched off again" $?
+    grep -qF "a2id" "$d/cfg/bookx/config.json"; check "config.json holds an Argon2id hash" $?
+    ! grep -rqa "SENT-acct-pw" "$d/cfg" "$d/cache"; check "no password is in any file" $?
+    ! has "SENT-acct"; check "no password or hash is printed" $?
+    ! has "^a11y-problem:"; check "every control of the accounts window and form has a name" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario accounts_win11_fit 'prefs:,wait:900,prefs:pick=Sync,wait:300,prefs:sync-advanced=open,wait:400,app:win-size=900x600,app:text-scale=1.5,wait:800,prefs:accounts-open,wait:700,a11y-audit:,prefs:accounts-new,wait:600,a11y-audit:,quit' '
+    [ "$(grep -c "^dialog_fit: " <<<"$OUT")" -ge 2 ]; check "both accounts dialogs report their size" $?
+    ! grep "^dialog_fit: " <<<"$OUT" | grep -q "fits=false"; check "at 900x600 and 1.5 times the text both dialogs fit the window" $?
+    ! has "^a11y-problem:"; check "every control has a name at 1.5 times the text" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'

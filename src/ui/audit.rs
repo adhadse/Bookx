@@ -37,6 +37,12 @@ pub fn name_menu_items(btn: &gtk::MenuButton) {
     });
 }
 
+/// Names the entries of the context menu a widget (a text view) opens itself, once it is shown.
+pub fn name_context_menu_items(w: &impl IsA<gtk::Widget>) {
+    let w = w.as_ref().clone();
+    gtk::glib::idle_add_local_once(move || name_items_below(&w));
+}
+
 fn name_items_below(w: &gtk::Widget) {
     use gtk::AccessibleRole as R;
     if matches!(

@@ -19,7 +19,7 @@ This README is for people working on Bookx. What the app can and cannot do is de
 
 ## Status and scope
 
-- Version `0.2.0` (see [CHANGELOG.md](CHANGELOG.md)). Linux and GNOME (GTK ≥ 4.20, libadwaita ≥ 1.8) come first.
+- Version `0.3.0` (see [CHANGELOG.md](CHANGELOG.md)). Linux and GNOME (GTK ≥ 4.20, libadwaita ≥ 1.8) come first.
   A Flathub submission is being prepared ([docs/flathub-submission.md](docs/flathub-submission.md)).
   macOS and Windows have bundling scaffolding only ([docs/macos-port.md](docs/macos-port.md),
   [docs/windows-port.md](docs/windows-port.md)).

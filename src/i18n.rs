@@ -16,14 +16,10 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
-/// `(code, name in its own language, embedded .po)`.
-pub const LANGUAGES: [(&str, &str, Option<&str>); 5] = [
-    ("en", "English", None),
-    ("es", "Español", Some(include_str!("../po/es.po"))),
-    ("de", "Deutsch", Some(include_str!("../po/de.po"))),
-    ("fr", "Français", Some(include_str!("../po/fr.po"))),
-    ("hi", "हिन्दी", Some(include_str!("../po/hi.po"))),
-];
+// `LANGUAGES: &[(code, name in its own language, embedded .po)]` and `REVIEWED_ONLY`, written by build.rs.
+// With the feature `reviewed-locales-only` (Flathub) only English and the languages in
+// `po/reviewed-locales.txt` are listed and embedded.
+include!(concat!(env!("OUT_DIR"), "/languages.rs"));
 
 /// Languages written right to left (the interface is mirrored for them).
 pub fn is_rtl(code: &str) -> bool {
@@ -823,6 +819,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "reviewed-locales-only"))]
     fn the_setting_wins_over_the_system() {
         let e = env(&[("LANG", "de_DE.UTF-8")]);
         assert_eq!(resolve("es", &e), "es");
@@ -832,6 +829,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "reviewed-locales-only"))]
     fn the_system_language_list_is_read_in_order() {
         assert_eq!(
             resolve(
@@ -913,6 +911,7 @@ msgstr "Comilla \"x\""
     }
 
     #[test]
+    #[cfg(not(feature = "reviewed-locales-only"))]
     fn a_mo_file_in_a_locale_dir_overrides_the_embedded_text() {
         let dir = std::env::temp_dir().join(format!("bookx-loc-{}", uuid::Uuid::new_v4()));
         let p = mo_path(&dir, "es");
@@ -1122,11 +1121,131 @@ msgstr "Ouvert"
         );
     }
 
+    fn reviewed_codes() -> Vec<String> {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("po/reviewed-locales.txt");
+        std::fs::read_to_string(path)
+            .expect("po/reviewed-locales.txt")
+            .lines()
+            .map(|l| l.split('#').next().unwrap_or("").trim().to_string())
+            .filter(|l| !l.is_empty())
+            .collect()
+    }
+
+    #[test]
+    fn reviewed_locales_exist_and_are_complete() {
+        let keys: Vec<String> = source_strings().iter().map(|m| m.key()).collect();
+        let po_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("po");
+        for code in reviewed_codes() {
+            assert!(
+                code != "en" && LANGUAGES_ALL.contains(&code.as_str()),
+                "po/reviewed-locales.txt lists unknown language {code}"
+            );
+            let text = std::fs::read_to_string(po_dir.join(format!("{code}.po")))
+                .unwrap_or_else(|_| panic!("po/{code}.po is missing"));
+            let (_, m) = parse_po_raw(&text);
+            let missing: Vec<&String> = keys.iter().filter(|k| !m.contains_key(*k)).collect();
+            assert!(
+                missing.is_empty(),
+                "{code} is listed as reviewed but lacks {} strings",
+                missing.len()
+            );
+        }
+    }
+
+    /// Every `po/LINGUAS` code is known to the build (so a new language is added to build.rs too).
+    const LANGUAGES_ALL: [&str; 4] = ["es", "de", "fr", "hi"];
+
+    #[test]
+    fn build_table_covers_the_linguas_file() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("po/LINGUAS");
+        let text = std::fs::read_to_string(path).unwrap();
+        let mut codes: Vec<&str> = text
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty() && !l.starts_with('#'))
+            .collect();
+        codes.sort_unstable();
+        let mut all = LANGUAGES_ALL.to_vec();
+        all.sort_unstable();
+        assert_eq!(codes, all, "po/LINGUAS and the table in build.rs differ");
+    }
+
+    #[test]
+    fn the_language_table_follows_the_gate() {
+        let embedded: Vec<&str> = LANGUAGES.iter().map(|(c, _, _)| *c).collect();
+        assert_eq!(embedded[0], "en");
+        if REVIEWED_ONLY {
+            let mut want = vec!["en".to_string()];
+            want.extend(reviewed_codes().into_iter().filter(|c| c != "en"));
+            let mut have: Vec<String> = embedded.iter().map(|s| s.to_string()).collect();
+            want.sort();
+            have.sort();
+            assert_eq!(have, want, "only reviewed languages may be embedded");
+            // an unreviewed language is neither listed nor translated
+            for code in LANGUAGES_ALL {
+                if !want.iter().any(|w| w == code) {
+                    assert!(!available().iter().any(|(c, _)| c == code) || locale_dirs_have(code));
+                    assert!(
+                        load(code, &[]).is_empty(),
+                        "{code} must not be embedded in the reviewed-only build"
+                    );
+                }
+            }
+        } else {
+            for code in LANGUAGES_ALL {
+                assert!(
+                    embedded.contains(&code),
+                    "{code} missing from the full build"
+                );
+            }
+        }
+    }
+
+    /// The Flathub build: an unreviewed language is not selectable, so the setting and the system
+    /// language fall back to English, and nothing is embedded for it.
+    #[test]
+    #[cfg(feature = "reviewed-locales-only")]
+    fn an_unreviewed_language_falls_back_to_english() {
+        let e = env(&[("LANG", "de_DE.UTF-8")]);
+        for code in LANGUAGES_ALL {
+            if reviewed_codes().iter().any(|r| r == code) {
+                continue;
+            }
+            assert_eq!(resolve(code, &e), "en");
+        }
+        assert_eq!(resolve("", &env(&[("LANGUAGE", "xx:fr:en")])), "en");
+        let dir = std::env::temp_dir().join(format!("bookx-loc-{}", uuid::Uuid::new_v4()));
+        assert!(load("es", std::slice::from_ref(&dir)).is_empty());
+    }
+
+    /// Flathub refuses machine translations: the desktop file and the metainfo carry English text only
+    /// (a translated key would need the same review as the interface languages).
+    #[test]
+    fn desktop_and_metainfo_have_no_translated_text() {
+        let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("data");
+        let desktop = std::fs::read_to_string(data.join("com.adhadse.Bookx.desktop")).unwrap();
+        let bad: Vec<&str> = desktop
+            .lines()
+            .filter(|l| !l.starts_with('[') && l.split('=').next().is_some_and(|k| k.contains('[')))
+            .collect();
+        assert!(bad.is_empty(), "translated desktop keys: {bad:?}");
+        let metainfo =
+            std::fs::read_to_string(data.join("com.adhadse.Bookx.metainfo.xml")).unwrap();
+        assert!(
+            !metainfo.contains("xml:lang"),
+            "the metainfo has translated text (xml:lang)"
+        );
+    }
+
+    fn locale_dirs_have(code: &str) -> bool {
+        locale_dirs().iter().any(|d| mo_path(d, code).exists())
+    }
+
     #[test]
     fn every_shipped_language_translates_every_marked_string() {
         let ids = source_strings();
         let keys: Vec<String> = ids.iter().map(|m| m.key()).collect();
-        for (code, _, po) in LANGUAGES {
+        for (code, _, po) in LANGUAGES.iter() {
             let Some(po) = po else { continue };
             let (header, m) = parse_po_raw(po);
             assert!(
@@ -1135,7 +1254,7 @@ msgstr "Ouvert"
             );
             let missing: Vec<&String> = keys.iter().filter(|k| !m.contains_key(*k)).collect();
             // French and Hindi are starting files: the most visible strings only.
-            if matches!(code, "fr" | "hi") {
+            if matches!(*code, "fr" | "hi") {
                 assert!(m.len() >= 150, "{code} has only {} strings", m.len());
             } else {
                 assert!(missing.is_empty(), "{code} lacks: {missing:?}");

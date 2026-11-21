@@ -46,9 +46,11 @@ pub struct Item {
     pub title: String,
     pub authors: Vec<String>,
     pub isbns: Vec<String>,
+    /// The user's rating on the Calibre scale (0 to 10, two per star); `None` when not rated.
+    pub rating: Option<u8>,
 }
 
-const QUERY: &str = "query($limit:Int!,$offset:Int!){me{user_books(limit:$limit,offset:$offset,order_by:{id:asc}){status_id book{title contributions{author{name}}} edition{isbn_10 isbn_13}}}}";
+const QUERY: &str = "query($limit:Int!,$offset:Int!){me{user_books(limit:$limit,offset:$offset,order_by:{id:asc}){status_id rating book{title contributions{author{name}}} edition{isbn_10 isbn_13}}}}";
 
 /// The JSON body of one page request.
 pub fn request_body(page: usize) -> String {
@@ -116,14 +118,48 @@ pub fn parse_page(body: &[u8]) -> Result<(Vec<Item>, bool)> {
             .map(isbn::normalize)
             .filter(|s| !s.is_empty())
             .collect();
+        let rating = ub
+            .get("rating")
+            .and_then(Value::as_f64)
+            .map(|r| (r * 2.0).round().clamp(0.0, 10.0) as u8)
+            .filter(|r| *r > 0);
         out.push(Item {
             status,
             title,
             authors,
             isbns,
+            rating,
         });
     }
     Ok((out, list.len() >= PAGE))
+}
+
+/// Asks for one page only: whether the token works, and how many books that page holds (the page
+/// size when there may be more). The token never appears in the error.
+pub fn test_connection(fetcher: &dyn Fetcher, token: &str) -> Result<usize> {
+    if token.trim().is_empty() {
+        bail!("Paste your Hardcover API token first.");
+    }
+    let headers = [
+        ("Authorization".to_string(), auth_header(token)),
+        ("Accept".to_string(), "application/json".to_string()),
+    ];
+    let body = fetcher
+        .post(
+            ENDPOINT,
+            &headers,
+            "application/json",
+            request_body(0).as_bytes(),
+        )
+        .map_err(|e| match FetchError::of(&e) {
+            Some(FetchError::Http(401 | 403)) => {
+                anyhow!(
+                    "Hardcover did not accept the token: copy a new one from your account settings"
+                )
+            }
+            _ => e.context("Could not reach Hardcover"),
+        })?;
+    Ok(parse_page(&body)?.0.len())
 }
 
 /// Reads the shelves of the token's owner.
@@ -188,8 +224,16 @@ fn same_title_author(l: &Local, i: &Item) -> bool {
 /// Which library book each Hardcover item is: by ISBN first, then by title and author. A book is
 /// matched at most once; an item that matches several books is left alone (no guessing).
 pub fn plan(items: &[Item], local: &[Local]) -> Vec<(u64, Status)> {
-    let mut out: Vec<(u64, Status)> = Vec::new();
-    for i in items {
+    match_items(items, local)
+        .into_iter()
+        .map(|(id, i)| (id, items[i].status))
+        .collect()
+}
+
+/// Like [`plan`], but gives the index of the matched item (so the caller can read its rating).
+pub fn match_items(items: &[Item], local: &[Local]) -> Vec<(u64, usize)> {
+    let mut out: Vec<(u64, usize)> = Vec::new();
+    for (index, i) in items.iter().enumerate() {
         let by_isbn: Vec<&Local> = local
             .iter()
             .filter(|l| {
@@ -205,7 +249,7 @@ pub fn plan(items: &[Item], local: &[Local]) -> Vec<(u64, Status)> {
         };
         if let [one] = hits.as_slice() {
             if !out.iter().any(|(id, _)| *id == one.id) {
-                out.push((one.id, i.status));
+                out.push((one.id, index));
             }
         }
     }
@@ -306,7 +350,25 @@ mod tests {
             title: title.into(),
             authors: authors.iter().map(|s| s.to_string()).collect(),
             isbns: isbns.iter().map(|s| s.to_string()).collect(),
+            rating: None,
         }
+    }
+
+    #[test]
+    fn ratings_become_calibre_stars_and_a_test_reads_one_page() {
+        let body = r#"{"data":{"me":[{"user_books":[{"status_id":3,"rating":4.5,"book":{"title":"A"}},{"status_id":3,"rating":0,"book":{"title":"B"}},{"status_id":3,"rating":null,"book":{"title":"C"}}]}]}}"#;
+        let (items, _) = parse_page(body.as_bytes()).unwrap();
+        assert_eq!(
+            items.iter().map(|i| i.rating).collect::<Vec<_>>(),
+            vec![Some(9), None, None]
+        );
+        let f = MockFetcher::new().with_body(ENDPOINT, body);
+        assert_eq!(test_connection(&f, "tok").unwrap(), 3);
+        assert_eq!(f.posts().len(), 1);
+        let f = MockFetcher::new().on(ENDPOINT, MockReply::Status(401));
+        let e = format!("{:#}", test_connection(&f, "sentinel-token").unwrap_err());
+        assert!(e.contains("did not accept") && !e.contains("sentinel-token"));
+        assert!(test_connection(&f, " ").is_err());
     }
 
     #[test]

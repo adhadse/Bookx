@@ -1,7 +1,7 @@
 # Real Kobo device report (internal)
 
 Date: 2026-11-12. The first time Bookx's Kobo code met a real Kobo. The owner's reader, mounted read-write at
-`/run/media/adhadse/KOBOeReader` (vfat, `uid=1000`, `flush`, `errors=remount-ro`). Serial number deliberately not
+`/run/media/<user>/KOBOeReader` (vfat, `uid=1000`, `flush`, `errors=remount-ro`). Serial number deliberately not
 recorded here.
 
 ## Device
@@ -70,7 +70,7 @@ Phase 1 (read-only, `BOOKX_KOBO_SNAPSHOT` copies in `~/.cache/bookx-kobo-snapsho
   (test `kobo_snapshot.rs`).
 * The four real sidecars parse completely (progress, status, date, 266 annotations).
 
-Phase 2 (writes, only below `/run/media/adhadse/KOBOeReader/BookxSandbox/`, started 16:58, finished a few seconds later):
+Phase 2 (writes, only below `/run/media/<user>/KOBOeReader/BookxSandbox/`, started 16:58, finished a few seconds later):
 
 * Public-domain test books (`docs/test-books.md`) were sent through `devices::send_full` (the app's own path:
   EPUB → KEPUB conversion, save-path template, `unique_name`, `write_new_file` with `sync_all`) using a `DeviceInfo`
@@ -102,9 +102,7 @@ f0220c8ec1638cb0861e3ddfb92335b4eb6e4e8e99ba85f5a76085b8621e7608  .kobo/version
 e5a25207f1a9f52889eff53c561d0d18532e330ac38951f22e657d26695331ce  .kobo/BookReader.sqlite
 3c2bb4e2c47c3eb1db38f0ad61fb1546860c8036a43a208ec0dc54ab0e0529c8  metadata.calibre
 3f0ee50c5b68d38a9f698d2022ff724c1686540dcc14e0014c9f6ee21979d2a9  driveinfo.calibre
-c6b132fc…  Bhagavad-Gita-As-It-Is-A-C-Bhakt.epub          958b91f7…  Building-Event-Driven-Microservi.epub
-4e39819f…  Building Microservices - Newman, Sam;.epub       509df4e1…  Designing Distributed Systems….epub
-8a50a918…  Practical MLOps - Noah Gift & Alfredo Deza.epub  0d7a9c07…  The First 20 Hours….epub
+(sha256 of the six owner EPUBs in the volume root omitted from this public copy; they were identical before and after)
 ```
 
 (`KoboReader.sqlite-shm` is not hashed: it is a scratch file that is rebuilt on open; its size 32 768 and mtime

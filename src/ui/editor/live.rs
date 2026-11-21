@@ -504,6 +504,7 @@ pub(super) fn install_spell_menu(
         let at = char_to_byte_idx(&text, iter.offset() as usize);
         build_spell_menu(&menu, &spell, &text, at);
         super::navigate::append_code_section(&menu, &v, &text, at, iter.offset());
+        crate::ui::audit::name_context_menu_items(&v);
     });
     view.add_controller(click);
 }

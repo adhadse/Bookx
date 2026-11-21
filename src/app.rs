@@ -1644,6 +1644,8 @@ impl SimpleComponent for App {
                     "sync" if arg == "prefs" => sender.input(Msg::ShowSyncPrefs),
                     "sync" => crate::ui::sync_window::dev(arg, &self.shared),
                     "tts" => crate::ui::tts_settings::dev(arg),
+                    "lookup" => crate::ui::lookup_settings::dev(arg),
+                    "news" => crate::ui::news_recipes::dev(arg),
                     "mcp" => crate::ui::mcp_settings::dev(arg),
                     "keys" => crate::ui::shortcuts_dialog::dev(arg),
                     "jobs" => eprintln!("jobs: {}", crate::ui::jobs::dev(arg)),

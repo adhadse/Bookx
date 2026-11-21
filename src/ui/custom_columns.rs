@@ -382,6 +382,8 @@ fn column_editor(
     toolbar.add_top_bar(&header);
     toolbar.set_content(Some(&page));
     dialog.set_child(Some(&toolbar));
+    // the keyboard starts in the form, not on the Cancel button of the header (typing a space would press it)
+    dialog.set_focus(Some(&name));
     {
         let d = dialog.clone();
         cancel.connect_clicked(move |_| {

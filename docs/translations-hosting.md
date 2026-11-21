@@ -62,7 +62,7 @@ Rejected:
   lines, `#:` locations, `#,` flags (`fuzzy` strings are skipped, so a string "Needs editing" shows English), `#|`
   previous strings and `#~` obsolete entries (ignored).
 - Languages in `po/LINGUAS` are the ones Weblate may create/keep; a language reaches the app only when it is also in
-  `LANGUAGES` in `src/i18n.rs` and embedded with `include_str!`. CI (`i18n.yml`) checks that both lists agree.
+  the table in `build.rs` (it generates `LANGUAGES` in `src/i18n.rs`) and embedded with `include_str!`. CI (`i18n.yml`) checks that both lists agree.
 - Compiled `.mo` files in `/usr/share/locale`, `/app/share/locale` or `BOOKX_LOCALE_DIR` override the embedded text
   (distribution packagers, Weblate's "Generate MO files" add-on if ever wanted). Not needed for the normal flow.
 - GNOME-style `po/LINGUAS` and `po/POTFILES.in` exist so any external tool can work with the tree. `POTFILES.in` is
@@ -130,12 +130,33 @@ Rules:
   language sets it back to `machine-translated` for the strings it touched (note it in `docs/translation-review.md`).
 - The reading app does not show the state; it is a documentation fact, so a bad string is not hidden from users.
 
+### Promoting a language to reviewed (the Flathub gate)
+
+Flathub does not accept machine-generated translations, so its build embeds **only** the languages that a human
+reviewed (cargo feature `reviewed-locales-only`, `build.rs`, list in `po/reviewed-locales.txt`, empty today = English
+only). Every other build keeps all of `po/*.po`. To promote a language, for example `de`:
+
+1. A native speaker reviews it: on Weblate every string reaches *approved* in the review workflow (100 % approved),
+   or the speaker sends a pull request and says in it that they read the whole file.
+2. One pull request, by the owner: set the row of `po/STATUS.md` to `reviewed` (name the reviewer in the notes) **and**
+   add the code on its own line to `po/reviewed-locales.txt`. Only a complete language can be listed: a test
+   (`i18n::tests::reviewed_locales_exist_and_are_complete`) fails for an unknown code, a missing `po/<code>.po` or
+   missing strings, and `the_language_table_follows_the_gate` checks the reviewed-only build embeds exactly English plus
+   the listed codes.
+3. Release as usual; the next Flathub update carries the language. If an agent later changes strings of that
+   language, set it back to `machine-translated` and remove the code from the list in the same change.
+
+Checks: `cargo test -p bookx i18n` and `cargo test -p bookx --features reviewed-locales-only i18n` (CI runs both,
+`.github/workflows/i18n.yml`); `REVIEWED_LOCALES=1 build-aux/flatpak.sh` builds the Flatpak the way Flathub does.
+The desktop file and metainfo contain no translated keys on purpose (a test checks it); if translations are added there
+later they follow the same list.
+
 ## CI
 
 `.github/workflows/i18n.yml` (never run before this note was written): the template is up to date
 (`BOOKX_UPDATE_POT=1 cargo test … the_template_lists_every_marked_string` then `git diff --exit-code po/bookx.pot`),
 `po/POTFILES.in` is current, every shipped language passes `every_shipped_language_translates_every_marked_string`,
-`po/LINGUAS` = the codes in `LANGUAGES`, `po/STATUS.md` matches, each `.po` passes `msgfmt --check-format` (the only complaints of a full `--check` are the missing
+`po/LINGUAS` = the language table in `build.rs`, `po/STATUS.md` matches, each `.po` passes `msgfmt --check-format` (the only complaints of a full `--check` are the missing
 `Last-Translator`/`Language-Team`/`PO-Revision-Date` header fields, which Weblate fills in).
 Anything that adds a string must regenerate `po/bookx.pot` and `po/POTFILES.in` and fill de and es (the "full"
 languages) in the same change.

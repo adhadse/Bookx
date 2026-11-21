@@ -90,7 +90,7 @@ pub fn plan_import(text: &str, books: &[Book], overwrite_ratings: bool) -> Resul
     })
 }
 
-fn to_status(s: TrackerStatus) -> ReadingStatus {
+pub fn to_status(s: TrackerStatus) -> ReadingStatus {
     match s {
         TrackerStatus::Read => ReadingStatus::Finished,
         TrackerStatus::Reading => ReadingStatus::Reading,

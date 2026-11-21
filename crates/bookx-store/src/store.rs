@@ -347,13 +347,39 @@ pub(crate) fn alloc_id(conn: &Connection) -> Result<u64> {
 pub(crate) fn all_books_conn(conn: &Connection) -> Result<Vec<Book>> {
     let mut st = conn.prepare("SELECT data FROM books ORDER BY id")?;
     let rows = st.query_map([], |r| r.get::<_, String>(0))?;
-    let mut out = Vec::new();
-    for r in rows {
-        if let Ok(b) = serde_json::from_str::<Book>(&r?) {
-            out.push(b);
-        }
+    let texts = rows.collect::<rusqlite::Result<Vec<String>>>()?;
+    Ok(parse_books(&texts))
+}
+
+/// Parses the JSON records of the catalogue, in order; a record that does not parse is left out. Parsing
+/// 100,000 records takes about 150 ms on one core, so a large catalogue is parsed on several threads
+/// (the window waits for it at start-up).
+pub(crate) fn parse_books(texts: &[String]) -> Vec<Book> {
+    const PARALLEL_FROM: usize = 4096;
+    let parse = |c: &[String]| -> Vec<Book> {
+        c.iter()
+            .filter_map(|s| serde_json::from_str::<Book>(s).ok())
+            .collect()
+    };
+    let threads = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1)
+        .min(8);
+    if texts.len() < PARALLEL_FROM || threads < 2 {
+        return parse(texts);
     }
-    Ok(out)
+    let chunk = texts.len().div_ceil(threads);
+    let mut parts: Vec<Vec<Book>> = Vec::new();
+    std::thread::scope(|s| {
+        let handles: Vec<_> = texts
+            .chunks(chunk)
+            .map(|c| s.spawn(move || parse(c)))
+            .collect();
+        for (h, c) in handles.into_iter().zip(texts.chunks(chunk)) {
+            parts.push(h.join().unwrap_or_else(|_| parse(c)));
+        }
+    });
+    parts.concat()
 }
 
 /// True when [`SqliteStore::search_ids`] answers `q` through the FTS index: one ASCII word of at

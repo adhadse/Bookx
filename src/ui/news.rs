@@ -27,6 +27,8 @@ pub struct Ctx {
     /// Download every subscription that is due.
     pub run_due: Rc<dyn Fn()>,
     pub slot: RefreshSlot,
+    /// For the site accounts (user names and the keyring).
+    pub shared: super::SharedRef,
 }
 
 fn offset() -> chrono::FixedOffset {
@@ -42,7 +44,7 @@ pub fn show(parent: &impl IsA<gtk::Widget>, ctx: Ctx) {
 
     let page = adw::PreferencesPage::new();
     let group = adw::PreferencesGroup::new();
-    group.set_description(Some(&tr("Each subscription makes a new book from its feeds on its schedule. Old issues are removed.")));
+    group.set_description(Some(&tr("Each subscription makes a new book from its feeds on its schedule. Old issues are removed. Press a subscription to edit its feeds and filters.")));
     let add_btn = gtk::Button::with_label(&tr("Add"));
     add_btn.add_css_class("suggested-action");
     add_btn.set_valign(gtk::Align::Center);
@@ -54,6 +56,8 @@ pub fn show(parent: &impl IsA<gtk::Widget>, ctx: Ctx) {
     head.append(&add_btn);
     group.set_header_suffix(Some(&head));
     page.add(&group);
+    page.add(&super::news_recipes::sites_group(&dialog, &ctx.shared));
+    super::news_recipes::note_window(&ctx, &dialog);
 
     let rows: Rc<RefCell<Vec<adw::ActionRow>>> = Rc::new(RefCell::new(Vec::new()));
     let refresh: Rc<RefCell<Option<Rc<dyn Fn()>>>> = Rc::new(RefCell::new(None));
@@ -92,6 +96,7 @@ pub fn show(parent: &impl IsA<gtk::Widget>, ctx: Ctx) {
                     ],
                 )));
                 row.set_subtitle_lines(2);
+                row.set_tooltip_text(Some(&tr("Edit the feeds and filters")));
 
                 let again = refresh.clone();
                 let again = move || {
@@ -165,6 +170,15 @@ pub fn show(parent: &impl IsA<gtk::Widget>, ctx: Ctx) {
                 row.add_suffix(&dl);
                 row.add_suffix(&edit_btn);
                 row.add_suffix(&del);
+                // pressing the row (not a button) opens the feeds editor
+                row.set_activatable(true);
+                {
+                    let (ctx, key, again, parent) =
+                        (ctx.clone(), s.key.clone(), again.clone(), parent.clone());
+                    row.connect_activated(move |_| {
+                        super::news_recipes::edit_feeds(&parent, &ctx, &key, Rc::new(again.clone()))
+                    });
+                }
                 group.add(&row);
                 rows.borrow_mut().push(row);
             }

@@ -95,14 +95,14 @@ Main menu: Sync | Device
     status card:  Bookx sync is off / ready / connected   [Set up Bookx sync | Sync now]   Open Preferences → Sync
     card:  Bookx sync with KOReader (Wi-Fi)   Use this when…   ✓/○ server, account, plugin   device menu path   [Start setup | Open setup guide]
     card:  USB device                          Use this when…   connected / not connected         [Open device window]
-    card:  Share books (OPDS)                  Use this when…   on / off                            [Start | Stop library server]
+    card:  Share books (OPDS server)           Use this when…   on / off                            [Start OPDS server | Stop OPDS server]
     Advanced (collapsed): reverse proxy, port and firewall, server activity, every setting
 Preferences → Sync
     Setup checklist   1 server switch + address · 2 account (User name, Password, Register, Log in, result inline)
                       · 3 plugin (Copy to the device, Save to a folder) · 4 test on the device (menu path)
     What Bookx sync does   one plain row + the switch for highlights, notes and bookmarks + last sync + Sync now
     USB device sync        two switches + Device window
-    Library servers (OPDS) switch + address
+    OPDS server            switch + address (wave 10 name; was *Library servers (OPDS)*)
     Advanced (collapsed)   status lines · server address + Use Bookx server · position switch, book matching, device name
                            · network access, library password, port, HTTPS and certificates · reverse proxy guide
                            · request limits · server activity · privacy and offline mode · e-mail · Requirements table
@@ -136,7 +136,7 @@ Preferences → Sync
 | Preferences → Devices and Sharing: sync automatically, add my notes | Preferences → Sync → USB device sync |
 | Preferences → Sync: server address, user name, password, Register, Log in | Setup checklist step 2 (server address under Advanced, filled in from the running server) |
 | Preferences → Sync: Sync the reading position, Match books by, This device is called | Advanced |
-| Share Library: Share this library | Library servers (OPDS); the window’s “Share books” card |
+| Share Library: Share this library | OPDS server group; the window’s “Share books” card |
 | Share Library: KOReader progress sync, address | Setup checklist step 1 |
 | Share Library: Allow other devices, password, port, HTTPS, certificate, key, new certificate | Advanced |
 | Share Library: highlights and notes switch, last sync, Sync now | What Bookx sync does |
@@ -153,7 +153,26 @@ Preferences → Sync
   (`prefs_sidebar`, `prefs_search`, `sharing_kosync`).
 - Stepper: `sync_stepper`, `sync_notes_default` (Broadway), unit tests in `src/ui/stepper.rs` and `sync_model`.
 - Real session (`build-aux/session/scenarios_sync.py`): hamburger → Sync, light/dark, 900x600 and 1280x800, English
-  and German, with screenshots.
+  and German, with screenshots. Wave 11: `scenarios_wave11.py` (live updates, banner, activity window; see below).
+
+## Live updates (wave 11): what the user sees
+
+Engine and path: `docs/koreader-annotation-sync.md` ("Live updates"). The UX rules:
+
+- **Nothing moves the reader by itself.** A device that is further along only produces a banner at the top of the open
+  reader: *Your Kobo Libra is at 62% (page 143)* with **Continue There** (suggested) and **Dismiss**. One banner at a time, it stays
+  15 s (`sync_live::BANNER_MS`) unless a page is turned or it is answered, the same position is not offered again after Dismiss,
+  and Preferences → Sync → *Offer to jump* (`share.offer_jump`, default on) switches it off.
+- **Highlights, colours, notes and deletes appear on the open page** about a second after the device's push, and in the sidebar
+  Notes/Bookmarks lists, the book map and the library's Notes view; a burst is one or two events.
+- **A note being edited is never overwritten.** A change from the device while the note box is open shows *This note changed on
+  your e-reader* with **Use Theirs** (suggested) and **Keep Mine**.
+- The sync toast has **Show** and, when no reader of that book is open, **Open Book**.
+- Words and accessible names: the banner widget is named *Sync message*, both buttons are named from the start (hidden or not).
+
+Tests: Broadway `koreader_annotations_live_*` (`build-aux/ui-tests-koannot.sh`); real session
+`live_sync_highlight`, `live_sync_ahead_banner` and `sync_activity_window` (`build-aux/session/scenarios_wave11.py`: real HTTP PUTs
+from the scenario, pixel and AT-SPI checks within 3 s, banner reached with Tab, Show All with the keyboard).
 
 ## Caveats
 

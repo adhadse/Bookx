@@ -239,6 +239,7 @@ Memory: about 400 MB with Kokoro loaded.
 * Natural voices need `espeak-ng` and a command-line audio player (`pacat` or `pw-cat` from PulseAudio/PipeWire, or
   `aplay`).
 * Audio files are WAV only.
+* The natural voices have been tested with generated audio and a silent output; pausing, the look-ahead and the voice download have not yet been heard on every real sound card.
 
 ## Where the files come from, and installing offline
 

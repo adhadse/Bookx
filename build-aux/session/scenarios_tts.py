@@ -178,6 +178,7 @@ def _drag_card(c, label, name, steps=60, step=(-5, -3)):
     node = c.wait_node(None, name, timeout=6)
     if not c.check(f"{label}: the card is there", node):
         return None
+    c.wait(lambda: len(_work_log(c)) > 1, 40)
     x0, y0, w, h = node.box
     px, py = 7 + x0 + w * 0.5, 37 + y0 + 14
     c.sb.move_to(px, py)
@@ -212,7 +213,7 @@ def cards_drag_real(c):
     """Dragging a card with a real pointer in 60 small steps: it stays under the pointer (within 3 px at the end of
     every step) and the page canvas is neither laid out again nor redrawn more than a few times."""
     c.start(extra_env={"BOOKX_TTS_MOCK": "2500",
-                       "BOOKX_DEV_SCRIPT": "wait:14000,reader:work-watch"})
+                       "BOOKX_DEV_SCRIPT": "wait:3000" + ",reader:work-watch,wait:1000" * 40})
     c.check("the book opens", c.open_book())
     c.go_to_text()
     time.sleep(1.5)

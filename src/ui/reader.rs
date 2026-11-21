@@ -1667,7 +1667,7 @@ impl Reader {
         if let Some(l) = self.dict_lang.borrow().clone().filter(|l| !l.is_empty()) {
             return l;
         }
-        let sample: String = self.canvas.canonical_text().chars().take(3000).collect();
+        let sample: String = self.canvas.text_sample(3000);
         let l = crate::dict_catalog::book_language(&self.book.metadata().language, &sample);
         if !l.is_empty() {
             *self.dict_lang.borrow_mut() = Some(l.clone());
@@ -1705,6 +1705,7 @@ impl Reader {
     /// Fills the dictionary page for `term`: the definition from the installed dictionaries, and the offer
     /// to download one when the language of the book has none.
     fn fill_dict(&self, term: &str) {
+        super::lookup_settings::note_term(&self.shared, term);
         self.show_your_definition(term);
         let dir = crate::dictionaries::dictionary_dir();
         let loaded = crate::dictionaries::load(&dir);
@@ -1768,7 +1769,7 @@ impl Reader {
     }
 
     fn tts_language(&self) -> String {
-        let sample: String = self.canvas.canonical_text().chars().take(3000).collect();
+        let sample: String = self.canvas.text_sample(3000);
         crate::tts::book_language(&self.book.metadata().language, &sample)
     }
 
@@ -3877,6 +3878,7 @@ impl SimpleComponent for Reader {
                 let _ = std::fs::create_dir_all(&dir);
                 open_uri(&format!("file://{}", dir.display()));
             });
+            foot.append(&super::lookup_settings::web_button());
             foot.append(&open);
             dict_page.append(&foot);
         }
@@ -4704,6 +4706,11 @@ impl SimpleComponent for Reader {
             let spinner = adw::Spinner::new();
             spinner.set_size_request(48, 48);
             opening.set_child(Some(&spinner));
+        }
+        {
+            // a long chapter is laid out in slices: the page says "Opening Book" until its place is laid out
+            let o = opening.clone();
+            canvas.on_ready(move || o.set_visible(false));
         }
         let sync_banner = {
             let tx = sender.input_sender().clone();
@@ -5549,7 +5556,9 @@ impl SimpleComponent for Reader {
                     return;
                 }
                 self.load_chapter(i, f, a, false);
-                self.w.opening.set_visible(false);
+                if self.canvas.page_ready() {
+                    self.w.opening.set_visible(false);
+                }
             }
             Input::GoHref(h) => {
                 if let Some((i, frag)) = self.book.locate(&h) {
@@ -6662,6 +6671,17 @@ impl SimpleComponent for Reader {
                         }
                         return;
                     }
+                    // `goto-frac=SPINE:FRAC` opens a chapter at a fraction, as a saved position does
+                    g if g.starts_with("goto-frac=") => {
+                        let (a, b) = g[10..].split_once(':').unwrap_or((&g[10..], "0"));
+                        sender.input(Input::GoSpine(
+                            a.parse().unwrap_or(0),
+                            Some(b.parse().unwrap_or(0.0)),
+                            None,
+                        ));
+                    }
+                    // how far the layout of the chapter is (see `layout_state` of the canvas)
+                    "layout-state" => eprintln!("layout: {}", self.canvas.dev_layout_state()),
                     g if g.starts_with("goto=") => {
                         sender.input(Input::GoSpine(g[5..].parse().unwrap_or(0), Some(0.0), None));
                         return;
@@ -7615,7 +7635,14 @@ impl SimpleComponent for Reader {
                         return;
                     }
                     "work-watch" => {
-                        // prints the draw and layout counters of the page every 100 ms (real-session tests)
+                        // prints the draw and layout counters of the page every 100 ms (real-session tests);
+                        // asking again is harmless, so a script can repeat it until the reader exists
+                        thread_local! {
+                            static WATCHING: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+                        }
+                        if WATCHING.with(|w| w.replace(true)) {
+                            return;
+                        }
                         let canvas = self.canvas.clone();
                         let (probe, ctl, page) = (
                             self.w.chrome_probe.clone(),

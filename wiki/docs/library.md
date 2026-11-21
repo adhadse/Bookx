@@ -632,6 +632,11 @@ The **Library** menu in the header bar (next to *View options*) → *Reading Tra
   a **Not Found** list with the titles that match no book. The button at the top right says what it will do
   (*Import 12 Books*); nothing is written before you press it. The ratings and tags are one *Undo* step. Hardcover columns are found by name; if your export has other column names and a file is refused, tell
   us.
+* **Hardcover without a file.** Preferences → Library → **Hardcover** reads your lists straight from hardcover.app with your
+  API token (**Test Connection**, then **Import**): *Want to Read* adds the `to-read` tag, *Currently Reading*, *Read* and *Did Not Finish*
+  set the reading status (a finished book is never taken back, and a book you started is not made new), and your rating
+  becomes the book's rating when it has none. A preview says *N books would change* and **Apply** writes it as one step
+  that **Undo** takes back. It only reads; nothing is sent to Hardcover.
 * **Export**: the *Goodreads and Hardcover* row writes the Goodreads layout (which Hardcover and StoryGraph also
   import), the *StoryGraph* row its own layout, with reading status, rating (stars) and date read.
 

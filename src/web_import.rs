@@ -44,6 +44,10 @@ pub fn fetcher() -> std::sync::Arc<dyn Fetcher> {
                         "https://mock.example/wallabag/api/entries.json",
                         file("wallabag-entries.json"),
                     )
+                    .on(
+                        "https://api.hardcover.app/v1/graphql",
+                        file("hardcover.json"),
+                    )
                     .on_prefix("https://mock.example/", MockReply::Status(404)),
             )
         }

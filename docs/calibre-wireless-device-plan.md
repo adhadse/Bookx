@@ -1,6 +1,6 @@
 # Plan: Calibre "smart device" wireless protocol (roadmap P14 / E2)
 
-Status: **not implemented.** This is the plan, written because the work is larger than the rest of the
+Status: **not implemented, deferred by owner decision D10 (2026-11-20): wireless sync is KOReader only (Bookx sync); the stock firmware uses USB.** Roadmap rows P5 and P13 are DEFERRED in `docs/roadmap-status.md`. This is the plan, written because the work is larger than the rest of the
 device track together. Nothing here has been tried against Calibre, Calibre Companion or a real device.
 
 ## What it is

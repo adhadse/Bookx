@@ -17,6 +17,23 @@ scenario big_book_reader 'wait:500,read:1,wait:9000,reader:side-state,quit' '
     [ "$L" -le "${STALL_BUDGET_MS:-4000}" ]; check "opening the 10 MB book blocks the main loop for at most ${STALL_BUDGET_MS:-4000} ms in a debug build (${L} ms; it was 1133 ms in release before the fix of the paragraph measuring)" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
+# X18: opening a long chapter at a saved position in the middle lays out a window around it first (the page is
+# there at once, the page count is an estimate), the chapter follows in slices and replaces the estimate; a page turn
+# before that completes the layout first and carries on from the exact position
+scenario big_book_window 'wait:500,read:1,wait:9000,reader:goto-frac=5:0.6,wait:200,reader:layout-state,wait:200,reader:layout-state,wait:200,reader:layout-state,wait:200,reader:layout-state,wait:200,reader:layout-state,wait:200,reader:layout-state,wait:200,reader:layout-state,wait:200,reader:layout-state,wait:200,reader:layout-state,wait:200,reader:layout-state,wait:200,reader:layout-state,wait:200,reader:layout-state,wait:20000,reader:layout-state,reader:goto-frac=6:0.3,wait:150,reader:next,reader:layout-state,wait:3000,reader:layout-state,quit' '
+    W=$(grep "^layout: complete=false shown=true window=true" <<<"$OUT" | head -1)
+    [ -n "$W" ]; check "the chapter is shown from a window while the rest is still being laid out: $W" $?
+    sed -E "s/.* frac=([0-9.]+) .*/\\1/" <<<"$W" | awk "{exit !(\$1 >= 0.58 && \$1 <= 0.62)}"; check "the window is at the saved position (60 % of the chapter, as far as the estimate goes)" $?
+    N=$(grep "^layout: " <<<"$OUT" | grep -c "window=true")
+    [ "$N" -ge 1 ]; check "the window was seen ${N} times before the layout completed" $?
+    E=$(grep "^layout: complete=true shown=true window=false frac=0.59[0-9]" <<<"$OUT" | head -1)
+    [ -n "$E" ]; check "when the layout is complete the position is the exact 60 %: $E" $?
+    M=$(grep "^layout: " <<<"$OUT" | tail -2 | head -1)
+    grep -q "complete=true" <<<"$M" && sed -E "s/.* frac=([0-9.]+) .*/\\1/" <<<"$M" | awk "{exit !(\$1 > 0.295 && \$1 < 0.33)}"; check "a page turn at once completes the layout and moves on from 30 %: $M" $?
+    L=$(longest_stall "reader:goto-frac")
+    [ "$L" -le "${STALL_BUDGET_MS:-4000}" ]; check "opening the chapter in the middle blocks the main loop for at most ${STALL_BUDGET_MS:-4000} ms in a debug build (${L} ms)" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
 scenario big_book_editor 'wait:500,edit:1,wait:12000,editor:toc-rows,editor:syntax-state,editor:toc-row=7,wait:800,editor:toc-dump,editor:toc-rows,editor:open=OEBPS/nav.xhtml,wait:3000,editor:syntax-state,editor:open=OEBPS/part2.xhtml,wait:2500,editor:syntax-state,editor:longline=reformat,wait:6000,editor:syntax-state,editor:toc-rows,quit' '
     R=$(grep "^editor_toc_rows:" <<<"$OUT" | head -1)
     grep -qE "entries=20[0-9]{3} model=20[0-9]{3} " <<<"$R"; check "the Contents list has all 20 000+ entries in its model: $R" $?

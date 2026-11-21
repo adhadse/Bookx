@@ -2968,9 +2968,6 @@ msgstr "EPUB → {} (कन्वर्ट किया गया)"
 msgid "EPUB, PDF, MOBI, FB2, comics, audiobooks, plain text and more"
 msgstr "EPUB, PDF, MOBI, FB2, कॉमिक्स, ऑडियोबुक, सादा टेक्स्ट और अन्य"
 
-msgid "Each subscription makes a new book from its feeds on its schedule. Old issues are removed."
-msgstr "हर सदस्यता अपने कार्यक्रम के अनुसार अपनी फ़ीड से एक नई पुस्तक बनाती है। पुराने अंक हटा दिए जाते हैं।"
-
 msgid "Edges (narrow strips)"
 msgstr "किनारे (संकरी पट्टियाँ)"
 
@@ -11367,3 +11364,549 @@ msgstr "आपका {} {}% पर है (पृष्ठ {})"
 
 msgid "another device"
 msgstr "दूसरा डिवाइस"
+
+msgid "0 uses the limit of the subscription"
+msgstr "0 से सदस्यता की सीमा लागू होती है"
+
+msgid "A section title is too long."
+msgstr "अनुभाग का शीर्षक बहुत लंबा है।"
+
+msgid "A user name and password for sites that need a login. Sent only to that site."
+msgstr "लॉगिन माँगने वाली साइटों के लिए उपयोगकर्ता नाम और पासवर्ड। केवल उसी साइट को भेजा जाता है।"
+
+msgid "API token"
+msgstr "API टोकन"
+
+msgid "Account “{}” removed"
+msgstr "खाता “{}” हटाया गया"
+
+msgid "Accounts"
+msgstr "खाते"
+
+msgid "Add Account"
+msgstr "खाता जोड़ें"
+
+msgid "Add Feed"
+msgstr "फ़ीड जोड़ें"
+
+msgid "Add Site"
+msgstr "साइट जोड़ें"
+
+msgid "Add Site Account"
+msgstr "साइट खाता जोड़ें"
+
+msgid "Add Web Site"
+msgstr "वेब साइट जोड़ें"
+
+msgid "Add at least one feed."
+msgstr "कम से कम एक फ़ीड जोड़ें।"
+
+msgid "Address with {word}"
+msgstr "{word} के साथ पता"
+
+msgid "Allow guests"
+msgstr "अतिथियों को अनुमति दें"
+
+msgid "Allowed collections"
+msgstr "अनुमत संग्रह"
+
+msgid "Articles from this feed"
+msgstr "इस फ़ीड के लेख"
+
+msgid "At most {} accounts can be added."
+msgstr "अधिकतम {} खाते जोड़े जा सकते हैं।"
+
+msgid "At most {} articles per feed."
+msgstr "प्रति फ़ीड अधिकतम {} लेख।"
+
+msgid "At most {} feeds."
+msgstr "अधिकतम {} फ़ीड।"
+
+msgid "At most {} sites can be added."
+msgstr "अधिकतम {} साइटें जोड़ी जा सकती हैं।"
+
+msgid "Bookx signs in with HTTP Basic authentication, only to the exact site you name and only over https. Passwords are kept in your keyring, never in the settings file."
+msgstr "Bookx HTTP Basic authentication से साइन इन करता है, केवल आपके बताए सटीक साइट पर और केवल https पर। पासवर्ड आपकी कीरिंग में रखे जाते हैं, सेटिंग फ़ाइल में कभी नहीं।"
+
+msgid "CSS selectors, one per line, for full articles. Empty keeps what Bookx finds."
+msgstr "पूरे लेखों के लिए CSS सेलेक्टर, प्रति पंक्ति एक। खाली छोड़ने पर वही रहता है जो Bookx को मिलता है।"
+
+msgid "CSS selectors, one per line, removed from full articles (ads, share bars)."
+msgstr "पूरे लेखों से हटाए जाने वाले CSS सेलेक्टर, प्रति पंक्ति एक (विज्ञापन, शेयर बार)।"
+
+msgid "Change it with Edit in the list of subscriptions."
+msgstr "इसे सदस्यताओं की सूची में संपादित करें से बदलें।"
+
+msgid "Checks that Bookx can read your lists"
+msgstr "जाँचता है कि Bookx आपकी सूचियाँ पढ़ सकता है"
+
+msgid "Choose guest collections"
+msgstr "अतिथि संग्रह चुनें"
+
+msgid "Choose the collections guests can read"
+msgstr "वे संग्रह चुनें जिन्हें अतिथि पढ़ सकते हैं"
+
+msgid "Collections are tags. This account sees books with any chosen tag. Choose none for all books."
+msgstr "संग्रह आपकी पुस्तकों के टैग हैं। यह खाता चुने गए किसी भी टैग वाली पुस्तकें देखता है। सभी पुस्तकों के लिए कोई न चुनें।"
+
+msgid "Collections are the tags of your books. Add tags to books to offer them here."
+msgstr "संग्रह आपकी पुस्तकों के टैग हैं। उन्हें यहाँ देने के लिए पुस्तकों में टैग जोड़ें।"
+
+msgid "Connected. Your lists can be read."
+msgstr "कनेक्ट हो गया। आपकी सूचियाँ पढ़ी जा सकती हैं।"
+
+msgid "Could not apply: {}"
+msgstr "लागू नहीं किया जा सका: {}"
+
+msgid "Could not read your lists from Hardcover: {}"
+msgstr "Hardcover से आपकी सूचियाँ नहीं पढ़ी जा सकीं: {}"
+
+msgid "Could not save the order: {}"
+msgstr "क्रम सहेजा नहीं जा सका: {}"
+
+msgid "Dictionaries are asked from the top, so the first one that knows a word answers first."
+msgstr "शब्दकोश ऊपर से पूछे जाते हैं, इसलिए जो पहला शब्द जानता है वही पहले उत्तर देता है।"
+
+msgid "Dictionaries you install or copy to the dictionary folder are listed here."
+msgstr "आपके इंस्टॉल किए या शब्दकोश फ़ोल्डर में कॉपी किए शब्दकोश यहाँ सूचीबद्ध होते हैं।"
+
+msgid "Dictionary order"
+msgstr "शब्दकोश का क्रम"
+
+msgid "Download this feed"
+msgstr "यह फ़ीड डाउनलोड करें"
+
+msgid "Each account has its own password and sees only the collections you choose. The shared library password keeps seeing everything. Changes restart the running server."
+msgstr "प्रत्येक खाते का अपना पासवर्ड होता है और वह केवल आपके चुने संग्रह देखता है। साझा लाइब्रेरी पासवर्ड सब कुछ देखता रहता है। बदलाव चल रहे सर्वर को रीस्टार्ट करते हैं।"
+
+msgid "Each subscription makes a new book from its feeds on its schedule. Old issues are removed. Press a subscription to edit its feeds and filters."
+msgstr "हर सदस्यता अपने शेड्यूल पर अपनी फ़ीड से नई पुस्तक बनाती है। पुराने अंक हटा दिए जाते हैं। फ़ीड और फ़िल्टर संपादित करने के लिए सदस्यता दबाएँ।"
+
+msgid "Edit Account"
+msgstr "खाता संपादित करें"
+
+msgid "Edit Feeds of {}"
+msgstr "{} की फ़ीड संपादित करें"
+
+msgid "Edit Site Account"
+msgstr "साइट खाता संपादित करें"
+
+msgid "Edit Web Site"
+msgstr "वेब साइट संपादित करें"
+
+msgid "Edit account {}"
+msgstr "खाता {} संपादित करें"
+
+msgid "Edit the feeds and filters"
+msgstr "फ़ीड और फ़िल्टर संपादित करें"
+
+msgid "Edit the login for {}"
+msgstr "{} का लॉगिन संपादित करें"
+
+msgid "Feed text only"
+msgstr "केवल फ़ीड का पाठ"
+
+msgid "Feeds"
+msgstr "फ़ीड"
+
+msgid "Give the account a name."
+msgstr "खाते को एक नाम दें।"
+
+msgid "Give the issue a title."
+msgstr "अंक को एक शीर्षक दें।"
+
+msgid "Give the site a name."
+msgstr "साइट को एक नाम दें।"
+
+msgid "Guest collections"
+msgstr "अतिथि संग्रह"
+
+msgid "Guests"
+msgstr "अतिथि"
+
+msgid "Guests can read books with any of the chosen tags. Choose at least one, or guests stay off."
+msgstr "अतिथि चुने गए किसी भी टैग वाली पुस्तकें पढ़ सकते हैं। कम से कम एक चुनें, वरना अतिथि बंद रहते हैं।"
+
+msgid "Hardcover"
+msgstr "Hardcover"
+
+msgid "Hardcover did not accept the token. Copy a new one from your account settings."
+msgstr "Hardcover ने टोकन स्वीकार नहीं किया। अपनी खाता सेटिंग से नया कॉपी करें।"
+
+msgid "Hardcover import undone"
+msgstr "Hardcover आयात पूर्ववत किया गया"
+
+msgid "History cleared ({} word)"
+msgid_plural "History cleared ({} words)"
+msgstr[0] "इतिहास साफ़ किया गया ({} शब्द)"
+msgstr[1] "इतिहास साफ़ किया गया ({} शब्द)"
+
+msgid "Import reading status"
+msgstr "पढ़ने की स्थिति आयात करें"
+
+msgid "Import reading status from Hardcover"
+msgstr "Hardcover से पढ़ने की स्थिति आयात करें"
+
+msgid "Include images"
+msgstr "चित्र शामिल करें"
+
+msgid "Issue"
+msgstr "अंक"
+
+msgid "Keep a history of look-ups"
+msgstr "देखे गए शब्दों का इतिहास रखें"
+
+msgid "Keep only articles matching"
+msgstr "केवल इनसे मेल खाने वाले लेख रखें"
+
+msgid "Keep only these parts"
+msgstr "केवल ये हिस्से रखें"
+
+msgid "Language code"
+msgstr "भाषा कोड"
+
+msgid "Library server accounts"
+msgstr "लाइब्रेरी सर्वर के खाते"
+
+msgid "Login for {} removed"
+msgstr "{} का लॉगिन हटाया गया"
+
+msgid "Login saved"
+msgstr "लॉगिन सहेजा गया"
+
+msgid "Look this up on a web site, or see the history"
+msgstr "इसे किसी वेब साइट पर देखें, या इतिहास देखें"
+
+msgid "Look up on the web"
+msgstr "वेब पर देखें"
+
+msgid "Look-up history"
+msgstr "शब्द खोज का इतिहास"
+
+msgid "Manage"
+msgstr "प्रबंधित करें"
+
+msgid "Manage library server accounts"
+msgstr "लाइब्रेरी सर्वर के खाते प्रबंधित करें"
+
+msgid "Manage site accounts"
+msgstr "साइट खाते प्रबंधित करें"
+
+msgid "Manage the accounts of the library server"
+msgstr "लाइब्रेरी सर्वर के खाते प्रबंधित करें"
+
+msgid "Manage the site accounts for news downloads"
+msgstr "समाचार डाउनलोड के लिए साइट खाते प्रबंधित करें"
+
+msgid "Move {} down"
+msgstr "{} को नीचे ले जाएँ"
+
+msgid "Move {} up"
+msgstr "{} को ऊपर ले जाएँ"
+
+msgid "New password, empty keeps the old one"
+msgstr "नया पासवर्ड, खाली छोड़ने पर पुराना रहता है"
+
+msgid "No accounts yet"
+msgstr "अभी कोई खाता नहीं"
+
+msgid "No dictionaries yet"
+msgstr "अभी कोई शब्दकोश नहीं"
+
+msgid "No more site accounts can be added."
+msgstr "और साइट खाते नहीं जोड़े जा सकते।"
+
+msgid "No site accounts yet"
+msgstr "अभी कोई साइट खाता नहीं"
+
+msgid "No tags yet"
+msgstr "अभी कोई टैग नहीं"
+
+msgid "No token yet"
+msgstr "अभी कोई टोकन नहीं"
+
+msgid "No words yet"
+msgstr "अभी कोई शब्द नहीं"
+
+msgid "Nothing to look up."
+msgstr "देखने के लिए कुछ नहीं है।"
+
+msgid "Number {} of {}"
+msgstr "{} में से नंबर {}"
+
+msgid "Offered next to a look-up in the reader. In the address, {word} stands for the selected text."
+msgstr "रीडर में शब्द खोज के बगल में दिखाया जाता है। पते में {word} चुने गए पाठ की जगह लेता है।"
+
+msgid "Offline mode is on (Preferences → Privacy)."
+msgstr "ऑफ़लाइन मोड चालू है (वरीयताएँ → गोपनीयता)।"
+
+msgid "Only http and https sites can be used."
+msgstr "केवल http और https साइटें इस्तेमाल की जा सकती हैं।"
+
+msgid "Open a feed to change its section title, address and how its articles are downloaded."
+msgstr "किसी फ़ीड को खोलकर उसका अनुभाग शीर्षक, पता और लेख डाउनलोड करने का तरीका बदलें।"
+
+msgid "Paste your Hardcover API token first."
+msgstr "पहले अपना Hardcover API टोकन पेस्ट करें।"
+
+msgid "Patterns (regular expressions), one per line, tried on the title and the address. Empty keeps all."
+msgstr "पैटर्न (रेगुलर एक्सप्रेशन), प्रति पंक्ति एक, शीर्षक और पते पर आज़माए जाते हैं। खाली छोड़ने पर सब रखे जाते हैं।"
+
+msgid "Patterns, one per line. An article that matches any of them is left out."
+msgstr "पैटर्न, प्रति पंक्ति एक। जो लेख इनमें से किसी से भी मेल खाता है उसे छोड़ दिया जाता है।"
+
+msgid "Press Add Account to give someone their own login."
+msgstr "किसी को उसका अपना लॉगिन देने के लिए खाता जोड़ें दबाएँ।"
+
+msgid "Press Add Site to save a login for a news site."
+msgstr "किसी समाचार साइट का लॉगिन सहेजने के लिए साइट जोड़ें दबाएँ।"
+
+msgid "Put {word} after the site name, for example https://example.com/search?q={word}."
+msgstr "साइट के नाम के बाद {word} रखें, जैसे https://example.com/search?q={word}।"
+
+msgid "Put {word} where the selected text goes, for example https://dictionary.example.com/search?q={word}. Only http and https addresses are accepted."
+msgstr "{word} वहाँ रखें जहाँ चुना गया पाठ जाता है, जैसे https://dictionary.example.com/search?q={word}। केवल http और https पते स्वीकार किए जाते हैं।"
+
+msgid "Read your Hardcover lists and show what would change"
+msgstr "अपनी Hardcover सूचियाँ पढ़ें और दिखाएँ कि क्या बदलेगा"
+
+msgid "Reading status from Hardcover"
+msgstr "Hardcover से पढ़ने की स्थिति"
+
+msgid "Reading your lists"
+msgstr "आपकी सूचियाँ पढ़ी जा रही हैं"
+
+msgid "Reads your lists and ratings from hardcover.app and never changes your account. Copy the API token from your Hardcover account settings."
+msgstr "hardcover.app से आपकी सूचियाँ और रेटिंग पढ़ता है और आपके खाते में कभी कोई बदलाव नहीं करता। API टोकन अपनी Hardcover खाता सेटिंग से कॉपी करें।"
+
+msgid "Remove account {}"
+msgstr "खाता {} हटाएँ"
+
+msgid "Remove every word from the history"
+msgstr "इतिहास से हर शब्द हटाएँ"
+
+msgid "Remove the login for {}"
+msgstr "{} का लॉगिन हटाएँ"
+
+msgid "Remove these parts"
+msgstr "ये हिस्से हटाएँ"
+
+msgid "Remove this feed"
+msgstr "यह फ़ीड हटाएँ"
+
+msgid "Remove {} from the history"
+msgstr "{} को इतिहास से हटाएँ"
+
+msgid "Repeat the password"
+msgstr "पासवर्ड दोहराएँ"
+
+msgid "Replace existing ratings"
+msgstr "मौजूदा रेटिंग बदलें"
+
+msgid "Same as the subscription"
+msgstr "सदस्यता जैसा ही"
+
+msgid "Saved, but the server could not restart: {}"
+msgstr "सहेजा गया, पर सर्वर रीस्टार्ट नहीं हो सका: {}"
+
+msgid "Saved. The server restarted, so this applies now."
+msgstr "सहेजा गया। सर्वर रीस्टार्ट हो गया, इसलिए यह अभी लागू है।"
+
+msgid "Saved. This applies when the server starts."
+msgstr "सहेजा गया। यह सर्वर शुरू होने पर लागू होगा।"
+
+msgid "Section title"
+msgstr "अनुभाग का शीर्षक"
+
+msgid "Sees all books"
+msgstr "सभी पुस्तकें देखता है"
+
+msgid "Sees only: {}"
+msgstr "केवल यह देखता है: {}"
+
+msgid "Sees only: {}, and {} more"
+msgstr "केवल यह देखता है: {}, और {} अन्य"
+
+msgid "Show the look-up history"
+msgstr "शब्द खोज का इतिहास दिखाएँ"
+
+msgid "Show the words you looked up"
+msgstr "आपके देखे गए शब्द दिखाएँ"
+
+msgid "Shows what would change first. One Undo takes it all back."
+msgstr "पहले दिखाता है कि क्या बदलेगा। एक बार पूर्ववत करने से सब वापस हो जाता है।"
+
+msgid "Site accounts"
+msgstr "साइट खाते"
+
+msgid "Site address"
+msgstr "साइट का पता"
+
+msgid "Site “{}” removed"
+msgstr "साइट “{}” हटाई गई"
+
+msgid "Sites with a login"
+msgstr "लॉगिन वाली साइटें"
+
+msgid "Skip articles matching"
+msgstr "मेल खाने वाले लेख छोड़ें"
+
+msgid "Switch on “Let AI assistants connect” first: that makes the token"
+msgstr "पहले “AI सहायकों को कनेक्ट होने दें” चालू करें: इससे टोकन बनता है"
+
+msgid "Test Connection"
+msgstr "कनेक्शन जाँचें"
+
+msgid "Test connection"
+msgstr "कनेक्शन जाँचें"
+
+msgid "The address is too long."
+msgstr "पता बहुत लंबा है।"
+
+msgid "The address must contain {word} where the text goes."
+msgstr "पते में {word} होना चाहिए, जहाँ पाठ जाता है।"
+
+msgid "The address must not contain spaces."
+msgstr "पते में स्पेस नहीं होना चाहिए।"
+
+msgid "The address must start with https:// or http://."
+msgstr "पता https:// या http:// से शुरू होना चाहिए।"
+
+msgid "The feed {} is in the list twice."
+msgstr "फ़ीड {} सूची में दो बार है।"
+
+msgid "The import stopped unexpectedly."
+msgstr "आयात अप्रत्याशित रूप से रुक गया।"
+
+msgid "The language is a code such as en, de or pt-BR."
+msgstr "भाषा एक कोड होती है, जैसे en, de या pt-BR।"
+
+msgid "The name can have at most {} characters."
+msgstr "नाम में अधिकतम {} अक्षर हो सकते हैं।"
+
+msgid "The name must not contain a colon."
+msgstr "नाम में कोलन नहीं होना चाहिए।"
+
+msgid "The password can have at most {} characters."
+msgstr "पासवर्ड में अधिकतम {} अक्षर हो सकते हैं।"
+
+msgid "The password could not be prepared. Try again."
+msgstr "पासवर्ड तैयार नहीं किया जा सका। फिर कोशिश करें।"
+
+msgid "The password needs at least {} characters."
+msgstr "पासवर्ड में कम से कम {} अक्षर होने चाहिए।"
+
+msgid "The password was not prepared. Try again."
+msgstr "पासवर्ड तैयार नहीं हुआ। फिर कोशिश करें।"
+
+msgid "The test stopped unexpectedly."
+msgstr "जाँच अप्रत्याशित रूप से रुक गई।"
+
+msgid "The two passwords are not the same."
+msgstr "दोनों पासवर्ड एक जैसे नहीं हैं।"
+
+msgid "The user name must not contain a colon."
+msgstr "उपयोगकर्ता नाम में कोलन नहीं होना चाहिए।"
+
+msgid "The words you look up, newest first. They stay on this computer."
+msgstr "आपके देखे गए शब्द, नए पहले। वे इसी कंप्यूटर पर रहते हैं।"
+
+msgid "There is a site with this name already."
+msgstr "इस नाम की साइट पहले से है।"
+
+msgid "There is already an account with this name."
+msgstr "इस नाम का खाता पहले से है।"
+
+msgid "This account is gone."
+msgstr "यह खाता अब नहीं है।"
+
+msgid "This address cannot be used."
+msgstr "इस पते का उपयोग नहीं किया जा सकता।"
+
+msgid "This dictionary is gone."
+msgstr "यह शब्दकोश अब नहीं है।"
+
+msgid "This is not a site address."
+msgstr "यह साइट का पता नहीं है।"
+
+msgid "This site has an account already."
+msgstr "इस साइट का खाता पहले से है।"
+
+msgid "This subscription is gone."
+msgstr "यह सदस्यता अब नहीं है।"
+
+msgid "Title of the issue"
+msgstr "अंक का शीर्षक"
+
+msgid "Type the address of the site as in the feed, for example news.example.com."
+msgstr "साइट का पता वैसा ही लिखें जैसा फ़ीड में है, जैसे news.example.com।"
+
+msgid "Type the address of the site."
+msgstr "साइट का पता लिखें।"
+
+msgid "Type the password."
+msgstr "पासवर्ड लिखें।"
+
+msgid "Type the user name."
+msgstr "उपयोगकर्ता नाम लिखें।"
+
+msgid "Updated {} book from Hardcover"
+msgid_plural "Updated {} books from Hardcover"
+msgstr[0] "{} पुस्तक Hardcover से अपडेट की गई"
+msgstr[1] "{} पुस्तकें Hardcover से अपडेट की गईं"
+
+msgid "User: {}"
+msgstr "उपयोगकर्ता: {}"
+
+msgid "Visitors without a login can read the collections below, and nothing else"
+msgstr "बिना लॉगिन वाले आगंतुक नीचे के संग्रह पढ़ सकते हैं, और कुछ नहीं"
+
+msgid "Web"
+msgstr "वेब"
+
+msgid "Web look-up sites"
+msgstr "वेब शब्द खोज साइटें"
+
+msgid "Words you look up in a book appear here."
+msgstr "किसी पुस्तक में आपके देखे गए शब्द यहाँ दिखते हैं।"
+
+msgid "Words you looked up"
+msgstr "आपके देखे गए शब्द"
+
+msgid "{title} is the name of the subscription and {date} the day of the download"
+msgstr "{title} सदस्यता का नाम है और {date} डाउनलोड का दिन"
+
+msgid "{} account"
+msgid_plural "{} accounts"
+msgstr[0] "{} खाता"
+msgstr[1] "{} खाते"
+
+msgid "{} book on your lists"
+msgid_plural "{} books on your lists"
+msgstr[0] "आपकी सूचियों में {} पुस्तक"
+msgstr[1] "आपकी सूचियों में {} पुस्तकें"
+
+msgid "{} book would change"
+msgid_plural "{} books would change"
+msgstr[0] "{} पुस्तक बदलेगी"
+msgstr[1] "{} पुस्तकें बदलेंगी"
+
+msgid "{} on your Hardcover lists, {} found in your library. Reading status for {}, ratings for {}."
+msgstr "आपकी Hardcover सूचियों में {}, आपकी लाइब्रेरी में {} मिलीं। {} के लिए पढ़ने की स्थिति, {} के लिए रेटिंग।"
+
+msgid "{} word"
+msgid_plural "{} words"
+msgstr[0] "{} शब्द"
+msgstr[1] "{} शब्द"
+
+msgid "{}. Own logins that see only chosen collections, and guests."
+msgstr "{}। अपने लॉगिन जो केवल चुने गए संग्रह देखते हैं, और अतिथि।"
+
+msgid "{}: a line is longer than {} characters."
+msgstr "{}: एक पंक्ति {} अक्षरों से लंबी है।"
+
+msgid "{}: at most {} lines."
+msgstr "{}: अधिकतम {} पंक्तियाँ।"
+
+msgid "“{}” is the name of the library password; choose another name."
+msgstr "“{}” लाइब्रेरी पासवर्ड का नाम है; कोई और नाम चुनें।"

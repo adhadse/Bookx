@@ -429,6 +429,9 @@ fn advanced_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     for w in super::proxy_settings::rows(shared) {
         adv.add_row(&w);
     }
+    for w in super::accounts::rows(shared) {
+        adv.add_row(&w);
+    }
     // reverse proxy (with the request limits), privacy and other transfers
     adv.add_row(&link_row(
         &tr("Reverse proxy and remote access"),

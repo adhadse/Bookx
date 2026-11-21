@@ -1,7 +1,6 @@
 # Security model, vulnerability handling, and the path to a hardened Bookx
 
-Date: 2026-11-13, updated 2026-11-21 (gap status, release signing, GitHub settings, the P1 fixes of
-section 10). Status: audit + programme plan; section 4.2 tracks what is done. Companion to `SECURITY.md` (the public disclosure policy) and `AGENTS.md` (the working
+Date: 2026-11-13, updated 2026-11-22 (gap table and counts re-checked against the tree: G5, G10, G11, G13, unsafe recount). Status: audit + programme plan; section 4.2 tracks what is done. Companion to `SECURITY.md` (the public disclosure policy) and `AGENTS.md` (the working
 agreement).
 
 Bookx reads files it did not create and runs network services on the user's machine. This document
@@ -55,7 +54,7 @@ multi-tenant and does not run as root. Adversaries, in order of likelihood:
 | A2 | A malicious network peer | OPDS feeds, RSS for news, metadata sources, Calibre/KOSync clients, MCP client, WebDAV server |
 | A3 | A malicious plugin or patch the user installs | WebAssembly module, TOML patch set |
 | A4 | Another local user, only when a LAN server is enabled | content server, KOSync, MCP HTTP |
-| A5 | A compromised dependency or build | 568 crates in `Cargo.lock`, Flatpak runtime, GitHub Actions |
+| A5 | A compromised dependency or build | 603 packages in `Cargo.lock` (2026-11-22), Flatpak runtime, GitHub Actions |
 | A6 | A corrupted or hostile backup / library from elsewhere | `.bookxbackup`, imported library folder, Calibre `metadata.db` |
 
 Out of scope: an attacker who already runs code as the user (that is not a boundary Bookx can hold),
@@ -81,7 +80,7 @@ each network listener, and every `Command::new`. Bookx has no setuid component a
 
 | Area | Evidence |
 |---|---|
-| Memory safety by construction | Every library crate is `#![forbid(unsafe_code)]` (all 18 library crates, including all parsers). The `bookx` GTK crate has 20 `unsafe` uses (counted 2026-11-21: `page_area.rs` 3, `ui/editor/*` 15, `ui/audit.rs` 2), all gtk-rs object-data (`set_data`/`data`) and the `GtkAccessibleText` vtable in `src/ui/page_area.rs`; none of them touch untrusted input. |
+| Memory safety by construction | Every library crate is `#![forbid(unsafe_code)]` (all 18 workspace library crates, including all parsers). The `bookx` GTK crate has **9** `unsafe` uses (recounted by grep 2026-11-22: `page_area.rs` 3, `ui/editor/row_data.rs` 4, `ui/audit.rs` 2; the old count of 20 included code that has since been replaced by safe wrappers), each with a `// SAFETY:` comment (8 comments, one per block or pair), all gtk-rs object-data (`set_data`/`data`) and the `GtkAccessibleText` vtable in `src/ui/page_area.rs`; none of them touch untrusted input. The only other `unsafe` in the repository is in the plugin test fixture `crates/bookx-plugin/tests/fixtures/rust_plugin` (a WebAssembly guest, not Bookx code). All library crates forbid it (`bookx-cli` in `lib.rs`). |
 | No privilege boundary | No setuid/setgid, no mount helper, no root path. Devices via gvfs/MTP (`crates/bookx-serve/src/mtp.rs`) and `bookx-store/src/guard.rs` for mount-point safety. |
 | No JavaScript in the reader | Own Pango/cairo layout engine; `<script>`/`<style>`/`<template>` are dropped (`crates/bookx-core/src/html.rs:516`). PDF links are scheme-allowlisted (`src/ui/reader_pdf.rs:1284`). |
 | Archive limits | `read_zip_limited` caps entries, per-entry and total size, and skips `..` entries (`crates/bookx-formats/src/common.rs:575-610`), with a traversal regression test. TTS model archives refuse unsafe paths and verify hashes (`crates/bookx-tts/src/download.rs:823`). |
@@ -101,16 +100,16 @@ Status as of 2026-11-21. "Done" rows stay for the record.
 | G1 | No `SECURITY.md`, no private channel. | **Done.** `SECURITY.md`; GitHub private vulnerability reporting enabled 2026-11-21 (section 11). |
 | G2 | No threat model. | **Done.** This document. |
 | G3 | No dependency audit in CI. | **Mostly done.** `deny.toml`, `cargo deny` job in `ci.yml`, `.github/dependabot.yml`; Dependabot alerts and security updates enabled on GitHub 2026-11-21. Open: SBOM, scheduled run (workflows have never run on GitHub). |
-| G4 | No fuzzing, no hostile-input corpus. | **Done (first version), 2026-11-21.** `fuzz/` (11 targets, section 12) and `crates/*/tests/evil_*.rs` (hostile inputs in normal `cargo test`). Open: nightly fuzz job, hours of real fuzzing, a shared `Limits` type (P1.3). |
-| G5 | The GTK crate cannot `forbid(unsafe_code)`; its 20 `unsafe` uses have no `// SAFETY:` comment. | **Open (S4).** All are gtk-rs `set_data`/`data` calls and the accessibility vtable; none touches untrusted input. The comments touch `src/ui/**` files other work is editing; do them in a quiet window. |
+| G4 | No fuzzing, no hostile-input corpus. | **Done (first version), 2026-11-21.** `fuzz/` (13 targets, section 12) and `crates/*/tests/evil_*.rs` (hostile inputs in normal `cargo test`). Open: nightly fuzz job, hours of real fuzzing, a shared `Limits` type (P1.3). |
+| G5 | The GTK crate cannot `forbid(unsafe_code)`; its `unsafe` uses had no `// SAFETY:` comment (9 uses, all commented, 2026-11-22). | **Done (wave 11).** Every one of the 9 `unsafe` uses has a `// SAFETY:` comment (`src/ui/page_area.rs`, `audit.rs`, `editor/row_data.rs`); all are gtk-rs `set_data`/`data` calls and the accessibility vtable; none touches untrusted input. The crate still cannot `forbid(unsafe_code)`. |
 | G6 | `is_external` accepts `ftp://` and `data:`. | **Done 2026-11-21.** `is_external` is kept as a classification (converters need `data:` images to count as "not a book file"); every place that *opens* a link goes through `bookx_core::util::safe_external_url` (http, https, mailto only; control characters, spaces, backslash, bidi and zero-width characters, non-ASCII scheme, `mailto:?attach=` refused). Reader, PDF reader, editor help links and `ui::open_uri` use it. |
 | G7 | `BOOKX_TTS_PLAYER` runs through `sh -c`. | **Done 2026-11-21**, and the same pattern in `BOOKX_AUDIO_PLAYER`: words are split with quoting only, the program must be an absolute path, `{rate}` is replaced per argument after splitting; built-in players are found only in `/usr/bin`, `/bin`, `/usr/local/bin`, `/app/bin`, never through `PATH`. |
 | G8 | No SSRF guard. | **Done 2026-11-21** for everything that fetches through `bookx_sources::fetch::UreqFetcher` (metadata, covers, Add from the Web, news and read-later, online catalogues, link checks, plugin `http_get`, MCP fetch): a resolver plugged into ureq (`netguard.rs`) drops loopback, private, link-local (169.254.169.254), 100.64/10, fc00::/7, IPv4-in-IPv6, 6to4, NAT64, Teredo, documentation, multicast and reserved addresses on every hop; max 5 redirects; http and https only; body and time caps as before. The host of an OPDS catalogue you added, or of an address you typed in Add from the Web, is trusted (`trust_host`). WebDAV, KOSync, SMTP and the TTS voice server are addresses you configure and use their own clients (no redirects followed). Not covered: a configured HTTP(S) proxy (its own DNS), Add-from-the-Web typed host rebinding (user typed it, accepted). |
 | G9 | No `Origin`/`Host` check. | **Done 2026-11-21.** `bookx_serve::hostguard` runs before every route of the content server, OPDS, `/bookx` sync and in the MCP endpoint: `Host` must be an IP literal, a one-label name, `*.local`, `*.localhost`, `*.home.arpa`, `*.lan`, `*.internal`, the machine name or listed (`--allow-host`, `BOOKX_ALLOWED_HOSTS`); a request with a foreign `Origin`, or `Sec-Fetch-Site: cross-site` on a non-GET, gets 403. Native clients (KOReader, OPDS apps) send no `Origin`. MCP keeps its own origin allow-list as well. |
-| G10 | Plugins are not signed; the install dialog does not show capabilities in plain language. | **Open (S2).** Capabilities are declared and listed in Preferences; no signature or pin-by-hash yet. 2026-11-21: manifests are capped at 64 permission lines and `url_host` rejects ports above 65535. |
-| G11 | Tarball installs are unsandboxed. | **Open (P2).** |
+| G10 | Plugins are not signed; the install dialog does not show capabilities in plain language. | **Partly done; open (S2): signature verification.** Wave 11 built the *capability sheet* in plain words before a plugin is switched on (`ui/plugin_trust.rs`, `bookx_plugin::trust::capabilities`), pin by hash (`fingerprint`: SHA-256 of `plugin.toml` and the `.wasm`; a changed plugin does not run until allowed again) and the `plugin.sig` format with limits. **Still open:** nothing in the tree can verify ed25519 (no crate; `UnsupportedVerifier` shows *signed, not verified*), owner decision B9. 2026-11-21: manifests are capped at 64 permission lines and `url_host` rejects ports above 65535. |
+| G11 | Tarball installs are unsandboxed. | **Open (P2), unchanged 2026-11-22.** No `bwrap`/Landlock wrapper exists in the tree; the Flatpak is the sandboxed and recommended install. |
 | G12 | No security step in `AGENTS.md`, no label, no owner. | **Done.** Section 6 of `AGENTS.md`; `security` label created and owner named (section 11). |
-| G13 | Release artifacts not signed. | **Decided and wired 2026-11-21, not yet run.** Section 13: Sigstore cosign keyless + build-provenance attestation in `release.yml`. SBOM and Flatpak provenance still open. |
+| G13 | Release artifacts not signed. | **Decided and wired 2026-11-21, not yet run.** Section 13: Sigstore cosign keyless + build-provenance attestation in `release.yml`. SBOM and Flatpak provenance still open. Actions pinned by SHA (counted 2026-11-22): `coverage-ui.yml` and `wiki.yml` fully, `ci.yml` 13 of 14, `release.yml`, `i18n.yml` and the three `package-*.yml` files not (26 pinned, 18 unpinned). Tarball packing is deterministic (`build-aux/tarball.sh`, `SOURCE_DATE_EPOCH`); binaries are not reproducible. |
 | G14 | Quadratic or recursive parsing of hostile markup (found by the new evil tests). | **Done 2026-11-21.** roxmltree and html5ever compare each attribute with the earlier ones (30 000 attributes took 7 s in debug, a million would take minutes): `parse_xml` refuses more than 5000 attributes on an element and `parse_html_document`/`parse_html_fragment` return an empty document. html5ever overflowed the stack on 100 000 nested `<div>`: nesting above 2000 is treated the same way. `:not(` nesting in the CSS selector parser overflowed the stack: limited to 8. All untrusted HTML parsing in the workspace now goes through the guarded functions. |
 | G16 | Without a keyring, passwords and tokens stayed **in clear text in `config.json`** (and the MCP token in `mcp.json`); the sync server kept the raw MD5 account key. | **Done 2026-11-21.** See the change record below. |
 | G15 | Backup and repository files could request 1 GiB and 64 passes of Argon2. | **Done 2026-11-21.** `crypto::kdf_is_reasonable` (at most 256 MiB, 10 passes, 8 lanes; Bookx writes 19 MiB, 2, 1) used by `.bookxbackup` and the repository. |
@@ -177,12 +176,12 @@ months, and secrets found in logs/config during tests (must be zero).
 
 ### P0 — Foundations (about a week)
 
-Status 2026-11-21: items 1, 2, 4 and 5 done (item 4's scheduled run and SBOM are open); item 3 still lacks the `// SAFETY:` comments (G5).
+Status 2026-11-22: items 1 to 5 done (item 4's scheduled run and SBOM are open; the `// SAFETY:` comments of item 3 were added in wave 11).
 
 1. `SECURITY.md` with scope, private reporting, targets, credit, supported versions.
 2. This document, linked from `AGENTS.md`; the per-change checklist (below) added there.
-3. Keep `#![forbid(unsafe_code)]` on all 15 library crates; add `// SAFETY:` comments to the 20
-   GTK `unsafe` blocks in `bookx` and a review rule that no new one parses untrusted data.
+3. Keep `#![forbid(unsafe_code)]` on all 18 library crates; `// SAFETY:` comments on the 9
+   GTK `unsafe` blocks (done) in `bookx` and a review rule that no new one parses untrusted data.
 4. CI job: `cargo deny check advisories bans licenses sources` with a committed `deny.toml`;
    Dependabot for `cargo` and `github-actions`, weekly.
 5. A `security` label, and one named owner for advisories.
@@ -193,7 +192,7 @@ the checklist is in `AGENTS.md`.
 ### P1 — Make the parsers prove themselves (2–4 weeks)
 
 Status 2026-11-21: items 1 and 2 have a first version (`fuzz/`, `crates/*/tests/evil_*.rs`; the nightly job and real
-fuzzing hours are open), item 4 is done (G6 to G9), item 3 (one shared `Limits` type) is open.
+fuzzing hours are open), item 4 is done (G6 to G9), item 3 (one shared `Limits` type) is done in wave 11 (`crates/bookx-core/src/limits.rs`, `crates/bookx-audio/src/limits.rs`); real fuzz hours and the nightly job remain.
 
 1. `cargo fuzz` targets for the six entry points: zip container, OPF/XML, XHTML, CSS, PDF, and the
    KOSync sidecar reader. Seed corpus from `data/` test books; nightly job with a time budget.

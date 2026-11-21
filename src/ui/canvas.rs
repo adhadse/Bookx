@@ -15,6 +15,7 @@ use bookx_text::highlight::HighlightStyle;
 
 use super::page_area::{Geometry, PageArea};
 use crate::a11y::{PageText, Step};
+use crate::flow_window;
 use crate::gestures::{
     classify_swipe, drag_selects, mirror_tap, right_is_forward, Swipe, TapAction, TapZones,
 };
@@ -264,9 +265,93 @@ struct Callbacks {
     image: Cb<String>,
     double_tap: Cb<()>,
     zoom: Cb<f64>,
+    /// The page can be shown at its place (a long chapter may still be laid out behind it).
+    ready: Cb<()>,
+}
+
+/// Where the layout of a chapter stands: what [`flow_slice`] carries from one slice to the next.
+#[derive(Clone)]
+struct FlowCursor {
+    /// The next block to lay out.
+    next: usize,
+    y: f64,
+    prev_bottom: f64,
+    char_base: i32,
+    first: bool,
+    zone: Option<Zone>,
+    /// Block `base + i` began at item `starts[i]`.
+    base: usize,
+    starts: Vec<usize>,
+}
+
+impl FlowCursor {
+    fn new(base: usize, char_base: i32) -> Self {
+        FlowCursor {
+            next: base,
+            y: 0.0,
+            prev_bottom: 0.0,
+            char_base,
+            first: true,
+            zone: None,
+            base,
+            starts: Vec::new(),
+        }
+    }
+}
+
+/// What has to be laid out before a long chapter can be shown at the place it was opened at.
+enum Ready {
+    /// The first screens.
+    Top,
+    /// The anchor and a screen after it.
+    Anchor(String),
+    /// The character and a screen after it.
+    Char(i32),
+    /// The whole chapter (the end of it, or a fraction of a chapter whose height is not known).
+    Complete,
+    /// A window around a fraction: layout starts in the middle (`y` of the window, from 0).
+    Window { y: f64 },
+}
+
+#[derive(Default)]
+struct Buf {
+    items: Vec<Item>,
+    floats: Vec<FloatBox>,
+    lines: Vec<LineBox>,
+    flow_h: f64,
+}
+
+/// A window of a long chapter is on show while the chapter is laid out from its start.
+struct Window {
+    frac: f64,
+    /// Where the page was when the window was shown.
+    at: (usize, f64),
+    /// The cursor of the window (block starts).
+    disp: FlowCursor,
+}
+
+/// A long chapter is laid out in slices of a few milliseconds between the events of the main loop.
+struct Job {
+    cur: FlowCursor,
+    ready: Ready,
+    /// The page has been shown at its place.
+    shown: bool,
+    win: Option<Window>,
+    /// The layout that is built beside the window.
+    buf: Buf,
+    total_chars: i32,
+    /// Anchors and characters already looked at while waiting for them.
+    scanned: usize,
+    found_y: Option<f64>,
 }
 
 struct State {
+    job: Option<Job>,
+    /// The height of the whole chapter while only a part of it is laid out (an estimate).
+    est_total: Option<f64>,
+    /// How far down the chapter the laid out part begins (a window starts in the middle).
+    y_off: f64,
+    pumping: bool,
     doc: Option<Rc<Doc>>,
     style: CanvasStyle,
     images: Rc<dyn Fn(&str) -> Option<Vec<u8>>>,
@@ -418,6 +503,10 @@ impl BookCanvas {
         area.set_can_focus(true);
         area.add_css_class("book-canvas");
         let st = Rc::new(RefCell::new(State {
+            job: None,
+            est_total: None,
+            y_off: 0.0,
+            pumping: false,
             doc: None,
             style: CanvasStyle::default(),
             images: Rc::new(|_| None),
@@ -577,6 +666,7 @@ impl BookCanvas {
 
     /// Test hook: the marks `(start, end, text)` and a click on the first one that is on the page.
     pub fn dev_vocab_marks(&self) -> Vec<(i32, i32, String)> {
+        self.finish_layout();
         let marks = self.st.borrow().vocab_marks.clone();
         marks
             .into_iter()
@@ -586,6 +676,7 @@ impl BookCanvas {
 
     /// Test hook: clicks the middle of the first saved term that is on the page.
     pub fn dev_click_vocab(&self) -> bool {
+        self.finish_layout();
         let at = {
             let s = self.st.borrow();
             s.vocab_marks.iter().find_map(|(a, b)| {
@@ -605,6 +696,7 @@ impl BookCanvas {
 
     /// Test hook: how many saved terms are on the page being shown, and where the first one is.
     pub fn dev_visible_vocab(&self) -> (usize, Option<(i32, i32, i32, i32)>) {
+        self.finish_layout();
         let s = self.st.borrow();
         let on: Vec<_> = s
             .vocab_marks
@@ -622,6 +714,12 @@ impl BookCanvas {
     /// Pinch or Ctrl+wheel; the argument is a relative scale factor (1.0 = unchanged).
     pub fn on_zoom(&self, f: impl Fn(f64) + 'static) {
         *self.cb.zoom.borrow_mut() = Some(Rc::new(f));
+    }
+
+    /// The page can be shown at its place. A long chapter may still be laid out behind it
+    /// (see [`BookCanvas::layout_complete`]).
+    pub fn on_ready(&self, f: impl Fn() + 'static) {
+        *self.cb.ready.borrow_mut() = Some(Rc::new(move |_| f()));
     }
 
     // ---- content ---------------------------------------------------------
@@ -812,6 +910,7 @@ impl BookCanvas {
     /// Test helper: `(fixed layout, pages, width and height of the first picture, its top,
     /// height of the page area)`.
     pub fn dev_fixed_stats(&self) -> (bool, usize, i32, i32, i32, i32) {
+        self.finish_layout();
         let s = self.st.borrow();
         let img = s.items.iter().find_map(|i| match &i.kind {
             Kind::Image { pix, .. } => Some((pix.width(), pix.height(), i.y as i32)),
@@ -831,6 +930,7 @@ impl BookCanvas {
     /// Test helper: a double click on the first word of the page, as the mouse does it: the
     /// press selects the word, the release must leave it selected.
     pub fn dev_double_click_first_word(&self) {
+        self.finish_layout();
         let pos = {
             let s = self.st.borrow();
             visible_columns(&s).first().and_then(|col| {
@@ -856,6 +956,7 @@ impl BookCanvas {
     /// the middle of the first visible line gives the first character of the page, `rect` is the
     /// rectangle of its first three characters.
     pub fn dev_vertical_stats(&self) -> String {
+        self.finish_layout();
         let s = self.st.borrow();
         let mode = match mode_of(&s) {
             WritingMode::HorizontalTb => "horizontal-tb",
@@ -933,6 +1034,7 @@ impl BookCanvas {
     /// Test helper: the text of every line of the pages that are shown, one entry per visual line,
     /// in reading order.
     pub fn dev_page_lines(&self) -> Vec<String> {
+        self.finish_layout();
         let s = self.st.borrow();
         let mut out = Vec::new();
         for col in visible_columns(&s) {
@@ -959,6 +1061,7 @@ impl BookCanvas {
     /// the chapter, and what a click there selects (so that hit testing can be checked on any
     /// geometry): `(x, y, character found)`.
     pub fn dev_probe_char(&self, n: i32) -> Option<(i32, i32, i32)> {
+        self.finish_layout();
         let s = self.st.borrow();
         let (x, y, w, h) = *visible_range_rects(&s, n, n + 1).first()?;
         let (px_, py_) = (x + w / 2.0, y + h / 2.0);
@@ -970,6 +1073,7 @@ impl BookCanvas {
     /// to the middle of character `b`, and describes the result: `sel=(a, b) text=".." rects=[..]`
     /// (the rectangles of the selection on the screen).
     pub fn dev_drag_select(&self, a: i32, b: i32) -> String {
+        self.finish_layout();
         let pts = {
             let s = self.st.borrow();
             let mid = |c: i32| {
@@ -1047,6 +1151,7 @@ impl BookCanvas {
     /// which page of the view it falls on: `(column, columns)` (always `(0, 1)` for one column, the
     /// scroll layout and vertical text, where the whole view is the page).
     pub fn goto_fraction_column(&self, frac: f64) -> (usize, usize) {
+        self.finish_layout();
         let mut s = self.st.borrow_mut();
         apply_fraction(&mut s, frac);
         let cols = columns(&s);
@@ -1096,6 +1201,7 @@ impl BookCanvas {
     /// Test helper: paints the page into a PNG file.
     #[allow(deprecated)]
     pub fn dev_screenshot(&self, path: &str) -> bool {
+        self.finish_layout();
         let s = self.st.borrow();
         let (w, h) = (s.width.max(1), s.height.max(1));
         let Ok(surface) = gtk::cairo::ImageSurface::create(gtk::cairo::Format::ARgb32, w, h) else {
@@ -1113,6 +1219,7 @@ impl BookCanvas {
     /// Test helper: `(right-to-left paragraphs, of them with forced optimal breaks, of them
     /// whose last line sits against the right edge)`.
     pub fn dev_rtl_stats(&self) -> (usize, usize, usize) {
+        self.finish_layout();
         let s = self.st.borrow();
         let col_w = column_geometry(&s)[0].1;
         let (mut rtl, mut kp, mut right) = (0, 0, 0);
@@ -1138,6 +1245,7 @@ impl BookCanvas {
 
     /// Test helper: `(drop caps, floated images, pieces that continue a wrapped paragraph)`.
     pub fn dev_wrap_stats(&self) -> (usize, usize, usize) {
+        self.finish_layout();
         let s = self.st.borrow();
         let (mut caps, mut tails) = (0, 0);
         for it in &s.items {
@@ -1152,6 +1260,7 @@ impl BookCanvas {
     /// Test helper: (milliseconds the last layout took, milliseconds for 30 page turns or screens
     /// forward and back).
     pub fn dev_bench(&self) -> (f64, f64) {
+        self.finish_layout();
         let layout = self.st.borrow().layout_ms;
         let t0 = std::time::Instant::now();
         for _ in 0..30 {
@@ -1166,6 +1275,7 @@ impl BookCanvas {
     /// Test helper: `(paragraphs with optimal breaks, their lines but the last, how many of those
     /// reach the full column width, hyphenated breaks)`.
     pub fn dev_break_stats(&self) -> (usize, usize, usize, usize) {
+        self.finish_layout();
         let s = self.st.borrow();
         let col_w = column_geometry(&s)[0].1;
         let (mut paras, mut lines, mut full, mut hy) = (0, 0, 0, 0);
@@ -1193,6 +1303,7 @@ impl BookCanvas {
 
     /// Test helper: (soft hyphens in the laid out text, characters in the canonical text).
     pub fn dev_hyphen_stats(&self) -> (usize, usize) {
+        self.finish_layout();
         let s = self.st.borrow();
         let mut shy = 0;
         let mut canon = 0;
@@ -1213,6 +1324,7 @@ impl BookCanvas {
     /// Test hook: `(id, start, end, text on the page at that range)` of every highlight the
     /// canvas paints. The text is read back through the same mapping the painting uses.
     pub fn dev_painted_highlights(&self) -> Vec<(String, i32, i32, String)> {
+        self.finish_layout();
         let s = self.st.borrow();
         s.highlights
             .iter()
@@ -1229,6 +1341,7 @@ impl BookCanvas {
 
     /// Test hook: `(id, colour as painted `#rrggbb`, style name)` of every highlight the canvas paints.
     pub fn dev_painted_looks(&self) -> Vec<(String, String, String)> {
+        self.finish_layout();
         let s = self.st.borrow();
         s.highlights
             .iter()
@@ -1267,6 +1380,7 @@ impl BookCanvas {
     /// The whole chapter as canonical text (paragraphs joined by a line break), so that a
     /// character's index in it is its offset for highlights.
     pub fn canonical_text(&self) -> String {
+        self.finish_layout();
         let s = self.st.borrow();
         let mut out = String::new();
         for it in &s.items {
@@ -1280,8 +1394,31 @@ impl BookCanvas {
         out
     }
 
+    /// The first `max` characters of the text that is laid out so far (enough to tell the language).
+    pub fn text_sample(&self, max: usize) -> String {
+        let s = self.st.borrow();
+        let mut out = String::new();
+        let mut n = 0;
+        for it in &s.items {
+            if let Kind::Text(t) = &it.kind {
+                if !t.cont && !out.is_empty() {
+                    out.push('\n');
+                }
+                for c in canon_text(&t.text) {
+                    out.push(c);
+                    n += 1;
+                }
+                if n >= max {
+                    break;
+                }
+            }
+        }
+        out.chars().take(max).collect()
+    }
+
     /// First character on the page (or screen) being shown.
     pub fn visible_start_char(&self) -> i32 {
+        self.finish_layout();
         let s = self.st.borrow();
         let y0 = match visible_columns(&s).first() {
             Some(c) => c.y0,
@@ -1299,6 +1436,7 @@ impl BookCanvas {
 
     /// Marks the sentence that is read aloud, and shows it when it is not on the page.
     pub fn set_speaking(&self, range: Option<(i32, i32)>) {
+        self.finish_layout();
         let off_page = {
             let mut s = self.st.borrow_mut();
             s.speaking = range;
@@ -1316,6 +1454,7 @@ impl BookCanvas {
     /// Speed reading: marks `word` broadly and its `focus` letter strongly, and brings the word
     /// into view (turning the page) when it is not on the page.
     pub fn set_focus_word(&self, marks: Option<((i32, i32), (i32, i32))>) {
+        self.finish_layout();
         let off_page = {
             let mut s = self.st.borrow_mut();
             s.focus_word = marks;
@@ -1336,6 +1475,7 @@ impl BookCanvas {
 
     /// The text of a range of characters.
     pub fn text_between(&self, a: i32, b: i32) -> String {
+        self.finish_layout();
         text_in_range(&self.st.borrow().items, a, b)
     }
 
@@ -1358,6 +1498,7 @@ impl BookCanvas {
     /// page, moves the free end by `step` and brings it into view. The popover opens with
     /// [`BookCanvas::commit_selection`].
     pub fn key_select(&self, step: Step, forward: bool) {
+        self.finish_layout();
         let text = self.canonical_text();
         let start = self.visible_start_char();
         let focus = {
@@ -1464,6 +1605,7 @@ impl BookCanvas {
 
     /// Case-insensitive search over the chapter; returns global char ranges.
     pub fn find_all(&self, query: &str) -> Vec<(i32, i32)> {
+        self.finish_layout();
         let q: Vec<char> = query.to_lowercase().chars().collect();
         let mut out = Vec::new();
         if q.is_empty() {
@@ -1491,6 +1633,7 @@ impl BookCanvas {
 
     /// Like [`find_all`], for a compiled search (whole words, case, regular expression).
     pub fn find_all_re(&self, re: &regex::Regex) -> Vec<(i32, i32)> {
+        self.finish_layout();
         let s = self.st.borrow();
         let mut out = Vec::new();
         for it in &s.items {
@@ -1506,6 +1649,7 @@ impl BookCanvas {
 
     /// Dev helper: selects the first `n` words.
     pub fn dev_select_first_words(&self, n: usize) {
+        self.finish_layout();
         {
             let mut s = self.st.borrow_mut();
             let mut total = 0;
@@ -1532,6 +1676,7 @@ impl BookCanvas {
 
     /// Test hook: selects the first place where `text` stands in the chapter.
     pub fn dev_select_text(&self, text: &str) -> bool {
+        self.finish_layout();
         let Some(&(a, b)) = self.find_all(text).first() else {
             return false;
         };
@@ -1543,6 +1688,7 @@ impl BookCanvas {
     }
 
     pub fn select_all(&self) {
+        self.finish_layout();
         let total = {
             let s = self.st.borrow();
             s.items
@@ -1576,6 +1722,7 @@ impl BookCanvas {
 
     /// Moves forward one page/screen. Returns `false` if already at the end of the chapter.
     pub fn next(&self) -> bool {
+        self.settle_for_move();
         let moved = {
             let mut s = self.st.borrow_mut();
             if s.style.layout == LayoutMode::Scroll {
@@ -1603,6 +1750,7 @@ impl BookCanvas {
     }
 
     pub fn prev(&self) -> bool {
+        self.settle_for_move();
         let moved = {
             let mut s = self.st.borrow_mut();
             if s.style.layout == LayoutMode::Scroll {
@@ -1627,6 +1775,7 @@ impl BookCanvas {
     }
 
     pub fn goto_fraction(&self, f: f64) {
+        self.finish_layout();
         {
             let mut s = self.st.borrow_mut();
             apply_fraction(&mut s, f);
@@ -1647,11 +1796,12 @@ impl BookCanvas {
             let last = (s.cur + cols - 1).min(s.pages.len().saturating_sub(1));
             s.pages.get(last).map_or(0.0, |p| p.y1)
         };
-        (end / s.flow_h).clamp(0.0, 1.0)
+        ((s.y_off + end) / total_h(&s)).clamp(0.0, 1.0)
     }
 
     /// Where an anchor is in the open chapter, as a fraction of its height (the unit of `PosInfo::frac`).
     pub fn anchor_fraction(&self, id: &str) -> Option<f64> {
+        self.finish_layout();
         let s = self.st.borrow();
         if s.flow_h <= 0.0 {
             return None;
@@ -1664,6 +1814,7 @@ impl BookCanvas {
 
     /// Test helper: the middle of the first picture on screen (widget coordinates) and its path.
     pub fn dev_first_image(&self) -> Option<(f64, f64, String)> {
+        self.finish_layout();
         let s = self.st.borrow();
         visible_images(&s)
             .into_iter()
@@ -1673,10 +1824,12 @@ impl BookCanvas {
 
     /// Test helper: a click at a point, as the mouse delivers it.
     pub fn dev_click(&self, x: f64, y: f64) {
+        self.finish_layout();
         self.click(x, y);
     }
 
     pub fn goto_anchor(&self, id: &str) -> bool {
+        self.finish_layout();
         let found = {
             let mut s = self.st.borrow_mut();
             let y = s
@@ -1698,6 +1851,7 @@ impl BookCanvas {
     }
 
     pub fn goto_char(&self, c: i32) {
+        self.finish_layout();
         {
             let mut s = self.st.borrow_mut();
             if let Some(y) = char_y(&s, c) {
@@ -1711,6 +1865,7 @@ impl BookCanvas {
     /// out yet (the canvas has no size before the page is shown), and then wins over the position the
     /// chapter was opened at.
     pub fn goto_char_when_ready(&self, c: i32) {
+        self.finish_layout();
         let laid_out = {
             let s = self.st.borrow();
             s.width > 0 && s.height > 0 && s.pending_frac.is_none() && s.pending_anchor.is_none()
@@ -1735,6 +1890,7 @@ impl BookCanvas {
 
     /// Whether any of the characters `a..b` is on the page that is shown.
     pub fn range_visible(&self, a: i32, b: i32) -> bool {
+        self.finish_layout();
         !visible_range_rects(&self.st.borrow(), a, b).is_empty()
     }
 
@@ -1778,7 +1934,15 @@ impl BookCanvas {
     fn relayout(&self) {
         {
             let mut s = self.st.borrow_mut();
+            s.job = None;
+            s.est_total = None;
+            s.y_off = 0.0;
             if s.width <= 0 || s.height <= 0 {
+                return;
+            }
+            if slice_worth(&s) {
+                drop(s);
+                self.start_job();
                 return;
             }
             let (d, l) = self.work.get();
@@ -1788,35 +1952,7 @@ impl BookCanvas {
             build_flow(&mut s, &ctxs);
             paginate(&mut s);
             s.layout_ms = t0.elapsed().as_secs_f64() * 1000.0;
-            // restore position
-            if s.pending_last {
-                s.pending_last = false;
-                s.pending_frac = None;
-                if s.style.layout == LayoutMode::Scroll {
-                    s.scroll_y = scroll_max(&s);
-                } else {
-                    let cols = columns(&s);
-                    s.cur = (s.pages.len().saturating_sub(1) / cols) * cols;
-                }
-            } else if let Some(id) = s.pending_anchor.take() {
-                s.pending_frac = None;
-                let y = s
-                    .items
-                    .iter()
-                    .find(|i| i.anchors.contains(&id))
-                    .map(|i| i.y);
-                if let Some(y) = y {
-                    goto_y(&mut s, y);
-                }
-            } else if let Some(f) = s.pending_frac.take() {
-                apply_fraction(&mut s, f);
-            }
-            if let Some(c) = s.pending_char.take() {
-                if let Some(y) = char_y(&s, c) {
-                    goto_y(&mut s, y);
-                }
-            }
-            clamp_pos(&mut s);
+            restore_position(&mut s);
         }
         self.area.queue_draw();
         let info = {
@@ -1824,6 +1960,254 @@ impl BookCanvas {
             pos_info(&s)
         };
         fire(&self.cb.position, info);
+        fire(&self.cb.ready, ());
+    }
+
+    // ---- layout in slices ------------------------------------------------
+
+    /// Starts laying out a long chapter in slices. The first slice runs now; the page is shown as soon
+    /// as the place it was opened at is laid out, and the rest of the chapter follows between the events
+    /// of the main loop (see `docs/performance.md`).
+    fn start_job(&self) {
+        {
+            let mut guard = self.st.borrow_mut();
+            let s = &mut *guard;
+            let (d, l) = self.work.get();
+            self.work.set((d, l + 1));
+            reset_flow(s);
+            s.pages.clear();
+            s.flow_h = 0.0;
+            s.layout_ms = 0.0;
+            let Some(doc) = s.doc.clone() else { return };
+            let est = block_estimates(&doc);
+            let chars: Vec<usize> = est.iter().map(|b| b.chars).collect();
+            let before = flow_window::chars_before(&chars);
+            let total_chars = before.last().copied().unwrap_or(0) as i32;
+            let frac = s.pending_frac.unwrap_or(0.0);
+            let ready = if s.pending_last
+                || (s.pending_anchor.is_some() && s.pending_char.is_some())
+            {
+                Ready::Complete
+            } else if let Some(a) = s.pending_anchor.clone() {
+                Ready::Anchor(a)
+            } else if let Some(c) = s.pending_char {
+                Ready::Char(c)
+            } else if frac > 0.0005 {
+                let from = flow_window::threshold("BOOKX_WINDOW_FROM", flow_window::WINDOW_FROM);
+                if flow_window::worth_window(frac, doc.blocks.len(), from) && !is_vertical(s) {
+                    Ready::Window { y: 0.0 }
+                } else {
+                    Ready::Complete
+                }
+            } else {
+                Ready::Top
+            };
+            let mut cur = FlowCursor::new(0, 0);
+            let mut ready = ready;
+            if let Ready::Window { y } = &mut ready {
+                let ctxs = Ctxs::new(self.area.upcast_ref(), is_vertical(s), &s.lang);
+                let m = measure_metrics(s, &ctxs);
+                let mut cum = flow_window::cumulative(&est, &m);
+                // lay out a few blocks of the chapter for real and correct the estimate by what they measure
+                let r = calibrate(s, &ctxs, &est, &cum);
+                cum.iter_mut().for_each(|y| *y *= r);
+                let total = cum.last().copied().unwrap_or(0.0);
+                let target = frac * total;
+                let k = flow_window::window_start(&cum, target, block_extent(s));
+                cur = FlowCursor::new(k, before[k] as i32);
+                *y = target - cum[k];
+                s.est_total = Some(total);
+                s.y_off = cum[k];
+            }
+            s.job = Some(Job {
+                cur,
+                ready,
+                shown: false,
+                win: None,
+                buf: Buf::default(),
+                total_chars,
+                scanned: 0,
+                found_y: None,
+            });
+        }
+        if !self.advance(SLICE_MS) {
+            self.schedule();
+        }
+    }
+
+    fn schedule(&self) {
+        {
+            let mut s = self.st.borrow_mut();
+            if s.pumping {
+                return;
+            }
+            s.pumping = true;
+        }
+        let this = self.clone();
+        glib::idle_add_local_full(glib::Priority::DEFAULT_IDLE, move || {
+            if this.advance(SLICE_MS) {
+                this.st.borrow_mut().pumping = false;
+                glib::ControlFlow::Break
+            } else {
+                glib::ControlFlow::Continue
+            }
+        });
+    }
+
+    /// Test helper: where the layout of the chapter stands.
+    pub fn dev_layout_state(&self) -> String {
+        let s = self.st.borrow();
+        let pos = pos_info(&s);
+        format!(
+            "complete={} shown={} window={} frac={:.4} page={} pages={} items={} layout_ms={:.0} total_h={:.0} flow_h={:.0} y_off={:.0} extent={:.0}",
+            s.job.is_none(),
+            s.job.as_ref().is_none_or(|j| j.shown),
+            s.job.as_ref().is_some_and(|j| j.win.is_some()),
+            pos.frac,
+            pos.page,
+            pos.pages,
+            s.items.len(),
+            s.layout_ms,
+            total_h(&s),
+            s.flow_h,
+            s.y_off,
+            block_extent(&s)
+        )
+    }
+
+    /// Whether the page is on show at its place (a long chapter may still be laid out behind it).
+    pub fn page_ready(&self) -> bool {
+        self.st.borrow().job.as_ref().is_none_or(|j| j.shown)
+    }
+
+    /// Whether the whole chapter is laid out.
+    pub fn layout_complete(&self) -> bool {
+        self.st.borrow().job.is_none()
+    }
+
+    /// Lays out what is left of the chapter now (the callers that need all of it: search, text, anchors).
+    pub fn finish_layout(&self) {
+        while !self.advance(f64::INFINITY) {}
+    }
+
+    /// Before the page moves: a chapter shown from a window, or a page near the end of what is laid
+    /// out, is completed first.
+    fn settle_for_move(&self) {
+        let need = {
+            let s = self.st.borrow();
+            match &s.job {
+                None => false,
+                Some(j) if j.win.is_some() || !j.shown => true,
+                Some(_) => {
+                    if s.style.layout == LayoutMode::Scroll {
+                        s.scroll_y + 3.0 * scroll_view(&s) >= s.flow_h
+                    } else {
+                        s.cur + 3 * columns(&s) + 2 >= s.pages.len()
+                    }
+                }
+            }
+        };
+        if need {
+            self.finish_layout();
+        }
+    }
+
+    /// One slice of the layout. `true` when the chapter is complete (or there is nothing to lay out).
+    fn advance(&self, budget_ms: f64) -> bool {
+        let t0 = std::time::Instant::now();
+        let mut shown_now = false;
+        let mut complete_now = false;
+        {
+            let mut guard = self.st.borrow_mut();
+            let s = &mut *guard;
+            let Some(mut job) = s.job.take() else {
+                return true;
+            };
+            let ctxs = Ctxs::new(self.area.upcast_ref(), is_vertical(s), &s.lang);
+            let deadline = budget_ms
+                .is_finite()
+                .then(|| t0 + std::time::Duration::from_secs_f64(budget_ms / 1000.0));
+            let aside = job.win.is_some();
+            if aside {
+                swap_buf(s, &mut job.buf);
+            }
+            let extent = block_extent(s);
+            let mut reached = false;
+            let done = {
+                let Job {
+                    cur,
+                    ready,
+                    shown,
+                    scanned,
+                    found_y,
+                    ..
+                } = &mut job;
+                let shown = *shown;
+                flow_slice(s, &ctxs, cur, deadline, &mut |st, c| {
+                    if shown || reached {
+                        return reached;
+                    }
+                    reached = ready_reached(ready, st, c, extent, scanned, found_y);
+                    reached
+                })
+            };
+            if !done && !aside && !matches!(job.ready, Ready::Window { .. }) {
+                let c = job.cur.char_base.max(1) as f64;
+                s.est_total =
+                    Some((s.flow_h * f64::from(job.total_chars.max(1)) / c).max(s.flow_h));
+            }
+            if done {
+                complete_now = true;
+                if aside {
+                    finish_beside_window(s, &mut job);
+                } else {
+                    s.est_total = None;
+                    s.y_off = 0.0;
+                    paginate(s);
+                    if !job.shown {
+                        restore_position(s);
+                        shown_now = true;
+                    }
+                    clamp_pos(s);
+                }
+                s.layout_ms += t0.elapsed().as_secs_f64() * 1000.0;
+            } else {
+                if aside {
+                    swap_buf(s, &mut job.buf);
+                } else {
+                    paginate(s);
+                    if reached && !job.shown {
+                        let frac = s.pending_frac.unwrap_or(0.0);
+                        restore_position(s);
+                        shown_now = true;
+                        job.shown = true;
+                        if matches!(job.ready, Ready::Window { .. }) {
+                            job.win = Some(Window {
+                                frac,
+                                at: (s.cur, s.scroll_y),
+                                disp: std::mem::replace(&mut job.cur, FlowCursor::new(0, 0)),
+                            });
+                        }
+                    }
+                }
+                s.layout_ms += t0.elapsed().as_secs_f64() * 1000.0;
+                s.job = Some(job);
+            }
+        }
+        if shown_now || complete_now {
+            self.area.queue_draw();
+            let info = {
+                let s = self.st.borrow();
+                pos_info(&s)
+            };
+            fire(&self.cb.position, info);
+            if shown_now {
+                fire(&self.cb.ready, ());
+            }
+        } else {
+            self.area.queue_draw();
+        }
+        complete_now
     }
 
     // ---- wiring ----------------------------------------------------------
@@ -2064,6 +2448,7 @@ impl BookCanvas {
     }
 
     fn wheel(&self, dy: f64) {
+        self.settle_for_move();
         let scroll_mode = self.is_scroll();
         if scroll_mode {
             let (moved, at_end, at_start) = {
@@ -2191,6 +2576,7 @@ impl BookCanvas {
 
     /// Test helper: the hints on the page as `label=href`.
     pub fn dev_hints(&self) -> String {
+        self.finish_layout();
         self.st
             .borrow()
             .hints
@@ -2202,6 +2588,7 @@ impl BookCanvas {
 
     /// The selection as `(start, end, text)`.
     pub fn dev_selection_range(&self) -> Option<(i32, i32, String)> {
+        self.finish_layout();
         self.selection_info().map(|i| (i.start, i.end, i.text))
     }
 
@@ -2285,6 +2672,7 @@ impl BookCanvas {
 
     /// Dev/test helper: the tooltip at the centre of the first highlight that has a note.
     pub fn dev_first_note_tooltip(&self) -> Option<String> {
+        self.finish_layout();
         let (x, y) = {
             let s = self.st.borrow();
             let h = s.highlights.iter().find(|h| !h.note.is_empty())?;
@@ -2296,6 +2684,7 @@ impl BookCanvas {
 
     /// Dev/test helper: the selection info of the first highlight that has a note (for screenshots of the popover).
     pub fn dev_note_highlight_info(&self) -> Option<SelectionInfo> {
+        self.finish_layout();
         let id = {
             let s = self.st.borrow();
             s.highlights.iter().find(|h| !h.note.is_empty())?.id.clone()
@@ -2305,6 +2694,7 @@ impl BookCanvas {
 
     /// Dev/test helper: a plain click in the middle of the page.
     pub fn dev_click_middle(&self) {
+        self.finish_layout();
         let (w, h) = {
             let s = self.st.borrow();
             (s.width as f64, s.height as f64)
@@ -2346,6 +2736,7 @@ impl BookCanvas {
 
     /// Dev/test helper: moves the "pointer" onto the first highlight that has a note.
     pub fn dev_hover_first_note(&self) {
+        self.finish_layout();
         let pt = {
             let s = self.st.borrow();
             s.highlights
@@ -2470,6 +2861,7 @@ impl BookCanvas {
 
     /// Test helper: a finger movement of `(dx, dy)` pixels in `ms` milliseconds.
     pub fn dev_swipe(&self, dx: f64, dy: f64, ms: u64) -> Option<Swipe> {
+        self.finish_layout();
         let s = classify_swipe(dx, dy, ms);
         self.apply_swipe(s);
         s
@@ -2477,6 +2869,7 @@ impl BookCanvas {
 
     /// Test helper: a tap at horizontal position `x` (0..1) on empty page area.
     pub fn dev_tap(&self, x: f64) -> TapAction {
+        self.finish_layout();
         let a = mirror_tap(self.st.borrow().zones.action_at(x), self.st.borrow().rtl);
         self.do_tap_action(a);
         a
@@ -2655,19 +3048,37 @@ fn current_top_y(s: &State) -> f64 {
     }
 }
 
+/// The height of the chapter: exact once it is laid out, an estimate while it is not.
+fn total_h(s: &State) -> f64 {
+    s.est_total.unwrap_or(s.flow_h).max(s.flow_h + s.y_off)
+}
+
 fn frac_of(s: &State) -> f64 {
-    if s.flow_h <= 0.0 {
+    let total = total_h(s);
+    if total <= 0.0 {
         return 0.0;
     }
-    (current_top_y(s) / s.flow_h).clamp(0.0, 1.0)
+    ((s.y_off + current_top_y(s)) / total).clamp(0.0, 1.0)
 }
 
 fn pos_info(s: &State) -> PosInfo {
     if s.style.layout == LayoutMode::Scroll {
         let page_h = scroll_view(s).max(1.0);
         PosInfo {
-            page: (s.scroll_y / page_h) as usize + 1,
-            pages: ((s.flow_h / page_h).ceil() as usize).max(1),
+            page: ((s.y_off + s.scroll_y) / page_h) as usize + 1,
+            pages: ((total_h(s) / page_h).ceil() as usize).max(1),
+            frac: frac_of(s),
+        }
+    } else if s.est_total.is_some() && !s.pages.is_empty() {
+        // part of the chapter is laid out: the number of pages is an estimate until it is all done
+        let avg = match s.pages.as_slice() {
+            [.., last] if s.pages.len() >= 3 => last.y0 / (s.pages.len() - 1) as f64,
+            _ => block_extent(s) * 0.97,
+        }
+        .max(1.0);
+        PosInfo {
+            page: s.cur + 1 + (s.y_off / avg).round() as usize,
+            pages: ((total_h(s) / avg).ceil() as usize).max(s.pages.len()),
             frac: frac_of(s),
         }
     } else {
@@ -2708,7 +3119,7 @@ fn goto_y(s: &mut State, y: f64) {
 }
 
 fn apply_fraction(s: &mut State, f: f64) {
-    let y = f.clamp(0.0, 1.0) * s.flow_h;
+    let y = (f.clamp(0.0, 1.0) * total_h(s) - s.y_off).clamp(0.0, s.flow_h.max(0.0));
     // snap to the line at/after y
     let y = s
         .lines
@@ -3399,11 +3810,244 @@ impl Ctxs {
     }
 }
 
-fn build_flow(s: &mut State, ctxs: &Ctxs) {
+/// The longest the main loop is held by one slice of layout.
+const SLICE_MS: f64 = 8.0;
+
+/// A chapter with this many blocks is laid out in slices (a short one in one go, as ever).
+fn slice_worth(s: &State) -> bool {
+    !s.style.fixed
+        && s.doc.as_ref().is_some_and(|d| {
+            flow_window::worth_slicing(
+                d.blocks.len(),
+                flow_window::threshold("BOOKX_SLICE_FROM", flow_window::SLICE_FROM),
+            )
+        })
+        && std::env::var_os("BOOKX_LAYOUT_SYNC").is_none()
+}
+
+/// The size of every block as far as the text tells, without laying it out.
+fn block_estimates(doc: &Doc) -> Vec<flow_window::BlockEst> {
+    doc.blocks
+        .iter()
+        .map(|b| {
+            let mut text = String::new();
+            if let Some(m) = &b.marker {
+                text.push_str(m);
+                text.push('\t');
+            }
+            for sp in &b.spans {
+                match sp {
+                    Span::Text { text: t, .. } => text.push_str(t),
+                    Span::Break => text.push('\n'),
+                    _ => {}
+                }
+            }
+            let chars = if text.trim().is_empty() {
+                0
+            } else {
+                text.chars().filter(|c| *c != SHY).count()
+            };
+            let (scale, gap_em) = match b.kind {
+                BlockKind::Heading(n) => (
+                    [2.0, 1.6, 1.32, 1.15, 1.05, 1.0][(n.clamp(1, 6) - 1) as usize],
+                    0.5,
+                ),
+                BlockKind::Quote => (1.0, 0.7),
+                BlockKind::Code => (0.9, 0.8),
+                _ if b.marker.is_some() => (1.0, 0.3),
+                _ => (1.0, 0.65),
+            };
+            flow_window::BlockEst {
+                chars,
+                scale,
+                gap_em: b.css.margin_bottom.map_or(gap_em, f64::from),
+            }
+        })
+        .collect()
+}
+
+/// Measures the body font on the page: how many characters a line takes and how tall a line is.
+fn measure_metrics(s: &State, ctxs: &Ctxs) -> flow_window::Metrics {
+    let layout = pango::Layout::new(&ctxs.plain);
+    let mut fd = pango::FontDescription::new();
+    fd.set_family(&s.style.font_family);
+    fd.set_size((s.style.font_size * SCALE) as i32);
+    if let Some(w) = s.style.weight {
+        fd.set_weight(weight_of(w));
+    }
+    layout.set_font_description(Some(&fd));
+    layout.set_line_spacing(s.style.line_spacing as f32);
+    layout.set_width((line_extent(s) * SCALE) as i32);
+    layout.set_wrap(pango::WrapMode::WordChar);
+    let sentence =
+        "the quick brown fox jumps over the lazy dog and keeps running far away from here ";
+    let sample = sentence.repeat(20);
+    layout.set_text(&sample);
+    let lines = layout.line_count().max(1);
+    let (_, h) = layout.pixel_size();
+    flow_window::Metrics {
+        chars_per_line: sample.chars().count() as f64 / f64::from(lines),
+        line_h: (f64::from(h) / f64::from(lines)).max(4.0),
+        em: s.style.font_size * 96.0 / 72.0,
+        image_h: block_extent(s) * 0.5,
+    }
+}
+
+/// How much taller or shorter the chapter is than the estimate: a few blocks spread over the chapter are
+/// laid out (one at a time, in a scratch buffer) and compared with their estimates.
+fn calibrate(s: &mut State, ctxs: &Ctxs, est: &[flow_window::BlockEst], cum: &[f64]) -> f64 {
+    const SAMPLES: usize = 16;
+    let with_text: Vec<usize> = (0..est.len()).filter(|i| est[*i].chars > 0).collect();
+    if with_text.len() < SAMPLES {
+        return 1.0;
+    }
+    let mut scratch = Buf::default();
+    swap_buf(s, &mut scratch);
+    let (mut real, mut guess) = (0.0, 0.0);
+    for n in 0..SAMPLES {
+        let i = with_text[n * with_text.len() / SAMPLES];
+        let mut c = FlowCursor::new(i, 0);
+        reset_flow(s);
+        flow_slice(s, ctxs, &mut c, None, &mut |_, c| c.next > i);
+        real += c.y + est[i].gap_em * (s.style.font_size * 96.0 / 72.0);
+        guess += cum[i + 1] - cum[i];
+    }
+    swap_buf(s, &mut scratch);
+    if guess > 0.0 && real > 0.0 {
+        (real / guess).clamp(0.5, 2.0)
+    } else {
+        1.0
+    }
+}
+
+fn swap_buf(s: &mut State, b: &mut Buf) {
+    std::mem::swap(&mut s.items, &mut b.items);
+    std::mem::swap(&mut s.floats, &mut b.floats);
+    std::mem::swap(&mut s.lines, &mut b.lines);
+    std::mem::swap(&mut s.flow_h, &mut b.flow_h);
+}
+
+/// Whether enough is laid out to show the page at the place it was opened at.
+fn ready_reached(
+    ready: &Ready,
+    st: &State,
+    c: &FlowCursor,
+    extent: f64,
+    scanned: &mut usize,
+    found_y: &mut Option<f64>,
+) -> bool {
+    match ready {
+        Ready::Top => c.y >= 2.0 * extent,
+        Ready::Window { y } => c.y >= *y + 2.0 * extent,
+        Ready::Complete => false,
+        Ready::Anchor(id) => {
+            if found_y.is_none() {
+                if let Some(it) = st.items[*scanned..].iter().find(|i| i.anchors.contains(id)) {
+                    *found_y = Some(it.y);
+                }
+                *scanned = st.items.len();
+            }
+            found_y.is_some_and(|y| c.y >= y + 1.5 * extent)
+        }
+        Ready::Char(ch) => {
+            if found_y.is_none() && c.char_base > *ch {
+                *found_y = char_y(st, *ch);
+            }
+            found_y.is_some_and(|y| c.y >= y + 1.5 * extent)
+        }
+    }
+}
+
+/// Puts the page where the chapter was opened at (the pending fraction, anchor or character).
+fn restore_position(s: &mut State) {
+    if s.pending_last {
+        s.pending_last = false;
+        s.pending_frac = None;
+        if s.style.layout == LayoutMode::Scroll {
+            s.scroll_y = scroll_max(s);
+        } else {
+            let cols = columns(s);
+            s.cur = (s.pages.len().saturating_sub(1) / cols) * cols;
+        }
+    } else if let Some(id) = s.pending_anchor.take() {
+        s.pending_frac = None;
+        let y = s
+            .items
+            .iter()
+            .find(|i| i.anchors.contains(&id))
+            .map(|i| i.y);
+        if let Some(y) = y {
+            goto_y(s, y);
+        }
+    } else if let Some(f) = s.pending_frac.take() {
+        apply_fraction(s, f);
+    }
+    if let Some(c) = s.pending_char.take() {
+        if let Some(y) = char_y(s, c) {
+            goto_y(s, y);
+        }
+    }
+    clamp_pos(s);
+}
+
+/// The whole chapter is laid out beside the window that is on show: it takes the window's place, and the
+/// page stays on the text it was on (or goes to the exact fraction when it was not touched).
+fn finish_beside_window(s: &mut State, job: &mut Job) {
+    let Some(win) = job.win.take() else { return };
+    let moved = (s.cur, s.scroll_y) != win.at;
+    let top_y = current_top_y(s);
+    let old = &job.buf;
+    let line = (|| {
+        let i = old.lines.partition_point(|l| l.y + l.h <= top_y);
+        let l = old.lines.get(i)?;
+        let k = win
+            .disp
+            .starts
+            .partition_point(|&st| st <= l.item)
+            .checked_sub(1)?;
+        Some((win.disp.base + k, l.item - win.disp.starts[k], l.line))
+    })();
+    s.est_total = None;
+    s.y_off = 0.0;
+    paginate(s);
+    let same = line.filter(|_| moved).and_then(|(blk, di, li)| {
+        let idx = job.cur.starts.get(blk)? + di;
+        s.lines
+            .iter()
+            .find(|l| l.item == idx && l.line == li)
+            .map(|l| l.y)
+    });
+    match same {
+        Some(y) => goto_y(s, y),
+        None => apply_fraction(s, win.frac),
+    }
+    clamp_pos(s);
+}
+
+fn reset_flow(s: &mut State) {
     s.items.clear();
     s.floats.clear();
     s.lines.clear();
-    let Some(doc) = s.doc.clone() else { return };
+}
+
+fn build_flow(s: &mut State, ctxs: &Ctxs) {
+    reset_flow(s);
+    let mut cur = FlowCursor::new(0, 0);
+    flow_slice(s, ctxs, &mut cur, None, &mut |_, _| false);
+}
+
+/// Lays out blocks from the cursor on until the chapter ends, the deadline passes or `stop` says so
+/// (both are looked at between two blocks). `true` when the chapter is complete.
+fn flow_slice(
+    s: &mut State,
+    ctxs: &Ctxs,
+    cur: &mut FlowCursor,
+    deadline: Option<std::time::Instant>,
+    stop: &mut dyn FnMut(&State, &FlowCursor) -> bool,
+) -> bool {
+    let Some(doc) = s.doc.clone() else {
+        return true;
+    };
     let vertical = is_vertical(s);
     let ctx: &pango::Context = ctxs.pick(vertical, doc.orientation);
     let col_w = line_extent(s);
@@ -3415,13 +4059,24 @@ fn build_flow(s: &mut State, ctxs: &Ctxs) {
         .then(|| Hyphenator::for_language(&s.lang))
         .filter(|h| h.is_supported());
 
-    let mut y: f64 = 0.0;
-    let mut prev_bottom: f64 = 0.0;
-    let mut char_base: i32 = 0;
-    let mut first = true;
-    let mut zone: Option<Zone> = None;
+    let mut y: f64 = cur.y;
+    let mut prev_bottom: f64 = cur.prev_bottom;
+    let mut char_base: i32 = cur.char_base;
+    let mut first = cur.first;
+    let mut zone: Option<Zone> = cur.zone;
 
-    for block in &doc.blocks {
+    while cur.next < doc.blocks.len() {
+        cur.y = y;
+        cur.prev_bottom = prev_bottom;
+        cur.char_base = char_base;
+        cur.first = first;
+        cur.zone = zone;
+        if deadline.is_some_and(|d| std::time::Instant::now() >= d) || stop(s, cur) {
+            break;
+        }
+        cur.starts.push(s.items.len());
+        let block = &doc.blocks[cur.next];
+        cur.next += 1;
         // Split block content at images.
         let mut pieces: Vec<Result<Pending, (String, FloatSide, String)>> = Vec::new();
         let mut cur = Pending::new();
@@ -3961,6 +4616,15 @@ fn build_flow(s: &mut State, ctxs: &Ctxs) {
             }
         }
     }
+    if cur.next < doc.blocks.len() {
+        cur.y = y;
+        cur.prev_bottom = prev_bottom;
+        cur.char_base = char_base;
+        cur.first = first;
+        cur.zone = zone;
+        s.flow_h = y;
+        return false;
+    }
     if let Some(z) = zone {
         y = y.max(z.bottom);
     }
@@ -3981,7 +4645,9 @@ fn build_flow(s: &mut State, ctxs: &Ctxs) {
         }
     }
     s.flow_h = y;
+    cur.y = y;
     // Zero-height anchor-only items need a y that exists; fine.
+    true
 }
 
 /// One laid out piece of a paragraph. A paragraph that wraps around a drop cap or a float is laid

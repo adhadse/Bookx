@@ -39,6 +39,7 @@ This file is internal: decisions, component map and dev hooks, not user copy.
 * The Devices dialog keeps its content under 560 px high and at most 85 % of the parent window (`device_fit`), so the
   send controls stay reachable at 900x600.
 * No drag and drop of library books onto the Devices button.
+* Re-checked 2026-11-22 against the tree: the component map and the rules above still match; wave 11 added Check Before Sending in the send flow (`ui/devices.rs::send_checked`, scenario `meta_preflight_device`) and the send of a shelf is still not built (`docs/library-t3-notes.md`). Unifying `devices::full_sync_plan` with `device_sync::plan` is still open (`docs/remaining-work.md` D).
 
 ## Dev hooks
 
@@ -80,9 +81,11 @@ The exact user-visible copy, checked by `device_window_hig` and the wiki scenari
   `selectall`, `none`, `sendselect=`, `devwin_align:` in the dump (x of the check box and cover slot per row).
 * The section appended to a sent book is now titled "My notes" (`send_notes::APPENDIX_TITLE`).
 * Explanations live as constants (`device_sync::AUTO_SYNC_*`, `NOTES_*`, `sharing::KOSYNC_*`) and are checked by unit tests.
-  Findings while verifying them against the code: KOSync accounts are the reader's own (registered from KOReader, any name
-  and password), not the Share password; the KOSync routes skip the Share password, and registration is open; Bookx stores the
-  positions only and does not feed them into the library's progress.
+  Findings while verifying them against the code: Bookx sync accounts (extended KOSync) are the reader's own (registered from
+  KOReader or from Preferences → Sync, any name and password), not the library (OPDS server) password; the sync routes skip the
+  library password, and registration is open. Since wave 11 a position from a device that is further along is offered in the open
+  reader as a *Continue There* banner (`docs/sync-ux-notes.md`, "Live updates"); it is never applied by itself and the library's
+  own progress is not written from it.
 * Not covered by a scenario: a real mouse click on a row or tile (the hook calls the same `click` function the gesture calls).
 
 ## Library-style tiles and spacing (grid mode of both lists)

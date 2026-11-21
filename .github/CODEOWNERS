@@ -1,0 +1,13 @@
+# The maintainer reviews everything; security-sensitive and release paths are listed so they are never missed.
+*                       @adhadse
+/.github/               @adhadse
+/SECURITY.md            @adhadse
+/docs/security.md       @adhadse
+/deny.toml              @adhadse
+/crates/bookx-plugin/   @adhadse
+/crates/bookx-secrets/  @adhadse
+/crates/bookx-backup/   @adhadse
+/crates/bookx-serve/    @adhadse
+/crates/bookx-mcp/      @adhadse
+/packaging/             @adhadse
+/build-aux/com.adhadse.Bookx.json @adhadse

@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, Result};
 use bookx_mcp::http::{HttpConfig, HttpHandle};
 use bookx_mcp::{Config, WritePolicy};
+use bookx_secrets::Vault;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -73,6 +74,9 @@ pub fn load() -> McpSettings {
 }
 
 pub fn save(s: &McpSettings) {
+    if cfg!(test) {
+        return;
+    }
     if let Some(p) = settings_path() {
         let _ = save_to(&p, s);
     }
@@ -81,42 +85,83 @@ pub fn save(s: &McpSettings) {
 /// The token a session without any store holds in memory (never on disk).
 static SESSION_TOKEN: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
 
-/// The access token: from the keyring or the encrypted store, made on first use. When neither
-/// can hold it the token lives in memory for this session and a new one is made at the next start;
-/// it is never written to `mcp.json`.
-pub fn token(settings: &mut McpSettings) -> String {
-    let vault = crate::secrets::vault();
+/// The access token if there is one, **without making one**: from the keyring or the encrypted
+/// store, from this session's memory, or an older version's plain-text copy. Opening Preferences
+/// calls this, so it must never save a secret and never raise the master-password question. An old
+/// plain-text copy is moved into the store only when the store can take it without asking.
+pub fn existing_token(settings: &mut McpSettings) -> Option<String> {
+    existing_in(crate::secrets::vault(), &SESSION_TOKEN, settings)
+}
+
+fn existing_in(
+    vault: &Vault,
+    session: &std::sync::Mutex<String>,
+    settings: &mut McpSettings,
+) -> Option<String> {
     let legacy = !settings.token_fallback.is_empty();
-    let mut t = std::mem::take(&mut settings.token_fallback);
+    // a value handed to `load` that no store can keep would raise the question: only offer the old
+    // copy when the store can take it
+    let mut t = if vault.available() {
+        settings.token_fallback.clone()
+    } else {
+        String::new()
+    };
     vault.load(&mut [(TOKEN_KEY.to_string(), &mut t)]);
-    let session = SESSION_TOKEN.lock().unwrap().clone();
-    if !session.is_empty() && session != t && !vault.available() {
+    if t.is_empty() {
+        t = settings.token_fallback.clone();
+    }
+    let session_token = session.lock().unwrap().clone();
+    if !session_token.is_empty() && session_token != t && !vault.available() {
         // made while the store was locked or missing: the running server already uses it
-        t = session;
+        t = session_token;
     } else if t.is_empty() {
-        t = session;
+        t = session_token;
     }
     if t.is_empty() {
-        t = bookx_mcp::generate_token();
-        store_token(settings, &t);
-    } else if legacy {
-        // an older version left it in the file: rewrite the file without it
-        store_token(settings, &t);
+        return None;
     }
+    if legacy && vault.available() {
+        // an older version left it in the file: move it into the store and rewrite the file
+        store_in(vault, session, settings, &t);
+    }
+    Some(t)
+}
+
+/// The access token, made when there is none yet. Only called when the user switches the server on
+/// (or asks for a new token): saving a new token is what may ask for a master password.
+pub fn token(settings: &mut McpSettings) -> String {
+    token_in(crate::secrets::vault(), &SESSION_TOKEN, settings)
+}
+
+fn token_in(
+    vault: &Vault,
+    session: &std::sync::Mutex<String>,
+    settings: &mut McpSettings,
+) -> String {
+    if let Some(t) = existing_in(vault, session, settings) {
+        return t;
+    }
+    let t = bookx_mcp::generate_token();
+    store_in(vault, session, settings, &t);
     t
 }
 
-fn store_token(settings: &mut McpSettings, token: &str) {
+fn store_in(
+    vault: &Vault,
+    session: &std::sync::Mutex<String>,
+    settings: &mut McpSettings,
+    token: &str,
+) {
     let mut copy = token.to_string();
-    crate::secrets::vault().persist(&mut [(TOKEN_KEY.to_string(), &mut copy)]);
-    *SESSION_TOKEN.lock().unwrap() = token.to_string();
+    vault.persist(&mut [(TOKEN_KEY.to_string(), &mut copy)]);
+    *session.lock().unwrap() = token.to_string();
     settings.token_fallback.clear();
     save(settings);
 }
 
 pub fn regenerate_token(settings: &mut McpSettings) -> String {
     let t = bookx_mcp::generate_token();
-    store_token(settings, &t);
+    store_in(crate::secrets::vault(), &SESSION_TOKEN, settings, &t);
     t
 }
 
@@ -380,6 +425,58 @@ mod tests {
         assert_ne!(t, t2);
         assert_eq!(token(&mut s), t2);
         assert!(masked(&t2).ends_with(&t2[60..]) && !masked(&t2).contains(&t2[..8]));
+    }
+
+    #[test]
+    fn opening_the_page_makes_no_token_and_asks_for_nothing() {
+        use bookx_secrets::{FileStore, Unavailable};
+        let d = tmp();
+        let vault = Vault::with_file(
+            Box::new(Unavailable("no Secret Service".into())),
+            FileStore::new(d.join("secrets.vault")),
+        );
+        let session = std::sync::Mutex::new(String::new());
+        let mut s = McpSettings::default();
+        // no keyring, no master password: looking at the token must not make or save one
+        assert_eq!(existing_in(&vault, &session, &mut s), None);
+        assert_eq!(existing_in(&vault, &session, &mut s), None);
+        assert_eq!(vault.take_prompt(), None, "opening the page asks nothing");
+        assert!(session.lock().unwrap().is_empty());
+        // switching the server on makes it, keeps it for the session, and may ask
+        let t = token_in(&vault, &session, &mut s);
+        assert_eq!(t.len(), 64);
+        assert_eq!(vault.take_prompt(), Some(bookx_secrets::Prompt::Create));
+        assert_eq!(existing_in(&vault, &session, &mut s), Some(t.clone()));
+        assert_eq!(token_in(&vault, &session, &mut s), t);
+        let _ = std::fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn an_old_plain_text_token_stays_put_until_a_store_can_take_it_silently() {
+        use bookx_secrets::{FileStore, MemoryStore, Unavailable};
+        let d = tmp();
+        let none = Vault::with_file(
+            Box::new(Unavailable("x".into())),
+            FileStore::new(d.join("secrets.vault")),
+        );
+        let session = std::sync::Mutex::new(String::new());
+        let mut s = McpSettings {
+            token_fallback: "legacy-token-0123456789".into(),
+            ..Default::default()
+        };
+        assert_eq!(
+            existing_in(&none, &session, &mut s).as_deref(),
+            Some("legacy-token-0123456789")
+        );
+        assert_eq!(none.take_prompt(), None);
+        assert!(
+            !s.token_fallback.is_empty(),
+            "nothing moved without a store"
+        );
+        let keyring = Vault::new(Box::new(MemoryStore::new()));
+        assert!(existing_in(&keyring, &session, &mut s).is_some());
+        assert!(s.token_fallback.is_empty(), "moved into the keyring");
+        let _ = std::fs::remove_dir_all(d);
     }
 
     #[test]

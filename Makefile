@@ -3,11 +3,18 @@ JOBS ?= $(shell nproc)
 APP_ID = com.adhadse.Bookx
 TARGET_DIR ?= target/release
 LANGS = $(basename $(notdir $(wildcard po/*.po)))
+# Cargo features for `make build`, for example CARGO_FEATURES=bookx/reviewed-locales-only (the Flathub build:
+# embeds and installs only the languages in po/reviewed-locales.txt, docs/translations-hosting.md).
+CARGO_FEATURES ?=
+ifneq (,$(findstring reviewed-locales-only,$(CARGO_FEATURES)))
+LANGS = $(shell sed 's/[#].*//' po/reviewed-locales.txt | tr -s ' \t\n' ' ')
+endif
+FEATURE_FLAG = $(if $(CARGO_FEATURES),--features $(CARGO_FEATURES))
 
 .PHONY: build run test perf scale ui-test mockups install install-flatpak uninstall flatpak flatpak-sources desktop-check i18n locale release-check tarball
 
 build:
-	cargo build --release
+	cargo build --release $(FEATURE_FLAG)
 
 run:
 	cargo run --release

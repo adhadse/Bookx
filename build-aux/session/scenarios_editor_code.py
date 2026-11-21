@@ -138,12 +138,10 @@ def editor_code_context_menu(c):
     time.sleep(0.8)
     c.shot("context-menu-link")
     items = [n for n in c.find("menu item") if n.showing]
-    c.note(f"menu items: {len(items)}")
-    img = c.image("context-menu-link-ocr")
-    ocr = c.ocr(img) if img is not None else ""
-    c.note(f"ocr: {ocr[:200]!r}")
-    if ocr:
-        c.check("the context menu of a link offers Go to Definition", "Definition" in ocr, ocr[:200])
+    names = [n.name for n in items]
+    c.note(f"menu items: {names}")
+    c.check("the context menu of a link offers Go to Definition",
+            any("Go to Definition" in (n or "") for n in names), str(names))
     c.sb.key("Escape")
     time.sleep(0.4)
     # a tag name: Help for <x>
@@ -153,10 +151,10 @@ def editor_code_context_menu(c):
         c.sb.right_click(cx, cy)
         time.sleep(0.8)
         c.shot("context-menu-tag")
-        img = c.image("context-menu-tag-ocr")
-        ocr = c.ocr(img) if img is not None else ""
-        if ocr:
-            c.check("the context menu of a tag offers Help for it", "Help for" in ocr, ocr[:200])
+        names = [n.name for n in c.find("menu item") if n.showing]
+        c.note(f"menu items: {names}")
+        c.check("the context menu of a tag offers Help for it",
+                any((n or "").startswith("Help for") for n in names), str(names))
         c.sb.key("Escape")
     c.check("the app is still alive", c.is_alive())
 

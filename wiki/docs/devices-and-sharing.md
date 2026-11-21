@@ -262,6 +262,25 @@ network; Bookx **Preferences → Sync** has an *OPDS server* group with the same
 
 The same server runs without the app: `bookx-cli serve --port 8080 --user me:secret --kosync kosync.json` (the `--kosync` file keeps the Bookx sync accounts).
 
+### Accounts for the library server
+
+The library password (user name `bookx`) sees every book. To let someone else in with less, open Preferences → Sync →
+**Advanced** → **Library server accounts** → **Manage**:
+
+- **Add Account** asks for a *name*, a *password* (typed twice, at least 6 characters) and the **collections** the person
+  may see. Collections are the tags of your books; choose none to let the account see all books. The password is hashed
+  (Argon2id) on the spot and only the hash is saved; Bookx can never show it again, so use **Edit** to set a new one.
+- **Edit** changes the name and the collections (leave the password empty to keep it); **Remove** takes the account away at
+  once and a message offers **Undo**.
+- **Allow guests** lets visitors without a login read the collections you choose, with nothing else (no downloads of
+  other books, no changes). A visitor who types a wrong password is refused, not treated as a guest.
+- A change is saved and, when the server is running, the server **restarts at once** (devices reconnect by themselves);
+  while it is off the change applies at the next start.
+
+The same accounts exist on the command line: `bookx-cli serve --account name:password:Kids,Comics`
+([command line](command-line.md#serve)). An account sees only the books with one of its collections in the catalogue,
+the search, downloads and covers; a book outside them simply does not exist for it.
+
 Click **QR code** next to an address (the Bookx sync address, the OPDS address) to show it as a QR code that a phone or an
 e-reader app can scan instead of typing.
 
@@ -287,6 +306,11 @@ reverse proxy in front of it: [Put Bookx behind a reverse proxy](reverse-proxy.m
     - Without a keyring (GNOME Keyring, KWallet, KeePassXC) Bookx offers an encrypted password store with a master password; if you decline, passwords are not saved and are forgotten when Bookx closes. They are never written to the settings file (see [Passwords](backup-and-restore.md#passwords)).
 
 ## Questions and answers
+
+??? question "Can the children see only the children's books on my OPDS server?"
+    Yes. Preferences → Sync → Advanced → **Library server accounts** → *Add Account*, name `kids`, a password, and the
+    collection `kids` (tag those books *Kids* first). They sign in with that name and password in their reader or browser.
+    See [Accounts for the library server](#accounts-for-the-library-server).
 
 ??? question "How do I send books to my Kobo or Kindle?"
     Plug the reader in with its USB cable. In the library select the books, right-click and choose **Send to Device**

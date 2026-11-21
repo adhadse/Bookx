@@ -104,6 +104,33 @@
     <mediatype>x-scheme-handler/bookx</mediatype>
   </provides>
   <releases>
+    <release version="0.3.0" date="2026-11-22">
+      <description>
+        <p>The first public release: a much bigger library, reader and editor, KOReader sync, backups and read aloud.</p>
+        <p>Library and devices</p>
+        <ul>
+          <li>Custom columns, a configurable sidebar, saved searches, Library Health (duplicates, editions, backups, trash) and Move to Trash with Undo</li>
+          <li>A Devices window for Kobo, Kindle and other e-readers, with the covers of the books on the device and a summary before every sync</li>
+          <li>Bookx sync for KOReader over Wi-Fi (highlights, notes and bookmarks) and an OPDS server for other apps</li>
+          <li>Incremental, encrypted backups to a folder, drive, network share or WebDAV, with restore; passwords are kept in the system keyring or an encrypted store</li>
+        </ul>
+        <p>Reading</p>
+        <ul>
+          <li>Read aloud with natural offline voices and a player with media keys</li>
+          <li>Audiobooks with chapters, speed and a sleep timer; a comic reader with two-page, webtoon, smart zoom and right-to-left</li>
+          <li>Vertical Japanese and Chinese text, a reading ruler, selection handles, more typography settings</li>
+          <li>A Notes view for all highlights, notes and bookmarks, vocabulary with your own definitions</li>
+        </ul>
+        <p>Editor and extras</p>
+        <ul>
+          <li>Syntax-highlighted code editing with live preview, a Problems panel, a command palette, snippets and structure tools</li>
+          <li>Twelve Preferences pages with one search, a Keyboard Shortcuts page, and an assistant (MCP) page that is read-only by default</li>
+          <li>Safer by default: links, downloads, archives and plugins are checked, and release files are signed</li>
+          <li>Translated into Spanish, German, French and Hindi</li>
+        </ul>
+      </description>
+      <url type="details">https://github.com/adhadse/Bookx/releases/tag/v0.3.0</url>
+    </release>
     <release version="0.2.0" date="2026-11-11">
       <description>
         <p>Complete rewrite on the latest GTK 4, libadwaita and Relm4: new library, a Rust-only reader and a built-in EPUB editor.</p>

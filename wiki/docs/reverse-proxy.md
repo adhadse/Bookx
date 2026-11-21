@@ -257,6 +257,9 @@ Do not add a `stripPrefix` middleware. For a Bookx container, put the same rule 
 * **Keep Bookx’s accounts on.** Do not turn off the library password under main menu → Preferences → Sync → Advanced or leave `bookx-cli serve` without `--user`
   because "the proxy has a login". Do not let the proxy add its own `Authorization` header for Bookx either. The sync
   account (the key that KOReader sends) must reach Bookx unchanged.
+* **Own logins are fine behind a proxy.** Accounts made under Preferences → Sync → Advanced → *Library server accounts*
+  ([how](devices-and-sharing.md#accounts-for-the-library-server)) travel as the normal `Authorization: Basic` header, so
+  the proxy must pass it unchanged. Failed logins are counted per client address, so also set the trusted proxy below.
 * **Pass `Host`, `X-Forwarded-For` and `X-Forwarded-Proto`.** Bookx ignores `X-Forwarded-*` unless you list your proxy as
   trusted (next point), so by default every request comes from the proxy’s address in Bookx’s own logic.
 * **Trusted proxy addresses (optional).** Enter the address of your proxy (`127.0.0.1`, or a network such as `10.0.0.0/8`) in

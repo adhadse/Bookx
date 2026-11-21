@@ -442,6 +442,8 @@ Before starting a track:
 
 # PART 4: Progress log (updated as work lands)
 
+> **2026-11-22:** the "Not done" lists in this log are superseded. The current status per row is `docs/roadmap-status.md` (fully re-audited 2026-11-22) and `docs/calibre-editor-gap-analysis.md`; what is left overall is `docs/remaining-work.md`.
+
 Legend: DONE = implemented and tested; PARTIAL = some of the item; TODO = not started.
 
 ## Wave 0: Foundation (2026-11-12) DONE

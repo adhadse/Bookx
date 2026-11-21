@@ -1,0 +1,52 @@
+name: Bug report
+description: Something does not work as described
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. For a **security** problem do not use this form: see SECURITY.md.
+        Check [Troubleshooting](https://bookx.adhadse.com/troubleshooting/) and the open issues first.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+      description: One problem per issue. Say which screen you were on.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the library
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: |
+        Open **Main menu → About Bookx → Troubleshooting** (or press Ctrl+Shift+P and run **Copy Diagnostics**) and paste
+        the text here. It has no book titles, accounts or passwords; read it once before posting.
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install Bookx?
+      options: [Flatpak, Flathub, tarball, .deb, .rpm, built from source, other]
+    validations:
+      required: true
+  - type: input
+    id: book
+    attributes:
+      label: Book format or device involved (if any)
+      placeholder: EPUB 3, Kobo Libra Colour, KOReader sync ...
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else (screenshots, a file that triggers it, the Debug log)
+      description: Do not attach books you do not have the right to share.

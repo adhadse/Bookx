@@ -1,6 +1,6 @@
 # Roadmap status (audit of the code, not the progress log)
 
-Audited 2026-11-13 (counts and a sample of rows refreshed 2026-11-21 against the code after waves 6-10; rows not named here were not re-audited) against `docs/bookx-feature-roadmap.md` Parts 1 and 3 (E-series rows are in `docs/calibre-editor-gap-analysis.md`). Status was taken from the code, the tests, the wiki and the UI scenarios, not from the progress log. Rows whose area another agent was working on that day say so.
+Audited 2026-11-13, every PARTIAL and MISSING row re-audited 2026-11-22 after waves 6-11 against `docs/bookx-feature-roadmap.md` Parts 1 and 3 (E-series rows are in `docs/calibre-editor-gap-analysis.md`). Status was taken from the code, the tests, the wiki and the UI scenarios, not from the progress log. Rows whose area another agent was working on that day say so.
 
 Statuses: **DONE** implemented, tested and reachable in the UI (or CLI where the row is CLI); **ENGINE ONLY** library code with tests, no UI; **PARTIAL**; **MISSING**; **DEFERRED** owner decision (PDF, Calibre wireless); **EXCLUDED** (LIT).
 
@@ -8,35 +8,39 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 
 ## Counts
 
-| Status | Before this pass | After |
-|---|---|---|
-| DONE | 65 | 75 (87 after the ux-gaps pass, 91 on 2026-11-21) |
-| ENGINE ONLY | 4 | 3 (1) |
-| PARTIAL | 63 | 64 (59, 58) |
-| MISSING | 41 | 31 (26, 23) |
-| DEFERRED | 3 | 3 |
-| EXCLUDED | 0 | 0 |
-| **Total rows** | 176 | 176 |
+Re-audited in full on 2026-11-22 (HEAD 805f4c2): every row that was PARTIAL or MISSING was re-checked against the tree (files, symbols, scenarios, `docs/*-notes.md`); DONE rows were kept unless a note showed a change. Not run on hardware, see `docs/remaining-work.md` Part 2 A.
 
-| Section | DONE | ENGINE ONLY | PARTIAL | MISSING | DEFERRED | EXCLUDED |
-|---|---|---|---|---|---|---|
-| A. Reader (R1-R20, R65) | 13 | 0 | 6 | 2 | 0 | 0 |
-| A2. Reader additions (R21-R64) | 17 | 0 | 19 | 8 | 0 | 0 |
-| B. Library (L1-L13) | 10 | 0 | 2 | 1 | 0 | 0 |
-| B2. Library additions (L14-L38) | 10 | 1 | 10 | 4 | 0 | 0 |
-| D/D2. Conversion (C1-C21) | 9 | 0 | 5 | 1 | 1 | 0 |
-| E. Devices and sharing (P1-P21) | 13 | 0 | 4 | 3 | 2 | 0 |
-| F/F2. Content sources (S1-S8) | 4 | 0 | 3 | 1 | 0 | 0 |
-| G/G2. Platform (X1-X20) | 10 | 0 | 8 | 2 | 0 | 0 |
-| F-series (Foliate) | 5 | 0 | 1 | 1 | 0 | 0 |
+| Status | 2026-11-13 | 2026-11-21 sample | 2026-11-22 full re-audit |
+|---|---|---|---|
+| DONE | 75 | 91 | **126** (R34 is REPLACED by per-book looks, counted apart) |
+| ENGINE ONLY | 3 | 1 | **0** |
+| PARTIAL | 64 | 58 | **46** |
+| MISSING | 31 | 23 | **2** (C7 PDF output, P21 remote reader control) |
+| DEFERRED | 3 | 3 | **3** (C4, P5, P13) |
+| REPLACED | 0 | 0 | 1 (R34) |
+| **Total rows** | 176 | 176 | 178 (R39b and the split C-rows are listed apart) |
+
+Closed since 2026-11-13 (a PARTIAL or MISSING row became DONE): R3, R14, R22, R25, R32, R41, R43, R45, R49, R58, R59, R60, R65, C10, C20, P19, P20, S5, S6, S8, X10, X12, X19, F4 (and the 2026-11-21 sample rows). MISSING left: C7, P21.
+
+| Section | DONE | PARTIAL | MISSING | DEFERRED | REPLACED |
+|---|---|---|---|---|---|
+| A. Reader (R1-R20, R65) | 17 | 4 | 0 | 0 | 0 |
+| A2. Reader additions (R21-R64) | 27 | 17 | 0 | 0 | 1 |
+| B. Library (L1-L13) | 12 | 1 | 0 | 0 | 0 |
+| B2. Library additions (L14-L38) | 16 | 9 | 0 | 0 | 0 |
+| D/D2. Conversion (C1-C21) | 11 | 3 | 1 | 1 | 0 |
+| E. Devices and sharing (P1-P21) | 16 | 4 | 1 | 2 | 0 |
+| F/F2. Content sources (S1-S8) | 7 | 1 | 0 | 0 | 0 |
+| G/G2. Platform (X1-X20) | 14 | 6 | 0 | 0 | 0 |
+| F-series (Foliate) | 6 | 1 | 0 | 0 | 0 |
 
 ## A. Reader (R1-R20, R65)
 
 | ID | Feature | Status | Where in the code | What is missing | Effort | Prio |
 |---|---|---|---|---|---|---|
-| R1 | Book CSS + user override layer | PARTIAL | `bookx-text::css`, `bookx-core::html`/`doc`, `canvas.rs`, `tweaks.rs` | indents, margins, floats, drop caps, italic/bold etc. done; colours/fonts/tables/positioning from book CSS only via Original colours | L | M |
+| R1 | Book CSS + user override layer | PARTIAL (2026-11-22 re-audit) | `bookx-text::css`, `bookx-core::html`/`doc`, `canvas.rs`, `tweaks.rs`; fonts and relative sizes from the book CSS plus per-book "book's own styling" / "book's fonts" switches (wave 11) | tables and positioned text from book CSS (tables still flatten to ` │ ` rows), hanging punctuation, `word-break`, emphasis dots, vertical tables and floats | L | M |
 | R2 | Hyphenation | DONE | `bookx-text::hyphenate`, `canvas.rs` |  |  |  |
-| R3 | Knuth-Plass, widows/orphans, drop caps, small caps | PARTIAL | `bookx-text::paragraph`, `canvas.rs` | widows/orphans control, small-caps synthesis | S | L |
+| R3 | Knuth-Plass, widows/orphans, drop caps, small caps | DONE (2026-11-22 re-audit) | `bookx-text::paragraph`, `canvas.rs`; `bookx-text::vertical::paginate_with` (widows/orphans 1 to 4, setting), `Style.small_caps` with Pango `font_scale` in `canvas.rs`/`doc.rs`/`html.rs` |  |  | L |
 | R4 | Vertical writing, RTL, ruby | DONE (2026-11-21 refresh) | vertical-rl/lr, text-orientation, tate-chu-yoko, kinsoku, ruby, vertical selection and highlights in `canvas.rs`, `bookx-text::vertical`; scenarios `vertical_layout`, `vertical_chapters`, `vertical_scroll_and_styles`, `vertical_read_aloud`, session `vertical_reading`; `docs/vertical-writing-plan.md` | hanging punctuation, `word-break`, emphasis dots, vertical tables and floats | L | M |
 | R5 | Footnote popups | DONE (was MISSING) | `src/footnotes.rs`, `ui/reader_extra.rs`, reader `Input::Link`; scenario `footnote_popup` |  | S | H |
 | R6 | Custom fonts per book / font manager | PARTIAL | `tweaks.rs` per-book font family | embedded fonts rendering, font manager | M | L |
@@ -47,31 +51,31 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | R11 | Reading statistics | DONE | `reading_stats.rs`, `goals.rs`, `ui/stats.rs` (goals, year calendar, review) |  | S | M |
 | R12 | Book map / page browser | DONE (was ENGINE ONLY) | `bookx-lookup::bookmap`, `ui/reader_map.rs`, reader menu *Book Map*, palette; scenario `book_map` | highlight positions on the strip are estimates (no stored fraction); no page thumbnails | M | M |
 | R13 | Tap zones, gestures, touch | DONE | `gestures.rs` | customisable gesture→action map (R36) | M | L |
-| R14 | Night mode + warmth schedule, e-ink | PARTIAL | `eink.rs`, schemes | warmth/auto-dark schedule (R60) | S | L |
+| R14 | Night mode + warmth schedule, e-ink | DONE (2026-11-22 re-audit) | `eink.rs`, schemes; `bookx-text::aids::NightSchedule` (evening warm tint, dark theme), `src/aids_prefs.rs`, Preferences → Reading; e-ink in `eink.rs` |  |  | L |
 | R15 | Status bar customisation | DONE (2026-11-13, enhancement 13) | `footer_stats.rs`, `ui/reader_footer.rs`: 15 items, order, presets, position, separator, size, opacity, per-book override; right click / Preferences → Reading → Footer | | | |
 | R16 | Reading-position sync (KOSync) | DONE | `kosync_sync.rs`, `ui/kosync.rs`, `bookx-serve` |  |  |  |
-| R17 | Fixed-layout / image books (CBZ, PDF) | PARTIAL | CBZ/CBT/CBC in `bookx-formats` read in the comic reader (wave 6); PDF pages in the PDF reader | CBR real RAR | L | M |
-| R18 | Media overlays, embedded audio/video | MISSING |  | SMIL playback | L | L |
+| R17 | Fixed-layout / image books (CBZ, PDF) | PARTIAL (2026-11-22 re-audit) | CBZ/CBT/CBC in `bookx-formats` read in the comic reader (wave 6); PDF pages in the PDF reader; CBR through the `unrar`/`7z` helper (`bookx-formats::rar`, `comic`), DJVU through `ddjvu` (`bookx-formats::djvu`) | real RAR5 and DjVu files were never tried (helper subprocesses, tested with fixtures only); PDF has its own reader | L | M |
+| R18 | Media overlays, embedded audio/video | PARTIAL (2026-11-22 re-audit) | `src/overlay_play.rs`, `src/narration.rs`: the reader plays a book's own EPUB 3 media-overlay narration (WAV) with the read-aloud card and highlight; the editor writes it (Add Narration, CE-422) | other audio codecs, embedded audio/video elements, narration made by other tools if not 16-bit PCM WAV | L | L |
 | R19 | Per-book settings profiles | DONE (was PARTIAL) | `reading_profiles.rs`, `ui/reader_profiles.rs`: a profile can be the book's own (pin); scenario `reading_profiles` |  | S | M |
 | R20 | Annotation export | DONE | `annotation_export.rs` (md, html, json, txt, Kindle clippings, Readwise payload, CSV); Anki (`bookx_lookup::anki`: .apkg, TSV, CSV, basic and cloze); Readwise upload (`readwise_sync.rs`) | Joplin, Obsidian templates; Anki / Readwise not tried against the real services | M | M |
-| R65 | Page-turn animation | MISSING |  | animated page curl/slide, setting | L | L |
+| R65 | Page-turn animation | DONE (2026-11-22 re-audit) | `bookx-text::aids::PageAnimation`, `ui/canvas.rs` (slide and fade; off for reduced motion and e-ink), Preferences → Reading; scenario in `ui-tests-reader-ux.sh` | no page curl |  | L |
 
 ## A2. Reader additions (R21-R64)
 
 | ID | Feature | Status | Where in the code | What is missing | Effort | Prio |
 |---|---|---|---|---|---|---|
 | R21 | Style tweaks (CSS snippets, user css, per book) | PARTIAL | `tweaks.rs`, `ui/reader_style.rs` | curated snippet catalogue by category | M | L |
-| R22 | Embedded styles / fonts toggles | PARTIAL | Preferences: use book's styling | embedded fonts toggle | S | L |
-| R23 | Text appearance controls | PARTIAL | Preferences, Style Tweaks (size, line, margins, font, justify) | weight, contrast, word spacing, kerning, hinting, page overlap, dpi | M | M |
+| R22 | Embedded styles / fonts toggles | DONE (2026-11-22 re-audit) | Preferences: use book's styling; per-book "book's own styling" and "book's fonts" switches (`ui/reader_style.rs`, `tweaks.rs`) |  |  | L |
+| R23 | Text appearance controls | PARTIAL (2026-11-22 re-audit) | Preferences, Style Tweaks (size, line, margins, font, justify); weight, contrast, word spacing and kerning tweaks (`tweaks.rs`, `bookx-text::typography`) | hinting, page overlap, dpi | M | M |
 | R24 | Page-numbering modes | PARTIAL | `bookx-text::pages`, `page_list.rs` (EPUB page-list to labels), footer shows *Page iv*, Go to… takes printed labels; scenario `reader_goto` | hidden flows; the page-list is read from the nav document only (NCX `pageList` is not) | M | M |
-| R25 | Skim slider with preview | PARTIAL | progress slider | chapter preview popover | S | L |
+| R25 | Skim slider with preview | DONE (2026-11-22 re-audit) | progress slider; `bookx_text::aids::skim_chapter`, skim preview in `ui/reader.rs`/`reader_aids.rs` |  |  | L |
 | R26 | Bookmarks, jump back/forward stack | DONE (was PARTIAL) | `jump_history.rs`, Back/Forward buttons, Alt+Left/Right, palette; scenario `reader_goto` |  | S | M |
 | R27 | Book map and page browser | DONE (was ENGINE ONLY) | as R12 | page thumbnails (strip of rendered pages) not done | M | M |
-| R28 | TOC tools (collapse, alt TOC, progress ticks) | PARTIAL | sidebar TOC | collapse/expand, ticks on progress bar | S | L |
-| R29 | Highlight modes (extend, adjust after creation) | PARTIAL | drag select, keyboard select | adjust handles, overlap picker, auto page-turn at edge | M | L |
+| R28 | TOC tools (collapse, alt TOC, progress ticks) | PARTIAL (2026-11-22 re-audit) | sidebar TOC; contents folding (`src/toc_fold.rs`, `ui/reader_side.rs`) | alternative TOC, ticks on the progress bar | S | L |
+| R29 | Highlight modes (extend, adjust after creation) | PARTIAL (2026-11-22 re-audit) | drag select, keyboard select; selection handles move a saved highlight (`ui/sel_handles.rs`, `src/selection_handles.rs`) | overlap picker, auto page-turn at the edge | M | L |
 | R30 | Highlight colours/styles | DONE | 5 colours, 4 styles | legend/filter by colour (F4) | S | L |
-| R31 | Editable highlight text, bookmark filters | PARTIAL (2026-11-21 refresh) | Notes view filters by kind (highlights, notes, bookmarks) in `ui/notes.rs` | editing the highlighted text itself | S | L |
-| R32 | Annotation export targets/services | PARTIAL | `annotation_export.rs`, `annotation_import.rs` (Kindle clippings, KOReader, Kobo, calibre), Readwise upload, Anki, Notes & Highlights window (`ui/notes.rs`) | Joplin | M | M |
+| R31 | Editable highlight text, bookmark filters | PARTIAL (2026-11-22 re-audit) | Notes view filters by kind (highlights, notes, bookmarks) in `ui/notes.rs` | editing the highlighted text itself | S | L |
+| R32 | Annotation export targets/services | DONE (2026-11-22 re-audit) | `annotation_export.rs`, `annotation_import.rs` (Kindle clippings, KOReader, Kobo, calibre), Readwise upload, Anki, Notes & Highlights window (`ui/notes.rs`); Joplin and Obsidian export added (`annotation_export.rs`) |  |  | M |
 | R33 | Status bar items | DONE (2026-11-21 refresh; same work as R15) | `footer_stats.rs`, `ui/reader_footer.rs` (Footer Statistics dialog and Preferences group) |  |  |  |
 | R34 | Reading profiles (named bundles, auto triggers) | REPLACED 2026-11-13 by automatic per-book looks (enh. 19) | `reading_profiles.rs` (`BookLooks`) - old: (Reading Profiles… window, export/import, per-book default) | auto triggers (time of day, language, device) | M | M |
 | R35 | Quick menu | DONE (2026-11-21 refresh) | the command palette (`palette.rs`, Ctrl+Shift+P in the editor, library and reader) covers it |  |  |  |
@@ -80,16 +84,16 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | R38 | Multiple dictionaries, lookup history, web templates | PARTIAL | `dictionaries.rs` | priority list UI, custom web lookup, history | S | L |
 | R39 | Vocabulary: auto-add, due list, flashcards | DONE | `ui/vocab.rs` |  |  |  |
 | R39b | Own vocabulary: terms with your own definition (no dictionary needed), marked in the text, Words list, glossary import/export, "My Vocabulary" dictionary | DONE (enhancements 32) | `bookx-lookup::{vocab,own,termmatch}`, `ui/vocab_*.rs`, `ui/reader_vocab.rs` | not in the catalogue or backups, no Ctrl+hover, no book-map entry | S | M |
-| R40 | Statistics detail (sessions, estimates, calendar) | PARTIAL | `ui/stats.rs` | calendar, export, per-book view | S | M |
-| R41 | Search in book | DONE | sidebar search, regex-less | whole word / case / regex options | S | L |
+| R40 | Statistics detail (sessions, estimates, calendar) | PARTIAL (2026-11-22 re-audit) | `ui/stats.rs` (year calendar via `goals::year_calendar`) | export of the statistics, per-book view | S | M |
+| R41 | Search in book | DONE (2026-11-22 re-audit) | sidebar search, regex-less; whole-word / case / regex options (`ui/reader_search.rs`) |  |  | L |
 | R42 | Reference mode (paper page numbers) | DONE (was MISSING) | `page_list.rs`, footer *Page N*, Go to… with printed labels; scenario `reader_goto` |  | S | L |
-| R43 | Keyboard link following | MISSING |  | link hints | S | L |
+| R43 | Keyboard link following | DONE (2026-11-22 re-audit) | `bookx_text::aids::hint_labels`/`match_hint`, `ui/reader_aids.rs`; scenario `reader_link_hints` |  |  | L |
 | R44 | Image zoom / viewer | DONE (was MISSING) | `ui/image_viewer.rs`, `image_view.rs`, canvas `on_image`; scenario `image_viewer` | inline images inside a line of text and pictures of fixed-layout books are not clickable | S | H |
-| R45 | Copy with citation template | MISSING |  |  | S | L |
+| R45 | Copy with citation template | DONE (2026-11-22 re-audit) | `bookx_text::aids::cite`, Ctrl+Shift+C, template in Preferences → Reading (`ui/citations.rs`, `reader_aids.rs`) |  |  | L |
 | R46 | Reading modes (scroll, spreads, max width) | PARTIAL | 1/2 column, continuous scroll | max-width setting, fixed-layout spreads | M | L |
 | R47 | Themes: custom, per book, texture | PARTIAL | light/sepia/dark/black, Custom colours, theme editor with import/export (`reader_themes.rs`, `ui/reader_profiles.rs`); scenario `reader_themes` | per-book theme, background image/texture | M | M |
 | R48 | RSVP speed reading | DONE (was ENGINE ONLY) | `rsvp_view.rs`, `ui/rsvp.rs`, reader menu and palette; scenario `speed_reading` | perception-expander lines | S | M |
-| R49 | Auto-turn page timer | MISSING |  |  | S | M |
+| R49 | Auto-turn page timer | DONE (2026-11-22 re-audit) | `bookx_text::aids::AutoTurn`, Preferences → Reading, `ui/reader_aids.rs` |  |  | M |
 | R50 | Read-aloud controls | DONE | `ui/reader_tts.rs` |  |  |  |
 | R51 | Fixed-layout EPUB | PARTIAL | single page per spine item | spreads, positioned text | L | L |
 | R52 | Comics/manga reader | PARTIAL (wave 6: reader DONE) | `crates/bookx-comic` + `ui/reader_comic.rs`: single, two-page and webtoon layouts, smart zoom, guided view, RTL per book, preloading with a memory budget, thumbnails, grey/e-ink, ComicInfo page types (`docs/comic-notes.md`) | next file in folder, real RAR, per-library direction, hardware e-ink check | L | M |
@@ -97,14 +101,14 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | R54 | Custom cover per book | PARTIAL | cover replace in edit dialog | page screenshot as cover | S | L |
 | R55 | Footnote popups configurable | DONE (was MISSING) | as R5; on/off in Preferences → Reading → Links | always/never only (no long-press mode) | S | H |
 | R56 | Japanese: vertical, ruby | DONE (2026-11-21 refresh) | see R4; Aozora novel session `vertical_aozora` | dictionary extensions for Japanese | L | M |
-| R57 | Per-book overrides (ignore CSS/metadata, reset data) | MISSING |  | library context entries | S | L |
-| R58 | Move to archive after finishing | MISSING |  |  | S | L |
-| R59 | Page-turn animation toggle, kinetic scroll | MISSING |  |  | S | L |
-| R60 | Warmth / auto night schedule | MISSING |  | time-based scheme switch | S | M |
-| R61 | Remote HTTP control of the reader | MISSING |  |  | M | L |
+| R57 | Per-book overrides (ignore CSS/metadata, reset data) | PARTIAL (2026-11-22 re-audit) | per-book "book's own styling" / "book's fonts" switches | library context entries (ignore metadata, reset data) | S | L |
+| R58 | Move to archive after finishing | DONE (2026-11-22 re-audit) | Archive shelf for finished books (`aids_prefs::should_archive`, off by default) |  |  | L |
+| R59 | Page-turn animation toggle, kinetic scroll | DONE (2026-11-22 re-audit) | as R65 (animation toggle); kinetic scroll not built |  |  | L |
+| R60 | Warmth / auto night schedule | DONE (2026-11-22 re-audit) | as R14 (`NightSchedule`) |  |  | M |
+| R61 | Remote HTTP control of the reader | PARTIAL (2026-11-22 re-audit) | Bluetooth page-turner keys (`bookx_text::aids::remote_map`, Preferences → Reading) | remote control over HTTP | M | L |
 | R62 | Built-in text editor for sidecar/CSS | DONE | covered by Bookx editor |  |  |  |
 | R63 | Reading goals, streaks, yearly review | DONE (was PARTIAL) | `goals.rs`, `ui/stats.rs`; scenario `reading_goals` |  | S | H |
-| R64 | Accessibility: screen reader, high contrast, dyslexia fonts | PARTIAL | `a11y.rs`, `ui/audit.rs`, OpenDyslexic option, e-ink high contrast, page text exposed to AT; **reading ruler / line focus (`reading_ruler.rs`, `ui/reading_ruler.rs`, Alt+Up/Down, Preferences → Reading; scenario `pain_ruler`, session `reading_ruler_keys`)** | reduced motion, image alt text | M | M |
+| R64 | Accessibility: screen reader, high contrast, dyslexia fonts | PARTIAL (2026-11-22 re-audit) | `a11y.rs`, `ui/audit.rs`, OpenDyslexic option, e-ink high contrast, page text exposed to AT; **reading ruler / line focus (`reading_ruler.rs`, `ui/reading_ruler.rs`, Alt+Up/Down, Preferences → Reading; scenario `pain_ruler`, session `reading_ruler_keys`)**; reduced motion is honoured (`gtk-enable-animations` in `canvas.rs`) | image alt text read by AT; popover menu names unverified | M | M |
 
 ## B. Library (L1-L13)
 
@@ -122,7 +126,7 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | L10 | Calibre import and export | DONE | `bookx-store::calibre`, `bookx-store::calibre_export` (wave 6: `export-calibre`, menu entry, verified with calibredb 9.15) | custom columns, reading state | M | L |
 | L11 | Multiple libraries, switcher | DONE (was PARTIAL) | `libraries.rs`, `ui/library_switcher.rs`, header button; scenario `library_switcher` |  | S | M |
 | L12 | Folder watcher | DONE (2026-11-21) | `ui/folder_watch.rs`: `gio::FileMonitor` on the import folder and its sub-folders plus a 60 s rescan, `InboxState.watch` (off by default), switch in Library Health; no `notify` crate |  | S | L |
-| L13 | Cover tools | PARTIAL (2026-11-20) | `bookx-sources::cover` generation/crop; edit dialog; **`cover_quality` grading, Health → Covers scan, larger covers offered as safe changes in the fetch review; `library covers`; scenario `pain_health`** | crop UI, extract from PDF, side-by-side candidates | M | L |
+| L13 | Cover tools | PARTIAL (2026-11-22 re-audit) | `bookx-sources::cover` generation/crop; edit dialog; **`cover_quality` grading, Health → Covers scan, larger covers offered as safe changes in the fetch review; `library covers`; scenario `pain_health`**; `src/library_cover.rs`: cover from the first page of a PDF, trim to 2:3 | interactive drag-to-crop dialog, side-by-side candidates | M | L |
 
 ## B2. Library additions (L14-L38)
 
@@ -167,12 +171,12 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | C7 | PDF output | MISSING |  | writer | L | M |
 | C8 | Heuristics | DONE | `bookx-convert::transforms` |  |  |  |
 | C9 | Device profiles | DONE | `bookx-convert::options` |  |  |  |
-| C10 | Batch convert queue + progress UI | PARTIAL | conversions run as jobs with progress and cancel (`jobs.rs`) | no queue limiting parallel conversions | M | M |
+| C10 | Batch convert queue + progress UI | DONE (2026-11-22 re-audit) | conversions run as jobs with progress and cancel (`jobs.rs`); `bookx-convert::queue` (at most N conversions at a time), jobs panel (`jobs.rs`) |  |  | M |
 | C11-C16 | Look and feel, heuristics, page setup, metadata step, debug | DONE | `bookx-convert` transforms | a UI for the option groups beyond presets | M | M |
-| C17 | Input formats Calibre accepts | PARTIAL | all but DJVU, PDF (agent), AZW4 (wrapper), real RAR; LIT excluded |  | L | L |
-| C18 | Output formats Calibre writes | PARTIAL | EPUB, KEPUB, AZW3, MOBI, DOCX, FB2, HTMLZ, TXTZ, RTF, PDB, PMLZ, RB, SNB, OEB, ZIP | PDF, LRF | L | M |
-| C19 | Comic input optimisation | PARTIAL | CBZ read | device-optimised image processing | M | L |
-| C20 | Per-format output options | PARTIAL | options struct + presets | UI | M | L |
+| C17 | Input formats Calibre accepts | PARTIAL (2026-11-22 re-audit) | all but DJVU, PDF (agent), AZW4 (wrapper), real RAR; LIT excluded; CBR (`unrar`/`7z`), DJVU (`ddjvu`), AZW4 (`azw4.rs`), LRF, CHM, TCR, PML, SNB, RB, PDB readers in `bookx-formats` | PDF reflow input is deferred (C4); real RAR/DjVu untested; LIT excluded | L | L |
+| C18 | Output formats Calibre writes | PARTIAL (2026-11-22 re-audit) | EPUB, KEPUB, AZW3, MOBI, DOCX, FB2, HTMLZ, TXTZ, RTF, PDB, PMLZ, RB, SNB, OEB, ZIP | PDF, LRF | L | M |
+| C19 | Comic input optimisation | PARTIAL (2026-11-22 re-audit) | CBZ read; CBZ/CBR read; comic converter options (`docs/comic-notes.md`) | device-optimised image processing (resize, grey, split spreads) on conversion | M | L |
+| C20 | Per-format output options | DONE (2026-11-22 re-audit) | options struct + presets; `ui/convert_options.rs`, `src/convert_prefs.rs` (per-format options dialog) |  |  | L |
 | C21 | Conversion presets | DONE | `bookx-convert` presets |  |  |  |
 
 ## E. Devices and sharing (P1-P21)
@@ -189,7 +193,7 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | P7 | MTP | PARTIAL | gvfs mounts | direct USB MTP | L | L |
 | P8 | Content server web UI | DONE | `bookx-serve::server`, `bookx-cli serve` |  |  |  |
 | P9 | WebDAV/cloud folder | DONE | `bookx-serve::webdav`, devices, backups | only tested against a fake server |  |  |
-| P10 | Content server: accounts, permissions, PWA | PARTIAL | one user/password, HTTPS | multiple users with permissions per library, reverse-proxy prefix, PWA | L | M |
+| P10 | Content server: accounts, permissions, PWA | PARTIAL (2026-11-22 re-audit) | one user/password, HTTPS; per-user accounts and guest collections (`bookx-serve::accounts`, CLI only), trusted proxy, allowed hosts and sub-path prefix (`ui/proxy_settings.rs`), PWA web client (`pwa.rs`) | accounts screen in Preferences (settings file and CLI only), PWA not run in a real browser | L | M |
 | P11 | OPDS search incl. content, pagination | DONE | `bookx-serve::opds` |  |  |  |
 | P12 | KOSync endpoints | DONE |  |  |  |  |
 | P13 | Calibre-plugin interop (KOReader) | DEFERRED | see P5 |  | M | L |
@@ -199,8 +203,8 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | P16 | Share: email, folder, LAN | DONE | Share Library, e-mail |  |  |  |
 | P17 | Remote file browser, cloud sync | PARTIAL | WebDAV device | FTP/SSH | M | L |
 | P18 | OPDS client with presets, auth | DONE (was MISSING) | as P4c: presets Gutenberg and Standard Ebooks, add catalogue with auth (password in keyring), search, format preference |  | M | H |
-| P19 | Wallabag / read-it-later sync | MISSING | read-later is local only | Wallabag API | M | L |
-| P20 | QR code share of library URL | MISSING |  |  | S | L |
+| P19 | Wallabag / read-it-later sync | DONE (2026-11-22 re-audit) | read-later is local only; `bookx-sources::wallabag`, `ui/wallabag.rs` (Add from the Web), scenario `wallabag_import`; tried against a loopback stub only |  |  | L |
+| P20 | QR code share of library URL | DONE (2026-11-22 re-audit) | `bookx-serve::qr` (own encoder), `ui/qr_dialog.rs` (Sync → QR code); scenario `sync_qr_code` |  |  | L |
 | P21 | Remote reader control (R61) | MISSING |  |  | S | L |
 
 ## F/F2. Content sources (S1-S8)
@@ -210,11 +214,11 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | S1 | Read-later (web article to EPUB) | DONE | `web_import.rs`, Add from the Web | queue/list UI of saved articles | S | L |
 | S2 | News/RSS to EPUB | DONE | `news.rs`, `ui/news.rs` |  |  |  |
 | S3 | Public-domain catalogues via OPDS | DONE (was MISSING) | as P4c |  | S | H |
-| S4 | News recipes (declarative, scheduling) | PARTIAL | feeds + schedule + keep-N; recipe model in `bookx-sources::recipe` | recipe editor UI (cleanup rules), per-recipe accounts | M | M |
-| S5 | RSS downloader per-feed settings | PARTIAL | OPML, per-feed switch | per-feed full-article option UI | S | L |
-| S6 | Metadata sources config and priorities | PARTIAL | `metadata_settings.rs`, merge by confidence | per-field priority UI, more sources | M | L |
+| S4 | News recipes (declarative, scheduling) | PARTIAL (2026-11-22 re-audit) | feeds + schedule + keep-N; recipe model in `bookx-sources::recipe` | recipe editor UI (cleanup rules), per-recipe accounts for paywalled feeds (not started, needs a design for where the secret lives) | M | M |
+| S5 | RSS downloader per-feed settings | DONE (2026-11-22 re-audit) | OPML, per-feed switch; `FeedSpec::full_article`, `news::split_feed_line` (`url full|summary`) |  |  | L |
+| S6 | Metadata sources config and priorities | DONE (2026-11-22 re-audit) | `metadata_settings.rs`, merge by confidence; `source_priority.rs`, `ui/source_settings.rs` (per-field priority), name-order toggle; scenario `sources_priority_ui` | Hardcover client has no screen |  | L |
 | S7 | Metadata read/write to files | DONE | `bookx-core::opf`, edit writes into EPUB | AZW3/PDF write-back | S | L |
-| S8 | Wikipedia article as book | MISSING | inline summary only |  | S | L |
+| S8 | Wikipedia article as book | DONE (2026-11-22 re-audit) | inline summary only; `bookx-sources::wikipedia`, `wikipedia:Title` in Add from the Web (`web_import.rs`) |  |  | L |
 
 ## G/G2. Platform (X1-X20)
 
@@ -229,16 +233,16 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | X7 | Flatpak and AppImage, update notice | PARTIAL | the Flatpak builds offline (`build-aux/flatpak.sh`, GNOME 50, espeak-ng module, cargo sources script) and its smoke tests pass; release/CI workflows; `make release-check`; see `docs/packaging-notes.md` | AppImage, update notice, Flathub submission; devices/voices/secrets not exercised in the sandbox | S | L |
 | X8 | Plugin API | DONE | = X3 |  |  |  |
 | X9 | User patches | DONE | `bookx-plugin::patch` |  |  |  |
-| X10 | Profiles/gestures/quick menu as config; import/export settings | MISSING |  |  | S | M |
+| X10 | Profiles/gestures/quick menu as config; import/export settings | DONE (2026-11-22 re-audit) | `src/settings_io.rs`, `ui/settings_io.rs` (Export/Import Settings in Preferences) |  |  | M |
 | X11 | Single searchable Preferences page | DONE | `ui/preferences.rs` with search and registry |  |  |  |
-| X12 | CLI tool coverage | PARTIAL | convert, meta, check, library, search, serve | catalog, fetch-news, polish, embed/subset-fonts, saved_searches, custom_columns | M | M |
+| X12 | CLI tool coverage | DONE (2026-11-22 re-audit) | convert, meta, check, library, search, serve; `bookx-cli`: `catalog`, `fetch-news`, `polish`, `fonts`, `library columns`, `library replace`, `library extras`, `backup`, `highlights`, `mcp`, `plugin` |  |  | M |
 | X13 | E-ink mode | DONE | `eink.rs` | not on hardware |  |  |
 | X14 | Keyboard-first + command palette | DONE | `palette.rs`, `ui/palette.rs` |  |  |  |
 | X15 | Offline-first principles | DONE | no telemetry; **offline mode switch and the list of connections (`privacy.rs`, Preferences → Privacy, wiki Privacy; tests in `bookx-sources/tests/offline.rs`, `bookx-tts/tests/offline.rs`, scenario `pain_offline`)** |  |  |  |
 | X16 | Release channels, deb/rpm | PARTIAL | Flatpak bundle, tarball (deterministic packing), `.deb`/`.rpm` metadata and jobs, `SHA256SUMS`, `CHANGELOG.md`, `release-check.sh` (workflow never run on GitHub; `cargo deb`/`generate-rpm` never run here) | binary reproducibility, signing, install tests on other distros | M | L |
 | X17 | Localization workflow | PARTIAL | as X6; RTL default direction for right-to-left languages (unit tested, no RTL catalogue ships); locale-aware numbers, plurals and some dates | live re-translation of open windows; Weblate project | M | H |
 | X18 | Performance harness extended | PARTIAL | budgets for open, search, import, conversion | scroll fps, memory ceiling | M | L |
-| X19 | Diagnostics: system info, debug log export, safe mode | PARTIAL (was MISSING) | `src/diagnostics.rs` with a unit-tested `redact`; About → Troubleshooting and *Copy Diagnostics* (About dialog, palette, `app.copy-diagnostics`); wiki Troubleshooting | debug log export, safe mode | S | M |
+| X19 | Diagnostics: system info, debug log export, safe mode | DONE (2026-11-22 re-audit) | `src/diagnostics.rs` with a unit-tested `redact`; About → Troubleshooting and *Copy Diagnostics* (About dialog, palette, `app.copy-diagnostics`); wiki Troubleshooting; `src/safe_mode.rs` (safe mode, `--safe-mode`), `src/debug_log.rs` (debug log export), `src/diagnostics.rs` |  |  | M |
 | X20 | `--doc`/`bookx://` links, MIME registration for all formats | DONE (links forwarded only via dev command) | `src/links.rs`, `app.open-uri`, second-process forwarding, desktop file with 16 media types + `x-scheme-handler/bookx`, `data/*.mime.xml`, `desktop_integration` tests, scenarios `uri_links` | `--doc`; a real launcher test | S | M |
 
 ## F-series (Foliate)
@@ -248,7 +252,7 @@ Effort S/M/L = rough size to finish the row. Priority H/M/L = my value ranking.
 | F1 | Reader sidebar tabs | DONE (redesigned 2026-11-13, enhancement 12 / bug 9) | book header (cover, title, author, Properties), Contents / Bookmarks / Notes as virtualised lists, notes with search + colour/style/note filters and per-highlight actions; `ui/reader_side.rs`, `side_notes.rs` |  |  |  |
 | F2 | Quick note | DONE |  |  |  |  |
 | F3 | Cross-reference preview | DONE (was MISSING) | as R5 |  | S | H |
-| F4 | Colour legend/filter of highlights | MISSING |  |  | S | L |
+| F4 | Colour legend/filter of highlights | DONE (2026-11-22 re-audit) | colour legend and filter in the Notes window (`ui/notes.rs`) |  |  | L |
 | F5 | Jump history | DONE (was PARTIAL) | = R26 |  | S | M |
 | F6 | Bookmark shortcut, last position bookmark | PARTIAL | Ctrl+B; position remembered | automatic bookmark | S | L |
 | F7 | Image zoom/pan | DONE (was MISSING) | = R44 |  | S | H |
@@ -267,7 +271,7 @@ move the counts.
 
 ## Top 15 gaps left (by value)
 
-1. **L3/L25 custom columns** (definitions, editing, display, `#col:` search, composite template columns). Touches the store schema, so it belongs with the catalogue/metadata work.
+1. ~~**L3/L25 custom columns**~~ done 2026-11-21 (wave 11); column colouring rules remain.
 2. ~~**L5/L29 collections and shelves UI**~~ done 2026-11-13 (ux-gaps).
 3. ~~**L36 / R36 keyboard shortcut customisation**~~ done 2026-11-13 (ux-gaps); R36 gesture actions remain.
 4. ~~**R44/F7 image viewer**~~ done 2026-11-13 (ux-gaps).
@@ -281,10 +285,9 @@ move the counts.
 12. **S4 news recipe editor UI** (cleanup rules, accounts).
 13. **P10 content server accounts and permissions**, reverse-proxy prefix.
 14. ~~**R24/R42 real page numbers from `page-list`**~~ done 2026-11-13 (ux-gaps); hidden flows and NCX `pageList` remain.
-15. **X19 debug-log export and safe mode.** (System information, MIME registration and `bookx://` links are done.)
+15. ~~**X19 debug-log export and safe mode.**~~ done in wave 11 (`safe_mode.rs`, `debug_log.rs`).
 
-Runners-up: R49 auto-turn, R60 warmth schedule, R33 status bar items, R65 page-turn animation, L14 add by ISBN / empty
-record, L21 marked books, P5 Calibre wireless (plan only, see `docs/calibre-wireless-device-plan.md`; judged larger
+Runners-up (R49, R60, R33, R65, L14 ISBN/empty record, L21 are done; what is left): P5 Calibre wireless (plan only, see `docs/calibre-wireless-device-plan.md`; judged larger
 than a day), C7 PDF output, C4/R17 PDF (PDF agent).
 
 ## Sync umbrella (2026-11-20, syncui)

@@ -30,7 +30,8 @@ pub struct Loaded {
 /// Opens every StarDict dictionary below `root` (`root` itself, its sub-folders and their
 /// sub-folders). Order is alphabetical, so priority is predictable.
 pub fn load(root: &Path) -> Loaded {
-    let dirs = dictionary_dirs(root);
+    // alphabetical, then the order chosen in Preferences → Dictionaries (`priority.txt`)
+    let dirs = crate::lookup_prefs::apply_order(dictionary_dirs(root), root);
     let mut set = DictionarySet::new();
     let mut failed = Vec::new();
     for d in dirs {
@@ -209,6 +210,26 @@ mod tests {
         let loaded = load(&root);
         assert!(loaded.failed.is_empty(), "{:?}", loaded.failed);
         assert_eq!(loaded.set.names(), vec!["First", "Second", "Third"]);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn the_saved_priority_decides_which_dictionary_answers_first() {
+        let root = tmp("priority");
+        write_dict(&root.join("a-dict"), "First", &[("word", "from a")]);
+        write_dict(&root.join("b-dict"), "Second", &[("word", "from b")]);
+        let first_answer = |r: &Path| {
+            let l = load(r);
+            (
+                l.set.names(),
+                l.set.lookup_all("word").results[0].dictionary.clone(),
+            )
+        };
+        assert_eq!(first_answer(&root).1, "First");
+        crate::lookup_prefs::move_dictionary(&root, "b-dict", -1).unwrap();
+        let (names, answer) = first_answer(&root);
+        assert_eq!(names, vec!["Second", "First"]);
+        assert_eq!(answer, "Second", "the dictionary moved up answers first");
         let _ = fs::remove_dir_all(root);
     }
 

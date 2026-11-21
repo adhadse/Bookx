@@ -205,7 +205,7 @@ ahead_off) use `koannot:push|pushdel|progress` (real HTTP PUTs, no merge call), 
 **Limits / not done.** The merge itself still runs on the main thread (as before); 410 annotations arriving at once is a visible pause,
 a handful is a few milliseconds. The e-reader side is not real time: plugin 0.3.1 sends ~30 s after a change. A device whose KOSync
 document id is the file-name hash (not the partial MD5) is not matched for the position banner. The comic reader only gets the position
-banner (comics have no highlights or bookmarks in the library). No real GNOME session scenario was added (the session runner was busy);
+banner (comics have no highlights or bookmarks in the library). Real GNOME session scenarios were added on 2026-11-22 (`live_sync_highlight`, `live_sync_ahead_banner`, `sync_activity_window` in `build-aux/session/scenarios_wave11.py`);
 untested with a real Kobo. Strings added (no po edits): see the change description.
 
 ## Not verified / caveats

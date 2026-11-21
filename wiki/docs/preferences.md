@@ -66,8 +66,13 @@ for e-ink; see [E-ink mode and touch](reading.md#e-ink-mode-and-touch).
 The Library page starts with the **Library folder** and its **Change** button, then the banner, then *Library files*:
 **Where books are kept** (the folder layout inside the library, with a **Path template** such as
 `{author}/{series}/{title}` when you pick the template layout; changing it moves the files after a preview) and a row,
-*Backups, check, trash and history*, that opens [Library Health](library.md#library-health). *Metadata lookup* closes the
-page.
+*Backups, check, trash and history*, that opens [Library Health](library.md#library-health). *Metadata lookup* and
+*Metadata sources* follow, and then **Hardcover**: paste your API token (from your Hardcover account settings; it is kept in
+the system keyring, not in the settings file), press **Test Connection** to check it, and **Import** to read your
+Want to Read, Currently Reading, Read and Did Not Finish lists and your ratings. A preview says how many books would change
+(*3 books would change*) and nothing is written before you press **Apply**; one **Undo** takes the whole import back.
+Bookx only reads from Hardcover, it never changes your account. Details on
+[Reading Trackers](library.md#reading-trackers).
 
 ### Reading
 
@@ -98,8 +103,16 @@ name. Below the checklist come *What Bookx sync does*, USB device sync and *OPDS
 off by default; the library banner's **Sync** button only syncs once. The last row, **Advanced**, is collapsed; open it for
 the server address, port and firewall, HTTPS and certificates, how books are matched, the status lines, the request limits,
 the link to the reverse-proxy guide, the Requirements table (which device needs what, over which connection) and the link
-to Privacy and offline mode. Main menu → **Sync** shows the task/status view and follows these switches at once. See
+to Privacy and offline mode. Inside Advanced, **Library server accounts** opens the list of logins of the library server:
+give each person their own name and password and the collections (tags) they may see, and allow guests to read chosen
+collections ([details](devices-and-sharing.md#accounts-for-the-library-server)). Main menu → **Sync** shows the task/status view and follows these switches at once. See
 [Bookx sync](progress-sync.md) and [Which sync do I need?](devices-and-sharing.md#which-sync-do-i-need).
+
+### Dictionaries
+
+Preferences → **Dictionaries** lists the dictionaries Bookx installed, **Dictionary order** (**Move Up** and **Move Down**:
+the first dictionary that knows a word answers first), your own **Web look-up sites** and the **Look-up history**. They
+are described under [Dictionaries](reading.md#dictionaries).
 
 ### Editor
 
@@ -205,6 +218,15 @@ Preferences list unless another place is named.
 - Library → **Continue reading banner**: *Compact* or *Hidden* to leave room for the books.
 
 ## Questions and answers
+
+??? question "How do I give someone their own login to my library server?"
+    **Preferences → Sync → Advanced → Library server accounts → Manage → Add Account.** Type a name, a password twice
+    and choose the collections (tags) the person may see; none chosen means all books. The password is stored only as a
+    salted hash. A running server restarts at once so the account works right away.
+
+??? question "How do I bring my Hardcover reading status into Bookx?"
+    **Preferences → Library → Hardcover**: paste the API token, press **Import**, check the preview and press
+    **Apply**. See above, and [Reading Trackers](library.md#reading-trackers) for the CSV way.
 
 ??? question "How do I start the Bookx sync server (and create the account, install the KOReader plugin, test it)?"
     Open **Preferences → Sync**. The **Setup checklist** has four steps. Step 1, **Turn on the Bookx sync server**: switch
@@ -341,7 +363,7 @@ Preferences list unless another place is named.
     page. See [Keyboard and small windows](#keyboard-and-small-windows).
 
 ??? question "How do I reset all settings?"
-    There is no reset button for everything. Close Bookx and rename the settings file, `~/.config/Bookx/config.json`
+    There is no reset button for everything. Close Bookx and rename the settings file, `~/.config/bookx/config.json`
     (see [Install](install.md)); Bookx starts with its defaults the next time. Your books, catalogue, backups and
     keyboard shortcuts (`shortcuts.json`) are in other places and stay. Only parts have buttons: *Reset All Shortcuts*
     for keys, **Clear** for caches.

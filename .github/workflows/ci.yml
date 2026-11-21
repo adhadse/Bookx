@@ -33,6 +33,8 @@ jobs:
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
       - name: Shell syntax of the test scripts
         run: for f in build-aux/*.sh; do bash -n "$f"; done
+      - name: Flathub update script (Python unit tests)
+        run: python3 -m unittest discover -s build-aux/tests -v
 
   koreader-plugin:
     name: KOReader plugin (Lua tests, LuaJIT and Lua 5.4)
@@ -200,14 +202,14 @@ jobs:
     needs: check
     timeout-minutes: 120
     container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
       options: --privileged
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Static checks
         run: CHECK_ONLY=1 build-aux/flatpak.sh
       # TODO(security): pin to a commit SHA once a release is chosen; `master` is the only ref the action documents
-      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6.8
         with:
           bundle: bookx.flatpak
           manifest-path: build-aux/com.adhadse.Bookx.json

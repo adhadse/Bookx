@@ -458,6 +458,22 @@ A look-up uses **StarDict dictionaries on your computer**, so it works offline. 
   `download.wikdict.com` (WikDict). Nothing about you or your book is sent except what any download sends (your
   address, the file name). With `BOOKX_OFFLINE` set (or the switch off) no dictionary is downloaded.
 
+### Dictionary order, web sites and history
+
+Preferences → **Dictionaries** also has three groups for the look-up:
+
+- **Dictionary order**: every installed dictionary with **Move Up** and **Move Down**. The first one that knows the word
+  answers first, then the others. The order is kept in a small file (`priority.txt`) in the dictionaries folder; a
+  dictionary you add later is asked last.
+- **Web look-up sites**: the look-up popover has a **Web** menu with Wiktionary, a web search and Wikipedia, and with your
+  own sites. **Add Site** takes a *name* and an *address* in which `{word}` stands for the selected text, for example
+  `https://dictionary.example.com/search?q={word}`. Only `http` and `https` addresses are accepted, the site name must be
+  written out (the text you select never chooses the site), and the text is encoded before it is added. The site opens in
+  your browser; Bookx sends nothing itself.
+- **Look-up history**: the words you looked up, newest first (up to 200), kept on this computer. **Show** (or **Web → History** in the
+  popover) lists them; the bin removes one word, **Clear** empties the list and a message offers **Undo**. Switch
+  *Keep a history of look-ups* off to stop recording.
+
 ## Annotations and highlights
 
 <figure markdown="1">
@@ -751,13 +767,25 @@ combining.
       are drawn for horizontal text only.
     - Fixed layout: no two-page spreads and no absolutely positioned text.
     - The reader draws its own text, so the book's CSS is applied only as far as listed under *the book's own
-      styling*. The page itself is not exposed to screen readers yet.
+      styling*. The page text is exposed to screen readers (see [Accessibility](accessibility.md)), but the words inside pictures and the alternative text of images are not read.
     - [Read aloud](read-aloud.md) works on Linux only; natural voices need `espeak-ng` and a command-line audio player.
     - Touch gestures and e-ink mode have been tested with simulated input, not on a real touch or e-ink screen.
     - There is no cloud sync of reading progress; the only sync is [Bookx sync](progress-sync.md),
       which you switch on yourself.
 
 ## Questions and answers
+
+??? question "How do I make a dictionary answer first?"
+    Preferences → **Dictionaries** → *Dictionary order*: **Move Up** on the dictionary you want first. The order is
+    remembered; a dictionary you add later is asked last.
+
+??? question "How do I look a word up on a web site I choose?"
+    Preferences → Dictionaries → *Web look-up sites* → **Add Site**, with an address such as
+    `https://dictionary.example.com/search?q={word}`. In the look-up popover the **Web** menu then lists it.
+
+??? question "Where is the list of words I looked up, and how do I clear it?"
+    Preferences → Dictionaries → *Look-up history* → **Show**, or **Web → History** in the look-up popover. **Clear**
+    empties it and a message offers **Undo**; switch *Keep a history of look-ups* off to stop recording.
 
 ??? question "How do I search for a whole word or with a pattern?"
     Open the search (++ctrl+f++) and use the buttons under the field: **Words** for whole words, **Aa** to match case and

@@ -561,12 +561,22 @@ impl Library {
         ids.iter().filter_map(|id| by_id.get(id).copied()).collect()
     }
 
+    /// The place of book `id`. Books are appended with rising ids, so a binary search finds it; a list that
+    /// is not in id order (or an id that is not there) falls back to the scan, so the answer is always right.
+    fn position_of(&self, id: u64) -> Option<usize> {
+        let at = self.books.partition_point(|b| b.id < id);
+        if self.books.get(at).is_some_and(|b| b.id == id) {
+            return Some(at);
+        }
+        self.books.iter().position(|b| b.id == id)
+    }
+
     pub fn get(&self, id: u64) -> Option<&Book> {
-        self.books.iter().find(|b| b.id == id)
+        self.position_of(id).map(|i| &self.books[i])
     }
 
     pub fn get_mut(&mut self, id: u64) -> Option<&mut Book> {
-        self.books.iter_mut().find(|b| b.id == id)
+        self.position_of(id).map(|i| &mut self.books[i])
     }
 
     pub fn book_path(&self, b: &Book) -> PathBuf {

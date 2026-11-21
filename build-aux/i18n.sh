@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Rewrites po/bookx.pot from the strings marked with tr("…") / N_("…") in src/, then reports what
 # each language file still lacks. New language: copy po/bookx.pot to po/<code>.po, translate it, and
-# add it to LANGUAGES in src/i18n.rs. Compiled .mo files (msgfmt, Weblate) in a locale directory
+# add it to the table in build.rs. Compiled .mo files (msgfmt, Weblate) in a locale directory
 # (BOOKX_LOCALE_DIR, /usr/share/locale, /app/share/locale) override the embedded ones.
 set -euo pipefail
 cd "$(dirname "$0")/.."

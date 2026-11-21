@@ -9,6 +9,13 @@ It is part of **Bookx sync (extended KOSync)**: Bookx’s built-in server plus a
 copy to the device. Open the main menu (the ☰ button in the library's header bar) and choose **Sync** for the overview,
 or choose **Preferences** and its **Sync** page for the setup; see [Bookx sync](progress-sync.md).
 
+!!! warning "Hardware tested so far"
+    The KOReader plugin has been run against a simulated KOReader and replayed with the real notes files of one Kobo
+    (KOReader 2026.07.2). A first sync from a real device with the current plugin (0.3.1) is not confirmed yet, and
+    only that one Kobo has been looked at. Live updates in the open reader (a highlight or a position from the device)
+    are tested with a simulated device. Keep your highlights on the device as they are: Bookx never deletes or lowers
+    anything there.
+
 ## Set it up
 
 Open the main menu → **Preferences** → **Sync** and follow the **Setup checklist** at the top of the page:

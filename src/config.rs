@@ -322,6 +322,10 @@ pub struct Config {
     pub readwise_token: String,
     /// Wallabag and other web accounts (the secrets are kept in the keyring, see `secret_fields`).
     pub web_accounts: crate::web_accounts::WebAccounts,
+    /// User names for paywalled news sites (the passwords are in the keyring, see `secret_fields`).
+    pub news_sites: Vec<crate::news_sites::SiteAccount>,
+    /// Own web look-up sites and the history switch (Preferences → Dictionaries).
+    pub lookup: crate::lookup_prefs::LookupPrefs,
     /// Which metadata source wins for which field.
     pub source_priority: crate::source_priority::SourcePriority,
     /// Notes & Highlights: which kind of entry is listed (`all`, `highlights`, `notes`, `bookmarks`).
@@ -442,6 +446,8 @@ impl Default for Config {
             kosync: crate::kosync_sync::KoSyncPrefs::default(),
             readwise_token: String::new(),
             web_accounts: Default::default(),
+            news_sites: Vec::new(),
+            lookup: Default::default(),
             source_priority: Default::default(),
             notes_kind: "all".into(),
             device_list_view: false,
@@ -656,6 +662,9 @@ impl Config {
         }
         for c in self.opds_catalogs.iter_mut() {
             v.push((crate::opds_browse::password_key(&c.id), &mut c.password));
+        }
+        for a in self.news_sites.iter_mut() {
+            v.push((crate::news_sites::secret_key(&a.host), &mut a.password));
         }
         v
     }
@@ -884,6 +893,12 @@ mod secret_tests {
         c.tts.server.api_key = "tts-key".into();
         c.device.webdav.password = "dav-pw".into();
         c.health.backup.passphrase = "backup-phrase".into();
+        c.web_accounts.hardcover_token = "hc-token-sentinel".into();
+        c.news_sites.push(crate::news_sites::SiteAccount {
+            host: "news.example.com".into(),
+            user: "reader".into(),
+            password: "site-pw-sentinel".into(),
+        });
         c.health
             .backup
             .destinations
@@ -910,6 +925,8 @@ mod secret_tests {
             "dav-pw",
             "backup-phrase",
             "nc-pw",
+            "hc-token-sentinel",
+            "site-pw-sentinel",
         ] {
             assert!(!text.contains(secret), "{secret} is in the file");
         }
@@ -926,6 +943,9 @@ mod secret_tests {
         assert_eq!(c.health.backup.passphrase, "backup-phrase");
         assert_eq!(c.health.backup.destinations[0].password, "nc-pw");
         assert_eq!(c.device.webdav.password, "dav-pw");
+        assert_eq!(c.web_accounts.hardcover_token, "hc-token-sentinel");
+        assert_eq!(c.news_sites[0].password, "site-pw-sentinel");
+        assert_eq!(c.news_sites[0].user, "reader");
     }
 
     #[test]
@@ -955,7 +975,9 @@ mod secret_tests {
         assert!(c.share.password.is_empty(), "and nothing comes back");
     }
 
-    const SENTINELS: [&str; 8] = [
+    const SENTINELS: [&str; 10] = [
+        "hc-token-sentinel",
+        "site-pw-sentinel",
         "share-pw",
         "mail-pw",
         "kosync-pw",

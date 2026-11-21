@@ -5,7 +5,9 @@
 #   BUNDLE=1 build-aux/flatpak.sh     also write bookx.flatpak next to the repository
 #   CHECK_ONLY=1 build-aux/flatpak.sh only the static checks (manifest, desktop file, metainfo, sources)
 #
-# Needs flatpak-builder plus the GNOME 50 Platform and SDK and the rust-stable extension (25.08)
+#   REVIEWED_LOCALES=1 build-aux/flatpak.sh   build like Flathub: English plus reviewed languages only
+#
+# Needs flatpak-builder plus the GNOME 51 Platform and SDK and the rust-stable extension (26.08)
 # installed; nothing is installed for you. Without flatpak-builder only the static checks run and
 # the script says so. Build files live in $FLATPAK_BUILD_DIR (default ~/.cache/bookx-flatpak).
 set -euo pipefail
@@ -48,6 +50,18 @@ if [ "${CHECK_ONLY:-0}" = 1 ]; then echo "checks passed (CHECK_ONLY)"; exit 0; f
 if ! command -v flatpak-builder >/dev/null; then
     echo "flatpak-builder is not installed: only the static checks ran, nothing was built." >&2
     exit 0
+fi
+
+# REVIEWED_LOCALES=1: build the way the Flathub manifest does, without the machine-translated languages
+# (cargo feature reviewed-locales-only, po/reviewed-locales.txt). The manifest stays untouched; a copy is used.
+if [ "${REVIEWED_LOCALES:-0}" = 1 ]; then
+    REVIEWED_MANIFEST=build-aux/.reviewed-locales.com.adhadse.Bookx.json
+    trap 'rm -f "$REVIEWED_MANIFEST"' EXIT
+    sed -e 's|-p bookx -p bookx-cli"|-p bookx -p bookx-cli --features bookx/reviewed-locales-only"|' \
+        -e 's|TARGET_DIR=target/release"|TARGET_DIR=target/release CARGO_FEATURES=bookx/reviewed-locales-only"|' \
+        "$MANIFEST" > "$REVIEWED_MANIFEST"
+    grep -q reviewed-locales-only "$REVIEWED_MANIFEST" || { echo "could not patch the manifest" >&2; exit 1; }
+    MANIFEST=$REVIEWED_MANIFEST
 fi
 
 step "Building (this compiles the whole workspace in release mode)"

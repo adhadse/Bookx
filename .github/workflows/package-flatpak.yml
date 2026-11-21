@@ -28,7 +28,7 @@ jobs:
     name: Flatpak bundle (x86_64)
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
       options: --privileged
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -38,7 +38,7 @@ jobs:
         run: |
           desktop-file-validate data/com.adhadse.Bookx.desktop
           appstreamcli validate --no-net --pedantic data/com.adhadse.Bookx.metainfo.xml
-      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6.8
         with:
           bundle: bookx.flatpak
           manifest-path: build-aux/com.adhadse.Bookx.json

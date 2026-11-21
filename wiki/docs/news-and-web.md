@@ -72,6 +72,21 @@ Open **News Subscriptions** to have Bookx build a news book for you on a schedul
    for weekly, a day.
 5. Choose **issues to keep**. Older issues are removed from the library after a download.
 
+To change more than the basics, **press a subscription** in the list: **Edit Feeds** opens one row per feed (section title,
+address, *Full articles* / *Feed text only* / the setting of the subscription, its own article limit, and a switch to
+leave it out), and below them the filters: **Keep only articles matching** and **Skip articles matching** (patterns tried on
+the title and the address), **Keep only these parts** and **Remove these parts** (CSS selectors for full articles, to cut
+ads and share bars), the *language code*, the *title of the issue* (`{title}` and `{date}`) and *Include images*. A pattern
+or selector that is not valid is refused with the reason; nothing is saved until you press **Save**. The schedule stays under *Edit*.
+
+### Sites with a login
+
+Some sites only give their feed or articles to a signed-in reader. In the News Subscriptions window, **Sites with a login** →
+**Manage** → **Add Site** saves a *site address*, a *user name* and a *password*. Bookx signs in with HTTP Basic authentication
+**only to that exact site** (not to its sub-domains, not to other sites a feed points to) and **only over https**. The password
+goes to the system keyring, never to the settings file; **Remove** has an *Undo*. Sites that use a login form or cookies (most
+paywalls) are not supported, only sites that accept a user name and password in the request.
+
 Each download becomes a new book tagged *News*. *Download Now* and *Download All Due* are in the window. A failed
 download is shown in the list and waits for the next slot instead of retrying every minute.
 
@@ -80,7 +95,8 @@ Subscriptions are stored in `news.json` next to the settings file.
 !!! note "Limitations"
     - Scheduled downloads only run **while Bookx is open**. There is no background service.
     - Downloads need network access.
-    - There are no scripted "recipes" like Calibre's; each subscription is a list of feeds.
+    - There are no scripted "recipes" like Calibre's; each subscription is a list of feeds with filters.
+    - Logins work for HTTP Basic sites only, not for login forms or cookies.
     - Only the newest *Issues to keep* issues are kept; the older ones are removed by Bookx.
 
 ## Questions and answers
@@ -92,6 +108,15 @@ Subscriptions are stored in `news.json` next to the settings file.
 ??? question "How do I get a daily news book?"
     **Library** menu → *Subscribe to News* → *Add*. Enter the feed address, choose *Daily* and a time, and Bookx builds
     a new book each day while it is running. Each issue is tagged *News*.
+
+??? question "How do I leave sponsored articles out of a news book?"
+    Press the subscription in the News Subscriptions window → **Skip articles matching** → one pattern per line, for
+    example `sponsored`. The pattern is tried on the title and the address of each article. For parts inside an article
+    (an ad box) use **Remove these parts** with a CSS selector such as `.ad`.
+
+??? question "Can Bookx read a news site that needs a login?"
+    If the site accepts a user name and password (HTTP Basic), yes: **Sites with a login** in the News Subscriptions window.
+    The login is sent to that site only. Sites with a sign-in page or cookies do not work.
 
 ??? question "Why did my news not download overnight?"
     Scheduled downloads only run while Bookx is open. Open it and press *Download All Due* in the News Subscriptions

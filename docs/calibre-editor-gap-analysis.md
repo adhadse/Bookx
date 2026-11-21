@@ -23,13 +23,13 @@ Effort: S (< 1 day), M (1-3 days), L (about a week), XL (more than a week or new
 
 | Status | Count |
 |---|---|
-| DONE | 254 |
-| PARTIAL | 4 |
-| MISSING | 2 |
-| NOT PLANNED | 5 |
+| DONE | 255 |
+| PARTIAL | 3 (CE-357 cursor width follows the desktop, CE-401 beautify on open, CE-402 per-family preview fonts and lines above the sync point) |
+| MISSING | 0 |
+| NOT PLANNED | 7 (CE-016, 038, 228, 229, 261, 281, 404, all by decision) |
 | **Total rows** | **265** |
 
-(Counted from the row statuses on 2026-11-20; the priority and "top 15 gaps" lists below are the research-time record.)
+(Recounted by script from the row statuses on 2026-11-22, all PARTIAL and MISSING rows re-checked in the tree; the priority and "top 15 gaps" lists below are the research-time record.)
 
 By priority:
 
@@ -88,7 +88,7 @@ Row format: `ID | Calibre feature (name in the manual, one-line behaviour) | Boo
 | CE-013 | Open another book / open an unzipped folder as a book / new book (Ctrl+O, File menu) | DONE | Book menu: Open Another Book… (library list, Ctrl+O), Open an Unzipped Folder…, New Book… (`editor_tools::archive_from_folder`); the window switches to the book, asking before it drops unsaved changes | none | M | P3 |
 | CE-014 | Import an HTML or DOCX file as a new book (File menu) | DONE | Book menu: Import HTML, DOCX or Text as a New Book… (any format the library imports) | none | M | P3 |
 | CE-015 | Restore state of previously edited book (open tabs, positions) | DONE | Open tabs, the selected tab and the caret of each file are stored per book (`editor-state.json`) and restored; switch in the Book menu | Scroll position is not kept; can be switched off | M | P3 |
-| CE-016 | Window layout: dockable panels, nested docks, toolbars chosen by the user, toolbar icon size | MISSING | fixed `adw::OverlaySplitView` | **not planned**: dockable panels do not fit an adaptive libadwaita window (and are untestable headless); the layout stays fixed | - | P3 |
+| CE-016 | Window layout: dockable panels, nested docks, toolbars chosen by the user, toolbar icon size | NOT PLANNED | fixed `adw::OverlaySplitView` | **not planned**: dockable panels do not fit an adaptive libadwaita window (and are untestable headless); the layout stays fixed | - | P3 |
 | CE-017 | User manual (F1) | DONE | F1 and Book menu: Help on Editing opens https://bookx.adhadse.com/editing/ (`gtk::UriLauncher`) | none | S | P3 |
 | CE-018 | Command line `ebook-edit [opts] [path] [name ...]` with `--select-text`, `--detach` | DONE | `bookx --edit FILE [name…] [--select-text TEXT]` and `bookx-cli edit …` (adds the file to the library if needed, opens the editor, opens the named files, selects the text) (`editor_state::parse_edit_args`) | Unit tested, and the scenario `editor_x_edit_cli` goes through the same entry point (dev hook `edit-file:` builds the same request as the command line). `--detach` is not needed: the editor is a window of the app | M | P3 |
 | CE-019 | Editor plugins (Tool class: `create_action`, `register_shortcut`; Boss API: `edit_file`, `show_editor`, `add_savepoint`, `rewind_savepoint`, `save_book`, ...) | DONE | ABI v2 (additive) in `bookx-plugin`: kind `editor-action`, `[[action]]` (label, group, suggested shortcut), permissions `editor.read` / `editor.write` shown in Preferences, one host import `editor_call` with `list_files`, `read_file`, `write_file`, `add_file`, `rename_file` (references follow), `current_file`, `get_selection`, `replace_selection`, `insert_at_cursor`, `get_metadata`, `set_metadata`, `add_checkpoint`, `show_message`; limits per action; the host adapter `src/ui/editor/plugin_host.rs` runs the action on a copy of the book inside `run_op` (one checkpoint "Before: <label>", undoable, nothing changes when it fails); Tools → Plugins and the command palette; example `examples/plugins/trim-whitespace` (Rust, wasm32) | `crates/bookx-plugin/tests/editor_plugin.rs` (permission denial, escape attempts, limits, runaway loop, checkpoint order, real Rust example), `editor.rs`/`manifest.rs` unit tests, `plugin_host` unit tests, scenarios `editor_plugin_trim`, `editor_plugin_off`. Not done: running an action on the selection with GTK undo grouping (selection edits are applied to the file text and undone with the checkpoint), a plugin store, plugin-defined dialogs, keyboard shortcuts are only suggested | XL | P3 |
@@ -115,7 +115,7 @@ Row format: `ID | Calibre feature (name in the manual, one-line behaviour) | Boo
 | CE-035 | Export a file out of the book (Export) | DONE | ⋯ menu, Export Selected… (save dialog for one file, folder for several) | none | S | P2 |
 | CE-036 | Replace a file with another file; links updated if the name changes | DONE | Files menu: Replace with File… (name field; links follow when the name changes) | none | M | P2 |
 | CE-037 | Export all selected files (choose a folder) | DONE | same entry, folder dialog, `files::export_files` numbers clashes | none | S | P3 |
-| CE-038 | Copy selected files to another editor instance / paste from other editor instance | MISSING | not planned: Calibre’s copy and paste between editor instances needs a shared clipboard format; Bookx exports and adds files (Export Selected…, Add Files…) instead | - | M | P3 |
+| CE-038 | Copy selected files to another editor instance / paste from other editor instance | NOT PLANNED | not planned: Calibre’s copy and paste between editor instances needs a shared clipboard format; Bookx exports and adds files (Export Selected…, Add Files…) instead | - | M | P3 |
 | CE-039 | New file (images/fonts/HTML/CSS...) dialog: import a resource or create a blank HTML/CSS by name; option to auto-link stylesheets into new HTML; templates for new files | DONE | New File… lists the user’s templates (`.xhtml`, `.html`, `.css` in the `editor-templates` folder of the configuration; `{title}` is replaced) | none | M | P1 |
 | CE-040 | Import files into book (several at once) | DONE | `Input::AddFiles` (multiple selection) | none | - | P2 |
 | CE-041 | Link stylesheets: pick CSS files (drag to order), optionally remove existing links, insert `<link>` into all selected HTML files | DONE | ⋯ menu, Link Stylesheets… (`files::link_stylesheets`; checked list in the given order, optional removal of existing links, idempotent) | no drag-to-reorder of the stylesheet list | M | P2 |

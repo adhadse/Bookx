@@ -244,6 +244,50 @@ fn books_for_ids_keeps_order_and_is_linear() {
     std::fs::remove_dir_all(dir).ok();
 }
 
+#[test]
+fn a_get_per_selected_book_is_not_quadratic() {
+    // Select All on 100 000 books: the details panel, the shelves and the devices ask for every selected
+    // book by id; `get` used to scan the whole list for each (10^10 steps)
+    let dir = tempdir("get-per-id");
+    let mut lib = Library::in_memory(&dir).unwrap();
+    lib.books = (0..100_000).map(synthetic_book).collect();
+    let ids: Vec<u64> = lib.books.iter().map(|b| b.id).collect();
+    let (n, took) = timed(|| ids.iter().filter(|id| lib.get(**id).is_some()).count());
+    assert_eq!(n, 100_000);
+    check("get for 100 000 ids", took, budget(100));
+    let (n, took) = timed(|| {
+        let mut n = 0;
+        for id in &ids {
+            if let Some(b) = lib.get_mut(*id) {
+                b.progress = 0.5;
+                n += 1;
+            }
+        }
+        n
+    });
+    assert_eq!(n, 100_000);
+    check("get_mut for 100 000 ids", took, budget(100));
+    std::fs::remove_dir_all(dir).ok();
+}
+
+#[test]
+fn get_finds_books_in_any_order_and_misses_cleanly() {
+    let dir = tempdir("get-order");
+    let mut lib = Library::in_memory(&dir).unwrap();
+    lib.books = (0..50).map(synthetic_book).collect();
+    let ids: Vec<u64> = lib.books.iter().map(|b| b.id).collect();
+    lib.books.remove(10); // a deleted book leaves a gap
+    assert!(lib.get(ids[10]).is_none());
+    assert_eq!(lib.get(ids[11]).map(|b| b.id), Some(ids[11]));
+    lib.books.reverse(); // not in id order: the scan answers
+    for id in ids.iter().filter(|id| **id != ids[10]) {
+        assert_eq!(lib.get(*id).map(|b| b.id), Some(*id));
+        assert_eq!(lib.get_mut(*id).map(|b| b.id), Some(*id));
+    }
+    assert!(lib.get(u64::MAX).is_none());
+    std::fs::remove_dir_all(dir).ok();
+}
+
 /// A book like `build-aux/make-big-epub.py OUT 20000`: 20 files of one long line each, a nested EPUB 3
 /// navigation document with `entries` entries.
 fn big_toc_epub(entries: usize) -> Vec<u8> {
