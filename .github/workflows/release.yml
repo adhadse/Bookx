@@ -96,7 +96,7 @@ jobs:
           cd dist
           sha256sum $(ls | grep -v -e '\.sha256$' -e '^SHA256SUMS$') > SHA256SUMS
           cat SHA256SUMS
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: dist/*
           generate_release_notes: true
