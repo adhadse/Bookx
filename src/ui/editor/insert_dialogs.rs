@@ -15,7 +15,7 @@ use bookx_editing::fuzzy;
 const MAX_THUMBS: usize = 300;
 
 fn dialog_shell(title: &str) -> (adw::Dialog, gtk::Box, gtk::Button) {
-    let dialog = adw::Dialog::new();
+    let dialog = crate::ui::dialog_toast::new_dialog();
     dialog.set_title(title);
     dialog.set_content_width(520);
     dialog.set_content_height(520);

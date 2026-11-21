@@ -300,6 +300,91 @@ pub fn load(lib_root: &Path, b: &Book, data: &Path) -> Result<Loaded> {
     Ok(Loaded { book, root, source })
 }
 
+/// The chapters of an e-book for [`bookx_audio::link`]: one per spine item, titled from the table
+/// of contents (the first entry that points into the item) and weighted by the size of its text.
+pub fn text_chapters(book: &crate::core::book::OpenBook) -> Vec<bookx_audio::link::TextChapter> {
+    let weights = book.spine_weights();
+    let mut titles = vec![String::new(); weights.len()];
+    fn walk(
+        book: &crate::core::book::OpenBook,
+        entries: &[crate::core::toc::TocEntry],
+        titles: &mut [String],
+    ) {
+        for e in entries {
+            if let Some((i, _)) = book.locate(&e.href) {
+                if let Some(t) = titles.get_mut(i) {
+                    if t.is_empty() {
+                        *t = e.title.clone();
+                    }
+                }
+            }
+            walk(book, &e.children, titles);
+        }
+    }
+    walk(book, &book.toc(), &mut titles);
+    weights
+        .into_iter()
+        .zip(titles)
+        .map(|(weight, title)| bookx_audio::link::TextChapter { title, weight })
+        .collect()
+}
+
+/// Where the listener should start when the reader of `book` is at `pos`.
+pub fn ebook_to_audio_ms(
+    book: &crate::core::book::OpenBook,
+    pos: ReadPos,
+    audio: &AudioBook,
+) -> u64 {
+    bookx_audio::link::text_to_audio(&text_chapters(book), pos.spine, pos.frac, audio)
+}
+
+/// Where in `book` the listener at `ms` is.
+pub fn audio_to_ebook(book: &crate::core::book::OpenBook, audio: &AudioBook, ms: u64) -> ReadPos {
+    let (spine, frac) = bookx_audio::link::audio_to_text(audio, ms, &text_chapters(book));
+    ReadPos { spine, frac }
+}
+
+/// "Continue in audiobook": moves the saved listening position of the e-book `id` to where the
+/// reader is and returns it (milliseconds). The player then opens there.
+pub fn continue_in_audiobook(lib: &Library, id: u64, data: &Path) -> Result<u64> {
+    let b = lib.get(id).context("no such book")?;
+    let pos = b.position.context("this book has not been opened yet")?;
+    let loaded = load(&lib.root, b, data)?;
+    let ebook = lib.open_book(id)?;
+    let ms = ebook_to_audio_ms(&ebook, pos, &loaded.book);
+    let path = state_file(data, &loaded.source);
+    let mut st = State::load(&path);
+    st.position_ms = ms;
+    st.updated = Utc::now().timestamp();
+    st.save(&path)?;
+    Ok(ms)
+}
+
+/// "Continue reading": moves the reading place of the e-book `id` to where the listener is.
+pub fn continue_reading(lib: &mut Library, id: u64, data: &Path) -> Result<ReadPos> {
+    let (pos, share) = {
+        let b = lib.get(id).context("no such book")?;
+        let loaded = load(&lib.root, b, data)?;
+        let st = State::load(&state_file(data, &loaded.source));
+        let ebook = lib.open_book(id)?;
+        let pos = audio_to_ebook(&ebook, &loaded.book, st.position_ms);
+        let weights = ebook.spine_weights();
+        let total: f64 = weights.iter().sum();
+        let before: f64 = weights.iter().take(pos.spine).sum();
+        let here = weights.get(pos.spine).copied().unwrap_or(0.0) * pos.frac;
+        (
+            pos,
+            if total > 0.0 {
+                (before + here) / total
+            } else {
+                0.0
+            },
+        )
+    };
+    lib.set_progress(id, pos, share);
+    Ok(pos)
+}
+
 /// What the catalogue should show after the listener moved.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Progress {
@@ -739,6 +824,91 @@ mod tests {
     }
 
     #[test]
+    fn the_reading_place_and_the_listening_place_follow_each_other() {
+        let (mut l, _) = lib();
+        let data = tmp();
+        let src = folder(&[10, 30]);
+        let p = prepare(&src, &data).unwrap();
+        let source = p.source_file.clone().unwrap();
+        let aid = match l.commit_import(p, false).unwrap() {
+            crate::core::library::AddOutcome::Added(id) => id,
+            _ => panic!("duplicate"),
+        };
+        after_import(&mut l, aid, &source, &data).unwrap();
+        let loaded = load(&l.root, l.get(aid).unwrap(), &data).unwrap();
+        let titles: Vec<String> = loaded
+            .book
+            .chapters
+            .iter()
+            .map(|c| c.title.clone())
+            .collect();
+        // an e-book whose chapters carry the same titles
+        let chapters: Vec<crate::core::convert::Chapter> = titles
+            .iter()
+            .map(|t| crate::core::convert::Chapter {
+                title: t.clone(),
+                body: format!("<p>{}</p>", "word ".repeat(100)),
+            })
+            .collect();
+        let md = Metadata {
+            title: "Tale".into(),
+            ..Default::default()
+        };
+        let ebook = crate::core::book::OpenBook::from_archive(crate::core::convert::create_epub(
+            &md, &chapters, None,
+        ))
+        .unwrap();
+        let tc = text_chapters(&ebook);
+        assert_eq!(tc.len(), 2);
+        assert_eq!(tc[1].title, titles[1]);
+        // halfway through the second chapter of the text is halfway through the second chapter of the audio
+        let ms = ebook_to_audio_ms(
+            &ebook,
+            ReadPos {
+                spine: 1,
+                frac: 0.5,
+            },
+            &loaded.book,
+        );
+        assert_eq!(ms, 10_000 + 15_000);
+        let back = audio_to_ebook(&ebook, &loaded.book, ms);
+        assert_eq!(back.spine, 1);
+        assert!((back.frac - 0.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn continuing_in_the_audiobook_writes_the_state_the_player_opens_with() {
+        let (mut l, _) = lib();
+        let data = tmp();
+        let src = folder(&[10, 30]);
+        let p = prepare(&src, &data).unwrap();
+        let source = p.source_file.clone().unwrap();
+        let aid = match l.commit_import(p, false).unwrap() {
+            crate::core::library::AddOutcome::Added(id) => id,
+            _ => panic!("duplicate"),
+        };
+        after_import(&mut l, aid, &source, &data).unwrap();
+        // no reading place yet: an error that says so, nothing written
+        l.get_mut(aid).unwrap().position = None;
+        assert!(continue_in_audiobook(&l, aid, &data).is_err());
+        l.set_progress(
+            aid,
+            ReadPos {
+                spine: 0,
+                frac: 0.5,
+            },
+            0.1,
+        );
+        let ms = continue_in_audiobook(&l, aid, &data).unwrap();
+        assert!(ms > 0);
+        let st = State::load(&state_file(&data, &source));
+        assert_eq!(st.position_ms, ms);
+        // and back: the reading place follows the listening place
+        let pos = continue_reading(&mut l, aid, &data).unwrap();
+        assert_eq!(l.get(aid).unwrap().position, Some(pos));
+    }
+
+    #[test]
     fn an_ebook_with_a_linked_audiobook_is_not_own() {
         let mut b = crate::core::library::Book {
             id: 1,
@@ -760,6 +930,8 @@ mod tests {
                 label: String::new(),
             }],
             drm: String::new(),
+            custom: Default::default(),
+            marked: false,
         };
         assert!(is_audiobook(&b) && !is_own(&b));
         assert_eq!(

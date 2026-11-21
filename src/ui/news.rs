@@ -258,7 +258,7 @@ fn edit(parent: &adw::Dialog, ctx: Ctx, existing: Option<Subscription>, done: Rc
     let feeds_group = adw::PreferencesGroup::new();
     feeds_group.set_title(&tr("Feed addresses"));
     feeds_group.set_description(Some(&tr(
-        "One address per line. Start a line with # to switch that feed off.",
+        "One address per line. Start a line with # to switch that feed off. Add the word full after an address to download that feed's articles in full, or summary to use only the feed text.",
     )));
     let opml_btn = gtk::Button::with_label(&tr("Import OPML"));
     opml_btn.set_valign(gtk::Align::Center);
@@ -396,7 +396,7 @@ fn edit(parent: &adw::Dialog, ctx: Ctx, existing: Option<Subscription>, done: Rc
             let chooser = gtk::FileDialog::new();
             chooser.set_title(&tr("Import OPML"));
             let filter = gtk::FileFilter::new();
-            filter.set_name(Some("OPML files"));
+            filter.set_name(Some(&tr("OPML files")));
             filter.add_pattern("*.opml");
             filter.add_pattern("*.xml");
             let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();

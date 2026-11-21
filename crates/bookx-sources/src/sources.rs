@@ -880,6 +880,32 @@ pub enum Field {
     Cover,
 }
 
+impl Field {
+    pub const ALL: [Field; 9] = [
+        Field::Title,
+        Field::Authors,
+        Field::Publisher,
+        Field::Published,
+        Field::Description,
+        Field::Tags,
+        Field::Language,
+        Field::Series,
+        Field::Cover,
+    ];
+
+    /// The stable name used in settings (`"description"`).
+    pub fn key(self) -> &'static str {
+        field_key(self)
+    }
+
+    pub fn from_key(k: &str) -> Option<Field> {
+        Field::ALL.into_iter().find(|f| f.key() == k)
+    }
+}
+
+/// The ids of the built-in sources, in their default order.
+pub const SOURCE_IDS: [&str; 3] = [OpenLibrary::ID, GoogleBooks::ID, Wikidata::ID];
+
 fn field_key(f: Field) -> &'static str {
     match f {
         Field::Title => "title",
@@ -902,6 +928,33 @@ pub struct FieldPriority {
 }
 
 impl FieldPriority {
+    /// The user's choices (`field key` → source ids, first is preferred) on top of `self`. Unknown
+    /// fields and unknown source ids are ignored; a field with no valid source keeps `self`'s order.
+    pub fn overlay(mut self, user: &std::collections::BTreeMap<String, Vec<String>>) -> Self {
+        for (k, ids) in user {
+            let Some(f) = Field::from_key(k) else {
+                continue;
+            };
+            let ids: Vec<String> = ids
+                .iter()
+                .filter(|i| SOURCE_IDS.contains(&i.as_str()))
+                .cloned()
+                .collect();
+            if !ids.is_empty() {
+                self.map.insert(f, ids);
+            }
+        }
+        self
+    }
+
+    /// The first source of the order set for `field`, if any.
+    pub fn preferred(&self, field: Field) -> Option<&str> {
+        self.map
+            .get(&field)
+            .and_then(|l| l.first())
+            .map(String::as_str)
+    }
+
     pub fn prefer(mut self, field: Field, sources: &[&str]) -> Self {
         self.map
             .insert(field, sources.iter().map(|s| s.to_string()).collect());
@@ -1038,14 +1091,19 @@ impl SourceSet {
 
     /// Open Library, Google Books and Wikidata over one fetcher, in that order, with Google
     /// preferred for descriptions and Open Library for tags.
+    /// The built-in field order of [`standard`](Self::standard).
+    pub fn standard_priority() -> FieldPriority {
+        FieldPriority::default()
+            .prefer(Field::Description, &[GoogleBooks::ID, OpenLibrary::ID])
+            .prefer(Field::Series, &[Wikidata::ID, OpenLibrary::ID])
+    }
+
     pub fn standard(fetcher: Arc<dyn Fetcher>) -> Self {
         let mut s = SourceSet::new(fetcher.clone());
         s.add(Box::new(OpenLibrary::new(fetcher.clone())));
         s.add(Box::new(GoogleBooks::new(fetcher.clone(), None)));
         s.add(Box::new(Wikidata::new(fetcher)));
-        s.priority = FieldPriority::default()
-            .prefer(Field::Description, &[GoogleBooks::ID, OpenLibrary::ID])
-            .prefer(Field::Series, &[Wikidata::ID, OpenLibrary::ID]);
+        s.priority = Self::standard_priority();
         s
     }
 
@@ -2298,6 +2356,25 @@ mod tests {
             },
         );
         assert!(nothing.is_ok());
+    }
+
+    #[test]
+    fn user_priority_overlays_the_defaults_and_ignores_nonsense() {
+        let mut user = std::collections::BTreeMap::new();
+        user.insert("description".to_string(), vec!["openlibrary".to_string()]);
+        user.insert("tags".to_string(), vec!["nosuchsource".to_string()]);
+        user.insert("nosuchfield".to_string(), vec!["google".to_string()]);
+        let p = SourceSet::standard_priority().overlay(&user);
+        assert_eq!(p.preferred(Field::Description), Some("openlibrary"));
+        assert_eq!(p.preferred(Field::Series), Some("wikidata"), "default kept");
+        assert_eq!(
+            p.preferred(Field::Tags),
+            None,
+            "an invalid choice is dropped"
+        );
+        for f in Field::ALL {
+            assert_eq!(Field::from_key(f.key()), Some(f));
+        }
     }
 
     #[test]

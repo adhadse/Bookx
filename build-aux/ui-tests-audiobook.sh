@@ -128,3 +128,14 @@ scenario audio_a11y_icons "audio:add=$AUD/Tale,audio:open=3,wait:600,a11y-audit:
 
 scenario audio_narrow_900x600 "audio:add=$AUD/Tale,audio:open=3,wait:600,quit" '
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "the player opens in a 900x600 window without GTK warnings" $?'
+
+# one place in the e-book and its audiobook: the listening place becomes a reading place and back
+# (chapter titles that match are anchors, the rest is percent; book 1 is a sample e-book)
+scenario audio_one_place "audio:link=1:$AUD/Tale,audio:continue-listening=1,audio:open=1,wait:500,audio:seek=30000,wait:300,audio:close,wait:900,audio:continue-reading=1,audio:continue-listening=1,quit" '
+    has "^audio: linked id=1"; check "audio is linked to an e-book" $?
+    has "^audio: continue-listening failed: .*not been opened"; check "an e-book that was never opened has no place to continue from (and nothing is written)" $?
+    has "^audio: continue-reading spine=[0-9]+ frac=[0-9.]+"; check "the listening place maps to a place in the e-book" $?
+    MS=$(grep "^audio: continue-listening ms=" <<<"$OUT" | sed -E "s/.*ms=([0-9]+).*/\1/")
+    [ "${MS:-0}" -ge 27000 ] && [ "${MS:-0}" -le 33000 ]; rc=$?; check "and back: the listening place after the round trip is where it was (ms=$MS of 30000)" $rc
+    audio_book "$LIB" 1 "b[\"position\"] is not None and b[\"progress\"] > 0.2"; check "the e-book shows the progress of the listening" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'

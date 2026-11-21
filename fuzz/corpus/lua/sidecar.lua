@@ -1,0 +1,1 @@
+return { ["highlight"] = { [1] = { ["text"] = "hi", ["pos0"] = "a" } }, ["percent_finished"] = 0.5, ["stats"]={["title"]="T"} }

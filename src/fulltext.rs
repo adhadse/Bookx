@@ -156,6 +156,17 @@ impl FullText {
         Some(done)
     }
 
+    /// Forgets every indexed text; the caller starts indexing again (`Shared::start_indexing`).
+    /// Returns how many books had text indexed.
+    pub fn clear(&self) -> Result<usize> {
+        self.store.clear_text_index()
+    }
+
+    /// Whether an indexing run is going right now.
+    pub fn is_running(&self) -> bool {
+        self.busy.load(Ordering::SeqCst)
+    }
+
     pub fn indexed_books(&self) -> usize {
         self.store.indexed_text_count()
     }
@@ -216,6 +227,8 @@ mod tests {
             formats: vec![],
             resources: vec![],
             drm: String::new(),
+            custom: Default::default(),
+            marked: false,
         }
     }
 

@@ -96,6 +96,7 @@ pub fn resolve(link: &Link, lib: &Library) -> Option<u64> {
 }
 
 /// The links among command line arguments (`bookx bookx://open?id=3`).
+#[cfg(test)]
 pub fn from_args(args: &[String]) -> Vec<String> {
     args.iter().filter(|a| is_link(a)).cloned().collect()
 }

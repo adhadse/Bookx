@@ -21,6 +21,7 @@ use bookx_core::query::Query;
 use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use serde_json::json;
 
+use crate::accounts::{self, Access, Account};
 use crate::annotation_sync::{self, AnnotationSync};
 use crate::devices::sanitize_file_name;
 use crate::http::{
@@ -72,6 +73,43 @@ pub struct ServerConfig {
     pub limits: Limits,
     /// Serve HTTPS with this configuration (see [`net::tls_config`]); plain HTTP when `None`.
     pub tls: Option<Arc<rustls::ServerConfig>>,
+    /// Host names besides IP addresses, single-label and `.local` names that may appear in the
+    /// `Host` header (the public name behind a reverse proxy, a `.lan` name). Starts from
+    /// `$BOOKX_ALLOWED_HOSTS` and the machine's host name; see [`crate::hostguard`].
+    pub allowed_hosts: Vec<String>,
+    /// The sub-path a reverse proxy publishes the server under (`/books`), no trailing slash,
+    /// empty at the root. Links in the web page and the OPDS feeds start with it; requests may
+    /// arrive with or without it (a proxy may keep or strip it). The `/bookx` sync routes need no
+    /// setting: the device URL is `https://host/books/bookx`.
+    pub public_prefix: String,
+    /// Logins with their own password and the collections they may see (see [`crate::accounts`]).
+    pub accounts: Vec<Account>,
+    /// Collections a visitor without a login may read; `None` means no guest access.
+    pub guest: Option<Vec<String>>,
+}
+
+/// Normalises a user-typed prefix to `/name` or `/a/b` (`"books/"` becomes `/books`); `None` for
+/// something that is not a plain path (spaces, `..`, `?`, `#`, a scheme).
+pub fn clean_public_prefix(s: &str) -> Option<String> {
+    let t = s.trim().trim_matches('/');
+    if t.is_empty() {
+        return Some(String::new());
+    }
+    let ok = t.split('/').all(|seg| {
+        !seg.is_empty()
+            && seg != "."
+            && seg != ".."
+            && seg
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'~'))
+    });
+    // the fixed routes must stay reachable
+    ok.then(|| format!("/{t}")).filter(|p| {
+        !matches!(
+            p.as_str(),
+            "/bookx" | "/opds" | "/download" | "/cover" | "/healthcheck"
+        )
+    })
 }
 
 impl ServerConfig {
@@ -89,6 +127,10 @@ impl ServerConfig {
             threads: 8,
             limits: Limits::default(),
             tls: None,
+            allowed_hosts: crate::hostguard::default_allowed_hosts(),
+            public_prefix: String::new(),
+            accounts: Vec::new(),
+            guest: None,
         }
     }
 }
@@ -150,6 +192,11 @@ fn unauthorized() -> Response {
 
 /// Renders the HTML front page (everything user-controlled is escaped).
 pub fn render_index(title: &str, q: &str, books: &[&Book], total: usize) -> String {
+    render_index_at("", title, q, books, total)
+}
+
+/// [`render_index`] for a server published under `base` (see [`ServerConfig::public_prefix`]).
+pub fn render_index_at(base: &str, title: &str, q: &str, books: &[&Book], total: usize) -> String {
     let mut s = String::new();
     s.push_str("<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">");
     s.push_str("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
@@ -158,10 +205,14 @@ pub fn render_index(title: &str, q: &str, books: &[&Book], total: usize) -> Stri
     s.push_str("</head><body>");
     s.push_str(&format!("<h1>{}</h1>", escape(title)));
     s.push_str(&format!(
-        "<form action=\"/\" method=\"get\"><input type=\"search\" name=\"q\" value=\"{}\" placeholder=\"Search\"> <button type=\"submit\">Search</button></form>",
+        "<form action=\"{}/\" method=\"get\"><input type=\"search\" name=\"q\" value=\"{}\" placeholder=\"Search\"> <button type=\"submit\">Search</button></form>",
+        escape(base),
         escape(q)
     ));
-    s.push_str("<p><a href=\"/opds\">OPDS catalogue</a></p>");
+    s.push_str(&format!(
+        "<p><a href=\"{0}/opds\">OPDS catalogue</a> · <a href=\"{0}/app/\">App</a></p>",
+        escape(base)
+    ));
     if total > books.len() {
         s.push_str(&format!(
             "<p>Showing {} of {} books.</p>",
@@ -180,12 +231,12 @@ pub fn render_index(title: &str, q: &str, books: &[&Book], total: usize) -> Stri
         if b.cover.is_some() {
             s.push_str(&format!(
                 "<img src=\"{}\" alt=\"\">",
-                escape(&opds::thumbnail_href(b.id))
+                escape(&format!("{base}{}", opds::thumbnail_href(b.id)))
             ));
         }
         s.push_str(&format!(
             "<a href=\"{}\">{}</a> <small>{}</small>",
-            escape(&opds::download_href(b.id)),
+            escape(&format!("{base}{}", opds::download_href(b.id))),
             escape(if b.meta.title.trim().is_empty() {
                 "Untitled"
             } else {
@@ -308,17 +359,62 @@ fn route_index(cfg: &ServerConfig, snap: &LibrarySnapshot, req: &Request) -> Res
     v.sort_by_key(|b| b.meta.title.to_lowercase());
     let total = v.len();
     v.truncate(INDEX_LIMIT);
-    Response::html(200, render_index(&cfg.title, &q, &v, total))
-        .with_header("X-Content-Type-Options", "nosniff")
-        .with_header(
-            "Content-Security-Policy",
-            "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self'",
-        )
+    Response::html(
+        200,
+        render_index_at(&cfg.public_prefix, &cfg.title, &q, &v, total),
+    )
+    .with_header("X-Content-Type-Options", "nosniff")
+    .with_header(
+        "Content-Security-Policy",
+        "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self'",
+    )
 }
 
 fn ensure_header(resp: &mut Response, name: &str, value: &str) {
     if resp.header(name).is_none() {
         resp.headers.push((name.into(), value.into()));
+    }
+}
+
+impl ServerConfig {
+    /// Whether anybody has to log in (or is limited as a guest).
+    pub fn secured(&self) -> bool {
+        !self.users.is_empty() || !self.accounts.is_empty() || self.guest.is_some()
+    }
+}
+
+/// What the request may see, or `None` when it must log in. Presented credentials that are wrong
+/// are never turned into guest access.
+fn access_of(cfg: &ServerConfig, req: &Request) -> Option<Access> {
+    if !cfg.secured() {
+        return Some(Access::All);
+    }
+    let header = req.header("authorization");
+    if !cfg.users.is_empty() && check_auth(&cfg.users, header) {
+        return Some(Access::All);
+    }
+    if let Some(a) = accounts::login(&cfg.accounts, header) {
+        return Some(Access::of_collections(&a.collections));
+    }
+    match (&cfg.guest, header) {
+        (Some(g), None) if req.method == "GET" || req.method == "HEAD" => {
+            Some(Access::of_collections(g)).filter(|a| *a != Access::All)
+        }
+        _ => None,
+    }
+}
+
+/// `/books/opds` becomes `/opds` for the prefix `/books` (`/books` alone becomes `/`); `None` when
+/// the path does not start with the prefix as a whole segment, or there is no prefix.
+fn strip_public_prefix(prefix: &str, path: &str) -> Option<String> {
+    if prefix.is_empty() {
+        return None;
+    }
+    let rest = path.strip_prefix(prefix)?;
+    match rest {
+        "" => Some("/".into()),
+        r if r.starts_with('/') => Some(r.to_string()),
+        _ => None,
     }
 }
 
@@ -328,8 +424,18 @@ fn ensure_header(resp: &mut Response, name: &str, value: &str) {
 /// but `/healthcheck` also carries `Cache-Control: no-store` so credentials-protected content is
 /// not kept by browsers or proxies.
 pub fn handle(cfg: &ServerConfig, req: &Request) -> Response {
-    let mut resp = route(cfg, req);
-    if !cfg.users.is_empty() && req.path != "/healthcheck" {
+    let mut resp = match crate::hostguard::check(req, &cfg.allowed_hosts) {
+        Some(refused) => refused,
+        None => match strip_public_prefix(&cfg.public_prefix, &req.path) {
+            Some(path) => {
+                let mut inner = req.clone();
+                inner.path = path;
+                route(cfg, &inner)
+            }
+            None => route(cfg, req),
+        },
+    };
+    if cfg.secured() && req.path != "/healthcheck" {
         ensure_header(&mut resp, "Cache-Control", "no-store");
     }
     ensure_header(&mut resp, "X-Content-Type-Options", "nosniff");
@@ -348,23 +454,58 @@ pub fn strip_sync_prefix(path: &str) -> Option<&str> {
     (rest.is_empty() || rest.starts_with('/')).then_some(rest)
 }
 
-fn route(cfg: &ServerConfig, req: &Request) -> Response {
-    let path_only_kosync =
-        strip_sync_prefix(&req.path).is_some_and(|p| KoSync::owns(p) || annotation_sync::owns(p));
-    let is_health = req.path == "/healthcheck";
-    if !cfg.users.is_empty()
-        && !is_health
-        && !path_only_kosync
-        && !check_auth(&cfg.users, req.header("authorization"))
-    {
-        return unauthorized();
+/// `GET /bookx/info`: what this server speaks, so the KOReader plugin can say "server too old" or
+/// "plugin too old" instead of failing in the middle of a sync. No login is needed and it carries only
+/// protocol numbers and which parts are switched on (nothing about users, books or the version of Bookx).
+fn sync_info(cfg: &ServerConfig, req: &Request) -> Response {
+    if req.method != "GET" && req.method != "HEAD" {
+        return error(405, "Method not allowed").with_header("Allow", "GET, HEAD");
     }
+    if cfg.kosync.is_none() {
+        return error(404, "Not found");
+    }
+    Response::json(
+        200,
+        &json!({
+            "name": "bookx",
+            "protocol": annotation_sync::PROTOCOL,
+            "min_plugin_protocol": annotation_sync::MIN_PLUGIN_PROTOCOL,
+            "progress": true,
+            "annotations": cfg.annotations.is_some(),
+        }),
+    )
+}
+
+fn route(cfg: &ServerConfig, req: &Request) -> Response {
+    if crate::pwa::owns(&req.path) {
+        // the page needs the login; the files a browser fetches without credentials do not
+        if !crate::pwa::is_public(&req.path) && access_of(cfg, req).is_none() {
+            return unauthorized();
+        }
+        return crate::pwa::serve(req, &format!("{}/", cfg.public_prefix));
+    }
+    let is_info = strip_sync_prefix(&req.path) == Some("/info");
+    let path_only_kosync = is_info
+        || strip_sync_prefix(&req.path)
+            .is_some_and(|p| KoSync::owns(p) || annotation_sync::owns(p));
+    let is_health = req.path == "/healthcheck";
+    let access = if is_health || path_only_kosync {
+        Access::All
+    } else {
+        match access_of(cfg, req) {
+            Some(a) => a,
+            None => return unauthorized(),
+        }
+    };
     let is_read = req.method == "GET" || req.method == "HEAD";
     if cfg.read_only && !is_read {
         return error(405, "Server is read-only").with_header("Allow", "GET, HEAD");
     }
     if is_health {
         return Response::json(200, &json!({"state": "OK"}));
+    }
+    if is_info {
+        return sync_info(cfg, req);
     }
     if path_only_kosync {
         let rel = strip_sync_prefix(&req.path).unwrap_or_default().to_string();
@@ -394,13 +535,18 @@ fn route(cfg: &ServerConfig, req: &Request) -> Response {
         return error(400, "Bad request");
     };
     let segs: Vec<&str> = segs.iter().map(|s| s.as_str()).collect();
-    let snap = (cfg.library)();
+    let mut snap = (cfg.library)();
+    if access != Access::All {
+        snap.books.retain(|b| access.allows(b));
+    }
     match segs.as_slice() {
         [] => route_index(cfg, &snap, req),
         ["opds", rest @ ..] => {
             let ocfg = OpdsConfig {
                 title: cfg.title.clone(),
                 page_size: cfg.page_size,
+                prefix: format!("{}/opds", cfg.public_prefix),
+                base: cfg.public_prefix.clone(),
                 ..OpdsConfig::default()
             };
             let rest: Vec<String> = rest.iter().map(|s| s.to_string()).collect();
@@ -501,6 +647,8 @@ mod tests {
             formats: vec![],
             resources: vec![],
             drm: String::new(),
+            custom: Default::default(),
+            marked: false,
         }
     }
 
@@ -705,6 +853,238 @@ mod tests {
     }
 
     #[test]
+    fn the_web_client_is_served_and_only_its_page_needs_the_login() {
+        let root = tmp();
+        let mut cfg = cfg_with(&root, vec![book(1, "Dune", "a.epub")]);
+        cfg.users = vec![User {
+            name: "u".into(),
+            password: "p".into(),
+        }];
+        assert_eq!(handle(&cfg, &Request::new("GET", "/app/")).status, 401);
+        let ok = Request::new("GET", "/app/").with_header("Authorization", &basic("u", "p"));
+        let r = handle(&cfg, &ok);
+        assert_eq!(r.status, 200);
+        assert_eq!(r.header("content-security-policy"), Some(crate::pwa::CSP));
+        for p in [
+            "/app/manifest.webmanifest",
+            "/app/sw.js",
+            "/app/app.js",
+            "/app/app.css",
+            "/app/icon.svg",
+        ] {
+            assert_eq!(handle(&cfg, &Request::new("GET", p)).status, 200, "{p}");
+        }
+        // the library behind it still does
+        assert_eq!(handle(&cfg, &Request::new("GET", "/opds/all")).status, 401);
+        // a foreign Host never gets the client (DNS rebinding)
+        let bad = Request::new("GET", "/app/app.js").with_header("Host", "evil.example");
+        assert_eq!(handle(&cfg, &bad).status, 403);
+        // under a public prefix the worker may control that prefix only
+        cfg.public_prefix = "/books".into();
+        let sw = handle(&cfg, &Request::new("GET", "/books/app/sw.js"));
+        assert_eq!(sw.status, 200);
+        assert_eq!(sw.header("service-worker-allowed"), Some("/books/"));
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    fn tagged(id: u64, title: &str, file: &str, tags: &[&str]) -> Book {
+        let mut b = book(id, title, file);
+        b.meta.tags = tags.iter().map(|t| t.to_string()).collect();
+        b
+    }
+
+    fn library_with_collections(root: &Path) -> ServerConfig {
+        std::fs::write(root.join("kids.epub"), b"k").unwrap();
+        std::fs::write(root.join("adult.epub"), b"a").unwrap();
+        cfg_with(
+            root,
+            vec![
+                tagged(1, "Pony Tales", "kids.epub", &["Kids"]),
+                tagged(2, "Grown Ups", "adult.epub", &["Adult"]),
+            ],
+        )
+    }
+
+    fn get_as(cfg: &ServerConfig, path: &str, who: Option<(&str, &str)>) -> Response {
+        let mut r = Request::new("GET", path);
+        if let Some((u, p)) = who {
+            r = r.with_header("Authorization", &basic(u, p));
+        }
+        handle(cfg, &r)
+    }
+
+    #[test]
+    fn accounts_see_only_their_collections() {
+        let root = tmp();
+        let mut cfg = library_with_collections(&root);
+        cfg.accounts = vec![
+            Account::new("kid", "kidpw", &["kids".into()]),
+            Account::new("mum", "mumpw", &[]),
+        ];
+        // no login, wrong login: refused
+        assert_eq!(get_as(&cfg, "/opds/all", None).status, 401);
+        assert_eq!(
+            get_as(&cfg, "/opds/all", Some(("kid", "mumpw"))).status,
+            401
+        );
+        assert_eq!(get_as(&cfg, "/opds/all", Some(("ghost", "x"))).status, 401);
+        // the child sees one book in every place a book can show up
+        let kid = Some(("kid", "kidpw"));
+        let all = get_as(&cfg, "/opds/all", kid).body_str();
+        assert!(
+            all.contains("Pony Tales") && !all.contains("Grown Ups"),
+            "{all}"
+        );
+        let found = get_as(&cfg, "/opds/search?q=Grown", kid).body_str();
+        assert!(!found.contains("Grown Ups"), "{found}");
+        let page = get_as(&cfg, "/?q=Grown", kid).body_str();
+        assert!(!page.contains("Grown Ups"), "{page}");
+        assert_eq!(get_as(&cfg, "/download/1.epub", kid).status, 200);
+        assert_eq!(get_as(&cfg, "/download/2.epub", kid).status, 404);
+        assert_eq!(get_as(&cfg, "/cover/2", kid).status, 404);
+        // an account without collections sees everything
+        let mum = Some(("mum", "mumpw"));
+        let all = get_as(&cfg, "/opds/all", mum).body_str();
+        assert!(all.contains("Pony Tales") && all.contains("Grown Ups"));
+        assert_eq!(get_as(&cfg, "/download/2.epub", mum).status, 200);
+        // responses to logged-in users are never cached
+        assert_eq!(
+            get_as(&cfg, "/opds/all", kid).header("cache-control"),
+            Some("no-store")
+        );
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn the_shared_user_keeps_full_access_next_to_accounts() {
+        let root = tmp();
+        let mut cfg = library_with_collections(&root);
+        cfg.users = vec![User {
+            name: "owner".into(),
+            password: "pw".into(),
+        }];
+        cfg.accounts = vec![Account::new("kid", "kidpw", &["kids".into()])];
+        assert!(get_as(&cfg, "/opds/all", Some(("owner", "pw")))
+            .body_str()
+            .contains("Grown Ups"));
+        assert!(!get_as(&cfg, "/opds/all", Some(("kid", "kidpw")))
+            .body_str()
+            .contains("Grown Ups"));
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn a_guest_reads_some_collections_and_nothing_else() {
+        let root = tmp();
+        let mut cfg = library_with_collections(&root);
+        cfg.accounts = vec![Account::new("mum", "mumpw", &[])];
+        cfg.guest = Some(vec!["Kids".into()]);
+        let all = get_as(&cfg, "/opds/all", None).body_str();
+        assert!(
+            all.contains("Pony Tales") && !all.contains("Grown Ups"),
+            "{all}"
+        );
+        assert_eq!(get_as(&cfg, "/download/2.epub", None).status, 404);
+        assert_eq!(get_as(&cfg, "/download/1.epub", None).status, 200);
+        // read-only: any other method needs a login
+        assert_eq!(handle(&cfg, &Request::new("POST", "/opds/all")).status, 401);
+        // a wrong password is a refusal, not a quiet downgrade to guest (the login limit counts it)
+        assert_eq!(
+            get_as(&cfg, "/opds/all", Some(("mum", "wrong"))).status,
+            401
+        );
+        // the real login still sees everything
+        assert!(get_as(&cfg, "/opds/all", Some(("mum", "mumpw")))
+            .body_str()
+            .contains("Grown Ups"));
+        // an empty guest list is no guest
+        cfg.guest = Some(vec![]);
+        assert_eq!(get_as(&cfg, "/opds/all", None).status, 401);
+        // the sync routes keep their own accounts and are not opened by the guest
+        cfg.guest = Some(vec!["kids".into()]);
+        assert_eq!(get_as(&cfg, "/healthcheck", None).status, 200);
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn public_prefix_cleaning() {
+        assert_eq!(clean_public_prefix(""), Some(String::new()));
+        assert_eq!(clean_public_prefix(" / "), Some(String::new()));
+        assert_eq!(clean_public_prefix("books/"), Some("/books".into()));
+        assert_eq!(clean_public_prefix("/a/b-c"), Some("/a/b-c".into()));
+        for bad in [
+            "..", "/a/../b", "a b", "a?b", "http://x", "/bookx", "opds", "a//b", "<x>", "/a#b",
+        ] {
+            assert_eq!(clean_public_prefix(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn public_prefix_works_with_and_without_the_proxy_stripping_it() {
+        let root = tmp();
+        let mut cfg = cfg_with(&root, vec![book(1, "Dune", "a.epub")]);
+        cfg.public_prefix = "/books".into();
+        for path in ["/books/opds", "/opds"] {
+            let r = handle(&cfg, &Request::new("GET", path));
+            assert_eq!(r.status, 200, "{path}");
+            let b = r.body_str();
+            assert!(b.contains("href=\"/books/opds/new\""), "{b}");
+            assert!(!b.contains("href=\"/opds"), "{b}");
+        }
+        let r = handle(&cfg, &Request::new("GET", "/books/opds/search?q=dune"));
+        let b = r.body_str();
+        assert!(b.contains("href=\"/books/download/1.epub\""), "{b}");
+        let r = handle(&cfg, &Request::new("GET", "/books"));
+        let b = r.body_str();
+        assert!(b.contains("action=\"/books/\""), "{b}");
+        assert!(b.contains("href=\"/books/opds\""), "{b}");
+        assert!(b.contains("href=\"/books/download/1.epub\""), "{b}");
+        // the prefix is a whole segment: `/bookshelf` is not `/books` + `helf`
+        assert_eq!(
+            handle(&cfg, &Request::new("GET", "/bookshelf/opds")).status,
+            404
+        );
+        // the files are reachable under the prefix too
+        std::fs::write(root.join("a.epub"), b"x").unwrap();
+        assert_eq!(
+            handle(&cfg, &Request::new("GET", "/books/download/1.epub")).status,
+            200
+        );
+        // a prefix never lets a request out of the library
+        assert_eq!(
+            handle(&cfg, &Request::new("GET", "/books/../x")).status,
+            400
+        );
+        // without a prefix nothing changes
+        cfg.public_prefix.clear();
+        assert_eq!(
+            handle(&cfg, &Request::new("GET", "/books/opds")).status,
+            404
+        );
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn public_prefix_does_not_open_the_login() {
+        let root = tmp();
+        let mut cfg = cfg_with(&root, vec![book(1, "Dune", "a.epub")]);
+        cfg.public_prefix = "/books".into();
+        cfg.users = vec![User {
+            name: "u".into(),
+            password: "p".into(),
+        }];
+        assert_eq!(
+            handle(&cfg, &Request::new("GET", "/books/opds")).status,
+            401
+        );
+        assert_eq!(
+            handle(&cfg, &Request::new("GET", "/books/download/1.epub")).status,
+            401
+        );
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
     fn opds_routes_are_wired() {
         let root = tmp();
         let cfg = cfg_with(&root, vec![book(1, "Dune", "a.epub")]);
@@ -771,6 +1151,87 @@ mod tests {
         Request::new("GET", p)
             .with_header("x-auth-user", "k")
             .with_header("x-auth-key", "abc")
+    }
+
+    #[test]
+    fn info_tells_the_plugin_what_the_server_speaks() {
+        let root = tmp();
+        let mut cfg = sync_cfg(&root);
+        cfg.users = vec![User {
+            name: "u".into(),
+            password: "p".into(),
+        }];
+        // no login at all: the plugin asks before it has an account
+        let r = handle(&cfg, &Request::new("GET", "/bookx/info"));
+        assert_eq!(r.status, 200);
+        let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
+        assert_eq!(v["name"], "bookx");
+        assert_eq!(v["protocol"], annotation_sync::PROTOCOL);
+        assert_eq!(
+            v["min_plugin_protocol"],
+            annotation_sync::MIN_PLUGIN_PROTOCOL
+        );
+        assert_eq!(v["annotations"], true);
+        // nothing but protocol numbers and switches
+        assert_eq!(v.as_object().unwrap().len(), 5);
+        assert_eq!(
+            handle(&cfg, &Request::new("POST", "/bookx/info")).status,
+            405
+        );
+        // not a second endpoint
+        assert_ne!(handle(&cfg, &Request::new("GET", "/info")).status, 200);
+        assert_ne!(
+            handle(&cfg, &Request::new("GET", "/kosync/info")).status,
+            200
+        );
+        // annotation sync switched off: says so; sync switched off: not found
+        cfg.annotations = None;
+        let r = handle(&cfg, &Request::new("GET", "/bookx/info"));
+        let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
+        assert_eq!(v["annotations"], false);
+        cfg.kosync = None;
+        assert_eq!(
+            handle(&cfg, &Request::new("GET", "/bookx/info")).status,
+            404
+        );
+    }
+
+    #[test]
+    fn a_rebinding_host_and_a_cross_origin_post_never_reach_a_route() {
+        let dir = tmp();
+        let mut cfg = sync_cfg(&dir);
+        cfg.allowed_hosts = vec!["books.example.com".into()];
+        let ok = |r: Request| handle(&cfg, &r).status;
+        // normal clients
+        assert_eq!(
+            ok(Request::new("GET", "/healthcheck").with_header("Host", "127.0.0.1:8080")),
+            200
+        );
+        assert_eq!(
+            ok(Request::new("GET", "/healthcheck").with_header("Host", "books.example.com")),
+            200
+        );
+        assert_eq!(ok(Request::new("GET", "/healthcheck")), 200);
+        // DNS rebinding: the page's own name arrives in Host
+        assert_eq!(
+            ok(Request::new("GET", "/healthcheck").with_header("Host", "evil.example:8080")),
+            403
+        );
+        assert_eq!(
+            ok(Request::new("GET", "/opds").with_header("Host", "attacker.test")),
+            403
+        );
+        // CSRF: registering an account from a web page
+        let create = Request::new("POST", "/bookx/users/create")
+            .with_header("Host", "127.0.0.1:8080")
+            .with_body(br#"{"username":"mallory","password":"x"}"#);
+        assert_ne!(ok(create.clone()), 403, "native clients still register");
+        let csrf = create.clone().with_header("Origin", "https://evil.example");
+        let resp = handle(&cfg, &csrf);
+        assert_eq!(resp.status, 403);
+        assert!(resp.header("x-content-type-options").is_some());
+        assert_eq!(ok(create.with_header("Origin", "null")), 403);
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]

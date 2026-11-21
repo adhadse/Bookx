@@ -28,6 +28,8 @@ mod tests {
         ("cbz", "application/vnd.comicbook+zip"),
         ("cbr", "application/vnd.comicbook-rar"),
         ("cbt", "application/x-cbt"),
+        ("djvu", "image/vnd.djvu"),
+        ("djv", "image/vnd.djvu"),
         ("pdf", "application/pdf"),
         ("rtf", "application/rtf"),
         ("odt", "application/vnd.oasis.opendocument.text"),
@@ -197,6 +199,7 @@ mod tests {
             "--filesystem=/run/media",
             "--filesystem=xdg-run/gvfs",
             "--socket=pulseaudio",
+            "--own-name=org.mpris.MediaPlayer2.Bookx.*",
         ] {
             assert!(args.contains(&needed), "missing {needed}");
         }

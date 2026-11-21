@@ -9,6 +9,7 @@ for f in story manga webtoon spreads bomb corrupt; do
     mkdir -p "$COMICS/$f"
     mv "$COMICS.all/$f.cbz" "$COMICS/$f/$f.cbz" 2>/dev/null
 done
+mv "$COMICS.all/saga" "$COMICS/saga" 2>/dev/null
 SHOTS=${COMIC_SHOTS:-/tmp/opencode/comic-shots}
 mkdir -p "$SHOTS"
 
@@ -23,7 +24,7 @@ shows() { cs "$1" shows | cut -d: -f"$2"; }
 
 R='library:import=$COMICS/story,wait:3500,read:3,until:comic:15000'
 
-scenario comic_open "library:import=$COMICS/story,wait:3500,read:3,until:comic:15000,reader:comic-state,quit" '
+scenario comic_open "library:import=$COMICS/story,wait:3500,read:3,until:comic:15000,until:comic-ahead:15000,reader:comic-state,quit" '
     grep -q "Gutter Tales" <<<"$LIB"; check "the title comes from ComicInfo.xml" $?
     grep -q "Panel Park" <<<"$LIB"; check "and the series" $?
     grep -q "Ada Inker" <<<"$LIB"; check "and the writer" $?
@@ -32,7 +33,7 @@ scenario comic_open "library:import=$COMICS/story,wait:3500,read:3,until:comic:1
     [ "$(cs 1 mode)" = single ]; check "one page at a time by default" $?
     [ "$(cs 1 rtl)" = false ]; check "left to right by default" $?
     [ "$(cs 1 fitted)" = true ]; check "the page fits the window" $?
-    [ "$(cs 1 cached)" -ge 3 ]; check "the next pages are decoded ahead (cached=$(cs 1 cached))" $?
+    [ "$(cs 1 cached)" -ge 3 ]; rc=$?; check "the next pages are decoded ahead (cached=$(cs 1 cached))" $rc
     ! has "panicked|CRITICAL|Gtk-WARNING|GLib-GObject"; check "opening runs without errors or GTK warnings" $?'
 
 scenario comic_modes "library:import=$COMICS/story,wait:3500,read:3,until:comic:15000,reader:comic-mode=spread,wait:500,reader:comic-state,reader:comic-key=Right,wait:400,reader:comic-state,reader:comic-key=Right,wait:400,reader:comic-state,reader:comic-key=Right,wait:400,reader:comic-state,reader:comic-key=Right,wait:400,reader:comic-state,reader:comic-cover-alone=off,wait:500,reader:comic-state,reader:comic-wide-alone=off,wait:500,reader:comic-state,reader:comic-mode=single,wait:500,reader:comic-state,quit" '
@@ -62,10 +63,10 @@ scenario comic_zoom "library:import=$COMICS/story,wait:3500,read:3,until:comic:1
     [ "$(cs 1 fitted)" = true ] && [ "$(cs 1 panels)" = 4 ]; check "the grid page has four panels and fits the window" $?
     [ "$(cs 2 animating)" = true ]; check "the move to the panel is animated" $?
     [ "$(cs 3 fitted)" = false ] && [ "$(cs 3 stop)" = 1 ]; check "double-click on the top left panel zooms to it (stop 1)" $?
-    ratio "$(cs 3 zoom)" "$(cs 1 zoom)" 2; check "the zoom is at least twice the page fit ($(cs 3 zoom) vs $(cs 1 zoom))" $?
-    near "$(shows 3 4)" 0.40 0.62 && near "$(shows 3 2)" 0 0.10; check "it shows the top of the page, down to the gutter (y $(shows 3 2) to $(shows 3 4))" $?
+    ratio "$(cs 3 zoom)" "$(cs 1 zoom)" 2; rc=$?; check "the zoom is at least twice the page fit ($(cs 3 zoom) vs $(cs 1 zoom))" $rc
+    near "$(shows 3 4)" 0.40 0.62 && near "$(shows 3 2)" 0 0.10; rc=$?; check "it shows the top of the page, down to the gutter (y $(shows 3 2) to $(shows 3 4))" $rc
     [ "$(cs 4 fitted)" = true ] && [ "$(cs 4 stop)" = none ]; check "a second double-click goes back to the whole page" $?
-    [ "$(cs 5 stop)" = 4 ] && near "$(shows 5 2)" 0.35 0.6; check "double-click on the bottom right panel zooms to it (stop 4, y from $(shows 5 2))" $?
+    [ "$(cs 5 stop)" = 4 ] && near "$(shows 5 2)" 0.35 0.6; rc=$?; check "double-click on the bottom right panel zooms to it (stop 4, y from $(shows 5 2))" $rc
     [ "$(cs 6 fitted)" = false ] && [ "$(cs 6 stop)" = none ] && [ "$(cs 6 panels)" = 0 ]; check "a page without panels zooms to the region around the pointer" $?
     ratio "$(cs 6 zoom)" "$(cs 1 zoom)" 1.5; check "and it is larger than the page fit" $?'
 
@@ -80,18 +81,18 @@ scenario comic_guided "library:import=$COMICS/story,wait:3500,read:3,until:comic
     [ "$(cs 9 guided)" = false ]; check "the g key switches guided view off" $?
     grep -q "\"guided\": false" "$d/cfg/bookx/comics.json"; check "the choice (here: off again) was stored for the book" $?'
 
-scenario comic_guided_manga_700x700 "library:import=$COMICS/manga,wait:3500,read:3,until:comic:15000,reader:comic-animate=off,reader:comic-goto=2,wait:400,reader:comic-guided=on,wait:300,reader:comic-key=space,wait:800,reader:comic-state,reader:comic-key=space,wait:800,reader:comic-state,quit" '
+scenario comic_guided_manga_700x700 "library:import=$COMICS/manga,wait:3500,read:3,until:comic:15000,app:win-size=700x700,wait:900,reader:comic-animate=off,reader:comic-goto=2,wait:400,reader:comic-guided=on,wait:300,reader:comic-key=space,wait:800,reader:comic-state,reader:comic-key=space,wait:800,reader:comic-state,quit" '
     [ "$(cs 1 rtl)" = true ] && [ "$(cs 1 stop)" = 1 ]; check "manga: guided view starts" $?
-    near "$(shows 1 1)" 0.2 0.8; check "the first panel is the right one (view starts at x=$(shows 1 1) of the page, view $(cs 1 view))" $?
-    [ "$(cs 2 stop)" = 2 ] && near "$(shows 2 1)" 0 0.12; check "the second panel is the one on its left (x=$(shows 2 1))" $?'
+    near "$(shows 1 1)" 0.05 0.8 && near "$(shows 1 3)" 0.95 1.01; rc=$?; check "the first panel is the right one (view runs from x=$(shows 1 1) to $(shows 1 3) of the page, view $(cs 1 view))" $rc
+    [ "$(cs 2 stop)" = 2 ] && near "$(shows 2 1)" 0 0.12; rc=$?; check "the second panel is the one on its left (x=$(shows 2 1))" $rc'
 
 scenario comic_webtoon "library:import=$COMICS/webtoon,wait:3500,read:3,until:comic:15000,reader:comic-animate=off,reader:comic-mode=webtoon,wait:600,reader:comic-state,reader:comic-key=Down,reader:comic-key=Down,reader:comic-key=Down,wait:300,reader:comic-state,reader:comic-key=Page_Down,wait:700,reader:comic-state,reader:comic-goto=3,wait:700,reader:comic-state,reader:comic-wheel=30,wait:300,reader:comic-state,reader:comic-key=End,wait:700,reader:comic-state,reader:comic-key=Home,wait:700,reader:comic-state,shot:$SHOTS/webtoon.png,quit" '
     [ "$(cs 1 mode)" = webtoon ] && [ "$(cs 1 page)" = 1 ]; check "vertical scroll mode starts at the top" $?
-    near "$(cs 1 zoom)" 2.5 2.6; check "pages are as wide as the window (zoom $(cs 1 zoom))" $?
-    ratio "$(cs 2 cy)" "$(cs 1 cy)" 1.5; check "the arrow keys scroll ($(cs 1 cy) to $(cs 2 cy))" $?
+    near "$(cs 1 zoom)" 2.5 2.6; rc=$?; check "pages are as wide as the window (zoom $(cs 1 zoom))" $rc
+    ratio "$(cs 2 cy)" "$(cs 1 cy)" 1.5; rc=$?; check "the arrow keys scroll ($(cs 1 cy) to $(cs 2 cy))" $rc
     [ "$(cs 2 page)" = 1 ]; check "still on the first page" $?
     ratio "$(cs 3 cy)" "$(cs 2 cy)" 1.5; check "Page Down scrolls a screenful" $?
-    [ "$(cs 4 page)" = 3 ] && near "$(cs 4 cy)" 3200 3700; check "going to page 3 puts its top in the window (cy $(cs 4 cy))" $?
+    [ "$(cs 4 page)" = 3 ] && near "$(cs 4 cy)" 3200 3700; rc=$?; check "going to page 3 puts its top in the window (cy $(cs 4 cy))" $rc
     ratio "$(cs 5 cy)" "$(cs 4 cy)" 1.02; check "the mouse wheel scrolls" $?
     [ "$(cs 6 page)" = 4 ]; check "End goes to the last page" $?
     [ "$(cs 7 page)" = 1 ]; check "Home to the first" $?
@@ -99,20 +100,20 @@ scenario comic_webtoon "library:import=$COMICS/webtoon,wait:3500,read:3,until:co
 
 scenario comic_fit "library:import=$COMICS/story,wait:3500,read:3,until:comic:15000,reader:comic-animate=off,reader:comic-state,reader:comic-fit=width,wait:400,reader:comic-state,reader:comic-key=space,wait:600,reader:comic-key=space,wait:600,reader:comic-state,reader:comic-key=space,wait:600,reader:comic-state,reader:comic-fit=height,wait:400,reader:comic-state,reader:comic-fit=original,wait:400,reader:comic-state,reader:comic-fit=page,wait:400,reader:comic-state,quit" '
     [ "$(cs 1 fit)" = page ]; check "pages fit the window by default" $?
-    near "$(cs 1 zoom)" 1.07 1.09; check "fit page: the whole page ($(cs 1 zoom))" $?
-    [ "$(cs 2 fit)" = width ] && near "$(cs 2 zoom)" 2.55 2.57; check "fit width: the page is as wide as the window ($(cs 2 zoom))" $?
+    near "$(cs 1 zoom)" 1.07 1.09; rc=$?; check "fit page: the whole page ($(cs 1 zoom))" $rc
+    [ "$(cs 2 fit)" = width ] && near "$(cs 2 zoom)" 2.55 2.57; rc=$?; check "fit width: the page is as wide as the window ($(cs 2 zoom))" $rc
     [ "$(cs 3 page)" = 1 ] && [ "$(cs 3 fitted)" = true ]; check "Space reads down a page that is taller than the window" $?
-    ratio "$(cs 3 cy)" 400 1; check "and shows the lower part of it (cy $(cs 3 cy))" $?
+    ratio "$(cs 3 cy)" 400 1; rc=$?; check "and shows the lower part of it (cy $(cs 3 cy))" $rc
     [ "$(cs 4 page)" = 2 ]; check "at the bottom Space turns to the next page" $?
-    near "$(cs 5 zoom)" 1.07 1.09; check "fit height ($(cs 5 zoom))" $?
-    near "$(cs 6 zoom)" 0.99 1.01; check "original size is 100% ($(cs 6 zoom))" $?
+    near "$(cs 5 zoom)" 1.07 1.09; rc=$?; check "fit height ($(cs 5 zoom))" $rc
+    near "$(cs 6 zoom)" 0.99 1.01; rc=$?; check "original size is 100% ($(cs 6 zoom))" $rc
     [ "$(cs 7 fit)" = page ] && near "$(cs 7 zoom)" 1.07 1.09; check "and back to fit page" $?'
 
 scenario comic_zoom_input "library:import=$COMICS/story,wait:3500,read:3,until:comic:15000,reader:comic-animate=off,reader:comic-goto=2,wait:400,reader:comic-state,reader:comic-wheel=ctrl:-1,reader:comic-wheel=ctrl:-1,reader:comic-wheel=ctrl:-1,reader:comic-wheel=ctrl:-1,reader:comic-wheel=ctrl:-1,reader:comic-wheel=ctrl:-1,reader:comic-wheel=ctrl:-1,reader:comic-wheel=ctrl:-1,wait:300,reader:comic-state,reader:comic-key=Right,wait:300,reader:comic-state,reader:comic-drag=-150:-80,wait:300,reader:comic-state,reader:comic-key=minus,reader:comic-key=minus,reader:comic-key=minus,wait:300,reader:comic-state,reader:comic-key=0,wait:900,reader:comic-state,reader:comic-drag=-250:5,wait:700,reader:comic-state,reader:comic-drag=250:5,wait:700,reader:comic-state,quit" '
     [ "$(cs 1 fitted)" = true ]; check "the page starts fitted" $?
     [ "$(cs 2 fitted)" = false ]; check "Ctrl+wheel zooms in" $?
-    ratio "$(cs 2 zoom)" "$(cs 1 zoom)" 2.5; check "by about 15% per notch ($(cs 1 zoom) to $(cs 2 zoom))" $?
-    ratio "$(cs 3 cx)" "$(cs 2 cx)" 1.01; check "the arrow keys pan a zoomed page sideways instead of turning it ($(cs 2 cx) to $(cs 3 cx))" $?
+    ratio "$(cs 2 zoom)" "$(cs 1 zoom)" 2.5; rc=$?; check "by about 15% per notch ($(cs 1 zoom) to $(cs 2 zoom))" $rc
+    ratio "$(cs 3 cx)" "$(cs 2 cx)" 1.01; rc=$?; check "the arrow keys pan a zoomed page sideways instead of turning it ($(cs 2 cx) to $(cs 3 cx))" $rc
     [ "$(cs 3 page)" = 2 ]; check "and the page does not change" $?
     ratio "$(cs 4 cx)" "$(cs 3 cx)" 1.0; check "dragging moves the page (the view moves right when the picture is dragged left)" $?
     [ "$(cs 5 zoom)" != "$(cs 4 zoom)" ]; check "the minus key zooms out" $?
@@ -138,7 +139,7 @@ scenario comic_progress "library:import=$COMICS/story,wait:3500,read:3,until:com
 
 scenario comic_eink "eink:on,library:import=$COMICS/story,wait:3500,read:3,until:comic:15000,wait:800,reader:comic-state,reader:comic-dblclick-page=0.25:0.25,reader:comic-state,wait:300,reader:comic-state,shot:$SHOTS/eink.png,quit" '
     [ "$(cs 1 grey)" = true ]; check "e-ink mode shows the pages in grey" $?
-    [ "$(cs 1 grey_pages)" -ge 1 ] && [ "$(cs 1 grey_pages)" = "$(cs 1 cached)" ] || [ "$(cs 1 grey_pages)" = 1 ]; check "the page on screen is really grey (grey_pages=$(cs 1 grey_pages))" $?
+    [ "$(cs 1 grey_pages)" -ge 1 ] && [ "$(cs 1 grey_pages)" = "$(cs 1 cached)" ] || [ "$(cs 1 grey_pages)" = 1 ]; rc=$?; check "the page on screen is really grey (grey_pages=$(cs 1 grey_pages))" $rc
     [ "$(cs 2 animating)" = false ]; check "there is no animation in e-ink mode" $?
     [ "$(cs 3 fitted)" = false ]; check "the zoom still works" $?'
 
@@ -168,3 +169,31 @@ scenario comic_prefs "prefs:,wait:800,prefs:pick=Reading,wait:400,prefs:comic-la
 
 scenario comic_look "library:import=$COMICS/story,wait:3500,read:3,until:comic:15000,reader:comic-goto=3,wait:800,shot:$SHOTS/single.png,reader:comic-sidebar=on,wait:1500,shot:$SHOTS/sidebar.png,reader:comic-mode=spread,wait:800,shot:$SHOTS/spread.png,quit" '
     [ -s "$SHOTS/spread.png" ]; check "screenshots taken" $?'
+
+# next and previous volume (PP-G-24): the series comes from the folder name, Right on the last page
+# says which volume is next and a second Right opens it; going back opens the last page of the one before
+scenario comic_next_volume "library:import=$COMICS/saga,wait:3500,read:3,until:comic:15000,reader:comic-state,reader:comic-volumes,reader:comic-goto=6,wait:500,reader:comic-key=Right,wait:400,reader:comic-state,reader:comic-key=Right,wait:3500,until:comic:15000,reader:comic-state,reader:comic-volumes,reader:comic-key=Left,wait:400,reader:comic-key=Left,wait:3500,until:comic:15000,reader:comic-goto=6,wait:500,reader:comic-state,quit" '
+    grep -q "Saga v01" <<<"$LIB" && grep -q "Saga v02" <<<"$LIB"; check "both volumes are in the library, titled after their files" $?
+    grep -q "\"series\": \"saga\"" <<<"$LIB" || grep -qi "saga" <<<"$LIB"; check "the series comes from the folder name" $?
+    grep "^comic_volumes:" <<<"$OUT" | sed -n 1p | grep -q "prev=- next=Saga v02"; check "the first volume has no previous one and v02 is next" $?
+    [ "$(cs 2 book)" = 3 ] && [ "$(cs 2 page)" = 6 ]; check "the first push past the last page does not leave the book" $?
+    [ "$(cs 3 book)" = 4 ] && [ "$(cs 3 page)" = 1 ]; check "the second push opens the next volume at its first page" $?
+    grep "^comic_volumes:" <<<"$OUT" | sed -n 2p | grep -q "prev=Saga v01 next=-"; check "the last volume has a previous one and no next" $?
+    [ "$(cs 4 book)" = 3 ]; check "going back from the first page opens the volume before" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
+scenario comic_volume_button "library:import=$COMICS/saga,wait:3500,read:3,until:comic:15000,reader:comic-volume=next,wait:3500,until:comic:15000,reader:comic-state,reader:comic-volume=prev,wait:3500,until:comic:15000,reader:comic-state,quit" '
+    [ "$(cs 1 book)" = 4 ] && [ "$(cs 1 page)" = 1 ]; check "Next Volume opens the next book at its start" $?
+    [ "$(cs 2 book)" = 3 ] && [ "$(cs 2 page)" = 6 ]; check "Previous Volume opens the one before at its last page" $?'
+
+scenario comic_alone "library:import=$COMICS/story,wait:3500,read:3,until:comic:15000,reader:comic-volumes,reader:comic-goto=6,wait:500,reader:comic-key=Right,wait:300,reader:comic-key=Right,wait:1500,reader:comic-state,quit" '
+    grep "^comic_volumes:" <<<"$OUT" | grep -q "prev=- next=-"; check "a comic with no neighbours has no volumes" $?
+    [ "$(cs 1 pages)" = 6 ] && [ "$(cs 1 page)" = 6 ]; check "pushing past its end stays on the last page" $?'
+
+scenario comic_ignore_info_and_library_direction "prefs:,wait:800,prefs:pick=Reading,wait:400,prefs:comic-ignore-info=on,prefs:comic-library-rtl=on,wait:300,dialog:close,wait:500,library:import=$COMICS/story,wait:3500,read:3,until:comic:15000,reader:comic-state,quit" '
+    P=$(grep "^comic_prefs:" <<<"$OUT" | tail -1)
+    grep -q "library_rtl=true ignore_info=true" <<<"$P"; check "both switches are on in Preferences → Reading → Comics ($P)" $?
+    grep -q "\"ignore_info\": true" "$d/cfg/bookx/comics.json" && grep -q "library_rtl" "$d/cfg/bookx/comics.json"; check "and stored" $?
+    ! grep -q "Gutter Tales" <<<"$LIB" && ! grep -q "Panel Park" <<<"$LIB"; check "ComicInfo.xml is not used: the title and series it names are not in the library" $?
+    grep -q "story" <<<"$LIB"; check "the book is called after its file" $?
+    [ "$(cs 1 rtl)" = true ]; check "the library reads right to left, so the comic does too" $?'

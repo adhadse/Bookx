@@ -68,7 +68,7 @@ pub fn show(
     dialog.set_content_height(560);
     let page = adw::PreferencesPage::new();
     let group = adw::PreferencesGroup::new();
-    let summary = gtk::Label::new(Some(&tr("Checking…")));
+    let summary = gtk::Label::new(Some(&tr("Checking")));
     summary.set_xalign(0.0);
     summary.set_wrap(true);
     group.set_header_suffix(None::<&gtk::Widget>);
@@ -202,7 +202,7 @@ impl Ctx {
     fn run(self: &Rc<Self>, done: impl Fn(Vec<BookReport>) + 'static) {
         let jobs = self.jobs();
         let dest = self.dest.get();
-        self.summary.set_text(&tr("Checking…"));
+        self.summary.set_text(&tr("Checking"));
         let (tx, rx) = mpsc::channel();
         std::thread::spawn(move || {
             let reports: Vec<BookReport> = jobs

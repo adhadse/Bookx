@@ -153,7 +153,7 @@ files** (XHTML or CSS; `{title}` is replaced by the name), the ones **New File**
 
 To change how the code looks and behaves, open the Book menu (☰ at the end of the header bar) and choose
 **Preferences** (++ctrl+comma++), then the **Editor** page. The command palette's *Editor Preferences* entry opens
-the same settings in a smaller window. Every open editor window follows a change at once.
+Preferences on the same Editor page; there is no separate editor settings window. Every open editor window follows a change at once.
 
 - **Code**: font and size, tab width, spaces or tabs, line numbers, highlight of the current line, a right margin guide
   at a column, wrapping, showing spaces and tabs, the overview map.
@@ -163,7 +163,7 @@ the same settings in a smaller window. Every open editor window follows a change
 - **Editing**: close tags automatically (typing `>` after `<p` adds `</p>`), suggest completions while typing (or only
   on ++ctrl+space++), paint colour codes such as `#1a2b3c` in style sheets in that colour, underline misspelled words,
   turn typed entities into characters.
-- **Preview**: font, smallest text size, whether the preview follows the cursor, whether scrolling the preview scrolls
+- **Preview**: font, smallest text size, text, background and link colours (each with a button back to the theme colour), whether the preview follows the cursor, whether scrolling the preview scrolls
   the code.
 
 The cursor's width and blinking follow your desktop settings. Keyboard shortcuts of the editor are under
@@ -752,7 +752,7 @@ The ☰ button at the right end of the header bar; ++f10++ opens it. At most 12 
 | Save a Copy and Edit It | ++ctrl+alt+shift+s++ | the same, adds the copy to the library and continues editing the copy |
 | Open Another Book | ++ctrl+o++ | shows another book of the library in this window |
 | New Book | | a book with one empty chapter |
-| More Ways to Open | | *Open an Unzipped Folder* (a folder with an unzipped EPUB, added to the library); *Open a Book of Another Format to Edit* (an AZW3, MOBI, KEPUB, FB2, FBZ, DOCX, ODT, RTF, HTMLZ or TXTZ file is converted to a temporary EPUB in memory, a KEPUB is edited as it is with its Kobo markup, and nothing is added to the library; a banner says you are editing a copy; *Save* asks whether to **save as an EPUB** (the safe choice) or to **convert back** into the original format, the old file is kept next to it as a backup (`book.azw3.bak`); a warning names what may be lost; formats Bookx cannot write, ODT and FBZ, can only be saved as EPUB); *Import as New Book* (an HTML, DOCX or text file) |
+| More Ways to Open | | *Open an Unzipped Folder* (a folder with an unzipped EPUB, added to the library); *Open Another Format* (an AZW3, MOBI, KEPUB, FB2, FBZ, DOCX, ODT, RTF, HTMLZ or TXTZ file is converted to a temporary EPUB in memory, a KEPUB is edited as it is with its Kobo markup, and nothing is added to the library; a banner says you are editing a copy; *Save* asks whether to **save as an EPUB** (the safe choice) or to **convert back** into the original format, the old file is kept next to it as a backup (`book.azw3.bak`); a warning names what may be lost; formats Bookx cannot write, ODT and FBZ, can only be saved as EPUB); *Import as New Book* (an HTML, DOCX or text file) |
 | Revert to Before the Last Change / Revert to After (Redo) | ++ctrl+alt+z++ / ++ctrl+alt+shift+z++ | walks back and forth over the checkpoints (a new change ends the redo list); greyed out while there is nothing to revert or redo |
 | Wrap Long Lines | | wraps long lines in the code view |
 | Preferences | ++ctrl+comma++ | the Bookx Preferences window; its **Editor** page holds the editor settings |
@@ -961,7 +961,7 @@ Short how-tos for the jobs people ask about most. Menu names are the ones in the
       right-click the book → **Convert To**. See [Converting and exporting](converting.md).
 
 ??? question "How do I open a MOBI, AZW3, FB2 or Word file in the editor?"
-    Book menu (☰) → **More Ways to Open → Open a Book of Another Format to Edit**. It is converted to a temporary EPUB;
+    Book menu (☰) → **More Ways to Open → Open Another Format**. It is converted to a temporary EPUB;
     a banner says you are editing a copy, and **Save** asks whether to save as EPUB or convert back.
 
 ??? question "What if saving fails?"
@@ -1002,7 +1002,7 @@ Short how-tos for the jobs people ask about most. Menu names are the ones in the
     about 700 px the preview moves under the code.
 
 !!! note "Limitations"
-    - The editor works on EPUB. Other formats are converted to EPUB first; see *Open a Book of Another Format to Edit* for the way back.
+    - The editor works on EPUB. Other formats are converted to EPUB first; see *Open Another Format* for the way back.
     - Converting back is a conversion: styling, layout and format-specific features can be lost. Keep the backup until you have checked the result.
     - Fonts are searched in the background in the system font folders and `~/.local/share/fonts`; font files over 12 MB are skipped.
     - Link checking and downloading use plain web requests, one at a time; some sites refuse them.

@@ -89,7 +89,7 @@ pub(super) fn book_menu() -> gio::Menu {
     let more = gio::Menu::new();
     more.append_item(&item(&tr("Open an Unzipped Folder"), "open-folder"));
     more.append_item(&menu_item(
-        &tr("Open a Book of Another Format to Edit"),
+        &tr("Open Another Format"),
         "ext.tool",
         "open-foreign",
     ));
@@ -305,8 +305,7 @@ impl Editor {
             "tab-close" => self.close_tab_page(),
             "tab-others" | "tab-right" => {
                 let page = self.ext.menu_page.borrow_mut().take();
-                let path = page
-                    .and_then(|p| unsafe { p.data::<String>("path").map(|s| s.as_ref().clone()) });
+                let path = page.and_then(|p| super::row_data::path(&p));
                 let mode = if id == "tab-others" {
                     CloseMode::Others
                 } else {
@@ -339,7 +338,7 @@ impl Editor {
             "new-book" => self.prompt_new_book(),
             "import-file" => {
                 let filter = gtk::FileFilter::new();
-                filter.set_name(Some("HTML, DOCX, text and other documents"));
+                filter.set_name(Some(&tr("HTML, DOCX, text and other documents")));
                 for p in [
                     "*.html", "*.htm", "*.xhtml", "*.docx", "*.odt", "*.rtf", "*.txt", "*.md",
                     "*.fb2",
@@ -465,7 +464,7 @@ impl Editor {
     }
 
     fn pick_library_book(&self) {
-        let dialog = adw::Dialog::new();
+        let dialog = crate::ui::dialog_toast::new_dialog();
         dialog.set_title(&tr("Open Another Book"));
         let (w, h) = fit_dialog(&self.w.win, 480, 520);
         dialog.set_content_width(w);
@@ -504,7 +503,7 @@ impl Editor {
                     l.set_ellipsize(pango::EllipsizeMode::End);
                     l.set_margin_all(6);
                     row.set_child(Some(&l));
-                    unsafe { row.set_data("id", *id) };
+                    super::row_data::set_id(&row, *id);
                     list.append(&row);
                 }
             })
@@ -517,7 +516,7 @@ impl Editor {
         {
             let (tx, d) = (self.sender.input_sender().clone(), dialog.clone());
             list.connect_row_activated(move |_, r| {
-                if let Some(id) = unsafe { r.data::<u64>("id").map(|p| *p.as_ref()) } {
+                if let Some(id) = super::row_data::id(r) {
                     tx.emit(Input::Ext(Cmd::Win(format!("open-book:{id}"))));
                     d.close();
                 }
@@ -731,7 +730,7 @@ impl Editor {
         self.tabs_guard.set(true);
         for i in (0..self.w.tabs.n_pages()).rev() {
             let page = self.w.tabs.nth_page(i);
-            let path = unsafe { page.data::<String>("path").map(|s| s.as_ref().clone()) };
+            let path = super::row_data::path(&page);
             if path.is_some_and(|p| gone.contains(&p)) {
                 self.w.tabs.close_page(&page);
             }

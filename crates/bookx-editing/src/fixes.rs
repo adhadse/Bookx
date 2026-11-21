@@ -815,7 +815,7 @@ pub fn html5_to_xhtml(src: &str) -> Option<String> {
         Some(end) => &trimmed[5 + end + 2..],
         None => src,
     };
-    let doc = scraper::Html::parse_document(src.trim_end());
+    let doc = bookx_core::util::parse_html_document(src.trim_end());
     let mut body = String::new();
     html5_write(doc.tree.root(), "", &mut body);
     // the root needs the prefixes the document uses

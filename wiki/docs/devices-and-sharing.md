@@ -59,7 +59,7 @@ how many highlights stay in Bookx for that reason. Reading progress is never wri
 **Devices**): switch to its **Settings** page and look under **Sync**. With it on, syncing starts as soon as a device
 appears, without asking, and a message tells you what was done. The banner's Sync button never turns this on; it only
 syncs once. Bookx Preferences → Sync has a *USB device sync* group with the notes switch and a button that opens the
-Devices window; the other sync settings (the Bookx sync server, the account, the library server) live there too.
+Devices window; the other sync settings (the Bookx sync server, the account, the OPDS server) live there too.
 
 ## Send to device
 
@@ -197,12 +197,12 @@ Everything that moves books, progress, highlights or notes between Bookx and ano
 **Sync**: **main menu → Sync** answers *what should I use, when* with a status card and three choices; **Bookx Preferences →
 Sync** holds the setup (the main menu has **Preferences**).
 
-| Use this when… | **Bookx sync with KOReader (Wi-Fi)** | **USB device** | **Share books (OPDS)** |
+| Use this when… | **Bookx sync with KOReader (Wi-Fi)** | **USB device** | **OPDS server** |
 |---|---|---|---|
 | Your e-reader… | runs KOReader (Kobo, Kindle, Android, PocketBook …) | is connected by a cable, with or without KOReader | is an app or reader that browses an OPDS catalogue |
 | Connection | Wi-Fi or your home network | USB cable (or a phone mounted in Files) | Wi-Fi or your home network |
 | What moves | reading position; with the Bookx plugin also highlights, notes and bookmarks | reading progress, highlights and notes, both ways (a merge); books you send | books and the catalogue only |
-| Bookx needs | the server on and a sync account (Register) | nothing to switch on | the library server on |
+| Bookx needs | the server on and a sync account (Register) | nothing to switch on | the OPDS server on |
 | The e-reader needs | KOReader, Progress sync or the Bookx plugin set to Bookx’s `/bookx` address | to be mounted | an app that opens the address |
 
 **Stock Kobo and Kindle Wi-Fi sync is not supported**: readers on their own firmware sync over the USB cable only.
@@ -221,7 +221,7 @@ readable state nothing happens. Progress only moves forward, notes are united, n
 is never written to the device. *Notes sent with a book* (Devices window, *Send to Device*) add your highlights and notes
 to the copy on the device as a “My notes” section and a KOReader notes file; your library copy is never changed.
 
-**Share books (OPDS)** is the library server: see [Library server](#library-server).
+**OPDS server** serves your library to other apps: see [OPDS server](#library-server).
 
 **Import Highlights** brings the highlights from a Kindle’s `My Clippings.txt`, KOReader’s notes, a Kobo database or
 calibre into the library; see [Highlights and notes](annotations.md).
@@ -241,16 +241,16 @@ address to send to, for example your Send-to-Kindle address). Then right-click a
 
 The password is kept in the system keyring (see [Backup and restore → Passwords](backup-and-restore.md#passwords)). Use an app password.
 
-## Library server { #library-server }
+## OPDS server { #library-server }
 
 <figure markdown="1">
 ![The Sync window](assets/library-share-light.png#only-light)
 ![The Sync window](assets/library-share-dark.png#only-dark)
-<figcaption markdown="1">Main menu → Sync: a status card with one main button, and three choices (Bookx sync with KOReader, USB device, Share books). Off by default.</figcaption>
+<figcaption markdown="1">Main menu → Sync: a status card with one main button, and three choices (Bookx sync with KOReader, USB device, OPDS server). Off by default.</figcaption>
 </figure>
 
-Main menu → **Sync** → **Share books (OPDS)** → **Start library server** serves the library to other devices on your
-network; Bookx **Preferences → Sync** has a *Library servers (OPDS)* group with the same switch and the address with a copy button:
+Main menu → **Sync** → **OPDS server** → **Start OPDS server** serves the library to other devices on your
+network; Bookx **Preferences → Sync** has an *OPDS server* group with the same switch and the address with a copy button:
 
 - **OPDS** catalogue and a **web page** to browse and download books. Any OPDS reader app can use it.
 - A **password is required** before other devices can connect. The user name is `bookx`. In Preferences → Sync, the collapsed **Advanced** row holds
@@ -261,6 +261,14 @@ network; Bookx **Preferences → Sync** has a *Library servers (OPDS)* group wit
   self-signed certificate themselves. A button creates a new one.
 
 The same server runs without the app: `bookx-cli serve --port 8080 --user me:secret --kosync kosync.json` (the `--kosync` file keeps the Bookx sync accounts).
+
+Click **QR code** next to an address (the Bookx sync address, the OPDS address) to show it as a QR code that a phone or an
+e-reader app can scan instead of typing.
+
+The server also offers a small **web app** at `/app/` (for example `http://192.168.1.20:8080/app/`): it lists and searches the
+library, and *Save offline* keeps a book on that phone or tablet so it can be opened without the network. Open it in a browser and
+use *Install* or *Add to Home Screen*. It needs the same login as the web page, makes no request to any other site, and only text and
+covers of the library pass through it.
 
 To reach the server by a name, with proper HTTPS, or from outside the house, keep Bookx on your own computer and put a
 reverse proxy in front of it: [Put Bookx behind a reverse proxy](reverse-proxy.md).
@@ -274,9 +282,9 @@ reverse proxy in front of it: [Put Bookx behind a reverse proxy](reverse-proxy.m
     - Dragging books onto the Devices button is not possible; select them in the library and use *Send to Device*.
     - Kindle's own reading state (binary `.sdr` data) is not read. KOReader on a Kindle works.
     - The Calibre wireless "smart device" protocol is not implemented.
-    - MTP works through gvfs only; direct USB MTP is not done.
+    - MTP works through gvfs only (the phone appears as a folder in your file manager); direct USB MTP is not done.
     - WebDAV was tested against an in-process server, not Nextcloud or another real service.
-    - Without a keyring (GNOME Keyring, KWallet, KeePassXC) the passwords stay in the settings file, unencrypted; Bookx says so next to each one.
+    - Without a keyring (GNOME Keyring, KWallet, KeePassXC) Bookx offers an encrypted password store with a master password; if you decline, passwords are not saved and are forgotten when Bookx closes. They are never written to the settings file (see [Passwords](backup-and-restore.md#passwords)).
 
 ## Questions and answers
 
@@ -325,9 +333,9 @@ reverse proxy in front of it: [Put Bookx behind a reverse proxy](reverse-proxy.m
     overwrites an existing file, and the password goes to the system keyring. Backups to WebDAV are set up separately,
     see [Backup and restore](backup-and-restore.md).
 
-??? question "Which sync should I use: USB, KOReader or sharing?"
+??? question "Which sync should I use: USB, KOReader or the OPDS server?"
     Open main menu → **Sync**. It offers three choices: *Bookx sync with KOReader (Wi-Fi)* for readers that run KOReader,
-    *USB device* for a cable, and *Share books (OPDS)* to let reader apps browse your library. Stock Kobo and Kindle
+    *USB device* for a cable, and *OPDS server* to let reader apps browse your library. Stock Kobo and Kindle
     firmware has no wireless sync with Bookx; use the cable for those. See [Which sync do I need?](#which-sync-do-i-need).
 
 ??? question "How do I send a book to my Kindle by e-mail?"
@@ -336,8 +344,8 @@ reverse proxy in front of it: [Put Bookx behind a reverse proxy](reverse-proxy.m
     first.
 
 ??? question "How do I share my library with an OPDS reader app?"
-    Open main menu → **Sync** and press **Start library server** in the *Share books (OPDS)* card, or use the switch in
-    Bookx Preferences → Sync under *Library servers (OPDS)*. The address appears with a copy button. The user name is
+    Open main menu → **Sync** and press **Start OPDS server** in the *OPDS server* card, or use the switch in
+    Bookx Preferences → Sync under *OPDS server*. The address appears with a copy button. The user name is
     `bookx` and a password is required; port, HTTPS and network access are in the collapsed **Advanced** row. Keep it on
     your own network or put a [reverse proxy](reverse-proxy.md) in front.
 

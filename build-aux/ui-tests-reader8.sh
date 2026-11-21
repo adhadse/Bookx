@@ -136,7 +136,7 @@ scenario image_alt_in_page_text "library:import=$ROOT/float-epub/lib,wait:2500,r
 
 # The reader at 900, 600 and 360 px: at 600 sp and less the header gives up Fullscreen and Read Aloud (they are the first entries of
 # the Main Menu), the title keeps at least 100 px and no control sticks out (`reader:header-dump`, `reader:menu-dump`).
-scenario reader_narrow_600x600 'read:1,wait:3000,app:win-size=900x600,wait:1200,reader:header-dump,reader:menu-dump,app:win-size=600x600,wait:1500,app:win-dump,reader:header-dump,reader:menu-dump,reader:menu-popup,wait:700,a11y-audit:,reader:menu-popdown,quit' '
+scenario reader_narrow_600x600 'read:1,wait:3000,app:win-size=900x600,wait:1200,reader:header-dump,reader:menu-dump,app:win-size=600x600,wait:1500,until:header-settled:15000,app:win-dump,reader:header-dump,reader:menu-dump,reader:menu-popup,wait:700,a11y-audit:,reader:menu-popdown,quit' '
     H=$(grep "^reader_header:" <<<"$OUT")
     sed -n 1p <<<"$H" | grep -q "fullscreen=true read_aloud=true"; rc=$?; check "at 900 px the header has Fullscreen and Read Aloud ($(sed -n 1p <<<"$H"))" $rc
     sed -n 2p <<<"$H" | grep -q "narrow=true"; check "at 600 px the header is in its narrow form" $?
@@ -199,4 +199,108 @@ scenario keyboard_selection_extended_after_popover 'read:1,wait:3500,reader:ksel
     M=$(grep "^marks:" <<<"$OUT")
     grep -q "highlights=1 " <<<"$M"; check "one highlight was made ($M)" $?
     grep -q "last=\"Chapter 1.*Paragraph 1 of\"" <<<"$M"; check "it covers the extended selection (up to \"Paragraph 1 of\"), not the one committed before" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# ---- reader text and reading aids (T1/T2 wave 11) ----------------------------------------------------------------
+# Dev hooks: `reader:ui-tweak:weight|word_spacing|contrast|kerning|widows|book_styles|book_fonts=V` (the text appearance
+# rows), `reader:ui-tweaks-state` (`tweaked2: weight=.. word_spacing=.. kerning=.. widows=.. book_fonts=.. fg=..`),
+# `reader:aids:auto|tick|state|turn|anim=none|slide|fade|reduced=on|off|hints|hint=LETTERS|cite|copy|archive|key=NAME|
+# night=on:HH:MM:HH:MM:WARMTH|off` (`aids:`, `aids_turn:`, `hints:`, `hint_key:`, `cite:`, `copy:`, `remote:`, `night:`).
+
+scenario text_appearance_tweaks 'read:1,wait:3500,reader:ui-tweaks-state,reader:ui-tweak:weight=600,reader:ui-tweak:word_spacing=0.2,reader:ui-tweak:kerning=off,reader:ui-tweak:widows=3,reader:ui-tweak:book_fonts=off,wait:1200,reader:ui-tweaks-state,reader:ui-tweak:contrast=1,wait:800,reader:ui-tweaks-state,reader:ui-tweak:reset=1,wait:800,reader:ui-tweaks-state,quit' '
+    T=$(grep "^tweaked2:" <<<"$OUT")
+    sed -n 1p <<<"$T" | grep -q "weight=None word_spacing=0 kerning=true widows=2 book_fonts=true"; check "the defaults: font weight, no extra word space, kerning on, widows and orphans 2" $?
+    sed -n 2p <<<"$T" | grep -q "weight=Some(600) word_spacing=0.2 kerning=false widows=3 book_fonts=false"; check "the Text appearance rows reach the page" $?
+    F1=$(sed -n 2p <<<"$T" | sed -E "s/.*fg=//"); F2=$(sed -n 3p <<<"$T" | sed -E "s/.*fg=//")
+    [ "$F1" != "$F2" ]; check "text contrast changes the text colour ($F1 → $F2)" $?
+    sed -n 4p <<<"$T" | grep -q "weight=None word_spacing=0 kerning=true widows=2 book_fonts=true"; check "Reset These Tweaks brings the defaults back" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario auto_turn_timer 'read:1,wait:3000,reader:aids:state,reader:aids:auto,wait:300,reader:aids:state,reader:aids:tick,wait:700,reader:aids:state,reader:aids:auto,wait:300,reader:aids:state,quit' '
+    A=$(grep "^aids: " <<<"$OUT")
+    sed -n 1p <<<"$A" | grep -q "auto=false"; check "auto-turn starts off" $?
+    sed -n 2p <<<"$A" | grep -q "auto=true"; check "Auto-Turn Pages starts the timer" $?
+    P1=$(sed -n 2p <<<"$A" | sed -E "s/.* page=([0-9]+)\/.*/\1/"); P2=$(sed -n 3p <<<"$A" | sed -E "s/.* page=([0-9]+)\/.*/\1/")
+    [ "$P2" -gt "$P1" ] || grep -q "spine=[1-9]" <<<"$(sed -n 3p <<<"$A")"; check "a tick after the interval turns the page ($P1 → $P2)" $?
+    sed -n 4p <<<"$A" | grep -q "auto=false"; check "the same command stops it" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario page_turn_animation 'read:1,wait:3000,reader:aids:anim=slide,reader:aids:turn,wait:600,reader:aids:state,reader:aids:reduced=on,reader:aids:turn,reader:aids:reduced=off,reader:aids:anim=none,reader:aids:turn,wait:300,reader:aids:anim=fade,reader:aids:turn,wait:600,reader:aids:state,quit' '
+    T=$(grep "^aids_turn:" <<<"$OUT")
+    sed -n 1p <<<"$T" | grep -q "animating=true"; check "with the Slide animation a turn plays it" $?
+    sed -n 2p <<<"$T" | grep -q "animating=false"; check "with reduced motion on the turn is plain" $?
+    sed -n 3p <<<"$T" | grep -q "animating=false"; check "None plays nothing" $?
+    sed -n 4p <<<"$T" | grep -q "animating=true"; check "Fade plays too" $?
+    A=$(grep "^aids: " <<<"$OUT")
+    sed -n 1p <<<"$A" | grep -q "animating=false"; check "the animation is over after a moment" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario night_schedule 'read:1,wait:3000,reader:aids:night=off,reader:aids:night=on:00:00:23:59:0.8,reader:aids:night=on:03:00:03:01:0.8,reader:aids:night=off,quit' '
+    N=$(grep "^night:" <<<"$OUT")
+    B0=$(sed -n 1p <<<"$N" | sed -E "s/night: bg=([0-9a-f]+) .*/\1/"); B1=$(sed -n 2p <<<"$N" | sed -E "s/night: bg=([0-9a-f]+) .*/\1/")
+    sed -n 1p <<<"$N" | grep -q "sig=(false, 0)"; check "no schedule: no tint" $?
+    [ "$B0" != "$B1" ] && sed -n 2p <<<"$N" | grep -q "sig=(true, 16)"; check "inside the evening the page is warm and the dark theme is chosen ($B0 → $B1)" $?
+    sed -n 4p <<<"$N" | grep -q "sig=(false, 0)"; check "switching it off brings the page colours back" $?
+    [ "$(sed -n 4p <<<"$N" | sed -E "s/night: bg=([0-9a-f]+) .*/\1/")" = "$B0" ]; check "exactly" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario copy_with_citation 'read:1,wait:3000,reader:select,wait:800,reader:aids:cite,reader:aids:copy,quit' '
+    C=$(grep "^cite:" <<<"$OUT")
+    grep -qE "^cite: “.+”/— .+" <<<"$C"; check "the default citation quotes the text and names the author and book ($C)" $?
+    grep -q "^copy: [^“]" <<<"$(grep "^copy:" <<<"$OUT")"; check "plain Copy stays plain unless the setting is on" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario remote_page_turner_keys 'read:1,wait:3000,reader:aids:key=AudioNext,wait:500,reader:aids:state,reader:aids:key=AudioPrev,wait:500,reader:aids:state,reader:aids:key=Menu,quit' '
+    R=$(grep "^remote:" <<<"$OUT")
+    sed -n 1p <<<"$R" | grep -q "Some(NextPage)"; check "the media Next key of a page turner is Next Page" $?
+    sed -n 2p <<<"$R" | grep -q "Some(PrevPage)"; check "and Previous is Previous Page" $?
+    sed -n 3p <<<"$R" | grep -q "None"; check "a key that is not mapped does nothing" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+
+# an EPUB whose contents have sections (Part I: Chapter 1 with two sections, Chapter 2; Part II: Chapter 3)
+NESTED="$ROOT/nested-epub"
+mkdir -p "$NESTED/lib"
+python3 - "$NESTED/lib/nested.epub" <<'PY'
+import sys, zipfile
+z = zipfile.ZipFile(sys.argv[1], "w")
+z.writestr(zipfile.ZipInfo("mimetype"), "application/epub+zip")
+z.writestr("META-INF/container.xml", '<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>')
+z.writestr("OEBPS/content.opf", '<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">nested-toc</dc:identifier><dc:title>Nested Contents</dc:title><dc:creator>Fold Author</dc:creator><dc:language>en</dc:language></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/><item id="c2" href="c2.xhtml" media-type="application/xhtml+xml"/><item id="c3" href="c3.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="c1"/><itemref idref="c2"/><itemref idref="c3"/></spine></package>')
+z.writestr("OEBPS/nav.xhtml", '<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>n</title></head><body><nav epub:type="toc"><ol><li><a href="c1.xhtml">Part I</a><ol><li><a href="c1.xhtml#a">Chapter 1</a><ol><li><a href="c1.xhtml#a1">Section a</a></li><li><a href="c1.xhtml#a2">Section b</a></li></ol></li><li><a href="c2.xhtml">Chapter 2</a></li></ol></li><li><a href="c3.xhtml">Part II</a><ol><li><a href="c3.xhtml#x">Chapter 3</a></li></ol></li></ol></nav></body></html>')
+body = lambda t, ids: '<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>c</title></head><body><h1>%s</h1>%s</body></html>' % (t, "".join('<h2 id="%s">%s</h2><p>%s</p>' % (i, i, "Words of the section. " * 30) for i in ids))
+z.writestr("OEBPS/c1.xhtml", body("One", ["a", "a1", "a2"]))
+z.writestr("OEBPS/c2.xhtml", body("Two", ["b"]))
+z.writestr("OEBPS/c3.xhtml", body("Three", ["x"]))
+z.close()
+PY
+
+scenario toc_collapse "library:import=$ROOT/nested-epub/lib,wait:2500,read:3,wait:3000,reader:side-open,wait:700,reader:side-state,reader:toc-fold=collapse,reader:toc-fold=expand,reader:toc-fold=toggle=1,reader:toc-fold=toggle=1,reader:toc-fold=collapse,quit" '
+    T=$(grep "^toc_fold:" <<<"$OUT")
+    sed -n 1p <<<"$T" | grep -q "shown=2 of=7 folded=3 .*bar=true"; check "Collapse All leaves the two parts and shows the bar" $?
+    sed -n 2p <<<"$T" | grep -q "shown=7 of=7 folded=0"; check "Expand All shows every entry again" $?
+    sed -n 3p <<<"$T" | grep -q "shown=5 of=7 folded=1"; check "folding Chapter 1 hides its two sections" $?
+    sed -n 4p <<<"$T" | grep -q "shown=7 of=7 folded=0"; check "and unfolding brings them back" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# `reader:aids:skim=F` shows the skim preview (`skim: (visible, "title\nN%")`).
+scenario skim_preview 'read:1,wait:3000,reader:aids:skim=0.0,reader:aids:skim=0.99,quit' '
+    S=$(grep "^skim:" <<<"$OUT")
+    sed -n 1p <<<"$S" | grep -q "true, \"Chapter 1.*0%\""; check "dragging the slider shows the chapter at the start" $?
+    sed -n 2p <<<"$S" | grep -qE "true, \"Chapter [2-9].*99%\""; check "and the chapter at the end, with the percentage" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# Regression for R29: moving a handle of a saved highlight changes the highlight (before, only the selection moved).
+scenario highlight_adjust_handles 'read:1,wait:2500,reader:ui-dblclick,wait:700,reader:selkey=highlight,wait:700,reader:hl-count,reader:handle-drag=end:70:0,wait:700,reader:hl-count,quit' '
+    M=$(grep "^marks:" <<<"$OUT")
+    L1=$(sed -n 1p <<<"$M" | sed -E "s/.*last=//"); L2=$(sed -n 2p <<<"$M" | sed -E "s/.*last=//")
+    [ "$L1" != "$L2" ] && grep -q "highlights=1 " <<<"$(sed -n 2p <<<"$M")"; check "dragging the end handle of a highlight changes the highlight, not a second one ($L1 → $L2)" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario search_options 'read:1,wait:3000,reader:search=Chapt,wait:2500,reader:dump,reader:aids:sflag=0:on,reader:search=Chapt,wait:2500,reader:dump,reader:aids:sflag=0:off,reader:aids:sflag=2:on,reader:search=Chap.er [0-9],wait:2500,reader:dump,reader:search=Chap(,wait:800,reader:dump,quit' '
+    S=$(grep "^search_status: " <<<"$OUT")
+    sed -n 1p <<<"$S" | grep -qE "^search_status: [0-9]+ results?$"; check "a plain search finds part of a word" $?
+    sed -n 2p <<<"$S" | grep -q "^search_status: No results$"; check "with Whole words on, part of a word is not a match" $?
+    sed -n 3p <<<"$S" | grep -qE "^search_status: [0-9]+ results?$"; check "a regular expression finds Chapter 1" $?
+    sed -n 4p <<<"$S" | grep -q "not a valid regular expression"; check "a broken regular expression says so" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'

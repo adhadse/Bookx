@@ -55,6 +55,12 @@ thread_local! {
     static FOOTER: Rc<Bus> = Rc::new(Bus::default());
     static EDITOR: Rc<Bus> = Rc::new(Bus::default());
     static SYNC: Rc<Bus> = Rc::new(Bus::default());
+    static SIDEBAR: Rc<Bus> = Rc::new(Bus::default());
+}
+
+/// The library sidebar layout was changed in Preferences (the library window rebuilds its sidebar).
+pub fn sidebar() -> Rc<Bus> {
+    SIDEBAR.with(|b| b.clone())
 }
 
 /// A sync setting or the library server changed (Preferences → Sync and the Sync window show the

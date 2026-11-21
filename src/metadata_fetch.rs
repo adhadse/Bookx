@@ -14,7 +14,7 @@ use bookx_sources::health::{HealthBoard, HealthFetcher};
 use bookx_sources::sources::SourceSet;
 
 use crate::core::opf::{Identifier, Metadata};
-use crate::core::util::{author_sort, title_sort};
+use crate::core::util::title_sort;
 
 /// What to do with values the book already has.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,12 +87,11 @@ pub fn apply(current: &Metadata, found: &Metadata, mode: Merge) -> Metadata {
         m.title_sort = title_sort(&m.title);
     }
     if m.author_sort.trim().is_empty() || m.authors != current.authors {
-        m.author_sort = m
-            .authors
-            .iter()
-            .map(|a| author_sort(a))
-            .collect::<Vec<_>>()
-            .join(" & ");
+        m.author_sort = crate::source_priority::author_sort_for(
+            &m.authors,
+            &m.language,
+            crate::source_priority::current_name_order(),
+        );
     }
     m
 }
@@ -151,7 +150,7 @@ pub fn fetch_with(
     if q.title.is_empty() && q.isbn.is_none() {
         anyhow::bail!("Enter a title or an ISBN first.");
     }
-    let set = SourceSet::standard(fetcher);
+    let set = SourceSet::standard(fetcher).with_priority(crate::source_priority::current());
     let built_in = set.search(&q);
     let hits = crate::plugins::lookup_all(plugins, &q);
     let mut found = match built_in {

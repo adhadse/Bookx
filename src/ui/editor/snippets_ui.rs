@@ -22,7 +22,7 @@ impl Editor {
             .filter(|s| s.applies_to_file(css))
             .cloned()
             .collect();
-        let d = adw::Dialog::new();
+        let d = crate::ui::dialog_toast::new_dialog();
         d.set_title(&tr("Insert Snippet"));
         d.set_content_width(420);
         d.set_content_height(460);

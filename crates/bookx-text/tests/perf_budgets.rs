@@ -145,6 +145,30 @@ fn paginating_a_long_chapter_and_turning_pages_is_fast() {
 }
 
 #[test]
+fn widow_and_orphan_control_is_cheap_even_for_one_huge_paragraph() {
+    use bookx_text::vertical::{paginate_with, FlowLine};
+    // one paragraph of 100 000 lines, and 5 000 paragraphs of 20
+    for per in [100_000usize, 20] {
+        let lines: Vec<FlowLine> = (0..100_000)
+            .map(|i| FlowLine {
+                item: i / per,
+                line: (i % per) as i32,
+                v: i as f64 * 24.0,
+                thick: 24.0,
+            })
+            .collect();
+        let t = Instant::now();
+        let pages = paginate_with(&lines, 600.0, 3, 3);
+        check(
+            "widows and orphans over 100 000 lines",
+            t.elapsed(),
+            budget(60),
+        );
+        assert!(pages.len() > 3000);
+    }
+}
+
+#[test]
 fn vertical_pagination_kinsoku_and_tate_chu_yoko_scale_to_a_long_book() {
     use bookx_text::vertical::{
         combine_ranges, paginate, squeezed, violations, FlowLine, Frame, TextCombine, WritingMode,

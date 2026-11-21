@@ -26,7 +26,7 @@ fn window_of(w: &impl IsA<gtk::Widget>) -> Option<gtk::Window> {
 impl Editor {
     pub(super) fn open_saved_dialog(&mut self) {
         let m = Rc::new(Manager {
-            dialog: adw::Dialog::new(),
+            dialog: crate::ui::dialog_toast::new_dialog(),
             list: gtk::ListBox::new(),
             items: RefCell::new(self.w.sx.state.borrow().saved.clone()),
             current: self.current_saved(""),
@@ -262,7 +262,7 @@ fn edit_one(m: &Rc<Manager>, index: Option<usize>) {
     let cur = index
         .and_then(|i| m.items.borrow().get(i).cloned())
         .unwrap_or_else(|| m.current.clone());
-    let dialog = adw::Dialog::new();
+    let dialog = crate::ui::dialog_toast::new_dialog();
     dialog.set_title(&tr("Edit Saved Search"));
     dialog.set_content_width(520);
     let group = adw::PreferencesGroup::new();

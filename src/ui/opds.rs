@@ -1,4 +1,4 @@
-//! The *Online Catalogues* window: browse, search and download from OPDS catalogues (Project
+//! The *Online Catalogues* page of the library (a destination of the sidebar): browse, search and download from OPDS catalogues (Project
 //! Gutenberg, Standard Ebooks, a Calibre server, another Bookx). Downloaded books go through the
 //! normal import. Logic: `crate::opds_browse`; the network runs on worker threads.
 
@@ -33,7 +33,8 @@ enum Busy {
 struct Ui {
     shared: SharedRef,
     import: Import,
-    dialog: adw::Dialog,
+    /// The page itself; the dialogs of the page (Add a Catalogue) are presented over it.
+    anchor: gtk::Widget,
     toasts: adw::ToastOverlay,
     title: adw::WindowTitle,
     back: gtk::Button,
@@ -52,6 +53,8 @@ struct Ui {
     root_feed: RefCell<Option<Feed>>,
     entries: RefCell<Vec<Entry>>,
     busy: Cell<bool>,
+    /// What the **Undo** of the last removal toast does (test hook).
+    last_undo: RefCell<Option<Rc<dyn Fn()>>>,
     /// Bumped by every navigation so that a late answer of an older one is dropped.
     epoch: Cell<u64>,
 }
@@ -85,30 +88,29 @@ fn poll<T: 'static>(rx: std::sync::mpsc::Receiver<T>, done: impl FnOnce(T) + 'st
     });
 }
 
-pub fn show(parent: &impl IsA<gtk::Widget>, shared: &SharedRef, import: Import) {
+/// The page for the library's content stack. The catalogue list shows first; the page keeps its
+/// place (catalogue, folder, search) while the user is somewhere else in the library.
+pub fn page(shared: &SharedRef, import: Import) -> gtk::Widget {
     let ui = build(shared, import);
     ui.show_catalogs();
-    ui.dialog.present(Some(parent));
+    let widget = ui.anchor.clone();
     CURRENT.with(|c| *c.borrow_mut() = Some(ui));
+    widget
 }
 
 fn build(shared: &SharedRef, import: Import) -> Rc<Ui> {
-    let dialog = super::dialog_toast::new_dialog();
-    dialog.set_title(&tr("Online Catalogues"));
-    dialog.set_content_width(640);
-    dialog.set_content_height(560);
-
-    let header = adw::HeaderBar::new();
+    let header = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    header.add_css_class("toolbar");
     let title = adw::WindowTitle::new(&tr("Online Catalogues"), "");
-    header.set_title_widget(Some(&title));
+    title.set_hexpand(true);
+    title.set_halign(gtk::Align::Center);
     let back = gtk::Button::from_icon_name("go-previous-symbolic");
     back.set_tooltip_text(Some(&tr("Back")));
     back.update_property(&[gtk::accessible::Property::Label(&tr("Back"))]);
-    header.pack_start(&back);
+    header.append(&back);
     let add_catalog = gtk::Button::from_icon_name("list-add-symbolic");
     add_catalog.set_tooltip_text(Some(&tr("Add a catalogue")));
     add_catalog.update_property(&[gtk::accessible::Property::Label(&tr("Add a catalogue"))]);
-    header.pack_end(&add_catalog);
     let search_toggle = gtk::ToggleButton::new();
     search_toggle.set_icon_name("system-search-symbolic");
     search_toggle.set_tooltip_text(Some(&tr("Search This Catalogue")));
@@ -116,7 +118,9 @@ fn build(shared: &SharedRef, import: Import) -> Rc<Ui> {
         "Search This Catalogue",
     ))]);
     search_toggle.set_visible(false);
-    header.pack_end(&search_toggle);
+    header.append(&title);
+    header.append(&search_toggle);
+    header.append(&add_catalog);
 
     let search_entry = gtk::SearchEntry::new();
     search_entry.set_placeholder_text(Some(&tr("Search this catalogue")));
@@ -142,7 +146,10 @@ fn build(shared: &SharedRef, import: Import) -> Rc<Ui> {
     list.set_margin_bottom(12);
     let scroll = gtk::ScrolledWindow::new();
     scroll.set_vexpand(true);
-    scroll.set_child(Some(&list));
+    let clamp = adw::Clamp::new();
+    clamp.set_maximum_size(720);
+    clamp.set_child(Some(&list));
+    scroll.set_child(Some(&clamp));
     let status = adw::StatusPage::new();
     let retry = gtk::Button::with_label(&tr("Try Again"));
     retry.add_css_class("suggested-action");
@@ -174,15 +181,16 @@ fn build(shared: &SharedRef, import: Import) -> Rc<Ui> {
     body.append(&stack);
     let toasts = adw::ToastOverlay::new();
     toasts.set_child(Some(&body));
-    let view = adw::ToolbarView::new();
-    view.add_top_bar(&header);
-    view.set_content(Some(&toasts));
-    dialog.set_child(Some(&view));
+    let page = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    page.set_widget_name("catalogues-page");
+    page.append(&header);
+    toasts.set_vexpand(true);
+    page.append(&toasts);
 
     let ui = Rc::new(Ui {
         shared: shared.clone(),
         import,
-        dialog,
+        anchor: page.clone().upcast(),
         toasts,
         title,
         back: back.clone(),
@@ -201,6 +209,7 @@ fn build(shared: &SharedRef, import: Import) -> Rc<Ui> {
         root_feed: RefCell::new(None),
         entries: RefCell::new(Vec::new()),
         busy: Cell::new(false),
+        last_undo: RefCell::new(None),
         epoch: Cell::new(0),
     });
     {
@@ -238,7 +247,7 @@ fn build(shared: &SharedRef, import: Import) -> Rc<Ui> {
                 glib::Propagation::Stop
             })),
         ));
-        ui.dialog.add_controller(sc);
+        page.add_controller(sc);
     }
     ui
 }
@@ -319,13 +328,36 @@ impl Ui {
         self.stack.set_visible_child_name("list");
     }
 
+    /// Removes a catalogue of the user; a toast with **Undo** puts it back where it was.
     fn remove_catalog(self: &Rc<Self>, id: &str) {
-        {
+        let removed = {
             let mut c = self.shared.cfg.borrow_mut();
-            c.opds_catalogs.retain(|x| x.id != id);
+            let at = c.opds_catalogs.iter().position(|x| x.id == id);
+            let gone = at.map(|i| (i, c.opds_catalogs.remove(i)));
             c.save();
-        }
+            gone
+        };
         self.show_catalogs();
+        if let Some((at, cat)) = removed {
+            let ui = self.clone();
+            let name = cat.name.clone();
+            let undo: Rc<dyn Fn()> = Rc::new(move || {
+                {
+                    let mut c = ui.shared.cfg.borrow_mut();
+                    let at = at.min(c.opds_catalogs.len());
+                    c.opds_catalogs.insert(at, cat.clone());
+                    c.save();
+                }
+                ui.show_catalogs();
+            });
+            *self.last_undo.borrow_mut() = Some(undo.clone());
+            super::dialog_toast::show_action(
+                &self.toasts,
+                &trf("Removed {}", &[&name]),
+                &tr("Undo"),
+                move || undo(),
+            );
+        }
     }
 
     fn open_catalog(self: &Rc<Self>, c: ob::Catalog) {
@@ -645,7 +677,7 @@ impl Ui {
                 pass.text().as_str(),
             );
         });
-        d.present(Some(&self.dialog));
+        d.present(Some(&self.anchor));
     }
 
     fn add_catalog_from(self: &Rc<Self>, name: &str, url: &str, user: &str, pass: &str) -> bool {
@@ -761,11 +793,7 @@ fn dev_add_dialog(ui: &Rc<Ui>, cmd: &str) -> bool {
     true
 }
 
-pub fn dev(parent: &gtk::Window, shared: &SharedRef, import: Import, cmd: &str) {
-    if cmd == "open" {
-        show(parent, shared, import);
-        return;
-    }
+pub fn dev(cmd: &str) {
     let Some(ui) = CURRENT.with(|c| c.borrow().clone()) else {
         eprintln!("opds_error: not open");
         return;
@@ -777,6 +805,38 @@ pub fn dev(parent: &gtk::Window, shared: &SharedRef, import: Import, cmd: &str) 
     }
     match cmd {
         "dump" => ui.dump(),
+        "catalogs" => {
+            let names: Vec<String> = ui
+                .shared
+                .cfg
+                .borrow()
+                .opds_catalogs
+                .iter()
+                .map(|c| c.name.clone())
+                .collect();
+            eprintln!("opds_catalogs: {}", names.join("|"));
+        }
+        "undo-remove" => {
+            let undo = ui.last_undo.borrow_mut().take();
+            match undo {
+                Some(u) => u(),
+                None => eprintln!("opds_error: nothing to undo"),
+            }
+        }
+        c if c.starts_with("remove=") => {
+            let id = ui
+                .shared
+                .cfg
+                .borrow()
+                .opds_catalogs
+                .iter()
+                .find(|x| x.name == c[7..])
+                .map(|x| x.id.clone());
+            match id {
+                Some(id) => ui.remove_catalog(&id),
+                None => eprintln!("opds_error: no catalogue {}", &c[7..]),
+            }
+        }
         "back" => ui.go_back(),
         "cancel" => ui.cancel_load(),
         "more" => {

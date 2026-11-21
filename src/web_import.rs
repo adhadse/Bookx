@@ -36,6 +36,14 @@ pub fn fetcher() -> std::sync::Arc<dyn Fetcher> {
                 MockFetcher::new()
                     .on("https://mock.example/post", file("page.html"))
                     .on("https://mock.example/feed.xml", file("feed.xml"))
+                    .on(
+                        "https://mock.example/wallabag/oauth/v2/token",
+                        file("wallabag-token.json"),
+                    )
+                    .on_prefix(
+                        "https://mock.example/wallabag/api/entries.json",
+                        file("wallabag-entries.json"),
+                    )
                     .on_prefix("https://mock.example/", MockReply::Status(404)),
             )
         }
@@ -48,6 +56,8 @@ pub fn fetcher() -> std::sync::Arc<dyn Fetcher> {
 pub enum Kind {
     Article,
     Feed,
+    /// One or more Wikipedia articles as chapters of one book.
+    Wikipedia,
 }
 
 /// The result of an import: the book to add, what it was, and a line for the user.
@@ -85,7 +95,12 @@ pub fn normalize_url(input: &str) -> Result<String> {
 /// Downloads `input` and turns it into a book: a feed becomes a news book with its latest
 /// articles, anything else is read as an article.
 pub fn import(input: &str, fetcher: &dyn Fetcher, now: DateTime<Utc>) -> Result<Imported> {
+    if let Some(spec) = bookx_sources::wikipedia::parse_spec(input)? {
+        return import_wikipedia(&spec, fetcher);
+    }
     let url = normalize_url(input)?;
+    // the user typed this address, so its host may be local; links found inside it may not
+    bookx_sources::netguard::trust_url(&url);
     let body = fetcher
         .get(&url, &[])
         .with_context(|| trf("Could not download {}", &[&url]))?;
@@ -96,6 +111,23 @@ pub fn import(input: &str, fetcher: &dyn Fetcher, now: DateTime<Utc>) -> Result<
         return import_feed(&url, fetcher, now);
     }
     import_article(&url, &decode_text(&body), fetcher)
+}
+
+fn import_wikipedia(
+    spec: &bookx_sources::wikipedia::Spec,
+    fetcher: &dyn Fetcher,
+) -> Result<Imported> {
+    let (archive, problems) = bookx_sources::wikipedia::build_book(spec, fetcher)?;
+    let prepared = prepare_from_archive(archive, Path::new(&spec.titles[0]))?;
+    let mut summary = trf("Made “{}” from Wikipedia", &[&prepared.meta.title]);
+    if !problems.is_empty() {
+        summary.push_str(&format!(", {} article(s) skipped", problems.len()));
+    }
+    Ok(Imported {
+        prepared,
+        kind: Kind::Wikipedia,
+        summary,
+    })
 }
 
 fn import_article(url: &str, html: &str, fetcher: &dyn Fetcher) -> Result<Imported> {
@@ -145,6 +177,68 @@ fn import_feed(url: &str, fetcher: &dyn Fetcher, now: DateTime<Utc>) -> Result<I
         kind: Kind::Feed,
         summary,
     })
+}
+
+/// What a Wallabag import produced: the books with the Wallabag id each came from, and what failed.
+pub struct WallabagRun {
+    pub books: Vec<(u64, Prepared)>,
+    pub problems: Vec<String>,
+}
+
+/// Imports the newest articles of the Wallabag server in `acc` that were not imported before.
+/// The access token is the pasted one, or comes from signing in with the API client.
+pub fn import_wallabag(
+    acc: &crate::web_accounts::WebAccounts,
+    fetcher: &dyn Fetcher,
+) -> Result<WallabagRun> {
+    use bookx_sources::wallabag as wb;
+    let base = wb::normalize_base(&acc.wallabag_url)?;
+    let token = match acc.wallabag_token.trim() {
+        "" => wb::sign_in(fetcher, &base, &acc.wallabag_credentials())?,
+        t => t.to_string(),
+    };
+    let seen: std::collections::HashSet<u64> = acc.wallabag_seen.iter().copied().collect();
+    let entries = wb::fetch_entries(fetcher, &base, &token, &acc.wallabag_query(), &|id| {
+        seen.contains(&id)
+    })?;
+    let mut run = WallabagRun {
+        books: Vec::new(),
+        problems: Vec::new(),
+    };
+    for e in entries {
+        let article = wb::entry_article(&e);
+        if article.text_len < 20 {
+            run.problems.push(trf("“{}” has no text", &[&e.title]));
+            continue;
+        }
+        let mut wanted = article.images.clone();
+        if let Some(l) = &article.lead_image {
+            if !wanted.contains(l) {
+                wanted.push(l.clone());
+            }
+        }
+        let images = fetch_images(fetcher, &wanted, &ImageLimits::default());
+        let made = article_to_epub(&article, &images)
+            .and_then(|a| prepare_from_archive(a, Path::new(&article.title)));
+        match made {
+            Ok(p) => run.books.push((e.id, p)),
+            Err(err) => run.problems.push(format!("{}: {err:#}", e.title)),
+        }
+    }
+    Ok(run)
+}
+
+/// One line for the user after an import.
+pub fn wallabag_summary(books: usize, problems: usize) -> String {
+    let mut s = crate::i18n::ntr(
+        "Added {} article from Wallabag",
+        "Added {} articles from Wallabag",
+        books as u32,
+    );
+    if problems > 0 {
+        s.push_str(&format!(", {problems} skipped"));
+    }
+    s
 }
 
 #[cfg(test)]
@@ -228,6 +322,26 @@ mod tests {
     }
 
     #[test]
+    fn wikipedia_articles_become_one_book_through_the_same_door() {
+        use bookx_sources::wikipedia::api_url;
+        let page = serde_json::json!({"parse": {"title": "Ada Lovelace", "text":
+            "<p>Ada Lovelace was an English mathematician and writer, chiefly known for her work.</p>"}})
+        .to_string();
+        let f = MockFetcher::new().with_body(&api_url("en", "Ada Lovelace"), page);
+        let got = import("wikipedia:Ada Lovelace", &f, now()).unwrap();
+        assert_eq!(got.kind, Kind::Wikipedia);
+        assert_eq!(got.prepared.meta.title, "Ada Lovelace");
+        assert!(got.summary.contains("Ada Lovelace"), "{}", got.summary);
+        assert!(f
+            .urls()
+            .iter()
+            .all(|u| u.starts_with("https://en.wikipedia.org/")));
+        // an article address of Wikipedia takes the same route
+        let again = import("https://en.wikipedia.org/wiki/Ada_Lovelace", &f, now()).unwrap();
+        assert_eq!(again.kind, Kind::Wikipedia);
+    }
+
+    #[test]
     fn a_feed_becomes_a_news_book() {
         let f = MockFetcher::new().with_body("https://news.example/feed.xml", FEED);
         let got = import("https://news.example/feed.xml", &f, now()).unwrap();
@@ -298,5 +412,80 @@ mod tests {
             .on("https://blog.example/pic.png", MockReply::Status(404));
         let got = import("https://blog.example/post", &without, now()).unwrap();
         assert!(got.summary.contains("(0 images)"), "{}", got.summary);
+    }
+
+    fn wb_page(ids: &[u64]) -> String {
+        let items: Vec<String> = ids
+            .iter()
+            .map(|id| {
+                format!(
+                    r#"{{"id":{id},"url":"https://blog.example/p{id}","title":"Saved {id}","content":"<p>{}</p>","language":"en","published_by":["Pat"],"created_at":"2024-05-01T10:00:00+0000","is_archived":0}}"#,
+                    "A saved article with enough words to count as text. ".repeat(3)
+                )
+            })
+            .collect();
+        format!(
+            r#"{{"pages":1,"_embedded":{{"items":[{}]}}}}"#,
+            items.join(",")
+        )
+    }
+
+    #[test]
+    fn wallabag_articles_become_books_once() {
+        use bookx_sources::wallabag::{entries_url, Query};
+        let mut acc = crate::web_accounts::WebAccounts {
+            wallabag_url: "wallabag.example.org".into(),
+            wallabag_token: "TOK".into(),
+            ..Default::default()
+        };
+        let q: Query = acc.wallabag_query();
+        let f = MockFetcher::new().with_body(
+            &entries_url("https://wallabag.example.org", &q, 1),
+            wb_page(&[3, 2, 1]),
+        );
+        let run = import_wallabag(&acc, &f).unwrap();
+        assert_eq!(run.books.len(), 3);
+        assert_eq!(run.books[0].0, 3);
+        assert_eq!(run.books[0].1.meta.title, "Saved 3");
+        assert!(f.posts().is_empty(), "a pasted token needs no sign-in");
+        // the second time only the new article is taken
+        acc.remember_wallabag(&[3, 2, 1]);
+        let f = MockFetcher::new().with_body(
+            &entries_url("https://wallabag.example.org", &q, 1),
+            wb_page(&[4, 3, 2, 1]),
+        );
+        let run = import_wallabag(&acc, &f).unwrap();
+        assert_eq!(run.books.iter().map(|b| b.0).collect::<Vec<_>>(), vec![4]);
+        assert!(wallabag_summary(1, 0).contains('1'));
+    }
+
+    #[test]
+    fn wallabag_signs_in_when_there_is_no_token() {
+        use bookx_sources::wallabag::{entries_url, Query};
+        let mut acc = crate::web_accounts::WebAccounts {
+            wallabag_url: "https://w.example.org".into(),
+            ..Default::default()
+        };
+        assert!(import_wallabag(&acc, &MockFetcher::new()).is_err());
+        acc.wallabag_client_id = "i".into();
+        acc.wallabag_client_secret = "s".into();
+        acc.wallabag_user = "u".into();
+        acc.wallabag_password = "p".into();
+        let f = MockFetcher::new()
+            .with_body(
+                "https://w.example.org/oauth/v2/token",
+                r#"{"access_token":"T2"}"#,
+            )
+            .with_body(
+                &entries_url("https://w.example.org", &Query::default(), 1),
+                wb_page(&[9]),
+            );
+        let run = import_wallabag(&acc, &f).unwrap();
+        assert_eq!(run.books.len(), 1);
+        assert_eq!(f.posts().len(), 1);
+        assert_eq!(
+            f.requests()[0].header_value("authorization"),
+            Some("Bearer T2")
+        );
     }
 }

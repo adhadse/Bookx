@@ -212,12 +212,20 @@ mod tests {
 
     #[test]
     fn a_huge_glossary_is_cut_to_a_sane_number_of_marks() {
-        let mut s = VocabStore::new();
-        let now = Utc::now();
-        for i in 0..MAX_MARK_TERMS + 50 {
-            s.set_own(&own(&format!("term{i}"), Scope::All), now)
-                .unwrap();
-        }
+        // set_own looks the term up linearly, so 20 000 calls are quadratic (minutes when instrumented):
+        // build the store from serialised copies of one entry instead
+        let mut one = VocabStore::new();
+        one.set_own(&own("term", Scope::All), Utc::now()).unwrap();
+        let mut json = serde_json::to_value(&one).unwrap();
+        let entry = json["entries"][0].clone();
+        json["entries"] = (0..MAX_MARK_TERMS + 50)
+            .map(|i| {
+                let mut e = entry.clone();
+                e["word"] = format!("term{i}").into();
+                e
+            })
+            .collect();
+        let s: VocabStore = serde_json::from_value(json).unwrap();
         let m = MarkSet::new(&s, "1", "");
         assert_eq!(m.words.len(), MAX_MARK_TERMS);
     }

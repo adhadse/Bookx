@@ -45,6 +45,8 @@ pub struct MetadataForm {
     status: gtk::Label,
     /// Field -> where the fetched value came from, for the provenance record on save.
     fetched: Rc<RefCell<Vec<(String, String)>>>,
+    /// The custom column rows (none when the library has no custom columns).
+    custom: Option<super::custom_columns::CustomRows>,
 }
 
 thread_local! {
@@ -165,7 +167,7 @@ impl MetadataForm {
                     .build();
                 let filter = gtk::FileFilter::new();
                 filter.add_mime_type("image/*");
-                filter.set_name(Some("Images"));
+                filter.set_name(Some(&tr("Images")));
                 dialog.set_default_filter(Some(&filter));
                 let win = b.root().and_downcast::<gtk::Window>();
                 let picture = picture.clone();
@@ -269,6 +271,10 @@ impl MetadataForm {
         details.add(&language);
         details.add(&identifiers);
         page.add(&details);
+        let custom = super::custom_columns::form_rows();
+        if let Some(c) = &custom {
+            page.add(&c.group);
+        }
 
         // --- sorting -------------------------------------------------------
         let sort = adw::PreferencesGroup::builder()
@@ -308,6 +314,7 @@ impl MetadataForm {
         page.add(&comments);
 
         let form = MetadataForm {
+            custom,
             fetched: Rc::new(RefCell::new(Vec::new())),
             widget: page.upcast(),
             orig: md.clone(),
@@ -346,7 +353,7 @@ impl MetadataForm {
         let current = self.read();
         self.fetch_btn.set_sensitive(false);
         self.status.set_visible(true);
-        self.status.set_label(&tr("Looking the book up…"));
+        self.status.set_label(&tr("Looking the book up"));
         let (tx, rx) = std::sync::mpsc::channel();
         let md = current.clone();
         std::thread::spawn(move || {
@@ -566,7 +573,7 @@ pub fn edit_dialog(
     let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("Edit Metadata"));
     dialog.set_content_width(620);
-    dialog.set_content_height(760);
+    dialog.set_content_height(560);
     let form = Rc::new(MetadataForm::new(md, cover.as_deref()));
 
     let toolbar = adw::ToolbarView::new();
@@ -593,6 +600,13 @@ pub fn edit_dialog(
         let d = dialog.clone();
         let form = form.clone();
         save.connect_clicked(move |_| {
+            match form.custom.as_ref().map(|c| c.collect()).transpose() {
+                Ok(v) => super::custom_columns::stash(v.unwrap_or_default()),
+                Err(e) => {
+                    super::custom_columns::alert(&d, &e);
+                    return;
+                }
+            }
             LAST_FETCH.with(|l| *l.borrow_mut() = form.fetched.borrow().clone());
             on_save(form.read(), form.cover_change());
             d.close();
@@ -628,6 +642,8 @@ pub struct BulkEdit {
     pub publisher: Option<String>,
     pub language: Option<String>,
     pub rating: Option<u8>,
+    /// Custom column values to set: `(label, value)`.
+    pub custom: Vec<(String, String)>,
 }
 
 impl BulkEdit {
@@ -676,6 +692,12 @@ impl BulkEdit {
                 Some(("publisher", v)) => e.publisher = Some(v.to_string()),
                 Some(("language", v)) => e.language = Some(v.to_string()),
                 Some(("rating", v)) => e.rating = v.parse().ok(),
+                // `custom:label=value`
+                Some(("custom", v)) => {
+                    if let Some((l, val)) = v.split_once('=') {
+                        e.custom.push((l.to_string(), val.to_string()));
+                    }
+                }
                 _ => {}
             }
         }
@@ -692,6 +714,19 @@ pub fn apply_bulk(
 ) -> anyhow::Result<usize> {
     let before = crate::library_health::snapshot_meta(&shared.lib.borrow(), ids);
     let res = shared.lib.borrow_mut().bulk_edit(ids, |m| edit.apply(m));
+    let res = match res {
+        Ok(n) if !edit.custom.is_empty() => {
+            let mut lib = shared.lib.borrow_mut();
+            let per_book: Vec<(u64, Vec<(String, String)>)> =
+                ids.iter().map(|id| (*id, edit.custom.clone())).collect();
+            lib.edit_custom(
+                trf("Edited custom columns of {} books", &[&ids.len()]),
+                &per_book,
+            )
+            .map(|c| n.max(c))
+        }
+        other => other,
+    };
     crate::library_health::record_changes(
         &shared.guard.borrow().store,
         &shared.lib.borrow(),
@@ -737,6 +772,10 @@ pub fn bulk_dialog(
     rating_row.set_title(&tr("Set rating (click to choose)"));
     group.add(&rating_row);
     page.add(&group);
+    let custom = super::custom_columns::bulk_rows();
+    if let Some(c) = &custom {
+        page.add(&c.group);
+    }
 
     let toolbar = adw::ToolbarView::new();
     let header = adw::HeaderBar::new();
@@ -768,7 +807,15 @@ pub fn bulk_dialog(
                     Some(t)
                 }
             };
+            let custom_edits = match custom.as_ref().map(|c| c.collect()).transpose() {
+                Ok(v) => v.unwrap_or_default(),
+                Err(e) => {
+                    super::custom_columns::alert(&d, &e);
+                    return;
+                }
+            };
             on_apply(BulkEdit {
+                custom: custom_edits,
                 add_tags: split_list(&add_tags.text(), &[',']),
                 remove_tags: split_list(&remove_tags.text(), &[',']),
                 author: opt(&author),

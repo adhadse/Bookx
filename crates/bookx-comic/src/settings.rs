@@ -85,6 +85,8 @@ pub struct Global {
     pub animate: bool,
     /// The thumbnail strip is open.
     pub thumbs: bool,
+    /// Import comics without reading `ComicInfo.xml` (title, series, direction, cover, page types).
+    pub ignore_info: bool,
 }
 
 impl Default for Global {
@@ -98,6 +100,7 @@ impl Default for Global {
             grey: false,
             animate: true,
             thumbs: false,
+            ignore_info: false,
         }
     }
 }
@@ -128,6 +131,8 @@ pub struct Store {
     pub global: Global,
     /// Keyed by the book id.
     pub books: BTreeMap<String, BookView>,
+    /// Reading direction default of a whole library (keyed by its folder): `true` is right to left.
+    pub library_rtl: BTreeMap<String, bool>,
 }
 
 impl Store {
@@ -141,11 +146,18 @@ impl Store {
 
     /// `book_rtl` is what the book itself says (ComicInfo `Manga`, the page progression).
     pub fn effective(&self, id: u64, book_rtl: bool) -> Effective {
+        self.effective_in(id, book_rtl, "")
+    }
+
+    /// Like [`Store::effective`] with the library the book is in: the book's own choice wins,
+    /// then a book that says right to left, then the direction chosen for the library.
+    pub fn effective_in(&self, id: u64, book_rtl: bool, library: &str) -> Effective {
         let b = self.books.get(&id.to_string()).copied().unwrap_or_default();
+        let lib_rtl = self.library_rtl.get(library).copied().unwrap_or(false);
         Effective {
             mode: b.mode.unwrap_or(self.global.mode),
             fit: b.fit.unwrap_or(self.global.fit),
-            rtl: b.rtl.unwrap_or(book_rtl),
+            rtl: b.rtl.unwrap_or(book_rtl || lib_rtl),
             guided: b.guided.unwrap_or(self.global.guided),
         }
     }
@@ -197,6 +209,30 @@ mod tests {
         assert!(s.effective(8, true).rtl, "other books are not affected");
         s.forget(7);
         assert!(s.effective(7, true).rtl);
+    }
+
+    #[test]
+    fn a_library_can_read_right_to_left_unless_the_book_says_otherwise() {
+        let mut s = Store::default();
+        s.library_rtl.insert("/lib/manga".into(), true);
+        assert!(s.effective_in(1, false, "/lib/manga").rtl);
+        assert!(!s.effective_in(1, false, "/lib/other").rtl);
+        assert!(!s.effective(1, false).rtl);
+        s.book_mut(1).rtl = Some(false);
+        assert!(
+            !s.effective_in(1, false, "/lib/manga").rtl,
+            "the book's own choice wins"
+        );
+        assert!(
+            s.effective_in(2, true, "/lib/other").rtl,
+            "the book's own ComicInfo still counts"
+        );
+    }
+
+    #[test]
+    fn old_files_without_the_new_fields_still_load() {
+        let s = Store::from_json("{\"global\":{\"grey\":true},\"books\":{}}");
+        assert!(s.global.grey && !s.global.ignore_info && s.library_rtl.is_empty());
     }
 
     #[test]

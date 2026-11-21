@@ -34,6 +34,16 @@ permissions, limits), `manifest.rs` (kind, actions), `runtime.rs` (the `editor_c
 
 ## Not done
 
-* Plugin-defined dialogs or panels, a plugin store, signing. Running one action on every book of the library.
+* Plugin-defined dialogs or panels, a plugin store.
+* Wave 11 done: running one action on every book (`bookx-cli plugin run DIR ACTION [QUERY] [--apply]`, `bookx_plugin::batch::run_on_archive`: a
+  copy of the book as `MemBook`, only changed files come back; selection calls fail, metadata edits are not applied; dry run by default);
+  the capability sheet (`src/ui/plugin_trust.rs`: Allow/Cancel before a plugin is switched on, trust stored in `plugins.json` as the
+  SHA-256 fingerprint of `plugin.toml` + wasm, a changed plugin is not registered until allowed again; plugins enabled before trust existed
+  keep running); signing (below).
+* Signing (G10): `plugin.sig` next to `plugin.toml`: `bookx-plugin-signature 1`, `key: <64 hex>`, `signature: <128 hex>`, an ed25519 signature over
+  `"bookx-plugin-v1\0" || sha256(plugin.toml) || sha256(wasm)`. **No ed25519 implementation is in the dependency tree**, so
+  `UnsupportedVerifier` answers "cannot check" and a signed plugin shows as "signed, not verified"; the parser (strict, 1 KiB limit), the message,
+  the `SignatureVerifier` trait and the status/warning plumbing are tested with a fake verifier. Adding `ed25519-dalek` (or `ed25519-compact`)
+  and a trusted-key list is one `impl`. Policy kept: unsigned plugins are allowed, with a warning in the sheet.
 * Binding the suggested shortcuts (needs the keymap editor of another track).
 * The wasm host has no `now_ms`-free determinism guarantee beyond the existing limits.

@@ -4,15 +4,19 @@ pub mod audiobooks;
 pub mod audit;
 pub mod authors;
 pub mod backup;
+pub mod book_tile;
 pub mod bulkfetch;
 pub mod calibre_export;
+pub mod calibre_import;
 pub mod canvas;
 mod canvas_xtable;
 pub mod card_drag;
 pub mod citations;
 pub mod colors;
 pub mod comic_settings;
+pub mod convert_options;
 pub mod covers;
+pub mod custom_columns;
 pub mod devices;
 pub mod devices_list;
 pub mod dialog_toast;
@@ -20,16 +24,20 @@ pub mod dict_service;
 pub mod dict_settings;
 pub mod duplicates;
 pub mod editor;
+pub mod folder_watch;
 pub mod formats;
 pub mod health;
 pub mod health_extra;
 mod i18n_lint;
 pub mod image_viewer;
+pub mod import_isbn;
+pub mod index_status;
 pub mod jobs;
 pub mod kosync;
 pub mod language_settings;
 pub mod library;
 pub mod library_banner;
+pub mod library_sidebar;
 pub mod library_switcher;
 pub mod library_works;
 pub mod map_thumbs;
@@ -45,34 +53,44 @@ pub mod organize;
 pub mod overlay_guard;
 pub mod page_area;
 pub mod palette;
+pub mod plugin_trust;
 pub mod preferences;
 pub mod preflight;
 pub mod privacy_settings;
 pub mod progress_ring;
+pub mod proxy_settings;
+pub mod qr_dialog;
 pub mod reader;
 pub mod reader_comic;
 pub mod reader_extra;
 pub mod reader_fonts;
 pub mod reader_footer;
 pub mod reader_goto;
+pub mod reader_live;
 pub mod reader_map;
 pub mod reader_menu;
 pub mod reader_pdf;
 pub mod reader_search;
+pub mod reader_settings_extra;
 pub mod reader_side;
 pub mod reader_style;
 pub mod reader_theme_editor;
 pub mod reader_theme_row;
 pub mod reader_tts;
 pub mod reading_ruler;
+pub mod replace_fields;
 pub mod rsvp;
 pub mod saved;
+pub mod secrets_unlock;
 pub mod sel_handles;
+pub mod settings_io;
 pub mod share;
 pub mod shelves;
 pub mod shortcuts_dialog;
+pub mod source_settings;
 pub mod stats;
 pub mod stepper;
+pub mod sync_activity;
 pub mod sync_prefs;
 pub mod sync_window;
 pub mod syntax;
@@ -83,6 +101,7 @@ pub mod vocab;
 pub mod vocab_list;
 pub mod vocab_own;
 pub mod vocab_settings;
+pub mod wallabag;
 pub mod web;
 
 use crate::i18n::tr;
@@ -142,8 +161,26 @@ pub fn system_is_dark() -> bool {
     relm4::adw::StyleManager::default().is_dark()
 }
 
+/// Opens a link that came from untrusted content (a book, a feed, a catalogue): only
+/// `http`, `https` and `mailto` pass `bookx_core::util::safe_external_url`. Returns whether it opened.
+pub fn open_external_link(uri: &str) -> bool {
+    match crate::core::util::safe_external_url(uri) {
+        Some(u) => {
+            let _ = gtk::gio::AppInfo::launch_default_for_uri(&u, gtk::gio::AppLaunchContext::NONE);
+            true
+        }
+        None => false,
+    }
+}
+
+/// Opens an address the app built itself (a web page, `file:///` folder). Anything else is
+/// refused here as well, so no caller can pass `data:`, `javascript:` or `ftp:` through.
 pub fn open_uri(uri: &str) {
-    let _ = gtk::gio::AppInfo::launch_default_for_uri(uri, gtk::gio::AppLaunchContext::NONE);
+    if uri.starts_with("file:///") && !uri.chars().any(|c| c.is_control()) {
+        let _ = gtk::gio::AppInfo::launch_default_for_uri(uri, gtk::gio::AppLaunchContext::NONE);
+    } else {
+        open_external_link(uri);
+    }
 }
 
 pub fn alert(

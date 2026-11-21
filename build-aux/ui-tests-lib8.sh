@@ -15,7 +15,7 @@
 
 scenario lib8_menus 'library:wide,wait:300,library:menus,quit' '
     has "^mainmenu: Open Library Folder \\[lib.open-folder\\] \\| Sync \\[app.sync\\] \\| Devices \\[app.devices\\] \\| Library Health \\[lib.health\\] \\| Preferences \\[app.preferences\\] \\| Keyboard Shortcuts \\[app.shortcuts\\] \\| Help \\[app.help\\] \\| About Bookx \\[app.about\\]$"; check "the main menu has the eight entries (Saved Searches live in the sidebar) in the decided order, Help before About" $?
-    has "^menu_counts: main=8 library=8 add=6 "; check "main menu 8 entries, Library menu 8, + menu 6 (all within 3-12)" $?
+    has "^menu_counts: main=8 library=8 add=8 "; check "main menu 8 entries, Library menu 8, + menu 8 (all within 3-12)" $?
     has "^librarymenu: Reading Statistics \\[app.stats\\] \\| Vocabulary \\[app.vocab\\] \\| Reading Trackers \\[lib.trackers\\] \\| Audiobooks \\[lib.audiobooks\\] \\| Online Catalogues \\[lib.opds\\] \\| Subscribe to News \\[lib.news\\] \\| Export as Calibre Library \\[lib.export-calibre\\] \\| Export Citations \\[lib.citations\\]"; check "the Library menu holds the destinations and the library-wide exports" $?
     ! has "^mainmenu: .*(Copy Diagnostics|Import Calibre|Import Highlights|Export All Annotations)"; check "diagnostics, imports and annotation export left the main menu" $?
     has "^menu_counts: .*main_keys=_Open Library Folder\\|"; check "the menu is built as a gio::Menu with access keys" $?
@@ -78,7 +78,7 @@ scenario lib9_jobs 'jobs:clear,jobs:open,wait:500,jobs:rows,jobs:close,jobs:star
     sed -n 2p <<<"$R" | grep -q "Send Books / Failed: disk full"; check "a failed job lists its reason" $?
     ! sed -n 2p <<<"$R" | grep -q "After 0"; check "no \"After 0 ms\" for a job that failed at once" $?
     has "^jobs: copy-error 2 Send Books / disk full"; check "Copy Error puts the job and its reason on the clipboard" $?
-    has "^jobs: icon (task-due|system-run)-symbolic"; check "the Jobs button has its own icon (not the list icon of Shelves and the table)" $?
+    has "^jobs: icon (blocks|system-run)-symbolic"; check "the Jobs button has its own icon (not the list icon of Shelves and the table)" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
 scenario lib9_table_sort 'library:wide,wait:300,library:table,wait:700,library:sortstate,library:sortcol=Author(s):desc,wait:600,library:sortstate,library:sortcol=Author(s),wait:600,library:sortstate,library:sort=2,wait:600,library:sortstate,library:sort=3,wait:600,library:sortstate,quit' '
@@ -178,7 +178,7 @@ scenario lib9_grid_clamp 'wait:900,library:gridwidth,quit' '
     W=$(sed "s/.*clamp=\([0-9]*\).*/\1/" <<<"$G")
     [ "$W" -le 1800 ]; check "the grid is at most 1800 px wide ($W)" $?'
 
-scenario lib9_notes_menus 'library:annotate,library:annotate-more,library:notes,wait:800,library:notes:export-menu,library:notes:anki-id=apkg:cloze:vocab,library:notes:anki-id=csv:basic,library:notes:anki-id=tsv:basic:vocab,library:notes:anki-id=pdf,library:notes:anki-dialog=apkg,wait:400,library:dialog,library:dialog-close,wait:200,library:resize=900x600,wait:700,library:notes:toolbar,quit' '
+scenario lib9_notes_menus_900x600 'library:annotate,library:annotate-more,library:notes,wait:800,library:notes:export-menu,library:notes:anki-id=apkg:cloze:vocab,library:notes:anki-id=csv:basic,library:notes:anki-id=tsv:basic:vocab,library:notes:anki-id=pdf,library:notes:anki-dialog=apkg,wait:400,library:dialog,library:dialog-close,wait:700,library:notes:toolbar,quit' '
     M=$(grep "^notes_menu:" <<<"$OUT")
     grep -q "anki=3" <<<"$M"; check "Anki is three entries (Package, Text File, CSV)" $?
     T=$(sed "s/.*top=\([0-9]*\).*/\1/" <<<"$M")
@@ -222,7 +222,7 @@ scenario lib9_focus 'library:wide,wait:500,library:focus-order,library:focus-gri
 # grid background and the click on empty space (the capped grid must not shrink the click target nor paint a darker strip)
 #   library:gridbg                 `gridbg: scroll=[classes] view=[classes] page=[classes]`
 #   library:click-empty=margin|below|inside   `click-empty: <where> reaches_list=<bool> clears=<bool>`
-scenario lib9_grid_empty_click 'library:wide,wait:1500,library:gridcap=500,wait:1800,library:gridwidth,library:gridbg,library:select1,wait:400,library:click-empty=margin,wait:400,library:works=selected,library:select1,wait:400,library:click-empty=below,wait:400,library:works=selected,library:select1,wait:400,library:click-empty=inside,wait:400,library:works=selected,quit' '
+scenario lib9_grid_empty_click 'library:wide,wait:1500,library:gridcap=500,wait:1800,library:gridwidth,library:gridbg,library:select1,wait:400,library:click-empty=margin,wait:400,library:works=selected,library:select1,wait:400,library:click-empty=below,wait:400,library:works=selected,library:select1,wait:1200,library:click-empty=inside,wait:400,library:works=selected,quit' '
     G=$(grep "^gridwidth:" <<<"$OUT")
     grep -q "max=500" <<<"$G"; check "the test lowered the cap to 500 px" $?
     W=$(sed "s/.*clamp=\([0-9]*\).*/\1/" <<<"$G")
@@ -248,3 +248,218 @@ scenario lib9_jobs_button_idle 'wait:600,jobs:button,jobs:start=convert|Convert 
     sed -n 2p <<<"$B" | grep -q "spinning=true"; check "a running job shows the spinner" $?
     sed -n 3p <<<"$B" | grep -q "spinning=false"; check "after the job finished the button stops spinning" $?
     sed -n 3p <<<"$B" | grep -qv "process-working"; check "and shows a static icon again" $?'
+
+# wave 10: Online Catalogues is a destination of the sidebar (a page in the main view, not a dialog) and the
+# sidebar is configurable (Customize Sidebar: show, hide, reorder; kept per library).
+#   library:opds=open|dump|catalog=NAME|back ...   the catalogues page (`opds_view: ...`)
+#   library:sidebar-layout                           `sidebar_layout: shown=<keys> hidden=<keys> health=<bool>`
+#   library:sidebar-config=open|dump|hide=KEY|show=KEY|up=KEY|down=KEY|reset|close
+#                                                    presses the real controls of the Customize Sidebar dialog
+#   library:browse=KEY                               the palette's Browse <group> dialog
+scenario lib10_catalogues_page 'library:wide,wait:400,library:sidebar,library:nav=catalogues,wait:600,library:sidebar,library:opds=dump,library:opds=add-catalog=Mock|https://mock.example/opds/root.xml|u|p,library:opds=catalog=Mock,wait:1200,library:opds=dump,library:opds=back,wait:400,library:opds=dump,library:nav=home,wait:300,library:sidebar,quit' '
+    S=$(grep "^sidebar:" <<<"$OUT")
+    sed -n 1p <<<"$S" | grep -q "view=home rows=nav-home,nav-recent,nav-favourites,nav-notes,nav-catalogues"; check "Online Catalogues is a row of the sidebar, after Notes & Highlights" $?
+    sed -n 2p <<<"$S" | grep -q "view=catalogues"; check "picking it shows the catalogues in the main view" $?
+    O=$(grep "^opds_view:" <<<"$OUT")
+    sed -n 1p <<<"$O" | grep -q "title=Online Catalogues | page=list .*back=false"; check "the page opens on the list of catalogues without Back" $?
+    sed -n 2p <<<"$O" | grep -q "back=true"; check "inside a catalogue the page has its own Back" $?
+    sed -n 3p <<<"$O" | grep -q "title=Online Catalogues | page=list .*back=false"; check "Back returns to the list" $?
+    sed -n 3p <<<"$S" | grep -q "view=home"; check "Home is shown again afterwards" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario lib10_sidebar_customize 'library:wide,wait:400,library:sidebar-layout,library:sidebar-config=open,wait:1500,library:sidebar-config=dump,library:sidebar-config=up=catalogues,wait:300,library:sidebar,library:sidebar-layout,library:sidebar-config=hide=notes,wait:300,library:sidebar,library:sidebar-config=hide=health,wait:300,library:sidebar-layout,library:sidebar-config=dump,library:browse=tags,wait:400,quit' '
+    L=$(grep "^sidebar_layout:" <<<"$OUT")
+    sed -n 1p <<<"$L" | grep -q "shown=home,recent,favourites,notes,catalogues,shelves,audiobooks,saved-searches,authors,series,tags,publishers,languages,ratings,status hidden= health=true"; check "the default sidebar: every entry, today order, Online Catalogues after Notes" $?
+    grep -q "^sidebar_config: rows=home,recent,favourites,notes,catalogues,.*,status,health hidden=$" <<<"$OUT"; check "Preferences, Library, Sidebar lists every entry with Library Health last" $?
+    S=$(grep "^sidebar:" <<<"$OUT")
+    sed -n 1p <<<"$S" | grep -q "rows=nav-home,nav-recent,nav-favourites,nav-catalogues,nav-notes "; check "moving Online Catalogues up puts it before Notes & Highlights" $?
+    sed -n 2p <<<"$S" | grep -q "rows=nav-home,nav-recent,nav-favourites,nav-catalogues counts=2,2,0,2 "; check "hiding Notes & Highlights removes its row at once" $?
+    sed -n 2p <<<"$L" | grep -q "shown=home,recent,favourites,catalogues,notes,shelves,.* hidden= health=true"; check "the layout keeps the new order" $?
+    sed -n 3p <<<"$L" | grep -q "shown=home,recent,favourites,catalogues,shelves,.* hidden=health,notes health=false"; check "the layout keeps what was hidden; Library Health can be hidden too (it is pinned, not moved)" $?
+    ok=0
+    python3 -c "
+import json,sys
+c=json.load(open(sys.argv[1]))[\"sidebar_layouts\"]
+l=list(c.values())[0]
+sys.exit(0 if \"notes\" in l[\"hidden\"] and \"health\" in l[\"hidden\"] and l[\"order\"][2:5]==[\"favourites\",\"catalogues\",\"notes\"] else 1)" "$d/cfg/bookx/config.json" 2>/dev/null && ok=1
+    [ "$ok" = 1 ]; check "the layout is kept per library in the settings" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings (the Browse Tags dialog of the palette opens)" $?'
+
+scenario lib10_sidebar_hidden_view_and_reset 'library:wide,wait:400,library:nav=notes,wait:600,library:sidebar-config=open,wait:1500,library:sidebar-config=hide=notes,wait:400,library:sidebar,library:sidebar-config=hide=shelves,library:sidebar-config=hide=authors,wait:300,library:sidebar-layout,library:sidebar-config=reset,wait:300,library:sidebar-layout,library:sidebar,quit' '
+    S=$(grep "^sidebar:" <<<"$OUT")
+    sed -n 1p <<<"$S" | grep -q "view=home rows=nav-home,nav-recent,nav-favourites,nav-catalogues"; check "hiding the view that is shown falls back to Home" $?
+    L=$(grep "^sidebar_layout:" <<<"$OUT")
+    sed -n 1p <<<"$L" | grep -q "hidden=authors,notes,shelves"; check "groups hide as well (Shelves, Authors)" $?
+    sed -n 2p <<<"$L" | grep -q "hidden= health=true"; check "Reset to Default shows everything again" $?
+    sed -n 2p <<<"$S" | grep -q "rows=nav-home,nav-recent,nav-favourites,nav-notes,nav-catalogues"; check "and the rows are back" $?
+    python3 -c "
+import json,sys
+c=json.load(open(sys.argv[1])).get(\"sidebar_layouts\",{})
+sys.exit(0 if not c else 1)" "$d/cfg/bookx/config.json"; check "nothing is stored for the default layout" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# wave 10, XC-6: the standard keys of the library (F9 sidebar, Ctrl+A, Delete with Undo, Ctrl+comma, Ctrl+question, F1).
+#   library:key=ACCEL   `lib_key: ACCEL -> action` (the action the key is bound to; library and book actions are run)
+scenario lib10_standard_keys 'library:wide,wait:400,library:sidebar,library:key=F9,wait:400,library:sidebar,library:key=F9,wait:400,library:sidebar,library:key=<Control>a,wait:400,library:selection,library:key=Delete,wait:800,library:visible,library:key=<Control>comma,library:key=<Control>question,library:key=F1,library:key=<Shift>F9,quit' '
+    K=$(grep "^lib_key:" <<<"$OUT"); S=$(grep "^sidebar:" <<<"$OUT")
+    sed -n 1p <<<"$K" | grep -q "F9 -> lib.toggle-sidebar"; check "F9 is bound to showing and hiding the sidebar" $?
+    sed -n 1p <<<"$S" | grep -q "panel=true"; check "the sidebar is shown to begin with" $?
+    sed -n 2p <<<"$S" | grep -q "panel=false"; check "F9 hides the sidebar" $?
+    sed -n 3p <<<"$S" | grep -q "panel=true"; check "F9 shows it again" $?
+    grep -q "lib_key: <Control>a -> lib.select-all" <<<"$OUT"; check "Ctrl+A selects all books" $?
+    grep "^selection:" <<<"$OUT" | head -1 | grep -q "model=2"; check "both books are selected" $?
+    grep -q "lib_key: Delete -> book.delete" <<<"$OUT"; check "Delete moves the selection to Trash" $?
+    grep "^visible:" <<<"$OUT" | head -1 | grep -q "^visible: 0"; check "the books left the library view (the Undo toast of Move to Trash is tested in the lib8 scenarios)" $?
+    grep -q "lib_key: <Control>comma -> app.preferences" <<<"$OUT"; check "Ctrl+, is Preferences" $?
+    grep -q "lib_key: <Control>question -> app.shortcuts" <<<"$OUT"; check "Ctrl+? is Keyboard Shortcuts" $?
+    grep -q "lib_key: F1 -> app.help" <<<"$OUT"; check "F1 is Help" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# wave 10, WIN-L8: Import Calibre Library from the + menu is a background job (Jobs panel) with a result toast; no
+# Library Health window opens.   library:calibre-import=DIR   (the chooser skipped)   prints `calibre_import: imported=N ...`
+scenario lib10_calibre_import 'library:wide,wait:400,jobs:dump,library:calibre-import=@D@/scalecal,wait:300,jobs:dump,wait:3000,jobs:dump,library:visible,library:menus,quit' '
+    has "^calibre_import: imported=5 skipped=0 duplicates=0 copy_failed=5 reload=true"; check "the five Calibre books were imported (the fixture has no files, so they stay linked)" $?
+    J=$(grep "^jobs: " <<<"$OUT")
+    sed -n 1p <<<"$J" | grep -q "running=0"; check "no job runs before" $?
+    sed -n 3p <<<"$J" | grep -q "Import|Done|1.00|Importing the Calibre library .*cancellable=false|log=1"; check "the import is a job of the Jobs panel, finished with its log" $?
+    grep "^visible:" <<<"$OUT" | tail -1 | grep -q "visible: 7"; check "the library lists the two books and the five imported ones" $?
+    has "^mainmenu: .*Library Health \\[lib.health\\]"; check "Library Health stays a menu entry of its own" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# wave 10, XC-1: removing a catalogue of the Online Catalogues page is undoable (toast with Undo, no confirmation)
+#   library:opds=catalogs  `opds_catalogs: A|B`   library:opds=remove=NAME   library:opds=undo-remove (presses the toast's Undo)
+scenario lib10_catalogue_remove_undo 'library:wide,wait:300,library:opds=open,wait:500,library:opds=add-catalog=Mock|https://mock.example/opds/root.xml|u|p,library:opds=add-catalog=Other|https://mock.example/opds/other.xml|,library:opds=catalogs,library:opds=remove=Mock,wait:300,library:opds=catalogs,library:opds=undo-remove,wait:300,library:opds=catalogs,quit' '
+    C=$(grep "^opds_catalogs:" <<<"$OUT")
+    sed -n 1p <<<"$C" | grep -q "^opds_catalogs: Mock|Other$"; check "two catalogues of the user" $?
+    sed -n 2p <<<"$C" | grep -q "^opds_catalogs: Other$"; check "removing one takes it out at once, without a confirmation" $?
+    sed -n 3p <<<"$C" | grep -q "^opds_catalogs: Mock|Other$"; check "Undo puts it back in its place" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING|opds_error"; check "no errors or GTK warnings" $?'
+
+# ---- wave 11 (HIG): LIB-L6 the library's selection pattern in the Needs Attention list --------------------------------
+# Dev commands: `library:organize=attention-tick=N` (ticks the N-th row), `attention-cancel`, `attention-state` (`attention_sel:
+# selected=N description=.. cancel=B fetch=.. visible_checks=V checks=T`).
+
+scenario lib11_attention_select 'library:organize=attention,wait:800,library:organize=attention-state,library:organize=attention-tick=1,library:organize=attention-state,library:organize=attention-cancel,library:organize=attention-state,quit' '
+    S=$(grep "^attention_sel:" <<<"$OUT")
+    sed -n 1p <<<"$S" | grep -q "selected=0 .*cancel=false fetch=\"Fetch Metadata\" visible_checks=0"; check "at rest no check box shows, Cancel is hidden and Fetch Metadata takes every book" $?
+    sed -n 2p <<<"$S" | grep -q "selected=1 description=\"1 selected\" cancel=true fetch=\"Fetch Metadata for 1 Book\" visible_checks=[1-9]"; check "ticking a book says 1 selected, shows Cancel and Fetch Metadata for 1 Book" $?
+    sed -n 3p <<<"$S" | grep -q "selected=0 .*cancel=false fetch=\"Fetch Metadata\" visible_checks=0"; check "Cancel clears the selection" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# Conversion Options (C20) and "Convert N at a time" (C10): the dialog of the Convert To menu
+scenario convert_options 'convert:open,wait:600,convert:format=epub,convert:smarten=on,convert:format=mobi,convert:format=epub,convert:parallel=3,convert:format=epub,convert:reset,convert:close,wait:300,quit' '
+    C=$(grep "^convert_options:" <<<"$OUT")
+    sed -n 1p <<<"$C" | grep -q "format=epub .*smarten=false .*saved=false version_visible=true toc_visible=false"; check "the dialog opens on EPUB, which has a version row and no contents-page row" $?
+    sed -n 2p <<<"$C" | grep -q "smarten=true .*saved=true"; check "turning an option on saves it for the format" $?
+    sed -n 3p <<<"$C" | grep -q "format=mobi .*smarten=true .*unused_css=true .*saved=false version_visible=false toc_visible=true"; check "MOBI starts from its Kindle preset (none saved), with a contents-page row and no EPUB version" $?
+    sed -n 4p <<<"$C" | grep -q "format=epub .*smarten=true"; check "coming back to EPUB shows what was saved" $?
+    sed -n 5p <<<"$C" | grep -q "parallel=3"; check "Convert at a time can be set" $?
+    grep -q "\"parallel\": 3" "$d/cfg/bookx/convert.json"; check "and is saved" $?
+    sed -n 7p <<<"$C" | grep -q "smarten=false .*saved=false"; check "Use the Built-in Options forgets the changes of the format" $?
+    ! grep -q "smarten_punctuation" "$d/cfg/bookx/convert.json"; check "the format is gone from the file" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# ---- wave 11 (T3): custom columns, search and replace, records without a file, marks -----------------------------
+# Dev commands: `library:customcol=add|Name|type|arg` (types: text, integer, enumeration (arg: a/b), composite (arg: template)...),
+# `customcol=set|ID|label|value`, `customcol=undo`, `customcol=remove|label`, `library:customtable=label:on|off` (tick the
+# column of the table), `library:customsort=label:asc|desc` (a click on its header), `library:customcols` (`customcols:
+# defined=N table=[label:visible] sort=..`), `library:record=empty|Title|Authors` / `record=isbn|ISBN`,
+# `library:replace=field|find|with[|regex]`, `library:marked=1,2`, `library:clearmarks`.
+scenario lib12_custom_columns 'library:wide,wait:300,library:customcol=add|Pages|integer,library:customcol=add|Mood|enumeration|Calm/Tense,library:customcol=set|1|pages|412,library:customcol=set|2|pages|30,library:customcol=set|1|pages|lots,library:customcol=set|2|mood|tense,library:customcol=set|2|mood|sleepy,library:search=#pages:>100,wait:500,library:visible,library:search=#mood:tense,wait:500,library:visible,library:search=,wait:300,library:table,wait:500,library:customtable=pages:on,wait:500,library:customcols,library:customsort=pages:desc,wait:400,library:customcols,library:customcol=undo,library:customcol=remove|pages,wait:300,library:customcols,quit' '
+    C=$(grep "^customcol:" <<<"$OUT")
+    sed -n 1p <<<"$C" | grep -q "added pages"; check "a column is added" $?
+    sed -n 2p <<<"$C" | grep -q "added mood"; check "an enumeration column is added" $?
+    sed -n 3p <<<"$C" | grep -q "set pages=412"; check "a value is stored" $?
+    sed -n 5p <<<"$C" | grep -q "error .*whole number"; check "a value that does not fit is refused with the reason" $?
+    sed -n 7p <<<"$C" | grep -q "error .*not one of"; check "a value outside the list is refused" $?
+    V=$(grep "^visible:" <<<"$OUT")
+    sed -n 1p <<<"$V" | grep -q "visible: 1"; check "#pages:>100 finds the one book with 412 pages" $?
+    sed -n 2p <<<"$V" | grep -q "visible: 1"; check "#mood:tense finds a book" $?
+    K=$(grep "^customcols:" <<<"$OUT")
+    sed -n 1p <<<"$K" | grep -q "defined=2 table=\[pages:true\]"; check "the Pages column is in the table" $?
+    sed -n 3p <<<"$K" | grep -q "sort=Some(\"pages:desc\")"; check "a click on its header sorts and the sort is remembered" $?
+    grep -q "customsort: first=\[" <<<"$OUT"; check "the table is sorted by it" $?
+    grep -q "customcol: undone" <<<"$OUT"; check "the last edit is one undo step" $?
+    sed -n 4p <<<"$K" | grep -q "defined=1 table=\[\]"; check "removing a column takes it out of the table" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario lib12_records_replace_marks 'library:wide,wait:300,library:record=empty|Ghost Book|Zed Author,library:record=isbn|0441013597,library:record=isbn|0441013598,wait:500,library:visible,library:replace=title|Ghost|Phantom,wait:400,library:search=phantom,wait:400,library:visible,library:search=ISBN,wait:400,library:visible,library:search=,library:marked=1,wait:300,library:search=marked:true,wait:400,library:visible,library:clearmarks,wait:300,library:search=marked:true,wait:400,library:visible,quit' '
+    R=$(grep "^record:" <<<"$OUT")
+    sed -n 1p <<<"$R" | grep -q "record: added id="; check "an empty record is added" $?
+    sed -n 2p <<<"$R" | grep -q "record: added id="; check "a record is added from a valid ISBN" $?
+    sed -n 3p <<<"$R" | grep -q "record: error .*not a valid ISBN"; check "an ISBN with a wrong check digit is refused" $?
+    V=$(grep "^visible:" <<<"$OUT")
+    sed -n 1p <<<"$V" | grep -q "visible: 4"; check "the two books and the two records are listed" $?
+    grep -q "replace: changed=1 skipped=0" <<<"$OUT"; check "search and replace changed the title of one book" $?
+    sed -n 2p <<<"$V" | grep -q "visible: 1"; check "and the new title is found" $?
+    sed -n 3p <<<"$V" | grep -q "visible: 1"; check "the ISBN record is listed under its placeholder title" $?
+    sed -n 4p <<<"$V" | grep -q "visible: 1"; check "marked:true finds the marked book" $?
+    sed -n 5p <<<"$V" | grep -q "visible: 0"; check "clearing the marks empties it" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# L5: Send to Device in the actions of a shelf row opens the Devices window with the shelf's books
+scenario lib12_shelf_send 'library:wide,wait:300,library:shelf=create=Trip,library:shelf=create=Empty,library:shelf=add=Trip|1+2,library:shelf=send=Empty,library:shelf=send=Trip,wait:800,devwin:dump,quit' '
+    has "^shelves: send Empty ids=\[\]"; check "an empty shelf has nothing to send" $?
+    has "^shelves: send Trip ids=\[[12], [12]\]"; check "the shelf sends its two books" $?
+    has "^devwin: .*selected=0 books=0|^devwin: "; check "the Devices window opened" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# L12: the import folder is watched and new books are added by themselves (off by default); L33: the text index row
+#   library:inboxwatch=on|off|check|FOLDER  `inboxwatch: watch=B folder=F monitors=N handled=N polling=B`
+#   library:indexstatus[=rebuild]  `index_status: indexed=N books=N running=B text=".."`
+scenario lib12_inbox_watch_and_index 'library:wide,wait:300,library:inboxwatch=@D@/watchme,library:inboxwatch=check,wait:800,library:visible,library:inboxwatch=on,wait:500,library:inboxwatch=check,wait:4000,library:visible,library:inboxwatch=check,library:visible,library:inboxwatch=off,wait:300,library:indexstatus,library:indexstatus=rebuild,wait:2500,library:indexstatus,quit' '
+    W=$(grep "^inboxwatch:" <<<"$OUT")
+    sed -n 1p <<<"$W" | grep -q "watch=false .*monitors=0"; check "the watcher is off until it is switched on" $?
+    V=$(grep "^visible:" <<<"$OUT")
+    sed -n 1p <<<"$V" | grep -q "visible: 2"; check "a check while it is off adds nothing" $?
+    sed -n 3p <<<"$W" | grep -q "watch=true .*\(monitors=[1-9]\|polling=true\)"; check "switched on, the folder is monitored (or polled when the system has no inotify left)" $?
+    sed -n 6p <<<"$W" | grep -q "watch=false .*monitors=0"; check "switched off, the monitors are gone" $?
+    sed -n 2p <<<"$V" | grep -q "visible: 3"; check "the new book of the folder was added by itself" $?
+    sed -n 3p <<<"$V" | grep -q "visible: 3"; check "a second check does not add it again" $?
+    I=$(grep "^index_status:" <<<"$OUT")
+    sed -n 1p <<<"$I" | grep -q "indexed=[0-9]* books=3"; check "the index row counts the books" $?
+    sed -n 2p <<<"$I" | grep -q "text=\"[0-9] of 3 books"; check "a rebuild starts the indexing again" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# L27: a send from the Devices window is a job of the Jobs panel
+scenario device_ui_job 'library:annotate,library:selectall,wait:600,library:send-to-device,wait:2500,devwin:device=SDCARD,wait:2000,jobs:dump,devwin:send,wait:4000,jobs:dump,quit' '
+    J=$(grep "^jobs: " <<<"$OUT")
+    sed -n 1p <<<"$J" | grep -q "running=0"; check "no job before the send" $?
+    sed -n 2p <<<"$J" | grep -q "Send|Done|1.00|Sending .* to "; check "the send is a finished job of the Jobs panel" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# L18: tags written like Fiction.Fantasy show as a tree (off by default).   library:tagtree=on|off|rows
+#   prints `tagtree: on=B rows=[Fiction(2) -Fantasy(1) ...] widgets=N` (the sidebar rows of the tree)
+scenario lib12_tag_tree 'library:wide,wait:300,library:selectall,wait:500,library:bulkedit=tag:+Fiction.Fantasy|tag:+Fiction.Crime,wait:700,library:tagtree=rows,library:tagtree=on,wait:500,library:tagtree=rows,library:tagtree=off,wait:300,library:tagtree=rows,quit' '
+    T=$(grep "^tagtree:" <<<"$OUT")
+    sed -n 1p <<<"$T" | grep -q "on=false .*widgets=0"; check "the tree is off to begin with" $?
+    sed -n 1p <<<"$T" | grep -q "rows=\[Fiction(2) -Crime(2) -Fantasy(2)\]"; check "the two tags nest under Fiction, which counts each book once" $?
+    sed -n 2p <<<"$T" | grep -q "on=true .*widgets=[1-9]"; check "switched on, the sidebar lists the tree" $?
+    sed -n 4p <<<"$T" | grep -q "on=false .*widgets=0"; check "switched off, the flat list is back" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# L19/L20: related books (Quickview) and notes about an author   library:select1, library:quickview, library:note=set|kind|name|text
+scenario lib12_quickview_notes 'library:wide,wait:300,library:note=set|author|Test Author|Met at the fair,library:note=get|author|test author,library:note=set|series|S|x,library:note=set|book|x|y,library:select1,wait:400,library:quickview,wait:600,library:dialog,library:note=set|author|Test Author|,library:note=get|author|Test Author,quit' '
+    N=$(grep "^note:" <<<"$OUT")
+    sed -n 1p <<<"$N" | grep -q "note: saved"; check "a note about an author is saved" $?
+    sed -n 2p <<<"$N" | grep -q "note: Some(\"Met at the fair\")"; check "it is found again whatever the case of the name" $?
+    sed -n 4p <<<"$N" | grep -q "note: error"; check "a note about a book is refused" $?
+    sed -n 6p <<<"$N" | grep -q "note: None"; check "an empty note removes it" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario wallabag_import 'library:add-web-open,wait:500,wallabag:open,wait:500,wallabag:set=https://mock.example/wallabag;MOCKTOKEN;,wallabag:import,wait:3000,wallabag:dump,library:dump,wallabag:import,wait:3000,wallabag:dump,a11y-audit:,quit' '
+    W=$(grep "^wallabag: " <<<"$OUT")
+    sed -n 1p <<<"$W" | grep -q "seen=2 last=ok: 2 added, 0 problems"; check "two saved Wallabag articles are imported (the token sign-in is skipped when a token is pasted)" $?
+    grep -q "Saved Article One" <<<"$LIB"; check "an article becomes a book with its title" $?
+    grep -q "Wally Bag" <<<"$LIB"; check "its author is kept" $?
+    sed -n 2p <<<"$W" | grep -q "seen=2 last=ok: 0 added, 0 problems"; check "a second import adds nothing: the articles are remembered" $?
+    has "^a11y: controls=[0-9]+ problems=0"; check "every control of the Wallabag form has a name" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# The check before sending also runs inside the Device window (Preferences -> Library switch on): a book with a
+# blocking problem stops at the report; Continue sends anyway.
+scenario meta_preflight_device 'library:selectall,wait:600,library:send-to-device,wait:2500,devwin:device=SDCARD,wait:2000,devwin:send,wait:2500,library:preflight=dump,devwin:dump,library:preflight=continue,wait:4000,devwin:dump,quit' '
+    has "^preflight_state: shown=true .*go_label=Some\(\"Continue Anyway\"\)"; check "sending from the Device window stops at the report when a book has a blocking problem" $?
+    has "^preflight_book: Broken Mimetype \| 1 blocking"; check "the report names the broken book" $?
+    has "^devwin_sent: Sent [0-9]+ books? to "; check "after Continue the books are sent" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'

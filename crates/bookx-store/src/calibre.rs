@@ -84,6 +84,10 @@ pub struct CalibreImport {
     pub duplicate_titles: Vec<String>,
     /// Books whose files could not be copied into the library (they stay linked to Calibre).
     pub copy_failed: Vec<String>,
+    /// Custom columns that were added to the library.
+    pub custom_columns: Vec<String>,
+    /// Calibre custom columns that were left out, with the reason.
+    pub skipped_columns: Vec<String>,
 }
 
 /// Which part of [`import_calibre_into`] is running.
@@ -111,6 +115,20 @@ impl CalibreImport {
                 "; {} skipped because they have no EPUB ({})",
                 self.skipped.len(),
                 preview(&self.skipped)
+            );
+        }
+        if !self.custom_columns.is_empty() {
+            s += &format!(
+                "; {} custom column(s) added ({})",
+                self.custom_columns.len(),
+                preview(&self.custom_columns)
+            );
+        }
+        if !self.skipped_columns.is_empty() {
+            s += &format!(
+                "; {} custom column(s) left out ({})",
+                self.skipped_columns.len(),
+                preview(&self.skipped_columns)
             );
         }
         if !self.copy_failed.is_empty() {
@@ -170,6 +188,16 @@ pub fn import_calibre_into(
     Ok(out)
 }
 
+/// A path from `metadata.db` that stays inside the library: relative, no `..`, no backslash, no NUL.
+fn safe_rel(p: &str) -> bool {
+    let drive = p.len() >= 2 && p.as_bytes()[1] == b':';
+    !(p.is_empty()
+        || p.starts_with('/')
+        || p.contains(['\\', '\0'])
+        || p.split('/').any(|c| c == ".." || c.is_empty())
+        || drive)
+}
+
 impl SqliteStore {
     /// Reads `<library_dir>/metadata.db` and adds every EPUB book with a fresh id. The book paths
     /// are relative to `library_dir`.
@@ -227,11 +255,45 @@ impl SqliteStore {
             rows.collect::<rusqlite::Result<Vec<_>>>()?
         };
 
-        let mut out = CalibreImport::default();
+        let mut custom = crate::calibre_custom::read_calibre_custom(&cal);
+        let mut out = CalibreImport {
+            skipped_columns: std::mem::take(&mut custom.skipped),
+            ..Default::default()
+        };
         let report = &mut out.report;
         let total = rows.len();
         let mut conn = self.lock();
         let tx = conn.transaction()?;
+        // the columns of the Calibre library join the ones already defined; one with the same label
+        // but another type is left alone and its values are not imported
+        let mut have = crate::custom::load_columns(&tx);
+        let mut usable: HashSet<String> = HashSet::new();
+        let mut added_cols = false;
+        for d in &custom.defs {
+            match have.iter().find(|h| h.label == d.label) {
+                Some(h) if h.kind == d.kind => {
+                    usable.insert(d.label.clone());
+                }
+                Some(_) => out.skipped_columns.push(format!(
+                    "{} (a column with that label and another type exists)",
+                    d.name
+                )),
+                None if have.len() < bookx_core::custom::MAX_COLUMNS
+                    && !have.iter().any(|h| h.name.eq_ignore_ascii_case(&d.name)) =>
+                {
+                    have.push(d.clone());
+                    usable.insert(d.label.clone());
+                    out.custom_columns.push(d.name.clone());
+                    added_cols = true;
+                }
+                None => out
+                    .skipped_columns
+                    .push(format!("{} (name already used)", d.name)),
+            }
+        }
+        if added_cols {
+            crate::custom::store_columns(&tx, &have)?;
+        }
         let mut seen: HashSet<(String, String)> = all_books_conn(&tx)?
             .iter()
             .map(|b| dup_key(&b.meta.title, b.meta.authors.first().map(String::as_str)))
@@ -252,6 +314,12 @@ impl SqliteStore {
                 report.skipped_no_epub += 1;
                 continue;
             };
+            // a hostile metadata.db could point at files outside the library: only plain relative names are followed
+            if !safe_rel(&row.path) || !safe_rel(&name) {
+                out.skipped.push(row.title.clone());
+                report.skipped_no_epub += 1;
+                continue;
+            }
             let mut authors: Vec<String> = strings(
                 &cal,
                 "SELECT a.name FROM authors a JOIN books_authors_link l ON l.author = a.id
@@ -392,6 +460,14 @@ impl SqliteStore {
                 formats: Vec::new(),
                 resources: Vec::new(),
                 drm: String::new(),
+                custom: custom
+                    .values
+                    .remove(&row.id)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .filter(|(l, _)| usable.contains(l))
+                    .collect(),
+                marked: false,
             };
             put_row(&tx, &book)?;
             out.ids.push(book.id);

@@ -11,10 +11,12 @@
 //!   and the playback engine that writes to a [`player::AudioSink`]
 //! * [`testgen`]: tiny silent files for tests
 
+pub mod command;
 pub mod decode;
 pub mod format;
 pub mod id3;
 pub mod limits;
+pub mod link;
 pub mod model;
 pub mod mp4;
 pub mod ogg;

@@ -20,7 +20,7 @@ impl Editor {
                 .append(&gtk::Box::new(gtk::Orientation::Vertical, 0));
             page.set_title(file_name(path));
             page.set_tooltip(path);
-            unsafe { page.set_data("path", path.to_string()) };
+            super::row_data::set_path(&page, path.to_string());
             page
         });
         self.tabs_guard.set(true);
@@ -115,7 +115,7 @@ impl Editor {
                     l.set_ellipsize(pango::EllipsizeMode::Start);
                     l.set_margin_all(4);
                     row.set_child(Some(&l));
-                    unsafe { row.set_data("path", p) };
+                    super::row_data::set_path(&row, p);
                     list.append(&row);
                 }
                 if let Some(r) = list.row_at_index(0) {
@@ -133,7 +133,7 @@ impl Editor {
             let tx = self.sender.input_sender().clone();
             let pop = pop.clone();
             Rc::new(move |row: &gtk::ListBoxRow| {
-                if let Some(p) = unsafe { row.data::<String>("path").map(|p| p.as_ref().clone()) } {
+                if let Some(p) = super::row_data::path(row) {
                     tx.emit(Input::SelectFile(p));
                 }
                 pop.popdown();
@@ -178,5 +178,5 @@ impl Editor {
 }
 
 fn tab_path(p: &adw::TabPage) -> Option<String> {
-    unsafe { p.data::<String>("path").map(|s| s.as_ref().clone()) }
+    super::row_data::path(p)
 }

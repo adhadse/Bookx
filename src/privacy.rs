@@ -94,7 +94,7 @@ pub const LEDGER: [Connection; 14] = [
         offline_blocks: false,
     },
     Connection {
-        feature: N_("Sync: library server (OPDS, KOReader)"),
+        feature: N_("Sync: OPDS server and Bookx sync"),
         destination: N_("nothing: other devices connect to this computer, only while sharing is on and only with the password"),
         sends: N_("the books you share"),
         offline_blocks: false,
@@ -114,6 +114,8 @@ pub fn is_offline() -> bool {
 
 /// Turns offline mode on or off in the crates that do the downloading.
 pub fn apply(on: bool) {
+    // safe mode keeps every download off whatever the setting says
+    let on = on || crate::safe_mode::active();
     bookx_sources::fetch::set_offline(on);
     bookx_tts::download::set_offline(on);
 }

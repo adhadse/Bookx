@@ -17,7 +17,7 @@ Status: done for the scope below. User documentation: `wiki/docs/ai-assistants.m
   `logging/setLevel`; notifications `initialized`, `cancelled` (in), `progress`, `message` (out). Cursor pagination on
   all list methods (opaque base64 `bx1:<offset>`). Tool results carry `content` (text) and `structuredContent`;
   every tool has an `inputSchema`, an `outputSchema` and annotations (`readOnlyHint`, `destructiveHint`,
-  `idempotentHint`, `openWorldHint`). Not implemented on purpose: `resources/subscribe`, `listChanged`, completions,
+  `idempotentHint`, `openWorldHint`). Wave 11: `resources/subscribe`/`unsubscribe` (max 200 per session) and `notifications/resources/updated|list_changed` over **stdio only** (a watcher thread compares `(id, modified)` snapshots every `Config::watch_interval`, 2 s; the HTTP endpoint cannot push, so it advertises neither and refuses subscribe). `tools.listChanged` stays false: the tool list never changes during a session. Not implemented on purpose: completions,
   sampling/elicitation/roots (server to client requests), batching (removed from the spec in 2025-06-18), OAuth
   authorization (the bearer token is the HTTP authorization; a local token is what desktop clients support).
 * **Own implementation instead of `rmcp`.** The official Rust SDK (`rmcp` 3.x, Apache-2.0, maintained) is solid but

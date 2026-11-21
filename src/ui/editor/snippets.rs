@@ -23,7 +23,7 @@ struct Manager {
 impl Editor {
     pub(super) fn manage_snippets(&mut self) {
         let m = Rc::new(Manager {
-            dialog: adw::Dialog::new(),
+            dialog: crate::ui::dialog_toast::new_dialog(),
             list: gtk::ListBox::new(),
             templates: gtk::ListBox::new(),
             user: RefCell::new(snip::load()),
@@ -31,7 +31,7 @@ impl Editor {
         });
         m.dialog.set_title(&tr("Snippets"));
         m.dialog.set_content_width(560);
-        m.dialog.set_content_height(620);
+        m.dialog.set_content_height(560);
         m.list.add_css_class("boxed-list");
         m.list.set_selection_mode(gtk::SelectionMode::None);
         m.templates.add_css_class("boxed-list");
@@ -253,7 +253,7 @@ fn form_dialog(
     height: i32,
     on_save: impl Fn() + 'static,
 ) -> (adw::Dialog, gtk::Button) {
-    let d = adw::Dialog::new();
+    let d = crate::ui::dialog_toast::new_dialog();
     d.set_title(title);
     d.set_content_width(520);
     d.set_content_height(height);

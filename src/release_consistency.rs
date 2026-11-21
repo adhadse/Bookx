@@ -138,6 +138,18 @@ mod tests {
         assert!(wf.contains("SHA256SUMS"), "publishes checksums");
         assert!(wf.contains("--locked"), "builds with the lock file");
         assert!(
+            wf.contains("cosign sign-blob") && wf.contains("--bundle"),
+            "files are signed keylessly with cosign"
+        );
+        assert!(
+            wf.contains("attest-build-provenance") && wf.contains("id-token: write"),
+            "provenance is attested and signing uses the OIDC identity"
+        );
+        assert!(
+            wf.contains("cosign verify-blob") && wf.contains("--certificate-identity-regexp"),
+            "the workflow verifies its own signatures with the identity users check"
+        );
+        assert!(
             !wf.contains("git push") && !wf.contains("git tag"),
             "the workflow never creates tags"
         );

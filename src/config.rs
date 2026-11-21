@@ -242,6 +242,7 @@ impl ReaderPrefs {
             paragraph_spacing: None,
             fixed: false,
             layout: self.layout,
+            ..CanvasStyle::default()
         }
     }
 }
@@ -273,6 +274,16 @@ pub struct Config {
     /// The columns of the table view the user picked (titles in English); empty = the ones that fit
     /// the width (`library_nav::table_columns_for_width`).
     pub table_columns: Vec<String>,
+    /// The custom columns (labels) the table shows.
+    pub table_custom: Vec<String>,
+    /// Fill in the author, title and series of a new book from its file name when the book has none.
+    pub guess_filename: bool,
+    /// Tags written like `Fiction.Fantasy` show as a tree in the sidebar.
+    pub tag_tree: bool,
+    /// The file name patterns (see `library_add::parse_patterns`); empty = the built-in ones.
+    pub filename_patterns: String,
+    /// The table is sorted by a custom column (see `library_custom::CustomSort`).
+    pub custom_sort: Option<crate::library_custom::CustomSort>,
     /// The details panel is wanted (its header toggle is on): a selected book then shows it.
     pub details_pane: bool,
     /// Sidebar groups the user opened, as `library folder|group` (a closed group is not listed).
@@ -288,6 +299,9 @@ pub struct Config {
     pub banner_mode: String,
     pub copy_on_add: bool,
     pub reader: ReaderPrefs,
+    /// Page-turn animation, auto-turn, night schedule, citation, page turner keys, archive (the
+    /// same for every book, unlike the look in `reader`).
+    pub aids: crate::aids_prefs::ReaderAids,
     /// Style tweaks of the reader: for all books and per book (R21).
     pub tweaks: crate::tweaks::TweakStore,
     /// Read aloud: speed and voice.
@@ -306,6 +320,10 @@ pub struct Config {
     pub kosync: crate::kosync_sync::KoSyncPrefs,
     /// Readwise access token (kept in the keyring, see `secret_fields`).
     pub readwise_token: String,
+    /// Wallabag and other web accounts (the secrets are kept in the keyring, see `secret_fields`).
+    pub web_accounts: crate::web_accounts::WebAccounts,
+    /// Which metadata source wins for which field.
+    pub source_priority: crate::source_priority::SourcePriority,
     /// Notes & Highlights: which kind of entry is listed (`all`, `highlights`, `notes`, `bookmarks`).
     pub notes_kind: String,
     /// The Device window lists books instead of showing covers.
@@ -361,6 +379,32 @@ pub struct Config {
     pub offline: bool,
     /// The reading ruler of the reader (`crate::reading_ruler`).
     pub ruler: crate::reading_ruler::RulerPrefs,
+    /// Which sidebar entries the library shows and in what order, per library folder
+    /// (`library_nav::SidebarLayout`); a library with no entry has the default sidebar.
+    pub sidebar_layouts: std::collections::BTreeMap<String, crate::library_nav::SidebarLayout>,
+}
+
+impl Config {
+    /// The sidebar layout of the library in this folder (the default one when none was saved).
+    pub fn sidebar_layout(&self, library_key: &str) -> crate::library_nav::SidebarLayout {
+        self.sidebar_layouts
+            .get(library_key)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    /// Remembers the sidebar layout of a library; the default layout is not stored.
+    pub fn set_sidebar_layout(
+        &mut self,
+        library_key: &str,
+        layout: crate::library_nav::SidebarLayout,
+    ) {
+        if layout.is_default() {
+            self.sidebar_layouts.remove(library_key);
+        } else {
+            self.sidebar_layouts.insert(library_key.to_string(), layout);
+        }
+    }
 }
 
 impl Default for Config {
@@ -373,6 +417,11 @@ impl Default for Config {
             sort_ascending: true,
             cover_size: 150,
             table_columns: Vec::new(),
+            table_custom: Vec::new(),
+            guess_filename: true,
+            tag_tree: false,
+            filename_patterns: String::new(),
+            custom_sort: None,
             details_pane: true,
             sidebar_open: Vec::new(),
             group_editions: false,
@@ -381,6 +430,7 @@ impl Default for Config {
             banner_mode: String::new(),
             copy_on_add: true,
             reader: ReaderPrefs::default(),
+            aids: Default::default(),
             tweaks: crate::tweaks::TweakStore::default(),
             tts: crate::tts::TtsPrefs::default(),
             share: crate::sharing::ShareSettings::default(),
@@ -391,6 +441,8 @@ impl Default for Config {
             device_sync: crate::device_sync::SyncPrefs::default(),
             kosync: crate::kosync_sync::KoSyncPrefs::default(),
             readwise_token: String::new(),
+            web_accounts: Default::default(),
+            source_priority: Default::default(),
             notes_kind: "all".into(),
             device_list_view: false,
             eink: false,
@@ -417,6 +469,7 @@ impl Default for Config {
             dictionaries: Default::default(),
             offline: false,
             ruler: Default::default(),
+            sidebar_layouts: Default::default(),
         }
     }
 }
@@ -507,15 +560,31 @@ impl Config {
     }
 
     pub fn load() -> Config {
+        if crate::safe_mode::active() {
+            // defaults, and `save` does nothing: the real settings come back at the next normal start
+            let mut cfg = Config::default();
+            if let Ok(dir) = std::env::var("BOOKX_LIBRARY") {
+                cfg.library_dir = PathBuf::from(dir);
+            }
+            return cfg;
+        }
         let text = config_path().and_then(|p| std::fs::read_to_string(p).ok());
         let (mut cfg, migrated) = Config::from_text(text.as_deref(), crate::secrets::vault());
         let dir = config_path().and_then(|p| p.parent().map(|d| d.to_path_buf()));
+        if migrated {
+            // passwords found in the file: the notice is shown once, and the copies are scrubbed
+            SCRUBBED.store(true, std::sync::atomic::Ordering::Relaxed);
+            if let Some(d) = &dir {
+                scrub_copies(d);
+            }
+        }
         let migrated = cfg.migrate_profiles(dir.as_deref()) || migrated;
         if let Ok(dir) = std::env::var("BOOKX_LIBRARY") {
             cfg.library_dir = PathBuf::from(dir);
         }
         if migrated {
-            // passwords moved to the keyring, or profiles became per-book looks: rewrite the file
+            // passwords left the file (keyring, encrypted store, or memory only), or profiles became
+            // per-book looks: rewrite the file
             cfg.save();
         }
         cfg
@@ -538,14 +607,15 @@ impl Config {
     }
 
     /// Parses the settings file and gets the passwords from `vault`. The flag is true when
-    /// passwords found in plain text were moved into the vault (the file should be saved).
+    /// passwords were found in plain text: they were moved into the vault or, when it cannot hold
+    /// them, kept in memory for this session. Either way the file must be saved (that removes them).
     pub fn from_text(text: Option<&str>, vault: &bookx_secrets::Vault) -> (Config, bool) {
         let mut cfg: Config = text
             .and_then(|t| serde_json::from_str(t).ok())
             .unwrap_or_default();
         let m = vault.load(&mut cfg.secret_fields());
         cfg.migrate_footer_position();
-        (cfg, m.moved > 0)
+        (cfg, m.moved + m.unsaved > 0)
     }
 
     /// Where the passwords live: in the keyring, under these keys.
@@ -555,6 +625,22 @@ impl Config {
             ("email-password".into(), &mut self.email.password),
             ("kosync-password".into(), &mut self.kosync.password),
             ("readwise-token".into(), &mut self.readwise_token),
+            (
+                "wallabag-client-secret".into(),
+                &mut self.web_accounts.wallabag_client_secret,
+            ),
+            (
+                "wallabag-password".into(),
+                &mut self.web_accounts.wallabag_password,
+            ),
+            (
+                "wallabag-token".into(),
+                &mut self.web_accounts.wallabag_token,
+            ),
+            (
+                "hardcover-token".into(),
+                &mut self.web_accounts.hardcover_token,
+            ),
             ("tts-api-key".into(), &mut self.tts.server.api_key),
             (
                 "device-webdav-password".into(),
@@ -574,28 +660,93 @@ impl Config {
         v
     }
 
-    /// The text of the settings file: the passwords are in the vault, not in the text (unless
-    /// the vault cannot hold them).
+    /// The text of the settings file: the passwords are in the vault (or nowhere), **never** in the
+    /// text, whatever state the vault is in.
     pub fn file_text(&self, vault: &bookx_secrets::Vault) -> Option<String> {
         let mut copy = self.clone();
         if let Some(d) = &self.reader_defaults {
             copy.reader = d.clone();
         }
         vault.persist(&mut copy.secret_fields());
+        // belt and braces: whatever the vault did, no secret leaves in the text
+        for (_, v) in copy.secret_fields() {
+            v.clear();
+        }
         serde_json::to_string_pretty(&copy).ok()
     }
 
     pub fn save(&self) {
+        if crate::safe_mode::active() {
+            return;
+        }
         let Some(p) = config_path() else { return };
         if let Some(dir) = p.parent() {
             let _ = std::fs::create_dir_all(dir);
         }
         if let Some(json) = self.file_text(crate::secrets::vault()) {
-            // written next to the file and renamed, so a crash never leaves half a file
+            // written next to the file and renamed, so a crash never leaves half a file; private to
+            // the user from the first byte
             let tmp = p.with_extension("json.tmp");
-            if std::fs::write(&tmp, json).is_ok() && std::fs::rename(&tmp, &p).is_err() {
+            if write_private(&tmp, json.as_bytes()).is_ok() && std::fs::rename(&tmp, &p).is_err() {
                 let _ = std::fs::remove_file(&tmp);
             }
+            bookx_secrets::restrict_file(&p);
+        }
+    }
+}
+
+/// Set when the settings file held passwords in plain text (an older version): the app tells the
+/// user once that they were removed.
+static SCRUBBED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// True once after a start that found passwords in the settings file.
+pub fn take_scrub_notice() -> bool {
+    SCRUBBED.swap(false, std::sync::atomic::Ordering::Relaxed)
+}
+
+/// Creates `path` (mode 0600 on Unix, replacing any old file) and writes `data`.
+fn write_private(path: &std::path::Path, data: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    let _ = std::fs::remove_file(path);
+    let mut o = std::fs::OpenOptions::new();
+    o.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        o.mode(0o600);
+    }
+    let mut f = o.open(path)?;
+    f.write_all(data)?;
+    f.sync_all()
+}
+
+/// Copies of the settings that an older version, an editor or the user left next to
+/// `config.json` can hold the same plain text passwords. The half-written temp file is removed;
+/// `.old`, `.bak`, `~` and `.orig` copies that parse as settings are rewritten without secrets.
+/// The folder is made private.
+pub fn scrub_copies(dir: &std::path::Path) {
+    bookx_secrets::restrict_dir(dir);
+    let _ = std::fs::remove_file(dir.join("config.json.tmp"));
+    for name in [
+        "config.json.old",
+        "config.json.bak",
+        "config.json~",
+        "config.json.orig",
+        "config.old.json",
+        "config.bak.json",
+    ] {
+        let path = dir.join(name);
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        let Ok(mut c) = serde_json::from_str::<Config>(&text) else {
+            continue;
+        };
+        for (_, v) in c.secret_fields() {
+            v.clear();
+        }
+        if let Ok(clean) = serde_json::to_string_pretty(&c) {
+            let _ = write_private(&path, clean.as_bytes());
         }
     }
 }
@@ -793,13 +944,197 @@ mod secret_tests {
     }
 
     #[test]
-    fn without_a_keyring_the_file_keeps_the_passwords() {
+    fn without_a_keyring_the_file_never_has_a_password() {
         let v = Vault::new(Box::new(Unavailable("no Secret Service".into())));
         let text = with_passwords().file_text(&v).unwrap();
-        assert!(text.contains("share-pw") && text.contains("backup-phrase"));
+        for s in SENTINELS {
+            assert!(!text.contains(s), "{s} is in the file");
+        }
         let (c, migrated) = Config::from_text(Some(&text), &v);
-        assert!(!migrated, "nothing moved, nothing to rewrite");
-        assert_eq!(c.share.password, "share-pw");
+        assert!(!migrated, "nothing in the file, nothing to rewrite");
+        assert!(c.share.password.is_empty(), "and nothing comes back");
+    }
+
+    const SENTINELS: [&str; 8] = [
+        "share-pw",
+        "mail-pw",
+        "kosync-pw",
+        "rw-token",
+        "tts-key",
+        "dav-pw",
+        "backup-phrase",
+        "nc-pw",
+    ];
+
+    /// Every secret field, set to a sentinel, over every state a vault can be in.
+    fn all_secrets_set() -> Config {
+        let mut c = with_passwords();
+        c.opds_catalogs.push(crate::opds_browse::Catalog {
+            id: "cat1".into(),
+            name: "Cat".into(),
+            url: "https://opds.example".into(),
+            user: "u".into(),
+            password: "sentinel-opds".into(),
+        });
+        c.health
+            .backup
+            .destinations
+            .push(bookx_backup::Destination::webdav(
+                "d2",
+                "Second",
+                "https://d2.example",
+                "bob",
+                "sentinel-d2",
+            ));
+        let n = c.secret_fields().len();
+        for (i, (k, v)) in c.secret_fields().into_iter().enumerate() {
+            if v.is_empty() {
+                *v = format!("sentinel-{i}-{k}");
+            }
+        }
+        assert!(n >= 11, "fields: {n}");
+        c
+    }
+
+    fn secrets_of(c: &mut Config) -> Vec<String> {
+        c.secret_fields()
+            .into_iter()
+            .map(|(_, v)| v.clone())
+            .collect()
+    }
+
+    #[test]
+    fn no_vault_state_ever_puts_a_secret_in_the_file() {
+        let dir = std::env::temp_dir().join(format!("bookx-cfg-states-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let file = || {
+            bookx_secrets::FileStore::with_kdf(dir.join("secrets.vault"), bookx_secrets::Kdf::TEST)
+        };
+        let mut states: Vec<(&str, Vault)> = vec![
+            ("memory", Vault::new(Box::new(MemoryStore::new()))),
+            ("unavailable", Vault::new(Box::new(Unavailable("x".into())))),
+            (
+                "fresh",
+                Vault::with_file(Box::new(Unavailable("x".into())), file()),
+            ),
+        ];
+        let unlocked = Vault::with_file(Box::new(Unavailable("x".into())), file());
+        unlocked.create_vault("a long master password").unwrap();
+        states.push(("unlocked", unlocked));
+        let locked = Vault::with_file(Box::new(Unavailable("x".into())), file());
+        assert_eq!(locked.mode(), bookx_secrets::Mode::Locked);
+        states.push(("locked", locked));
+        let mut c = all_secrets_set();
+        let want = secrets_of(&mut c);
+        for (name, v) in &states {
+            let text = c.file_text(v).unwrap();
+            for s in &want {
+                assert!(!text.contains(s.as_str()), "{name}: {s} is in the file");
+            }
+        }
+        // the in-memory configuration still has them
+        assert_eq!(secrets_of(&mut c), want);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Every way Bookx turns settings into text, with a sentinel in every secret field.
+    #[test]
+    fn no_serialization_path_carries_a_secret() {
+        let mut c = all_secrets_set();
+        let secrets = secrets_of(&mut c);
+        let vaults = [
+            Vault::new(Box::new(MemoryStore::new())),
+            Vault::new(Box::new(Unavailable("none".into()))),
+        ];
+        let mut outputs: Vec<(&str, String)> = vec![
+            ("settings export", crate::settings_io::export(&c)),
+            (
+                "mcp settings",
+                serde_json::to_string(&crate::mcp_host::McpSettings {
+                    token_fallback: "sentinel-mcp-token".into(),
+                    ..Default::default()
+                })
+                .unwrap(),
+            ),
+        ];
+        for v in &vaults {
+            outputs.push(("file_text", c.file_text(v).unwrap()));
+        }
+        for (what, text) in &outputs {
+            for s in secrets
+                .iter()
+                .chain(["sentinel-mcp-token".to_string()].iter())
+            {
+                assert!(!text.contains(s.as_str()), "{what} contains {s}");
+            }
+        }
+        let dump = format!("{:?}", c.share);
+        assert!(
+            dump.contains("share-pw"),
+            "(the struct itself holds it; only the writers must not)"
+        );
+    }
+
+    #[test]
+    fn plain_text_in_the_file_is_scrubbed_even_without_a_keyring() {
+        let old = serde_json::to_string(&all_secrets_set()).unwrap();
+        assert!(old.contains("sentinel-opds"));
+        let v = Vault::new(Box::new(Unavailable("none".into())));
+        let (c, migrated) = Config::from_text(Some(&old), &v);
+        assert!(migrated, "the file must be rewritten");
+        assert_eq!(
+            c.opds_catalogs[0].password, "sentinel-opds",
+            "still usable this session"
+        );
+        let new_text = c.file_text(&v).unwrap();
+        for s in secrets_of(&mut all_secrets_set()) {
+            assert!(!new_text.contains(&s), "{s} survived");
+        }
+    }
+
+    #[test]
+    fn scrubbing_removes_secrets_from_old_copies_and_makes_the_folder_private() {
+        let dir = std::env::temp_dir().join(format!("bookx-cfg-scrub-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let plain = serde_json::to_string(&all_secrets_set()).unwrap();
+        for n in ["config.json.old", "config.json~", "config.json.bak"] {
+            std::fs::write(dir.join(n), &plain).unwrap();
+        }
+        std::fs::write(dir.join("config.json.tmp"), &plain).unwrap();
+        scrub_copies(&dir);
+        assert!(!dir.join("config.json.tmp").exists());
+        for n in ["config.json.old", "config.json~", "config.json.bak"] {
+            let t = std::fs::read_to_string(dir.join(n)).unwrap();
+            assert!(!t.contains("sentinel-") && !t.contains("share-pw"), "{n}");
+            assert!(t.contains("Nextcloud"), "{n} keeps the rest");
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let m =
+                |p: &std::path::Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+            assert_eq!(m(&dir), 0o700);
+            assert_eq!(m(&dir.join("config.json.old")), 0o600);
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn private_files_are_created_0600() {
+        use std::os::unix::fs::PermissionsExt;
+        let p = std::env::temp_dir().join(format!("bookx-cfg-private-{}", std::process::id()));
+        let _ = std::fs::remove_file(&p);
+        std::fs::write(&p, "old").unwrap();
+        std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o644)).unwrap();
+        write_private(&p, b"new").unwrap();
+        assert_eq!(
+            std::fs::metadata(&p).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert_eq!(std::fs::read_to_string(&p).unwrap(), "new");
+        let _ = std::fs::remove_file(&p);
     }
 
     #[test]
@@ -869,6 +1204,30 @@ mod clean_ui_tests {
         let back: Config = serde_json::from_str(&serde_json::to_string(&c).unwrap()).unwrap();
         assert_eq!(back.favourites, vec![3, 9]);
         assert_eq!(back.sidebar_view, "recent");
+    }
+
+    #[test]
+    fn the_sidebar_layout_is_kept_per_library() {
+        use crate::library_nav::{SidebarItem, SidebarLayout};
+        let mut c = Config::default();
+        assert!(c.sidebar_layout("/a").is_default());
+        let mut l = SidebarLayout::default();
+        l.set_hidden(SidebarItem::Notes, true);
+        l.move_item(SidebarItem::Catalogues, -1);
+        c.set_sidebar_layout("/a", l.clone());
+        let back: Config = serde_json::from_str(&serde_json::to_string(&c).unwrap()).unwrap();
+        assert_eq!(back.sidebar_layout("/a"), l);
+        assert!(
+            back.sidebar_layout("/b").is_default(),
+            "another library is untouched"
+        );
+        // an old config file has no key at all
+        let old: Config = serde_json::from_str("{}").unwrap();
+        assert!(old.sidebar_layouts.is_empty());
+        // the default is not stored
+        let mut c = back;
+        c.set_sidebar_layout("/a", SidebarLayout::default());
+        assert!(c.sidebar_layouts.is_empty());
     }
 }
 
@@ -976,5 +1335,166 @@ mod hyphenation_pref_tests {
         let p: ReaderPrefs = serde_json::from_str(r#"{"theme":"Sepia"}"#).unwrap();
         assert_eq!(p.colors, ColorMode::Theme);
         assert!(parse_hex(&p.custom_fg).is_some() && parse_hex(&p.custom_bg).is_some());
+    }
+}
+
+/// The documented default of every Preferences switch that is stored, walked through the serialized
+/// defaults so a changed default or a renamed field fails here and not on a user's machine. Add a row
+/// when a switch is added; the wiki's Preferences page names the same defaults.
+#[cfg(test)]
+mod defaults_tests {
+    use super::*;
+
+    fn bool_at(v: &serde_json::Value, path: &str) -> bool {
+        let mut cur = v;
+        for part in path.split('.') {
+            cur = cur
+                .get(part)
+                .unwrap_or_else(|| panic!("no setting `{path}` in the stored defaults"));
+        }
+        cur.as_bool()
+            .unwrap_or_else(|| panic!("`{path}` is not a switch"))
+    }
+
+    #[test]
+    fn every_stored_switch_has_its_documented_default() {
+        let v = serde_json::to_value(Config::default()).unwrap();
+        let documented: &[(&str, bool)] = &[
+            // General and library
+            ("eink", false),
+            ("offline", false),
+            ("copy_on_add", true),
+            ("details_pane", true),
+            ("group_editions", false),
+            // Reading
+            ("footnote_popups", true),
+            ("mark_vocabulary", true),
+            ("reader.justify", true),
+            ("reader.hyphenate", true),
+            ("reader.optimal_breaks", true),
+            ("reader.publisher_styles", true),
+            ("ruler.enabled", false),
+            // Sync: nothing runs, nothing is sent or logged in until the user says so
+            ("share.running", false),
+            ("share.lan", false),
+            ("share.https", false),
+            ("share.kosync", false),
+            ("share.annotations", true),
+            ("share.plugin_copied", false),
+            ("kosync.enabled", false),
+            ("kosync.by_filename", false),
+            ("kosync.logged_in", false),
+            ("device_sync.auto_sync", false),
+            ("device_sync.include_notes", true),
+        ];
+        for (path, want) in documented {
+            assert_eq!(bool_at(&v, path), *want, "default of `{path}`");
+        }
+    }
+
+    #[test]
+    fn the_editor_switches_have_their_documented_defaults() {
+        let v = serde_json::to_value(crate::editor_prefs::EditorPrefs::default()).unwrap();
+        // "Scrolling the preview scrolls the code" is on; the others start off
+        for (path, want) in [
+            ("scroll_both", true),
+            ("minimap", true),
+            ("show_whitespace", false),
+            ("convert_entities", false),
+            ("check_accessibility", false),
+        ] {
+            assert_eq!(bool_at(&v, path), want, "editor default of `{path}`");
+        }
+    }
+
+    #[test]
+    fn e_ink_mode_is_off_and_survives_a_save_and_a_load() {
+        let vault = bookx_secrets::Vault::new(Box::new(bookx_secrets::MemoryStore::new()));
+        let mut c = Config::default();
+        assert!(!c.eink);
+        c.eink = true;
+        c.share.port = 9191;
+        c.kosync.server = "http://192.168.1.5:8080".into();
+        c.kosync.user = "alice".into();
+        let text = c.file_text(&vault).unwrap();
+        let (back, _) = Config::from_text(Some(&text), &vault);
+        assert!(back.eink);
+        assert_eq!(back.share.port, 9191);
+        assert_eq!(back.kosync.server, "http://192.168.1.5:8080");
+        assert_eq!(back.kosync.user, "alice");
+        let (old, _) = Config::from_text(Some("{}"), &vault);
+        assert!(!old.eink, "a file without the key reads as off");
+    }
+}
+
+#[cfg(test)]
+mod file_name_tests {
+    use super::*;
+
+    #[test]
+    fn every_data_file_sits_next_to_the_settings_file() {
+        let Some(base) = config_path().and_then(|p| p.parent().map(|d| d.to_path_buf())) else {
+            return; // no home directory in this environment
+        };
+        for (path, name) in [
+            (vocab_path(), "vocabulary.json"),
+            (stats_path(), "stats.json"),
+            (dwell_path(), "dwell.json"),
+            (shortcuts_path(), "shortcuts.json"),
+            (shelves_path(), "shelves.json"),
+            (libraries_path(), "libraries.json"),
+            (news_path(), "news.json"),
+        ] {
+            assert_eq!(path.unwrap(), base.join(name));
+        }
+        assert_eq!(
+            config_file_path_text(),
+            base.join("config.json").display().to_string()
+        );
+    }
+
+    #[test]
+    fn a_backup_destination_has_its_own_keyring_key() {
+        assert_eq!(backup_password_key("nas"), "backup-nas-password");
+        assert_ne!(backup_password_key("a"), backup_password_key("b"));
+    }
+
+    #[test]
+    fn the_default_library_lives_in_a_folder_called_bookx_library() {
+        let d = default_library_dir();
+        assert!(
+            d.ends_with("Bookx Library") || d.ends_with("bookx/Library"),
+            "{d:?}"
+        );
+    }
+
+    #[test]
+    fn the_scrub_notice_is_given_once() {
+        SCRUBBED.store(true, std::sync::atomic::Ordering::Relaxed);
+        assert!(take_scrub_notice());
+        assert!(!take_scrub_notice());
+    }
+
+    #[test]
+    fn a_book_without_a_footer_of_its_own_uses_the_common_one() {
+        let mut c = Config::default();
+        let common = c.footer_for(7);
+        let mut own = common.clone();
+        own.separator = " | ".into();
+        c.footer_books.insert(8, own.clone());
+        assert_eq!(c.footer_for(7), common);
+        assert_eq!(c.footer_for(8).separator, " | ");
+    }
+
+    #[test]
+    fn the_footer_position_is_migrated_once() {
+        let mut c = Config {
+            footer_pos_migrated: false,
+            ..Config::default()
+        };
+        c.migrate_footer_position();
+        assert!(c.footer_pos_migrated);
+        // a profile-less config has nothing to migrate
+        assert!(!c.migrate_profiles(None));
     }
 }

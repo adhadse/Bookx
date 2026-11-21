@@ -2,7 +2,7 @@
 //! pressing the keys, conflict handling (swap or take away), reset, export and import. The model
 //! is `crate::shortcuts`; this file shows it and applies it to the application accelerators.
 
-use crate::i18n::{tr, trf};
+use crate::i18n::{tr, trf, N_};
 use std::cell::RefCell;
 
 use relm4::adw::{self, prelude::*};
@@ -13,13 +13,14 @@ use crate::shortcuts::{self, Action, Group, Settle, Shortcuts};
 
 /// Library actions whose keys are handled by the library's own shortcut controller (so that
 /// Delete and Ctrl+A leave text fields alone); every other action is an application accelerator.
-pub const LIBRARY_LOCAL: [&str; 6] = [
+pub const LIBRARY_LOCAL: [&str; 7] = [
     "lib.focus-search",
     "lib.favourite",
     "lib.add-books",
     "book.edit-meta",
     "book.delete",
     "lib.select-all",
+    "lib.toggle-sidebar",
 ];
 
 thread_local! {
@@ -58,6 +59,7 @@ pub fn register() {
     );
     register_group("shortcuts", 10, tools_group);
     register_group("shortcuts", 15, share_group);
+    register_group("shortcuts", 40, preferences_group);
     for (i, g) in [
         Group::Application,
         Group::Library,
@@ -186,6 +188,34 @@ fn share_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     g.add(&export);
     g.add(&import);
     g.add(&reset_all);
+    g
+}
+
+/// The keys of this window itself: fixed, so they are listed but not rebindable.
+pub const PREFERENCES_KEYS: [(&str, &str); 2] = [
+    (N_("Next Section"), "Ctrl+Page Down"),
+    (N_("Previous Section"), "Ctrl+Page Up"),
+];
+
+fn preferences_group(_ctx: &PrefCtx) -> adw::PreferencesGroup {
+    let g = adw::PreferencesGroup::builder()
+        .title(tr("Preferences"))
+        .description(tr(
+            "These keys work inside Preferences and cannot be changed.",
+        ))
+        .build();
+    for (title, keys) in PREFERENCES_KEYS {
+        let row = adw::ActionRow::builder()
+            .title(tr(title))
+            .activatable(false)
+            .focusable(false)
+            .build();
+        let l = gtk::Label::new(Some(keys));
+        l.add_css_class("dim-label");
+        l.set_valign(gtk::Align::Center);
+        row.add_suffix(&l);
+        g.add(&row);
+    }
     g
 }
 
@@ -693,6 +723,23 @@ pub fn dev(cmd: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_preferences_section_keys_are_listed_and_do_not_clash_with_a_binding() {
+        assert_eq!(PREFERENCES_KEYS.len(), 2);
+        assert!(PREFERENCES_KEYS.iter().any(|(_, k)| *k == "Ctrl+Page Down"));
+        assert!(PREFERENCES_KEYS.iter().any(|(_, k)| *k == "Ctrl+Page Up"));
+        for a in shortcuts::registry() {
+            for k in shortcuts::current().effective(&a.action) {
+                assert!(
+                    !(k.contains("<Control>")
+                        && (k.contains("Page_Down") || k.contains("Page_Up"))),
+                    "{} uses {k}",
+                    a.action
+                );
+            }
+        }
+    }
 
     #[test]
     fn filter_needs_every_word() {

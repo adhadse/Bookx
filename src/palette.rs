@@ -230,6 +230,76 @@ pub const COMMANDS: &[Command] = &[
         LIB
     ),
     cmd!(
+        "lib.toggle-sidebar",
+        N_("Show or Hide the Sidebar"),
+        "F9",
+        "navigation panel hide show",
+        LIB
+    ),
+    cmd!(
+        "lib.customize-sidebar",
+        N_("Customize Sidebar"),
+        "",
+        "show hide reorder entries groups destinations",
+        LIB
+    ),
+    cmd!(
+        "lib.browse-shelves",
+        N_("Browse Shelves"),
+        "",
+        "collections sidebar",
+        LIB
+    ),
+    cmd!(
+        "lib.browse-authors",
+        N_("Browse Authors"),
+        "",
+        "writers sidebar",
+        LIB
+    ),
+    cmd!(
+        "lib.browse-series",
+        N_("Browse Series"),
+        "",
+        "sagas sidebar",
+        LIB
+    ),
+    cmd!(
+        "lib.browse-tags",
+        N_("Browse Tags"),
+        "",
+        "labels sidebar",
+        LIB
+    ),
+    cmd!(
+        "lib.browse-publishers",
+        N_("Browse Publishers"),
+        "",
+        "sidebar",
+        LIB
+    ),
+    cmd!(
+        "lib.browse-languages",
+        N_("Browse Languages"),
+        "",
+        "sidebar",
+        LIB
+    ),
+    cmd!(
+        "lib.browse-ratings",
+        N_("Browse Ratings"),
+        "",
+        "stars sidebar",
+        LIB
+    ),
+    cmd!(
+        "lib.browse-status",
+        N_("Browse Reading Status"),
+        "",
+        "finished unread reading sidebar",
+        LIB
+    ),
+    cmd!(
         "lib.favourite",
         N_("Add to Favourites"),
         "<Control>d",
@@ -483,6 +553,27 @@ pub const COMMANDS: &[Command] = &[
         RDR
     ),
     cmd!(
+        "reader.auto-turn",
+        N_("Auto-Turn Pages"),
+        "",
+        "automatic page timer slideshow",
+        RDR
+    ),
+    cmd!(
+        "reader.copy-citation",
+        N_("Copy with Citation"),
+        "<Control><Shift>c",
+        "quote reference source",
+        RDR
+    ),
+    cmd!(
+        "reader.link-hints",
+        N_("Show Link Hints"),
+        "<Control>semicolon",
+        "keyboard links follow letters",
+        RDR
+    ),
+    cmd!(
         "reader.properties",
         N_("Book Properties"),
         "<Control>i",
@@ -646,6 +737,12 @@ pub const EDITOR_COMMANDS: &[(&str, &str, &str, &str)] = &[
         "quick open file switch",
     ),
     ("preview", N_("Toggle Preview"), "", "live render"),
+    (
+        "sidebar",
+        N_("Show or Hide the Sidebar"),
+        "",
+        "files contents book panel",
+    ),
     (
         "beautify",
         N_("Reformat Markup"),

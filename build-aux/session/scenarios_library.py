@@ -671,3 +671,40 @@ def library_filter_light(c):
 @scenario
 def library_filter_dark(c):
     _filter_case(c, "filter-dark", DARK)
+
+
+@scenario
+def library_standard_keys(c):
+    """XC-6 with the real keyboard: F9 shows and hides the sidebar, Ctrl+A selects all, Escape clears,
+    Delete moves the selection to Trash with an Undo toast, Ctrl+comma opens Preferences, Ctrl+? the shortcuts."""
+    c.start(books=("alice", "tiny"))
+    a = c.wait_node("table cell", rx="Alice")
+    if not c.check("the books are listed", a):
+        return
+    shown = lambda: [n for n in c.find(None, "Library views") if n.showing]
+    c.check("the sidebar is shown", c.wait(shown, 5))
+    c.sb.key("F9")
+    c.check("F9 hides the sidebar", c.wait(lambda: not shown(), 5))
+    c.sb.key("F9")
+    c.check("F9 shows it again", c.wait(shown, 5))
+    c.sb.click(*a.center())
+    c.sb.key("a", ("Control",))
+    c.check("Ctrl+A selects all books", c.wait(lambda: _selected(c) == "2 Books Selected", 5), _selected(c))
+    c.sb.key("Escape")
+    c.check("Escape clears the selection", c.wait(lambda: _selected(c) == "none", 5), _selected(c))
+    c.sb.click(*a.center())
+    c.sb.key("a", ("Control",))
+    time.sleep(0.4)
+    c.sb.key("Delete")
+    toast = c.wait_node("button", "Undo", timeout=6)
+    c.check("Delete moves the books to Trash with an Undo toast", toast and not c.find("table cell", rx="Alice"))
+    if toast:
+        c.click_node(toast)
+        c.check("Undo brings them back", c.wait_node("table cell", rx="Alice", timeout=6))
+    c.sb.key("comma", ("Control",))
+    c.check("Ctrl+comma opens Preferences", c.wait_node(None, "Preferences", timeout=6))
+    c.sb.key("Escape")
+    time.sleep(0.6)
+    c.sb.key("question", ("Control", "Shift"))
+    c.check("Ctrl+? opens the Keyboard Shortcuts window", c.wait_node(None, rx="^Keyboard Shortcuts|Library$", timeout=6))
+    c.shot("library-standard-keys")

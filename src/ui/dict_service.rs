@@ -225,7 +225,7 @@ fn start(shared: &SharedRef, lang: &str, dict_id: &str, dir: &std::path::Path) {
                 job,
                 token,
                 fraction: None,
-                line: tr("Starting…"),
+                line: tr("Starting"),
                 title,
             },
         );
@@ -240,7 +240,7 @@ fn start(shared: &SharedRef, lang: &str, dict_id: &str, dir: &std::path::Path) {
     emit(Event::Progress {
         lang: lang.to_string(),
         fraction: None,
-        line: tr("Starting…"),
+        line: tr("Starting"),
     });
     let (shared, lang) = (shared.clone(), lang.to_string());
     glib::timeout_add_local(Duration::from_millis(150), move || poll(&shared, &lang));

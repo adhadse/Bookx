@@ -9,6 +9,11 @@ const ICONS: &[(&str, &str)] = &[
         "actions/funnel-symbolic.svg",
         include_str!("../data/icons/hicolor/scalable/actions/funnel-symbolic.svg"),
     ),
+    // `blocks` of the GNOME Icon Development Kit (Jakub Steiner, CC0 1.0), the Jobs button; see NOTICE.md.
+    (
+        "actions/blocks-symbolic.svg",
+        include_str!("../data/icons/hicolor/scalable/actions/blocks-symbolic.svg"),
+    ),
     (
         "actions/tag-symbolic.svg",
         include_str!("../data/icons/hicolor/scalable/actions/tag-symbolic.svg"),

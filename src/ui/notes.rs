@@ -1544,7 +1544,12 @@ pub fn build(
     }
     let stack = gtk::Stack::new();
     stack.add_named(&sw, Some("list"));
-    stack.add_named(&empty, Some("empty"));
+    // scrolled, so that large text cannot make the empty page taller than the window (XC-7)
+    let empty_scroll = gtk::ScrolledWindow::builder()
+        .child(&empty)
+        .hscrollbar_policy(gtk::PolicyType::Never)
+        .build();
+    stack.add_named(&empty_scroll, Some("empty"));
 
     let copy_btn = gtk::Button::with_label(&tr("Copy"));
     copy_btn.set_visible(false);

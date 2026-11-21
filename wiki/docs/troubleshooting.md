@@ -10,7 +10,7 @@ from another computer never is, so make sure nothing else is using the library b
 
 A library on a network file system, or in a Dropbox/Syncthing-style folder, can be damaged if two computers change it
 at once. Keep the library on a local disk and use [backups](library.md#library-health) or the
-[share feature](devices-and-sharing.md#library-server) to reach it from elsewhere.
+[OPDS server](devices-and-sharing.md#library-server) to reach it from elsewhere.
 
 ## A book did not import
 
@@ -85,6 +85,24 @@ e-mail, and plugins that declare network permissions. Plugins are off until you 
 
 It contains **no** book titles, authors, notes, account names, passwords, tokens, addresses or your user name: those are
 removed before the text is shown. Read it once before you paste it into an issue.
+
+## Debug log
+
+The **Troubleshooting** page of *About Bookx* also lists the last log lines of this run. Before you save or copy it,
+Bookx removes your home folder and user name, the library folder, the titles of your books, e-mail and IP addresses,
+and every password or token you have saved. Nothing is written to disk until you press Save.
+
+## Safe mode
+
+If Bookx crashes at start, run `bookx --safe-mode` (Flatpak: `flatpak run com.adhadse.Bookx --safe-mode`; or set
+`BOOKX_SAFE_MODE=1`). Plugins and patches are not loaded, the sharing server, the AI assistant server, sync and every
+internet request are off, and the settings start at their defaults. **Nothing is saved to your settings file** in safe
+mode, so your real settings are back at the next normal start. Your library and books are untouched.
+
+## Open With and `--doc`
+
+`bookx file.epub` (or *Open With* in the file manager) adds the book to the library; if Bookx is already running the
+running window does it. `bookx --doc file.epub` adds the book if needed and opens it in the reader.
 
 ## Reporting a bug
 
@@ -167,7 +185,7 @@ says so in a message. Characters in an identifier can be written as `%XX` (`doi%
 
 ??? question "I get a warning about a network share or a sync folder."
     A library on a network file system or in a Dropbox-style folder can be damaged if two computers change it at once. Keep
-    the library on a local disk and use backups or the library server to reach it from elsewhere.
+    the library on a local disk and use backups or the OPDS server to reach it from elsewhere.
 
 ??? question "How do I open a book from a link or a script?"
     Use a `bookx://` link, for example `xdg-open 'bookx://book/isbn:9780441172719'`; see [bookx:// links](#bookx-links).

@@ -75,6 +75,8 @@ pub(super) struct PvState {
     pub map: RefCell<SourceMap>,
     /// Char offset in the buffer where each block starts.
     pub chars: RefCell<Vec<Option<usize>>>,
+    /// Char offset in the buffer where each block ends (a click selects the block's source up to here).
+    pub ends: RefCell<Vec<Option<usize>>>,
     pub map_file: RefCell<Option<String>>,
     pub pick: RefCell<Option<Pick>>,
     /// Shared with the click handler, which must claim clicks while picking.
@@ -101,7 +103,7 @@ pub(super) struct PvState {
     both_btn: gtk::CheckButton,
     pub gate: Cell<bookx_editing::scroll_sync::Gate>,
     /// Until when a caret reveal wins over a delayed code → preview sync.
-    follow_until: Cell<u64>,
+    follow_until: Rc<Cell<u64>>,
     /// A sync step is under way (its own scrolls must not start another).
     pub syncing: Cell<bool>,
     sync_timer: Rc<RefCell<Option<glib::SourceId>>>,
@@ -479,12 +481,28 @@ impl PvState {
             });
         }
 
+        // a dev script can wait for the scroll sync to have run instead of sleeping (slow on a loaded machine)
+        let sync_timer: Rc<RefCell<Option<glib::SourceId>>> = Rc::new(RefCell::new(None));
+        let sync_timer_pv: Rc<RefCell<Option<glib::SourceId>>> = Rc::new(RefCell::new(None));
+        let follow_until: Rc<Cell<u64>> = Rc::new(Cell::new(0));
+        {
+            let (a, b, f) = (
+                sync_timer.clone(),
+                sync_timer_pv.clone(),
+                follow_until.clone(),
+            );
+            // no sync step is waiting and the grace after a caret reveal (which holds the sync back) is over
+            crate::devtools::probe("editor-sync-idle", move || {
+                a.borrow().is_none() && b.borrow().is_none() && now_ms() >= f.get()
+            });
+        }
         PvState {
             follow: Cell::new(crate::editor_prefs::look().preview_follow),
             auto: Cell::new(true),
             stale: Cell::new(false),
             map: RefCell::new(SourceMap::default()),
             chars: RefCell::new(Vec::new()),
+            ends: RefCell::new(Vec::new()),
             map_file: RefCell::new(None),
             pick: RefCell::new(None),
             pick_flag,
@@ -506,10 +524,10 @@ impl PvState {
             both: Cell::new(both),
             both_btn,
             gate: Cell::new(Default::default()),
-            follow_until: Cell::new(0),
+            follow_until,
             syncing: Cell::new(false),
-            sync_timer: Rc::new(RefCell::new(None)),
-            sync_timer_pv: Rc::new(RefCell::new(None)),
+            sync_timer,
+            sync_timer_pv,
             scroll_map: RefCell::new(None),
             sync_us: Cell::new(0),
             sync_steps: Cell::new(0),
@@ -584,6 +602,12 @@ impl Editor {
             .map(|b| b.as_ref().map(|s| s.range.start))
             .collect();
         *self.pv.chars.borrow_mut() = bytes_to_chars(&text, &starts);
+        let ends: Vec<Option<usize>> = map
+            .blocks
+            .iter()
+            .map(|b| b.as_ref().map(|s| s.range.end.min(text.len())))
+            .collect();
+        *self.pv.ends.borrow_mut() = bytes_to_chars(&text, &ends);
         *self.pv.map.borrow_mut() = map;
         *self.pv.map_file.borrow_mut() = Some(path.clone());
         self.pv.stale.set(false);
@@ -1015,6 +1039,13 @@ impl Editor {
         let mut it = buf.iter_at_offset(c as i32);
         self.pv.skip_follow.set(Some(c));
         buf.place_cursor(&it);
+        // the element the click landed on is selected, with the cursor at its start
+        if let Some(e) = self.pv.ends.borrow().get(b).copied().flatten() {
+            if e > c {
+                let end = buf.iter_at_offset(e as i32);
+                buf.select_range(&it, &end);
+            }
+        }
         self.w.view.scroll_to_iter(&mut it, 0.1, true, 0.5, 0.3);
     }
 
@@ -1283,6 +1314,15 @@ impl Editor {
                 self.pv.sync_us.get(),
                 self.pv.scroll_map.borrow().as_ref().map(|m| m.2.len()).unwrap_or(0)
             );
+        } else if c == "pv-code-sel" {
+            // `editor_pv: code_sel="…"` the selected text of the code view (first 60 characters) and its length
+            let buf = self.w.view.buffer();
+            let sel = buf
+                .selection_bounds()
+                .map(|(a, b)| buf.text(&a, &b, false).to_string())
+                .unwrap_or_default();
+            let head: String = sel.chars().take(60).collect();
+            eprintln!("editor_pv: code_sel={head:?} len={}", sel.chars().count());
         } else if c == "pv-where" {
             let b = self.caret_char().and_then(|c| self.block_at_char(c));
             let top = b.and_then(|b| canvas.block_top(b));

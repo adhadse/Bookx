@@ -47,7 +47,25 @@ pub struct StyleTweaks {
     pub hyphenation: Option<String>,
     /// The reader's own style sheet, applied after the book's.
     pub user_css: String,
+    /// Weight of the text, 100 to 900 (R23).
+    pub weight: Option<i32>,
+    /// Text contrast: 0 softens the text colour towards the page, 1 pushes it to black or white.
+    pub contrast: Option<f64>,
+    /// Space between words in em, -0.25 to 1.
+    pub word_spacing: Option<f64>,
+    /// Pair kerning on or off.
+    pub kerning: Option<bool>,
+    /// Least lines of a paragraph at the bottom and the top of a page, 1 to 4 (R3).
+    pub widows_orphans: Option<u8>,
+    /// `Some(false)`: ignore the book's own styling (CSS) for this book; `Some(true)`: apply it
+    /// whatever the preference says (R57). `None` follows the preference.
+    pub book_styles: Option<bool>,
+    /// `Some(false)`: ignore the fonts and sizes of the book's CSS, keep the reader's font.
+    pub book_fonts: Option<bool>,
 }
+
+/// Range of the text weight tweak.
+pub const WEIGHT_RANGE: (i32, i32) = (100, 900);
 
 impl StyleTweaks {
     pub fn is_empty(&self) -> bool {
@@ -77,6 +95,18 @@ impl StyleTweaks {
             .hyphenation
             .map(|h| h.trim().to_string())
             .filter(|h| !h.is_empty());
+        t.weight = t
+            .weight
+            .map(|v| (v.clamp(WEIGHT_RANGE.0, WEIGHT_RANGE.1) + 50) / 100 * 100);
+        t.contrast = t
+            .contrast
+            .filter(|v| v.is_finite())
+            .map(|v| v.clamp(0.0, 1.0));
+        t.word_spacing = t
+            .word_spacing
+            .filter(|v| v.is_finite())
+            .map(|v| v.clamp(-0.25, 1.0));
+        t.widows_orphans = t.widows_orphans.map(|v| v.clamp(1, 4));
         if t.user_css.chars().count() > MAX_CSS_CHARS {
             t.user_css = t.user_css.chars().take(MAX_CSS_CHARS).collect();
         }
@@ -104,11 +134,34 @@ impl StyleTweaks {
         if let Some(o) = t.optimal_breaks {
             style.optimal_breaks = o;
         }
+        if let Some(w) = t.weight {
+            style.weight = Some(w);
+        }
+        if let Some(w) = t.word_spacing {
+            style.word_spacing = w;
+        }
+        if let Some(k) = t.kerning {
+            style.kerning = k;
+        }
+        if let Some(n) = t.widows_orphans {
+            style.widows_orphans = n as usize;
+        }
+        if let Some(f) = t.book_fonts {
+            style.book_fonts = f;
+        }
+        if let Some(c) = t.contrast {
+            style.palette.fg = contrast_colour(style.palette.fg, style.palette.bg, c);
+        }
         if t.hyphenation.as_deref() == Some("off") {
             style.hyphenate = false;
         } else if t.hyphenation.is_some() {
             style.hyphenate = true;
         }
+    }
+
+    /// Whether the book's own styling is applied, given the preference.
+    pub fn styled(&self, preference: bool) -> bool {
+        self.book_styles.unwrap_or(preference)
     }
 
     /// The language the hyphenation patterns are picked for.
@@ -123,6 +176,32 @@ impl StyleTweaks {
     pub fn css(&self) -> String {
         self.clamped().user_css.trim().to_string()
     }
+}
+
+/// The text colour with the contrast tweak applied: 0.5 keeps it, 0 moves it halfway to the page
+/// colour, 1 moves it halfway to black (light page) or white (dark page).
+pub fn contrast_colour(fg: (f64, f64, f64), bg: (f64, f64, f64), contrast: f64) -> (f64, f64, f64) {
+    let c = if contrast.is_finite() {
+        contrast.clamp(0.0, 1.0)
+    } else {
+        0.5
+    };
+    let lum = 0.2126 * bg.0 + 0.7152 * bg.1 + 0.0722 * bg.2;
+    let extreme = if lum < 0.5 {
+        (1.0, 1.0, 1.0)
+    } else {
+        (0.0, 0.0, 0.0)
+    };
+    let (target, t) = if c < 0.5 {
+        (bg, (0.5 - c) * 1.0)
+    } else {
+        (extreme, (c - 0.5) * 1.0)
+    };
+    (
+        fg.0 + (target.0 - fg.0) * t,
+        fg.1 + (target.1 - fg.1) * t,
+        fg.2 + (target.2 - fg.2) * t,
+    )
 }
 
 /// The general tweaks and the ones of single books.
@@ -207,7 +286,7 @@ mod tests {
             justify: Some(false),
             optimal_breaks: Some(false),
             hyphenation: Some("off".into()),
-            user_css: String::new(),
+            ..Default::default()
         }
         .apply(&mut s);
         assert_eq!(s.line_spacing, 1.8);
@@ -215,6 +294,78 @@ mod tests {
         assert_eq!(s.paragraph_spacing, Some(1.0));
         assert_eq!(s.font_family, "Sans");
         assert!(!s.justify && !s.optimal_breaks && !s.hyphenate);
+    }
+
+    #[test]
+    fn text_appearance_tweaks_reach_the_style() {
+        let mut s = CanvasStyle::default();
+        assert!(s.kerning && s.weight.is_none() && s.widows_orphans == 2);
+        StyleTweaks {
+            weight: Some(540),
+            word_spacing: Some(0.2),
+            kerning: Some(false),
+            widows_orphans: Some(3),
+            book_fonts: Some(false),
+            ..Default::default()
+        }
+        .apply(&mut s);
+        assert_eq!(s.weight, Some(500), "weights are rounded to the hundreds");
+        assert_eq!(s.word_spacing, 0.2);
+        assert!(!s.kerning && !s.book_fonts);
+        assert_eq!(s.widows_orphans, 3);
+    }
+
+    #[test]
+    fn text_appearance_values_are_clamped() {
+        let t = StyleTweaks {
+            weight: Some(5000),
+            contrast: Some(f64::INFINITY),
+            word_spacing: Some(-9.0),
+            widows_orphans: Some(0),
+            ..Default::default()
+        }
+        .clamped();
+        assert_eq!(t.weight, Some(900));
+        assert_eq!(t.contrast, None);
+        assert_eq!(t.word_spacing, Some(-0.25));
+        assert_eq!(t.widows_orphans, Some(1));
+        assert_eq!(
+            StyleTweaks {
+                widows_orphans: Some(200),
+                ..Default::default()
+            }
+            .clamped()
+            .widows_orphans,
+            Some(4)
+        );
+    }
+
+    #[test]
+    fn contrast_moves_the_text_colour_against_the_page() {
+        let (fg, bg) = ((0.2, 0.2, 0.2), (1.0, 1.0, 1.0));
+        assert_eq!(contrast_colour(fg, bg, 0.5), fg);
+        let hi = contrast_colour(fg, bg, 1.0);
+        assert!(hi.0 < fg.0, "darker on a light page");
+        let lo = contrast_colour(fg, bg, 0.0);
+        assert!(lo.0 > fg.0, "lighter: closer to the page");
+        let dark_bg = (0.1, 0.1, 0.1);
+        let light_text = (0.8, 0.8, 0.8);
+        assert!(
+            contrast_colour(light_text, dark_bg, 1.0).0 > 0.8,
+            "whiter on a dark page"
+        );
+        assert_eq!(contrast_colour(fg, bg, f64::NAN), fg);
+    }
+
+    #[test]
+    fn the_book_styles_switch_overrides_the_preference() {
+        let mut t = StyleTweaks::default();
+        assert!(t.styled(true) && !t.styled(false));
+        t.book_styles = Some(false);
+        assert!(!t.styled(true));
+        t.book_styles = Some(true);
+        assert!(t.styled(false));
+        assert!(!t.is_empty());
     }
 
     #[test]

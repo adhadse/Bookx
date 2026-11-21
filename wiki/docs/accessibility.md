@@ -80,7 +80,9 @@ also finds settings, by their name, their description and their section, and ope
 
 Arabic and Hebrew text is laid out right to left. When the book says its pages turn right to left, the keys, swipes and tap
 zones are mirrored: ++left++ goes forward. The arrow buttons in the bottom bar keep their normal meaning (previous on the
-left). Vertical writing (Japanese, Chinese) is not supported yet.
+left). Vertical writing (Japanese, Chinese) is supported: see [Vertical writing](reading.md#vertical-writing). The page is read
+from the same text, so a screen reader gets it in reading order; this was only checked with automated tests, not in a
+long listening session.
 
 ## Known limits
 

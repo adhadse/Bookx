@@ -137,6 +137,59 @@ pub fn to_first_last(name: &str) -> String {
     parse_name(name).first_last()
 }
 
+/// How author sort strings are made from names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NameOrder {
+    /// `Last, First` for Western names; names in Chinese, Japanese or Korean script, and Latin
+    /// names of books in those languages, are kept as written (the family name comes first there).
+    #[default]
+    Auto,
+    /// Always `Last, First`.
+    LastFirst,
+    /// Never rearranged.
+    AsWritten,
+}
+
+impl NameOrder {
+    pub fn key(self) -> &'static str {
+        match self {
+            NameOrder::Auto => "auto",
+            NameOrder::LastFirst => "last-first",
+            NameOrder::AsWritten => "as-written",
+        }
+    }
+
+    pub fn from_key(k: &str) -> NameOrder {
+        match k {
+            "last-first" => NameOrder::LastFirst,
+            "as-written" => NameOrder::AsWritten,
+            _ => NameOrder::Auto,
+        }
+    }
+}
+
+fn is_family_first_char(c: char) -> bool {
+    matches!(c as u32,
+        0x2E80..=0x2FDF | 0x3000..=0x30FF | 0x31F0..=0x31FF | 0x3400..=0x4DBF | 0x4E00..=0x9FFF
+        | 0xAC00..=0xD7AF | 0x1100..=0x11FF | 0x3130..=0x318F | 0xF900..=0xFAFF | 0xFF66..=0xFF9F)
+}
+
+/// Must `name` (of a book in language `lang`) stay as written in an author sort string?
+pub fn keep_as_written(name: &str, lang: &str, order: NameOrder) -> bool {
+    match order {
+        NameOrder::AsWritten => true,
+        NameOrder::LastFirst => false,
+        NameOrder::Auto => {
+            let primary = lang
+                .split(['-', '_'])
+                .next()
+                .unwrap_or("")
+                .to_ascii_lowercase();
+            name.chars().any(is_family_first_char) || matches!(primary.as_str(), "ja" | "zh" | "ko")
+        }
+    }
+}
+
 /// Author sort string for a list: `Last, First & Last, First`.
 pub fn author_sort(authors: &[String]) -> String {
     authors
@@ -480,5 +533,25 @@ mod tests {
         assert!(!same_authors(&v(&["A B", "E F"]), &v(&["A B", "C D"])));
         assert!(!same_authors(&[], &[]));
         assert!(!same_authors(&v(&["A B"]), &[]));
+    }
+
+    #[test]
+    fn name_order_keeps_family_first_names_as_written() {
+        use NameOrder::*;
+        assert!(keep_as_written("村上 春樹", "ja", Auto));
+        assert!(keep_as_written("村上春樹", "en", Auto), "script decides");
+        assert!(keep_as_written("김영하", "", Auto));
+        assert!(
+            keep_as_written("Murakami Haruki", "ja-JP", Auto),
+            "language decides for Latin names"
+        );
+        assert!(!keep_as_written("Ada Lovelace", "en", Auto));
+        assert!(!keep_as_written("Ada Lovelace", "", Auto));
+        assert!(!keep_as_written("村上 春樹", "ja", LastFirst));
+        assert!(keep_as_written("Ada Lovelace", "en", AsWritten));
+        for o in [Auto, LastFirst, AsWritten] {
+            assert_eq!(NameOrder::from_key(o.key()), o);
+        }
+        assert_eq!(NameOrder::from_key("junk"), Auto);
     }
 }

@@ -1,5 +1,5 @@
 //! Writes the synthetic comics the UI scenarios read: `make_test_comics DIR` creates
-//! `DIR/story.cbz`, `manga.cbz`, `webtoon.cbz`, `spreads.cbz`, `bomb.cbz` and `corrupt.cbz`.
+//! `DIR/story.cbz`, `manga.cbz`, `saga/Saga v01.cbz`, `saga/Saga v02.cbz`, `webtoon.cbz`, `spreads.cbz`, `bomb.cbz` and `corrupt.cbz`.
 
 use bookx_comic::testgen::{bomb_png, png, small_comic, zip_of, Layout};
 
@@ -28,6 +28,14 @@ fn main() {
         ),
     ];
     w("manga.cbz", zip_of(&manga_pages));
+    // two volumes with no ComicInfo, in a folder that names the series (`saga/Saga v01.cbz`)
+    std::fs::create_dir_all(format!("{dir}/saga")).expect("create the series folder");
+    for (n, tint) in [(1, 255), (2, 254)] {
+        let pages: Vec<(String, Vec<u8>)> = (1..=6)
+            .map(|i| (format!("p{i}.png"), png(400, 600, Layout::Grid(2, 2), tint)))
+            .collect();
+        std::fs::write(format!("{dir}/saga/Saga v0{n}.cbz"), zip_of(&pages)).expect("write");
+    }
     let webtoon: Vec<(String, Vec<u8>)> = (1..=4)
         .map(|i| {
             (

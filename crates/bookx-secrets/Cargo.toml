@@ -9,5 +9,18 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 anyhow = "1"
+argon2 = "0.5"
+chacha20poly1305 = "0.10"
+getrandom = "0.2"
+hmac = "0.12"
+sha2 = "0.10"
+zeroize = "1"
+
+# Secret Service and the Flatpak portal: Linux and the other Unixes (not macOS, not Windows).
+[target.'cfg(not(any(target_os = "macos", windows)))'.dependencies]
 oo7 = { version = "0.5", default-features = false, features = ["async-std", "native_crypto"] }
 async-io = "2"
+
+# macOS Keychain and Windows Credential Manager (both safe APIs; never compiled on Linux).
+[target.'cfg(any(target_os = "macos", windows))'.dependencies]
+keyring = { version = "3.6", default-features = false, features = ["apple-native", "windows-native"] }

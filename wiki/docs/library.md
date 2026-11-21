@@ -14,11 +14,11 @@ book, its details on the right. Search and the view options are in the header ba
 <figure markdown="1">
 ![The library sidebar](assets/library-sidebar-light.png#only-light)
 ![The library sidebar](assets/library-sidebar-dark.png#only-dark)
-<figcaption markdown="1">The sidebar: Home, Recent, Favourites, Notes & Highlights, your shelves, then authors, tags, languages and reading status. Library Health sits at the bottom.</figcaption>
+<figcaption markdown="1">The sidebar: Home, Recent, Favourites, Notes & Highlights, Online Catalogues, your shelves, then authors, tags, languages and reading status. Library Health sits at the bottom.</figcaption>
 </figure>
 
 
-The sidebar is always there on a wide window. In a window narrower than about 920 px it turns into an overlay on top of
+The sidebar is always there on a wide window (++f9++ hides and shows it). In a window narrower than about 920 px it turns into an overlay on top of
 the books (so they keep at least about 670 px) and a sidebar button appears at the left of the header bar to open it;
 picking an entry closes it again. The details panel becomes an overlay too below about 1170 px, before it could squeeze
 the covers. The header never clips: the title shortens with "…", and below about 600 px the Devices button moves into
@@ -30,12 +30,23 @@ the *View options* popover. The smallest window is 360 × 294 px.
 | **Recent** | the books you opened or added last (newest first) |
 | **Favourites** | the books you starred: press the star in the details panel, right-click → *Add to Favourites*, or ++ctrl+d++ |
 | **Notes & Highlights** | every highlight and note of every book in the main area, with search, filters and export (see [Annotations](annotations.md)) |
+| **Online Catalogues** | a page in the main area to browse and download from [OPDS catalogues](news-and-web.md#online-catalogues) such as Project Gutenberg and Standard Ebooks |
 | **Shelves** | your [shelves](#shelves-collections-and-tags) and smart shelves; the **+** makes a new one |
 | **Saved Searches** | searches you named; the pinned one is the virtual library |
 | **Series**, **Authors**, **Tags**, **Publishers**, **Languages**, **Ratings**, **Reading status** | click an entry to filter; the buttons on the *Series* and *Authors* rows open the series overview and the author manager |
 | **Library Health** | at the bottom: checks, duplicates, editions, books that need attention, backups, trash and history (a badge shows how many books need attention). Backups include your book files, covers, catalogue and notes, and copy only what is new after the first one; see [Backup & Restore](backup-and-restore.md) |
 
 The view you picked is remembered for the next start.
+
+### Customizing the sidebar
+
+Open **Preferences** (++ctrl+comma++) → **Library** → **Sidebar** (or choose *Customize Sidebar* in the command palette). It lists
+every entry with a switch to show or hide it and two arrows to move it up or down. Online Catalogues, Notes & Highlights,
+Shelves, Audiobooks, Saved Searches, Authors, Series, Tags, Publishers, Languages, Ratings, Reading status and Library
+Health can all be hidden; Home always stays. The change applies at once and is kept for each library. *Reset to Default*
+brings the usual order back. An entry you hid is not gone: the command palette has *Online Catalogues*, *Browse Shelves*,
+*Browse Authors*, *Browse Series*, *Browse Tags* and so on, which list the entries of that group in a window with a
+search field. If you hide the view you are looking at, Bookx shows Home.
 
 **Filters and the search bar.** Clicking a filter entry (an author, tag, series, publisher, language, rating, shelf or
 saved search) opens the search bar with the query it stands for, for example `author:="Ian Miell"`, and the search button
@@ -296,9 +307,21 @@ cheat sheet.
 | `comments:wizard` | the description |
 | `a OR b` | either term; terms without `OR` must all match |
 | `text:"words in the book"` | search inside the books |
+| `(tag:a OR tag:b) -tag:c`, `-(tag:a OR tag:b)` | parentheses group terms; `AND` is the default and may be written; `NOT x` is `-x` |
+| `title:~^the\s`, `author:~herb.?rt` | `~` starts a regular expression (case does not matter) |
+| `added:>=2024-01-01`, `added:2024-05`, `pubdate:<1950` | dates: a year, a month or a day; the comparison is made at the precision you write |
+| `added:>7daysago`, `lastread:today`, `modified:thismonth` | relative dates: `today`, `yesterday`, `thismonth`, `thisyear`, `Ndaysago`, `Nweeksago`, `Nmonthsago` |
+| `#mood:calm`, `#pages:>300`, `#read:true`, `#note:empty` | a [custom column](#custom-columns) by its label; `empty` finds books without a value |
+| `marked:true`, `-marked:true` | the [marked books](#marking-books) |
+| `id:42` | one book by its number |
 
 Fields are `title`, `author`, `tag`, `series`, `publisher`, `language`, `format`, `rating`, `identifier`, `isbn`,
-`comments`, `status`, `progress`, `size`, `weak`, `drm`, `audiobook` and `text`. Matching ignores case.
+`comments`, `status`, `progress`, `size`, `weak`, `drm`, `audiobook`, `date`/`added`, `modified`, `pubdate`,
+`lastread`, `marked`, `id` and `text`, and `#label` for each custom column. Matching ignores case. The date fields
+`date` and `added` mean the same.
+
+A regular expression that is invalid, or longer than 256 characters, matches nothing instead of failing. A closing
+parenthesis in the middle of a word (`title:dune)`) is ordinary text; groups open at the start of a word.
 
 `text:` uses a full-text index of the book contents that is built in the background, inside the library database.
 Books show up in `text:` results after they have been indexed.
@@ -372,6 +395,88 @@ empties it and says *Source cache cleared*.
 right after an import and fills in **only the fields the book has nothing in**. No window opens; a message tells
 you how many proposals are left. Anything that would replace a value waits for you: select the books and use
 *Fetch Metadata* to review it. The filled fields record their source, and the whole batch can be undone.
+
+## Custom columns
+
+A custom column is a field of your own that every book has: a page count, the date you finished it, whether you
+lent it out, a mood. Open the main menu → *Preferences* → *Library* → **Custom Columns** to add, change and remove
+them. A column has a name (what you see), a **label** (what you search with, `#label:value`; it is made from the
+name and can be changed while you add the column) and a type:
+
+| Type | Holds | Search examples |
+|---|---|---|
+| Text, Long text | words | `#note:sam`, `#note:=exact` |
+| Whole number, Number with decimals | numbers, compared as numbers | `#pages:>300`, `#price:<=9.5` |
+| Rating | half stars from 0.5 to 5 | `#score:>=4` |
+| Yes or no | `true` or `false` | `#read:true`, `#read:false` |
+| Date | `2024`, `2024-05` or `2024-05-17` | `#finished:>=2024-01`, `#finished:>30daysago` |
+| Tags | a comma separated list | `#labels:=beta` (one item), `#labels:alp` |
+| One of a list | one of the values you define | `#mood:=tense` |
+| Computed from a template | text made from other fields, `{title} ({year})`, `{series} {series_index}`, `{#mood}` | `#label:text` |
+
+A column's type cannot change later (the values would mean something else): remove it and add it again. Removing a
+column deletes its values from every book, after you confirm. A value that does not fit its type is refused with the
+reason, in the edit form and from the command line. Computed columns follow the book: they are worked out again when
+you edit the book. Their templates use the same small template language as the save paths; a mistake shows as
+`#TEMPLATE ERROR` in the cell.
+
+Where you see and use them:
+
+- **Edit Metadata** has a *Custom Columns* group with a row per column; the **details panel** has the same rows, and a
+  value is saved when you press Enter or pick it. **Edit Metadata in Bulk** sets a column on every selected book; an empty field leaves the books as they are.
+  **Properties** lists the values.
+- **View options → Columns** (table view) has a check box for each custom column. A click on the header sorts by it
+  (numbers as numbers, books without a value last) and Bookx remembers that sort until you choose another one.
+- Search with `#label:` as above. Values are part of the catalogue, so they are in every [backup and snapshot](#library-health),
+  in `bookx-cli library dump` and in the catalogue file.
+- A Calibre library with custom columns brings them along on import (text, numbers, ratings, yes or no, dates, lists
+  and enumerations; Calibre's own template columns are left out and listed in the report), and *Export as Calibre
+  Library* writes them (a template column is written without values).
+
+Editing a value is one undo step, like every other edit (*Library Health → History*).
+
+## Adding records and archives
+
+**+** → *Add by ISBN* asks for an ISBN (10 or 13 digits, with or without hyphens; the check digit is verified), makes a
+record with that identifier and then looks it up on the online sources like *Fetch Metadata*. **+** → *Add Empty Book*
+makes a record from a title and authors only. Both give a small placeholder book (a title page) that you can replace
+by adding the real file as another format. Records are searchable and sortable like any book.
+
+**Add Books** also takes a **ZIP archive that holds several books**: Bookx lists the book files inside and you choose
+which to add. An archive that is itself a book (an EPUB, a comic archive) is added as one book as always. Names inside
+an archive are never used as paths; very large entries and compression bombs are refused. RAR archives are not read.
+
+**Read the file name of new books** (Preferences → Library → *Metadata lookup*) fills in what a new book lacks from its
+file name: the authors when it has none, the title when it is only the file name, the series when it has none. The
+patterns are editable, separated by `;`: `{author} - {title}`, `{title} ({series} #{index})`, or a regular expression
+starting with `re:` with the named groups `title`, `author`, `series` and `index`. A book with real metadata is never changed.
+
+## Search and replace
+
+*Edit* in the book menu → **Search and Replace** changes one field of the selected books: title, authors, series,
+publisher, language, tags, comments or a custom column. Type the text to find and its replacement; the list under
+them shows how many books change and the first ones, before and after. *Regular expression* turns the search into a
+pattern (`$1` in the replacement is its first group), *Match case* is off by default. A result that is not allowed
+(an empty title, a number column that gets words) is shown in red and skipped. *Replace* applies it as **one undo step**
+(*Library Health → History*). The same on the command line: `bookx-cli library replace --field title --find "the " --dry-run`.
+
+## Marking books
+
+*Edit* → **Mark or Unmark** marks the selected books for now: search `marked:true` to list them, `-marked:true` for the
+others, then *Clear All Marks*. Marks are temporary: they are not saved and are gone when Bookx closes.
+
+## Related books and notes
+
+*Edit* → **Show Related Books** (one book selected) lists the other books by the same author, in the same series or with
+the same tags; *Show N Books* runs that search. The same window has a **Notes** group with a text box for each author
+and the series of the book: write what you want to remember about them and press *Save Note*. Notes are plain text,
+kept in the library database (so in its backups), found again whatever the case of the name.
+
+## Tags as a tree
+
+Preferences → Library → *Sidebar* → **Show tags as a tree** shows tags written with dots, such as `Fiction.Fantasy.Epic`,
+as nested entries. Choosing `Fiction` shows every book with `Fiction` or anything below it; the number beside it
+counts each book once. Tags without dots stay as they are, and the switch is off until you turn it on.
 
 ## Series
 
@@ -589,8 +694,8 @@ the search bar) and press *Save Search*. Then:
   search you type, is narrowed by it until you switch it off. The window title shows which one is active.
 
 Names cannot contain quotes or colons. A search that refers to itself, or to a search that was deleted, is refused or
-ignored. The search language has no parentheses, so a saved search with `OR` is combined with the other terms by
-spreading them over its alternatives.
+ignored. A saved search with `OR` is combined with the other terms by spreading them over its alternatives; use parentheses
+in the search bar for grouping that you write yourself.
 
 ## Shelves, collections and tags
 
@@ -792,12 +897,37 @@ All of this is also available as `bookx-cli library backup | check | trash | und
       machine is.
     - Library check and name tidying report; always look at the preview before applying fixes.
 
+## Watched folder and the text index
+
+*Library Health → Import folder* picks a folder; its new books wait there for your approval. Switch on **Add new
+books automatically** and, while Bookx runs, a book that appears in that folder (or below it) is added as soon as the
+copy has finished, with a message; each file is added once, and one already in the library is skipped. The switch is off
+unless you turn it on.
+
+Preferences → Library → **Search Inside Books** says how many books can be searched by their text (`text:`) and has
+**Rebuild**, which forgets the index and reads every book again in the background.
+
 ## Questions and answers
 
 ??? question "How do I add books?"
     Click the **+** button at the top of the sidebar and choose *Add Books* (++ctrl+o++), or drag files onto the
     window. Bookx reads the metadata and cover of every file, converts other formats to EPUB on the way in and skips
     duplicates. A large import shows a progress page and runs as a background job.
+
+??? question "Can I add a book that I do not have yet?"
+    Yes: **+** → *Add by ISBN* or *Add Empty Book*. See [Adding records and archives](#adding-records-and-archives).
+
+??? question "How do I send a whole shelf to my e-reader?"
+    Open the ⋯ menu of the shelf in the sidebar → *Send to Device*. The Devices window opens with the shelf's books
+    ready to send.
+
+??? question "How do I make a list of my books for my e-reader?"
+    `bookx-cli catalog --format epub --output catalog.epub` writes an EPUB with your books by title, author, series and
+    tag. Use `bookx-cli convert catalog.epub catalog.azw3` for another format.
+
+??? question "Why does the cover of a PDF book look wrong?"
+    *Edit* → *Cover from PDF* makes the cover from the first page again, and *Trim Cover to 2:3* cuts a wide or
+    square cover to the shape of a book (from the middle).
 
 ??? question "How do I add a whole folder of books?"
     **+** → *Add Folder*. It also adds the books in the subfolders and tells you how many it added. Dropping a folder

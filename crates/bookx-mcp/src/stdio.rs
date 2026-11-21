@@ -5,17 +5,29 @@
 //! running; requests themselves are answered one at a time, in order.
 
 use std::io::{BufRead, Read, Write};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use serde_json::Value;
 
 use crate::app::lock;
-use crate::server::{error_message, RpcError, Server, Session, INVALID_REQUEST, PARSE_ERROR};
+use crate::server::{
+    changes, error_message, snapshot, RpcError, Server, Session, INVALID_REQUEST, PARSE_ERROR,
+};
 
 /// Longest accepted input line.
 pub const MAX_LINE: usize = 4 * 1024 * 1024;
+
+/// Waits up to `total`, in steps of at most 50 ms, and returns early once `done` is set.
+fn static_wait(done: &AtomicBool, total: Duration) {
+    let end = Instant::now() + total;
+    while !done.load(Ordering::Relaxed) && Instant::now() < end {
+        std::thread::sleep(Duration::from_millis(50).min(total));
+    }
+}
 
 fn send<W: Write>(w: &Mutex<W>, v: &Value) {
     let mut w = lock(w);
@@ -92,6 +104,37 @@ where
         })
     };
 
+    // tell the client about library changes (list_changed, updated for subscribed resources)
+    let done = Arc::new(AtomicBool::new(false));
+    let watcher = {
+        let interval = server.app.cfg.watch_interval;
+        (!interval.is_zero()).then(|| {
+            let (server, writer, done) = (server.clone(), writer.clone(), done.clone());
+            let subs = session.subscriptions.clone();
+            std::thread::spawn(move || {
+                let books = |s: &Server| s.app.catalog.books().map(|b| snapshot(&b)).ok();
+                let mut last = books(&server);
+                while !done.load(Ordering::Relaxed) {
+                    // short steps so shutdown is quick; the library is looked at once per interval
+                    static_wait(&done, interval);
+                    if done.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    let now = books(&server);
+                    if let (Some(old), Some(new)) = (&last, &now) {
+                        let subs = lock(&subs).clone();
+                        for n in changes(old, new, &subs) {
+                            send(&writer, &n);
+                        }
+                    }
+                    if now.is_some() {
+                        last = now;
+                    }
+                }
+            })
+        })
+    };
+
     let notify_writer = writer.clone();
     let notify = move |v: Value| send(&notify_writer, &v);
     for msg in rx {
@@ -100,6 +143,10 @@ where
         }
     }
     let _ = reader_thread.join();
+    done.store(true, Ordering::Relaxed);
+    if let Some(w) = watcher {
+        let _ = w.join();
+    }
     server.app.client_gone(&session.id);
     Ok(())
 }

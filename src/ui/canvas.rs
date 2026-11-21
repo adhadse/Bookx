@@ -64,6 +64,16 @@ pub struct CanvasStyle {
     pub layout: LayoutMode,
     /// Show the colours of the book (text and page) instead of the theme's.
     pub original_colors: bool,
+    /// Base weight of the text (100 to 900) when the reader asks for another than the font's own.
+    pub weight: Option<i32>,
+    /// Extra space between words in em (negative = tighter).
+    pub word_spacing: f64,
+    /// Pair kerning of the font (off: every letter keeps its plain advance).
+    pub kerning: bool,
+    /// Least lines of a paragraph at the bottom (orphans) and the top (widows) of a page.
+    pub widows_orphans: usize,
+    /// Fonts and sizes the book's CSS asks for are used (off: the reader's font everywhere).
+    pub book_fonts: bool,
 }
 
 impl Default for CanvasStyle {
@@ -87,6 +97,11 @@ impl Default for CanvasStyle {
             fixed: false,
             layout: LayoutMode::TwoColumns,
             original_colors: false,
+            weight: None,
+            word_spacing: 0.0,
+            kerning: true,
+            widows_orphans: 2,
+            book_fonts: true,
         }
     }
 }
@@ -305,6 +320,41 @@ struct State {
     lang: String,
     /// How long the last layout of the chapter took.
     layout_ms: f64,
+    /// The page-turn animation the reader asked for (R65); what is played also depends on the
+    /// system's reduced motion setting and e-ink mode.
+    anim_kind: bookx_text::aids::PageAnimation,
+    /// The animation that is running: the page that was left, drawn over the new one.
+    anim: Option<TurnAnim>,
+    /// Link hints (R43): the label and the place of every link on the page, and what was typed.
+    hints: Vec<LinkHint>,
+    hint_typed: String,
+}
+
+struct LinkHint {
+    label: String,
+    x: f64,
+    y: f64,
+    href: String,
+}
+
+/// What a typed key did to the link hints.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HintResult {
+    /// Hints are not showing.
+    Off,
+    /// More letters are needed.
+    Pending,
+    /// A link was chosen and followed.
+    Followed(String),
+    /// The letters match no hint: the hints went away.
+    Cancelled,
+}
+
+struct TurnAnim {
+    old: gtk::cairo::ImageSurface,
+    t0: std::time::Instant,
+    forward: bool,
+    kind: bookx_text::aids::PageAnimation,
 }
 
 #[derive(Clone)]
@@ -408,6 +458,10 @@ impl BookCanvas {
             overscroll: 0.0,
             lang: String::new(),
             layout_ms: 0.0,
+            anim_kind: bookx_text::aids::PageAnimation::None,
+            anim: None,
+            hints: Vec::new(),
+            hint_typed: String::new(),
         }));
         let pop = gtk::Popover::new();
         pop.set_autohide(false);
@@ -615,6 +669,11 @@ impl BookCanvas {
                 || s.style.fixed != style.fixed
                 || s.style.layout != style.layout
                 || s.style.original_colors != style.original_colors
+                || s.style.weight != style.weight
+                || s.style.word_spacing != style.word_spacing
+                || s.style.kerning != style.kerning
+                || s.style.widows_orphans != style.widows_orphans
+                || s.style.book_fonts != style.book_fonts
         };
         if changed {
             let frac = self.fraction();
@@ -730,6 +789,23 @@ impl BookCanvas {
             s.style.margin,
             s.style.line_spacing,
             s.style.paragraph_spacing,
+        )
+    }
+
+    /// Test helper: weight, word spacing, kerning, widows and orphans, book fonts, text colour.
+    pub fn dev_style_more(&self) -> String {
+        let s = self.st.borrow();
+        let (r, g, b) = s.style.palette.fg;
+        format!(
+            "weight={:?} word_spacing={} kerning={} widows={} book_fonts={} fg={:02x}{:02x}{:02x}",
+            s.style.weight,
+            s.style.word_spacing,
+            s.style.kerning,
+            s.style.widows_orphans,
+            s.style.book_fonts,
+            (r * 255.0).round() as u8,
+            (g * 255.0).round() as u8,
+            (b * 255.0).round() as u8
         )
     }
 
@@ -1413,6 +1489,21 @@ impl BookCanvas {
         out
     }
 
+    /// Like [`find_all`], for a compiled search (whole words, case, regular expression).
+    pub fn find_all_re(&self, re: &regex::Regex) -> Vec<(i32, i32)> {
+        let s = self.st.borrow();
+        let mut out = Vec::new();
+        for it in &s.items {
+            if let Kind::Text(t) = &it.kind {
+                let text: String = canon_text(&t.text).collect();
+                for (a, b) in bookx_lookup::search::char_ranges(re, &text, 2000) {
+                    out.push((t.char_base + a as i32, t.char_base + b as i32));
+                }
+            }
+        }
+        out
+    }
+
     /// Dev helper: selects the first `n` words.
     pub fn dev_select_first_words(&self, n: usize) {
         {
@@ -1745,6 +1836,10 @@ impl BookCanvas {
             let key = {
                 let s = this.st.borrow();
                 draw(&s, cr, w as f64, h as f64);
+                if let Some(a) = &s.anim {
+                    draw_turn_animation(a, cr, w as f64);
+                }
+                draw_hints(&s, cr);
                 (
                     s.cur,
                     s.scroll_y as i64,
@@ -2015,10 +2110,167 @@ impl BookCanvas {
     }
 
     pub fn turn(&self, forward: bool) {
+        let old = self.snapshot_for_animation();
         let moved = if forward { self.next() } else { self.prev() };
-        if !moved {
+        if moved {
+            if let Some((surface, kind)) = old {
+                self.start_animation(surface, kind, forward);
+            }
+        } else {
             fire(&self.cb.edge, if forward { Edge::Next } else { Edge::Prev });
         }
+    }
+
+    /// Shows a letter on every link of the page (R43); returns how many links there are.
+    pub fn show_link_hints(&self) -> usize {
+        let n = {
+            let mut s = self.st.borrow_mut();
+            let links = visible_links(&s);
+            let labels = bookx_text::aids::hint_labels(links.len());
+            s.hints = links
+                .into_iter()
+                .zip(labels)
+                .map(|((x, y, href), label)| LinkHint { label, x, y, href })
+                .collect();
+            s.hint_typed.clear();
+            s.hints.len()
+        };
+        self.area.queue_draw();
+        n
+    }
+
+    pub fn hints_active(&self) -> bool {
+        !self.st.borrow().hints.is_empty()
+    }
+
+    pub fn clear_link_hints(&self) {
+        {
+            let mut s = self.st.borrow_mut();
+            s.hints.clear();
+            s.hint_typed.clear();
+        }
+        self.area.queue_draw();
+    }
+
+    /// A letter typed while the hints show: follows the link it completes.
+    pub fn hint_key(&self, c: char) -> HintResult {
+        use bookx_text::aids::{match_hint, HintMatch};
+        let href = {
+            let mut s = self.st.borrow_mut();
+            if s.hints.is_empty() {
+                return HintResult::Off;
+            }
+            s.hint_typed.push(c);
+            let labels: Vec<String> = s.hints.iter().map(|h| h.label.clone()).collect();
+            match match_hint(&labels, &s.hint_typed) {
+                HintMatch::Some(_) => None,
+                HintMatch::None => {
+                    s.hints.clear();
+                    s.hint_typed.clear();
+                    drop(s);
+                    self.area.queue_draw();
+                    return HintResult::Cancelled;
+                }
+                HintMatch::Hit(i) => {
+                    let h = s.hints[i].href.clone();
+                    s.hints.clear();
+                    s.hint_typed.clear();
+                    Some(h)
+                }
+            }
+        };
+        self.area.queue_draw();
+        match href {
+            Some(h) => {
+                fire(&self.cb.link, h.clone());
+                HintResult::Followed(h)
+            }
+            None => HintResult::Pending,
+        }
+    }
+
+    /// Test helper: the hints on the page as `label=href`.
+    pub fn dev_hints(&self) -> String {
+        self.st
+            .borrow()
+            .hints
+            .iter()
+            .map(|h| format!("{}={}", h.label, h.href))
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// The selection as `(start, end, text)`.
+    pub fn dev_selection_range(&self) -> Option<(i32, i32, String)> {
+        self.selection_info().map(|i| (i.start, i.end, i.text))
+    }
+
+    /// The page-turn animation the reader asks for.
+    pub fn set_page_animation(&self, kind: bookx_text::aids::PageAnimation) {
+        self.st.borrow_mut().anim_kind = kind;
+    }
+
+    /// Test helper: whether an animation is running now.
+    pub fn dev_animating(&self) -> bool {
+        self.st.borrow().anim.is_some()
+    }
+
+    /// What a turn plays now: the choice, unless the system wants reduced motion or e-ink is on.
+    fn animation_now(&self) -> bookx_text::aids::PageAnimation {
+        let reduced = !gtk::Settings::default().is_some_and(|s| s.is_gtk_enable_animations());
+        bookx_text::aids::effective_animation(
+            self.st.borrow().anim_kind,
+            reduced,
+            crate::eink::is_active(),
+        )
+    }
+
+    /// The current page as a picture, when a turn is to be animated (paged layouts only).
+    fn snapshot_for_animation(
+        &self,
+    ) -> Option<(gtk::cairo::ImageSurface, bookx_text::aids::PageAnimation)> {
+        let kind = self.animation_now();
+        if kind == bookx_text::aids::PageAnimation::None || !self.area.is_mapped() {
+            return None;
+        }
+        let s = self.st.borrow();
+        if s.style.layout == LayoutMode::Scroll || s.width < 2 || s.height < 2 {
+            return None;
+        }
+        let surface =
+            gtk::cairo::ImageSurface::create(gtk::cairo::Format::ARgb32, s.width, s.height).ok()?;
+        let cr = gtk::cairo::Context::new(&surface).ok()?;
+        draw(&s, &cr, s.width as f64, s.height as f64);
+        drop(cr);
+        Some((surface, kind))
+    }
+
+    fn start_animation(
+        &self,
+        old: gtk::cairo::ImageSurface,
+        kind: bookx_text::aids::PageAnimation,
+        forward: bool,
+    ) {
+        self.st.borrow_mut().anim = Some(TurnAnim {
+            old,
+            t0: std::time::Instant::now(),
+            forward,
+            kind,
+        });
+        let this = self.clone();
+        glib::timeout_add_local(std::time::Duration::from_millis(16), move || {
+            this.area.queue_draw();
+            let done = this.st.borrow().anim.as_ref().is_none_or(|a| {
+                a.t0.elapsed().as_millis() as u64 >= bookx_text::aids::PAGE_ANIMATION_MS
+            });
+            if done {
+                this.st.borrow_mut().anim = None;
+                this.area.queue_draw();
+                glib::ControlFlow::Break
+            } else {
+                glib::ControlFlow::Continue
+            }
+        });
     }
 
     /// Tooltip text (the note) for the highlight under the pointer.
@@ -2938,7 +3190,7 @@ fn markup_for(
     original_colors: bool,
     hy: Option<&Hyphenator>,
 ) -> Option<(String, String, bool)> {
-    let (part, is_link) = markup_part(span, palette, original_colors, hy)?;
+    let (part, is_link) = markup_part(span, palette, original_colors, hy, true)?;
     Some((markup_of(std::slice::from_ref(&part)), part.text, is_link))
 }
 
@@ -2947,6 +3199,7 @@ fn markup_part(
     palette: &Palette,
     original_colors: bool,
     hy: Option<&Hyphenator>,
+    book_fonts: bool,
 ) -> Option<(Part, bool)> {
     let Span::Text { text, style, link } = span else {
         return None;
@@ -2977,6 +3230,18 @@ fn markup_part(
     if style.small {
         attrs.push_str(" size=\"smaller\"");
     }
+    if style.small_caps {
+        // Pango sets the lower case letters as small capitals, with the font's own when it has them
+        attrs.push_str(" font_scale=\"small-caps\"");
+    }
+    if book_fonts && !style.code {
+        if let Some(f) = style.font.as_deref().filter(|f| is_plain_font_name(f)) {
+            attrs.push_str(&format!(" font_family=\"{f}\""));
+        }
+        if let Some(p) = style.size_pct {
+            attrs.push_str(&format!(" size=\"{}%\"", p.clamp(50, 300)));
+        }
+    }
     if let (true, Some((r, g, b)), None) = (original_colors, style.color, link) {
         attrs.push_str(&format!(" foreground=\"#{r:02x}{g:02x}{b:02x}\""));
     }
@@ -3003,6 +3268,65 @@ fn markup_part(
         close.push_str("</sub>");
     }
     Some((Part { open, text, close }, link.is_some()))
+}
+
+/// The Pango weight nearest to a CSS weight (100 to 900).
+fn weight_of(w: i32) -> pango::Weight {
+    match (w.clamp(100, 900) + 50) / 100 * 100 {
+        100 => pango::Weight::Thin,
+        200 => pango::Weight::Ultralight,
+        300 => pango::Weight::Light,
+        400 => pango::Weight::Normal,
+        500 => pango::Weight::Medium,
+        600 => pango::Weight::Semibold,
+        700 => pango::Weight::Bold,
+        800 => pango::Weight::Ultrabold,
+        _ => pango::Weight::Heavy,
+    }
+}
+
+/// A font name that can sit inside a markup attribute.
+fn is_plain_font_name(f: &str) -> bool {
+    !f.is_empty()
+        && f.chars().count() <= 64
+        && f.chars()
+            .all(|c| c.is_alphanumeric() || matches!(c, ' ' | '-' | '.' | '_'))
+}
+
+/// The markup of a layout: kerning and the space between words of the style wrap the text.
+fn wrap_text_markup(markup: String, kerning: bool, word_spacing: f64, em_px: f64) -> String {
+    let mut m = markup;
+    if word_spacing != 0.0 && word_spacing.is_finite() {
+        // letter spacing of the spaces only, in Pango units
+        let units = (word_spacing.clamp(-0.25, 1.0) * em_px * SCALE).round() as i32;
+        if units != 0 {
+            let sp = format!("<span letter_spacing=\"{units}\"> </span>");
+            m = replace_spaces_outside_tags(&m, &sp);
+        }
+    }
+    if !kerning {
+        m = format!("<span font_features=\"kern=0\">{m}</span>");
+    }
+    m
+}
+
+/// Replaces the spaces of the text (not those inside `<...>` tags) with `with`.
+fn replace_spaces_outside_tags(markup: &str, with: &str) -> String {
+    let mut out = String::with_capacity(markup.len() + markup.len() / 4);
+    let mut in_tag = false;
+    for c in markup.chars() {
+        match c {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            ' ' if !in_tag => {
+                out.push_str(with);
+                continue;
+            }
+            _ => {}
+        }
+        out.push(c);
+    }
+    out
 }
 
 fn load_pixbuf(s: &mut State, path: &str) -> Option<Pixbuf> {
@@ -3116,9 +3440,13 @@ fn build_flow(s: &mut State, ctxs: &Ctxs) {
                     let decorated =
                         sty.ruby.is_some() || (vertical && sty.combine != TextCombine::None);
                     let hy_here = if decorated { None } else { hy.as_ref() };
-                    if let Some((mut part, is_link)) =
-                        markup_part(sp, &style.palette, style.original_colors, hy_here)
-                    {
+                    if let Some((mut part, is_link)) = markup_part(
+                        sp,
+                        &style.palette,
+                        style.original_colors,
+                        hy_here,
+                        style.book_fonts,
+                    ) {
                         let start = cur.text.len();
                         if let Some(rt) = &sty.ruby {
                             // an annotation wider than its base spreads the base
@@ -3366,6 +3694,9 @@ fn build_flow(s: &mut State, ctxs: &Ctxs) {
                         &style.font_family
                     });
                     fd.set_size((style.font_size * scale * SCALE) as i32);
+                    if let Some(w) = style.weight {
+                        fd.set_weight(weight_of(w));
+                    }
                     if bold {
                         fd.set_weight(pango::Weight::Bold);
                     }
@@ -3439,7 +3770,12 @@ fn build_flow(s: &mut State, ctxs: &Ctxs) {
                             layout.set_tabs(Some(&tabs));
                             layout.set_indent(-((1.4 * em * SCALE) as i32));
                         }
-                        layout.set_markup(&markup_of(parts));
+                        layout.set_markup(&wrap_text_markup(
+                            markup_of(parts),
+                            style.kerning,
+                            style.word_spacing,
+                            em_px,
+                        ));
                         let whole = layout.text().len() == decor.0;
                         decorate(&layout, if whole { &decor.1 } else { &[] }, em_px);
                         layout
@@ -3933,6 +4269,77 @@ fn cluster_table(layout: &pango::Layout, len: usize) -> super::canvas_xtable::XT
     super::canvas_xtable::XTable::new(at)
 }
 
+/// The links that are on the visible page: where each one starts and where it leads.
+fn visible_links(s: &State) -> Vec<(f64, f64, String)> {
+    let mut out = Vec::new();
+    for it in &s.items {
+        let Kind::Text(t) = &it.kind else { continue };
+        for (a, _, href) in &t.links {
+            if out.len() >= 676 {
+                return out;
+            }
+            let lc = byte_to_char(&t.text, *a);
+            let c = t.char_base + canon_of_layout_char(&t.text, lc) as i32;
+            if let Some(r) = visible_range_rects(s, c, c + 1).first() {
+                out.push((r.0, r.1, href.clone()));
+            }
+        }
+    }
+    out
+}
+
+/// The letters of the link hints, drawn over the page.
+fn draw_hints(s: &State, cr: &gtk::cairo::Context) {
+    if s.hints.is_empty() {
+        return;
+    }
+    let layout = pangocairo::functions::create_layout(cr);
+    let mut fd = pango::FontDescription::new();
+    fd.set_family("monospace");
+    fd.set_weight(pango::Weight::Bold);
+    fd.set_size((10.0 * SCALE) as i32);
+    layout.set_font_description(Some(&fd));
+    for h in &s.hints {
+        if !h.label.starts_with(&s.hint_typed) {
+            continue;
+        }
+        layout.set_text(&h.label.to_uppercase());
+        let (tw, th) = layout.pixel_size();
+        let (w, hh) = (tw as f64 + 8.0, th as f64 + 2.0);
+        let (x, y) = (h.x, (h.y - hh * 0.35).max(0.0));
+        set_rgb(cr, s.style.palette.accent, 1.0);
+        cr.rectangle(x, y, w, hh);
+        let _ = cr.fill();
+        set_rgb(cr, s.style.palette.bg, 1.0);
+        cr.move_to(x + 4.0, y + 1.0);
+        pangocairo::functions::show_layout(cr, &layout);
+    }
+}
+
+/// Paints the page that was left over the new one: it slides away (slide) or fades out (fade).
+fn draw_turn_animation(a: &TurnAnim, cr: &gtk::cairo::Context, w: f64) {
+    let p = bookx_text::aids::ease_out(
+        a.t0.elapsed().as_millis() as u64,
+        bookx_text::aids::PAGE_ANIMATION_MS,
+    );
+    if p >= 1.0 {
+        return;
+    }
+    let _ = cr.save();
+    match a.kind {
+        bookx_text::aids::PageAnimation::Slide => {
+            let dx = if a.forward { -p * w } else { p * w };
+            cr.set_source_surface(&a.old, dx, 0.0).ok();
+            let _ = cr.paint();
+        }
+        _ => {
+            cr.set_source_surface(&a.old, 0.0, 0.0).ok();
+            let _ = cr.paint_with_alpha(1.0 - p);
+        }
+    }
+    let _ = cr.restore();
+}
+
 fn paginate(s: &mut State) {
     s.pages.clear();
     if s.style.layout == LayoutMode::Scroll {
@@ -3948,10 +4355,15 @@ fn paginate(s: &mut State) {
             thick: l.h,
         })
         .collect();
-    s.pages = vertical::paginate(&flow, block_extent(s))
-        .into_iter()
-        .map(|(y0, y1)| Page { y0, y1 })
-        .collect();
+    s.pages = vertical::paginate_with(
+        &flow,
+        block_extent(s),
+        s.style.widows_orphans,
+        s.style.widows_orphans,
+    )
+    .into_iter()
+    .map(|(y0, y1)| Page { y0, y1 })
+    .collect();
 }
 
 // ===========================================================================
@@ -4546,6 +4958,74 @@ mod colour_tests {
         assert_eq!(page_color(&st, Some(&d)), (1.0, 0.0, 0.0));
         assert_eq!(page_color(&st, Some(&doc_with(None))), st.palette.bg);
         assert_eq!(page_color(&st, None), st.palette.bg);
+    }
+
+    #[test]
+    fn small_caps_fonts_and_sizes_of_the_book_reach_the_markup() {
+        let pal = CanvasStyle::default().palette;
+        let span = Span::Text {
+            text: "Hi".into(),
+            style: Style {
+                small_caps: true,
+                font: Some("EB Garamond".into()),
+                size_pct: Some(150),
+                ..Default::default()
+            },
+            link: None,
+        };
+        let (on, _, _) = markup_part(&span, &pal, false, None, true)
+            .map(|(p, l)| (markup_of(std::slice::from_ref(&p)), 0, l))
+            .unwrap();
+        assert!(on.contains("font_scale=\"small-caps\""), "{on}");
+        assert!(on.contains("font_family=\"EB Garamond\""), "{on}");
+        assert!(on.contains("size=\"150%\""), "{on}");
+        let (off, _, _) = markup_part(&span, &pal, false, None, false)
+            .map(|(p, l)| (markup_of(std::slice::from_ref(&p)), 0, l))
+            .unwrap();
+        assert!(
+            off.contains("small-caps") && !off.contains("font_family"),
+            "{off}"
+        );
+        assert!(!off.contains("size="), "{off}");
+        // a name that could break the markup is never written
+        let bad = Span::Text {
+            text: "x".into(),
+            style: Style {
+                font: Some("a\" onload=\"".into()),
+                ..Default::default()
+            },
+            link: None,
+        };
+        let (m, _) = markup_part(&bad, &pal, false, None, true).unwrap();
+        assert!(!m.open.contains("onload"), "{}", m.open);
+    }
+
+    #[test]
+    fn word_spacing_and_kerning_wrap_the_markup() {
+        let m = wrap_text_markup(
+            "a b <span foreground=\"#fff\">c d</span>".into(),
+            true,
+            0.0,
+            16.0,
+        );
+        assert_eq!(m, "a b <span foreground=\"#fff\">c d</span>");
+        let m = wrap_text_markup("a b".into(), false, 0.5, 16.0);
+        assert!(m.starts_with("<span font_features=\"kern=0\">"), "{m}");
+        assert_eq!(m.matches("letter_spacing=").count(), 1, "{m}");
+        // spaces inside tags are left alone
+        let m = wrap_text_markup(
+            "<span foreground=\"#fff\">c d</span>".into(),
+            true,
+            0.25,
+            16.0,
+        );
+        assert!(
+            m.contains("<span foreground=\"#fff\">c<span letter_spacing="),
+            "{m}"
+        );
+        assert_eq!(weight_of(590), pango::Weight::Semibold);
+        assert_eq!(weight_of(-5), pango::Weight::Thin);
+        assert_eq!(weight_of(9000), pango::Weight::Heavy);
     }
 
     #[test]

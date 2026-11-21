@@ -285,7 +285,7 @@ impl Prompt {
     pub fn primary(&self) -> String {
         match self {
             Prompt::Offer { size, .. } => trf("Download dictionary ({})", &[&size_text(*size)]),
-            Prompt::Working { .. } => tr("Downloading…"),
+            Prompt::Working { .. } => tr("Downloading"),
             Prompt::Failed { .. } => tr("Try again"),
             Prompt::Hidden => String::new(),
         }
@@ -542,7 +542,7 @@ mod tests {
             ("working", Some(0.4), false)
         );
         assert_eq!(w.body(), "3 of 7 MB");
-        let w0 = prompt_for("de", &none, &c, Some((None, "Starting…".into())), None);
+        let w0 = prompt_for("de", &none, &c, Some((None, "Starting".into())), None);
         assert_eq!(w0.progress(), Some(0.0));
         // failed
         let f = prompt_for("de", &none, &c, None, Some(("boom".into(), false)));

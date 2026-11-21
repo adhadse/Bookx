@@ -53,6 +53,8 @@ fn book(i: u64) -> Book {
         formats: vec![],
         resources: vec![],
         drm: String::new(),
+        custom: Default::default(),
+        marked: false,
     }
 }
 
@@ -239,6 +241,26 @@ fn matching_a_tracker_export_against_a_large_library() {
         bookx_sources::trackers::match_rows(&rows, &books)
     });
     assert_eq!(m.iter().filter(|x| x.book.is_some()).count(), rows.len());
+}
+
+#[test]
+fn audiobook_pairing_in_a_large_library() {
+    use bookx_sources::audiobooks::{pair, Candidate};
+    let books: Vec<Book> = (0..20_000).map(book).collect();
+    let cands: Vec<Candidate> = (0..3000u64)
+        .map(|i| Candidate {
+            path: format!("/audio/{i}/Book number {i} of the grand collection.m4b").into(),
+            title_guess: format!("Book number {} of the grand collection", i * 3),
+            author_guess: String::new(),
+            isbn: None,
+            files: 1,
+            bytes: 1,
+        })
+        .collect();
+    let pairs = check("audiobooks::pair(20 000 books x 3 000 files)", 1500, || {
+        pair(&books, &cands, &|_| None)
+    });
+    assert_eq!(pairs.len(), 3000);
 }
 
 // -- duplicate scan at 100 000 books (PP-C-11, PP-G-12) -----------------------------------------------

@@ -81,6 +81,8 @@ Performance budgets live in `crates/*/tests/perf_budgets.rs`: a slower operation
 cargo fmt
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
+build-aux/lint-checks.sh        # no vacuous `check "...$(...)..." $?` in the UI scenarios (ui-tests.sh runs it too)
+build-aux/coverage.sh          # line coverage per crate must not fall below build-aux/coverage-baseline.json (docs/ci-gates.md); --quick while working
 build-aux/ui-tests.sh          # needs gtk4-broadwayd; skips itself when it is missing
 build-aux/session-tests.sh     # real GNOME Shell/Wayland session, real input; needs gnome-shell, skips itself when missing
 ```

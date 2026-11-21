@@ -10,6 +10,7 @@ koannot_setup() {
     mkdir -p "$d/mounts/KOBOeReader/.adds/koreader/plugins"
     case "$d" in
     *kind_remembered) mkdir -p "$d/cfg/bookx" && printf '{"notes_kind":"bookmarks"}' >"$d/cfg/bookx/config.json" ;;
+    *live_ahead_off) mkdir -p "$d/cfg/bookx" && printf '{"share":{"offer_jump":false}}' >"$d/cfg/bookx/config.json" ;;
     esac
     python3 - "$d/ko" <<'PY'
 import json, sys
@@ -173,3 +174,100 @@ scenario koreader_annotations_bookmarks_delete 'koannot:start,wait:600,koannot:d
     has "^koannot_merge: added=0 linked=0 notes=0 removed=0 kept=0 conflicts=0 unplaced=0 bookmarks=0 "; check "the device sends them again, changed: nothing is added" $?
     [ "$(grep -c "^koannot_bm: " <<<"$OUT")" -eq 3 ]; check "the deleted bookmark did not come back" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
+
+# Sync activity (the owner: "no UX which shows the device connected and what is being synced"): the device that
+# synced is a row under Connected devices, what it sent is a row under Recent activity, a book Bookx does not have is
+# listed (never silent) and a toast announces what arrived. Dev commands: `sync:activity`, `koannot:toast`.
+scenario koreader_annotations_activity 'koannot:start,wait:600,action:sync,wait:800,sync:activity,koannot:device=@D@/ko/dev1.json,koannot:merge,koannot:toast,sync:activity,koannot:device=@D@/ko/other.json,koannot:merge,sync:activity,quit' '
+    has "^devices=0 events=0 unmatched=0"; check "before anything synced: no device, no activity" $?
+    has "^sync_activity_window: groups_connected=true groups_recent=true empty_state=true show_all=true"; check "the window has both groups and explains what to do when nothing has synced" $?
+    has "^device: Kobo Libra \\| KOReader 2026\\.07\\.2 · plugin 0\\.3\\.1 · last sync just now \\| Connected now$"; check "the device is a row with its versions and a live status" $?
+    has "^activity: UI Test Book \\| 3 highlights added or updated, 2 with notes, 1 bookmark · Kobo Libra · just now$"; check "what it sent is an activity row with its counts" $?
+    has "^activity: UI Test Book \\| 1 highlight could not be placed in the book · Kobo Libra · just now \\| problem$"; check "a quote that is not in the book is a visible problem row" $?
+    has "^koannot_toast: \"Synced 2 highlights, 1 bookmark from Kobo Libra for UI Test Book\"$"; check "a toast says what arrived, from which device, for which book" $?
+    has "^koannot_lastsync: \"Last synced from Kobo Libra just now\"$"; check "the details of the book say where and when it last synced" $?
+    has "^today: Today: 3 highlights, 1 bookmark, 2 notes$"; check "the header counts the day" $?
+    has "^unmatched: A Book Nobody Has \\| 1 highlight not imported · from Kobo Libra, hash eeeeeeee$"; check "a book that is not in the library is listed with its hash" $?
+    has "^activity: A Book Nobody Has \\| Book not found in your library \\(hash eeeeeeee\\): 1 highlight not imported · Kobo Libra · just now \\| problem$"; check "and is an activity row too" $?
+    [ "$(grep -c "^device: " <<<"$OUT")" -ge 2 ] && ! grep -q "^device: .*\\. " <<<"$OUT"; check "one device row per dump" $?
+    ! has "…|\\.\\.\\.\\s*$"; check "no ellipsis in the labels" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
+# Live updates (docs/koreader-annotation-sync.md, "Live updates"): a device talks to the real in-process server while the
+# book is open; the open reader, its sidebar, the Notes & Highlights view and the banner follow without reopening.
+# `koannot:push=<book>|<text>|<colour>|<note>` and `koannot:progress=<book>|<0..1>|<device>` are PUTs over HTTP like the
+# plugin's; nothing else is called (no `koannot:merge`): the server tells the app, the app merges, the reader repaints.
+# `reader:live-state` prints what the reader holds and paints, `koannot:events` the events that were delivered.
+LT3='Paragraph 3 of chapter 1 talks about functionality'
+LT5='Paragraph 5 of chapter 3 talks about functionality'
+LT7='Paragraph 7 of chapter 3 talks about functionality'
+
+scenario koreader_annotations_live_reader "koannot:start,wait:600,read:1,until:page-ready:30000,wait:300,reader:live-state,koannot:push=1|$LT3|purple|first,wait:1500,reader:live-state,koannot:push=1|$LT3|green|first,wait:1500,reader:live-state,koannot:pushdel=1|$LT3,wait:1500,reader:live-state,koannot:events,quit" '
+    L=$(grep "^live_state: " <<<"$OUT")
+    sed -n 1p <<<"$L" | grep -q "highlights=0 notes=0 .*painted=0 .*events=0 "; check "the book opens with nothing painted and nothing heard" $?
+    sed -n 2p <<<"$L" | grep -q "highlights=1 notes=1 .*colours=purple painted=1 .*events=1 .*repaints=1 "; check "a highlight the e-reader made is drawn on the open page within 1.5 seconds, once, with its note and colour" $?
+    sed -n 3p <<<"$L" | grep -q "highlights=1 .*colours=green painted=1 .*events=2 .*repaints=2 "; check "the colour changed on the e-reader changes the open page without reopening" $?
+    [ "$(sed -n 2p <<<"$L" | grep -o "looks=[^ ]*")" != "$(sed -n 3p <<<"$L" | grep -o "looks=[^ ]*")" ]; check "the painted colour really differs (not only the stored one)" $?
+    sed -n 4p <<<"$L" | grep -q "highlights=0 notes=0 .*painted=0 .*events=3 "; check "a highlight deleted on the e-reader disappears from the page" $?
+    [ "$(grep -c "^koannot_event: book=1 " <<<"$OUT")" -eq 3 ]; check "exactly one event per change reached the reader, no duplicates" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# A burst (three highlights at once) is merged once and heard once; the sidebar Notes tab and the book map follow.
+scenario koreader_annotations_live_burst "koannot:start,wait:600,read:1,until:page-ready:30000,wait:300,reader:side-open,reader:side-tab=notes,wait:500,reader:live-state,koannot:push=1|$LT3|yellow|a,koannot:push=1|$LT5|blue|b,koannot:push=1|$LT7|pink,wait:2000,reader:live-state,koannot:events,quit" '
+    L=$(grep "^live_state: " <<<"$OUT")
+    sed -n 1p <<<"$L" | grep -q "highlights=0 .* notes=0 "; check "the sidebar starts empty" $?
+    sed -n 2p <<<"$L" | grep -q "highlights=3 notes=2 .*painted=1 .* notes=3 "; check "three highlights arrive: the page paints the one of this chapter and the Notes tab lists all three" $?
+    [ "$(grep -c "^koannot_event: book=1 " <<<"$OUT")" -le 2 ] && [ "$(grep -c "^koannot_event: book=1 " <<<"$OUT")" -ge 1 ]; check "the burst is one or two events, not three" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario koreader_annotations_live_bookmarks "koannot:start,wait:600,read:1,until:page-ready:30000,wait:300,reader:side-open,reader:side-tab=bookmarks,wait:500,reader:live-state,koannot:device=@D@/ko/marks.json,wait:2000,reader:live-state,quit" '
+    L=$(grep "^live_state: " <<<"$OUT")
+    sed -n 1p <<<"$L" | grep -q "bookmarks=0 .* bookmarks=0 "; check "no bookmarks to start with" $?
+    sed -n 2p <<<"$L" | grep -q "bookmarks=4 .* bookmarks=4 "; check "bookmarks the device sent are in the library and in the sidebar list without reopening" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# The library window: the Notes & Highlights view follows too.
+scenario koreader_annotations_live_library "koannot:start,wait:600,library:notes,wait:800,library:notes:dump,koannot:push=1|$LT3|purple|n1,wait:1500,library:notes:dump,koannot:push=1|$LT5|blue,wait:1500,library:notes:dump,quit" '
+    L=$(grep "^notes_state: " <<<"$OUT")
+    sed -n 1p <<<"$L" | grep -q "total=0 shown=0 "; check "Notes starts empty" $?
+    sed -n 2p <<<"$L" | grep -q "total=1 shown=1 "; check "a highlight from the e-reader is listed while the view is open" $?
+    sed -n 3p <<<"$L" | grep -q "total=2 shown=2 "; check "the next one is listed too, the counts follow" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# A note being edited is never taken from the reader: it asks.
+scenario koreader_annotations_live_conflict "koannot:start,wait:600,read:1,until:page-ready:30000,wait:300,koannot:push=1|$LT3|yellow|mine0,wait:1500,reader:live-edit=0,wait:600,reader:live-type=my typing,koannot:push=1|$LT3|yellow|theirs note,wait:1500,reader:live-state,reader:live-press=primary,wait:500,reader:live-state,quit" '
+    L=$(grep "^live_state: " <<<"$OUT")
+    sed -n 1p <<<"$L" | grep -q "banner=This note changed on your e-reader | Use Theirs / Keep Mine editor=[^ ]*:\"my typing\""; check "the note changed on the e-reader while it is open: the editor keeps what was typed and a banner asks" $?
+    sed -n 2p <<<"$L" | grep -q "banner=none editor=[^ ]*:\"theirs note\""; check "Use Theirs puts their note in the editor and the banner goes" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# Keep Mine and a note that nobody typed in.
+scenario koreader_annotations_live_conflict_keep "koannot:start,wait:600,read:1,until:page-ready:30000,wait:300,koannot:push=1|$LT3|yellow|mine0,wait:1500,reader:live-edit=0,wait:600,koannot:push=1|$LT3|yellow|quiet change,wait:1500,reader:live-state,reader:live-type=typed after,koannot:push=1|$LT3|yellow|loud change,wait:1500,reader:live-state,reader:live-press=secondary,wait:500,reader:live-state,quit" '
+    L=$(grep "^live_state: " <<<"$OUT")
+    sed -n 1p <<<"$L" | grep -q "banner=none editor=[^ ]*:\"quiet change\""; check "nothing typed yet: the editor just shows the new note, no banner" $?
+    sed -n 2p <<<"$L" | grep -q "banner=This note changed on your e-reader .* editor=[^ ]*:\"typed after\""; check "typed text is kept and the banner asks" $?
+    sed -n 3p <<<"$L" | grep -q "banner=none editor=[^ ]*:\"typed after\""; check "Keep Mine keeps it and the banner goes" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# The device is ahead: a banner, never a silent move; Continue There jumps; a page turn or Dismiss ends it.
+scenario koreader_annotations_live_ahead "koannot:start,wait:600,read:1,until:page-ready:30000,wait:300,reader:bm-where,koannot:progress=1|0.62|Kobo Libra,wait:1500,reader:live-state,reader:bm-where,reader:live-press=primary,wait:1200,reader:live-state,reader:bm-where,quit" '
+    L=$(grep "^live_state: " <<<"$OUT")
+    W=$(grep "^bm_where: " <<<"$OUT")
+    sed -n 1p <<<"$L" | grep -q "banner=Your Kobo Libra is at 62% (page [0-9]*) | Continue There / Dismiss"; check "a position further along is offered with its device, percentage and page" $?
+    [ "$(sed -n 1p <<<"$W")" = "$(sed -n 2p <<<"$W")" ]; check "the page did not move by itself" $?
+    sed -n 2p <<<"$L" | grep -q "banner=none"; check "the banner goes after Continue There" $?
+    sed -n 3p <<<"$W" | grep -q "spine=[1-9]"; check "Continue There went to the place of the device" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario koreader_annotations_live_ahead_dismiss "koannot:start,wait:600,read:1,until:page-ready:30000,wait:300,koannot:progress=1|0.5|Kobo Libra,wait:1500,reader:live-state,reader:live-press=secondary,reader:live-state,koannot:progress=1|0.5|Kobo Libra,wait:1500,reader:live-state,koannot:progress=1|0.8|Kobo Libra,wait:1500,reader:live-state,reader:next,wait:600,reader:live-state,quit" '
+    L=$(grep "^live_state: " <<<"$OUT")
+    sed -n 1p <<<"$L" | grep -q "banner=Your Kobo Libra is at 50%"; check "offered" $?
+    sed -n 2p <<<"$L" | grep -q "banner=none"; check "Dismiss ends it" $?
+    sed -n 3p <<<"$L" | grep -q "banner=none"; check "the same position is not offered again" $?
+    sed -n 4p <<<"$L" | grep -q "banner=Your Kobo Libra is at 80%"; check "a new position is" $?
+    sed -n 5p <<<"$L" | grep -q "banner=none"; check "turning a page takes the banner away" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario koreader_annotations_live_ahead_off "koannot:start,wait:600,read:1,until:page-ready:30000,wait:300,koannot:progress=1|0.62|Kobo Libra,wait:1500,reader:live-state,quit" '
+    sed -n 1p < <(grep "^live_state: " <<<"$OUT") | grep -q "banner=none"; check "with Offer to jump switched off nothing is offered" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'

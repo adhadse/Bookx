@@ -175,7 +175,7 @@ impl Digest {
             let Some(src) = archive.get_string(path) else {
                 continue;
             };
-            let html = Html::parse_document(&src);
+            let html = bookx_core::util::parse_html_document(&src);
             let set = ids.entry(path.clone()).or_default();
             for n in html.tree.nodes() {
                 if let Node::Element(e) = n.value() {

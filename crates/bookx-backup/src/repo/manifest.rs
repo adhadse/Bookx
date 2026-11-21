@@ -325,6 +325,10 @@ pub struct JournalRecord {
     pub seq: u64,
     pub at: DateTime<Utc>,
     pub books: Vec<BookNotes>,
+    /// All collections (shelves) with their books, written when any of them changed. Absent in
+    /// records written before this existed and in records where collections did not change.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub collections: Option<Vec<CollectionState>>,
 }
 
 #[cfg(test)]

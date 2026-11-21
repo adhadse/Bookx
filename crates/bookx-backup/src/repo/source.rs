@@ -95,6 +95,15 @@ impl LibrarySource {
 
     /// The readable notes state stored with every snapshot.
     pub fn library_state(&self, books: &[Book]) -> Result<LibraryState> {
+        Ok(LibraryState {
+            format: FORMAT,
+            books: self.all_notes(books),
+            collections: self.collections()?,
+        })
+    }
+
+    /// The collections (shelves) with their book ids, sorted by name.
+    pub fn collections(&self) -> Result<Vec<CollectionState>> {
         let mut collections = Vec::new();
         for c in self.store.list_collections()? {
             let mut ids = self.store.collection_books(c.id);
@@ -105,11 +114,7 @@ impl LibrarySource {
             });
         }
         collections.sort_by(|a, b| a.name.cmp(&b.name));
-        Ok(LibraryState {
-            format: FORMAT,
-            books: self.all_notes(books),
-            collections,
-        })
+        Ok(collections)
     }
 
     pub fn tmp_dir(&self) -> Result<PathBuf> {
@@ -319,6 +324,8 @@ pub struct LocalState {
     pub last_journal_seq: u64,
     pub last_seen_seq: u64,
     pub notes: BTreeMap<u64, String>,
+    /// Fingerprint of the collections last written to the journal (or to a snapshot).
+    pub collections: String,
     pub files: HashMap<String, CachedFile>,
 }
 

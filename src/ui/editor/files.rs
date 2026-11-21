@@ -17,7 +17,7 @@ impl Editor {
             .files
             .selected_rows()
             .iter()
-            .filter_map(|r| unsafe { r.data::<String>("path").map(|p| p.as_ref().clone()) })
+            .filter_map(super::row_data::path)
             .collect()
     }
 
@@ -25,7 +25,7 @@ impl Editor {
         self.w
             .files
             .selected_row()
-            .and_then(|r| unsafe { r.data::<String>("path").map(|p| p.as_ref().clone()) })
+            .and_then(|r| super::row_data::path(&r))
     }
 
     pub(super) fn add_paths(&mut self, paths: Vec<std::path::PathBuf>) {

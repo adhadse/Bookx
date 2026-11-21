@@ -1,0 +1,40 @@
+// (text, ecc, mask, version, rows): complete symbols as hex rows. Every one was decoded back to its
+// text by an independent decoder (zxing-cpp 3.1.1) when written, so a change that alters a module
+// shows up here and has to be re-verified the same way.
+const REFERENCE: &[(&str, Ecc, u8, usize, &str)] = &[
+    (
+        "HELLO",
+        Ecc::Low,
+        0,
+        1,
+        "fe5bf8,827208,badae8,ba52e8,ba2ae8,820a08,feabf8,00d800,eff620,108210,a228f8,c8a210,a66aa0,00d530,fe9738,82fd80,ba9738,ba2330,bae8a8,82c290,fecb38",
+    ),
+    (
+        "http://192.168.1.5:8080/opds",
+        Ecc::Quartile,
+        5,
+        3,
+        "fec983f8,82f2c208,ba47aae8,ba716ae8,ba2012e8,82196208,feaaabf8,00781000,43f2a418,682834f0,5e5922c0,45dc8600,cace3710,487fd2d8,ba5dcc10,543eea60,e3469d68,91283aa8,d60f11c8,ac7a3e80,9f1bffe8,00af98e0,fee73a90,827f88d0,ba40ff98,ba04d130,ba722290,82a124a8,fe2c72e0",
+    ),
+    (
+        concat!("http://192.168.1.5:8080/opds/", "abcdefghij", "abcdefghij", "abcdefghij"),
+        Ecc::Quartile,
+        1,
+        5,
+        "fe25f60bf8,8223280208,ba0e4dfae8,baa0dd7ae8,ba1b646ae8,828d622a08,feaaaaabf8,00fff11800,621a998b40,8d92339b48,062edbf708,40002a30d0,0e36013f58,88d3353f38,96cab7f5f8,958a5b9b48,6756f0b600,4dd759d608,5b08217aa8,a5ffa9a518,3a7f0b9a50,705c6b9308,02285357c8,10fc4a3d48,73d82b0b48,044be9db28,f2e7c57ce8,2852d9b2d8,c60068bfc0,00c24568c8,fe52d38af8,827bb938c0,ba6a5f9f90,ba1de9c8f8,baa2cdacd8,82f03b9b80,fe1e899f88",
+    ),
+    (
+        concat!("https://books.example.com/", "0123456789", "0123456789", "0123456789", "0123456789", "0123456789", "0123456789", "0123456789", "0123456789", "0123456789", "0123456789", "0123456789", "0123456789", "x"),
+        Ecc::Low,
+        7,
+        7,
+        "fe0dcb320bf8,8298c77a1208,baa22b1792e8,ba64cb155ae8,bae85fe2fae8,82ec38970208,feaaaaaaabf8,00c188c5f800,d3796f8823b0,8d9d34dc0088,0a9e2685bda8,a9f1bd685e98,c723340eb0d8,e177b68c70d8,b62effe0dee0,889f5408bf88,3701aea38158,147f71e192c0,968732cc9d78,9d48a705f040,5f896fec6f90,98c328d4c8c8,aac72a8cead8,4893d8ac0890,bfeb3f8effc8,806db19def98,ea74226998d0,7068570ccb50,9657a0e5aed0,a9216a694020,c79ca75dd208,71db6b4083d0,d70f6a6c1d40,08d522440d18,0abb710c2748,7864422c5980,9bd32feacfc8,0097b89568b8,fed97af95a80,825838e9c8d0,ba4fbfe4ef98,ba9b7d7019a8,ba26fc4509a0,82aefac1a440,fec161aa2b10",
+    ),
+    (
+        concat!("Bücher https://x.example/", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz", "qrstuvwxyz"),
+        Ecc::Medium,
+        2,
+        10,
+        "fe062bdf1c773f8,822cec753e45208,baebe249f2ef2e8,babde94358212e8,bac3abbe85e92e8,82c815632b4a208,feaaaaaaaaaabf8,00ff19e3c4ff800,be65bd7f0e553e0,0c3809a79c71c98,ea42b29c3fcbe10,e9e70fd3b298af8,d77e7af73a17250,09a7dd7e85e9d20,dbe8803ca652e50,d931f56fd0de2e8,971ceb033e51058,245e77af9439c78,7bc46a253e03b10,642b68cf94bd9f0,2e9b13657a16250,491901960d69cb8,47c213e53e4af10,c446de4ff0f8cc8,56331f611c61420,64b365c71c79c18,6fd8247f2b43fb0,c8a811a3c2998f0,eadb332b7834ac8,5887dbe28d608b8,5fd0497e37cbff0,25f930f5d0b97e8,139bdf891c72ad0,2c73c2a71c71860,22ecddf6a6535b8,d5eae8bd95df660,6a63570b58560c0,cda671a085e9478,bf43bd873ec24d0,2de6b2bd94bd760,de9cc90f3e52cd0,5c17ffa794f0438,9e7f50fe2f4add0,3da04025f6f9f90,52fd01297c169c0,ed62ef8205e1e18,a68af5ef27c2570,f98ef5b5c2996e0,03524d7f3c74fc8,00edd7e30cf88b8,fe363e6a2e53a90,829b68a3d0be8f0,bae8b6ff7a14fd0,bac25f6e0d614e0,baa0a224a653a60,82795f3f959dd60,fea1795d1d307d0",
+    ),
+];

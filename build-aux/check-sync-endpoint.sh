@@ -8,7 +8,7 @@ if grep -rnI -- '/kosync' wiki/docs README.md koreader-plugin/bookx.koplugin kor
     exit 1
 fi
 page=wiki/docs/koreader-sync.md
-for needle in 'Which user name and password?' 'not** the Share Library password' 'Tools → Progress sync → Custom sync server' 'one-way hash' 'USB cable only' 'http://<host-ip>:<port>/bookx'; do
+for needle in 'Which user name and password?' 'not** the OPDS server password' 'Tools → Progress sync → Custom sync server' 'one-way hash' 'USB cable only' 'http://<host-ip>:<port>/bookx'; do
     grep -qF -- "$needle" "$page" || { echo "check-sync-endpoint: $page lacks: $needle" >&2; exit 1; }
 done
 echo "sync endpoint text ok"

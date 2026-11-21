@@ -73,7 +73,7 @@ const EXTRA: &[(&str, &str, Group, &[&str])] = &[
     ),
     (
         "book.delete",
-        crate::i18n::N_("Remove Selected Books"),
+        crate::i18n::N_("Move Selected Books to Trash"),
         Group::Library,
         &["Delete"],
     ),

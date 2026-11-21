@@ -26,7 +26,7 @@ use relm4::prelude::*;
 
 use super::reader::HIGHLIGHT_COLORS;
 use super::web;
-use super::{open_uri, window_of, SharedRef};
+use super::{open_external_link, open_uri, window_of, SharedRef};
 use crate::core::library::{Bookmark, Highlight, ReadPos};
 use crate::pdf::{self, Layout, PdfPrefs, Place, ViewMode, ZoomMode};
 
@@ -116,6 +116,10 @@ pub enum Input {
     RemoveHighlight,
     /// Undo of a removal: the items are back in the library, show them again.
     Restored,
+    /// A sync changed this book, or a device reported a position (see `sync_bus`).
+    Sync(crate::sync_bus::SyncEvent),
+    /// A button of the sync banner.
+    LiveAnswer(super::reader_live::Answer),
     PopClosed,
     Copy,
     Dict,
@@ -254,6 +258,10 @@ pub struct ReaderPdf {
     asked_password: bool,
     updating_ui: Rc<Cell<bool>>,
     last_page_stat: usize,
+    sync_banner: Rc<super::reader_live::LiveBanner>,
+    _sync_sub: Option<crate::sync_bus::Subscription>,
+    sync_stats: Cell<(u32, u32)>,
+    last_turn: Cell<usize>,
 }
 
 fn rgb_of(name: &str) -> (f64, f64, f64) {
@@ -557,6 +565,9 @@ impl ReaderPdf {
 
     fn update_bookmark_button(&self) {
         let cur = self.current_page();
+        if self.last_turn.replace(cur) != cur {
+            self.sync_banner.page_turned();
+        }
         let has = self
             .shared
             .lib
@@ -700,6 +711,39 @@ impl ReaderPdf {
             tx.emit(Input::Restored);
         });
         let _ = sender.output(Output::ToastUndo(text, undo));
+    }
+
+    /// A sync changed this book: paint the highlights again, refresh the lists and the bookmark
+    /// button (the lists keep their scroll position), and offer to jump when a device is ahead.
+    fn on_sync(&mut self, ev: &crate::sync_bus::SyncEvent) {
+        let (heard, repaints) = self.sync_stats.get();
+        self.sync_stats.set((heard + 1, repaints));
+        if ev.kinds.annotations() {
+            let root: gtk::Widget = self.w.split.clone().upcast();
+            super::sync_activity::keep_scroll(&root, || {
+                self.refresh_highlights();
+                self.rebuild_lists();
+                self.update_bookmark_button();
+            });
+            self.sync_stats.set((heard + 1, repaints + 1));
+        }
+        if let Some(a) = &ev.ahead {
+            let (enabled, mine) = {
+                let c = self.shared.cfg.borrow();
+                (c.share.offer_jump, c.kosync.device_id.clone())
+            };
+            let n = self.page_count();
+            let local = if n > 0 {
+                self.current_page() as f64 / n as f64
+            } else {
+                0.0
+            };
+            let same = !mine.is_empty() && a.device_id == mine;
+            if crate::sync_live::worth_offering(enabled, local, a.percentage, same) {
+                let page = crate::sync_live::page_at(a.percentage, n);
+                self.sync_banner.offer_ahead(&ev.device, a.percentage, page);
+            }
+        }
     }
 
     fn rebuild_lists(&self) {
@@ -1278,7 +1322,7 @@ impl ReaderPdf {
         } else if self.search_done {
             super::reader_search::search_status(n, true)
         } else {
-            trf("Searching… {} so far", &[&n])
+            trf("Searching, {} so far", &[&n])
         };
         self.w.search_status.set_label(&t);
         super::reader_search::set_empty_state(
@@ -1321,11 +1365,7 @@ impl ReaderPdf {
                 self.goto_page(d.page, d.y);
             }
             LinkTarget::Uri(u) => {
-                let l = u.to_lowercase();
-                if l.starts_with("http://") || l.starts_with("https://") || l.starts_with("mailto:")
-                {
-                    open_uri(u);
-                } else {
+                if !open_external_link(u) {
                     let _ = self
                         .sender
                         .output(Output::Toast(tr("That link is not an address Bookx opens")));
@@ -2222,7 +2262,7 @@ impl SimpleComponent for ReaderPdf {
         page_box.append(&left);
         page_box.append(&vbar);
         let content = gtk::Stack::new();
-        let loading = adw::StatusPage::builder().title(tr("Opening PDF…")).build();
+        let loading = adw::StatusPage::builder().title(tr("Opening PDF")).build();
         let spinner = adw::Spinner::new();
         spinner.set_size_request(48, 48);
         loading.set_child(Some(&spinner));
@@ -2548,7 +2588,14 @@ impl SimpleComponent for ReaderPdf {
 
         let toolbar = adw::ToolbarView::new();
         toolbar.add_top_bar(&header);
-        toolbar.set_content(Some(&split));
+        let sync_banner = {
+            let tx = sender.input_sender().clone();
+            super::reader_live::LiveBanner::new(move |a| tx.emit(Input::LiveAnswer(a)))
+        };
+        let page_overlay = gtk::Overlay::new();
+        page_overlay.set_child(Some(&split));
+        page_overlay.add_overlay(&sync_banner.widget);
+        toolbar.set_content(Some(&page_overlay));
         toolbar.add_bottom_bar(&bottom);
         bin.set_child(Some(&toolbar));
         root.set_child(Some(&bin));
@@ -2741,6 +2788,13 @@ impl SimpleComponent for ReaderPdf {
             asked_password: false,
             updating_ui,
             last_page_stat: usize::MAX,
+            sync_banner,
+            _sync_sub: Some({
+                let tx = sender.input_sender().clone();
+                crate::sync_bus::subscribe(Some(book_id), move |e| tx.emit(Input::Sync(e.clone())))
+            }),
+            sync_stats: Cell::new((0, 0)),
+            last_turn: Cell::new(usize::MAX),
         };
         model.apply_prefs_to_ui();
         {
@@ -3079,6 +3133,19 @@ impl SimpleComponent for ReaderPdf {
                 self.rebuild_lists();
                 if let Some(r) = removed {
                     self.offer_undo(r, &sender);
+                }
+            }
+            Input::Sync(ev) => self.on_sync(&ev),
+            Input::LiveAnswer(a) => {
+                use super::reader_live::Answer;
+                if let Answer::Primary(crate::sync_live::Banner::Ahead { percentage, .. }) = a {
+                    let n = self.page_count();
+                    if n > 0 {
+                        let page = ((percentage * n as f64) as usize).min(n - 1);
+                        self.history.push((self.current_page(), None));
+                        self.w.back_btn.set_visible(true);
+                        self.goto_page(page, None);
+                    }
                 }
             }
             Input::Restored => {
@@ -3775,6 +3842,29 @@ impl ReaderPdf {
                     self.w.caption.label().to_string()
                 );
             }
+            "live-state" => {
+                let lib = self.shared.lib.borrow();
+                let (h, n, b, cols) =
+                    lib.get(self.book_id)
+                        .map_or((0, 0, 0, String::new()), |bk| {
+                            let mut cols: Vec<String> =
+                                bk.highlights.iter().map(|h| h.color.clone()).collect();
+                            cols.sort();
+                            (
+                                bk.highlights.len(),
+                                bk.highlights.iter().filter(|h| !h.note.is_empty()).count(),
+                                bk.bookmarks.len(),
+                                cols.join("+"),
+                            )
+                        });
+                let painted = self.state.borrow().highlights.len();
+                let (heard, repaints) = self.sync_stats.get();
+                eprintln!(
+                    "live_state: highlights={h} notes={n} bookmarks={b} colours={cols} painted={painted} events={heard} repaints={repaints} banner={}",
+                    self.sync_banner.dev_state()
+                );
+            }
+            "live-press" => self.sync_banner.dev_press(arg != "secondary"),
             "pdf-highlights" => {
                 let lib = self.shared.lib.borrow();
                 let hs: Vec<String> = lib

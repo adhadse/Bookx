@@ -112,6 +112,24 @@ pub struct FlowLine {
 /// height of the text area) and for vertical text (`extent` is its width): the flow does not care
 /// which way it is drawn.
 pub fn paginate(lines: &[FlowLine], extent: f64) -> Vec<(f64, f64)> {
+    paginate_with(lines, extent, 2, 2)
+}
+
+/// Largest orphan/widow count the reader offers.
+pub const MAX_WIDOWS_ORPHANS: usize = 4;
+
+/// [`paginate`] with the CSS `orphans` (least lines of a paragraph left at the bottom of a page) and
+/// `widows` (least lines carried to the next page). `1` and `1` cut anywhere. When a paragraph is too
+/// short to satisfy both it moves to the next page as a whole, or is cut where it falls when it would
+/// leave the page empty.
+pub fn paginate_with(
+    lines: &[FlowLine],
+    extent: f64,
+    orphans: usize,
+    widows: usize,
+) -> Vec<(f64, f64)> {
+    let orphans = orphans.clamp(1, MAX_WIDOWS_ORPHANS);
+    let widows = widows.clamp(1, MAX_WIDOWS_ORPHANS);
     let n = lines.len();
     let mut pages = Vec::new();
     let mut i = 0;
@@ -124,15 +142,34 @@ pub fn paginate(lines: &[FlowLine], extent: f64) -> Vec<(f64, f64)> {
         if j == i {
             j = i + 1;
         }
-        if j < n && j - i > 3 {
-            let (a, b) = (&lines[j - 1], &lines[j]);
-            if a.item == b.item && a.line == 0 {
-                j -= 1;
-            } else if b.item == a.item {
-                if let Some(c) = lines.get(j + 1) {
-                    if c.item != b.item {
-                        j -= 1;
-                    }
+        if j < n && lines[j].item == lines[j - 1].item {
+            let item = lines[j - 1].item;
+            // lines of the paragraph on this page, after it and whether it begins here
+            // counts stop at 16 (only a few lines matter), so a paragraph of any length is cheap
+            const CAP: usize = 16;
+            let mut k = 0;
+            while k < j - i && k < CAP && lines[j - 1 - k].item == item {
+                k += 1;
+            }
+            let begins_here = k < CAP && lines[j - k].line == 0;
+            let mut rem = 0;
+            while rem < CAP && j + rem < n && lines[j + rem].item == item {
+                rem += 1;
+            }
+            let least_here = if begins_here { orphans } else { 1 };
+            let mut take = 0;
+            if rem < widows {
+                take = widows - rem;
+            }
+            if begins_here && k < orphans {
+                take = k;
+            }
+            if take > 0 {
+                if k >= take + least_here {
+                    j -= take;
+                } else if begins_here && k < j - i {
+                    // the paragraph cannot be cut well: all of it goes to the next page
+                    j -= k;
                 }
             }
         }
@@ -514,8 +551,9 @@ mod tests {
 
     #[test]
     fn pages_are_cut_along_the_flow_at_line_boundaries() {
-        // 10 lines of 30: a page 100 wide takes three of them
-        let l = lines(&[(0, 30.0); 10].map(|(a, b)| (a, b)));
+        // 10 one-line paragraphs of 30: a page 100 wide takes three of them
+        let spec: Vec<(usize, f64)> = (0..10).map(|i| (i, 30.0)).collect();
+        let l = lines(&spec);
         let p = paginate(&l, 100.0);
         assert_eq!(p.len(), 4);
         assert_eq!(p[0], (0.0, 90.0));
@@ -568,6 +606,99 @@ mod tests {
             (0.0, 80.0),
             "the lone first line moves to the next page"
         );
+    }
+
+    /// One paragraph of `n` lines with the right line numbers.
+    fn para(item: usize, n: usize) -> Vec<(usize, i32)> {
+        (0..n).map(|k| (item, k as i32)).collect()
+    }
+
+    fn numbered(spec: &[(usize, i32)]) -> Vec<FlowLine> {
+        spec.iter()
+            .enumerate()
+            .map(|(i, (item, line))| FlowLine {
+                item: *item,
+                line: *line,
+                v: i as f64 * 20.0,
+                thick: 20.0,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn widows_and_orphans_of_one_cut_anywhere() {
+        // 3 lines of paragraph 0, then 6 lines of paragraph 1; a page holds 4 lines
+        let mut spec = para(0, 3);
+        spec.extend(para(1, 6));
+        let l = numbered(&spec);
+        let p = paginate_with(&l, 80.0, 1, 1);
+        assert_eq!(
+            p[0],
+            (0.0, 80.0),
+            "one line of paragraph 1 stays: orphans = 1"
+        );
+    }
+
+    #[test]
+    fn three_orphans_move_a_short_start_to_the_next_page() {
+        let mut spec = para(0, 3);
+        spec.extend(para(1, 8));
+        let l = numbered(&spec);
+        // page of 5 lines: 2 lines of paragraph 1 would be left, 3 are wanted
+        let p = paginate_with(&l, 100.0, 3, 1);
+        assert_eq!(p[0], (0.0, 60.0), "paragraph 1 starts on the second page");
+        let p2 = paginate_with(&l, 100.0, 2, 1);
+        assert_eq!(p2[0], (0.0, 100.0), "two are enough for orphans = 2");
+    }
+
+    #[test]
+    fn three_widows_carry_more_lines_over() {
+        // paragraph of 10 lines starting at the top; a page holds 9, so 1 line is left over
+        let l = numbered(&para(0, 10));
+        let p = paginate_with(&l, 180.0, 1, 3);
+        assert_eq!(p[0], (0.0, 140.0), "7 lines stay, 3 move");
+        assert_eq!(p[1], (140.0, 200.0));
+        let p1 = paginate_with(&l, 180.0, 1, 1);
+        assert_eq!(p1[0], (0.0, 180.0));
+    }
+
+    #[test]
+    fn a_paragraph_too_short_for_both_moves_as_a_whole() {
+        // 3 lines, 2 fit: orphans 2 and widows 2 cannot both hold, the paragraph goes over whole
+        let mut spec = para(0, 3);
+        spec.extend(para(1, 3));
+        let l = numbered(&spec);
+        let p = paginate_with(&l, 100.0, 2, 2);
+        assert_eq!(p[0], (0.0, 60.0));
+        assert_eq!(p[1].0, 60.0);
+    }
+
+    #[test]
+    fn the_default_is_two_and_two() {
+        let mut spec = para(0, 5);
+        spec.extend(para(1, 5));
+        let l = numbered(&spec);
+        assert_eq!(paginate(&l, 120.0), paginate_with(&l, 120.0, 2, 2));
+        // out of range counts are clamped, never a panic or a loop
+        assert!(!paginate_with(&l, 120.0, 0, 99).is_empty());
+    }
+
+    #[test]
+    fn every_line_is_on_exactly_one_page_whatever_the_counts() {
+        for orph in 1..=4 {
+            for wid in 1..=4 {
+                let mut spec = Vec::new();
+                for item in 0..12 {
+                    spec.extend(para(item, 1 + (item * 7) % 9));
+                }
+                let l = numbered(&spec);
+                let p = paginate_with(&l, 100.0, orph, wid);
+                for w in p.windows(2) {
+                    assert!((w[0].1 - w[1].0).abs() < 1e-9);
+                }
+                assert_eq!(p.last().unwrap().1, l.last().unwrap().v + 20.0);
+            }
+        }
     }
 
     #[test]

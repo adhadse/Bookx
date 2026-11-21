@@ -49,6 +49,9 @@ pub struct Config {
     pub call_timeout: Duration,
     /// Name used for the lock and in the audit log.
     pub app_name: String,
+    /// How often the stdio transport looks for library changes to tell subscribed clients about
+    /// (`notifications/resources/*`); zero switches the watcher off.
+    pub watch_interval: Duration,
 }
 
 impl Config {
@@ -65,6 +68,7 @@ impl Config {
             rate_limit: Some((240, Duration::from_secs(60))),
             call_timeout: Duration::from_secs(30),
             app_name: "bookx-mcp".into(),
+            watch_interval: Duration::from_secs(2),
         }
     }
 

@@ -5,7 +5,7 @@ site_description = "Bookx is an e-book library, reader and editor for GNOME, wri
 site_author = "Anurag Dhadse"
 docs_dir = "docs"
 site_dir = "site"
-copyright = 'Copyright © 2026 Anurag Dhadse. Bookx is licensed under the GPL-3.0-or-later.'
+copyright = 'Copyright © 2026 <a href="https://adhadse.com" class="bx-author">Anurag Dhadse</a>. Bookx is licensed under the GPL-3.0-or-later.'
 repo_url = "https://github.com/adhadse/Bookx"
 repo_name = "adhadse/Bookx"
 edit_uri = "edit/main/wiki/docs/"
@@ -115,7 +115,7 @@ pymdownx.tabbed = { alternate_style = true }
 [project.plugins.search]
 
 [project.plugins.social]
-cards_layout_options = { font_family = "Inter", background_color = "#16213a", color = "#ffffff" }
+cards_layout_options = { font_family = "Inter", background_color = "#17130f", color = "#f6efe0" }
 
 [[project.extra.social]]
 icon = "fontawesome/brands/github"

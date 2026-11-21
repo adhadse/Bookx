@@ -314,6 +314,7 @@ fn new_library_dialog(ctx: &Ctx, anchor: &gtk::Widget) {
 fn open_folder(ctx: &Ctx, anchor: &gtk::Widget) {
     let dlg = gtk::FileDialog::builder()
         .title(tr("Choose a Library Folder"))
+        .accept_label(tr("Open"))
         .build();
     let win = anchor.root().and_downcast::<gtk::Window>();
     let ctx = ctx.clone();

@@ -62,6 +62,17 @@ pub struct FeedSpec {
     /// Overrides the recipe's per-feed limit.
     #[serde(default)]
     pub max_articles: Option<usize>,
+    /// Overrides [`Recipe::use_full_article`] for this feed: `Some(true)` downloads each article's
+    /// page, `Some(false)` uses the feed text, `None` follows the recipe.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub full_article: Option<bool>,
+}
+
+impl FeedSpec {
+    /// Whether the articles of this feed are downloaded in full under `recipe`.
+    pub fn wants_full_article(&self, recipe: &Recipe) -> bool {
+        self.full_article.unwrap_or(recipe.use_full_article)
+    }
 }
 
 /// When a recipe runs. Times are UTC.
@@ -138,6 +149,7 @@ impl Recipe {
                     url: u.to_string(),
                     title: None,
                     max_articles: None,
+                    full_article: None,
                 })
                 .collect(),
             max_articles: d_max_articles(),
@@ -760,7 +772,7 @@ pub fn build_news_epub(
                 e.link.clone()
             };
             let mut content = String::new();
-            if recipe.use_full_article && !e.link.is_empty() {
+            if spec.wants_full_article(recipe) && !e.link.is_empty() {
                 match fetcher
                     .get(&e.link, &[])
                     .map(|b| decode_text(&b))
@@ -1623,6 +1635,48 @@ minute = 30
         assert!(f
             .urls()
             .contains(&"https://alpha.example/rust-2024".to_string()));
+    }
+
+    #[test]
+    fn a_feed_can_override_the_full_article_setting() {
+        let page = "<html><body><p>Full article text, with commas, and enough words for the extractor.</p></body></html>";
+        let pages = |f: MockFetcher| {
+            f.with_body("https://alpha.example/rust-2024", page)
+                .with_body("https://alpha.example/weather", page)
+                .with_body("https://beta.example/only", page)
+                .with_body("https://shared.example/story", page)
+        };
+        // recipe says summaries, the first feed asks for full articles
+        let mut r = recipe();
+        r.feeds[0].full_article = Some(true);
+        let f = pages(mock());
+        let n = build_news_epub(&r, &f, now()).unwrap();
+        assert!(n.stats.full_articles >= 1);
+        assert!(f
+            .urls()
+            .contains(&"https://alpha.example/rust-2024".to_string()));
+        assert!(
+            !f.urls().contains(&"https://beta.example/only".to_string()),
+            "the second feed follows the recipe"
+        );
+        // recipe says full articles, the second feed opts out
+        let mut r = recipe();
+        r.use_full_article = true;
+        r.feeds[1].full_article = Some(false);
+        let f = pages(mock());
+        build_news_epub(&r, &f, now()).unwrap();
+        assert!(f
+            .urls()
+            .contains(&"https://alpha.example/rust-2024".to_string()));
+        assert!(!f.urls().contains(&"https://beta.example/only".to_string()));
+        // nothing written when there is no override, and it round-trips
+        let t = recipe().to_toml().unwrap();
+        assert!(!t.lines().any(|l| l.starts_with("full_article")));
+        let mut r = recipe();
+        r.feeds[0].full_article = Some(false);
+        let back = Recipe::from_toml(&r.to_toml().unwrap()).unwrap();
+        assert_eq!(back.feeds[0].full_article, Some(false));
+        assert_eq!(back.feeds[1].full_article, None);
     }
 
     #[test]

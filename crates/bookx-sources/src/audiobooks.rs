@@ -181,19 +181,44 @@ pub fn pair(
     candidates: &[Candidate],
     book_dir: &dyn Fn(&Book) -> Option<PathBuf>,
 ) -> Vec<Pairing> {
+    use std::collections::{BTreeMap, HashMap, HashSet};
+    // indexes over the books, so a library of tens of thousands is not compared one by one
+    let mut by_dir: HashMap<PathBuf, Vec<usize>> = HashMap::new();
+    let mut by_isbn: HashMap<String, Vec<usize>> = HashMap::new();
+    let mut by_title: HashMap<String, Vec<usize>> = HashMap::new();
+    for (i, b) in books.iter().enumerate() {
+        if let Some(d) = book_dir(b) {
+            by_dir.entry(d).or_default().push(i);
+        }
+        for n in book_isbns(b) {
+            by_isbn.entry(n).or_default().push(i);
+        }
+        let k = title_key(&b.meta.title).main;
+        if !k.is_empty() {
+            by_title.entry(k).or_default().push(i);
+        }
+    }
     let mut all: Vec<Pairing> = Vec::new();
     for (ci, c) in candidates.iter().enumerate() {
+        // book index -> (score, reason); the first rule that matches a book wins, as before
+        let mut hits: BTreeMap<usize, (f64, &'static str)> = BTreeMap::new();
+        for dir in c.path.ancestors() {
+            for &i in by_dir.get(dir).into_iter().flatten() {
+                hits.entry(i).or_insert((1.0, "in the book's folder"));
+            }
+        }
+        if let Some(key) = c.isbn.as_deref().and_then(isbn::canonical) {
+            for &i in by_isbn.get(&key).into_iter().flatten() {
+                hits.entry(i).or_insert((0.99, "same ISBN"));
+            }
+        }
         let ctitle = title_key(&c.title_guess).main;
-        for b in books {
-            let (score, reason) = if book_dir(b).is_some_and(|d| c.path.starts_with(&d)) {
-                (1.0, "in the book's folder")
-            } else if c
-                .isbn
-                .as_ref()
-                .is_some_and(|i| book_isbns(b).iter().any(|x| isbn::same_isbn(x, i)))
-            {
-                (0.99, "same ISBN")
-            } else if !ctitle.is_empty() && ctitle == title_key(&b.meta.title).main {
+        if !ctitle.is_empty() {
+            for &i in by_title.get(&ctitle).into_iter().flatten() {
+                if hits.contains_key(&i) {
+                    continue;
+                }
+                let b = &books[i];
                 let author_ok = c.author_guess.is_empty()
                     || b.meta.authors.is_empty()
                     || b.meta.authors.iter().any(|a| {
@@ -202,16 +227,14 @@ pub fn pair(
                                 == normalize(&to_first_last(&c.author_guess))
                     });
                 if author_ok {
-                    (0.9, "same title and author")
-                } else {
-                    continue;
+                    hits.insert(i, (0.9, "same title and author"));
                 }
-            } else {
-                continue;
-            };
+            }
+        }
+        for (i, (score, reason)) in hits {
             if score >= 0.8 {
                 all.push(Pairing {
-                    book: b.id,
+                    book: books[i].id,
                     candidate: ci,
                     score,
                     reason,
@@ -220,15 +243,15 @@ pub fn pair(
         }
     }
     all.sort_by(|a, b| b.score.total_cmp(&a.score).then(a.book.cmp(&b.book)));
-    let mut used_books = Vec::new();
-    let mut used_cands = Vec::new();
+    let mut used_books = HashSet::new();
+    let mut used_cands = HashSet::new();
     let mut out = Vec::new();
     for p in all {
         if used_books.contains(&p.book) || used_cands.contains(&p.candidate) {
             continue;
         }
-        used_books.push(p.book);
-        used_cands.push(p.candidate);
+        used_books.insert(p.book);
+        used_cands.insert(p.candidate);
         out.push(p);
     }
     out

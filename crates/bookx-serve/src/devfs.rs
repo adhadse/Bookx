@@ -32,6 +32,7 @@ impl Space {
 }
 
 /// Free and total bytes of the file system holding `path`; `None` if it cannot be asked.
+#[cfg(unix)]
 pub fn free_space(path: &Path) -> Option<Space> {
     let st = nix::sys::statvfs::statvfs(path).ok()?;
     let unit = st.fragment_size() as u64;
@@ -41,6 +42,12 @@ pub fn free_space(path: &Path) -> Option<Space> {
         total,
         free: free.min(total),
     })
+}
+
+/// Windows: not implemented yet (needs `GetDiskFreeSpaceExW`, which is `unsafe` FFI), so no free-space line.
+#[cfg(not(unix))]
+pub fn free_space(_path: &Path) -> Option<Space> {
+    None
 }
 
 /// "512 B", "1.5 MB", "12.3 GB" (decimal units, like the devices themselves report).

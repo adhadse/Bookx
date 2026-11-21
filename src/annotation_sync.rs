@@ -118,6 +118,30 @@ pub struct Ledger {
     pub bookmarks: BTreeMap<String, crate::bookmark_sync::Entry>,
     /// Unix seconds of the last merge.
     pub last_merge: i64,
+    /// Books a device sent that match no library book (by file digest nor by title and authors),
+    /// by document hash. Shown in the Sync window until the book is added; never silent.
+    pub unmatched: BTreeMap<String, Unmatched>,
+    /// library book id -> where and when a device last sent something for it (the book's details).
+    pub last_synced: BTreeMap<u64, Synced>,
+}
+
+/// A book of a device that is not in the library.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Unmatched {
+    pub title: String,
+    pub authors: String,
+    pub device: String,
+    /// Annotations the device sent for it.
+    pub count: usize,
+    /// Unix seconds when it was first noticed.
+    pub since: i64,
+}
+
+/// The last time a device sent something for a library book.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Synced {
+    pub device: String,
+    pub time: i64,
 }
 
 fn key(doc: &str, id: &str) -> String {
@@ -179,6 +203,31 @@ pub struct Report {
     pub sent: usize,
     /// Highlights whose colour or style was corrected from the device.
     pub looks: usize,
+    /// What each device brought for each book, for the toast and the activity list.
+    pub books: Vec<BookDelta>,
+    /// Documents with no library book: document, device, annotations.
+    pub unmatched_docs: Vec<(String, String, usize)>,
+}
+
+/// What one merge did for one book of one device.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BookDelta {
+    pub document: String,
+    pub book_id: u64,
+    pub device: String,
+    pub added: usize,
+    pub linked: usize,
+    pub notes: usize,
+    pub bookmarks: usize,
+    pub removed: usize,
+    pub unplaced: usize,
+}
+
+impl BookDelta {
+    /// Highlights that are new in the library because of this sync.
+    pub fn arrived(&self) -> usize {
+        self.added + self.linked
+    }
 }
 
 impl Report {
@@ -212,7 +261,7 @@ impl Report {
             parts.push(trf("{} colours updated", &[&self.looks]));
         }
         if self.removed > 0 {
-            parts.push(trf("{} removed", &[&self.removed]));
+            parts.push(trf("{} annotations removed", &[&self.removed]));
         }
         if self.sent > 0 {
             parts.push(trf("{} sent to the device", &[&self.sent]));
@@ -431,7 +480,8 @@ pub fn merge_incoming(
     now: DateTime<Utc>,
 ) -> Report {
     let mut rep = Report::default();
-    let mut unmatched = std::collections::BTreeSet::new();
+    let mut unmatched: BTreeMap<String, (String, usize)> = BTreeMap::new();
+    let mut deltas: BTreeMap<(String, String), BookDelta> = BTreeMap::new();
     // longest text first: a passage claims its own library highlight before a shorter quote that is
     // part of it can (the server's order says nothing about which of the two the library has)
     let mut order: Vec<&Change> = changes.iter().collect();
@@ -443,13 +493,27 @@ pub fn merge_incoming(
         }
         let a = &r.annotation;
         let Some(&book_id) = ledger.docs.get(&c.document) else {
-            unmatched.insert(c.document.clone());
+            unmatched
+                .entry(c.document.clone())
+                .or_insert_with(|| (r.device.clone(), 0))
+                .1 += 1;
             continue;
         };
         let Some(book) = books.iter_mut().find(|b| b.id == book_id) else {
-            unmatched.insert(c.document.clone());
+            unmatched
+                .entry(c.document.clone())
+                .or_insert_with(|| (r.device.clone(), 0))
+                .1 += 1;
             continue;
         };
+        let before = (
+            rep.added,
+            rep.linked,
+            rep.notes,
+            rep.bookmarks,
+            rep.removed,
+            rep.unplaced,
+        );
         let k = key(&c.document, &a.id);
         let prev = ledger.incoming.get(&k).cloned();
         let is_mark = a.kind == KIND_BOOKMARK;
@@ -538,9 +602,119 @@ pub fn merge_incoming(
             )
         };
         ledger.incoming.insert(k, entry);
+        let after = (
+            rep.added,
+            rep.linked,
+            rep.notes,
+            rep.bookmarks,
+            rep.removed,
+            rep.unplaced,
+        );
+        if after != before {
+            let d = deltas
+                .entry((c.document.clone(), r.device.clone()))
+                .or_insert_with(|| BookDelta {
+                    document: c.document.clone(),
+                    book_id,
+                    device: r.device.clone(),
+                    ..BookDelta::default()
+                });
+            d.added += after.0 - before.0;
+            d.linked += after.1 - before.1;
+            d.notes += after.2 - before.2;
+            d.bookmarks += after.3 - before.3;
+            d.removed += after.4 - before.4;
+            d.unplaced += after.5 - before.5;
+        }
     }
     rep.unmatched = unmatched.len();
+    rep.unmatched_docs = unmatched
+        .into_iter()
+        .map(|(doc, (device, n))| (doc, device, n))
+        .collect();
+    rep.books = deltas.into_values().collect();
     rep
+}
+
+/// Writes what a merge found into the ledger and the activity log, so that nothing is dropped
+/// silently: books the library does not have are listed (once per new batch), highlights that were
+/// not found in their book are an event, and the server learns which documents are in the library
+/// (the plugin lists the others). `titles` are the titles/authors the device sent by document.
+pub fn record_merge(
+    log: &bookx_serve::activity::ActivityLog,
+    ledger: &mut Ledger,
+    rep: &Report,
+    docs: &[(String, String, String, String)],
+    books: &[Book],
+    now: i64,
+) {
+    use bookx_serve::activity::{Event, What};
+    let info = |doc: &str| {
+        docs.iter()
+            .find(|d| d.1 == doc)
+            .map(|d| (d.2.clone(), d.3.clone()))
+            .unwrap_or_default()
+    };
+    // documents that are in the library now are no longer a problem
+    let matched: Vec<String> = ledger.docs.keys().cloned().collect();
+    for doc in &matched {
+        ledger.unmatched.remove(doc);
+        log.set_in_library(doc, true);
+    }
+    for (doc, device, count) in &rep.unmatched_docs {
+        let (title, authors) = info(doc);
+        log.set_in_library(doc, false);
+        let changed = ledger.unmatched.get(doc).is_none_or(|u| u.count != *count);
+        let since = ledger.unmatched.get(doc).map_or(now, |u| u.since);
+        ledger.unmatched.insert(
+            doc.clone(),
+            Unmatched {
+                title: title.clone(),
+                authors,
+                device: device.clone(),
+                count: *count,
+                since,
+            },
+        );
+        if changed {
+            log.record(Event {
+                time: now,
+                device_id: String::new(),
+                device: device.clone(),
+                document: doc.clone(),
+                title,
+                what: What::NotInLibrary {
+                    count: *count as u32,
+                },
+            });
+        }
+    }
+    for d in &rep.books {
+        let title = books
+            .iter()
+            .find(|b| b.id == d.book_id)
+            .map(|b| b.meta.title.clone())
+            .unwrap_or_default();
+        if d.unplaced > 0 {
+            log.record(Event {
+                time: now,
+                device_id: String::new(),
+                device: d.device.clone(),
+                document: d.document.clone(),
+                title,
+                what: What::Unplaced {
+                    count: d.unplaced as u32,
+                },
+            });
+        }
+        ledger.last_synced.insert(
+            d.book_id,
+            Synced {
+                device: d.device.clone(),
+                time: now,
+            },
+        );
+    }
 }
 
 /// Repairs highlights that an earlier sync linked with Bookx's default yellow although the device
@@ -1740,6 +1914,146 @@ mod tests {
         );
         assert_eq!(r.unmatched, 1);
         assert!(l.incoming.is_empty());
+    }
+
+    fn docs_of(title: &str) -> Vec<(String, String, String, String)> {
+        vec![("u".into(), DOC.into(), title.into(), "Frank Herbert".into())]
+    }
+
+    #[test]
+    fn a_book_that_is_not_in_the_library_is_listed_once_and_reported_not_dropped_silently() {
+        use bookx_serve::activity::{ActivityLog, What};
+        let (mut books, mut l, loc) = setup();
+        l.docs.clear();
+        let log = ActivityLog::memory();
+        let ch = [
+            change("a", "Fear is the mind-killer.", "", 100, 1),
+            change("b", "A second long quotation.", "", 100, 2),
+        ];
+        let r = merge_incoming(&mut books, &ch, &mut l, &loc, now());
+        assert_eq!(
+            r.unmatched_docs,
+            vec![(DOC.to_string(), "Kobo Libra".to_string(), 2)]
+        );
+        record_merge(&log, &mut l, &r, &docs_of("Dune"), &books, 1_800_000_000);
+        let u = &l.unmatched[DOC];
+        assert_eq!(
+            (u.title.as_str(), u.count, u.device.as_str()),
+            ("Dune", 2, "Kobo Libra")
+        );
+        assert_eq!(log.in_library(DOC), Some(false), "the device is told");
+        let e = log.events(5);
+        assert_eq!(e.len(), 1);
+        assert_eq!(e[0].what, What::NotInLibrary { count: 2 });
+        assert_eq!(e[0].title, "Dune");
+        // the same merge again: still listed, no second event
+        let r = merge_incoming(&mut books, &ch, &mut l, &loc, now());
+        record_merge(&log, &mut l, &r, &docs_of("Dune"), &books, 1_800_000_100);
+        assert_eq!(log.events(5).len(), 1, "no event per repeat");
+        assert_eq!(l.unmatched[DOC].since, 1_800_000_000, "first noticed stays");
+        // a third highlight arrives: the count moves, one more event
+        let mut more = ch.to_vec();
+        more.push(change("c", "Another quote of some length.", "", 100, 3));
+        let r = merge_incoming(&mut books, &more, &mut l, &loc, now());
+        record_merge(&log, &mut l, &r, &docs_of("Dune"), &books, 1_800_000_200);
+        assert_eq!(log.events(5).len(), 2);
+        // the book is added to the library: it matches, the warning goes
+        l.docs.insert(DOC.into(), 1);
+        let r = merge_incoming(&mut books, &more, &mut l, &loc, now());
+        record_merge(&log, &mut l, &r, &docs_of("Dune"), &books, 1_800_000_300);
+        assert!(l.unmatched.is_empty());
+        assert_eq!(log.in_library(DOC), Some(true));
+        assert_eq!(
+            r.added, 2,
+            "and the highlights that were waiting are imported"
+        );
+    }
+
+    #[test]
+    fn what_a_device_brought_is_counted_per_book_and_device() {
+        let (mut books, mut l, loc) = setup();
+        let ch = [
+            change("a", "Fear is the mind-killer.", "", 100, 1),
+            change("b", "A second long quotation.", "n", 100, 2),
+            mark_change("m", 7, 100, 3),
+        ];
+        let r = merge_incoming(&mut books, &ch, &mut l, &exact(2, 0.4), now());
+        assert_eq!(r.books.len(), 1);
+        let d = &r.books[0];
+        assert_eq!(
+            (d.book_id, d.device.as_str(), d.document.as_str()),
+            (1, "Kobo Libra", DOC)
+        );
+        assert_eq!(
+            (d.added, d.bookmarks),
+            (0, 1),
+            "no locator hits here, so no highlight is painted"
+        );
+        // an unplaced quote is counted as such, per book
+        let (mut books, mut l, loc2) = setup();
+        let _ = loc;
+        let r = merge_incoming(
+            &mut books,
+            &[change(
+                "x",
+                "This sentence is not in the book anywhere.",
+                "",
+                100,
+                1,
+            )],
+            &mut l,
+            &loc2,
+            now(),
+        );
+        assert_eq!(r.books[0].unplaced, 1);
+        // a repeat brings nothing
+        let r2 = merge_incoming(
+            &mut books,
+            &[change(
+                "x",
+                "This sentence is not in the book anywhere.",
+                "",
+                100,
+                1,
+            )],
+            &mut l,
+            &loc2,
+            now(),
+        );
+        assert!(r2.books.is_empty());
+    }
+
+    #[test]
+    fn a_highlight_that_is_not_found_in_the_book_is_an_event_and_the_book_remembers_its_last_sync()
+    {
+        use bookx_serve::activity::{ActivityLog, What};
+        let (mut books, mut l, loc) = setup();
+        let log = ActivityLog::memory();
+        let r = merge_incoming(
+            &mut books,
+            &[
+                change(
+                    "x",
+                    "This sentence is not in the book anywhere.",
+                    "",
+                    100,
+                    1,
+                ),
+                change("a", "Fear is the mind-killer.", "", 100, 2),
+            ],
+            &mut l,
+            &loc,
+            now(),
+        );
+        record_merge(&log, &mut l, &r, &docs_of("Dune"), &books, 1_800_000_000);
+        let e = log.events(5);
+        assert_eq!(e.len(), 1);
+        assert_eq!(e[0].what, What::Unplaced { count: 1 });
+        assert_eq!(e[0].title, "Dune");
+        let s = &l.last_synced[&1];
+        assert_eq!((s.device.as_str(), s.time), ("Kobo Libra", 1_800_000_000));
+        assert_eq!(log.in_library(DOC), Some(true));
+        let _ = r;
     }
 
     #[test]

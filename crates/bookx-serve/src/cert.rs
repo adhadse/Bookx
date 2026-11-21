@@ -55,12 +55,15 @@ pub fn write_self_signed(dir: &Path, names: &[String]) -> Result<(PathBuf, PathB
 
 fn write_private(path: &Path, bytes: &[u8]) -> Result<()> {
     use std::io::Write;
-    use std::os::unix::fs::OpenOptionsExt;
-    let mut f = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .mode(0o600)
+    let mut opts = std::fs::OpenOptions::new();
+    opts.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.mode(0o600);
+    }
+    // Windows has no mode bits: the key lives in the user's profile folder, whose ACL is private to the user.
+    let mut f = opts
         .open(path)
         .with_context(|| format!("writing {}", path.display()))?;
     f.write_all(bytes)?;
@@ -96,6 +99,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(d);
     }
 
+    #[cfg(unix)]
     #[test]
     fn the_key_is_private_to_the_owner() {
         use std::os::unix::fs::PermissionsExt;

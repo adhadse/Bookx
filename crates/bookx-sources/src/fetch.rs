@@ -82,6 +82,19 @@ pub trait Fetcher: Send + Sync {
     fn fetch(&self, req: &Request) -> Result<Vec<u8>> {
         self.get(&req.url, &req.headers)
     }
+
+    /// POSTs `body` (for sign-in forms and small API calls); the answer is read like [`get`](Self::get).
+    /// A fetcher that cannot send data says so.
+    fn post(
+        &self,
+        url: &str,
+        headers: &[(String, String)],
+        content_type: &str,
+        body: &[u8],
+    ) -> Result<Vec<u8>> {
+        let _ = (url, headers, content_type, body);
+        Err(FetchError::Other("this fetcher cannot send data".into()).into())
+    }
 }
 
 /// Real HTTP(S) client (rustls). Everything else in the crate is network free.
@@ -99,12 +112,19 @@ impl UreqFetcher {
     }
 
     pub fn with_limits(timeout: Duration, max_bytes: u64) -> Self {
-        let agent: ureq::Agent = ureq::Agent::config_builder()
+        let config = ureq::Agent::config_builder()
             .timeout_global(Some(timeout))
             .http_status_as_error(false)
+            .max_redirects(crate::netguard::MAX_REDIRECTS)
             .user_agent(Self::USER_AGENT)
-            .build()
-            .into();
+            .build();
+        // every hop is resolved by the guard, which drops private and local addresses unless the
+        // user configured the host (see `netguard`)
+        let agent = ureq::Agent::with_parts(
+            config,
+            ureq::unversioned::transport::DefaultConnector::new(),
+            crate::netguard::GuardedResolver::default(),
+        );
         UreqFetcher { agent, max_bytes }
     }
 }
@@ -136,6 +156,15 @@ impl Fetcher for UreqFetcher {
         if is_offline() {
             return Err(FetchError::Other(OFFLINE_MESSAGE.into()).into());
         }
+        let scheme_ok = {
+            let l = url.trim_start().to_ascii_lowercase();
+            l.starts_with("http://") || l.starts_with("https://")
+        };
+        if !scheme_ok {
+            return Err(
+                FetchError::Other("only http and https addresses are fetched".into()).into(),
+            );
+        }
         let mut req = self.agent.get(url);
         for (k, v) in headers {
             req = req.header(k.as_str(), v.as_str());
@@ -152,6 +181,45 @@ impl Fetcher for UreqFetcher {
             .read_to_vec()
             .map_err(map_ureq_error)?;
         Ok(body)
+    }
+
+    fn post(
+        &self,
+        url: &str,
+        headers: &[(String, String)],
+        content_type: &str,
+        body: &[u8],
+    ) -> Result<Vec<u8>> {
+        Self::check_url(url)?;
+        let mut req = self.agent.post(url).content_type(content_type);
+        for (k, v) in headers {
+            req = req.header(k.as_str(), v.as_str());
+        }
+        let mut resp = req.send(body).map_err(map_ureq_error)?;
+        let status = resp.status().as_u16();
+        if !(200..300).contains(&status) {
+            return Err(FetchError::Http(status).into());
+        }
+        resp.body_mut()
+            .with_config()
+            .limit(self.max_bytes)
+            .read_to_vec()
+            .map_err(map_ureq_error)
+    }
+}
+
+impl UreqFetcher {
+    fn check_url(url: &str) -> Result<()> {
+        if is_offline() {
+            return Err(FetchError::Other(OFFLINE_MESSAGE.into()).into());
+        }
+        let l = url.trim_start().to_ascii_lowercase();
+        if !(l.starts_with("http://") || l.starts_with("https://")) {
+            return Err(
+                FetchError::Other("only http and https addresses are fetched".into()).into(),
+            );
+        }
+        Ok(())
     }
 }
 
@@ -178,6 +246,7 @@ pub struct MockFetcher {
     exact: Mutex<HashMap<String, MockReply>>,
     prefixes: Mutex<Vec<(String, MockReply)>>,
     log: Mutex<Vec<Request>>,
+    posts: Mutex<Vec<(Request, Vec<u8>)>>,
 }
 
 impl MockFetcher {
@@ -207,18 +276,13 @@ impl MockFetcher {
     pub fn urls(&self) -> Vec<String> {
         lock(&self.log).iter().map(|r| r.url.clone()).collect()
     }
-}
 
-fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-    m.lock().unwrap_or_else(|p| p.into_inner())
-}
+    /// Every POST received so far: the request (with a `content-type` header) and its body.
+    pub fn posts(&self) -> Vec<(Request, Vec<u8>)> {
+        lock(&self.posts).clone()
+    }
 
-impl Fetcher for MockFetcher {
-    fn get(&self, url: &str, headers: &[(String, String)]) -> Result<Vec<u8>> {
-        lock(&self.log).push(Request {
-            url: url.to_string(),
-            headers: headers.to_vec(),
-        });
+    fn reply_for(&self, url: &str) -> Result<Vec<u8>> {
         let reply = lock(&self.exact).get(url).cloned().or_else(|| {
             lock(&self.prefixes)
                 .iter()
@@ -232,6 +296,39 @@ impl Fetcher for MockFetcher {
             Some(MockReply::Failure(m)) => Err(FetchError::Other(m).into()),
             None => Err(FetchError::Http(404).into()),
         }
+    }
+}
+
+fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|p| p.into_inner())
+}
+
+impl Fetcher for MockFetcher {
+    fn get(&self, url: &str, headers: &[(String, String)]) -> Result<Vec<u8>> {
+        lock(&self.log).push(Request {
+            url: url.to_string(),
+            headers: headers.to_vec(),
+        });
+        self.reply_for(url)
+    }
+
+    fn post(
+        &self,
+        url: &str,
+        headers: &[(String, String)],
+        content_type: &str,
+        body: &[u8],
+    ) -> Result<Vec<u8>> {
+        let mut h = headers.to_vec();
+        h.push(("content-type".into(), content_type.into()));
+        lock(&self.posts).push((
+            Request {
+                url: url.to_string(),
+                headers: h,
+            },
+            body.to_vec(),
+        ));
+        self.reply_for(url)
     }
 }
 
@@ -590,6 +687,144 @@ mod tests {
         assert_eq!(s[1], 1000, "spacing before the third request");
         assert_eq!(s[2], 100, "one backoff between the two attempts");
         assert_eq!(s.len(), 3);
+    }
+
+    /// One-shot local HTTP server answering every request with `reply`; returns its port and a
+    /// counter of the connections it accepted.
+    fn local_server(
+        ip: &str,
+        reply: String,
+    ) -> (u16, std::sync::Arc<std::sync::atomic::AtomicUsize>) {
+        use std::io::{Read, Write};
+        let l = std::net::TcpListener::bind(format!("{ip}:0")).unwrap();
+        let port = l.local_addr().unwrap().port();
+        let hits = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let h = hits.clone();
+        std::thread::spawn(move || {
+            for s in l.incoming().flatten() {
+                h.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                let mut s = s;
+                let mut buf = [0u8; 2048];
+                let _ = s.read(&mut buf);
+                let _ = s.write_all(reply.as_bytes());
+            }
+        });
+        (port, hits)
+    }
+
+    fn ok_reply(body: &str) -> String {
+        format!(
+            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        )
+    }
+
+    #[test]
+    fn loopback_and_metadata_addresses_are_refused_before_any_connection() {
+        let (port, hits) = local_server("127.0.0.1", ok_reply("secret"));
+        let f = UreqFetcher::with_limits(Duration::from_secs(5), 1024);
+        for url in [
+            format!("http://127.0.0.1:{port}/"),
+            format!("http://localhost:{port}/"),
+            format!("http://[::1]:{port}/"),
+            format!("http://127.1:{port}/"),
+            format!("http://2130706433:{port}/"),
+            format!("http://0x7f.0.0.1:{port}/"),
+            "http://169.254.169.254/latest/meta-data/".to_string(),
+            "http://[fd00:ec2::254]/latest/".to_string(),
+            "http://10.0.0.1/".to_string(),
+            "http://192.168.1.1/".to_string(),
+            "http://100.100.100.200/".to_string(),
+            "http://[::ffff:127.0.0.1]/".to_string(),
+        ] {
+            let e = f.get(&url, &[]).unwrap_err();
+            assert!(
+                FetchError::of(&e).is_some() || e.to_string().contains("private"),
+                "{url}: {e}"
+            );
+        }
+        assert_eq!(
+            hits.load(std::sync::atomic::Ordering::SeqCst),
+            0,
+            "nothing connected"
+        );
+    }
+
+    #[test]
+    fn a_host_the_user_configured_may_be_local() {
+        let (port, hits) = local_server("127.0.0.11", ok_reply("catalogue"));
+        let url = format!("http://127.0.0.11:{port}/opds");
+        let f = UreqFetcher::with_limits(Duration::from_secs(5), 1024);
+        assert!(f.get(&url, &[]).is_err());
+        crate::netguard::trust_url(&url);
+        assert_eq!(f.get(&url, &[]).unwrap(), b"catalogue");
+        assert_eq!(hits.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn a_redirect_to_a_private_address_is_not_followed() {
+        // the first hop is trusted (the user typed it), the Location is not
+        let (target_port, target_hits) = local_server("127.0.0.2", ok_reply("internal"));
+        let (port, _) = local_server("127.0.0.12", format!(
+            "HTTP/1.1 302 Found\r\nLocation: http://127.0.0.2:{target_port}/\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+        ));
+        let first = format!("http://127.0.0.12:{port}/start");
+        crate::netguard::trust_url(&first);
+        let f = UreqFetcher::with_limits(Duration::from_secs(5), 1024);
+        assert!(f.get(&first, &[]).is_err());
+        assert_eq!(target_hits.load(std::sync::atomic::Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn redirect_loops_stop_at_the_cap() {
+        crate::netguard::trust_host("127.0.0.13");
+        let probe = std::net::TcpListener::bind("127.0.0.13:0").unwrap();
+        let lport = probe.local_addr().unwrap().port();
+        drop(probe);
+        let l = std::net::TcpListener::bind(format!("127.0.0.13:{lport}")).unwrap();
+        let lhits = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let h = lhits.clone();
+        std::thread::spawn(move || {
+            use std::io::{Read, Write};
+            for mut s in l.incoming().flatten() {
+                h.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                let mut buf = [0u8; 2048];
+                let _ = s.read(&mut buf);
+                let _ = s.write_all(
+                    format!("HTTP/1.1 302 Found\r\nLocation: http://127.0.0.13:{lport}/x\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").as_bytes(),
+                );
+            }
+        });
+        let start = format!("http://127.0.0.13:{lport}/x");
+        let f = UreqFetcher::with_limits(Duration::from_secs(5), 1024);
+        assert!(f.get(&start, &[]).is_err());
+        let n = lhits.load(std::sync::atomic::Ordering::SeqCst);
+        assert!(
+            n <= crate::netguard::MAX_REDIRECTS as usize + 1,
+            "{n} requests"
+        );
+    }
+
+    #[test]
+    fn only_http_and_https_are_fetched() {
+        let f = UreqFetcher::with_limits(Duration::from_secs(1), 1024);
+        for u in [
+            "file:///etc/passwd",
+            "ftp://example.com/x",
+            "data:text/plain,hi",
+            "gopher://x/",
+        ] {
+            assert!(f.get(u, &[]).is_err(), "{u}");
+        }
+    }
+
+    #[test]
+    fn the_body_cap_is_enforced() {
+        let (port, _) = local_server("127.0.0.14", ok_reply(&"x".repeat(5000)));
+        let url = format!("http://127.0.0.14:{port}/big");
+        crate::netguard::trust_url(&url);
+        let f = UreqFetcher::with_limits(Duration::from_secs(5), 1024);
+        assert!(f.get(&url, &[]).is_err());
     }
 
     #[test]

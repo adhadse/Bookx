@@ -21,9 +21,9 @@ impl Archive {
     }
 
     /// Largest size one member may expand to.
-    pub const MAX_MEMBER: u64 = 512 << 20;
+    pub const MAX_MEMBER: u64 = crate::limits::ARCHIVE_MEMBER_BYTES;
     /// Largest total size of all members.
-    pub const MAX_TOTAL: u64 = 2 << 30;
+    pub const MAX_TOTAL: u64 = crate::limits::ARCHIVE_TOTAL_BYTES;
 
     pub fn from_bytes(data: Vec<u8>) -> Result<Self> {
         let mut zip = ZipArchive::new(Cursor::new(data)).context("not a valid zip/epub file")?;

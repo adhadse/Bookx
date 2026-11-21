@@ -144,3 +144,31 @@ fn rb_book_converts_within_budget() {
     let took = t.elapsed();
     check("RB 1.2 MB", took, budget(150));
 }
+
+#[test]
+fn rar_listing_and_stream_cutting_of_the_largest_accepted_archive_stay_fast() {
+    use bookx_formats::rar::{
+        check_listing, parse_7z_list, parse_unrar_list, split_stream, MAX_LISTED,
+    };
+    let mut seven = String::new();
+    let mut unrar = String::new();
+    for i in 0..MAX_LISTED {
+        seven +=
+            &format!("Path = dir/page-{i:05}.jpg\nSize = 4096\nFolder = -\nAttributes = A\n\n");
+        unrar += &format!(
+            "        Name: dir/page-{i:05}.jpg\n        Type: File\n        Size: 4096\n\n"
+        );
+    }
+    let t = Instant::now();
+    let listed = parse_7z_list(&seven);
+    let listed2 = parse_unrar_list(&unrar);
+    assert_eq!(listed.len(), MAX_LISTED);
+    assert_eq!(listed2.len(), MAX_LISTED);
+    check_listing(&listed).unwrap();
+    check("two listings of 20,000 entries", t.elapsed(), budget(400));
+    let stream = vec![0u8; MAX_LISTED * 4096];
+    let t = Instant::now();
+    let files = split_stream(&listed, &stream).unwrap();
+    assert_eq!(files.len(), MAX_LISTED);
+    check("cutting 80 MB into 20,000 pages", t.elapsed(), budget(400));
+}

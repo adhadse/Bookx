@@ -5,7 +5,7 @@
 //! the internal EPUB [`Archive`]. [`default_readers`] registers them all and [`read_any`] picks
 //! the right one by extension, then by content.
 //!
-//! Formats: FB2/FBZ, RTF, DOCX, ODT, HTMLZ, TXTZ, TXT, MD, HTML, CBZ/CBT/CBR, CBC, MOBI/AZW/AZW3/PRC,
+//! Formats: FB2/FBZ, RTF, DOCX, ODT, HTMLZ, TXTZ, TXT, MD, HTML, CBZ/CBT/CBR (RAR through `unrar`/7-Zip), DJVU (through DjVuLibre), CBC, MOBI/AZW/AZW3/PRC,
 //! PDB (eReader, zTXT, PalmDOC), PML/PMLZ, RB, SNB, TCR, CHM, LRF (best effort), plus the explicit errors
 //! for AZW4 (PDF wrapper) and LIT (discontinued format, recognised but not supported). PDF is
 //! reflowed to chapters (experimental, see `pdf`).
@@ -15,8 +15,10 @@ pub mod cbc;
 pub mod chm;
 pub mod comic;
 pub mod common;
+pub mod djvu;
 pub mod docx;
 pub mod fb2;
+pub(crate) mod helper;
 pub mod lit;
 pub mod lrf;
 pub mod lzx;
@@ -27,6 +29,7 @@ pub mod odt;
 pub mod pdb;
 pub mod pdf;
 pub mod pml;
+pub mod rar;
 pub mod rb;
 pub mod rtf;
 pub mod snb;
@@ -64,6 +67,7 @@ pub fn default_readers() -> Registry<dyn FormatReader> {
     r.register(Box::new(chm::ChmReader));
     r.register(Box::new(lit::LitReader));
     r.register(Box::new(lrf::LrfReader));
+    r.register(Box::new(djvu::DjvuReader));
     r.register(Box::new(pdf::PdfReader));
     r.register(Box::new(pml::PmlzReader));
     r.register(Box::new(cbc::CbcReader));

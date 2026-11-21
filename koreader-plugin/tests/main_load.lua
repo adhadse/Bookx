@@ -107,7 +107,7 @@ check(menu_items_registered == b, "registers itself with the main menu")
 check(b.settings:readSetting("device_id") ~= nil, "device id made")
 local items = {}; b:addToMainMenu(items)
 check(items.bookx and items.bookx.sorting_hint == "more_tools", "menu entry hangs under Tools > More tools")
-eq(#items.bookx.sub_item_table, 6, "six entries")
+eq(#items.bookx.sub_item_table, 7, "seven entries")
 for _, e in ipairs(items.bookx.sub_item_table) do check(e.text or e.text_func, "entry has text") end
 if ko then
     local Sorter = require("ui/menusorter")
@@ -164,7 +164,7 @@ eq(sent.title, "Real Book", "title"); eq(#sent.annotations, 2, "two annotations 
 local kinds = {}; for _, a in ipairs(sent.annotations) do kinds[a.kind] = a end
 check(kinds.highlight and kinds.highlight.page == 233 and kinds.highlight.drawer == "lighten", "highlight fields")
 check(kinds.bookmark and kinds.bookmark.text == "", "page bookmark has no text")
-eq(shown[1].text, "Sent 2, removed 0, received 1 from Bookx", "summary shown")
+eq(shown[1].text, "Sent 2: 1 highlight, 1 bookmark, received 1 note from Bookx", "summary shown")
 shown = {}; b:showInbox()
 check(shown[1].text:find("from Bookx", 1, true) ~= nil, "inbox shows the note")
 -- events
@@ -256,7 +256,7 @@ do
     end
     local m = run_test(function() return 200, '{"authorized":"OK"}' end)
     eq(m, "Connected as ann", "test: 200")
-    eq(#requests, 1, "one auth request")
+    eq(#requests, 2, "an auth request and the version check")
     eq(requests[1].method, "GET", "auth is a GET")
     check(requests[1].url == "http://192.168.1.20:8765/bookx/users/auth", "auth url: " .. requests[1].url)
     eq(requests[1].headers["x-auth-user"], "ann", "auth user header")
@@ -266,7 +266,7 @@ do
     eq(run_test(function() return 401, "{}" end), "Wrong user name or password", "test: 401")
     eq(b.state.test.ok, false, "failed test recorded")
     eq(run_test(function() return 404, "{}" end), "Bookx sync is not enabled at that address (404)", "test: 404")
-    eq(run_test(function() return nil, "connection refused" end), "Cannot reach the server", "test: network error")
+    eq(run_test(function() return nil, "connection refused" end), "Cannot reach 192.168.1.20:8765 (connection refused)", "test: network error")
     check(run_test(function() return nil, "timeout" end):find("timeout", 1, true) ~= nil, "test: timeout")
     -- a saved URL without the path gets /bookx
     b.settings:saveSetting("server", "http://192.168.1.20:8765/")
@@ -283,13 +283,13 @@ do
     local d = open_dialog(b)
     d.values = { "http://192.168.1.20:8765/bookx", "ann", "", "My Kobo" }
     requests = {}; press(d, "Test connection")
-    eq(#requests, 1, "the button in the dialog tests")
+    check(#requests >= 1, "the button in the dialog tests")
     -- menu item
     local its = {}; b:addToMainMenu(its)
     local found
     for _, e in ipairs(its.bookx.sub_item_table) do if e.text == "Test connection" then found = e end end
     check(found ~= nil, "Test connection menu item")
-    requests = {}; found.callback(); eq(#requests, 1, "menu item runs the test")
+    requests = {}; found.callback(); check(#requests >= 1, "menu item runs the test")
     b.state.last = nil
     check(its.bookx.sub_item_table[1].text_func():find("Last test OK", 1, true) ~= nil, "status shows the test result: " .. its.bookx.sub_item_table[1].text_func())
 end
@@ -330,7 +330,7 @@ do
     end
     check(fail_with(402, "{}"):find("taken", 1, true) ~= nil, "402: name taken")
     check(fail_with(403, "{}"):find("closed", 1, true) ~= nil, "403: registration closed")
-    eq(fail_with(nil, "connection refused"), "Cannot reach the server", "register network error")
+    eq(fail_with(nil, "connection refused"), "Cannot reach 10.0.0.5:8765 (connection refused)", "register network error")
     check(fail_with(404, "{}"):find("not enabled", 1, true) ~= nil, "register 404")
     -- empty fields
     local f3 = Bookx:new{ ui = ui }; local dd = open_dialog(f3); dd.values = { "http://x/bookx", "u", "", "" }
@@ -358,7 +358,7 @@ do
     local bad = Bookx:new{ ui = ui }
     bad.settings = setmetatable({}, { __index = function() error("settings exploded") end })
     shown = {}
-    local ok = pcall(function() return bad:configured() end)
+    local ok = pcall(function() return bad:syncNow(false) end)
     check(ok, "an error in a settings read does not escape a plugin method")
     local ok2 = pcall(function() bad:onCloseDocument() end)
     check(ok2, "an error in an event hook does not escape")

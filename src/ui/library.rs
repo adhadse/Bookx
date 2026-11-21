@@ -38,6 +38,8 @@ thread_local! {
 /// What an import reports for a file it skipped because the job was cancelled.
 #[path = "library_extra.rs"]
 mod extra;
+#[path = "library_t3.rs"]
+mod t3;
 
 const IMPORT_CANCELLED: &str = "cancelled";
 
@@ -426,6 +428,8 @@ pub struct BookRow {
     author_sort: String,
     series_key: String,
     added_ts: i64,
+    /// Values of the custom columns (the table shows the ones the user ticked).
+    pub(super) custom: std::collections::BTreeMap<String, String>,
 }
 
 impl BookRow {
@@ -459,6 +463,7 @@ impl BookRow {
                 b.meta.series_index.max(0.0)
             ),
             added_ts: b.added.timestamp_millis(),
+            custom: b.custom.clone(),
         }
     }
 }
@@ -683,6 +688,22 @@ pub enum Act {
     UnlinkEditions,
     /// Show the edition list of the selected card.
     ShowEditionList,
+    /// Search and replace in a field of the selected books.
+    Replace,
+    /// Mark the selected books (or unmark them when all are marked).
+    Mark,
+    /// Remove every mark.
+    ClearMarks,
+    /// The other books that share an author, series or tag with the selected one.
+    Quickview,
+    /// Add a record without a file.
+    AddEmpty,
+    /// Add a record from an ISBN and look it up.
+    AddIsbn,
+    /// Make the cover from the first page of the book's PDF.
+    CoverFromPdf,
+    /// Cut the cover to 2:3.
+    TrimCover,
 }
 
 impl Act {
@@ -714,6 +735,10 @@ impl Act {
 #[derive(Debug)]
 pub enum Input {
     Refresh,
+    /// A sync changed a book (see `sync_bus`): counts, the Notes view, the card and the details follow.
+    SyncLive(crate::sync_bus::SyncEvent),
+    /// Notes & Highlights narrowed to a book (the toast of a sync that arrived).
+    ShowNotesFor(String),
     FindDuplicates,
     /// Series / Authors / Audiobooks / Trackers windows.
     Organize(&'static str),
@@ -749,8 +774,15 @@ pub enum Input {
     Pick(u64, nav::Pick),
     /// Saved Searches / virtual libraries window.
     SavedSearches,
-    /// Online (OPDS) catalogues window.
+    /// Online (OPDS) catalogues page.
     Opds,
+    /// Preferences → Library → Sidebar.
+    CustomizeSidebar,
+    /// The layout of the sidebar was changed in Preferences: show it.
+    SidebarChanged,
+    /// A sidebar group in a dialog (`shelves` or a category label): how a group the user hid from
+    /// the sidebar stays reachable from the command palette.
+    Browse(&'static str),
     /// Fetch Metadata… for these books.
     BulkFetch(Vec<u64>),
     /// Library Health window; `true` starts the Calibre import right away.
@@ -822,6 +854,14 @@ pub enum Output {
     SwitchLibrary(PathBuf),
 }
 
+/// One shown view row of the sidebar.
+struct NavRow {
+    view: View,
+    list: gtk::ListBox,
+    row: gtk::ListBoxRow,
+    count: gtk::Label,
+}
+
 struct W {
     /// Undo toasts of the library window (removing books, deleting a shelf).
     toasts: adw::ToastOverlay,
@@ -829,9 +869,11 @@ struct W {
     stack: gtk::Stack,
     /// The books (`stack`) or the notes view.
     content: gtk::Stack,
-    /// Home, Recent, Favourites, Notes & Highlights.
-    top: gtk::ListBox,
-    top_counts: Vec<gtk::Label>,
+    /// The view rows of the sidebar (Home, Recent, Favourites, Notes & Highlights, Online
+    /// Catalogues) that are shown, rebuilt with the sidebar.
+    nav_rows: RefCell<Vec<NavRow>>,
+    /// The pinned Library Health row (hidden when the user hid it).
+    health_wrap: gtk::Box,
     health_badge: gtk::Label,
     sel_details: gtk::Button,
     sel_del: gtk::Button,
@@ -860,6 +902,8 @@ struct W {
     title_stack: gtk::Stack,
     sel_title: adw::WindowTitle,
     cancel_btn: gtk::Button,
+    /// the Library menu: hidden while books are selected, to leave the header room for Cancel
+    library_btn: gtk::MenuButton,
     sel_read: gtk::Button,
     sel_edit: gtk::Button,
     sel_shelf: gtk::MenuButton,
@@ -912,6 +956,9 @@ impl Fill {
 }
 
 pub struct LibraryView {
+    /// Follows the sidebar settings of Preferences while the window lives.
+    _sidebar_sub: crate::settings_bus::Subscription,
+    _sync_sub: crate::sync_bus::Subscription,
     shared: SharedRef,
     root: adw::NavigationPage,
     sender: ComponentSender<Self>,
@@ -978,6 +1025,20 @@ struct NewsState {
 
 impl LibraryView {
     /// What the Library Health window calls after it changed the library: save, show, toast.
+    /// What the Calibre import (a background job) calls back into this window.
+    fn calibre_ctx(&self) -> super::calibre_import::Ctx {
+        let (t1, t2, t3) = (
+            self.sender.input_sender().clone(),
+            self.sender.input_sender().clone(),
+            self.sender.input_sender().clone(),
+        );
+        super::calibre_import::Ctx {
+            refresh: Rc::new(move || t1.emit(Input::Refresh)),
+            toast: Rc::new(move |m| t2.emit(Input::Toast(m))),
+            view: Rc::new(move || t3.emit(Input::SetNav(View::Recent))),
+        }
+    }
+
     fn health_notify(&self) -> Rc<dyn Fn(String)> {
         let tx = self.sender.input_sender().clone();
         let shared = self.shared.clone();
@@ -1139,7 +1200,7 @@ impl LibraryView {
 
     /// The books of the sidebar view (Recent, Favourites) among the ones the search found.
     fn apply_nav_view(&self, ids: Vec<u64>, searching: bool) -> Vec<u64> {
-        if matches!(self.view, View::Home | View::Notes) {
+        if matches!(self.view, View::Home | View::Notes | View::Catalogues) {
             return ids;
         }
         let favs = self.shared.cfg.borrow().favourites.clone();
@@ -1633,6 +1694,7 @@ impl LibraryView {
 
         let mode = self.shared.cfg.borrow().view_mode;
         self.begin_fill(items, rows, mode == ViewMode::Grid);
+        super::custom_columns::sync_table(&self.table.view, &self.shared);
 
         let nothing_in_view = n == 0
             && self.query.trim().is_empty()
@@ -1742,6 +1804,7 @@ impl LibraryView {
             return match self.view {
                 View::Recent => tr("Recent"),
                 View::Favourites => tr("Favourites"),
+                View::Catalogues => tr("Online Catalogues"),
                 _ => tr("Notes & Highlights"),
             };
         }
@@ -1756,10 +1819,11 @@ impl LibraryView {
 
     /// The books or the notes view in the content area.
     fn show_content(&self) {
-        let notes = self.view == View::Notes;
-        self.w
-            .content
-            .set_visible_child_name(if notes { "notes" } else { "books" });
+        self.w.content.set_visible_child_name(match self.view {
+            View::Notes => "notes",
+            View::Catalogues => "catalogues",
+            _ => "books",
+        });
         self.w.search.set_sensitive(self.view.shows_books());
     }
 
@@ -1807,11 +1871,22 @@ impl LibraryView {
         if view == View::Notes {
             self.ensure_notes();
         }
+        if view == View::Catalogues {
+            self.ensure_catalogues();
+        }
         self.follow_selection();
         if changed {
             self.requery();
         } else {
             self.show_content();
+        }
+    }
+
+    /// The Online Catalogues page is built the first time it is shown and then keeps its place.
+    fn ensure_catalogues(&self) {
+        if self.w.content.child_by_name("catalogues").is_none() {
+            let page = super::opds::page(&self.shared, self.opds_import());
+            self.w.content.add_named(&page, Some("catalogues"));
         }
     }
 
@@ -1878,7 +1953,7 @@ impl LibraryView {
     fn follow_selection(&self) {
         let split = &self.w.split_details;
         let want = nav::details_for(self.selected.len()) != nav::Details::Hidden
-            && self.view != View::Notes
+            && self.view.shows_books()
             && self.shared.cfg.borrow().details_pane;
         if want && split.is_collapsed() {
             return;
@@ -2001,6 +2076,10 @@ impl LibraryView {
         } else {
             "view-sort-descending-symbolic"
         });
+        if super::custom_columns::restore_sort(&self.table.view, &self.shared) {
+            w.table_sync.set(false);
+            return;
+        }
         let col = nav::column_for_sort(key)
             .and_then(|n| w.table_cols.iter().find(|(c, _)| *c == n))
             .map(|(_, c)| c);
@@ -2022,7 +2101,7 @@ impl LibraryView {
         };
         let d = adw::AlertDialog::new(
             Some(&tr("Add from the Web")),
-            Some(&tr("Paste the address of an article to read later, or of a news feed (RSS, Atom, JSON Feed) to make a book of its latest articles.")),
+            Some(&tr("Paste the address of an article to read later, or of a news feed (RSS, Atom, JSON Feed) to make a book of its latest articles. Type wikipedia:Title to make a book of a Wikipedia article.")),
         );
         let entry = gtk::Entry::new();
         entry.set_placeholder_text(Some(&tr("https://example.com/article")));
@@ -2030,7 +2109,15 @@ impl LibraryView {
         entry.set_widget_name("add-web-url");
         crate::ui::audit::label(&entry, &tr("Address"));
         entry.set_activates_default(true);
-        d.set_extra_child(Some(&entry));
+        {
+            let tx = self.sender.input_sender().clone();
+            d.set_extra_child(Some(&super::wallabag::extra_child(
+                &entry,
+                &win,
+                &self.shared,
+                Rc::new(move |r| tx.emit(Input::Prepared(r))),
+            )));
+        }
         d.add_responses(&[("cancel", &tr("Cancel")), ("add", &tr("Add"))]);
         d.set_response_appearance("add", adw::ResponseAppearance::Suggested);
         d.set_default_response(Some("add"));
@@ -2044,7 +2131,7 @@ impl LibraryView {
     }
 
     fn update_bottom_bar(&self) {
-        let in_notes = self.view == View::Notes;
+        let in_notes = !self.view.shows_books();
         let n = if in_notes { 0 } else { self.selected.len() };
         if n == 0 {
             SELECTING.with(|s| s.set(false));
@@ -2064,6 +2151,7 @@ impl LibraryView {
             .title_stack
             .set_visible_child_name(if hs.selecting { "selection" } else { "title" });
         self.w.cancel_btn.set_visible(hs.selecting);
+        self.w.library_btn.set_visible(!hs.selecting);
         self.w.sel_details.set_visible(narrow);
         // a long label ("In den Papierkorb verschieben") would push the bar wider than a 360 px window
         if compact {
@@ -2235,7 +2323,7 @@ impl LibraryView {
             && mode != "hidden"
             && self.query.trim().is_empty()
             && self.shared.cfg.borrow().view_mode == ViewMode::Grid
-            && self.view != View::Notes;
+            && self.view.shows_books();
         let Some(b) = last.filter(|_| show) else {
             ctl.set_shown(false, nav::BannerKind::Strip, &mode);
             return;
@@ -2310,19 +2398,39 @@ impl LibraryView {
         Rc::new(move |q: String| tx.emit(Input::GoFilter(q)))
     }
 
-    /// The counts next to Home, Recent, Favourites and Notes & Highlights.
+    /// The layout of this library's sidebar.
+    fn sidebar_layout(&self) -> nav::SidebarLayout {
+        let key = self.shared.lib.borrow().root.to_string_lossy().to_string();
+        self.shared.cfg.borrow().sidebar_layout(&key)
+    }
+
+    /// The sidebar layout changed (Preferences): redraw the sidebar; the view that was hidden gives way to Home.
+    fn sidebar_changed(&mut self) {
+        let shown = nav::view_after_hiding(self.view, &self.sidebar_layout());
+        self.rebuild_tags();
+        if shown != self.view {
+            self.show_search(nav::search_for(nav::NavTarget::View(shown)));
+            self.set_view(shown);
+        }
+    }
+
+    /// The counts next to the view rows of the sidebar and the badge of Library Health.
     fn update_top_counts(&self) {
         let lib = self.shared.lib.borrow();
-        // the same rows the Notes & Highlights view lists, so the count never disagrees with it
-        let notes: usize = crate::notes_view::rows(&lib).len();
-        let counts = [
-            lib.books.len(),
-            lib.books.len().min(nav::RECENT_LIMIT),
-            self.shared.cfg.borrow().favourites.len(),
-            notes,
-        ];
-        for (l, n) in self.w.top_counts.iter().zip(counts) {
-            l.set_label(&n.to_string());
+        let rows = self.w.nav_rows.borrow();
+        for r in rows.iter() {
+            let n = match r.view {
+                View::Home => lib.books.len(),
+                View::Recent => lib.books.len().min(nav::RECENT_LIMIT),
+                View::Favourites => self.shared.cfg.borrow().favourites.len(),
+                // the same rows the Notes & Highlights view lists, so the count never disagrees with it
+                View::Notes => crate::notes_view::rows(&lib).len(),
+                View::Catalogues => {
+                    crate::opds_browse::presets().len()
+                        + self.shared.cfg.borrow().opds_catalogs.len()
+                }
+            };
+            r.count.set_label(&n.to_string());
         }
         let weak = lib
             .books
@@ -2335,181 +2443,324 @@ impl LibraryView {
 
     /// Marks the sidebar row of the view that is shown.
     fn select_top_row(&self) {
-        let i = View::ALL.iter().position(|v| *v == self.view).unwrap_or(0);
-        if let Some(row) = self.w.top.row_at_index(i as i32) {
-            self.w.top.select_row(Some(&row));
+        for r in self.w.nav_rows.borrow().iter() {
+            if r.view == self.view {
+                r.list.select_row(Some(&r.row));
+            } else {
+                r.list.unselect_row(&r.row);
+            }
         }
     }
 
-    /// The shelves, saved searches and browse groups (series, authors, tags…) under the fixed
-    /// entries. Rebuilt when the library changes, not when a view is picked.
+    /// The sidebar, in the order and with the entries the user chose
+    /// (`library_nav::SidebarLayout`): the views and pages, the shelves, saved searches and browse
+    /// groups (series, authors, tags...). Rebuilt when the library or the layout changes, not when
+    /// a view is picked.
     fn rebuild_tags(&self) {
-        self.update_top_counts();
         while let Some(c) = self.w.tags.first_child() {
             self.w.tags.remove(&c);
         }
-        let list = gtk::ListBox::new();
-        list.add_css_class("navigation-sidebar");
-        list.set_selection_mode(gtk::SelectionMode::None);
+        self.w.nav_rows.borrow_mut().clear();
+        let layout = self.sidebar_layout();
+        self.w.health_wrap.set_visible(layout.show_health());
         let go = self.sidebar_go();
 
+        // a run of view rows is one single-selection list, a run of groups one plain list
+        let mut views: Option<gtk::ListBox> = None;
+        let mut groups: Option<gtk::ListBox> = None;
         let lib = self.shared.lib.borrow();
-        list.append(&super::shelves::section(&self.shelf_ctx()));
-        if let Some(row) = super::audiobook_player::sidebar_row(&lib, go.clone()) {
-            list.append(&row);
+        for item in layout.visible() {
+            if let Some(view) = item.view() {
+                groups = None;
+                let list = views.get_or_insert_with(|| {
+                    let l = gtk::ListBox::new();
+                    l.add_css_class("navigation-sidebar");
+                    l.set_selection_mode(gtk::SelectionMode::Single);
+                    super::audit::label(&l, &tr("Library views"));
+                    let tx = self.sender.input_sender().clone();
+                    l.connect_row_activated(move |_, row| {
+                        let name = row.widget_name();
+                        let key = name.strip_prefix("nav-").unwrap_or("");
+                        tx.emit(Input::SetNav(View::from_key(key)));
+                    });
+                    self.w.tags.append(&l);
+                    l
+                });
+                let (row, count) = sidebar_row(
+                    &tr(item.label()),
+                    match view {
+                        View::Home => "user-home-symbolic",
+                        View::Recent => "document-open-recent-symbolic",
+                        View::Favourites => "starred-symbolic",
+                        View::Notes => "document-edit-symbolic",
+                        View::Catalogues => "network-server-symbolic",
+                    },
+                );
+                row.set_widget_name(&format!("nav-{}", view.key()));
+                list.append(&row);
+                self.w.nav_rows.borrow_mut().push(NavRow {
+                    view,
+                    list: list.clone(),
+                    row,
+                    count,
+                });
+                continue;
+            }
+            views = None;
+            let list = groups.get_or_insert_with(|| {
+                let l = gtk::ListBox::new();
+                l.add_css_class("navigation-sidebar");
+                l.set_selection_mode(gtk::SelectionMode::None);
+                self.w.tags.append(&l);
+                l
+            });
+            match item {
+                nav::SidebarItem::Shelves => {
+                    list.append(&super::shelves::section(&self.shelf_ctx()))
+                }
+                nav::SidebarItem::Audiobooks => {
+                    if let Some(row) = super::audiobook_player::sidebar_row(&lib, go.clone()) {
+                        list.append(&row);
+                    }
+                }
+                nav::SidebarItem::SavedSearches => list.append(&self.saved_searches_row(&go)),
+                _ => {
+                    for (ci, cat) in Category::ALL.iter().enumerate() {
+                        if nav::SidebarItem::of_category(*cat) == item {
+                            if let Some(exp) = self.category_row(&lib, ci, *cat, &go) {
+                                list.append(&exp);
+                            }
+                        }
+                    }
+                }
+            }
         }
+        drop(lib);
+        self.update_top_counts();
+        self.select_top_row();
+    }
 
+    /// Lists a sidebar group in a dialog.
+    fn browse_group(&self, key: &'static str) {
+        let go = self.sidebar_go();
+        if key == "shelves" {
+            let items: Vec<(String, usize)> = super::shelves::list(&self.shared)
+                .into_iter()
+                .map(|c| (c.name, c.books))
+                .collect();
+            extra::browse_dialog(
+                &self.root,
+                &tr("Shelves"),
+                items,
+                go,
+                Rc::new(|n: &str| crate::shelves::reference_for(n)),
+            );
+            return;
+        }
+        let Some(cat) = Category::ALL
+            .into_iter()
+            .find(|c| nav::SidebarItem::of_category(*c).key() == key)
+        else {
+            return;
+        };
+        let items = self.shared.lib.borrow().categories(cat);
+        extra::browse_dialog(
+            &self.root,
+            &tr(cat.label()),
+            items,
+            go,
+            Rc::new(move |n: &str| cat.search_for(n)),
+        );
+    }
+
+    /// The Saved Searches group of the sidebar.
+    fn saved_searches_row(&self, go: &Rc<dyn Fn(String)>) -> adw::ExpanderRow {
         let (saved, active_vl) = {
             let c = self.shared.cfg.borrow();
             (c.saved_searches.clone(), c.virtual_library.clone())
         };
+        let exp = adw::ExpanderRow::builder()
+            .title(tr("Saved Searches"))
+            .build();
+        exp.set_widget_name("saved-searches");
+        exp.add_suffix(&count_label(saved.len()));
+        exp.add_prefix(&gtk::Image::from_icon_name("system-search-symbolic"));
+        let manage = gtk::Button::from_icon_name("view-more-symbolic");
+        manage.add_css_class("flat");
+        manage.add_css_class("row-actions");
+        manage.set_valign(gtk::Align::Center);
+        manage.set_tooltip_text(Some(&tr("Manage Saved Searches")));
+        super::audit::label(&manage, &tr("Manage Saved Searches"));
         {
-            let exp = adw::ExpanderRow::builder()
-                .title(tr("Saved Searches"))
+            let tx = self.sender.input_sender().clone();
+            manage.connect_clicked(move |_| tx.emit(Input::SavedSearches));
+        }
+        exp.add_suffix(&manage);
+        exp.set_expanded(true);
+        for s in saved.iter().cloned() {
+            let is_vl = active_vl
+                .as_deref()
+                .is_some_and(|a| a.eq_ignore_ascii_case(&s.name));
+            let row = adw::ActionRow::builder()
+                .title(glib::markup_escape_text(&s.name))
+                .activatable(true)
                 .build();
-            exp.set_widget_name("saved-searches");
-            exp.add_suffix(&count_label(saved.len()));
-            exp.add_prefix(&gtk::Image::from_icon_name("system-search-symbolic"));
-            let manage = gtk::Button::from_icon_name("view-more-symbolic");
-            manage.add_css_class("flat");
-            manage.add_css_class("row-actions");
-            manage.set_valign(gtk::Align::Center);
-            manage.set_tooltip_text(Some(&tr("Manage Saved Searches")));
-            super::audit::label(&manage, &tr("Manage Saved Searches"));
-            {
-                let tx = self.sender.input_sender().clone();
-                manage.connect_clicked(move |_| tx.emit(Input::SavedSearches));
+            if is_vl {
+                row.add_suffix(&gtk::Image::from_icon_name("view-pin-symbolic"));
+                row.set_tooltip_text(Some(&tr("Virtual Library")));
             }
-            exp.add_suffix(&manage);
-            exp.set_expanded(true);
-            for s in saved.iter().cloned() {
-                let is_vl = active_vl
-                    .as_deref()
-                    .is_some_and(|a| a.eq_ignore_ascii_case(&s.name));
-                let row = adw::ActionRow::builder()
-                    .title(glib::markup_escape_text(&s.name))
-                    .activatable(true)
-                    .build();
-                if is_vl {
-                    row.add_suffix(&gtk::Image::from_icon_name("view-pin-symbolic"));
-                    row.set_tooltip_text(Some(&tr("Virtual Library")));
-                }
-                let (go, q) = (go.clone(), crate::saved_searches::reference_for(&s.name));
-                row.connect_activated(move |_| go(q.clone()));
-                exp.add_row(&row);
-            }
-            if saved.is_empty() {
-                let hint = adw::ActionRow::builder()
-                    .title(tr("No saved searches yet"))
-                    .subtitle(tr("Use the search tips in the search bar to save one"))
-                    .build();
-                hint.add_css_class("placeholder-row");
-                exp.add_row(&hint);
-            }
-            list.append(&exp);
+            let (go, q) = (go.clone(), crate::saved_searches::reference_for(&s.name));
+            row.connect_activated(move |_| go(q.clone()));
+            exp.add_row(&row);
         }
+        if saved.is_empty() {
+            let hint = adw::ActionRow::builder()
+                .title(tr("No saved searches yet"))
+                .subtitle(tr("Use the search tips in the search bar to save one"))
+                .build();
+            hint.add_css_class("placeholder-row");
+            exp.add_row(&hint);
+        }
+        exp
+    }
 
-        for (ci, cat) in Category::ALL.iter().enumerate() {
-            let mut items = lib.categories(*cat);
-            if items.is_empty() {
-                continue;
-            }
-            if *cat == Category::Ratings {
-                // always 5 stars .. 1 star and Unrated, even when a row has no books yet
-                let unrated = "☆".repeat(5);
-                items = (0..=5)
-                    .rev()
-                    .map(|n| {
-                        let key = if n == 0 {
-                            unrated.clone()
-                        } else {
-                            "★".repeat(n) + "☆".repeat(5 - n).as_str()
-                        };
-                        let c = items.iter().find(|(k, _)| *k == key).map_or(0, |(_, c)| *c);
-                        (key, c)
-                    })
-                    .collect();
-            }
-            let exp = adw::ExpanderRow::builder().title(tr(cat.label())).build();
-            exp.set_widget_name(&format!("group-{}", cat.label()));
-            exp.add_suffix(&count_label(items.len()));
-            exp.add_prefix(&gtk::Image::from_icon_name(cat.icon()));
-            let library_key = lib.root.to_string_lossy().to_string();
-            exp.set_expanded(
-                self.expanded.borrow().contains(&ci)
-                    || nav::is_open(
-                        &self.shared.cfg.borrow().sidebar_open,
-                        &library_key,
-                        cat.label(),
-                    ),
-            );
-            {
-                let set = self.expanded.clone();
-                let shared = self.shared.clone();
-                let (library_key, group) = (library_key.clone(), cat.label());
-                exp.connect_expanded_notify(move |e| {
-                    if e.is_expanded() {
-                        set.borrow_mut().insert(ci);
+    /// The browse group of one category (authors, series, tags...); `None` when the library has
+    /// nothing in it.
+    fn category_row(
+        &self,
+        lib: &crate::core::library::Library,
+        ci: usize,
+        cat: Category,
+        go: &Rc<dyn Fn(String)>,
+    ) -> Option<adw::ExpanderRow> {
+        let cat = &cat;
+        let mut items = lib.categories(*cat);
+        if items.is_empty() {
+            return None;
+        }
+        if *cat == Category::Ratings {
+            // always 5 stars .. 1 star and Unrated, even when a row has no books yet
+            let unrated = "☆".repeat(5);
+            items = (0..=5)
+                .rev()
+                .map(|n| {
+                    let key = if n == 0 {
+                        unrated.clone()
                     } else {
-                        set.borrow_mut().remove(&ci);
-                    }
-                    let mut c = shared.cfg.borrow_mut();
-                    let mut open = std::mem::take(&mut c.sidebar_open);
-                    nav::set_open(&mut open, &library_key, group, e.is_expanded());
-                    c.sidebar_open = open;
-                    c.save();
-                });
-            }
-            let overview = match cat {
-                Category::Series => Some(("series", tr("Series overview"))),
-                Category::Authors => Some(("authors", tr("Manage authors"))),
-                _ => None,
-            };
-            if let Some((which, tip)) = overview {
-                let b = gtk::Button::from_icon_name("view-more-symbolic");
-                b.add_css_class("flat");
-                b.add_css_class("row-actions");
-                b.set_valign(gtk::Align::Center);
-                b.set_tooltip_text(Some(&tip));
-                super::audit::label(&b, &tip);
-                let tx = self.sender.input_sender().clone();
-                b.connect_clicked(move |_| tx.emit(Input::Organize(which)));
-                exp.add_suffix(&b);
-            }
-            // the most used entries; the rest are behind "Show All"
-            let all_items = items.clone();
-            let (items, hidden) = if matches!(cat, Category::Ratings | Category::Status) {
-                (items, 0)
-            } else {
-                nav::top_n(items, nav::SIDEBAR_TOP)
-            };
-            for (name, count) in items.into_iter() {
-                let shown = if *cat == Category::Ratings && !name.contains('★') {
-                    tr("Unrated")
+                        "★".repeat(n) + "☆".repeat(5 - n).as_str()
+                    };
+                    let c = items.iter().find(|(k, _)| *k == key).map_or(0, |(_, c)| *c);
+                    (key, c)
+                })
+                .collect();
+        }
+        let exp = adw::ExpanderRow::builder().title(tr(cat.label())).build();
+        exp.set_widget_name(&format!("group-{}", cat.label()));
+        exp.add_suffix(&count_label(items.len()));
+        exp.add_prefix(&gtk::Image::from_icon_name(cat.icon()));
+        let library_key = lib.root.to_string_lossy().to_string();
+        exp.set_expanded(
+            self.expanded.borrow().contains(&ci)
+                || nav::is_open(
+                    &self.shared.cfg.borrow().sidebar_open,
+                    &library_key,
+                    cat.label(),
+                ),
+        );
+        {
+            let set = self.expanded.clone();
+            let shared = self.shared.clone();
+            let (library_key, group) = (library_key.clone(), cat.label());
+            exp.connect_expanded_notify(move |e| {
+                if e.is_expanded() {
+                    set.borrow_mut().insert(ci);
                 } else {
-                    name.clone()
-                };
+                    set.borrow_mut().remove(&ci);
+                }
+                let mut c = shared.cfg.borrow_mut();
+                let mut open = std::mem::take(&mut c.sidebar_open);
+                nav::set_open(&mut open, &library_key, group, e.is_expanded());
+                c.sidebar_open = open;
+                c.save();
+            });
+        }
+        let overview = match cat {
+            Category::Series => Some(("series", tr("Series overview"))),
+            Category::Authors => Some(("authors", tr("Manage authors"))),
+            _ => None,
+        };
+        if let Some((which, tip)) = overview {
+            let b = gtk::Button::from_icon_name("view-more-symbolic");
+            b.add_css_class("flat");
+            b.add_css_class("row-actions");
+            b.set_valign(gtk::Align::Center);
+            b.set_tooltip_text(Some(&tip));
+            super::audit::label(&b, &tip);
+            let tx = self.sender.input_sender().clone();
+            b.connect_clicked(move |_| tx.emit(Input::Organize(which)));
+            exp.add_suffix(&b);
+        }
+        // tags written like `Fiction.Fantasy` as a tree, when the user asked for it
+        if *cat == Category::Tags
+            && self.shared.cfg.borrow().tag_tree
+            && crate::library_tagtree::any_nested(&lib.books)
+        {
+            for r in crate::library_tagtree::rows(&lib.books) {
                 let row = adw::ActionRow::builder()
-                    .title(glib::markup_escape_text(&shown))
+                    .title(glib::markup_escape_text(&r.label))
                     .activatable(true)
                     .build();
-                row.add_suffix(&count_label(count));
-                let (go, q) = (go.clone(), cat.search_for(&name));
+                row.set_widget_name(&format!("tagtree-{}", r.path));
+                if r.indent > 0 {
+                    row.set_margin_start(14 * r.indent as i32);
+                }
+                row.add_suffix(&count_label(r.count));
+                let (go, q) = (go.clone(), r.query.clone());
                 row.connect_activated(move |_| go(q.clone()));
                 exp.add_row(&row);
             }
-            if hidden > 0 {
-                let cat = *cat;
-                exp.add_row(&extra::show_all_row(
-                    all_items,
-                    hidden,
-                    go.clone(),
-                    Rc::new(move |n: &str| cat.search_for(n)),
-                ));
-            }
-            list.append(&exp);
+            return Some(exp);
         }
-        self.w.tags.append(&list);
+        // the most used entries; the rest are behind "Show All"
+        let all_items = items.clone();
+        let (items, hidden) = if matches!(cat, Category::Ratings | Category::Status) {
+            (items, 0)
+        } else {
+            nav::top_n(items, nav::SIDEBAR_TOP)
+        };
+        for (name, count) in items.into_iter() {
+            let shown = if *cat == Category::Ratings && !name.contains('★') {
+                tr("Unrated")
+            } else {
+                name.clone()
+            };
+            let row = adw::ActionRow::builder()
+                .title(glib::markup_escape_text(&shown))
+                .activatable(true)
+                .build();
+            row.add_suffix(&count_label(count));
+            let (go, q) = (go.clone(), cat.search_for(&name));
+            row.connect_activated(move |_| go(q.clone()));
+            exp.add_row(&row);
+        }
+        if hidden > 0 {
+            let cat = *cat;
+            exp.add_row(&extra::show_all_row(
+                all_items,
+                hidden,
+                go.clone(),
+                Rc::new(move |n: &str| cat.search_for(n)),
+            ));
+        }
+        Some(exp)
+    }
+
+    /// The reader is typing or choosing in the details panel: a sync must not rebuild it under them.
+    fn details_have_focus(&self) -> bool {
+        self.root
+            .root()
+            .and_then(|r| gtk::prelude::RootExt::focus(&r))
+            .is_some_and(|f| f.is_ancestor(&self.w.details))
     }
 
     fn update_details(&self) {
@@ -2658,6 +2909,18 @@ impl LibraryView {
                     row(&tr("Last read"), &l.format("%d %b %Y, %H:%M").to_string());
                 }
                 d.append(&group);
+                {
+                    let tx = self.sender.input_sender().clone();
+                    let result: Rc<dyn Fn(Result<(), String>)> = Rc::new(move |r| match r {
+                        Ok(()) => tx.emit(Input::Refresh),
+                        Err(e) => tx.emit(Input::Toast(e)),
+                    });
+                    if let Some(g) =
+                        super::custom_columns::details_group(&lib, b, &self.shared, result)
+                    {
+                        d.append(&g);
+                    }
+                }
                 if let Some(g) =
                     crate::ui::formats::details_group(&self.shared, b, &self.format_callbacks())
                 {
@@ -2668,7 +2931,19 @@ impl LibraryView {
                     let play: Rc<dyn Fn(u64)> = Rc::new(move |id| {
                         let _ = tx.send(Output::PlayAudio(id));
                     });
-                    if let Some(g) = super::audiobook_player::details_group(&self.shared, b, play) {
+                    let tx = self.sender.output_sender().clone();
+                    let read: Rc<dyn Fn(u64)> = Rc::new(move |id| {
+                        let _ = tx.send(Output::Read(id));
+                    });
+                    let toast: Rc<dyn Fn(String)> = {
+                        let tx = self.sender.output_sender().clone();
+                        Rc::new(move |t| {
+                            let _ = tx.send(Output::Toast(t));
+                        })
+                    };
+                    if let Some(g) =
+                        super::audiobook_player::details_group(&self.shared, b, play, read, toast)
+                    {
                         d.append(&g);
                     }
                 }
@@ -2935,6 +3210,7 @@ impl LibraryView {
                 )
             },
         );
+        row(&tr("Sync"), &crate::annotation_sync_ui::last_sync_line(id));
         row(
             &tr("Sources"),
             &crate::library_health::provenance_summary(
@@ -2942,6 +3218,9 @@ impl LibraryView {
             ),
         );
         row(&tr("Path"), &lib.book_path(b).display().to_string());
+        for (name, value) in super::custom_columns::property_rows(&lib, b) {
+            row(&name, &value);
+        }
         page.add(&group);
         if !b.meta.description.trim().is_empty() {
             let g = adw::PreferencesGroup::new();
@@ -2954,7 +3233,7 @@ impl LibraryView {
             g.add(&l);
             page.add(&g);
         }
-        let dialog = adw::Dialog::new();
+        let dialog = crate::ui::dialog_toast::new_dialog();
         dialog.set_title(&tr("Properties"));
         dialog.set_content_width(560);
         dialog.set_content_height(640);
@@ -2971,6 +3250,7 @@ impl LibraryView {
         if folder {
             let dialog = gtk::FileDialog::builder()
                 .title(tr("Add Books from Folder"))
+                .accept_label(tr("Add"))
                 .build();
             dialog.select_folder(parent.as_ref(), gio::Cancellable::NONE, move |res| {
                 if let Ok(f) = res {
@@ -2984,10 +3264,14 @@ impl LibraryView {
         } else {
             let dialog = gtk::FileDialog::builder().title(tr("Add Books")).build();
             let filter = gtk::FileFilter::new();
-            filter.set_name(Some("E-books (EPUB, FB2, MOBI, DOCX, comics, text, …)"));
+            filter.set_name(Some(&tr(
+                "E-books (EPUB, FB2, MOBI, DOCX, comics, text and more)",
+            )));
             for ext in crate::import::extensions() {
                 filter.add_suffix(&ext);
             }
+            // an archive that holds several books (asks which to add)
+            filter.add_suffix("zip");
             let filters = gio::ListStore::new::<gtk::FileFilter>();
             filters.append(&filter);
             dialog.set_filters(Some(&filters));
@@ -3203,6 +3487,9 @@ impl LibraryView {
     }
 
     fn do_act(&mut self, act: Act) {
+        if self.t3_act(&act) {
+            return;
+        }
         let ids = if act.reaches_editions() {
             self.selected_books()
         } else {
@@ -3219,6 +3506,14 @@ impl LibraryView {
         let first = ids.first().copied().unwrap_or_default();
         let parent = window_of(&self.root);
         match act {
+            Act::Replace
+            | Act::Mark
+            | Act::ClearMarks
+            | Act::Quickview
+            | Act::AddEmpty
+            | Act::AddIsbn
+            | Act::CoverFromPdf
+            | Act::TrimCover => {}
             Act::Read => {
                 let _ = self.sender.output(Output::Read(first));
             }
@@ -3227,6 +3522,7 @@ impl LibraryView {
             }
             Act::EditMeta => {
                 let Some(parent) = parent else { return };
+                super::custom_columns::set_context(&self.shared.lib.borrow(), &ids);
                 if ids.len() == 1 {
                     let (md, cover) = {
                         let lib = self.shared.lib.borrow();
@@ -3267,6 +3563,7 @@ impl LibraryView {
                             }
                             let after = new_md.clone();
                             lib.update_metadata(first, new_md)?;
+                            super::custom_columns::apply_stashed(&mut lib, first)?;
                             crate::library_health::record_edit(
                                 &shared.guard.borrow().store,
                                 first,
@@ -3691,25 +3988,49 @@ impl LibraryView {
                 true,
             );
             std::thread::spawn(move || {
-                let (mut ok, mut failed) = (0, Vec::new());
-                for (path, title) in &jobs {
-                    if token.is_cancelled() {
-                        let _ = prog_tx.send("Cancelled".into());
-                        break;
+                // at most "Convert N at a time" books at once, over every conversion the app runs
+                let next = std::sync::atomic::AtomicUsize::new(0);
+                let state = std::sync::Mutex::new((0usize, Vec::<String>::new()));
+                let dest_for = std::sync::Mutex::new(dest_for);
+                let workers = crate::convert_prefs::limiter()
+                    .limit()
+                    .min(jobs.len())
+                    .max(1);
+                std::thread::scope(|sc| {
+                    for _ in 0..workers {
+                        sc.spawn(|| loop {
+                            let i = next.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                            let Some((path, title)) = jobs.get(i) else {
+                                break;
+                            };
+                            if token.is_cancelled() {
+                                let _ = prog_tx.send("Cancelled".into());
+                                break;
+                            }
+                            let _permit = crate::convert_prefs::limiter().acquire();
+                            let _ = prog_tx.send(trf("Converting {}", &[&title]));
+                            let res = crate::export::convert_epub_file(path, t).and_then(|bytes| {
+                                let dest =
+                                    (dest_for.lock().unwrap_or_else(|e| e.into_inner()))(title);
+                                // with a report next to the result: what the conversion found
+                                crate::preflight::write_converted(
+                                    &dest, title, t, path, &bytes, report,
+                                )?;
+                                Ok(dest)
+                            });
+                            let done = {
+                                let mut g = state.lock().unwrap_or_else(|e| e.into_inner());
+                                match res {
+                                    Ok(_) => g.0 += 1,
+                                    Err(e) => g.1.push(format!("{title}: {e:#}")),
+                                }
+                                g.0 + g.1.len()
+                            };
+                            let _ = prog_tx.send(format!("\u{1}{done}"));
+                        });
                     }
-                    let _ = prog_tx.send(trf("Converting {}", &[&title]));
-                    let res = crate::export::convert_epub_file(path, t).and_then(|bytes| {
-                        let dest = dest_for(title);
-                        // with a report next to the result: what the conversion found
-                        crate::preflight::write_converted(&dest, title, t, path, &bytes, report)?;
-                        Ok(dest)
-                    });
-                    match res {
-                        Ok(_) => ok += 1,
-                        Err(e) => failed.push(format!("{title}: {e:#}")),
-                    }
-                    let _ = prog_tx.send(format!("\u{1}{}", ok + failed.len()));
-                }
+                });
+                let (ok, failed) = state.into_inner().unwrap_or_else(|e| e.into_inner());
                 let _ = done_tx.send(if failed.is_empty() {
                     if jobs.len() == 1 {
                         trf("Converted to {}", &[&t.label])
@@ -3890,6 +4211,12 @@ impl LibraryView {
             text.append_item(&item);
         }
         conv.append_section(None, &text);
+        let opts = gio::Menu::new();
+        opts.append(
+            Some(&tr("Conversion Options")),
+            Some("book.convert-options"),
+        );
+        conv.append_section(None, &opts);
         conv
     }
 
@@ -3962,6 +4289,14 @@ impl LibraryView {
             edit.append(Some(&tr("Edit Book")), Some("book.edit-book"));
         }
         edit.append(Some(&tr("Fetch Metadata")), Some("book.fetch-meta"));
+        edit.append(Some(&tr("Search and Replace")), Some("book.replace"));
+        edit.append(Some(&tr("Mark or Unmark")), Some("book.mark"));
+        edit.append(Some(&tr("Clear All Marks")), Some("book.clear-marks"));
+        if !multi {
+            edit.append(Some(&tr("Show Related Books")), Some("book.quickview"));
+            edit.append(Some(&tr("Cover from PDF")), Some("book.cover-pdf"));
+            edit.append(Some(&tr("Trim Cover to 2:3")), Some("book.cover-trim"));
+        }
         s.append_submenu(Some(&tr("Edit")), &edit);
 
         // the shelves, and on a shelf also what only applies to it
@@ -4092,6 +4427,11 @@ const _CATEGORY_NAMES: [&str; 7] = [
     N_("Reading status"),
 ];
 use crate::i18n::{tr, trf};
+
+/// The one sentence of the empty library (no line break) and the formats, which sit in a tooltip.
+const WELCOME_TEXT: &str =
+    N_("Add some books to start your library. Drop files here, or use the buttons below.");
+const WELCOME_FORMATS: &str = N_("EPUB, PDF, MOBI, FB2, comics, audiobooks, plain text and more");
 
 /// The entries of the main (hamburger) menu; an empty entry is a separator between groups. Eight
 /// entries (Saved Searches live in the sidebar and in the search tips): the destinations (Reading Statistics, Vocabulary, ...) are in `LIBRARY_MENU`, imports in
@@ -4264,6 +4604,15 @@ impl SimpleComponent for LibraryView {
     ) -> ComponentParts<Self> {
         let cfg = shared.cfg.borrow().clone();
         let cover_size = Rc::new(Cell::new(cfg.cover_size));
+        {
+            // the watched import folder adds new books by itself when the user switched that on
+            let (tx, tx2) = (sender.input_sender().clone(), sender.input_sender().clone());
+            super::folder_watch::start(
+                &shared,
+                Rc::new(move |files| tx.emit(Input::ImportPaths(files))),
+                Rc::new(move |m| tx2.emit(Input::Toast(m))),
+            );
+        }
 
         // ---- typed views ----------------------------------------------------
         let grid: TypedGridView<BookItem, gtk::MultiSelection> = TypedGridView::new();
@@ -4412,7 +4761,7 @@ impl SimpleComponent for LibraryView {
         let empty = adw::StatusPage::builder()
             .icon_name("com.adhadse.Bookx")
             .title(tr("Welcome to Bookx"))
-            .description(tr("Add some books to start your library.\nEPUB, PDF, MOBI, FB2, comics, audiobooks, plain text and more — drop them here."))
+            .description(tr(WELCOME_TEXT))
             .build();
         // the buttons wrap in a narrow window
         let empty_btns = gtk::FlowBox::new();
@@ -4425,14 +4774,13 @@ impl SimpleComponent for LibraryView {
         let add_books = gtk::Button::with_label(&tr("Add Books"));
         add_books.add_css_class("suggested-action");
         add_books.add_css_class("pill");
+        add_books.set_tooltip_text(Some(&tr(WELCOME_FORMATS)));
         add_books.set_action_name(Some("lib.add-books"));
         let add_folder = gtk::Button::with_label(&tr("Add Folder"));
-        add_folder.add_css_class("pill");
         add_folder.set_action_name(Some("lib.add-folder"));
         empty_btns.insert(&add_books, -1);
         empty_btns.insert(&add_folder, -1);
         let add_news = gtk::Button::with_label(&tr("News Subscriptions"));
-        add_news.add_css_class("pill");
         add_news.set_tooltip_text(Some(&tr(
             "Turn news sites and blogs (RSS, Atom) into books that update by themselves",
         )));
@@ -4526,34 +4874,6 @@ impl SimpleComponent for LibraryView {
         tags_scroll.set_vexpand(true);
         tags_scroll.set_hscrollbar_policy(gtk::PolicyType::Never);
 
-        let top = gtk::ListBox::new();
-        top.add_css_class("navigation-sidebar");
-        top.set_selection_mode(gtk::SelectionMode::Single);
-        super::audit::label(&top, &tr("Library views"));
-        let mut top_counts = Vec::new();
-        for (view, title, icon) in [
-            (View::Home, tr("Home"), "user-home-symbolic"),
-            (View::Recent, tr("Recent"), "document-open-recent-symbolic"),
-            (View::Favourites, tr("Favourites"), "starred-symbolic"),
-            (
-                View::Notes,
-                tr("Notes & Highlights"),
-                "document-edit-symbolic",
-            ),
-        ] {
-            let (row, count) = sidebar_row(&title, icon);
-            row.set_widget_name(&format!("nav-{}", view.key()));
-            top.append(&row);
-            top_counts.push(count);
-        }
-        {
-            let tx = sender.input_sender().clone();
-            top.connect_row_activated(move |_, row| {
-                if let Some(v) = View::ALL.get(row.index() as usize) {
-                    tx.emit(Input::SetNav(*v));
-                }
-            });
-        }
         let health_list = gtk::ListBox::new();
         health_list.add_css_class("navigation-sidebar");
         health_list.set_selection_mode(gtk::SelectionMode::None);
@@ -4571,18 +4891,15 @@ impl SimpleComponent for LibraryView {
         }
         let sidebar = gtk::Box::new(gtk::Orientation::Vertical, 0);
         sidebar.add_css_class("bookx-sidebar");
-        top.set_margin_top(6);
-        sidebar.append(&top);
-        let sep = gtk::Separator::new(gtk::Orientation::Horizontal);
-        sep.set_margin_top(6);
-        sep.set_margin_bottom(2);
-        sidebar.append(&sep);
+        tags.set_margin_top(6);
         sidebar.append(&tags_scroll);
+        let health_wrap = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let sep = gtk::Separator::new(gtk::Orientation::Horizontal);
         sep.set_margin_bottom(2);
-        sidebar.append(&sep);
+        health_wrap.append(&sep);
         health_list.set_margin_bottom(6);
-        sidebar.append(&health_list);
+        health_wrap.append(&health_list);
+        sidebar.append(&health_wrap);
 
         let details = gtk::Box::new(gtk::Orientation::Vertical, 6);
         details.set_margin_all(16);
@@ -4660,7 +4977,10 @@ impl SimpleComponent for LibraryView {
         title_stack.set_hhomogeneous(false);
         title_stack.set_transition_type(gtk::StackTransitionType::None);
         header.set_title_widget(Some(&title_stack));
-        let cancel_btn = gtk::Button::with_label(&tr("Cancel"));
+        // an icon: the header has no room for the word next to the other buttons in a narrow window,
+        // and a second "x" would look like a second Close button
+        let cancel_btn = gtk::Button::from_icon_name("go-previous-symbolic");
+        super::audit::label(&cancel_btn, &tr("Cancel"));
         cancel_btn.set_visible(false);
         cancel_btn.set_tooltip_text(Some(&tr("Cancel Selection (Esc)")));
         {
@@ -4674,6 +4994,8 @@ impl SimpleComponent for LibraryView {
         add_menu.append(Some(&tr("Add from the Web")), Some("lib.add-web"));
         add_menu.append(Some(&tr("Add Folder")), Some("lib.add-folder"));
         add_menu.append(Some(&tr("Add Audiobook")), Some("lib.add-audiobook"));
+        add_menu.append(Some(&tr("Add by ISBN")), Some("lib.add-isbn"));
+        add_menu.append(Some(&tr("Add Empty Book")), Some("lib.add-empty"));
         let imports = gio::Menu::new();
         imports.append(Some(&tr("Import Calibre Library")), Some("lib.calibre"));
         imports.append(
@@ -4900,6 +5222,7 @@ impl SimpleComponent for LibraryView {
             cols_auto.connect_clicked(move |_| tx.emit(Input::TableColumnsAuto));
         }
         cols_box.append(&cols_auto);
+        cols_box.append(&super::custom_columns::chooser(&shared, &table.view));
         cols_box.set_visible(cfg.view_mode == ViewMode::Table);
         opts.append(&cols_box);
         let apply_cols: Rc<dyn Fn()> = {
@@ -5104,6 +5427,16 @@ impl SimpleComponent for LibraryView {
             let tx = sender.input_sender().clone();
             add("add-web", Box::new(move || tx.emit(Input::AddWebDialog)));
             let tx = sender.input_sender().clone();
+            add(
+                "add-isbn",
+                Box::new(move || tx.emit(Input::Act(Act::AddIsbn))),
+            );
+            let tx = sender.input_sender().clone();
+            add(
+                "add-empty",
+                Box::new(move || tx.emit(Input::Act(Act::AddEmpty))),
+            );
+            let tx = sender.input_sender().clone();
             add("news", Box::new(move || tx.emit(Input::NewsDialog)));
             add(
                 "device",
@@ -5122,6 +5455,32 @@ impl SimpleComponent for LibraryView {
             add("saved", Box::new(move || tx.emit(Input::SavedSearches)));
             let tx = sender.input_sender().clone();
             add("opds", Box::new(move || tx.emit(Input::Opds)));
+            let split = split_tags.clone();
+            add(
+                "toggle-sidebar",
+                Box::new(move || split.set_show_sidebar(!split.shows_sidebar())),
+            );
+            let tx = sender.input_sender().clone();
+            add(
+                "customize-sidebar",
+                Box::new(move || tx.emit(Input::CustomizeSidebar)),
+            );
+            for key in [
+                "shelves",
+                "authors",
+                "series",
+                "tags",
+                "publishers",
+                "languages",
+                "ratings",
+                "status",
+            ] {
+                let tx = sender.input_sender().clone();
+                add(
+                    &format!("browse-{key}"),
+                    Box::new(move || tx.emit(Input::Browse(key))),
+                );
+            }
             let tx = sender.input_sender().clone();
             add("health", Box::new(move || tx.emit(Input::Health(false))));
             for (name, which) in [
@@ -5210,6 +5569,20 @@ impl SimpleComponent for LibraryView {
             add("select-all", Box::new(move || tx.emit(Input::SelectAll)));
         }
         root.insert_action_group("lib", Some(&lib_actions));
+        {
+            // the Sync window's toast and the sync timer reach the library through these two calls
+            let (t1, t2) = (sender.input_sender().clone(), sender.input_sender().clone());
+            super::sync_activity::set_hooks(
+                Rc::new(move || t1.emit(Input::Refresh)),
+                Rc::new(move |title| t2.emit(Input::ShowNotesFor(title))),
+            );
+        }
+        {
+            let out = sender.output_sender().clone();
+            super::sync_activity::set_open_hook(Rc::new(move |id| {
+                let _ = out.send(Output::Read(id));
+            }));
+        }
         super::palette::register_group("lib", &lib_actions);
 
         let book_actions = gio::SimpleActionGroup::new();
@@ -5236,6 +5609,12 @@ impl SimpleComponent for LibraryView {
         simple("delete", Act::Delete);
         simple("favourite", Act::Favourite);
         simple("properties", Act::Properties);
+        simple("replace", Act::Replace);
+        simple("mark", Act::Mark);
+        simple("clear-marks", Act::ClearMarks);
+        simple("quickview", Act::Quickview);
+        simple("cover-pdf", Act::CoverFromPdf);
+        simple("cover-trim", Act::TrimCover);
         simple("shelf-new", Act::ShelfNew);
         simple("shelf-remove", Act::ShelfRemove);
         simple("shelf-earlier", Act::ShelfMove(-1));
@@ -5278,6 +5657,14 @@ impl SimpleComponent for LibraryView {
             a.connect_activate(move |_, p| {
                 if let Some(id) = p.and_then(|v| v.str()) {
                     tx.emit(Input::Act(Act::ConvertTo(id.to_string())));
+                }
+            });
+            book_actions.add_action(&a);
+            let a = gio::SimpleAction::new("convert-options", None);
+            let weak = root.downgrade();
+            a.connect_activate(move |_, _| {
+                if let Some(r) = weak.upgrade() {
+                    super::convert_options::present(&r);
                 }
             });
             book_actions.add_action(&a);
@@ -5378,7 +5765,17 @@ impl SimpleComponent for LibraryView {
             root.add_controller(sc);
         }
 
+        let sidebar_sub = {
+            let tx = sender.input_sender().clone();
+            crate::settings_bus::sidebar().subscribe(move || tx.emit(Input::SidebarChanged))
+        };
+        let sync_sub = {
+            let tx = sender.input_sender().clone();
+            crate::sync_bus::subscribe(None, move |e| tx.emit(Input::SyncLive(e.clone())))
+        };
         let model = LibraryView {
+            _sidebar_sub: sidebar_sub,
+            _sync_sub: sync_sub,
             shared: shared.clone(),
             root: root.clone(),
             sender: sender.clone(),
@@ -5390,8 +5787,8 @@ impl SimpleComponent for LibraryView {
                 last_undo: RefCell::new(None),
                 stack,
                 content,
-                top,
-                top_counts,
+                nav_rows: RefCell::new(Vec::new()),
+                health_wrap,
                 health_badge,
                 sel_details,
                 sel_del,
@@ -5413,6 +5810,7 @@ impl SimpleComponent for LibraryView {
                 title_stack,
                 sel_title,
                 cancel_btn,
+                library_btn: library_btn.clone(),
                 sel_read,
                 sel_edit,
                 sel_shelf,
@@ -5551,6 +5949,35 @@ impl SimpleComponent for LibraryView {
                 }
                 self.requery();
                 self.rebuild_tags();
+                self.update_top_counts();
+                if let Some(v) = self.notes.borrow().as_ref() {
+                    (v.reload)();
+                }
+            }
+            Input::SyncLive(ev) => {
+                use crate::sync_bus::Kinds;
+                let stack: gtk::Widget = self.w.stack.clone().upcast();
+                super::sync_activity::keep_scroll(&stack, || {
+                    self.update_top_counts();
+                    if ev.kinds.annotations() {
+                        if let Some(v) = self.notes.borrow().as_ref() {
+                            (v.reload)();
+                        }
+                    }
+                    // a position the device reported changes nothing in the library
+                    if ev.kinds.contains(Kinds::PROGRESS) && ev.ahead.is_none() {
+                        self.requery();
+                    } else if self.selected.contains(&ev.book_id) && !self.details_have_focus() {
+                        self.update_details();
+                    }
+                });
+            }
+            Input::ShowNotesFor(title) => {
+                self.show_search(nav::search_for(nav::NavTarget::View(View::Notes)));
+                self.set_view(View::Notes);
+                if let Some(v) = self.notes.borrow().as_ref() {
+                    v.search.set_text(&title);
+                }
             }
             Input::SetNav(v) => {
                 self.show_search(nav::search_for(nav::NavTarget::View(v)));
@@ -5686,6 +6113,11 @@ impl SimpleComponent for LibraryView {
                 self.pending += 1;
                 self.w.spinner.set_visible(true);
                 self.w.spinner.start();
+                let (web_job, _) = crate::jobs::start(
+                    crate::jobs::Kind::Import,
+                    &trf("Adding from the web: {}", &[&url]),
+                    false,
+                );
                 let (res_tx, res_rx) =
                     std::sync::mpsc::channel::<Result<(Prepared, String), String>>();
                 std::thread::spawn(move || {
@@ -5706,17 +6138,22 @@ impl SimpleComponent for LibraryView {
                     .try_recv()
                 {
                     Ok(Ok((prepared, summary))) => {
+                        crate::jobs::finish(web_job, Ok(()));
                         tx.emit(Input::Prepared(Ok(prepared)));
                         tx.emit(Input::Toast(summary));
                         glib::ControlFlow::Break
                     }
                     Ok(Err(e)) => {
+                        crate::jobs::finish(web_job, Err(e.clone()));
                         tx.emit(Input::Prepared(Err(e.clone())));
                         tx.emit(Input::Toast(e));
                         glib::ControlFlow::Break
                     }
                     Err(std::sync::mpsc::TryRecvError::Empty) => glib::ControlFlow::Continue,
-                    Err(std::sync::mpsc::TryRecvError::Disconnected) => glib::ControlFlow::Break,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        crate::jobs::finish(web_job, Err(tr("stopped unexpectedly")));
+                        glib::ControlFlow::Break
+                    }
                 });
             }
             Input::NewsDialog => {
@@ -5754,19 +6191,21 @@ impl SimpleComponent for LibraryView {
             }
             Input::Health(calibre) => {
                 if let Some(win) = window_of(&self.root) {
-                    let notify = self.health_notify();
                     if calibre {
-                        crate::ui::health::show_and_import_calibre(&win, &self.shared, notify);
+                        super::calibre_import::start(&win, &self.shared, self.calibre_ctx());
                     } else {
-                        crate::ui::health::show(&win, &self.shared, notify);
+                        crate::ui::health::show(&win, &self.shared, self.health_notify());
                     }
                 }
             }
-            Input::Opds => {
-                if let Some(win) = window_of(&self.root) {
-                    crate::ui::opds::show(&win, &self.shared, self.opds_import());
-                }
+            Input::Opds => sender.input(Input::SetNav(View::Catalogues)),
+            Input::CustomizeSidebar => {
+                let _ = self
+                    .root
+                    .activate_action("app.preferences-page", Some(&"library".to_variant()));
             }
+            Input::SidebarChanged => self.sidebar_changed(),
+            Input::Browse(key) => self.browse_group(key),
             Input::SavedSearches => {
                 if let Some(win) = window_of(&self.root) {
                     let (search, _, notify) = self.organize_callbacks();
@@ -5961,6 +6400,10 @@ impl SimpleComponent for LibraryView {
             Input::AddFiles => self.pick_files(false, false),
             Input::AddFolder(r) => self.pick_files(true, r),
             Input::ImportPaths(paths) => {
+                let (paths, asked) = self.split_bundles(paths);
+                if paths.is_empty() && asked {
+                    return;
+                }
                 if paths.is_empty() {
                     let _ = sender.output(Output::Toast(tr("No supported books found")));
                     return;
@@ -6032,8 +6475,16 @@ impl SimpleComponent for LibraryView {
                     Err(e) => self.import_step(&trf("Failed: {}", &[&e])),
                 }
                 match res {
-                    Ok(p) => {
+                    Ok(mut p) => {
                         let note = crate::import::take_patch_note(&p);
+                        {
+                            let c = self.shared.cfg.borrow();
+                            crate::library_add::apply_guess(
+                                &mut p,
+                                c.guess_filename,
+                                &c.filename_patterns,
+                            );
+                        }
                         // the same book in a format the library lacks: offered, not imported
                         let offer = crate::book_formats::offer_for(&self.shared.lib.borrow(), &p);
                         if let Some(o) = offer {
@@ -6604,20 +7055,22 @@ impl SimpleComponent for LibraryView {
                         self.w.split_tags.set_show_sidebar(on);
                     }
                     "sidebar" => {
-                        let mut rows = Vec::new();
-                        let mut c = self.w.top.first_child();
-                        while let Some(w) = c {
-                            rows.push(w.widget_name().to_string());
-                            c = w.next_sibling();
-                        }
+                        let rows: Vec<String> = self
+                            .w
+                            .nav_rows
+                            .borrow()
+                            .iter()
+                            .map(|r| r.row.widget_name().to_string())
+                            .collect();
                         eprintln!(
                             "sidebar: view={} rows={} counts={} panel={} collapsed={}",
                             self.view.key(),
                             rows.join(","),
                             self.w
-                                .top_counts
+                                .nav_rows
+                                .borrow()
                                 .iter()
-                                .map(|l| l.label().to_string())
+                                .map(|r| r.count.label().to_string())
                                 .collect::<Vec<_>>()
                                 .join(","),
                             self.w.split_tags.shows_sidebar(),
@@ -7377,14 +7830,76 @@ impl SimpleComponent for LibraryView {
                         sender.input(Input::ImportPaths(files));
                     }
                     other if other.starts_with("search=") => self.w.search.set_text(&other[7..]),
+                    other if other.starts_with("browse=") => {
+                        let key = match &other[7..] {
+                            "shelves" => "shelves",
+                            "authors" => "authors",
+                            "series" => "series",
+                            "tags" => "tags",
+                            "publishers" => "publishers",
+                            "languages" => "languages",
+                            "ratings" => "ratings",
+                            _ => "status",
+                        };
+                        sender.input(Input::Browse(key));
+                    }
+                    other if other.starts_with("calibre-import=") => {
+                        // the + menu's Import Calibre Library without the folder chooser
+                        super::calibre_import::run(
+                            &self.shared,
+                            std::path::PathBuf::from(&other[15..]),
+                            self.calibre_ctx(),
+                        );
+                    }
+                    other if other.starts_with("key=") => {
+                        // a key of the standard set (F9, Delete, Ctrl+A, Ctrl+comma...): what it is
+                        // bound to, and the library's own actions are run
+                        let accel = &other[4..];
+                        let canon = crate::shortcuts::canonical(accel).unwrap_or_default();
+                        let cur = crate::shortcuts::current();
+                        let action = crate::shortcuts::registry()
+                            .into_iter()
+                            .filter(|a| {
+                                matches!(
+                                    a.group,
+                                    crate::shortcuts::Group::Library
+                                        | crate::shortcuts::Group::Application
+                                )
+                            })
+                            .find(|a| cur.effective(&a.action).contains(&canon))
+                            .map(|a| a.action);
+                        match action {
+                            Some(a) => {
+                                eprintln!("lib_key: {accel} -> {a}");
+                                if a.starts_with("lib.") || a.starts_with("book.") {
+                                    let _ = self.root.activate_action(&a, None);
+                                }
+                            }
+                            None => eprintln!("lib_key: {accel} -> none"),
+                        }
+                    }
+                    other if other.starts_with("sidebar-config=") => {
+                        let cmd = &other[15..];
+                        if cmd == "open" {
+                            sender.input(Input::CustomizeSidebar);
+                        } else {
+                            super::library_sidebar::dev(cmd);
+                        }
+                    }
+                    "sidebar-layout" => {
+                        let l = self.sidebar_layout();
+                        eprintln!(
+                            "sidebar_layout: shown={} hidden={} health={}",
+                            l.visible().iter().map(|i| i.key()).collect::<Vec<_>>().join(","),
+                            l.hidden.join(","),
+                            l.show_health()
+                        );
+                    }
                     other if other.starts_with("opds=") => {
-                        if let Some(win) = window_of(&self.root) {
-                            crate::ui::opds::dev(
-                                &win,
-                                &self.shared,
-                                self.opds_import(),
-                                &other[5..],
-                            );
+                        if &other[5..] == "open" {
+                            sender.input(Input::SetNav(View::Catalogues));
+                        } else {
+                            crate::ui::opds::dev(&other[5..]);
                         }
                     }
                     other if other.starts_with("libs=") => {
@@ -7724,7 +8239,14 @@ mod main_menu_tests {
 
 #[cfg(test)]
 mod sync_menu_tests {
-    use super::MAIN_MENU;
+    use super::{MAIN_MENU, WELCOME_FORMATS, WELCOME_TEXT};
+
+    #[test]
+    fn the_welcome_text_is_one_sentence_without_a_line_break() {
+        assert!(!WELCOME_TEXT.contains('\n'));
+        assert!(WELCOME_TEXT.starts_with("Add some books"));
+        assert!(WELCOME_FORMATS.contains("EPUB") && WELCOME_FORMATS.contains("audiobooks"));
+    }
 
     #[test]
     fn the_menu_has_one_sync_entry_and_no_share_library() {

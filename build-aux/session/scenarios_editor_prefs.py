@@ -100,10 +100,27 @@ def editor_prefs_page(c):
     c.sb.type("Editor Preferences")
     time.sleep(0.6)
     c.sb.key("Return")
-    dlg = c.wait(lambda: [n for n in c.find(None, "Editor Preferences") if n.showing], 8)
-    if not c.check("the palette opens Editor Preferences", dlg):
+    dlg = c.wait(lambda: [n for n in c.find(None, "Preferences") if n.showing], 8)
+    if not c.check("the palette opens Preferences on the Editor page", dlg):
         c.shot("no-prefs")
         return
     time.sleep(0.8)
     c.shot("editor-prefs")
+    c.check("the app is still alive", c.is_alive())
+
+
+@scenario
+def dialog_close_keys(c):
+    """X9 / 5.7.5: Ctrl+W and Esc close a dialog under real input (Preferences, then Keyboard Shortcuts' neighbour: Sync)."""
+    c.start()
+    for key, mods, what in (("w", ("Control",), "Ctrl+W"), ("Escape", (), "Esc")):
+        c.sb.key(",", ("Control",))
+        dlg = c.wait(lambda: [n for n in c.find(None, "Preferences") if n.showing], 8)
+        if not c.check(f"Ctrl+, opens Preferences before {what}", dlg):
+            c.shot("no-prefs")
+            return
+        time.sleep(0.6)
+        c.sb.key(key, mods)
+        gone = c.wait(lambda: not [n for n in c.find(None, "Preferences") if n.showing], 6)
+        c.check(f"{what} closes the Preferences dialog", gone)
     c.check("the app is still alive", c.is_alive())

@@ -362,6 +362,8 @@ fn book(id: u64, file: &str) -> bookx_core::library::Book {
         formats: vec![],
         resources: vec![],
         drm: String::new(),
+        custom: Default::default(),
+        marked: false,
     }
 }
 
@@ -1214,6 +1216,47 @@ fn failed_logins_are_throttled_per_address() {
         .status,
         200
     );
+}
+
+fn bad_login_from(srv: &bookx_serve::server::ServerHandle, xff: &str) -> u16 {
+    let bad = format!("Authorization: {}\r\n", basic(USER, "wrong"));
+    once(
+        srv.addr(),
+        format!("GET /opds HTTP/1.1\r\n{bad}X-Forwarded-For: {xff}\r\nConnection: close\r\n\r\n")
+            .as_bytes(),
+    )
+    .unwrap()
+    .status
+}
+
+#[test]
+fn x_forwarded_for_is_ignored_without_a_trusted_proxy() {
+    let srv = start_fast(|l| l.auth_max_failures = 3);
+    // an attacker rotating the header cannot dodge the throttle
+    for i in 0..3 {
+        assert_eq!(bad_login_from(&srv, &format!("198.51.100.{i}")), 401);
+    }
+    assert_eq!(bad_login_from(&srv, "198.51.100.77"), 429);
+}
+
+#[test]
+fn a_trusted_proxy_makes_the_throttle_count_each_client() {
+    let srv = start_fast(|l| {
+        l.auth_max_failures = 3;
+        l.trusted_proxies = bookx_serve::net::parse_proxy_list("127.0.0.1").unwrap();
+    });
+    for _ in 0..3 {
+        assert_eq!(bad_login_from(&srv, "198.51.100.1"), 401);
+    }
+    assert_eq!(
+        bad_login_from(&srv, "198.51.100.1"),
+        429,
+        "that client is blocked"
+    );
+    // another client behind the same proxy is not
+    assert_eq!(bad_login_from(&srv, "198.51.100.2"), 401);
+    // and a forged left part does not help the blocked one: the proxy's entry is the last
+    assert_eq!(bad_login_from(&srv, "198.51.100.2, 198.51.100.1"), 429);
 }
 
 #[test]

@@ -586,8 +586,12 @@ impl Editor {
             // `chars:size=<w>x<h>` resizes the window (the breakpoint scenario)
             self.chars(Msg::Open);
             if let (Some(w), Some((a, b))) = (&self.chars.win, r.split_once('x')) {
+                // a mapped window ignores a new default size (Broadway never resizes it), so hide
+                // it first and let `present` map it again at the new size
+                w.window.set_visible(false);
                 w.window
                     .set_default_size(a.parse().unwrap_or(700), b.parse().unwrap_or(540));
+                w.window.present();
             }
         } else if c == "layout" {
             // `editor_chars_layout: width=W list=yes|no drop=yes|no`

@@ -3,6 +3,7 @@
 //! selection, and how a click or right-click changes the selection (bug 8).
 
 use crate::core::library::SortKey;
+use crate::i18n::N_;
 use std::collections::HashSet;
 
 /// The values of the Continue Reading banner setting (`""` is automatic).
@@ -284,10 +285,18 @@ pub enum View {
     Recent,
     Favourites,
     Notes,
+    /// Online (OPDS) catalogues: a page in the main view.
+    Catalogues,
 }
 
 impl View {
-    pub const ALL: [View; 4] = [View::Home, View::Recent, View::Favourites, View::Notes];
+    pub const ALL: [View; 5] = [
+        View::Home,
+        View::Recent,
+        View::Favourites,
+        View::Notes,
+        View::Catalogues,
+    ];
 
     /// The text kept in the settings.
     pub fn key(self) -> &'static str {
@@ -296,6 +305,7 @@ impl View {
             View::Recent => "recent",
             View::Favourites => "favourites",
             View::Notes => "notes",
+            View::Catalogues => "catalogues",
         }
     }
 
@@ -306,9 +316,267 @@ impl View {
             .unwrap_or_default()
     }
 
-    /// Whether the content area shows books (the Notes view shows highlights instead).
+    /// Whether the content area shows books (Notes & Highlights and Online Catalogues are pages
+    /// of their own).
     pub fn shows_books(self) -> bool {
-        self != View::Notes
+        !matches!(self, View::Notes | View::Catalogues)
+    }
+}
+
+/// One entry of the library sidebar: a view or page (Home, Recent, Favourites, Notes & Highlights,
+/// Online Catalogues), a group (Shelves, Audiobooks, Saved Searches, one browse group per
+/// category) or Library Health, which is pinned at the bottom.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SidebarItem {
+    Home,
+    Recent,
+    Favourites,
+    Notes,
+    Catalogues,
+    Shelves,
+    Audiobooks,
+    SavedSearches,
+    Authors,
+    Series,
+    Tags,
+    Publishers,
+    Languages,
+    Ratings,
+    Status,
+    Health,
+}
+
+impl SidebarItem {
+    /// The items in their default order (Health last: it is not movable).
+    pub const ALL: [SidebarItem; 16] = [
+        SidebarItem::Home,
+        SidebarItem::Recent,
+        SidebarItem::Favourites,
+        SidebarItem::Notes,
+        SidebarItem::Catalogues,
+        SidebarItem::Shelves,
+        SidebarItem::Audiobooks,
+        SidebarItem::SavedSearches,
+        SidebarItem::Authors,
+        SidebarItem::Series,
+        SidebarItem::Tags,
+        SidebarItem::Publishers,
+        SidebarItem::Languages,
+        SidebarItem::Ratings,
+        SidebarItem::Status,
+        SidebarItem::Health,
+    ];
+
+    /// The text kept in the settings.
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::Home => "home",
+            Self::Recent => "recent",
+            Self::Favourites => "favourites",
+            Self::Notes => "notes",
+            Self::Catalogues => "catalogues",
+            Self::Shelves => "shelves",
+            Self::Audiobooks => "audiobooks",
+            Self::SavedSearches => "saved-searches",
+            Self::Authors => "authors",
+            Self::Series => "series",
+            Self::Tags => "tags",
+            Self::Publishers => "publishers",
+            Self::Languages => "languages",
+            Self::Ratings => "ratings",
+            Self::Status => "status",
+            Self::Health => "health",
+        }
+    }
+
+    pub fn from_key(key: &str) -> Option<SidebarItem> {
+        Self::ALL.into_iter().find(|i| i.key() == key)
+    }
+
+    /// The view this item opens (the rows with a selection mark), when it is one.
+    pub fn view(self) -> Option<View> {
+        match self {
+            Self::Home => Some(View::Home),
+            Self::Recent => Some(View::Recent),
+            Self::Favourites => Some(View::Favourites),
+            Self::Notes => Some(View::Notes),
+            Self::Catalogues => Some(View::Catalogues),
+            _ => None,
+        }
+    }
+
+    pub fn of_view(view: View) -> SidebarItem {
+        match view {
+            View::Home => Self::Home,
+            View::Recent => Self::Recent,
+            View::Favourites => Self::Favourites,
+            View::Notes => Self::Notes,
+            View::Catalogues => Self::Catalogues,
+        }
+    }
+
+    /// The browse group of a category.
+    pub fn of_category(cat: crate::core::library::Category) -> SidebarItem {
+        use crate::core::library::Category as C;
+        match cat {
+            C::Authors => Self::Authors,
+            C::Series => Self::Series,
+            C::Tags => Self::Tags,
+            C::Publishers => Self::Publishers,
+            C::Languages => Self::Languages,
+            C::Ratings => Self::Ratings,
+            C::Status => Self::Status,
+        }
+    }
+
+    /// Home is the way back to the books, so it always stays.
+    pub fn can_hide(self) -> bool {
+        self != Self::Home
+    }
+
+    /// Library Health sits at the bottom of the sidebar whatever the order is.
+    pub fn can_move(self) -> bool {
+        self != Self::Health
+    }
+
+    /// The name in the sidebar and in the *Customize Sidebar* dialog (English; the caller
+    /// translates it).
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Home => N_("Home"),
+            Self::Recent => N_("Recent"),
+            Self::Favourites => N_("Favourites"),
+            Self::Notes => N_("Notes & Highlights"),
+            Self::Catalogues => N_("Online Catalogues"),
+            Self::Shelves => N_("Shelves"),
+            Self::Audiobooks => N_("Audiobooks"),
+            Self::SavedSearches => N_("Saved Searches"),
+            Self::Authors => N_("Authors"),
+            Self::Series => N_("Series"),
+            Self::Tags => N_("Tags"),
+            Self::Publishers => N_("Publishers"),
+            Self::Languages => N_("Languages"),
+            Self::Ratings => N_("Ratings"),
+            Self::Status => N_("Reading status"),
+            Self::Health => N_("Library Health"),
+        }
+    }
+}
+
+/// Which sidebar items a library shows and in what order; kept per library in the settings.
+/// The default (empty) layout is the order of [`SidebarItem::ALL`] with everything shown.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct SidebarLayout {
+    /// Item keys in the order the user chose; items missing here (a newer version added them)
+    /// follow their default neighbour.
+    pub order: Vec<String>,
+    /// Item keys the user hid.
+    pub hidden: Vec<String>,
+}
+
+impl SidebarLayout {
+    /// Every movable item once, in the user's order.
+    pub fn ordered(&self) -> Vec<SidebarItem> {
+        let mut out: Vec<SidebarItem> = Vec::new();
+        for k in &self.order {
+            if let Some(i) = SidebarItem::from_key(k) {
+                if i.can_move() && !out.contains(&i) {
+                    out.push(i);
+                }
+            }
+        }
+        // an item the saved order does not know goes right after the item before it by default
+        for (n, i) in SidebarItem::ALL.iter().enumerate() {
+            if !i.can_move() || out.contains(i) {
+                continue;
+            }
+            let after = SidebarItem::ALL[..n]
+                .iter()
+                .rev()
+                .find_map(|p| out.iter().position(|o| o == p));
+            out.insert(after.map_or(0, |p| p + 1), *i);
+        }
+        out
+    }
+
+    pub fn is_hidden(&self, item: SidebarItem) -> bool {
+        item.can_hide() && self.hidden.iter().any(|k| k == item.key())
+    }
+
+    /// The items to show, in order; Library Health (pinned at the bottom) is not among them.
+    pub fn visible(&self) -> Vec<SidebarItem> {
+        self.ordered()
+            .into_iter()
+            .filter(|i| !self.is_hidden(*i))
+            .collect()
+    }
+
+    pub fn show_health(&self) -> bool {
+        !self.is_hidden(SidebarItem::Health)
+    }
+
+    pub fn set_hidden(&mut self, item: SidebarItem, hide: bool) {
+        self.hidden.retain(|k| k != item.key());
+        if hide && item.can_hide() {
+            self.hidden.push(item.key().to_string());
+        }
+        self.tidy();
+    }
+
+    /// Moves an item up (`-1`) or down (`1`) among all the items, hidden ones included, so the
+    /// place a hidden item comes back to is the one it was left in.
+    pub fn move_item(&mut self, item: SidebarItem, delta: i32) -> bool {
+        if !item.can_move() {
+            return false;
+        }
+        let mut all = self.ordered();
+        let Some(at) = all.iter().position(|i| *i == item) else {
+            return false;
+        };
+        let to = at as i32 + delta.signum();
+        if to < 0 || to as usize >= all.len() {
+            return false;
+        }
+        all.swap(at, to as usize);
+        self.order = all.iter().map(|i| i.key().to_string()).collect();
+        self.tidy();
+        true
+    }
+
+    pub fn reset(&mut self) {
+        *self = SidebarLayout::default();
+    }
+
+    /// Whether this is the default layout (nothing worth saving).
+    pub fn is_default(&self) -> bool {
+        self.hidden.is_empty() && self.is_default_order()
+    }
+
+    /// Keeps the saved form small: nothing is stored for the default.
+    fn tidy(&mut self) {
+        self.hidden.sort();
+        self.hidden.dedup();
+        if self.is_default_order() {
+            self.order.clear();
+        }
+    }
+
+    fn is_default_order(&self) -> bool {
+        let default: Vec<SidebarItem> = SidebarItem::ALL
+            .into_iter()
+            .filter(|i| i.can_move())
+            .collect();
+        self.ordered() == default
+    }
+}
+
+/// The view to show when the one on screen was hidden from the sidebar.
+pub fn view_after_hiding(current: View, layout: &SidebarLayout) -> View {
+    if layout.is_hidden(SidebarItem::of_view(current)) {
+        View::Home
+    } else {
+        current
     }
 }
 
@@ -340,7 +608,7 @@ pub fn apply_view(
     searching: bool,
 ) -> Vec<u64> {
     match view {
-        View::Home | View::Notes => ids,
+        View::Home | View::Notes | View::Catalogues => ids,
         View::Favourites => {
             let fav: HashSet<u64> = favourites.iter().copied().collect();
             ids.into_iter().filter(|i| fav.contains(i)).collect()
@@ -470,17 +738,13 @@ pub fn empty_click(selected: &[u64]) -> Vec<u64> {
     Vec::new()
 }
 
-/// Takes the trailing ellipsis off a label (menu entries, buttons, dialog titles) but keeps it on
-/// progress texts such as "Loading…" (the first word ends in "ing").
+/// Takes the trailing ellipsis off a label (menu entries, buttons, dialog titles, progress texts
+/// such as "Loading"): the interface has none.
 pub fn plain_label(label: &str) -> String {
     let t = label.trim_end();
     let Some(body) = t.strip_suffix('…').or_else(|| t.strip_suffix("...")) else {
         return label.to_string();
     };
-    let first = body.split_whitespace().next().unwrap_or("");
-    if first.len() > 4 && first.to_lowercase().ends_with("ing") {
-        return label.to_string();
-    }
     body.trim_end().to_string()
 }
 
@@ -1087,6 +1351,140 @@ mod tests {
     }
 
     #[test]
+    fn the_default_sidebar_is_today_s_order_plus_catalogues() {
+        let l = SidebarLayout::default();
+        let keys: Vec<&str> = l.visible().iter().map(|i| i.key()).collect();
+        assert_eq!(
+            keys,
+            [
+                "home",
+                "recent",
+                "favourites",
+                "notes",
+                "catalogues",
+                "shelves",
+                "audiobooks",
+                "saved-searches",
+                "authors",
+                "series",
+                "tags",
+                "publishers",
+                "languages",
+                "ratings",
+                "status"
+            ]
+        );
+        assert!(l.show_health() && l.is_default());
+        for i in SidebarItem::ALL {
+            assert_eq!(SidebarItem::from_key(i.key()), Some(i));
+        }
+        for v in View::ALL {
+            assert_eq!(SidebarItem::of_view(v).view(), Some(v));
+        }
+    }
+
+    #[test]
+    fn items_hide_and_come_back_in_the_same_place() {
+        let mut l = SidebarLayout::default();
+        l.set_hidden(SidebarItem::Notes, true);
+        l.set_hidden(SidebarItem::Health, true);
+        assert!(l.is_hidden(SidebarItem::Notes) && !l.show_health());
+        assert!(!l.visible().contains(&SidebarItem::Notes));
+        assert!(!l.is_default());
+        // Home is the way back and never hides
+        l.set_hidden(SidebarItem::Home, true);
+        assert!(!l.is_hidden(SidebarItem::Home));
+        l.set_hidden(SidebarItem::Notes, false);
+        l.set_hidden(SidebarItem::Health, false);
+        assert!(l.is_default());
+        assert_eq!(
+            l,
+            SidebarLayout::default(),
+            "nothing is kept for the default"
+        );
+    }
+
+    #[test]
+    fn items_move_up_and_down_and_stop_at_the_ends() {
+        let mut l = SidebarLayout::default();
+        assert!(l.move_item(SidebarItem::Catalogues, -1));
+        let v = l.visible();
+        assert_eq!(v[3], SidebarItem::Catalogues);
+        assert_eq!(v[4], SidebarItem::Notes);
+        assert!(
+            !l.move_item(SidebarItem::Home, -1),
+            "the first item cannot go up"
+        );
+        let last = *l.visible().last().unwrap();
+        assert!(!l.move_item(last, 1), "the last item cannot go down");
+        assert!(!l.move_item(SidebarItem::Health, -1), "Health is pinned");
+        // moving back restores the default
+        assert!(l.move_item(SidebarItem::Catalogues, 1));
+        assert!(l.is_default() && l.order.is_empty());
+        // a hidden item moves with its place
+        l.set_hidden(SidebarItem::Shelves, true);
+        assert!(l.move_item(SidebarItem::Shelves, 1));
+        assert!(l.is_hidden(SidebarItem::Shelves));
+        l.set_hidden(SidebarItem::Shelves, false);
+        let k: Vec<_> = l.visible().iter().map(|i| i.key()).collect();
+        assert_eq!(&k[5..7], ["audiobooks", "shelves"]);
+    }
+
+    #[test]
+    fn an_old_or_odd_saved_layout_is_repaired() {
+        let l = SidebarLayout {
+            order: vec![
+                "tags".into(),
+                "nonsense".into(),
+                "home".into(),
+                "tags".into(),
+                "health".into(),
+            ],
+            hidden: vec!["authors".into(), "nonsense".into()],
+        };
+        let v = l.ordered();
+        // every movable item exactly once, the saved ones first
+        assert_eq!(v.len(), SidebarItem::ALL.len() - 1);
+        assert_eq!(v[0], SidebarItem::Tags);
+        assert!(
+            v.iter().position(|i| *i == SidebarItem::Tags)
+                < v.iter().position(|i| *i == SidebarItem::Home)
+        );
+        assert!(!v.contains(&SidebarItem::Health));
+        // an item the saved order lacks comes after its default predecessor
+        assert!(
+            v.iter().position(|i| *i == SidebarItem::Recent).unwrap()
+                == v.iter().position(|i| *i == SidebarItem::Home).unwrap() + 1
+        );
+        assert!(l.is_hidden(SidebarItem::Authors));
+        let json = serde_json::to_string(&l).unwrap();
+        assert_eq!(serde_json::from_str::<SidebarLayout>(&json).unwrap(), l);
+        assert_eq!(
+            serde_json::from_str::<SidebarLayout>("{}").unwrap(),
+            SidebarLayout::default()
+        );
+    }
+
+    #[test]
+    fn a_hidden_view_falls_back_to_home() {
+        let mut l = SidebarLayout::default();
+        assert_eq!(view_after_hiding(View::Notes, &l), View::Notes);
+        l.set_hidden(SidebarItem::Notes, true);
+        assert_eq!(view_after_hiding(View::Notes, &l), View::Home);
+        assert_eq!(view_after_hiding(View::Recent, &l), View::Recent);
+    }
+
+    #[test]
+    fn catalogues_are_a_page_not_books() {
+        assert!(!View::Catalogues.shows_books() && !View::Notes.shows_books());
+        assert_eq!(View::from_key("catalogues"), View::Catalogues);
+        assert_eq!(
+            apply_view(View::Catalogues, vec![1, 2], &[], &[], false),
+            vec![1, 2]
+        );
+    }
+
+    #[test]
     fn favourites_toggle_as_a_group() {
         let mut f = vec![1];
         assert!(toggle_favourites(&mut f, &[1, 2]));
@@ -1387,19 +1785,20 @@ mod tests {
     }
 
     #[test]
-    fn labels_lose_their_ellipsis_but_progress_keeps_it() {
+    fn labels_and_progress_texts_lose_their_ellipsis() {
         assert_eq!(plain_label("Add Books…"), "Add Books");
         assert_eq!(plain_label("Go to..."), "Go to");
         assert_eq!(plain_label("Preferences"), "Preferences");
-        assert_eq!(plain_label("Loading…"), "Loading…");
-        assert_eq!(plain_label("Checking 3 of 9…"), "Checking 3 of 9…");
-        assert_eq!(plain_label("Opening PDF…"), "Opening PDF…");
+        assert_eq!(plain_label("Loading…"), "Loading");
+        assert_eq!(plain_label("Checking 3 of 9…"), "Checking 3 of 9");
+        assert_eq!(plain_label("Opening PDF…"), "Opening PDF");
         assert_eq!(plain_label("Rename…"), "Rename");
-        assert_eq!(plain_label("Setting up…"), "Setting up…");
+        assert_eq!(plain_label("Setting up…"), "Setting up");
     }
 
-    /// No label of the interface (tr / N_ strings: menu entries, buttons, titles) ends in "…"
-    /// unless it is a progress text such as "Loading…".
+    /// No label of the interface ends in "…" or "...": not the tr / trf / ntr / N_ strings (menu
+    /// entries, buttons, titles, placeholders, status and progress texts) and not the literals
+    /// given straight to a widget setter or a `format!` that builds a visible text.
     #[test]
     fn no_label_in_the_sources_ends_in_an_ellipsis() {
         fn walk(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
@@ -1423,7 +1822,19 @@ mod tests {
                 continue;
             }
             let text = std::fs::read_to_string(&f).unwrap();
-            for call in ["tr(\"", "trf(\"", "N_(\"", "ntr(\""] {
+            for call in [
+                "tr(\"",
+                "trf(\"",
+                "N_(\"",
+                "ntr(\"",
+                "set_label(\"",
+                "set_title(\"",
+                "set_text(\"",
+                "set_subtitle(\"",
+                "set_placeholder_text(Some(\"",
+                "set_tooltip_text(Some(\"",
+                "with_label(\"",
+            ] {
                 let mut rest = text.as_str();
                 while let Some(i) = rest.find(call) {
                     let start = i + call.len();

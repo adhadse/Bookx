@@ -394,7 +394,7 @@ impl Editor {
         make: MakeOp,
         custom_apply: Option<Rc<dyn Fn(&ToolUi)>>,
     ) -> ToolUi {
-        let dialog = adw::Dialog::new();
+        let dialog = crate::ui::dialog_toast::new_dialog();
         dialog.set_title(&tr(spec.title));
         let (w, h) = fit_dialog(&self.w.win, 560, spec.height);
         dialog.set_content_width(w);
@@ -1400,7 +1400,7 @@ impl Editor {
             let cancel = cancel.clone();
             Rc::new(move |ui: &ToolUi| {
                 ui.apply.set_sensitive(false);
-                ui.preview.set_text(&trf("Checking 0 of {}…", &[&n]));
+                ui.preview.set_text(&trf("Checking 0 of {}", &[&n]));
                 let progress = gtk::ProgressBar::new();
                 progress.set_widget_name("links-progress");
                 progress.set_margin_all(12);
@@ -1448,7 +1448,7 @@ impl Editor {
                 glib::timeout_add_local(std::time::Duration::from_millis(80), move || loop {
                     match rx.try_recv() {
                         Ok(Ok((d, t))) => {
-                            label.set_text(&trf("Checking {} of {}…", &[&d, &t]));
+                            label.set_text(&trf("Checking {} of {}", &[&d, &t]));
                             progress.set_fraction(if t == 0 { 0.0 } else { d as f64 / t as f64 });
                         }
                         Ok(Err(done)) => {
@@ -1510,7 +1510,7 @@ impl Editor {
             Rc::new(move |ui: &ToolUi| {
                 ui.apply.set_sensitive(false);
                 ui.preview
-                    .set_text(&trf("Downloading {} resource(s)…", &[&n]));
+                    .set_text(&trf("Downloading {} resource(s)", &[&n]));
                 let (tx, rx) = mpsc::channel::<links::MockFetcher>();
                 let urls = urls.clone();
                 let c = cancel.clone();

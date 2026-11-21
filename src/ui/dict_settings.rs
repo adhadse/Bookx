@@ -175,7 +175,7 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     folder.set_subtitle(&tr(
         "StarDict dictionaries (folders with .ifo, .idx and .dict files) put in the dictionaries folder are used too.",
     ));
-    let open = gtk::Button::with_label(&tr("Open folder"));
+    let open = gtk::Button::with_label(&tr("Open Folder"));
     open.add_css_class("flat");
     open.set_valign(gtk::Align::Center);
     open.connect_clicked(|_| {
@@ -228,17 +228,17 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     g
 }
 
-/// "Downloading… 3.1 MB of 12 MB" while the size of the part done is known, else "Downloading…".
+/// "Downloading 3.1 MB of 12 MB" while the size of the part done is known, else "Downloading".
 pub fn progress_text(fraction: Option<f64>, total: u64) -> String {
     match fraction {
         Some(f) if total > 0 => {
             let done = (f.clamp(0.0, 1.0) * total as f64) as u64;
             trf(
-                "Downloading… {} of {}",
+                "Downloading {} of {}",
                 &[&size_text(done), &size_text(total)],
             )
         }
-        _ => tr("Downloading…"),
+        _ => tr("Downloading"),
     }
 }
 
@@ -340,7 +340,7 @@ mod tests {
     #[test]
     fn progress_names_what_is_done_of_the_total() {
         let t = progress_text(Some(0.5), 2_000_000);
-        assert!(t.starts_with("Downloading… ") && t.contains(" of "), "{t}");
-        assert_eq!(progress_text(None, 5), "Downloading…");
+        assert!(t.starts_with("Downloading ") && t.contains(" of "), "{t}");
+        assert_eq!(progress_text(None, 5), "Downloading");
     }
 }

@@ -6,40 +6,73 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Least privilege: no job writes to the repository. Actions are pinned by commit SHA (the comment is the tag);
+# update them together with the other workflows.
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
+  CARGO_NET_RETRY: "5"
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  lint:
+    name: Workflow and scenario lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: UI scenarios do not contain vacuous checks (check "...$(...)..." $?)
+        run: build-aux/lint-checks.sh
+      - name: Workflows (actionlint)
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+      - name: Shell syntax of the test scripts
+        run: for f in build-aux/*.sh; do bash -n "$f"; done
+
+  koreader-plugin:
+    name: KOReader plugin (Lua tests, LuaJIT and Lua 5.4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install LuaJIT and Lua
+        run: sudo apt-get update && sudo apt-get install -y luajit lua5.4 curl
+      - name: Plugin tests (fake KOReader, scripted server)
+        run: koreader-plugin/tests/run.sh
+      - name: The plugin zip can be built
+        run: SKIP_TESTS=1 build-aux/package-plugin.sh
+
   check:
     name: Format, lint, test (stable Rust)
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     # Bookx needs GTK >= 4.20 and libadwaita >= 1.8, which current Fedora ships.
     container: fedora:latest
     steps:
-      - uses: actions/checkout@v4
       - name: Install system dependencies
         run: |
           dnf install -y gcc gcc-c++ make pkgconf-pkg-config rust cargo rustfmt clippy \
             gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
             gdk-pixbuf2-devel openssl-devel gettext \
-            dbus-daemon xorg-x11-server-Xvfb xz tar gzip \
-            desktop-file-utils libappstream-glib appstream libxml2 python3
+            dbus-daemon xz tar gzip \
+            desktop-file-utils libappstream-glib appstream libxml2 python3 python3-pyyaml git
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             target
-          key: cargo-${{ runner.os }}-stable-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-check-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            cargo-${{ runner.os }}-stable-
+            cargo-check-${{ runner.os }}-
       - name: rustfmt
         run: cargo fmt --all -- --check
       - name: clippy
@@ -54,37 +87,126 @@ jobs:
           desktop-file-validate data/com.adhadse.Bookx.desktop
           appstreamcli validate --no-net data/com.adhadse.Bookx.metainfo.xml
           xmllint --noout data/com.adhadse.Bookx.mime.xml
+      - name: KOReader plugin against the real sync server on localhost
+        # the Lua tests run in the koreader-plugin job (luajit and Lua 5.4); here they skip when Lua is missing
+        run: build-aux/plugin-tests.sh
       - name: Translations are in step with the code
         run: "cargo test -p bookx --locked --quiet i18n::"
       - name: Release check (versions, changelog, metainfo, golden plugins)
         run: |
-          dnf install -y python3-pyyaml git
           git config --global --add safe.directory "$PWD"
           build-aux/release-check.sh
       - name: Flatpak sources match Cargo.lock
         run: python3 build-aux/flatpak-cargo-sources.py --check
       - name: mockups still render
         run: cargo run --example mockups --locked
-      - name: UI scenarios on Broadway (skipped when gtk4-broadwayd is missing)
-        # The real-session tests (build-aux/session-tests.sh) need GNOME Shell and are not run here.
+
+  coverage:
+    # REQUIRED status check (docs/ci-gates.md): fails when a crate's line coverage falls below build-aux/coverage-baseline.json,
+    # when the logic tier is below 90%, or when the lines changed in a PR are covered less than 80%.
+    name: Coverage (cargo-llvm-cov, nextest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container: fedora:latest
+    steps:
+      - name: Install system dependencies
         run: |
-          if command -v gtk4-broadwayd >/dev/null; then
-            NET=0 BOOKX_SECRETS=memory JOBS=2 build-aux/ui-tests.sh
-          else
-            echo "gtk4-broadwayd not available: UI scenarios skipped"
-          fi
+          dnf install -y gcc gcc-c++ make pkgconf-pkg-config rustup \
+            gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
+            gdk-pixbuf2-devel openssl-devel gettext \
+            dbus-daemon xz tar gzip curl python3 python3-pip git
+      - name: Rust with the LLVM tools that match its compiler
+        run: |
+          rustup-init -y --profile minimal --default-toolchain stable -c llvm-tools-preview
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: taiki-e/install-action@25f51f6b1bf4e18876107cece836f4f77ac17c8c # v2.90.7
+        with:
+          tool: cargo-llvm-cov,cargo-nextest
+      - name: Cache cargo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          # the instrumented build is cargo-llvm-cov's own target directory
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target/llvm-cov-target
+          key: cargo-coverage-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-coverage-${{ runner.os }}-
+      - name: Patch coverage tool
+        run: pip install --user diff-cover
+      - name: Coverage gate
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git config --global --add safe.directory "$PWD"
+          export PATH="$HOME/.local/bin:$PATH"
+          base=""
+          if [ "$EVENT" = pull_request ]; then base="origin/$BASE_REF"; fi
+          build-aux/coverage.sh --html ${base:+--base "$base"}
+      - name: Coverage report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage
+          path: |
+            target/llvm-cov/lcov.info
+            target/llvm-cov/lcov.filtered.info
+            target/llvm-cov/summary.json
+            target/llvm-cov/summary.md
+            target/llvm-cov/patch.md
+            target/llvm-cov/html
+          if-no-files-found: ignore
+
+  ui:
+    name: UI scenarios (Broadway)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    container: fedora:latest
+    steps:
+      - name: Install system dependencies
+        # gtk4-broadwayd is in the gtk4 package; dbus-run-session in dbus-daemon
+        run: |
+          dnf install -y gcc gcc-c++ make pkgconf-pkg-config rust cargo \
+            gtk4 gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
+            gdk-pixbuf2-devel openssl-devel gettext \
+            dbus-daemon xz tar gzip python3 git procps-ng
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Cache cargo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: cargo-ui-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-ui-${{ runner.os }}-
+      - name: Broadway is available
+        # ui-tests.sh skips itself (exit 0) when this is missing: fail loudly in CI instead
+        run: command -v gtk4-broadwayd && command -v dbus-run-session
+      - name: UI scenarios
+        run: NET=0 BOOKX_SECRETS=memory JOBS=2 build-aux/ui-tests.sh
 
   flatpak:
     name: Flatpak build
     runs-on: ubuntu-latest
     needs: check
+    timeout-minutes: 120
     container:
       image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
       options: --privileged
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Static checks
         run: CHECK_ONLY=1 build-aux/flatpak.sh
+      # TODO(security): pin to a commit SHA once a release is chosen; `master` is the only ref the action documents
       - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
         with:
           bundle: bookx.flatpak
@@ -94,8 +216,9 @@ jobs:
   deny:
     name: Dependency advisories, licences, sources (cargo-deny)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: EmbarkStudios/cargo-deny-action@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: EmbarkStudios/cargo-deny-action@17aeb3c839e42274e2b8adf721c8c65edfdc74dd # v2.1.3
         with:
           command: check advisories bans licenses sources

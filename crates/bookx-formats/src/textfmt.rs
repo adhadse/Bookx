@@ -109,7 +109,7 @@ fn convert_html_single(html: &str, stem: &str) -> Result<Archive> {
     if html.trim().is_empty() {
         bail!("the file is empty");
     }
-    let doc = scraper::Html::parse_document(html);
+    let doc = bookx_core::util::parse_html_document(html);
     let meta = |name: &str| -> Option<String> {
         let sel = scraper::Selector::parse(&format!("meta[name=\"{name}\" i]")).ok()?;
         doc.select(&sel)

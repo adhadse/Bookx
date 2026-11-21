@@ -18,7 +18,7 @@ msgid " · not stopped by offline mode"
 msgstr " · no lo detiene el modo sin conexión"
 
 msgid " · {} spellings"
-msgstr "  · {} variantes de escritura"
+msgstr " · {} variantes de escritura"
 
 msgid "\" and ' become “ ” ‘ ’"
 msgstr "\" y ' se convierten en “ ” ‘ ’"
@@ -51,10 +51,13 @@ msgid "..."
 msgstr "…"
 
 msgid "... becomes …"
-msgstr "... se convierte en"
+msgstr "... se convierte en …"
 
 msgid ".⏎"
 msgstr ".⏎"
+
+msgid "0 means no limit. Bigger files are left out and listed."
+msgstr "0 significa sin límite. Los archivos más grandes se omiten y se enumeran."
 
 msgid "0 of {}"
 msgstr "0 de {}"
@@ -97,6 +100,9 @@ msgstr "Una instantánea .db o un archivo .bookxbackup cifrado"
 
 msgid "A CSV file Anki can import."
 msgstr "Un archivo CSV que Anki puede importar."
+
+msgid "A backup cannot be read"
+msgstr "No se puede leer una copia de seguridad"
 
 msgid "A bibliography from the title, authors, publisher, date and ISBN of your books, for a reference manager or a paper."
 msgstr "Una bibliografía con el título, los autores, la editorial, la fecha y el ISBN de tus libros, para un gestor de referencias o un trabajo."
@@ -173,9 +179,6 @@ msgstr "Aceptar todo"
 msgid "Accept None"
 msgstr "No aceptar ninguno"
 
-msgid "Accept and download"
-msgstr "Aceptar y descargar"
-
 msgid "Accept just the rows that fill a field the book has nothing in"
 msgstr "Aceptar solo las filas que rellenan un campo vacío del libro"
 
@@ -211,6 +214,9 @@ msgstr "Cuenta"
 
 msgid "Account and address for sending books to a Kindle or another address"
 msgstr "Cuenta y dirección para enviar libros a un Kindle u otra dirección"
+
+msgid "Account saved: {}"
+msgstr "Cuenta guardada: {}"
 
 msgid "Acknowledgements"
 msgstr "Agradecimientos"
@@ -386,8 +392,8 @@ msgstr "Añadir notas a la copia enviada al dispositivo"
 msgid "Add one above to restore from it. You can also restore from a backup file."
 msgstr "Añade uno arriba para restaurar desde él. También puedes restaurar desde un archivo de copia."
 
-msgid "Add some books to start your library.\nEPUB, PDF, MOBI, FB2, comics, audiobooks, plain text and more — drop them here."
-msgstr "Añada algunos libros para empezar su biblioteca.\nEPUB, PDF, MOBI, FB2, cómics, audiolibros, texto plano y más: suéltelos aquí."
+msgid "Add some books to start your library. Drop files here, or use the buttons below."
+msgstr "Añade algunos libros para empezar tu biblioteca. Suelta archivos aquí o usa los botones de abajo."
 
 msgid "Add some rules and give the set a name first"
 msgstr "Añade primero algunas reglas y ponle un nombre al conjunto"
@@ -497,6 +503,9 @@ msgstr "Después de 60 minutos"
 msgid "After an import, fill in the fields a new book has nothing in. Fields that already have a value are never changed."
 msgstr "Tras una importación, rellena los campos en los que un libro nuevo no tiene nada. Los campos que ya tienen un valor nunca se cambian."
 
+msgid "After the first backup only new or changed files are copied; a renamed or moved book costs nothing. 'Skipped' means nothing had changed. 'Verified' means the stored bytes were read back and checked, not that a restore was tested."
+msgstr "Después de la primera copia solo se copian los archivos nuevos o modificados; un libro renombrado o movido no cuesta nada. «Omitida» significa que nada había cambiado. «Verificada» significa que los bytes almacenados se leyeron de nuevo y se comprobaron, no que se probara una restauración."
+
 msgid "After {}"
 msgstr "Tras {}"
 
@@ -550,6 +559,9 @@ msgstr "Todas las páginas"
 
 msgid "All spellings are now \"{}\" ({} books changed)"
 msgstr "Todas las variantes ahora son \"{}\" ({} libros modificados)"
+
+msgid "All sync activity"
+msgstr "Toda la actividad de sincronización"
 
 msgid "All {} ({})"
 msgstr "Todos {} ({})"
@@ -647,6 +659,9 @@ msgstr "Anotaciones"
 msgid "Another book"
 msgstr "Otro libro"
 
+msgid "Another folder"
+msgstr "Otra carpeta"
+
 msgid "Another rule wins for this property"
 msgstr "Otra regla prevalece para esta propiedad"
 
@@ -687,7 +702,7 @@ msgid "Apply Later"
 msgstr "Aplicar después"
 
 msgid "Apply Style Sheet"
-msgstr "Aplicar hoja de estilos"
+msgstr "Aplicar hoja de estilo"
 
 msgid "Apply safe changes automatically"
 msgstr "Aplicar automáticamente los cambios seguros"
@@ -812,6 +827,9 @@ msgstr "Retroceder 15 segundos"
 msgid "Back Up"
 msgstr "Copia de seguridad"
 
+msgid "Back Up This Place"
+msgstr "Copiar a este lugar"
+
 msgid "Back to Actions"
 msgstr "Volver a las acciones"
 
@@ -857,6 +875,9 @@ msgstr "Haciendo copia de seguridad"
 msgid "Backup"
 msgstr "Copia de seguridad"
 
+msgid "Backup cancelled; nothing half-written is left behind"
+msgstr "Copia cancelada; no queda nada escrito a medias"
+
 msgid "Backup failed: {}"
 msgstr "Error en la copia: {}"
 
@@ -865,6 +886,15 @@ msgstr "Frase de contraseña de la copia (para lugares cifrados)"
 
 msgid "Backups"
 msgstr "Copias de seguridad"
+
+msgid "Backups beyond the number this place keeps are removed, and so are the files only they needed. Manual backups and the newest ones stay."
+msgstr "Se eliminan las copias que superen el número que conserva este lugar, junto con los archivos que solo ellas necesitaban. Las copias manuales y las más recientes se conservan."
+
+msgid "Backups include your book files, covers and catalogue (titles, tags, collections, reading progress, bookmarks, highlights and notes). Only new or changed files are copied after the first backup. Not included: configuration, plugins and passwords, trash, device copies and caches."
+msgstr "Las copias de seguridad incluyen los archivos de tus libros, las portadas y el catálogo (títulos, etiquetas, colecciones, progreso de lectura, marcadores, subrayados y notas). Después de la primera copia solo se copian los archivos nuevos o modificados. No se incluyen: la configuración, los complementos ni las contraseñas, la papelera, las copias en dispositivos ni las cachés."
+
+msgid "Backups of your books and notes, library checks and the trash"
+msgstr "Copias de seguridad de tus libros y notas, comprobaciones de la biblioteca y la papelera"
 
 msgid "Backups, check, trash and history"
 msgstr "Copias, comprobación, papelera e historial"
@@ -929,6 +959,9 @@ msgstr "Editor de libros"
 msgid "Book files, annotations and citations only"
 msgstr "Solo archivos de libros, anotaciones y citas"
 
+msgid "Book files, covers and catalogue with your notes. Only new or changed files are copied after the first backup."
+msgstr "Archivos de los libros, portadas y catálogo con tus notas. Después de la primera copia solo se copian los archivos nuevos o modificados."
+
 msgid "Book filter"
 msgstr "Filtro de libros"
 
@@ -940,6 +973,9 @@ msgstr "Mapa del libro · {} páginas · {}%"
 
 msgid "Book map: pages of the book"
 msgstr "Mapa del libro: páginas del libro"
+
+msgid "Book not found in your library (hash {}): {}"
+msgstr "Libro no encontrado en tu biblioteca (hash {}): {}"
 
 msgid "Book properties"
 msgstr "Propiedades del libro"
@@ -958,6 +994,9 @@ msgstr "Título del libro"
 
 msgid "Bookmark"
 msgstr "Marcador"
+
+msgid "Bookmark Actions"
+msgstr "Acciones del marcador"
 
 msgid "Bookmark added"
 msgstr "Marcador añadido"
@@ -980,6 +1019,9 @@ msgstr "Marcadores y subrayados"
 msgid "Bookmarks and highlights"
 msgstr "Marcadores y subrayados"
 
+msgid "Bookmarks you add while reading, and the ones synced from your e-reader, appear here."
+msgstr "Aquí aparecen los marcadores que añades mientras lees y los sincronizados desde tu lector electrónico."
+
 msgid "Books"
 msgstr "Libros"
 
@@ -989,6 +1031,9 @@ msgstr "Libros terminados este año"
 msgid "Books a year"
 msgstr "Libros al año"
 
+msgid "Books and catalogue, no covers"
+msgstr "Libros y catálogo, sin portadas"
+
 msgid "Books and the catalogue only"
 msgstr "Solo libros y el catálogo"
 
@@ -997,6 +1042,9 @@ msgstr "Los libros se guardan en un árbol de carpetas al estilo de Calibre dent
 
 msgid "Books finished"
 msgstr "Libros terminados"
+
+msgid "Books not found in your library"
+msgstr "Libros no encontrados en tu biblioteca"
 
 msgid "Books on the device"
 msgstr "Libros en el dispositivo"
@@ -1020,7 +1068,10 @@ msgid "Books with the same title and author, whatever the format or edition. Mer
 msgstr "Libros con el mismo título y autor, sea cual sea el formato o la edición. Combinar como formatos conserva todos los archivos en un solo libro (primero ves una vista previa y puedes deshacerlo); Buscar duplicados combina las copias idénticas."
 
 msgid "Books you open appear here, the latest first."
-msgstr "Los libros que abra aparecen aquí, los más recientes primero."
+msgstr "Los libros que abras aparecen aquí, los más recientes primero."
+
+msgid "Books, covers and catalogue"
+msgstr "Libros, portadas y catálogo"
 
 msgid "Books, reading progress, highlights and notes. Stock Kobo notes and progress are imported; stock firmware has no wireless sync with Bookx"
 msgstr "Libros, progreso de lectura, subrayados y notas. Las notas y el progreso del Kobo original se importan; el firmware original no tiene sincronización inalámbrica con Bookx"
@@ -1088,8 +1139,32 @@ msgstr "Dividir palabras largas al final de la línea, en el idioma del libro"
 msgid "Bring the reading progress from the device into the library (Kobo database, KOReader)"
 msgstr "Traer el progreso de lectura del dispositivo a la biblioteca (base de datos de Kobo, KOReader)"
 
+msgid "Browse Authors"
+msgstr "Explorar autores"
+
 msgid "Browse Images"
 msgstr "Explorar imágenes"
+
+msgid "Browse Languages"
+msgstr "Explorar idiomas"
+
+msgid "Browse Publishers"
+msgstr "Explorar editoriales"
+
+msgid "Browse Ratings"
+msgstr "Explorar valoraciones"
+
+msgid "Browse Reading Status"
+msgstr "Explorar estados de lectura"
+
+msgid "Browse Series"
+msgstr "Explorar series"
+
+msgid "Browse Shelves"
+msgstr "Explorar estantes"
+
+msgid "Browse Tags"
+msgstr "Explorar etiquetas"
 
 msgid "Build the reports again from the book as it is now"
 msgstr "Volver a generar los informes con el libro tal como está ahora"
@@ -1147,6 +1222,9 @@ msgstr "Cancelar selección (Esc)"
 msgid "Cancel requested"
 msgstr "Cancelación solicitada"
 
+msgid "Cancel the backup"
+msgstr "Cancelar la copia de seguridad"
+
 msgid "Cancel {}"
 msgstr "Cancelar {}"
 
@@ -1159,14 +1237,17 @@ msgstr "Cancelado: se conservan {} capítulos narrados ({}); ejecútalo de nuevo
 msgid "Cancelled: nothing was narrated"
 msgstr "Cancelado: no se narró nada"
 
-msgid "Cancelling…"
-msgstr "Cancelando…"
+msgid "Cancelling"
+msgstr "Cancelando"
 
 msgid "Cannot be read: {}"
 msgstr "No se puede leer: {}"
 
 msgid "Cannot connect"
 msgstr "No se puede conectar"
+
+msgid "Cannot estimate the next backup: {}"
+msgstr "No se puede estimar la próxima copia: {}"
 
 msgid "Cannot merge: {}"
 msgstr "No se puede fusionar: {}"
@@ -1189,6 +1270,9 @@ msgstr "No se puede abrir el libro para editarlo: {}"
 msgid "Cannot open {} for editing: {}"
 msgstr "No se puede abrir {} para editarlo: {}"
 
+msgid "Cannot read the backups of the books here"
+msgstr "No se pueden leer aquí las copias de seguridad de los libros"
+
 msgid "Cannot read this place"
 msgstr "No se puede leer este lugar"
 
@@ -1197,6 +1281,9 @@ msgstr "Ahora no se puede leer este lugar: {}"
 
 msgid "Cannot reformat: {}"
 msgstr "No se puede reformatear: {}"
+
+msgid "Cannot restore: {}"
+msgstr "No se puede restaurar: {}"
 
 msgid "Cannot save"
 msgstr "No se puede guardar"
@@ -1216,6 +1303,9 @@ msgstr "Tarjetas de"
 msgid "Careful with this folder"
 msgstr "Cuidado con esta carpeta"
 
+msgid "Catalogue only"
+msgstr "Solo el catálogo"
+
 msgid "Certificate file (PEM, optional)"
 msgstr "Archivo de certificado (PEM, opcional)"
 
@@ -1232,7 +1322,7 @@ msgid "Certifier report (address)"
 msgstr "Informe del certificador (dirección)"
 
 msgid "Change"
-msgstr "Cambiar…"
+msgstr "Cambiar"
 
 msgid "Change All"
 msgstr "Cambiar todo"
@@ -1253,13 +1343,13 @@ msgid "Change colour to {}"
 msgstr "Cambiar el color a {}"
 
 msgid "Change elements and attributes in all pages at once. Preview lists the pages a rule set would change; nothing outside the tags you name is touched."
-msgstr "Cambie elementos y atributos de todas las páginas a la vez. La vista previa lista las páginas que cambiaría un conjunto de reglas; no se toca nada fuera de las etiquetas que nombre."
+msgstr "Cambia elementos y atributos de todas las páginas a la vez. La vista previa lista las páginas que cambiaría un conjunto de reglas; no se toca nada fuera de las etiquetas que nombres."
 
 msgid "Change every occurrence of the word in the book"
 msgstr "Cambiar todas las apariciones de la palabra en el libro"
 
 msgid "Change how the book looks without editing every stylesheet by hand. The rules apply to stylesheets, <style> blocks and style attributes."
-msgstr "Cambie el aspecto del libro sin editar cada hoja de estilos a mano. Las reglas se aplican a hojas de estilos, bloques <style> y atributos style."
+msgstr "Cambia el aspecto del libro sin editar cada hoja de estilo a mano. Las reglas se aplican a hojas de estilo, bloques <style> y atributos style."
 
 msgid "Change library folder"
 msgstr "Cambiar la carpeta de la biblioteca"
@@ -1345,6 +1435,12 @@ msgstr "Comprobar accesibilidad"
 msgid "Check Again"
 msgstr "Comprobar de nuevo"
 
+msgid "Check Backup"
+msgstr "Comprobar la copia"
+
+msgid "Check Backup in Depth"
+msgstr "Comprobar la copia a fondo"
+
 msgid "Check Before Sending"
 msgstr "Comprobar antes de enviar"
 
@@ -1375,6 +1471,9 @@ msgstr "Comprobar automáticamente antes de convertir o enviar por correo"
 msgid "Check book"
 msgstr "Comprobar libro"
 
+msgid "Check cancelled"
+msgstr "Comprobación cancelada"
+
 msgid "Check for"
 msgstr "Buscar"
 
@@ -1393,17 +1492,23 @@ msgstr "Volver a revisar la ortografía"
 msgid "Check {} again"
 msgstr "Comprobar {} de nuevo"
 
-msgid "Checking 0 of {}…"
-msgstr "Comprobando 0 de {}…"
+msgid "Checking"
+msgstr "Comprobando"
 
-msgid "Checking the book…"
-msgstr "Comprobando el libro…"
+msgid "Checking 0 of {}"
+msgstr "Comprobando 0 de {}"
 
-msgid "Checking {} of {}…"
-msgstr "Comprobando {} de {}…"
+msgid "Checking the backup"
+msgstr "Comprobando la copia"
 
-msgid "Checking…"
-msgstr "Comprobando…"
+msgid "Checking the backup at {}"
+msgstr "Comprobando la copia en {}"
+
+msgid "Checking the book"
+msgstr "Comprobando el libro"
+
+msgid "Checking {} of {}"
+msgstr "Comprobando {} de {}"
 
 msgid "Checkpoint Actions"
 msgstr "Acciones del punto de control"
@@ -1442,10 +1547,10 @@ msgid "Choose File"
 msgstr "Elegir archivo"
 
 msgid "Choose Files"
-msgstr "Elegir archivos…"
+msgstr "Elegir archivos"
 
 msgid "Choose Folder"
-msgstr "Elegir carpeta…"
+msgstr "Elegir carpeta"
 
 msgid "Choose Library Folder"
 msgstr "Elegir carpeta de la biblioteca"
@@ -1468,6 +1573,9 @@ msgstr "Elegir una carpeta de biblioteca"
 msgid "Choose a cover image"
 msgstr "Elegir una imagen de portada"
 
+msgid "Choose a folder first"
+msgstr "Elige primero una carpeta"
+
 msgid "Choose a folder for the audio files"
 msgstr "Elegir una carpeta para los archivos de audio"
 
@@ -1484,7 +1592,7 @@ msgid "Choose an Empty Folder for the Calibre Library"
 msgstr "Elige una carpeta vacía para la biblioteca de Calibre"
 
 msgid "Choose another"
-msgstr "Elegir otro…"
+msgstr "Elegir otro"
 
 msgid "Choose another dictionary"
 msgstr "Elegir otro diccionario"
@@ -1492,8 +1600,8 @@ msgstr "Elegir otro diccionario"
 msgid "Choose another user name, or press Log in if this account is yours."
 msgstr "Elige otro nombre de usuario o pulsa Iniciar sesión si esta cuenta es tuya."
 
-msgid "Choose any user name and password. Copy these into Bookx Sync on the e-reader. This is not the Share Library password. There is no existing KOReader account. If the server is not on yet, switch on step 1 first."
-msgstr "Elige el nombre de usuario y la contraseña que quieras. Cópialos en Bookx Sync en el lector. No es la contraseña de Compartir biblioteca. No existe ninguna cuenta previa de KOReader. Si el servidor aún no está activo, activa antes el paso 1."
+msgid "Choose any user name and password. Copy these into Bookx Sync on the e-reader. This is not the OPDS server password. There is no existing KOReader account. If the server is not on yet, switch on step 1 first."
+msgstr "Elige el nombre de usuario y la contraseña que quieras. Cópialos en Bookx Sync en el lector. No es la contraseña del servidor OPDS. No existe ninguna cuenta previa de KOReader. Si el servidor aún no está activo, activa antes el paso 1."
 
 msgid "Choose at least one search"
 msgstr "Elige al menos una búsqueda"
@@ -1513,6 +1621,9 @@ msgstr "Elige el archivo CSV exportado desde Goodreads, StoryGraph o Hardcover. 
 msgid "Choose the Calibre Library Folder"
 msgstr "Elegir la carpeta de la biblioteca de Calibre"
 
+msgid "Choose the Folder to Restore Into"
+msgstr "Elige la carpeta donde restaurar"
+
 msgid "Choose the Folder to Watch"
 msgstr "Elegir la carpeta a vigilar"
 
@@ -1527,6 +1638,9 @@ msgstr "Elige la imagen que se usará como portada."
 
 msgid "Choose the {} file"
 msgstr "Elegir el archivo {}"
+
+msgid "Choose what the library sidebar shows and in which order. Hidden entries stay available in the command palette."
+msgstr "Elige qué muestra la barra lateral de la biblioteca y en qué orden. Las entradas ocultas siguen disponibles en la paleta de comandos."
 
 msgid "Class"
 msgstr "Clase"
@@ -1560,6 +1674,9 @@ msgstr "Quitar filtros"
 
 msgid "Clear source cache"
 msgstr "Borrar caché de fuentes"
+
+msgid "Clear the selection"
+msgstr "Quitar la selección"
 
 msgid "Click a character to insert it. Ctrl+click keeps this window open"
 msgstr "Haz clic en un carácter para insertarlo. Ctrl+clic mantiene abierta esta ventana"
@@ -1738,8 +1855,14 @@ msgstr "Cuentas conectadas"
 msgid "Connected assistants"
 msgstr "Asistentes conectados"
 
+msgid "Connected devices"
+msgstr "Dispositivos conectados"
+
 msgid "Connected e-reader: sync, send and manage books"
 msgstr "Lector conectado: sincroniza, envía y gestiona libros"
+
+msgid "Connected now"
+msgstr "Conectado ahora"
 
 msgid "Connected with the cable and mounted. Bookx reads the Kobo’s own reading state and KOReader’s sidecar files"
 msgstr "Conectado con el cable y montado. Bookx lee el estado de lectura propio del Kobo y los archivos auxiliares de KOReader"
@@ -1747,8 +1870,8 @@ msgstr "Conectado con el cable y montado. Bookx lee el estado de lectura propio 
 msgid "Connected."
 msgstr "Conectado."
 
-msgid "Connecting…"
-msgstr "Conectando…"
+msgid "Connecting"
+msgstr "Conectando"
 
 msgid "Connection"
 msgstr "Conexión"
@@ -1846,10 +1969,18 @@ msgstr "Copiado al portapapeles"
 msgid "Copied to {} ({}). Restart KOReader, then open Bookx Sync in its top menu."
 msgstr "Copiado a {} ({}). Reinicia KOReader y abre Bookx Sync en su menú superior."
 
+msgid "Copied {} entry"
+msgid_plural "Copied {} entries"
+msgstr[0] "Se copió {} entrada"
+msgstr[1] "Se copiaron {} entradas"
+
 msgid "Copied {} highlight"
 msgid_plural "Copied {} highlights"
 msgstr[0] "Copiado {} subrayado"
 msgstr[1] "Copiados {} subrayados"
+
+msgid "Copied {} new files ({}); {} were already there."
+msgstr "Se copiaron {} archivos nuevos ({}); {} ya estaban."
 
 msgid "Copies the plugin into KOReader’s plugins folder on the connected e-reader, or into a folder you choose. Restart KOReader afterwards. Without the plugin only the reading position is synced."
 msgstr "Copia el complemento en la carpeta de complementos de KOReader del lector conectado, o en una carpeta que elijas. Reinicia KOReader después. Sin el complemento solo se sincroniza la posición de lectura."
@@ -1881,9 +2012,6 @@ msgstr "Copiar selección"
 msgid "Copy address"
 msgstr "Copiar dirección"
 
-msgid "Copy install command"
-msgstr "Copiar el comando de instalación"
-
 msgid "Copy once a day while Bookx is open"
 msgstr "Copiar una vez al día mientras Bookx está abierto"
 
@@ -1914,14 +2042,8 @@ msgstr "Copiar la configuración que inicia la herramienta de línea de comandos
 msgid "Copy the selection of the preview (Ctrl+Alt+C)"
 msgstr "Copiar la selección de la vista previa (Ctrl+Alt+C)"
 
-msgid "Copy the server address"
-msgstr "Copiar la dirección del servidor"
-
 msgid "Copy the setting for your assistant and paste it into its configuration. “Command” starts Bookx's tool for the assistant and works even when Bookx is closed (read-only). “Server” uses the server inside Bookx, which needs the switch above."
 msgstr "Copia el ajuste de tu asistente y pégalo en su configuración. «Comando» inicia la herramienta de Bookx para el asistente y funciona aunque Bookx esté cerrado (solo lectura). «Servidor» usa el servidor dentro de Bookx, que necesita el interruptor de arriba."
-
-msgid "Copy the token"
-msgstr "Copiar el token"
 
 msgid "Copy to Clipboard"
 msgstr "Copiar al portapapeles"
@@ -1932,8 +2054,17 @@ msgstr "Copiar al dispositivo"
 msgid "Copy to this place"
 msgstr "Copiar a este lugar"
 
+msgid "Copy to {}"
+msgstr "Copiar a {}"
+
 msgid "Copy when Bookx closes"
 msgstr "Copiar al cerrar Bookx"
+
+msgid "Copying book files"
+msgstr "Copiando archivos de libros"
+
+msgid "Copying new files"
+msgstr "Copiando archivos nuevos"
 
 msgid "Copyright"
 msgstr "Derechos de autor"
@@ -1955,6 +2086,9 @@ msgstr "No se pudo ubicar en el libro"
 
 msgid "Could not change the editions: {}"
 msgstr "No se pudieron cambiar las ediciones: {}"
+
+msgid "Could not check: {}"
+msgstr "No se pudo comprobar: {}"
 
 msgid "Could not compare: {}"
 msgstr "No se pudo comparar: {}"
@@ -1988,6 +2122,9 @@ msgstr "No se pudo exportar el archivo"
 
 msgid "Could not export: {}"
 msgstr "No se pudo exportar: {}"
+
+msgid "Could not find this highlight in the book"
+msgstr "No se encontró este subrayado en el libro"
 
 msgid "Could not fix: {}"
 msgstr "No se pudo corregir: {}"
@@ -2054,6 +2191,9 @@ msgstr "No se pudo leer {}: {}"
 
 msgid "Could not redo: {}"
 msgstr "No se pudo rehacer: {}"
+
+msgid "Could not remove old backups: {}"
+msgstr "No se pudieron eliminar las copias antiguas: {}"
 
 msgid "Could not remove the word: {}"
 msgstr "No se pudo quitar la palabra: {}"
@@ -2141,8 +2281,12 @@ msgstr ""
 "\n"
 "Usa «Abrir Wikipedia» para buscar en el navegador."
 
-msgid "Couldn't translate this text.\n{}"
-msgstr "No se pudo traducir este texto.\n{}"
+msgid ""
+"Couldn't translate this text.\n"
+"{}"
+msgstr ""
+"No se pudo traducir este texto.\n"
+"{}"
 
 msgid "Count"
 msgstr "Contar"
@@ -2182,6 +2326,9 @@ msgstr "Portada actualizada"
 
 msgid "Covers"
 msgstr "Portadas"
+
+msgid "Covers and catalogue, no book files"
+msgstr "Portadas y catálogo, sin archivos de libros"
 
 msgid "Create Checkpoint"
 msgstr "Crear punto de control"
@@ -2233,6 +2380,9 @@ msgstr "Hoja de estilo personalizada"
 
 msgid "Custom template"
 msgstr "Plantilla personalizada"
+
+msgid "Customize Sidebar"
+msgstr "Personalizar barra lateral"
 
 msgid "Daily goal"
 msgstr "Objetivo diario"
@@ -2326,6 +2476,11 @@ msgid_plural "Delete {} Books Permanently?"
 msgstr[0] "¿Eliminar {} libro definitivamente?"
 msgstr[1] "¿Eliminar {} libros definitivamente?"
 
+msgid "Delete {} Entry?"
+msgid_plural "Delete {} Entries?"
+msgstr[0] "¿Eliminar {} entrada?"
+msgstr[1] "¿Eliminar {} entradas?"
+
 msgid "Delete {} Highlight?"
 msgid_plural "Delete {} Highlights?"
 msgstr[0] "¿Eliminar {} subrayado?"
@@ -2361,7 +2516,7 @@ msgid "Deletes the file and its @font-face rules; the text falls back to the nex
 msgstr "Elimina el archivo y sus reglas @font-face; el texto pasa a la siguiente fuente de su lista"
 
 msgid "Deletes the rules of the stylesheets that match nothing in the book. @font-face, @media and other @-rules are kept."
-msgstr "Borra las reglas de las hojas de estilos que no coinciden con nada del libro. Se conservan @font-face, @media y otras reglas @."
+msgstr "Borra las reglas de las hojas de estilo que no coinciden con nada del libro. Se conservan @font-face, @media y otras reglas @."
 
 msgid "Deleting a book moves its files here. Restore them, or empty the trash to erase them for good."
 msgstr "Al eliminar un libro, sus archivos se mueven aquí. Restáuralos o vacía la papelera para borrarlos definitivamente."
@@ -2387,8 +2542,8 @@ msgstr "Ventana del dispositivo"
 msgid "Devices"
 msgstr "Dispositivos"
 
-msgid "Diagnostics copied. They hold no book titles or passwords."
-msgstr "Diagnóstico copiado. No contiene títulos de libros ni contraseñas."
+msgid "Diagnostics Copied"
+msgstr "Diagnóstico copiado"
 
 msgid "Dictionaries"
 msgstr "Diccionarios"
@@ -2504,14 +2659,11 @@ msgstr "Descargando la voz predeterminada (Kokoro)"
 msgid "Downloading {}"
 msgstr "Descargando {}"
 
-msgid "Downloading {} resource(s)…"
-msgstr "Descargando {} recursos…"
+msgid "Downloading {} of {}"
+msgstr "Descargando {} de {}"
 
-msgid "Downloading…"
-msgstr "Descargando…"
-
-msgid "Downloading… {} of {}"
-msgstr "Descargando… {} de {}"
+msgid "Downloading {} resource(s)"
+msgstr "Descargando {} recursos"
 
 msgid "Drag to move this entry"
 msgstr "Arrastra para mover esta entrada"
@@ -2537,6 +2689,9 @@ msgstr "Libros duplicados"
 msgid "Duplicates"
 msgstr "Duplicados"
 
+msgid "E-books (EPUB, FB2, MOBI, DOCX, comics, text and more)"
+msgstr "Libros electrónicos (EPUB, FB2, MOBI, DOCX, cómics, texto y más)"
+
 msgid "E-ink mode"
 msgstr "Modo e-ink"
 
@@ -2552,11 +2707,17 @@ msgstr "Enviando {} por correo"
 msgid "E-reader connected"
 msgstr "Lector conectado"
 
+msgid "EPUB books"
+msgstr "Libros EPUB"
+
 msgid "EPUB · {}"
 msgstr "EPUB · {}"
 
 msgid "EPUB → {} (converted)"
 msgstr "EPUB → {} (convertido)"
+
+msgid "EPUB, PDF, MOBI, FB2, comics, audiobooks, plain text and more"
+msgstr "EPUB, PDF, MOBI, FB2, cómics, audiolibros, texto plano y más"
 
 msgid "Each subscription makes a new book from its feeds on its schedule. Old issues are removed."
 msgstr "Cada suscripción crea un libro nuevo a partir de sus fuentes según su programación. Los números antiguos se eliminan."
@@ -2620,6 +2781,9 @@ msgstr "Editar el tema"
 
 msgid "Edit theme {}"
 msgstr "Editar el tema {}"
+
+msgid "Edit {}"
+msgstr "Editar {}"
 
 msgid "Edit {} Books"
 msgstr "Editar {} libros"
@@ -2729,6 +2893,9 @@ msgstr "Introduce la contraseña"
 msgid "Enter the password of the mail account in Preferences → E-mail"
 msgstr "Escribe la contraseña de la cuenta de correo en Preferencias → Correo electrónico"
 
+msgid "Enter the password."
+msgstr "Introduce la contraseña."
+
 msgid "Enter your own e-mail address in Preferences → E-mail"
 msgstr "Escribe tu propia dirección de correo en Preferencias → Correo electrónico"
 
@@ -2791,6 +2958,9 @@ msgstr "Todo"
 
 msgid "Everything in the catalogue matches the files."
 msgstr "Todo el catálogo coincide con los archivos."
+
+msgid "Everything is already backed up."
+msgstr "Todo está ya en una copia de seguridad."
 
 msgid "Exclude This File from Spell Check"
 msgstr "Excluir este archivo de la revisión ortográfica"
@@ -3004,8 +3174,8 @@ msgstr "Archivos que cambian"
 msgid "Files the split would make"
 msgstr "Archivos que crearía la división"
 
-msgid "Fill in the address of the library server that is running here (Sync shows the same)"
-msgstr "Rellena la dirección del servidor de la biblioteca que se está ejecutando aquí (Sincronizar muestra la misma)"
+msgid "Fill in the address of the OPDS server that is running here (Sync shows the same)"
+msgstr "Rellena la dirección del servidor OPDS que se está ejecutando aquí (Sincronización muestra la misma)"
 
 msgid "Fill in the missing details of these books from online sources"
 msgstr "Rellenar los datos que faltan de estos libros desde fuentes en línea"
@@ -3087,6 +3257,9 @@ msgstr "Buscar siguiente"
 
 msgid "Find small covers"
 msgstr "Buscar portadas pequeñas"
+
+msgid "Finding what is new"
+msgstr "Buscando lo que es nuevo"
 
 msgid "Finds covers that are small or blurry. The lookup proposes a larger one; you choose what to keep."
 msgstr "Encuentra portadas pequeñas o borrosas. La búsqueda propone una más grande; tú eliges cuál conservar."
@@ -3201,23 +3374,8 @@ msgstr "Fuentes que las páginas piden pero el libro no incluye, encontradas ent
 msgid "Footer Statistics"
 msgstr "Estadísticas del pie de página"
 
-msgid "Footer Stats"
-msgstr "Estadísticas del pie de página"
-
 msgid "Footer items"
 msgstr "Elementos del pie de página"
-
-msgid "Footer position"
-msgstr "Posición del pie de página"
-
-msgid "Footer preset"
-msgstr "Preajuste del pie de página"
-
-msgid "Footer text opacity (percent)"
-msgstr "Opacidad del texto del pie (porcentaje)"
-
-msgid "Footer text size (percent)"
-msgstr "Tamaño del texto del pie (porcentaje)"
 
 msgid "For e-readers plugged in with a cable. When this is on, Bookx syncs the reading progress, highlights and notes on every connection without asking. Progress only moves forward, notes are united and nothing is deleted."
 msgstr "Para lectores conectados con cable. Cuando está activado, Bookx sincroniza el progreso de lectura, los subrayados y las notas en cada conexión sin preguntar. El progreso solo avanza, las notas se unen y no se borra nada."
@@ -3441,6 +3599,9 @@ msgstr "Agrupación"
 msgid "Guided view"
 msgstr "Vista guiada"
 
+msgid "HTML, DOCX, text and other documents"
+msgstr "HTML, DOCX, texto y otros documentos"
+
 msgid "Hazards"
 msgstr "Riesgos"
 
@@ -3497,6 +3658,9 @@ msgstr "Subrayados con su texto, notas, colores y estilos, y marcadores"
 
 msgid "Highlights, notes and bookmarks (KOReader)"
 msgstr "Subrayados, notas y marcadores (KOReader)"
+
+msgid "Highlights, notes and bookmarks up to {} come back with a restore."
+msgstr "Los subrayados, las notas y los marcadores hasta {} vuelven con una restauración."
 
 msgid "History"
 msgstr "Historial"
@@ -3586,7 +3750,7 @@ msgid "Images of the book"
 msgstr "Imágenes del libro"
 
 msgid "Images, stylesheets and media the pages load from the web are copied into the book and the links point at the copies. Only download what you are allowed to keep: check the licences."
-msgstr "Las imágenes, hojas de estilos y medios que las páginas cargan de la web se copian al libro y los enlaces apuntan a las copias. Descargue solo lo que pueda conservar: compruebe las licencias."
+msgstr "Las imágenes, hojas de estilo y medios que las páginas cargan de la web se copian al libro y los enlaces apuntan a las copias. Descarga solo lo que puedas conservar: comprueba las licencias."
 
 msgid "Import"
 msgstr "Importar"
@@ -3671,6 +3835,11 @@ msgstr "Se importó {}"
 msgid "Imported {} and {}"
 msgstr "Se importaron {} y {}"
 
+msgid "Imported {} book"
+msgid_plural "Imported {} books"
+msgstr[0] "Se importó {} libro"
+msgstr[1] "Se importaron {} libros"
+
 msgid "Imported {} separately"
 msgstr "Se importó {} por separado"
 
@@ -3689,11 +3858,11 @@ msgstr "Importado, pero no se pudo recargar la lista: {}"
 msgid "Importing"
 msgstr "Importando"
 
+msgid "Importing the Calibre library {}"
+msgstr "Importando la biblioteca de Calibre {}"
+
 msgid "Importing {}"
 msgstr "Importando {}"
-
-msgid "Importing…"
-msgstr "Importando…"
 
 msgid "Imports, conversions, sends and downloads show up here."
 msgstr "Las importaciones, conversiones, envíos y descargas aparecen aquí."
@@ -3724,6 +3893,18 @@ msgstr "En el diseño de dos páginas, la primera página va sola"
 
 msgid "In “{}”"
 msgstr "En «{}»"
+
+msgid "Include book files"
+msgstr "Incluir archivos de libros"
+
+msgid "Include covers"
+msgstr "Incluir portadas"
+
+msgid "Include your books in backups"
+msgstr "Incluir tus libros en las copias de seguridad"
+
+msgid "Included: book files, covers and the catalogue (titles, tags, collections, reading progress, bookmarks, highlights and notes)."
+msgstr "Incluido: los archivos de los libros, las portadas y el catálogo (títulos, etiquetas, colecciones, progreso de lectura, marcadores, subrayados y notas)."
 
 msgid "Indent (Make a Sub-Entry)"
 msgstr "Sangrar (crear una subentrada)"
@@ -3794,6 +3975,9 @@ msgstr "Invertido"
 msgid "Issues to keep"
 msgstr "Números que se conservan"
 
+msgid "It is in {}. Open that folder as a library to use it."
+msgstr "Está en {}. Abre esa carpeta como biblioteca para usarla."
+
 msgid "Italic"
 msgstr "Cursiva"
 
@@ -3817,6 +4001,9 @@ msgstr "Justificar"
 
 msgid "Justify text"
 msgstr "Justificar el texto"
+
+msgid "KOReader"
+msgstr "KOReader"
 
 msgid "KOReader with Progress sync set to a custom sync server at the same address http://<host-ip>:<port>/bookx and that user name and password (or create the account from KOReader’s own Progress sync menu)"
 msgstr "KOReader con la sincronización de progreso apuntando a un servidor personalizado en la misma dirección http://<ip-del-equipo>:<puerto>/bookx y con ese usuario y contraseña (o crea la cuenta desde el propio menú de sincronización de progreso de KOReader)"
@@ -3908,6 +4095,9 @@ msgstr "Texto más grande (Ctrl++)"
 msgid "Larger text"
 msgstr "Texto más grande"
 
+msgid "Largest file to copy, in MB"
+msgstr "Archivo más grande a copiar, en MB"
+
 msgid "Last 30 Days"
 msgstr "Últimos 30 días"
 
@@ -3920,8 +4110,14 @@ msgstr "Últimos 7 días"
 msgid "Last read"
 msgstr "Última lectura"
 
+msgid "Last seen {}"
+msgstr "Visto por última vez {}"
+
 msgid "Last sync: {}"
 msgstr "Última sincronización: {}"
+
+msgid "Last synced from {} {}"
+msgstr "Última sincronización desde {} {}"
 
 msgid "Last verified {}"
 msgstr "Última verificación: {}"
@@ -3991,12 +4187,6 @@ msgstr "Nombre de la biblioteca"
 
 msgid "Library password (user name: bookx)"
 msgstr "Contraseña de la biblioteca (usuario: bookx)"
-
-msgid "Library server (OPDS and web page)"
-msgstr "Servidor de la biblioteca (OPDS y página web)"
-
-msgid "Library servers (OPDS)"
-msgstr "Servidores de la biblioteca (OPDS)"
 
 msgid "Library switched to {}"
 msgstr "Biblioteca cambiada a {}"
@@ -4100,8 +4290,8 @@ msgstr "Cargar más"
 msgid "Loading"
 msgstr "Cargando"
 
-msgid "Loading the voice…"
-msgstr "Cargando la voz…"
+msgid "Loading the voice"
+msgstr "Cargando la voz"
 
 msgid "Locate Again"
 msgstr "Buscar de nuevo"
@@ -4121,11 +4311,14 @@ msgstr "Iniciar sesión"
 msgid "Log in with the user name and password"
 msgstr "Iniciar sesión con el nombre de usuario y la contraseña"
 
+msgid "Logged in as {}"
+msgstr "Sesión iniciada como {}"
+
 msgid "Logged in. Reading positions will sync."
 msgstr "Sesión iniciada. Las posiciones de lectura se sincronizarán."
 
-msgid "Logging in…"
-msgstr "Iniciando sesión…"
+msgid "Logging in"
+msgstr "Iniciando sesión"
 
 msgid "Longest streak"
 msgstr "Racha más larga"
@@ -4166,23 +4359,35 @@ msgstr "Buscar, Wikipedia, traducir"
 msgid "Look-ups use dictionaries on this computer. Bookx can download a free one for the language of a book."
 msgstr "Las consultas usan diccionarios de este equipo. Bookx puede descargar uno gratuito para el idioma de un libro."
 
-msgid "Looking at the covers…"
-msgstr "Revisando las portadas…"
+msgid "Looking"
+msgstr "Buscando"
+
+msgid "Looking at the backup"
+msgstr "Examinando la copia de seguridad"
+
+msgid "Looking at the covers"
+msgstr "Revisando las portadas"
+
+msgid "Looking at your library"
+msgstr "Examinando tu biblioteca"
 
 msgid "Looking for Audiobooks"
 msgstr "Buscando audiolibros"
 
-msgid "Looking the book up…"
-msgstr "Buscando el libro…"
+msgid "Looking the book up"
+msgstr "Buscando el libro"
 
-msgid "Looking the books up…"
-msgstr "Buscando los libros…"
+msgid "Looking the books up"
+msgstr "Buscando los libros"
 
 msgid "Looking up metadata"
 msgstr "Buscando metadatos"
 
 msgid "Looks for damage in the database, missing files and covers, and book files nobody lists."
 msgstr "Busca daños en la base de datos, archivos y portadas que faltan, y archivos de libros que nadie enumera."
+
+msgid "MCP"
+msgstr "MCP"
 
 msgid "MTP (mounted by the desktop)"
 msgstr "MTP (montado por el escritorio)"
@@ -4232,11 +4437,14 @@ msgstr "Poner una familia de fuentes en cursiva"
 msgid "Make a new self-signed certificate"
 msgstr "Crear un nuevo certificado autofirmado"
 
-msgid "Make a new token"
-msgstr "Crear un token nuevo"
-
 msgid "Make a theme"
 msgstr "Crear un tema"
+
+msgid "Make the first backup of your books"
+msgstr "Hacer la primera copia de seguridad de tus libros"
+
+msgid "Make the first copy automatically"
+msgstr "Hacer la primera copia automáticamente"
 
 msgid "Manage Checkpoints"
 msgstr "Gestionar puntos de control"
@@ -4419,7 +4627,13 @@ msgid "More actions"
 msgstr "Más acciones"
 
 msgid "More file actions: rename, delete, merge, bulk rename, link stylesheets, export"
-msgstr "Más acciones de archivos: renombrar, eliminar, fusionar, renombrar en bloque, enlazar hojas de estilos, exportar"
+msgstr "Más acciones de archivos: renombrar, eliminar, fusionar, renombrar en bloque, enlazar hojas de estilo, exportar"
+
+msgid "More for this place"
+msgstr "Más para este lugar"
+
+msgid "More for {}"
+msgstr "Más para {}"
 
 msgid "More search actions"
 msgstr "Más acciones de búsqueda"
@@ -4448,6 +4662,9 @@ msgstr "Mover archivos a una carpeta"
 msgid "Move Later on This Shelf"
 msgstr "Mover después en este estante"
 
+msgid "Move Selected Books to Trash"
+msgstr "Mover los libros seleccionados a la papelera"
+
 msgid "Move Up"
 msgstr "Subir"
 
@@ -4459,6 +4676,9 @@ msgstr "Bajar en el orden de lectura"
 
 msgid "Move entry"
 msgstr "Mover entrada"
+
+msgid "Move selected books to Trash"
+msgstr "Mover los libros seleccionados a la papelera"
 
 msgid "Move the entry: up, down, in, out"
 msgstr "Mover la entrada: arriba, abajo, dentro, fuera"
@@ -4474,6 +4694,12 @@ msgstr "Subir"
 
 msgid "Move up in reading order"
 msgstr "Subir en el orden de lectura"
+
+msgid "Move {} Down"
+msgstr "Bajar {}"
+
+msgid "Move {} Up"
+msgstr "Subir {}"
 
 msgid "Moved {}"
 msgstr "Se movió {}"
@@ -4550,6 +4776,9 @@ msgstr "Recurso de red"
 msgid "Network tools are switched off"
 msgstr "Las herramientas de red están desactivadas"
 
+msgid "Never connected"
+msgstr "Nunca conectado"
+
 msgid "Never verified"
 msgstr "Nunca verificado"
 
@@ -4585,9 +4814,6 @@ msgstr "Nueva plantilla"
 
 msgid "New books in the folder show up here for you to add or dismiss. Files still being copied wait a few seconds."
 msgstr "Los libros nuevos de la carpeta aparecen aquí para que los añadas o los descartes. Los archivos que aún se están copiando esperan unos segundos."
-
-msgid "New books that appear in this folder wait here for your approval; nothing is added on its own."
-msgstr "Los libros nuevos que aparezcan en esta carpeta esperan aquí tu aprobación; no se añade nada por sí solo."
 
 msgid "New class name"
 msgstr "Nuevo nombre de clase"
@@ -4660,6 +4886,9 @@ msgstr "Posición siguiente"
 
 msgid "Next Problem"
 msgstr "Problema siguiente"
+
+msgid "Next Section"
+msgstr "Sección siguiente"
 
 msgid "Next Sentence"
 msgstr "Frase siguiente"
@@ -4816,6 +5045,9 @@ msgstr "Ninguna voz descargada lee {}. Descarga una en Preferencias → Texto a 
 msgid "No duplicates found"
 msgstr "No se encontraron duplicados"
 
+msgid "No e-reader has connected to this computer yet."
+msgstr "Ningún lector electrónico se ha conectado todavía a este equipo."
+
 msgid "No e-reader with KOReader found. Connect it with the USB cable, or save the plugin to a folder."
 msgstr "No se encontró ningún lector con KOReader. Conéctalo con el cable USB o guarda el complemento en una carpeta."
 
@@ -4867,9 +5099,6 @@ msgstr "Todavía no hay subrayados"
 msgid "No images"
 msgstr "No hay imágenes"
 
-msgid "No keyring was found, so this is kept in the settings file (unencrypted). Install GNOME Keyring or KeePassXC to protect it."
-msgstr "No se encontró ningún llavero, así que esto se guarda en el archivo de ajustes (sin cifrar). Instale GNOME Keyring o KeePassXC para protegerlo."
-
 msgid "No match found. Check the title and author and try again."
 msgstr "No se encontró ninguna coincidencia. Revisa el título y el autor e inténtalo de nuevo."
 
@@ -4884,6 +5113,9 @@ msgstr "Sin mensajes"
 
 msgid "No misspelled words in this file"
 msgstr "No hay palabras mal escritas en este archivo"
+
+msgid "No new books to import"
+msgstr "No hay libros nuevos que importar"
 
 msgid "No other places yet"
 msgstr "Todavía no hay otros lugares"
@@ -4924,8 +5156,12 @@ msgstr "No se encontraron libros compatibles"
 msgid "No table of contents"
 msgstr "Sin índice"
 
-msgid "No table of contents yet.\nUse “Generate” to build one from headings."
-msgstr "Aún no hay tabla de contenidos.\nUsa «Generar» para crearla a partir de los encabezados."
+msgid ""
+"No table of contents yet.\n"
+"Use “Generate” to build one from headings."
+msgstr ""
+"Aún no hay tabla de contenidos.\n"
+"Usa «Generar» para crearla a partir de los encabezados."
 
 msgid "No tags"
 msgstr "Sin etiquetas"
@@ -4972,6 +5208,9 @@ msgstr "Sin comprobar"
 msgid "Not checked yet"
 msgstr "Aún sin comprobar"
 
+msgid "Not checked yet. Press Log in to check it."
+msgstr "Aún sin comprobar. Pulsa Iniciar sesión para comprobarlo."
+
 msgid "Not created yet"
 msgstr "Aún sin crear"
 
@@ -4981,8 +5220,14 @@ msgstr "Aún sin descargar"
 msgid "Not enough data yet"
 msgstr "Aún no hay datos suficientes"
 
+msgid "Not enough free space in this place: {} needed, {} free."
+msgstr "No hay espacio libre suficiente en este lugar: se necesitan {} y hay {} libres."
+
 msgid "Not found. Kokoro and Piper need it (package espeak-ng, GPL-3.0); install it with your system's software manager."
 msgstr "No encontrado. Kokoro y Piper lo necesitan (paquete espeak-ng, GPL-3.0); instálalo con el gestor de software de tu sistema."
+
+msgid "Not included: configuration, plugins and passwords, trash, device copies and caches."
+msgstr "No se incluyen: la configuración, los complementos ni las contraseñas, la papelera, las copias en dispositivos ni las cachés."
 
 msgid "Not installed on this computer"
 msgstr "No instalado en este equipo"
@@ -5026,6 +5271,9 @@ msgstr "Notas y subrayados"
 msgid "Notes and highlights"
 msgstr "Notas y subrayados"
 
+msgid "Notes are protected"
+msgstr "Las notas están protegidas"
+
 msgid "Notes: any"
 msgstr "Notas: cualquiera"
 
@@ -5046,6 +5294,9 @@ msgstr "No se encontró nada"
 
 msgid "Nothing found for {}"
 msgstr "No se encontró nada para {}"
+
+msgid "Nothing has synced yet. On your e-reader open a book, then More tools, Bookx Sync, Sync now."
+msgstr "Todavía no se ha sincronizado nada. En tu lector electrónico abre un libro y luego Más herramientas, Bookx Sync, Sincronizar ahora."
 
 msgid "Nothing imported in this window yet"
 msgstr "Todavía no se ha importado nada en esta ventana"
@@ -5074,6 +5325,9 @@ msgstr "Nada requiere atención"
 msgid "Nothing new"
 msgstr "Nada nuevo"
 
+msgid "Nothing new to copy."
+msgstr "No hay nada nuevo que copiar."
+
 msgid "Nothing new to import ({} already in your library)"
 msgstr "Nada nuevo que importar ({} ya están en tu biblioteca)"
 
@@ -5088,6 +5342,9 @@ msgstr "Aún no se ha recibido nada."
 
 msgid "Nothing searched yet"
 msgstr "Todavía no se ha buscado nada"
+
+msgid "Nothing synced today"
+msgstr "Hoy no se ha sincronizado nada"
 
 msgid "Nothing to add."
 msgstr "No hay nada que añadir."
@@ -5118,6 +5375,9 @@ msgstr "No hay nada que leer aquí"
 
 msgid "Nothing to redo"
 msgstr "Nada que rehacer"
+
+msgid "Nothing to remove: the place only has backups it keeps."
+msgstr "Nada que eliminar: el lugar solo tiene copias que conserva."
 
 msgid "Nothing to replace"
 msgstr "Nada que reemplazar"
@@ -5161,6 +5421,15 @@ msgstr "OPDS"
 msgid "OPDS catalogue and web page for other apps and e-readers. Off until you switch it on."
 msgstr "Catálogo OPDS y página web para otras aplicaciones y lectores. Desactivado hasta que lo actives."
 
+msgid "OPDS server"
+msgstr "Servidor OPDS"
+
+msgid "OPDS server (catalogue and web page)"
+msgstr "Servidor OPDS (catálogo y página web)"
+
+msgid "OPML files"
+msgstr "Archivos OPML"
+
 msgid "Off"
 msgstr "Desactivado"
 
@@ -5175,6 +5444,15 @@ msgstr "Desactivado: un libro que tiene valoración la conserva"
 
 msgid "Off: completions open with Ctrl+Space"
 msgstr "Desactivado: las sugerencias se abren con Ctrl+Espacio"
+
+msgid "Off: nothing is copied until you press Back Up."
+msgstr "Desactivado: no se copia nada hasta que pulses Copia de seguridad."
+
+msgid "Off: nothing is copied until you press Back Up. Switch on to let Bookx make the first copy when it closes."
+msgstr "Desactivado: no se copia nada hasta que pulses Copia de seguridad. Actívalo para que Bookx haga la primera copia al cerrarse."
+
+msgid "Off: only the catalogue with your notes is copied, not the books"
+msgstr "Desactivado: solo se copia el catálogo con tus notas, no los libros"
 
 msgid "Off: the books stay in the Calibre folder and are only listed here"
 msgstr "Desactivado: los libros se quedan en la carpeta de Calibre y solo se listan aquí"
@@ -5208,9 +5486,6 @@ msgstr "En el lector: abre un libro → menú superior → Más herramientas →
 
 msgid "On this computer"
 msgstr "En este equipo"
-
-msgid "One address per line. Start a line with # to switch that feed off."
-msgstr "Una dirección por línea. Empieza una línea con # para desactivar esa fuente."
 
 msgid "One flat folder"
 msgstr "Una sola carpeta"
@@ -5263,6 +5538,9 @@ msgstr "Solo se pueden fusionar páginas"
 msgid "Only the fields you fill in are changed"
 msgstr "Solo se cambian los campos que rellenas"
 
+msgid "Only the missing books"
+msgstr "Solo los libros que faltan"
+
 msgid "Only when no page uses it any more"
 msgstr "Solo cuando ya no la use ninguna página"
 
@@ -5303,7 +5581,7 @@ msgid "Open Library Folder"
 msgstr "Abrir la carpeta de la biblioteca"
 
 msgid "Open Library and Google Books are asked only when you ask, or after an import if you switch this on."
-msgstr "Open Library y Google Books solo se consultan cuando usted lo pide, o tras una importación si lo activa."
+msgstr "Open Library y Google Books solo se consultan cuando lo pides, o tras una importación si lo activas."
 
 msgid "Open My Vocabulary"
 msgstr "Abrir mi vocabulario"
@@ -5325,9 +5603,6 @@ msgstr "Abrir Wikipedia"
 
 msgid "Open With"
 msgstr "Abrir con"
-
-msgid "Open a Book of Another Format to Edit"
-msgstr "Abrir un libro de otro formato para editarlo"
 
 msgid "Open a chapter first"
 msgstr "Abre primero un capítulo"
@@ -5365,9 +5640,6 @@ msgstr "Abrir la ventana del dispositivo"
 msgid "Open dictionary folder"
 msgstr "Abrir la carpeta de diccionarios"
 
-msgid "Open folder"
-msgstr "Abrir carpeta"
-
 msgid "Open from Start"
 msgstr "Abrir desde el principio"
 
@@ -5376,9 +5648,6 @@ msgstr "Abrir la guía"
 
 msgid "Open in Vocabulary"
 msgstr "Abrir en el vocabulario"
-
-msgid "Open licence page"
-msgstr "Abrir la página de la licencia"
 
 msgid "Open patches folder"
 msgstr "Abrir la carpeta de parches"
@@ -5389,8 +5658,14 @@ msgstr "Abrir la carpeta de complementos"
 msgid "Open setup guide"
 msgstr "Abrir la guía de configuración"
 
+msgid "Open the book at this bookmark"
+msgstr "Abrir el libro en este marcador"
+
 msgid "Open the library folder"
 msgstr "Abrir la carpeta de la biblioteca"
+
+msgid "Open the main menu"
+msgstr "Abrir el menú principal"
 
 msgid "Open the reverse proxy guide"
 msgstr "Abrir la guía del proxy inverso"
@@ -5413,20 +5688,20 @@ msgstr "Compatible con OpenAI (/v1/audio/speech)"
 msgid "Opened {} in another program; the book updates when you save it there"
 msgstr "Se abrió {} en otro programa; el libro se actualiza cuando lo guardes allí"
 
+msgid "Opening"
+msgstr "Abriendo"
+
 msgid "Opening Book"
 msgstr "Abriendo libro"
 
-msgid "Opening PDF…"
-msgstr "Abriendo PDF…"
+msgid "Opening PDF"
+msgstr "Abriendo PDF"
 
 msgid "Opening a book again shows the tabs and cursor positions it had"
 msgstr "Al abrir un libro de nuevo se muestran las pestañas y las posiciones del cursor que tenía"
 
-msgid "Opening book…"
-msgstr "Abriendo libro…"
-
-msgid "Opening…"
-msgstr "Abriendo…"
+msgid "Opening book"
+msgstr "Abriendo libro"
 
 msgid "Opens first"
 msgstr "Se abre primero"
@@ -5557,14 +5832,14 @@ msgstr "Contraseña (una contraseña de aplicación si usas verificación en dos
 msgid "Password needed"
 msgstr "Se necesita la contraseña"
 
+msgid "Password needed for {}"
+msgstr "Se necesita la contraseña de {}"
+
 msgid "Paste a Glossary"
 msgstr "Pegar un glosario"
 
 msgid "Paste one term per line, for example: word; its definition."
 msgstr "Pega un término por línea, por ejemplo: palabra; su definición."
-
-msgid "Paste the address of an article to read later, or of a news feed (RSS, Atom, JSON Feed) to make a book of its latest articles."
-msgstr "Pega la dirección de un artículo para leer más tarde, o de una fuente de noticias (RSS, Atom, JSON Feed) para crear un libro con sus últimos artículos."
 
 msgid "Paste the token from readwise.io/access_token. It is kept in the system keyring."
 msgstr "Pega el token de readwise.io/access_token. Se guarda en el llavero del sistema."
@@ -5615,7 +5890,7 @@ msgid "Permissions: none. It cannot read your files or reach the network."
 msgstr "Permisos: ninguno. No puede leer tus archivos ni acceder a la red."
 
 msgid "Pick a chapter, stylesheet or image from the Files list to start editing"
-msgstr "Elige un capítulo, una hoja de estilos o una imagen de la lista de archivos para empezar a editar"
+msgstr "Elige un capítulo, una hoja de estilo o una imagen de la lista de archivos para empezar a editar"
 
 msgid "Pick a destination to see the backups there. Encrypted ones ask for the passphrase if it is not saved. The current catalogue is saved first, so a restore can be undone."
 msgstr "Elige un destino para ver las copias de seguridad que hay allí. Las cifradas piden la contraseña si no está guardada. El catálogo actual se guarda primero, para que puedas deshacer una restauración."
@@ -5719,6 +5994,9 @@ msgstr "Pulsa Ctrl+B para marcar la página actual"
 msgid "Press Ctrl+B to bookmark the page"
 msgstr "Pulsa Ctrl+B para marcar la página"
 
+msgid "Press Preview to see it first"
+msgstr "Pulsa Vista previa para verlo antes"
+
 msgid "Press Preview to see what this would do."
 msgstr "Pulsa Vista previa para ver qué haría esto."
 
@@ -5766,6 +6044,9 @@ msgstr "Posición anterior"
 
 msgid "Previous Problem"
 msgstr "Problema anterior"
+
+msgid "Previous Section"
+msgstr "Sección anterior"
 
 msgid "Previous Sentence"
 msgstr "Frase anterior"
@@ -5838,6 +6119,12 @@ msgstr "Progreso de {}"
 
 msgid "Progress through the chapter"
 msgstr "Progreso en el capítulo"
+
+msgid "Progress {}"
+msgstr "Progreso {}"
+
+msgid "Progress {} → {}"
+msgstr "Progreso {} → {}"
 
 msgid "Project Gutenberg"
 msgstr "Project Gutenberg"
@@ -5920,11 +6207,25 @@ msgstr "Lee un libro y aquí aparecerán tu tiempo, tu racha y tu velocidad"
 msgid "Read aloud"
 msgstr "Leer en voz alta"
 
-msgid "Read aloud needs a voice. Bookx can download the natural voice Kokoro ({}) in the background and start reading as soon as it is ready.\n\nLicence: {}\n{}"
-msgstr "La lectura en voz alta necesita una voz. Bookx puede descargar la voz natural Kokoro ({}) en segundo plano y empezar a leer en cuanto esté lista.\n\nLicencia: {}\n{}"
+msgid ""
+"Read aloud needs a voice. Bookx can download the natural voice Kokoro ({}) in the background and start reading as soon as it is ready.\n"
+"\n"
+"Licence: {}\n"
+"{}"
+msgstr ""
+"La lectura en voz alta necesita una voz. Bookx puede descargar la voz natural Kokoro ({}) en segundo plano y empezar a leer en cuanto esté lista.\n"
+"\n"
+"Licencia: {}\n"
+"{}"
 
-msgid "Read aloud needs the speech tool espeak-ng. Install it with:\n{}\nthen press play."
-msgstr "La lectura en voz alta necesita la herramienta de voz espeak-ng. Instálala con:\n{}\ny pulsa reproducir."
+msgid ""
+"Read aloud needs the speech tool espeak-ng. Install it with:\n"
+"{}\n"
+"then press play."
+msgstr ""
+"La lectura en voz alta necesita la herramienta de voz espeak-ng. Instálala con:\n"
+"{}\n"
+"y pulsa reproducir."
 
 msgid "Read aloud needs the speech tool espeak-ng. Install the package espeak-ng with your system's software manager, then press play."
 msgstr "La lectura en voz alta necesita la herramienta de voz espeak-ng. Instala el paquete espeak-ng con el gestor de software del sistema y pulsa reproducir."
@@ -5995,6 +6296,9 @@ msgstr "Solo la posición de lectura (los subrayados, las notas y los marcadores
 msgid "Reading position, highlights, notes and bookmarks, over the same connection, when the Bookx plugin is installed. Without the plugin: reading position only."
 msgstr "Posición de lectura, subrayados, notas y marcadores, por la misma conexión, cuando el complemento de Bookx está instalado. Sin el complemento: solo la posición de lectura."
 
+msgid "Reading positions sync with this account. Press Log in to check it again."
+msgstr "Las posiciones de lectura se sincronizan con esta cuenta. Pulsa Iniciar sesión para comprobarlo de nuevo."
+
 msgid "Reading progress (KOReader)"
 msgstr "Progreso de lectura (KOReader)"
 
@@ -6007,11 +6311,14 @@ msgstr "Velocidad de lectura"
 msgid "Reading status"
 msgstr "Estado de lectura"
 
-msgid "Reading the device…"
-msgstr "Leyendo el dispositivo…"
+msgid "Reading the Calibre catalogue"
+msgstr "Leyendo el catálogo de Calibre"
 
-msgid "Reading the reading state…"
-msgstr "Leyendo el estado de lectura…"
+msgid "Reading the device"
+msgstr "Leyendo el dispositivo"
+
+msgid "Reading the reading state"
+msgstr "Leyendo el estado de lectura"
 
 msgid "Reading time, last 7 days"
 msgstr "Tiempo de lectura, últimos 7 días"
@@ -6021,6 +6328,9 @@ msgstr "Leído hoy"
 
 msgid "Reads a sentence with the settings above"
 msgstr "Lee una frase con los ajustes de arriba"
+
+msgid "Reads every file back and compares it. Slow on a network place."
+msgstr "Lee de nuevo cada archivo y lo compara. Lento en un lugar de red."
 
 msgid "Reads the metadata.db of a Calibre library. Your Calibre library is not changed."
 msgstr "Lee el metadata.db de una biblioteca de Calibre. Tu biblioteca de Calibre no se modifica."
@@ -6109,8 +6419,8 @@ msgstr "Registrar crea la cuenta en el servidor; Iniciar sesión la comprueba. E
 msgid "Registered and logged in. Reading positions will sync."
 msgstr "Registrado y con sesión iniciada. Las posiciones de lectura se sincronizarán."
 
-msgid "Registering…"
-msgstr "Registrando…"
+msgid "Registering"
+msgstr "Registrando"
 
 msgid "Reload"
 msgstr "Recargar"
@@ -6160,8 +6470,8 @@ msgstr "Quitar sobrecubierta"
 msgid "Remove Narration"
 msgstr "Quitar narración"
 
-msgid "Remove Selected Books"
-msgstr "Quitar los libros seleccionados"
+msgid "Remove Old Backups"
+msgstr "Eliminar copias antiguas"
 
 msgid "Remove Surrounding Tag"
 msgstr "Quitar la etiqueta que lo rodea"
@@ -6202,11 +6512,11 @@ msgstr "Quitar de la lista"
 msgid "Remove from This Shelf"
 msgstr "Quitar de este estante"
 
+msgid "Remove old backups?"
+msgstr "¿Eliminar las copias antiguas?"
+
 msgid "Remove rules left empty"
 msgstr "Quitar reglas que quedaron vacías"
-
-msgid "Remove selected books"
-msgstr "Quitar los libros seleccionados"
 
 msgid "Remove tags (comma separated)"
 msgstr "Quitar etiquetas (separadas por comas)"
@@ -6303,6 +6613,9 @@ msgstr "Se quitó {} de {}"
 msgid "Removed {} from “{}”"
 msgstr "Se quitó {} de «{}»"
 
+msgid "Removed {} old backups and {} files no backup needs ({} freed)."
+msgstr "Se eliminaron {} copias antiguas y {} archivos que ninguna copia necesita ({} liberados)."
+
 msgid "Removed {}."
 msgstr "Se quitó {}."
 
@@ -6310,13 +6623,19 @@ msgid "Removed {}; could not remove: {}"
 msgstr "Se quitó {}; no se pudo quitar: {}"
 
 msgid "Removes the ticked properties from stylesheets, <style> blocks and style attributes."
-msgstr "Quita las propiedades marcadas de las hojas de estilos, los bloques <style> y los atributos style."
+msgstr "Quita las propiedades marcadas de las hojas de estilo, los bloques <style> y los atributos style."
 
-msgid "Removing…"
-msgstr "Quitando…"
+msgid "Removing"
+msgstr "Quitando"
+
+msgid "Removing old backups"
+msgstr "Eliminando copias antiguas"
+
+msgid "Removing old backups at {}"
+msgstr "Eliminando copias antiguas en {}"
 
 msgid "Rename"
-msgstr "Renombrar…"
+msgstr "Renombrar"
 
 msgid "Rename Checkpoint"
 msgstr "Renombrar punto de control"
@@ -6408,6 +6727,9 @@ msgstr "Reemplazar y buscar siguiente"
 msgid "Replace and Find Previous"
 msgstr "Reemplazar y buscar anterior"
 
+msgid "Replace everything"
+msgstr "Reemplazar todo"
+
 msgid "Replace existing values"
 msgstr "Reemplazar los valores existentes"
 
@@ -6438,11 +6760,17 @@ msgstr "Función de reemplazo"
 msgid "Replaces the font chosen above"
 msgstr "Sustituye la fuente elegida arriba"
 
+msgid "Replacing saves the current catalogue first. Missing only never changes a file or the catalogue that is already there."
+msgstr "Al reemplazar se guarda primero el catálogo actual. «Solo los que faltan» nunca modifica un archivo ni el catálogo que ya existe."
+
 msgid "Report"
 msgstr "Informe"
 
 msgid "Reports"
 msgstr "Informes"
+
+msgid "Request refused"
+msgstr "Solicitud rechazada"
 
 msgid "Reset All Shortcuts"
 msgstr "Restablecer todos los atajos"
@@ -6459,8 +6787,14 @@ msgstr "Restablecer este libro a los valores predeterminados"
 msgid "Reset text size"
 msgstr "Restablecer el tamaño del texto"
 
+msgid "Reset the Sidebar"
+msgstr "Restablecer la barra lateral"
+
 msgid "Reset the shortcut of {}"
 msgstr "Restablecer el atajo de {}"
+
+msgid "Reset to Default"
+msgstr "Restablecer valores predeterminados"
 
 msgid "Reset to the default"
 msgstr "Restablecer el valor predeterminado"
@@ -6468,8 +6802,14 @@ msgstr "Restablecer el valor predeterminado"
 msgid "Restore"
 msgstr "Restaurar"
 
+msgid "Restore Backup"
+msgstr "Restaurar copia de seguridad"
+
 msgid "Restore Checkpoint"
 msgstr "Restaurar punto de control"
+
+msgid "Restore cancelled; files already restored are complete"
+msgstr "Restauración cancelada; los archivos ya restaurados están completos"
 
 msgid "Restore from a backup"
 msgstr "Restaurar desde una copia"
@@ -6480,14 +6820,32 @@ msgstr "Restaurar desde un archivo"
 msgid "Restore from another place"
 msgstr "Restaurar desde otro lugar"
 
+msgid "Restore into"
+msgstr "Restaurar en"
+
+msgid "Restore the backup of {}"
+msgstr "Restaurar la copia de seguridad de {}"
+
+msgid "Restore the catalogue backup of {}"
+msgstr "Restaurar la copia del catálogo de {}"
+
 msgid "Restore this backup?"
 msgstr "¿Restaurar esta copia?"
 
 msgid "Restored the backup ({})"
 msgstr "Se restauró la copia ({})"
 
+msgid "Restored {}."
+msgstr "Se restauró {}."
+
 msgid "Restored “{}”"
 msgstr "Se restauró «{}»"
+
+msgid "Restoring files"
+msgstr "Restaurando archivos"
+
+msgid "Restoring from {}"
+msgstr "Restaurando desde {}"
 
 msgid "Resulting files"
 msgstr "Archivos resultantes"
@@ -6534,6 +6892,9 @@ msgstr "Proxy inverso y acceso remoto"
 msgid "Reverse proxy, port and firewall, every setting"
 msgstr "Proxy inverso, puerto y cortafuegos, todos los ajustes"
 
+msgid "Revert"
+msgstr "Revertir"
+
 msgid "Revert the Book to This State"
 msgstr "Devolver el libro a este estado"
 
@@ -6565,7 +6926,7 @@ msgid "Right to left"
 msgstr "De derecha a izquierda"
 
 msgid "Right-click a book and choose to add it to your favourites to find it here."
-msgstr "Haga clic derecho en un libro y añádalo a sus favoritos para encontrarlo aquí."
+msgstr "Haz clic derecho en un libro y añádelo a tus favoritos para encontrarlo aquí."
 
 msgid "Rows in the File"
 msgstr "Filas del archivo"
@@ -6604,7 +6965,7 @@ msgid "Sample text to test on"
 msgstr "Texto de ejemplo para probar"
 
 msgid "Save"
-msgstr "Guardar…"
+msgstr "Guardar"
 
 msgid "Save (Ctrl+Enter)"
 msgstr "Guardar (Ctrl+Intro)"
@@ -6667,7 +7028,7 @@ msgid "Save the rules above as"
 msgstr "Guardar las reglas de arriba como"
 
 msgid "Save to a folder"
-msgstr "Guardar en una carpeta…"
+msgstr "Guardar en una carpeta"
 
 msgid "Save your shortcuts to a file, load them from one, or go back to the defaults"
 msgstr "Guarda tus atajos en un archivo, cárgalos desde uno o vuelve a los valores predeterminados"
@@ -6735,6 +7096,9 @@ msgstr "Se guardó «{}» ({} imágenes)"
 msgid "Saved “{}” to your vocabulary."
 msgstr "«{}» guardado en tu vocabulario."
 
+msgid "Saves a snapshot here and copies new and changed books, covers and notes to your places"
+msgstr "Guarda aquí una instantánea y copia a tus lugares los libros, portadas y notas nuevos y modificados"
+
 msgid "Saving a snapshot"
 msgstr "Guardando una instantánea"
 
@@ -6746,6 +7110,9 @@ msgstr "Revisar portadas"
 
 msgid "Schedule"
 msgstr "Programación"
+
+msgid "Scheduled backup"
+msgstr "Copia de seguridad programada"
 
 msgid "Scroll"
 msgstr "Desplazamiento"
@@ -6858,6 +7225,9 @@ msgstr "Buscar palabras, definiciones, notas y etiquetas"
 msgid "Search: {}"
 msgstr "Búsqueda: {}"
 
+msgid "Searching"
+msgstr "Buscando"
+
 msgid "Searching the installed fonts"
 msgstr "Buscando las fuentes instaladas"
 
@@ -6867,11 +7237,8 @@ msgstr "Buscando las fuentes instaladas: {} de {}"
 msgid "Searching the library folder and the folders you chose."
 msgstr "Buscando en la carpeta de la biblioteca y en las carpetas que elegiste."
 
-msgid "Searching…"
-msgstr "Buscando…"
-
-msgid "Searching… {} so far"
-msgstr "Buscando… {} hasta ahora"
+msgid "Searching, {} so far"
+msgstr "Buscando, {} hasta ahora"
 
 msgid "Sections"
 msgstr "Secciones"
@@ -6940,7 +7307,7 @@ msgid "Select pages and stylesheets to link"
 msgstr "Selecciona las páginas y hojas de estilo que vincular"
 
 msgid "Select pages first; the book needs at least one stylesheet"
-msgstr "Selecciona primero las páginas; el libro necesita al menos una hoja de estilos"
+msgstr "Selecciona primero las páginas; el libro necesita al menos una hoja de estilo"
 
 msgid "Select some text to highlight it or add a note"
 msgstr "Selecciona texto para subrayarlo o añadir una nota"
@@ -6974,6 +7341,9 @@ msgstr "Seleccionar este subrayado"
 
 msgid "Select to Matching Tag"
 msgstr "Seleccionar hasta la etiqueta correspondiente"
+
+msgid "Select {}"
+msgstr "Seleccionar {}"
 
 msgid "Selected text to try, for ${2*} stops (optional)"
 msgstr "Texto seleccionado de prueba, para los puntos ${2*} (opcional)"
@@ -7034,9 +7404,6 @@ msgstr "Enviando"
 msgid "Sending options"
 msgstr "Opciones de envío"
 
-msgid "Sending…"
-msgstr "Enviando…"
-
 msgid "Sent to {}"
 msgstr "Enviado a {}"
 
@@ -7082,11 +7449,20 @@ msgstr "Dirección del servidor"
 msgid "Server address (Advanced)"
 msgstr "Dirección del servidor (avanzado)"
 
+msgid "Server address for the e-reader: {}. Use Test connection in the plugin to check it."
+msgstr "Dirección del servidor para el lector electrónico: {}. Usa Probar conexión en el complemento para comprobarla."
+
 msgid "Server address, port and firewall, HTTPS, matching, privacy and offline mode, reverse proxy, requirements"
 msgstr "Dirección del servidor, puerto y cortafuegos, HTTPS, coincidencia de libros, privacidad y modo sin conexión, proxy inverso, requisitos"
 
 msgid "Server inside Bookx"
 msgstr "Servidor dentro de Bookx"
+
+msgid "Server rejected it (status {})"
+msgstr "El servidor lo rechazó (estado {})"
+
+msgid "Server rejected it: {}"
+msgstr "El servidor lo rechazó: {}"
 
 msgid "Server type"
 msgstr "Tipo de servidor"
@@ -7145,14 +7521,8 @@ msgstr "Lista de configuración"
 msgid "Share and Reset"
 msgstr "Compartir y restablecer"
 
-msgid "Share books (OPDS)"
-msgstr "Compartir libros (OPDS)"
-
 msgid "Share themes"
 msgstr "Compartir temas"
-
-msgid "Share this library"
-msgstr "Compartir esta biblioteca"
 
 msgid "Sharing is off."
 msgstr "Compartir está desactivado."
@@ -7183,6 +7553,9 @@ msgstr "Atajos restablecidos"
 
 msgid "Show"
 msgstr "Mostrar"
+
+msgid "Show All"
+msgstr "Mostrar todo"
 
 msgid "Show All ({} more)"
 msgstr "Mostrar todo ({} más)"
@@ -7241,6 +7614,9 @@ msgstr "Mostrar de nuevo"
 msgid "Show all again"
 msgstr "Mostrar todo de nuevo"
 
+msgid "Show all sync activity"
+msgstr "Mostrar toda la actividad de sincronización"
+
 msgid "Show all words, not only misspelled ones"
 msgstr "Mostrar todas las palabras, no solo las mal escritas"
 
@@ -7255,6 +7631,9 @@ msgstr "Mostrar colores en las hojas de estilo"
 
 msgid "Show editions and formats of one book as one card, with a list of the editions"
 msgstr "Muestra las ediciones y formatos de un libro como una sola tarjeta, con la lista de ediciones"
+
+msgid "Show every entry in the usual order"
+msgstr "Mostrar todas las entradas en el orden habitual"
 
 msgid "Show footnotes in a popup"
 msgstr "Mostrar las notas al pie en una ventana emergente"
@@ -7274,11 +7653,17 @@ msgstr "Mostrar más subrayados"
 msgid "Show or Hide What the Marks Mean"
 msgstr "Mostrar u ocultar el significado de las marcas"
 
+msgid "Show or Hide the Sidebar"
+msgstr "Mostrar u ocultar la barra lateral"
+
+msgid "Show or hide the details panel"
+msgstr "Mostrar u ocultar el panel de detalles"
+
+msgid "Show or hide the sidebar"
+msgstr "Mostrar u ocultar la barra lateral"
+
 msgid "Show pages in grey. Always on in e-ink mode."
 msgstr "Mostrar las páginas en gris. Siempre activado en modo e-ink."
-
-msgid "Show sections"
-msgstr "Mostrar secciones"
 
 msgid "Show spaces and tabs"
 msgstr "Mostrar espacios y tabuladores"
@@ -7292,8 +7677,17 @@ msgstr "Mostrar el reproductor completo"
 msgid "Show the reading ruler"
 msgstr "Mostrar la regla de lectura"
 
+msgid "Show this book in Notes and Highlights"
+msgstr "Mostrar este libro en Notas y subrayados"
+
+msgid "Show {}"
+msgstr "Mostrar {}"
+
 msgid "Show {} again"
 msgstr "Mostrar {} de nuevo"
+
+msgid "Show {} in the Sidebar"
+msgstr "Mostrar {} en la barra lateral"
 
 msgid "Showing file names"
 msgstr "Mostrando nombres de archivo"
@@ -7502,11 +7896,11 @@ msgstr "También se usan los diccionarios StarDict (carpetas con archivos .ifo, 
 msgid "Start"
 msgstr "Iniciar"
 
+msgid "Start OPDS server"
+msgstr "Iniciar servidor OPDS"
+
 msgid "Start from a preset"
 msgstr "Empezar con un ajuste predefinido"
-
-msgid "Start library server"
-msgstr "Iniciar el servidor de la biblioteca"
 
 msgid "Start of Content"
 msgstr "Inicio del contenido"
@@ -7517,11 +7911,11 @@ msgstr "Empezar la configuración"
 msgid "Start the server first (step 1), or type the address of another sync server under Advanced."
 msgstr "Inicia antes el servidor (paso 1) o escribe la dirección de otro servidor de sincronización en Avanzado."
 
-msgid "Starting the voice…"
-msgstr "Iniciando la voz…"
+msgid "Starting"
+msgstr "Iniciando"
 
-msgid "Starting…"
-msgstr "Iniciando…"
+msgid "Starting the voice"
+msgstr "Iniciando la voz"
 
 msgid "Starts a local server on this computer"
 msgstr "Inicia un servidor local en este equipo"
@@ -7550,8 +7944,8 @@ msgstr "Detener"
 msgid "Stop Keeping"
 msgstr "Dejar de conservar"
 
-msgid "Stop library server"
-msgstr "Detener el servidor de la biblioteca"
+msgid "Stop OPDS server"
+msgstr "Detener servidor OPDS"
 
 msgid "Stop picking a location"
 msgstr "Dejar de elegir una ubicación"
@@ -7590,7 +7984,7 @@ msgid "Styles that apply to the element at the cursor"
 msgstr "Estilos que se aplican al elemento en el cursor"
 
 msgid "Stylesheet (CSS)"
-msgstr "Hoja de estilos (CSS)"
+msgstr "Hoja de estilo (CSS)"
 
 msgid "Stylesheets linked in {}"
 msgstr "Hojas de estilo vinculadas en {}"
@@ -7682,8 +8076,11 @@ msgstr "¿Sincronizar con {}?"
 msgid "Sync your Kobo or other KOReader device over Wi-Fi: reading position, highlights, notes and bookmarks. Use USB for devices without KOReader."
 msgstr "Sincroniza tu Kobo u otro dispositivo con KOReader por Wi-Fi: posición de lectura, subrayados, notas y marcadores. Usa USB para dispositivos sin KOReader."
 
-msgid "Sync: library server (OPDS, KOReader)"
-msgstr "Sincronización: servidor de la biblioteca (OPDS, KOReader)"
+msgid "Sync: OPDS server and Bookx sync"
+msgstr "Sincronización: servidor OPDS y sincronización de Bookx"
+
+msgid "Synced {} from {} for {}"
+msgstr "Sincronizado {} desde {} para {}"
 
 msgid "Syntax colouring is off for this file because it has very long lines"
 msgstr "El resaltado de sintaxis está desactivado para este archivo porque tiene líneas muy largas"
@@ -7734,7 +8131,7 @@ msgid "Tap zones"
 msgstr "Zonas de toque"
 
 msgid "Tell readers where the cover, the title page, the table of contents, the foreword and so on are. Written to the guide and, in EPUB 3, to the landmarks."
-msgstr "Indique a los lectores dónde están la cubierta, la página de título, la tabla de contenidos, el prólogo, etc. Se escribe en la guía y, en EPUB 3, en los puntos de referencia."
+msgstr "Indica a los lectores dónde están la portada, la página de título, la tabla de contenidos, el prólogo, etc. Se escribe en la guía y, en EPUB 3, en los puntos de referencia."
 
 msgid "Template file type"
 msgstr "Tipo de archivo de la plantilla"
@@ -7784,8 +8181,8 @@ msgstr "Probar la voz"
 msgid "Test the voice server"
 msgstr "Probar el servidor de voz"
 
-msgid "Testing…"
-msgstr "Probando…"
+msgid "Testing"
+msgstr "Probando"
 
 msgid "Text"
 msgstr "Texto"
@@ -7862,11 +8259,17 @@ msgstr "Esa plantilla no funciona: {}"
 msgid "That template is gone"
 msgstr "Esa plantilla ya no existe"
 
+msgid "The Bookx sync server is not running: turn it on first."
+msgstr "El servidor de sincronización de Bookx no está en marcha: actívalo primero."
+
 msgid "The Bookx sync server on and “Sync highlights, notes and bookmarks” on"
 msgstr "El servidor de Bookx sync activo y «Sincronizar subrayados, notas y marcadores» activado"
 
 msgid "The Bookx sync server on, and a sync account you make in Bookx under Preferences → Sync (Register); no existing KOReader account is needed"
 msgstr "El servidor de Bookx sync activo y una cuenta de sincronización que creas en Bookx en Preferencias → Sincronizar (Registrar); no hace falta ninguna cuenta de KOReader previa"
+
+msgid "The OPDS server on"
+msgstr "El servidor OPDS activo"
 
 msgid "The address of an OPDS catalogue, such as a Calibre server (http://host:8080/opds) or another Bookx. A user name and password are only needed when the server asks for them."
 msgstr "La dirección de un catálogo OPDS, como un servidor Calibre (http://host:8080/opds) u otro Bookx. Solo hacen falta usuario y contraseña si el servidor los pide."
@@ -7876,6 +8279,15 @@ msgstr "La dirección debe empezar por smb://, nfs://, sftp:// o similar"
 
 msgid "The attribute {} appears twice"
 msgstr "El atributo {} aparece dos veces"
+
+msgid "The backup has problems: {}. Press Back Up to copy missing files again."
+msgstr "La copia tiene problemas: {}. Pulsa Copia de seguridad para copiar de nuevo los archivos que faltan."
+
+msgid "The backup is complete: all {} files are there with the right size. A deep check also reads their contents."
+msgstr "La copia está completa: los {} archivos están ahí con el tamaño correcto. Una comprobación a fondo también lee su contenido."
+
+msgid "The backup is intact: {} files were read back and match."
+msgstr "La copia está intacta: se volvieron a leer {} archivos y coinciden."
 
 msgid "The book does not use any font it does not already carry"
 msgstr "El libro no usa ninguna fuente que no lleve ya"
@@ -7934,6 +8346,9 @@ msgstr "Los libros seleccionados en la biblioteca. Desmarca un libro para dejarl
 msgid "The catalogue goes back to how it was then. The current one is saved first as a \"Before a restore\" backup, so you can undo this."
 msgstr "El catálogo vuelve a como estaba entonces. El actual se guarda antes como copia «Antes de restaurar», así que puedes deshacerlo."
 
+msgid "The catalogue is replaced by the one in the backup; the current one is saved first."
+msgstr "El catálogo se reemplaza por el de la copia; el actual se guarda antes."
+
 msgid "The check did not finish"
 msgstr "La comprobación no terminó"
 
@@ -7948,6 +8363,9 @@ msgstr "El contenido de «{}» se reemplaza por «{}». Si cambias el nombre, lo
 
 msgid "The copy on the device gets an extra “My notes” section at the end (readable in any e-reader app) and a KOReader notes file, so KOReader lists them too. Your library copy is not changed."
 msgstr "La copia del dispositivo recibe al final una sección extra «Mis notas» (legible en cualquier app de lectura) y un archivo de notas de KOReader, para que KOReader también las muestre. La copia de su biblioteca no cambia."
+
+msgid "The current catalogue is kept."
+msgstr "Se conserva el catálogo actual."
 
 msgid "The current search ({})"
 msgstr "La búsqueda actual ({})"
@@ -8018,6 +8436,12 @@ msgstr "Los archivos se eliminan del dispositivo. Las copias en tu biblioteca se
 msgid "The final output was added after the marked text"
 msgstr "El resultado final se añadió después del texto marcado"
 
+msgid "The first backup copies everything: about {} in {} files."
+msgstr "La primera copia lo copia todo: unos {} en {} archivos."
+
+msgid "The first copy is about {} in {} files. Later copies only add what is new. Nothing is copied until you press Back Up."
+msgstr "La primera copia ocupa unos {} en {} archivos. Las siguientes solo añaden lo nuevo. No se copia nada hasta que pulses Copia de seguridad."
+
 msgid "The folder of “{}” is not available. Is the drive connected?"
 msgstr "La carpeta de «{}» no está disponible. ¿Está conectada la unidad?"
 
@@ -8039,14 +8463,14 @@ msgstr "El subrayado y su nota se eliminan del libro. Esto no se puede deshacer.
 msgid "The highlights and their notes are removed from their books. This cannot be undone."
 msgstr "Los subrayados y sus notas se eliminan de sus libros. Esta acción no se puede deshacer."
 
+msgid "The highlights, notes and bookmarks are removed from their books. This cannot be undone."
+msgstr "Los subrayados, las notas y los marcadores se eliminan de sus libros. Esto no se puede deshacer."
+
 msgid "The images are already as small as they can get"
 msgstr "Las imágenes ya son todo lo pequeñas que pueden ser"
 
 msgid "The layout was not changed: {}"
 msgstr "No se cambió la disposición: {}"
-
-msgid "The library server on"
-msgstr "El servidor de la biblioteca activo"
 
 msgid "The live preview next to the code."
 msgstr "La vista previa en directo junto al código."
@@ -8068,6 +8492,9 @@ msgstr "Solo la página abierta"
 
 msgid "The page whose links are used"
 msgstr "La página cuyos enlaces se usan"
+
+msgid "The password could not be read from the system keyring (locked or not running). Unlock it and restart Bookx, or type the password again."
+msgstr "No se pudo leer la contraseña del llavero del sistema (bloqueado o sin ejecutarse). Desbloquéalo y reinicia Bookx, o escribe la contraseña de nuevo."
 
 msgid "The password must not contain a colon."
 msgstr "La contraseña no puede contener dos puntos."
@@ -8216,6 +8643,9 @@ msgstr "No hay nada que dividir en esos encabezados"
 msgid "These books are different; do not suggest them as copies again"
 msgstr "Estos libros son distintos; no volver a sugerirlos como copias"
 
+msgid "These books are on your e-reader, but Bookx has no matching book, so their highlights were not imported. Add the book to your library, then press Sync now."
+msgstr "Estos libros están en tu lector electrónico, pero Bookx no tiene un libro que coincida, así que sus subrayados no se importaron. Añade el libro a tu biblioteca y luego pulsa Sincronizar ahora."
+
 msgid "These can also be changed while reading from the Appearance menu"
 msgstr "También se pueden cambiar al leer desde el menú Apariencia"
 
@@ -8223,7 +8653,10 @@ msgid "These files are required and cannot be deleted"
 msgstr "Estos archivos son necesarios y no se pueden eliminar"
 
 msgid "These images, fonts and media files are not used by any page, stylesheet or the package. The cover is never listed."
-msgstr "Estas imágenes, fuentes y archivos multimedia no los usa ninguna página, hoja de estilos ni el paquete. La cubierta nunca aparece en la lista."
+msgstr "Estas imágenes, fuentes y archivos multimedia no los usa ninguna página, hoja de estilo ni el paquete. La portada nunca aparece en la lista."
+
+msgid "These keys work inside Preferences and cannot be changed."
+msgstr "Estas teclas funcionan dentro de Preferencias y no se pueden cambiar."
 
 msgid "Thirds (tablet)"
 msgstr "Tercios (tableta)"
@@ -8291,11 +8724,28 @@ msgstr "Este archivo no es una lista de fragmentos"
 msgid "This file was edited after the check. Check again."
 msgstr "Este archivo se editó después de la comprobación. Comprueba de nuevo."
 
-msgid "This is about a device plugged in with a USB cable (or mounted in Files).\n\nWhen you plug in a Kobo, Kindle or similar reader, Bookx reads the reading progress and the highlights and notes the device keeps: from the Kobo’s own database, or from KOReader’s “.sdr” files if KOReader is installed on it. It merges them with your library. Progress only moves forward, highlights and notes are united, and nothing is deleted on either side.\n\nA Kobo needs no KOReader for this; its own reading state is read. A Kindle’s own state is not readable, only KOReader’s files. If the device has no readable state, nothing happens. Reading progress is never written to the device; notes go to it only as a new KOReader notes file where there is none.\n\nOff by default: the connection banner offers a one-time Sync. Answering it never changes this setting. Turn the switch on to sync on every connection without asking."
-msgstr "Esto se refiere a un dispositivo conectado con un cable USB (o montado en Archivos).\n\nAl conectar un Kobo, Kindle o un lector similar, Bookx lee el progreso de lectura y los subrayados y notas que guarda el dispositivo: de la base de datos propia del Kobo o de los archivos «.sdr» de KOReader si está instalado en él. Los combina con tu biblioteca. El progreso solo avanza, los subrayados y las notas se unen y no se borra nada en ninguno de los dos lados.\n\nUn Kobo no necesita KOReader para esto; se lee su propio estado de lectura. El estado propio de un Kindle no es legible, solo los archivos de KOReader. Si el dispositivo no tiene un estado legible, no ocurre nada. El progreso de lectura nunca se escribe en el dispositivo; las notas solo se envían a él como un nuevo archivo de notas de KOReader cuando no hay ninguno.\n\nDesactivado por defecto: la notificación de conexión ofrece una sincronización única. Responderla nunca cambia este ajuste. Activa el interruptor para sincronizar en cada conexión sin preguntar."
+msgid ""
+"This is about a device plugged in with a USB cable (or mounted in Files).\n"
+"\n"
+"When you plug in a Kobo, Kindle or similar reader, Bookx reads the reading progress and the highlights and notes the device keeps: from the Kobo’s own database, or from KOReader’s “.sdr” files if KOReader is installed on it. It merges them with your library. Progress only moves forward, highlights and notes are united, and nothing is deleted on either side.\n"
+"\n"
+"A Kobo needs no KOReader for this; its own reading state is read. A Kindle’s own state is not readable, only KOReader’s files. If the device has no readable state, nothing happens. Reading progress is never written to the device; notes go to it only as a new KOReader notes file where there is none.\n"
+"\n"
+"Off by default: the connection banner offers a one-time Sync. Answering it never changes this setting. Turn the switch on to sync on every connection without asking."
+msgstr ""
+"Esto se refiere a un dispositivo conectado con un cable USB (o montado en Archivos).\n"
+"\n"
+"Al conectar un Kobo, Kindle o un lector similar, Bookx lee el progreso de lectura y los subrayados y notas que guarda el dispositivo: de la base de datos propia del Kobo o de los archivos «.sdr» de KOReader si está instalado en él. Los combina con tu biblioteca. El progreso solo avanza, los subrayados y las notas se unen y no se borra nada en ninguno de los dos lados.\n"
+"\n"
+"Un Kobo no necesita KOReader para esto; se lee su propio estado de lectura. El estado propio de un Kindle no es legible, solo los archivos de KOReader. Si el dispositivo no tiene un estado legible, no ocurre nada. El progreso de lectura nunca se escribe en el dispositivo; las notas solo se envían a él como un nuevo archivo de notas de KOReader cuando no hay ninguno.\n"
+"\n"
+"Desactivado por defecto: la notificación de conexión ofrece una sincronización única. Responderla nunca cambia este ajuste. Activa el interruptor para sincronizar en cada conexión sin preguntar."
 
 msgid "This is the last file; there is nothing to merge it with"
 msgstr "Es el último archivo; no hay con qué fusionarlo"
+
+msgid "This library"
+msgstr "Esta biblioteca"
 
 msgid "This page cannot be shown"
 msgstr "No se puede mostrar esta página"
@@ -8386,6 +8836,9 @@ msgstr "Hasta"
 
 msgid "Today"
 msgstr "Hoy"
+
+msgid "Today: {}"
+msgstr "Hoy: {}"
 
 msgid "Toggle Bookmark"
 msgstr "Alternar marcador"
@@ -8584,6 +9037,15 @@ msgstr "Descarga sin terminar"
 
 msgid "Unknown action {}"
 msgstr "Acción desconocida {}"
+
+msgid "Unknown book"
+msgstr "Libro desconocido"
+
+msgid "Unknown book ({})"
+msgstr "Libro desconocido ({})"
+
+msgid "Unknown device (KOReader)"
+msgstr "Dispositivo desconocido (KOReader)"
 
 msgid "Unknown file action {}"
 msgstr "Acción de archivo desconocida {}"
@@ -8885,8 +9347,17 @@ msgstr "Qué significan las marcas"
 msgid "What the tool will change"
 msgstr "Lo que cambiará la herramienta"
 
+msgid "What to copy"
+msgstr "Qué copiar"
+
+msgid "What to restore"
+msgstr "Qué restaurar"
+
 msgid "What will change"
 msgstr "Qué cambiará"
+
+msgid "What will happen"
+msgstr "Qué ocurrirá"
 
 msgid "When Read Aloud is pressed and no voice is installed, download Kokoro in the background"
 msgstr "Si se pulsa Lectura en voz alta y no hay ninguna voz instalada, descargar Kokoro en segundo plano"
@@ -9002,6 +9473,9 @@ msgstr "Escribe un archivo por cada libro que tenga subrayados, notas o marcador
 msgid "Writes the library with reading status, rating and date read. Goodreads and Hardcover import the Goodreads layout; StoryGraph has its own."
 msgstr "Escribe la biblioteca con el estado de lectura, la valoración y la fecha de lectura. Goodreads y Hardcover importan el formato de Goodreads; StoryGraph tiene el suyo."
 
+msgid "Writing the snapshot"
+msgstr "Escribiendo la instantánea"
+
 msgid "XTTS API server (XTTS v2)"
 msgstr "Servidor de API de XTTS (XTTS v2)"
 
@@ -9040,6 +9514,9 @@ msgstr "Tus diccionarios"
 
 msgid "Your library ({} books) now lives in a database; the old catalogue was kept as bookx-library.json.migrated"
 msgstr "Tu biblioteca ({} libros) ahora vive en una base de datos; el catálogo antiguo se conservó como bookx-library.json.migrated"
+
+msgid "Your notes could not be copied to {}: {}"
+msgstr "No se pudieron copiar tus notas a {}: {}"
 
 msgid "Your own definitions · {} terms · works offline, always first"
 msgstr "Tus propias definiciones · {} términos · funciona sin conexión, siempre primero"
@@ -9083,11 +9560,17 @@ msgstr "quedan unos {}"
 msgid "and {} more"
 msgstr "y {} más"
 
+msgid "approximate place"
+msgstr "lugar aproximado"
+
 msgid "book files or encrypted backups"
 msgstr "archivos de libros o copias de seguridad cifradas"
 
 msgid "can be fixed"
 msgstr "se puede corregir"
+
+msgid "catalogue only"
+msgstr "solo catálogo"
 
 msgid "connected"
 msgstr "conectado"
@@ -9104,11 +9587,17 @@ msgstr "hecho"
 msgid "favourite"
 msgstr "favorito"
 
+msgid "files up to {} MB"
+msgstr "archivos de hasta {} MB"
+
 msgid "finished"
 msgstr "terminado"
 
 msgid "for example"
 msgstr "por ejemplo"
+
+msgid "from {}, hash {}"
+msgstr "desde {}, hash {}"
 
 msgid "gutenberg.org, standardebooks.org and the catalogues you add"
 msgstr "gutenberg.org, standardebooks.org y los catálogos que añada"
@@ -9116,8 +9605,20 @@ msgstr "gutenberg.org, standardebooks.org y los catálogos que añada"
 msgid "https://example.com/article"
 msgstr "https://example.com/article"
 
+msgid "just now"
+msgstr "ahora mismo"
+
+msgid "last sync {}"
+msgstr "última sincronización {}"
+
+msgid "manual"
+msgstr "manual"
+
 msgid "new token; copy the new settings into your assistants"
 msgstr "token nuevo; copia la nueva configuración en tus asistentes"
+
+msgid "no Bookx plugin (reading position only)"
+msgstr "sin complemento de Bookx (solo posición de lectura)"
 
 msgid "not connected"
 msgstr "no conectado"
@@ -9127,6 +9628,9 @@ msgstr "pendiente"
 
 msgid "not used by any text"
 msgstr "no lo usa ningún texto"
+
+msgid "nothing synced yet"
+msgstr "todavía no se ha sincronizado nada"
 
 msgid "nothing: other devices connect to this computer, only while sharing is on and only with the password"
 msgstr "nada: otros dispositivos se conectan a este equipo, solo mientras se comparte y solo con la contraseña"
@@ -9142,6 +9646,12 @@ msgstr "activado"
 
 msgid "on shelves {}"
 msgstr "en los estantes {}"
+
+msgid "plugin {}"
+msgstr "complemento {}"
+
+msgid "progress for {}"
+msgstr "progreso de {}"
 
 msgid "progress of {}"
 msgstr "progreso de {}"
@@ -9195,13 +9705,16 @@ msgid "title, author, ISBN of the books you look up"
 msgstr "título, autor, ISBN de los libros que busca"
 
 msgid "translator-credits"
-msgstr "Traducción automática, pendiente de revisión"
+msgstr "translator-credits"
 
 msgid "typed through the UI"
 msgstr "escrito a través de la interfaz"
 
 msgid "used {} times"
 msgstr "usado {} veces"
+
+msgid "your e-readers"
+msgstr "tus lectores electrónicos"
 
 msgid "your highlights, when you press Upload"
 msgstr "sus subrayados, cuando pulsa Subir"
@@ -9227,6 +9740,9 @@ msgstr "{} % · quedan {} h {} min"
 msgid "{} % · {} min left"
 msgstr "{} % · quedan {} min"
 
+msgid "{} (catalogue only)"
+msgstr "{} (solo catálogo)"
+
 msgid "{} (highlights and notes) from the device"
 msgstr "{} (subrayados y notas) desde el dispositivo"
 
@@ -9241,6 +9757,15 @@ msgstr "{} añadidos, {} ya estaban en la biblioteca, {} con error"
 
 msgid "{} and {} more"
 msgstr "{} y {} más"
+
+msgid "{} are damaged"
+msgstr "{} están dañados"
+
+msgid "{} are missing"
+msgstr "{} faltan"
+
+msgid "{} are newer here than in the backup and would be replaced."
+msgstr "{} son más recientes aquí que en la copia y se reemplazarían."
 
 msgid "{} article"
 msgid_plural "{} articles"
@@ -9275,6 +9800,21 @@ msgid_plural "{} books restored"
 msgstr[0] "{} libro restaurado"
 msgstr[1] "{} libros restaurados"
 
+msgid "{} bookmark"
+msgid_plural "{} bookmarks"
+msgstr[0] "{} marcador"
+msgstr[1] "{} marcadores"
+
+msgid "{} bookmark already in your library"
+msgid_plural "{} bookmarks already in your library"
+msgstr[0] "{} marcador ya está en tu biblioteca"
+msgstr[1] "{} marcadores ya están en tu biblioteca"
+
+msgid "{} bookmark from KOReader"
+msgid_plural "{} bookmarks from KOReader"
+msgstr[0] "{} marcador de KOReader"
+msgstr[1] "{} marcadores de KOReader"
+
 msgid "{} bookmark or note without a highlighted quote"
 msgid_plural "{} bookmarks or notes without a highlighted quote"
 msgstr[0] "{} marcador o nota sin cita subrayada"
@@ -9282,6 +9822,9 @@ msgstr[1] "{} marcadores o notas sin cita subrayada"
 
 msgid "{} books not in your library"
 msgstr "{} libros que no están en tu biblioteca"
+
+msgid "{} cannot be read"
+msgstr "{} no se pueden leer"
 
 msgid "{} change"
 msgid_plural "{} changes"
@@ -9327,10 +9870,18 @@ msgstr "{} copias. Elige la que quieres conservar."
 msgid "{} could not be opened: {}"
 msgstr "No se pudo abrir {}: {}"
 
+msgid "{} could not be restored."
+msgstr "{} no se pudieron restaurar."
+
 msgid "{} day"
 msgid_plural "{} days"
 msgstr[0] "{} día"
 msgstr[1] "{} días"
+
+msgid "{} day ago"
+msgid_plural "{} days ago"
+msgstr[0] "hace {} día"
+msgstr[1] "hace {} días"
 
 msgid "{} edition"
 msgid_plural "{} editions"
@@ -9341,6 +9892,9 @@ msgid "{} element"
 msgid_plural "{} elements"
 msgstr[0] "{} elemento"
 msgstr[1] "{} elementos"
+
+msgid "{} failed"
+msgstr "{} fallaron"
 
 msgid "{} failed: {}"
 msgstr "{} falló: {}"
@@ -9358,6 +9912,9 @@ msgstr[1] "{} archivos"
 msgid "{} files"
 msgstr "{} archivos"
 
+msgid "{} files are left out (too big or not readable)."
+msgstr "{} archivos se omiten (demasiado grandes o ilegibles)."
+
 msgid "{} files in different formats. Merge keeps every file as a format of one book."
 msgstr "{} archivos en distintos formatos. Fusionar conserva cada archivo como un formato de un solo libro."
 
@@ -9372,6 +9929,9 @@ msgstr "{} encontrados, sin números que falten entre ellos."
 msgid "{} found. Audio files and folders next to the books or in a folder you choose, paired by ISBN, title and author. Bookx only links them; Open starts your audio player."
 msgstr "{} encontrados. Archivos y carpetas de audio junto a los libros o en una carpeta que elijas, emparejados por ISBN, título y autor. Bookx solo los enlaza; Abrir inicia tu reproductor de audio."
 
+msgid "{} free"
+msgstr "{} libres"
+
 msgid "{} h {} min"
 msgstr "{} h {} min"
 
@@ -9383,6 +9943,21 @@ msgid_plural "{} highlights"
 msgstr[0] "{} subrayado"
 msgstr[1] "{} subrayados"
 
+msgid "{} highlight added or updated"
+msgid_plural "{} highlights added or updated"
+msgstr[0] "{} subrayado añadido o actualizado"
+msgstr[1] "{} subrayados añadidos o actualizados"
+
+msgid "{} highlight could not be placed in the book"
+msgid_plural "{} highlights could not be placed in the book"
+msgstr[0] "No se pudo colocar {} subrayado en el libro"
+msgstr[1] "No se pudieron colocar {} subrayados en el libro"
+
+msgid "{} highlight not imported"
+msgid_plural "{} highlights not imported"
+msgstr[0] "{} subrayado sin importar"
+msgstr[1] "{} subrayados sin importar"
+
 msgid "{} highlights"
 msgstr "{} subrayados"
 
@@ -9391,6 +9966,11 @@ msgstr "{} subrayados de KOReader"
 
 msgid "{} highlights to send"
 msgstr "{} subrayados para enviar"
+
+msgid "{} hour ago"
+msgid_plural "{} hours ago"
+msgstr[0] "hace {} hora"
+msgstr[1] "hace {} horas"
 
 msgid "{} ignored ({} hidden problems)"
 msgstr "{} ignorados ({} problemas ocultos)"
@@ -9457,6 +10037,11 @@ msgid_plural "{} minutes"
 msgstr[0] "{} minuto"
 msgstr[1] "{} minutos"
 
+msgid "{} minute ago"
+msgid_plural "{} minutes ago"
+msgstr[0] "hace {} minuto"
+msgstr[1] "hace {} minutos"
+
 msgid "{} name"
 msgid_plural "{} names"
 msgstr[0] "{} nombre"
@@ -9488,14 +10073,29 @@ msgid_plural "{} occurrences"
 msgstr[0] "{} aparición"
 msgstr[1] "{} apariciones"
 
+msgid "{} of new or changed files ({} files) to copy; everything else is already there."
+msgstr "{} de archivos nuevos o modificados ({} archivos) por copiar; todo lo demás ya está ahí."
+
+msgid "{} of the notes records are damaged"
+msgstr "{} de los registros de notas están dañados"
+
 msgid "{} of {}"
 msgstr "{} de {}"
+
+msgid "{} of {} bookmarks · {} books"
+msgstr "{} de {} marcadores · {} libros"
 
 msgid "{} of {} books"
 msgstr "{} de {} libros"
 
 msgid "{} of {} covers are small"
 msgstr "{} de {} portadas son pequeñas"
+
+msgid "{} of {} entries · {} books · {} with notes"
+msgstr "{} de {} entradas · {} libros · {} con notas"
+
+msgid "{} of {} files"
+msgstr "{} de {} archivos"
 
 msgid "{} of {} highlights"
 msgstr "{} de {} subrayados"
@@ -9543,16 +10143,25 @@ msgid_plural "{} references"
 msgstr[0] "{} referencia"
 msgstr[1] "{} referencias"
 
-msgid "{} removed"
+msgid "{} annotations removed"
 msgstr "{} eliminados"
+
+msgid "{} removed"
+msgid_plural "{} removed"
+msgstr[0] "{} quitado"
+msgstr[1] "{} quitados"
 
 msgid "{} replacement"
 msgid_plural "{} replacements"
 msgstr[0] "{} reemplazo"
 msgstr[1] "{} reemplazos"
 
-msgid "{} resource(s):\n{}"
-msgstr "{} recurso(s):\n{}"
+msgid ""
+"{} resource(s):\n"
+"{}"
+msgstr ""
+"{} recurso(s):\n"
+"{}"
 
 msgid "{} result"
 msgid_plural "{} results"
@@ -9561,8 +10170,8 @@ msgstr[1] "{} resultados"
 
 msgid "{} result so far"
 msgid_plural "{} results so far"
-msgstr[0] "{} resultado hasta ahora…"
-msgstr[1] "{} resultados hasta ahora…"
+msgstr[0] "{} resultado hasta ahora"
+msgstr[1] "{} resultados hasta ahora"
 
 msgid "{} rows, {} would change"
 msgstr "{} filas, {} cambiarían"
@@ -9605,6 +10214,9 @@ msgstr[1] "{} términos encontrados"
 msgid "{} terms added, {} updated"
 msgstr "{} términos añadidos, {} actualizados"
 
+msgid "{} to restore, {} already present."
+msgstr "{} por restaurar, {} ya presentes."
+
 msgid "{} to the device"
 msgstr "{} al dispositivo"
 
@@ -9637,6 +10249,11 @@ msgstr "{} se eliminará del libro, pero otros archivos aún hacen referencia a 
 msgid "{} will be removed from the book. A checkpoint is taken first and the toast offers Undo."
 msgstr "{} se eliminará del libro. Antes se crea un punto de control y el aviso ofrece Deshacer."
 
+msgid "{} with a note"
+msgid_plural "{} with notes"
+msgstr[0] "{} con nota"
+msgstr[1] "{} con notas"
+
 msgid "{} without a number"
 msgstr "{} sin número"
 
@@ -9667,8 +10284,12 @@ msgstr "{} · envía {}"
 msgid "{} · wrapped around"
 msgstr "{} · volvió al principio"
 
-msgid "{} · {}\n{}"
-msgstr "{} · {}\n{}"
+msgid ""
+"{} · {}\n"
+"{}"
+msgstr ""
+"{} · {}\n"
+"{}"
 
 msgid "{} · {} chapters"
 msgstr "{} · {} capítulos"
@@ -9679,8 +10300,15 @@ msgstr "{} · {} archivos · {}"
 msgid "{} · {} · {}"
 msgstr "{} · {} · {}"
 
-msgid "{} · {} · {}\n{}"
-msgstr "{} · {} · {}\n{}"
+msgid ""
+"{} · {} · {}\n"
+"{}"
+msgstr ""
+"{} · {} · {}\n"
+"{}"
+
+msgid "{} · {} · {} · last {}"
+msgstr "{} · {} · {} · última {}"
 
 msgid "{} · {} — binary file, cannot be edited"
 msgstr "{} · {} — archivo binario, no se puede editar"
@@ -9723,6 +10351,9 @@ msgstr "{}: {}"
 
 msgid "{}: {} changes"
 msgstr "{}: {} cambios"
+
+msgid "{}: {} of {}"
+msgstr "{}: {} de {}"
 
 msgid "{}: {} — undo with Tools → Restore Checkpoint"
 msgstr "{}: {} — deshaz con Herramientas → Restaurar punto de control"
@@ -9769,394 +10400,1042 @@ msgstr "… y {} filas más (Aceptar todo las incluye)"
 msgid "★ Favourites"
 msgstr "★ Favoritos"
 
-msgid "Select {}"
-msgstr "Seleccionar {}"
+msgid ".*"
+msgstr ".*"
 
-msgid "0 means no limit. Bigger files are left out and listed."
-msgstr "0 significa sin límite. Los archivos más grandes se omiten y se enumeran."
+msgid "A column has a name, a type and a short label to search it: #label:value"
+msgstr "Una columna tiene un nombre, un tipo y una etiqueta corta para buscarla: #etiqueta:valor"
 
-msgid "A backup cannot be read"
-msgstr "No se puede leer una copia de seguridad"
+msgid "A feed line is an address and at most one of “full” or “summary”."
+msgstr "Una línea de fuente es una dirección y como máximo una de las palabras «full» o «summary»."
 
-msgid "Account saved: {}"
-msgstr "Cuenta guardada: {}"
+msgid "A record needs a title"
+msgstr "Un registro necesita un título"
 
-msgid "After the first backup only new or changed files are copied; a renamed or moved book costs nothing. 'Skipped' means nothing had changed. 'Verified' means the stored bytes were read back and checked, not that a restore was tested."
-msgstr "Después de la primera copia solo se copian los archivos nuevos o modificados; un libro renombrado o movido no cuesta nada. «Omitida» significa que nada había cambiado. «Verificada» significa que los bytes almacenados se leyeron de nuevo y se comprobaron, no que se probara una restauración."
+msgid "A tag written like Fiction.Fantasy sits under Fiction; choosing Fiction shows every book below it"
+msgstr "Una etiqueta escrita como Ficción.Fantasía queda bajo Ficción; al elegir Ficción se muestran todos los libros que hay debajo"
 
-msgid "Another folder"
-msgstr "Otra carpeta"
+msgid "A value does not fit"
+msgstr "Un valor no encaja"
 
-msgid "Back Up This Place"
-msgstr "Copiar a este lugar"
+msgid "A warm tint and the dark theme between the two times"
+msgstr "Un tono cálido y el tema oscuro entre las dos horas"
 
-msgid "Backup cancelled; nothing half-written is left behind"
-msgstr "Copia cancelada; no queda nada escrito a medias"
+msgid "Accept and Download"
+msgstr "Aceptar y descargar"
 
-msgid "Backups beyond the number this place keeps are removed, and so are the files only they needed. Manual backups and the newest ones stay."
-msgstr "Se eliminan las copias que superen el número que conserva este lugar, junto con los archivos que solo ellas necesitaban. Las copias manuales y las más recientes se conservan."
+msgid "Add Column"
+msgstr "Añadir columna"
 
-msgid "Backups include your book files, covers and catalogue (titles, tags, collections, reading progress, bookmarks, highlights and notes). Only new or changed files are copied after the first backup. Not included: configuration, plugins and passwords, trash, device copies and caches."
-msgstr "Las copias de seguridad incluyen los archivos de tus libros, las portadas y el catálogo (títulos, etiquetas, colecciones, progreso de lectura, marcadores, subrayados y notas). Después de la primera copia solo se copian los archivos nuevos o modificados. No se incluyen: la configuración, los complementos ni las contraseñas, la papelera, las copias en dispositivos ni las cachés."
+msgid "Add Empty Book"
+msgstr "Añadir libro vacío"
 
-msgid "Backups of your books and notes, library checks and the trash"
-msgstr "Copias de seguridad de tus libros y notas, comprobaciones de la biblioteca y la papelera"
+msgid "Add by ISBN"
+msgstr "Añadir por ISBN"
 
-msgid "Book files, covers and catalogue with your notes. Only new or changed files are copied after the first backup."
-msgstr "Archivos de los libros, portadas y catálogo con tus notas. Después de la primera copia solo se copian los archivos nuevos o modificados."
+msgid "Add new books automatically"
+msgstr "Añadir libros nuevos automáticamente"
 
-msgid "Bookmark Actions"
-msgstr "Acciones del marcador"
+msgid "Added to the shelf “{}”"
+msgstr "Añadido al estante «{}»"
 
-msgid "Bookmarks you add while reading, and the ones synced from your e-reader, appear here."
-msgstr "Aquí aparecen los marcadores que añades mientras lees y los sincronizados desde tu lector electrónico."
+msgid "Added {} article from Wallabag"
+msgid_plural "Added {} articles from Wallabag"
+msgstr[0] "Se añadió {} artículo de Wallabag"
+msgstr[1] "Se añadieron {} artículos de Wallabag"
 
-msgid "Books and catalogue, no covers"
-msgstr "Libros y catálogo, sin portadas"
+msgid "Adding from the web: {}"
+msgstr "Añadiendo desde la web: {}"
 
-msgid "Books, covers and catalogue"
-msgstr "Libros, portadas y catálogo"
+msgid "Adding {} new book from the import folder"
+msgid_plural "Adding {} new books from the import folder"
+msgstr[0] "Añadiendo {} libro nuevo de la carpeta de importación"
+msgstr[1] "Añadiendo {} libros nuevos de la carpeta de importación"
 
-msgid "Cancel the backup"
-msgstr "Cancelar la copia de seguridad"
+msgid "Addresses or networks (10.0.0.0/8) of your reverse proxy. Only then is its X-Forwarded-For header believed, so the failed-login limit counts each client and not the proxy."
+msgstr "Direcciones o redes (10.0.0.0/8) de tu proxy inverso. Solo entonces se cree su cabecera X-Forwarded-For, para que el límite de inicios de sesión fallidos cuente cada cliente y no el proxy."
 
-msgid "Cannot estimate the next backup: {}"
-msgstr "No se puede estimar la próxima copia: {}"
+msgid "Adds a book to the shelf “{}” when you reach its end"
+msgstr "Añade un libro al estante «{}» cuando llegas a su final"
 
-msgid "Cannot read the backups of the books here"
-msgstr "No se pueden leer aquí las copias de seguridad de los libros"
+msgid "Adds a page with the table of contents to the book"
+msgstr "Añade al libro una página con la tabla de contenidos"
 
-msgid "Cannot restore: {}"
-msgstr "No se puede restaurar: {}"
+msgid "Allow"
+msgstr "Permitir"
 
-msgid "Catalogue only"
-msgstr "Solo el catálogo"
+msgid "Allow {} to run?"
+msgstr "¿Permitir que {} se ejecute?"
 
-msgid "Check Backup"
-msgstr "Comprobar la copia"
+msgid "Allowed host names"
+msgstr "Nombres de host permitidos"
 
-msgid "Check Backup in Depth"
-msgstr "Comprobar la copia a fondo"
+msgid "Another backup operation is running. Try again when it is done."
+msgstr "Se está ejecutando otra operación de copia de seguridad. Inténtalo de nuevo cuando termine."
 
-msgid "Check cancelled"
-msgstr "Comprobación cancelada"
+msgid "Applies to {} selected books"
+msgstr "Se aplica a {} libros seleccionados"
 
-msgid "Checking the backup"
-msgstr "Comprobando la copia"
+msgid "Archive finished books"
+msgstr "Archivar los libros terminados"
 
-msgid "Checking the backup at {}"
-msgstr "Comprobando la copia en {}"
+msgid "Articles"
+msgstr "Artículos"
 
-msgid "Choose a folder first"
-msgstr "Elige primero una carpeta"
+msgid "As written"
+msgstr "Tal como está escrito"
 
-msgid "Choose the Folder to Restore Into"
-msgstr "Elige la carpeta donde restaurar"
+msgid "Author name order"
+msgstr "Orden del nombre del autor"
 
-msgid "Copied {} entry"
-msgid_plural "Copied {} entries"
-msgstr[0] "Se copió {} entrada"
-msgstr[1] "Se copiaron {} entradas"
+msgid "Auto-Turn Pages"
+msgstr "Pasar páginas automáticamente"
 
-msgid "Copied {} new files ({}); {} were already there."
-msgstr "Se copiaron {} archivos nuevos ({}); {} ya estaban."
+msgid "Auto-turn interval"
+msgstr "Intervalo de paso automático"
 
-msgid "Copy to {}"
-msgstr "Copiar a {}"
+msgid "Auto-turn is off"
+msgstr "El paso automático está desactivado"
 
-msgid "Copying new files"
-msgstr "Copiando archivos nuevos"
+msgid "Auto-turn stopped at the end of the book"
+msgstr "El paso automático se detuvo al final del libro"
 
-msgid "Could not check: {}"
-msgstr "No se pudo comprobar: {}"
+msgid "Auto-turn: a page every {} seconds"
+msgstr "Paso automático: una página cada {} segundos"
 
-msgid "Could not find this highlight in the book"
-msgstr "No se encontró este subrayado en el libro"
+msgid "Automatic"
+msgstr "Automático"
 
-msgid "Could not remove old backups: {}"
-msgstr "No se pudieron eliminar las copias antiguas: {}"
+msgid "Background colour"
+msgstr "Color de fondo"
 
-msgid "Covers and catalogue, no book files"
-msgstr "Portadas y catálogo, sin archivos de libros"
+msgid "Book's fonts and sizes"
+msgstr "Fuentes y tamaños del libro"
 
-msgid "Delete {} Entry?"
-msgid_plural "Delete {} Entries?"
-msgstr[0] "¿Eliminar {} entrada?"
-msgstr[1] "¿Eliminar {} entradas?"
+msgid "Book's own styling"
+msgstr "Estilo propio del libro"
 
-msgid "Edit {}"
-msgstr "Editar {}"
+msgid "Books in This Archive"
+msgstr "Libros de este archivo"
 
-msgid "Enter the password."
-msgstr "Introduce la contraseña."
+msgid "Change Backup Passphrase"
+msgstr "Cambiar la contraseña de la copia de seguridad"
 
-msgid "Everything is already backed up."
-msgstr "Todo está ya en una copia de seguridad."
+msgid "Change the backup passphrase"
+msgstr "Cambiar la contraseña de la copia de seguridad"
 
-msgid "Finding what is new"
-msgstr "Buscando lo que es nuevo"
+msgid "Change the book that is open in the editor (each action is one checkpoint you can restore)"
+msgstr "Modifica el libro abierto en el editor (cada acción es un punto de control que puedes restaurar)"
 
-msgid "Highlights, notes and bookmarks up to {} come back with a restore."
-msgstr "Los subrayados, las notas y los marcadores hasta {} vuelven con una restauración."
+msgid "Changed {} book"
+msgid_plural "Changed {} books"
+msgstr[0] "Se cambió {} libro"
+msgstr[1] "Se cambiaron {} libros"
 
-msgid "Include book files"
-msgstr "Incluir archivos de libros"
+msgid "Changes that are not allowed are skipped"
+msgstr "Los cambios no permitidos se omiten"
 
-msgid "Include covers"
-msgstr "Incluir portadas"
+msgid "Changing the backup passphrase"
+msgstr "Cambiando la contraseña de la copia de seguridad"
 
-msgid "Include your books in backups"
-msgstr "Incluir tus libros en las copias de seguridad"
+msgid "Clear All Marks"
+msgstr "Quitar todas las marcas"
 
-msgid "Included: book files, covers and the catalogue (titles, tags, collections, reading progress, bookmarks, highlights and notes)."
-msgstr "Incluido: los archivos de los libros, las portadas y el catálogo (títulos, etiquetas, colecciones, progreso de lectura, marcadores, subrayados y notas)."
+msgid "Cleared {} mark"
+msgid_plural "Cleared {} marks"
+msgstr[0] "Se quitó {} marca"
+msgstr[1] "Se quitaron {} marcas"
 
-msgid "It is in {}. Open that folder as a library to use it."
-msgstr "Está en {}. Abre esa carpeta como biblioteca para usarla."
+msgid "Client ID"
+msgstr "ID de cliente"
 
-msgid "Largest file to copy, in MB"
-msgstr "Archivo más grande a copiar, en MB"
+msgid "Client secret"
+msgstr "Secreto de cliente"
 
-msgid "Logged in as {}"
-msgstr "Sesión iniciada como {}"
+msgid "Collapse All"
+msgstr "Contraer todo"
 
-msgid "Looking"
-msgstr "Buscando"
+msgid "Comics of this library open right to left unless you choose otherwise for a book"
+msgstr "Los cómics de esta biblioteca se abren de derecha a izquierda salvo que elijas otra cosa para un libro"
 
-msgid "Looking at the backup"
-msgstr "Examinando la copia de seguridad"
+msgid "Computed from a template"
+msgstr "Calculado a partir de una plantilla"
 
-msgid "Looking at your library"
-msgstr "Examinando tu biblioteca"
+msgid "Connect to {}"
+msgstr "Conectar con {}"
 
-msgid "MCP"
-msgstr "MCP"
+msgid "Contents page in the text"
+msgstr "Página de contenidos en el texto"
 
-msgid "Make the first backup of your books"
-msgstr "Hacer la primera copia de seguridad de tus libros"
+msgid "Continue Reading"
+msgstr "Seguir leyendo"
 
-msgid "Make the first copy automatically"
-msgstr "Hacer la primera copia automáticamente"
+msgid "Continue in Audiobook"
+msgstr "Continuar en el audiolibro"
 
-msgid "More for this place"
-msgstr "Más para este lugar"
+msgid "Contrast"
+msgstr "Contraste"
 
-msgid "More for {}"
-msgstr "Más para {}"
+msgid "Conversion Options"
+msgstr "Opciones de conversión"
 
-msgid "Not checked yet. Press Log in to check it."
-msgstr "Aún sin comprobar. Pulsa Iniciar sesión para comprobarlo."
+msgid "Convert at a time"
+msgstr "Convertir a la vez"
 
-msgid "Not enough free space in this place: {} needed, {} free."
-msgstr "No hay espacio libre suficiente en este lugar: se necesitan {} y hay {} libres."
+msgid "Copied with the citation"
+msgstr "Copiado con la cita"
 
-msgid "Not included: configuration, plugins and passwords, trash, device copies and caches."
-msgstr "No se incluyen: la configuración, los complementos ni las contraseñas, la papelera, las copias en dispositivos ni las cachés."
+msgid "Copy Install Command"
+msgstr "Copiar el comando de instalación"
 
-msgid "Notes are protected"
-msgstr "Las notas están protegidas"
+msgid "Copy always adds the source; Ctrl+Shift+C does it for one copy"
+msgstr "Copiar siempre añade la fuente; Ctrl+Shift+C lo hace para una sola copia"
 
-msgid "Nothing new to copy."
-msgstr "No hay nada nuevo que copiar."
+msgid "Copy the Server Address"
+msgstr "Copiar la dirección del servidor"
 
-msgid "Nothing to remove: the place only has backups it keeps."
-msgstr "Nada que eliminar: el lugar solo tiene copias que conserva."
+msgid "Copy the Token"
+msgstr "Copiar el token"
 
-msgid "Off: nothing is copied until you press Back Up."
-msgstr "Desactivado: no se copia nada hasta que pulses Copia de seguridad."
+msgid "Copy with Citation"
+msgstr "Copiar con cita"
 
-msgid "Off: nothing is copied until you press Back Up. Switch on to let Bookx make the first copy when it closes."
-msgstr "Desactivado: no se copia nada hasta que pulses Copia de seguridad. Actívalo para que Bookx haga la primera copia al cerrarse."
+msgid "Copy with a citation"
+msgstr "Copiar con una cita"
 
-msgid "Off: only the catalogue with your notes is copied, not the books"
-msgstr "Desactivado: solo se copia el catálogo con tus notas, no los libros"
+msgid "Could not change the cover: {}"
+msgstr "No se pudo cambiar la portada: {}"
 
-msgid "Only the missing books"
-msgstr "Solo los libros que faltan"
+msgid "Could not continue in the audiobook: {}"
+msgstr "No se pudo continuar en el audiolibro: {}"
 
-msgid "Open the book at this bookmark"
-msgstr "Abrir el libro en este marcador"
+msgid "Could not continue reading: {}"
+msgstr "No se pudo seguir leyendo: {}"
 
-msgid "Password needed for {}"
-msgstr "Se necesita la contraseña de {}"
+msgid "Could not take over {}: {}"
+msgstr "No se pudo tomar el control de {}: {}"
 
-msgid "Press Preview to see it first"
-msgstr "Pulsa Vista previa para verlo antes"
+msgid "Cover from PDF"
+msgstr "Portada desde el PDF"
 
-msgid "Reading positions sync with this account. Press Log in to check it again."
-msgstr "Las posiciones de lectura se sincronizan con esta cuenta. Pulsa Iniciar sesión para comprobarlo de nuevo."
+msgid "Create"
+msgstr "Crear"
 
-msgid "Reads every file back and compares it. Slow on a network place."
-msgstr "Lee de nuevo cada archivo y lo compara. Lento en un lugar de red."
+msgid "Create a Master Password"
+msgstr "Crear una contraseña maestra"
 
-msgid "Remove Old Backups"
-msgstr "Eliminar copias antiguas"
+msgid "Curly quotes, dashes and ellipses"
+msgstr "Comillas tipográficas, rayas y puntos suspensivos"
 
-msgid "Remove old backups?"
-msgstr "¿Eliminar las copias antiguas?"
+msgid "Current passphrase (leave empty to use the saved one)"
+msgstr "Contraseña actual (déjala vacía para usar la guardada)"
 
-msgid "Removed {} old backups and {} files no backup needs ({} freed)."
-msgstr "Se eliminaron {} copias antiguas y {} archivos que ninguna copia necesita ({} liberados)."
+msgid "Custom Columns"
+msgstr "Columnas personalizadas"
 
-msgid "Removing old backups"
-msgstr "Eliminando copias antiguas"
+msgid "Custom columns"
+msgstr "Columnas personalizadas"
 
-msgid "Removing old backups at {}"
-msgstr "Eliminando copias antiguas en {}"
+msgid "Custom columns saved"
+msgstr "Columnas personalizadas guardadas"
 
-msgid "Replace everything"
-msgstr "Reemplazar todo"
+msgid "Cuts very large chapters into smaller files for slow readers"
+msgstr "Divide los capítulos muy grandes en archivos más pequeños para lectores lentos"
 
-msgid "Replacing saves the current catalogue first. Missing only never changes a file or the catalogue that is already there."
-msgstr "Al reemplazar se guarda primero el catálogo actual. «Solo los que faltan» nunca modifica un archivo ni el catálogo que ya existe."
+msgid "Date"
+msgstr "Fecha"
 
-msgid "Restore Backup"
-msgstr "Restaurar copia de seguridad"
+msgid "Delete Saved Passwords"
+msgstr "Eliminar las contraseñas guardadas"
 
-msgid "Restore cancelled; files already restored are complete"
-msgstr "Restauración cancelada; los archivos ya restaurados están completos"
+msgid "Description"
+msgstr "Descripción"
 
-msgid "Restore into"
-msgstr "Restaurar en"
+msgid "Do this only when you are sure that the other computer is not backing up to this place right now, for example because it was switched off in the middle of a copy. Two computers writing at the same time can damage the backup."
+msgstr "Hazlo solo si estás seguro de que el otro equipo no está haciendo copias de seguridad en este lugar ahora mismo, por ejemplo porque se apagó en mitad de una copia. Dos equipos que escriben a la vez pueden dañar la copia de seguridad."
 
-msgid "Restore the backup of {}"
-msgstr "Restaurar la copia de seguridad de {}"
+msgid "Don't Save"
+msgstr "No guardar"
 
-msgid "Restore the catalogue backup of {}"
-msgstr "Restaurar la copia del catálogo de {}"
+msgid "Drops style rules no page uses"
+msgstr "Elimina las reglas de estilo que ninguna página usa"
 
-msgid "Restored {}."
-msgstr "Se restauró {}."
+msgid "EPUB 2"
+msgstr "EPUB 2"
 
-msgid "Restoring files"
-msgstr "Restaurando archivos"
+msgid "EPUB 3"
+msgstr "EPUB 3"
 
-msgid "Restoring from {}"
-msgstr "Restaurando desde {}"
+msgid "EPUB version"
+msgstr "Versión de EPUB"
 
-msgid "Revert"
-msgstr "Revertir"
+msgid "Edit Column"
+msgstr "Editar columna"
 
-msgid "Saves a snapshot here and copies new and changed books, covers and notes to your places"
-msgstr "Guarda aquí una instantánea y copia a tus lugares los libros, portadas y notas nuevos y modificados"
+msgid "Edited custom columns of {}"
+msgstr "Columnas personalizadas editadas de {}"
 
-msgid "Scheduled backup"
-msgstr "Copia de seguridad programada"
+msgid "Edited custom columns of {} books"
+msgstr "Columnas personalizadas editadas de {} libros"
 
-msgid "Show {}"
-msgstr "Mostrar {}"
+msgid "Empty book added"
+msgstr "Libro vacío añadido"
 
-msgid "The backup has problems: {}. Press Back Up to copy missing files again."
-msgstr "La copia tiene problemas: {}. Pulsa Copia de seguridad para copiar de nuevo los archivos que faltan."
+msgid "Empty means the colour of the reader theme"
+msgstr "Vacío significa el color del tema del lector"
 
-msgid "The backup is complete: all {} files are there with the right size. A deep check also reads their contents."
-msgstr "La copia está completa: los {} archivos están ahí con el tamaño correcto. Una comprobación a fondo también lee su contenido."
+msgid "Empty paragraphs that only make space"
+msgstr "Párrafos vacíos que solo dejan espacio"
 
-msgid "The backup is intact: {} files were read back and match."
-msgstr "La copia está intacta: se volvieron a leer {} archivos y coinciden."
+msgid "End of the volume. Turn again for the next volume: {}"
+msgstr "Fin del volumen. Pasa de nuevo para ir al volumen siguiente: {}"
 
-msgid "The catalogue is replaced by the one in the backup; the current one is saved first."
-msgstr "El catálogo se reemplaza por el de la copia; el actual se guarda antes."
+msgid "Enter a new passphrase"
+msgstr "Introduce una contraseña nueva"
 
-msgid "The current catalogue is kept."
-msgstr "Se conserva el catálogo actual."
+msgid "Enter the current passphrase"
+msgstr "Introduce la contraseña actual"
 
-msgid "The first backup copies everything: about {} in {} files."
-msgstr "La primera copia lo copia todo: unos {} en {} archivos."
+msgid "Enter your master password to use the passwords Bookx saved (for e-mail, sync and backups). Bookx never stores this password."
+msgstr "Introduce tu contraseña maestra para usar las contraseñas que Bookx guardó (para correo, sincronización y copias de seguridad). Bookx nunca guarda esta contraseña."
 
-msgid "The first copy is about {} in {} files. Later copies only add what is new. Nothing is copied until you press Back Up."
-msgstr "La primera copia ocupa unos {} en {} archivos. Las siguientes solo añaden lo nuevo. No se copia nada hasta que pulses Copia de seguridad."
+msgid "Evening schedule"
+msgstr "Horario de la tarde"
 
-msgid "The highlights, notes and bookmarks are removed from their books. This cannot be undone."
-msgstr "Los subrayados, las notas y los marcadores se eliminan de sus libros. Esto no se puede deshacer."
+msgid "Every encrypted backup is re-encrypted under the new passphrase. This can take a while for big libraries or network places; you can stop it and run it again to continue. The old passphrase will not open the backups afterwards."
+msgstr "Todas las copias de seguridad cifradas se vuelven a cifrar con la contraseña nueva. Esto puede tardar en bibliotecas grandes o lugares de red; puedes detenerlo y volver a ejecutarlo para continuar. Después, la contraseña antigua ya no abrirá las copias de seguridad."
 
-msgid "The password could not be read from the system keyring (locked or not running). Unlock it and restart Bookx, or type the password again."
-msgstr "No se pudo leer la contraseña del llavero del sistema (bloqueado o sin ejecutarse). Desbloquéalo y reinicia Bookx, o escribe la contraseña de nuevo."
+msgid "Expand All"
+msgstr "Expandir todo"
 
-msgid "This library"
-msgstr "Esta biblioteca"
+msgid "Export Settings"
+msgstr "Exportar ajustes"
 
-msgid "What to copy"
-msgstr "Qué copiar"
+msgid "Fade"
+msgstr "Desvanecer"
 
-msgid "What to restore"
-msgstr "Qué restaurar"
+msgid "Fetch Metadata for {} Book"
+msgid_plural "Fetch Metadata for {} Books"
+msgstr[0] "Obtener metadatos de {} libro"
+msgstr[1] "Obtener metadatos de {} libros"
 
-msgid "What will happen"
-msgstr "Qué ocurrirá"
+msgid "Field"
+msgstr "Campo"
 
-msgid "Writing the snapshot"
-msgstr "Escribiendo la instantánea"
+msgid "Fields"
+msgstr "Campos"
 
-msgid "Your notes could not be copied to {}: {}"
-msgstr "No se pudieron copiar tus notas a {}: {}"
+msgid "Fields in braces: {title} {series} {#label}; for example {series} {series_index}"
+msgstr "Campos entre llaves: {title} {series} {#label}; por ejemplo {series} {series_index}"
 
-msgid "approximate place"
-msgstr "lugar aproximado"
+msgid "File name patterns"
+msgstr "Patrones de nombre de archivo"
 
-msgid "catalogue only"
-msgstr "solo catálogo"
+msgid "Fine spacing of letter pairs"
+msgstr "Ajuste fino del espacio entre pares de letras"
 
-msgid "files up to {} MB"
-msgstr "archivos de hasta {} MB"
+msgid "Forget what you changed for this format"
+msgstr "Olvidar lo que cambiaste para este formato"
 
-msgid "manual"
-msgstr "manual"
+msgid "Forgot Password"
+msgstr "Contraseña olvidada"
 
-msgid "{} (catalogue only)"
-msgstr "{} (solo catálogo)"
+msgid "Forgot the Master Password?"
+msgstr "¿Olvidaste la contraseña maestra?"
 
-msgid "{} are damaged"
-msgstr "{} están dañados"
+msgid "Google Books"
+msgstr "Google Books"
 
-msgid "{} are missing"
-msgstr "{} faltan"
+msgid "Hide the sections"
+msgstr "Ocultar las secciones"
 
-msgid "{} are newer here than in the backup and would be replaced."
-msgstr "{} son más recientes aquí que en la copia y se reemplazarían."
+msgid "How many books are converted together. More is faster and uses more memory."
+msgstr "Cuántos libros se convierten a la vez. Más es más rápido y usa más memoria."
 
-msgid "{} bookmark already in your library"
-msgid_plural "{} bookmarks already in your library"
-msgstr[0] "{} marcador ya está en tu biblioteca"
-msgstr[1] "{} marcadores ya están en tu biblioteca"
+msgid "How the sort name of an author is made when metadata is fetched. Automatic leaves Chinese, Japanese and Korean names as written."
+msgstr "Cómo se forma el nombre de ordenación de un autor al obtener metadatos. Automático deja los nombres chinos, japoneses y coreanos tal como están escritos."
 
-msgid "{} bookmark from KOReader"
-msgid_plural "{} bookmarks from KOReader"
-msgstr[0] "{} marcador de KOReader"
-msgstr[1] "{} marcadores de KOReader"
+msgid "ISBN"
+msgstr "ISBN"
 
-msgid "{} cannot be read"
-msgstr "{} no se pueden leer"
+msgid "Ignore ComicInfo.xml when importing"
+msgstr "Ignorar ComicInfo.xml al importar"
 
-msgid "{} could not be restored."
-msgstr "{} no se pudieron restaurar."
+msgid "Import Settings"
+msgstr "Importar ajustes"
 
-msgid "{} failed"
-msgstr "{} fallaron"
+msgid "Import from Wallabag"
+msgstr "Importar desde Wallabag"
 
-msgid "{} files are left out (too big or not readable)."
-msgstr "{} archivos se omiten (demasiado grandes o ilegibles)."
+msgid "Include articles already read"
+msgstr "Incluir los artículos ya leídos"
 
-msgid "{} free"
-msgstr "{} libres"
+msgid "Indents made with spaces or empty lines"
+msgstr "Sangrías hechas con espacios o líneas vacías"
 
-msgid "{} of new or changed files ({} files) to copy; everything else is already there."
-msgstr "{} de archivos nuevos o modificados ({} archivos) por copiar; todo lo demás ya está ahí."
+msgid "Indexing"
+msgstr "Indexando"
 
-msgid "{} of the notes records are damaged"
-msgstr "{} de los registros de notas están dañados"
+msgid "It runs in a sandbox: it cannot read your other files, and it can only reach the network hosts listed above."
+msgstr "Se ejecuta en un entorno aislado: no puede leer tus otros archivos y solo puede acceder a los hosts de red indicados arriba."
 
-msgid "{} of {} bookmarks · {} books"
-msgstr "{} de {} marcadores · {} libros"
+msgid "Kept in Bookx's encrypted password store."
+msgstr "Se guarda en el almacén de contraseñas cifrado de Bookx."
 
-msgid "{} of {} entries · {} books · {} with notes"
-msgstr "{} de {} entradas · {} libros · {} con notas"
+msgid "Kerning"
+msgstr "Kerning"
 
-msgid "{} of {} files"
-msgstr "{} de {} archivos"
+msgid "Key names with an action, such as F7=prev-chapter. Actions: next-page, prev-page, next-chapter, prev-chapter, toggle-chrome."
+msgstr "Nombres de teclas con una acción, como F7=prev-chapter. Acciones: next-page, prev-page, next-chapter, prev-chapter, toggle-chrome."
 
-msgid "{} to restore, {} already present."
-msgstr "{} por restaurar, {} ya presentes."
+msgid "Label"
+msgstr "Etiqueta"
 
-msgid "{} · {} · {} · last {}"
-msgstr "{} · {} · {} · última {}"
+msgid "Last name, first name"
+msgstr "Apellido, nombre"
+
+msgid "Least lines of a paragraph at the top or bottom of a page"
+msgstr "Mínimo de líneas de un párrafo al principio o al final de una página"
+
+msgid "Leave as is"
+msgstr "Dejar como está"
+
+msgid "Lighter or heavier letters"
+msgstr "Letras más finas o más gruesas"
+
+msgid "Link colour"
+msgstr "Color de los enlaces"
+
+msgid "Long text"
+msgstr "Texto largo"
+
+msgid "Made “{}” from Wikipedia"
+msgstr "Se creó «{}» a partir de Wikipedia"
+
+msgid "Make a New Token"
+msgstr "Crear un token nuevo"
+
+msgid "Mark or Unmark"
+msgstr "Marcar o desmarcar"
+
+msgid "Marked {} book"
+msgid_plural "Marked {} books"
+msgstr[0] "Se marcó {} libro"
+msgstr[1] "Se marcaron {} libros"
+
+msgid "Master password"
+msgstr "Contraseña maestra"
+
+msgid "Metadata sources"
+msgstr "Fuentes de metadatos"
+
+msgid "Move your preferences to another computer. Passwords and tokens are never included."
+msgstr "Lleva tus preferencias a otro equipo. Las contraseñas y los tokens nunca se incluyen."
+
+msgid "Names besides IP addresses, localhost and .local names that may be used to reach the server, such as the public name behind a reverse proxy. Separate several with commas."
+msgstr "Nombres, además de direcciones IP, localhost y nombres .local, que pueden usarse para acceder al servidor, como el nombre público detrás de un proxy inverso. Separa varios con comas."
+
+msgid "New books that appear in this folder wait here for your approval, unless you switch on adding them automatically."
+msgstr "Los libros nuevos que aparezcan en esta carpeta esperan aquí tu aprobación, salvo que actives su incorporación automática."
+
+msgid "New passphrase"
+msgstr "Contraseña nueva"
+
+msgid "New passphrase again"
+msgstr "Contraseña nueva otra vez"
+
+msgid "Next Volume"
+msgstr "Volumen siguiente"
+
+msgid "No"
+msgstr "No"
+
+msgid "No Related Books"
+msgstr "Sin libros relacionados"
+
+msgid "No book has a value in this column."
+msgstr "Ningún libro tiene un valor en esta columna."
+
+msgid "No book has that text"
+msgstr "Ningún libro tiene ese texto"
+
+msgid "No other book shares this book's author, series or tags"
+msgstr "Ningún otro libro comparte el autor, la serie o las etiquetas de este libro"
+
+msgid "No system keyring was found. Bookx can keep your passwords in its own encrypted store, opened with a master password that it asks for once each time it starts and never saves."
+msgstr "No se encontró ningún llavero del sistema. Bookx puede guardar tus contraseñas en su propio almacén cifrado, que se abre con una contraseña maestra que pide una vez cada vez que se inicia y que nunca guarda."
+
+msgid "None"
+msgstr "Ninguno"
+
+msgid "Not Now"
+msgstr "Ahora no"
+
+msgid "Not saved: it is forgotten when Bookx closes."
+msgstr "No se guarda: se olvida cuando Bookx se cierra."
+
+msgid "Note about the author"
+msgstr "Nota sobre el autor"
+
+msgid "Note about the series"
+msgstr "Nota sobre la serie"
+
+msgid "Note saved"
+msgstr "Nota guardada"
+
+msgid "Nothing has synced yet"
+msgstr "Todavía no se ha sincronizado nada"
+
+msgid "Nothing would change: these settings are the same as yours."
+msgstr "No cambiaría nada: estos ajustes son iguales a los tuyos."
+
+msgid "Nothing: it can only calculate with what Bookx hands to it"
+msgstr "Nada: solo puede calcular con lo que Bookx le entrega"
+
+msgid "Number with decimals"
+msgstr "Número con decimales"
+
+msgid "OPDS catalogue address"
+msgstr "Dirección del catálogo OPDS"
+
+msgid "One address per line. Start a line with # to switch that feed off. Add the word full after an address to download that feed's articles in full, or summary to use only the feed text."
+msgstr "Una dirección por línea. Empieza una línea con # para desactivar esa fuente. Añade la palabra full después de una dirección para descargar completos los artículos de esa fuente, o summary para usar solo el texto de la fuente."
+
+msgid "One of a list"
+msgstr "Uno de una lista"
+
+msgid "Only this tag (optional)"
+msgstr "Solo esta etiqueta (opcional)"
+
+msgid "Only when the reading theme is Automatic"
+msgstr "Solo cuando el tema de lectura es Automático"
+
+msgid "Open Another Format"
+msgstr "Abrir otro formato"
+
+msgid "Open Licence Page"
+msgstr "Abrir la página de la licencia"
+
+msgid "Open Preferences at the Sync Page"
+msgstr "Abrir las preferencias en la página de sincronización"
+
+msgid "Open the e-book where you stopped listening"
+msgstr "Abre el libro electrónico donde dejaste de escuchar"
+
+msgid "Options"
+msgstr "Opciones"
+
+msgid "Otherwise only the unread ones are added"
+msgstr "Si no, solo se añaden los no leídos"
+
+msgid "Page turning, a schedule for the evening, copying with a citation and the keys of a page turner."
+msgstr "Paso de página, un horario para la tarde, copiar con cita y las teclas de un pasador de páginas."
+
+msgid "Page-turn animation"
+msgstr "Animación de paso de página"
+
+msgid "Passphrase change stopped. Nothing is lost: change it again with the same passphrases to finish."
+msgstr "El cambio de contraseña se detuvo. No se pierde nada: vuelve a cambiarla con las mismas contraseñas para terminar."
+
+msgid "Paste the address of an article to read later, or of a news feed (RSS, Atom, JSON Feed) to make a book of its latest articles. Type wikipedia:Title to make a book of a Wikipedia article."
+msgstr "Pega la dirección de un artículo para leer más tarde, o de una fuente de noticias (RSS, Atom, JSON Feed) para crear un libro con sus últimos artículos. Escribe wikipedia:Título para crear un libro de un artículo de Wikipedia."
+
+msgid "Plain quotes, dashes and ellipses"
+msgstr "Comillas rectas, guiones y puntos suspensivos simples"
+
+msgid "Point the camera of your phone or the scanner of your reader app at the code."
+msgstr "Apunta la cámara de tu teléfono o el escáner de tu aplicación de lectura al código."
+
+msgid "Previous Volume"
+msgstr "Volumen anterior"
+
+msgid "Publication date"
+msgstr "Fecha de publicación"
+
+msgid "QR code"
+msgstr "Código QR"
+
+msgid "QR code of the address {}"
+msgstr "Código QR de la dirección {}"
+
+msgid "Re-encrypting the backups"
+msgstr "Volviendo a cifrar las copias de seguridad"
+
+msgid "Re-encrypts the backups in your encrypted places under a new passphrase"
+msgstr "Vuelve a cifrar con una contraseña nueva las copias de seguridad de tus lugares cifrados"
+
+msgid "Read preferences from a file and look at the changes first"
+msgstr "Lee las preferencias de un archivo y revisa antes los cambios"
+
+msgid "Read the book that is open in the editor"
+msgstr "Lee el libro abierto en el editor"
+
+msgid "Read the file name of new books"
+msgstr "Leer el nombre de archivo de los libros nuevos"
+
+msgid "Read this library right to left"
+msgstr "Leer esta biblioteca de derecha a izquierda"
+
+msgid "Reading aids"
+msgstr "Ayudas de lectura"
+
+msgid "Reading every file back"
+msgstr "Releyendo todos los archivos"
+
+msgid "Rebuild"
+msgstr "Reconstruir"
+
+msgid "Rebuild the text index"
+msgstr "Reconstruir el índice de texto"
+
+msgid "Record added; looking it up"
+msgstr "Registro añadido; buscándolo"
+
+msgid "Regular expression"
+msgstr "Expresión regular"
+
+msgid "Related Books"
+msgstr "Libros relacionados"
+
+msgid "Remove blank paragraphs"
+msgstr "Quitar párrafos en blanco"
+
+msgid "Remove fake margins"
+msgstr "Quitar márgenes falsos"
+
+msgid "Remove unused styles"
+msgstr "Quitar estilos sin usar"
+
+msgid "Remove “{}”?"
+msgstr "¿Quitar «{}»?"
+
+msgid "Repeat the master password"
+msgstr "Repite la contraseña maestra"
+
+msgid "Safe mode: plugins, patches and network features are off, settings are at their defaults and are not saved."
+msgstr "Modo seguro: los plugins, los parches y las funciones de red están desactivados, los ajustes están por defecto y no se guardan."
+
+msgid "Same author"
+msgstr "Mismo autor"
+
+msgid "Same series"
+msgstr "Misma serie"
+
+msgid "Same tag"
+msgstr "Misma etiqueta"
+
+msgid "Save your preferences to a file"
+msgstr "Guarda tus preferencias en un archivo"
+
+msgid "Saved passwords stay locked; passwords you enter are forgotten when Bookx closes"
+msgstr "Las contraseñas guardadas siguen bloqueadas; las que introduces se olvidan cuando Bookx se cierra"
+
+msgid "Saved passwords unlocked"
+msgstr "Contraseñas guardadas desbloqueadas"
+
+msgid "Saved passwords were removed from the settings file"
+msgstr "Las contraseñas guardadas se quitaron del archivo de ajustes"
+
+msgid "Search Inside Books"
+msgstr "Buscar dentro de los libros"
+
+msgid "Search and Replace"
+msgstr "Buscar y reemplazar"
+
+msgid "Search for"
+msgstr "Buscar"
+
+msgid "Search label"
+msgstr "Etiqueta de búsqueda"
+
+msgid "Seconds between pages when Auto-Turn Pages is on (command palette)"
+msgstr "Segundos entre páginas cuando está activado Pasar páginas automáticamente (paleta de comandos)"
+
+msgid "Sending {} to {}"
+msgstr "Enviando {} a {}"
+
+msgid "Separate with ;  Use {author}, {title}, {series} and {index}; start with re: for a regular expression. Empty uses the built-in patterns."
+msgstr "Separa con ;  Usa {author}, {title}, {series} y {index}; empieza con re: para una expresión regular. Vacío usa los patrones integrados."
+
+msgid "Set this when the proxy publishes Bookx under an address such as https://example.com/books. Links then start with /books."
+msgstr "Configúralo cuando el proxy publique Bookx bajo una dirección como https://example.com/books. Los enlaces empezarán entonces con /books."
+
+msgid "Settings Backup"
+msgstr "Copia de seguridad de los ajustes"
+
+msgid "Settings Exported"
+msgstr "Ajustes exportados"
+
+msgid "Settings Imported. Restart Bookx to apply all of them."
+msgstr "Ajustes importados. Reinicia Bookx para aplicarlos todos."
+
+msgid "Show Link Hints"
+msgstr "Mostrar pistas de enlaces"
+
+msgid "Show Related Books"
+msgstr "Mostrar libros relacionados"
+
+msgid "Show tags as a tree"
+msgstr "Mostrar las etiquetas como árbol"
+
+msgid "Show the address as a QR code"
+msgstr "Mostrar la dirección como código QR"
+
+msgid "Show the sections"
+msgstr "Mostrar las secciones"
+
+msgid "Show {} Book"
+msgid_plural "Show {} Books"
+msgstr[0] "Mostrar {} libro"
+msgstr[1] "Mostrar {} libros"
+
+msgid "Slide"
+msgstr "Deslizar"
+
+msgid "Smarten punctuation"
+msgstr "Embellecer la puntuación"
+
+msgid "Softer or stronger text colour"
+msgstr "Color de texto más suave o más fuerte"
+
+msgid "Space between words"
+msgstr "Espacio entre palabras"
+
+msgid "Split large files"
+msgstr "Dividir archivos grandes"
+
+msgid "Start listening where you stopped reading"
+msgstr "Empieza a escuchar donde dejaste de leer"
+
+msgid "Start of the volume. Turn again for the previous volume: {}"
+msgstr "Inicio del volumen. Pasa de nuevo para ir al volumen anterior: {}"
+
+msgid "Straighten punctuation"
+msgstr "Enderezar la puntuación"
+
+msgid "Sub-path behind a proxy"
+msgstr "Subruta detrás de un proxy"
+
+msgid "Sync Settings"
+msgstr "Ajustes de sincronización"
+
+msgid "Take Over"
+msgstr "Tomar el control"
+
+msgid "Take Over This Place"
+msgstr "Tomar el control de este lugar"
+
+msgid "Template"
+msgstr "Plantilla"
+
+msgid "Text contrast"
+msgstr "Contraste del texto"
+
+msgid "Text index"
+msgstr "Índice de texto"
+
+msgid "Text weight"
+msgstr "Grosor del texto"
+
+msgid "That is not a valid ISBN (the check digit does not fit)"
+msgstr "Ese ISBN no es válido (el dígito de control no coincide)"
+
+msgid "That master password did not work. Try again."
+msgstr "Esa contraseña maestra no funcionó. Inténtalo de nuevo."
+
+msgid "The address must not contain spaces. After it only “full” or “summary” may follow, not “{}”."
+msgstr "La dirección no debe contener espacios. Después solo puede ir «full» o «summary», no «{}»."
+
+msgid "The address of your server, and either an access token or the API client (Wallabag → API clients management) with your user name and password."
+msgstr "La dirección de tu servidor, y un token de acceso o el cliente de API (Wallabag → gestión de clientes de API) con tu nombre de usuario y contraseña."
+
+msgid "The backup passphrase was changed at {}. Keep the new one safe: it cannot be recovered."
+msgstr "La contraseña de la copia de seguridad se cambió a las {}. Guarda la nueva en un lugar seguro: no se puede recuperar."
+
+msgid "The cover is now the first page of the PDF"
+msgstr "La portada ahora es la primera página del PDF"
+
+msgid "The cover was cut to 2:3"
+msgstr "La portada se recortó a 2:3"
+
+msgid "The new passphrase is saved. No encrypted backup exists yet, so nothing had to be re-encrypted."
+msgstr "La contraseña nueva está guardada. Aún no existe ninguna copia de seguridad cifrada, así que no hubo que volver a cifrar nada."
+
+msgid "The new passphrase is the same as the current one"
+msgstr "La contraseña nueva es igual a la actual"
+
+msgid "The options below apply to this output format"
+msgstr "Las opciones de abajo se aplican a este formato de salida"
+
+msgid "The passphrase was not changed everywhere: {}. The old passphrase is still saved; change it again to finish."
+msgstr "La contraseña no se cambió en todas partes: {}. La antigua sigue guardada; vuelve a cambiarla para terminar."
+
+msgid "The password store was deleted"
+msgstr "El almacén de contraseñas se eliminó"
+
+msgid "The plugin files changed since you allowed it. Only allow it again if you installed an update."
+msgstr "Los archivos del plugin cambiaron desde que lo permitiste. Permítelo de nuevo solo si instalaste una actualización."
+
+msgid "The saved passwords cannot be recovered without it. You can delete the password store and enter the passwords again."
+msgstr "Las contraseñas guardadas no se pueden recuperar sin ella. Puedes eliminar el almacén de contraseñas y volver a introducirlas."
+
+msgid "The search index could not be opened"
+msgstr "No se pudo abrir el índice de búsqueda"
+
+msgid "The shelf “{}” has no books to send"
+msgstr "El estante «{}» no tiene libros que enviar"
+
+msgid "The signature does not match the plugin files. Do not allow it unless you changed them yourself."
+msgstr "La firma no coincide con los archivos del plugin. No lo permitas salvo que los hayas cambiado tú."
+
+msgid "The signature file of this plugin is damaged. Treat the plugin as unsigned."
+msgstr "El archivo de firma de este plugin está dañado. Trata el plugin como si no estuviera firmado."
+
+msgid "The sub-path must be a plain path such as /books (letters, digits, - and _)."
+msgstr "La subruta debe ser una ruta simple como /books (letras, dígitos, - y _)."
+
+msgid "The two new passphrases are not the same"
+msgstr "Las dos contraseñas nuevas no son iguales"
+
+msgid "The two passwords are different."
+msgstr "Las dos contraseñas son distintas."
+
+msgid "The value of {} book is deleted with the column. This cannot be undone."
+msgid_plural "The values of {} books are deleted with the column. This cannot be undone."
+msgstr[0] "El valor de {} libro se elimina con la columna. Esto no se puede deshacer."
+msgstr[1] "Los valores de {} libros se eliminan con la columna. Esto no se puede deshacer."
+
+msgid "There are no links on this page"
+msgstr "No hay enlaces en esta página"
+
+msgid "This book has no PDF"
+msgstr "Este libro no tiene PDF"
+
+msgid "This book has no cover"
+msgstr "Este libro no tiene portada"
+
+msgid "This is not a valid regular expression"
+msgstr "Esto no es una expresión regular válida"
+
+msgid "This is the first volume of the series"
+msgstr "Este es el primer volumen de la serie"
+
+msgid "This is the last volume of the series"
+msgstr "Este es el último volumen de la serie"
+
+msgid "This plugin carries a signature, but this version of Bookx cannot check it yet. Treat it as unsigned."
+msgstr "Este plugin lleva una firma, pero esta versión de Bookx todavía no puede comprobarla. Trátalo como si no estuviera firmado."
+
+msgid "This plugin is not signed. Only allow plugins from people you trust."
+msgstr "Este plugin no está firmado. Permite solo plugins de personas de confianza."
+
+msgid "Trim Cover to 2:3"
+msgstr "Recortar la portada a 2:3"
+
+msgid "Trusted proxy addresses"
+msgstr "Direcciones de proxy de confianza"
+
+msgid "Type"
+msgstr "Tipo"
+
+msgid "Type an ISBN"
+msgstr "Escribe un ISBN"
+
+msgid "Type the text to search for"
+msgstr "Escribe el texto que buscar"
+
+msgid "Unlock"
+msgstr "Desbloquear"
+
+msgid "Unlock Saved Passwords"
+msgstr "Desbloquear las contraseñas guardadas"
+
+msgid "Unmarked {} book"
+msgid_plural "Unmarked {} books"
+msgstr[0] "Se desmarcó {} libro"
+msgstr[1] "Se desmarcaron {} libros"
+
+msgid "Use $1 in the replacement for the first group"
+msgstr "Usa $1 en el reemplazo para el primer grupo"
+
+msgid "Use at least 10 characters."
+msgstr "Usa al menos 10 caracteres."
+
+msgid "Use at least 8 characters"
+msgstr "Usa al menos 8 caracteres"
+
+msgid "Use kerning"
+msgstr "Usar kerning"
+
+msgid "Use or ignore the CSS of this book"
+msgstr "Usar o ignorar el CSS de este libro"
+
+msgid "Use or ignore the fonts and sizes the book asks for"
+msgstr "Usar o ignorar las fuentes y los tamaños que pide el libro"
+
+msgid "Use the Built-in Options"
+msgstr "Usar las opciones integradas"
+
+msgid "Use the book's fonts"
+msgstr "Usar las fuentes del libro"
+
+msgid "Use the book's styling"
+msgstr "Usar el estilo del libro"
+
+msgid "Use the dark theme in the evening"
+msgstr "Usar el tema oscuro por la tarde"
+
+msgid "Use the file name and picture order only, not the title, series, direction or cover the file claims"
+msgstr "Usar solo el nombre de archivo y el orden de las imágenes, no el título, la serie, la dirección ni la portada que declara el archivo"
+
+msgid "Use the theme colour"
+msgstr "Usar el color del tema"
+
+msgid "Use the theme {}"
+msgstr "Usar el tema {}"
+
+msgid "Use when another computer was backing up here and stopped. Two computers must not write at once."
+msgstr "Úsalo cuando otro equipo estaba haciendo copias de seguridad aquí y se detuvo. Dos equipos no deben escribir a la vez."
+
+msgid "Use {text}, {title}, {author}, {chapter}, {page}, {date} and {isbn}. Empty uses the default."
+msgstr "Usa {text}, {title}, {author}, {chapter}, {page}, {date} y {isbn}. Vacío usa el valor predeterminado."
+
+msgid "Values (comma separated)"
+msgstr "Valores (separados por comas)"
+
+msgid "Wallabag server"
+msgstr "Servidor de Wallabag"
+
+msgid "Warmth"
+msgstr "Calidez"
+
+msgid "Weight"
+msgstr "Grosor"
+
+msgid "When a new book has no author, or its title is only the file name, use what the file name says, such as Author - Title"
+msgstr "Cuando un libro nuevo no tiene autor, o su título es solo el nombre de archivo, usa lo que dice el nombre de archivo, como Autor - Título"
+
+msgid "When more than one source knows a field, the one chosen here wins. Automatic keeps the built-in order."
+msgstr "Cuando más de una fuente conoce un campo, gana la elegida aquí. Automático mantiene el orden integrado."
+
+msgid "While Bookx runs, books that appear in the watched folder are added without asking"
+msgstr "Mientras Bookx se ejecuta, los libros que aparecen en la carpeta vigilada se añaden sin preguntar"
+
+msgid "Whole number"
+msgstr "Número entero"
+
+msgid "Widows and orphans"
+msgstr "Viudas y huérfanas"
+
+msgid "Wikidata"
+msgstr "Wikidata"
+
+msgid "Word spacing"
+msgstr "Espacio entre palabras"
+
+msgid "Yes"
+msgstr "Sí"
+
+msgid "Yes or no"
+msgstr "Sí o no"
+
+msgid "You took over {}. Press Back Up to copy now."
+msgstr "Tomaste el control de {}. Pulsa Copia de seguridad para copiar ahora."
+
+msgid "Your own fields for every book: numbers, dates, yes or no, lists and more"
+msgstr "Tus propios campos para cada libro: números, fechas, sí o no, listas y más"
+
+msgid "Your passwords are saved in an encrypted store"
+msgstr "Tus contraseñas se guardan en un almacén cifrado"
+
+msgid "skipped"
+msgstr "omitido"
+
+msgid "stopped unexpectedly"
+msgstr "se detuvo inesperadamente"
+
+msgid "the file is larger than {} KiB"
+msgstr "el archivo es mayor que {} KiB"
+
+msgid "{} (search marked:true to list them)"
+msgstr "{} (busca marked:true para listarlos)"
+
+msgid "{} asks for these permissions:"
+msgstr "{} pide estos permisos:"
+
+msgid "{} book waits"
+msgid_plural "{} books wait"
+msgstr[0] "{} libro espera"
+msgstr[1] "{} libros esperan"
+
+msgid "{} book will change"
+msgid_plural "{} books will change"
+msgstr[0] "{} libro cambiará"
+msgstr[1] "{} libros cambiarán"
+
+msgid "{} holds several books. Choose the ones to add."
+msgstr "{} contiene varios libros. Elige los que quieres añadir."
+
+msgid "{} is in use"
+msgstr "{} está en uso"
+
+msgid "{} is in use by another computer. Wait until it is done, or take the place over if you know it stopped."
+msgstr "{} está en uso por otro equipo. Espera a que termine, o toma el control del lugar si sabes que se detuvo."
+
+msgid "{} of {} books searchable by their text"
+msgstr "{} de {} libros se pueden buscar por su texto"
+
+msgid "{} settings are not known to this version and are left out."
+msgstr "{} ajustes no se conocen en esta versión y se dejan fuera."
+
+msgid "{} settings would change:"
+msgstr "{} ajustes cambiarían:"
+
+msgid "{}/s"
+msgstr "{}/s"
+
+msgid "{}: re-encrypting"
+msgstr "{}: volviendo a cifrar"
+
+msgid "“{}” has no text"
+msgstr "«{}» no tiene texto"
+
+msgid "“{}” is not a host name. Use names such as books.example.com, separated by commas."
+msgstr "«{}» no es un nombre de host. Usa nombres como books.example.com, separados por comas."
+
+msgid "“{}” is not an address of a proxy. Use an IP address or a network such as 10.0.0.0/8."
+msgstr "«{}» no es una dirección de proxy. Usa una dirección IP o una red como 10.0.0.0/8."
+
+
+msgid "Continue There"
+msgstr "Continuar allí"
+
+msgid "Keep Mine"
+msgstr "Conservar la mía"
+
+msgid "Offer to jump when a device is ahead"
+msgstr "Ofrecer saltar cuando un dispositivo va más adelante"
+
+msgid "Sync message"
+msgstr "Mensaje de sincronización"
+
+msgid "This highlight was removed on your e-reader"
+msgstr "Este resaltado se eliminó en tu lector"
+
+msgid "This note changed on your e-reader"
+msgstr "Esta nota cambió en tu lector"
+
+msgid "Use Theirs"
+msgstr "Usar la otra"
+
+msgid "While you read, a message offers to continue where your e-reader is. The page never moves by itself."
+msgstr "Mientras lees, un aviso te ofrece continuar donde está tu lector. La página nunca cambia sola."
+
+msgid "Your {} is at {}%"
+msgstr "Tu {} está en el {}%"
+
+msgid "Your {} is at {}% (page {})"
+msgstr "Tu {} está en el {}% (página {})"
+
+msgid "another device"
+msgstr "otro dispositivo"

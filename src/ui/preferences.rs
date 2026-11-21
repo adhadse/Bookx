@@ -234,8 +234,10 @@ pub fn register_group(
 fn external_registrations() {
     super::tts_settings::register();
     super::metadata_settings::register();
+    super::source_settings::register();
     super::language_settings::register();
     super::reader_extra::register();
+    super::reader_settings_extra::register();
     super::reader_footer::register();
     super::dict_settings::register();
     super::vocab_settings::register();
@@ -246,6 +248,9 @@ fn external_registrations() {
     super::reading_ruler::register();
     super::comic_settings::register();
     super::sync_prefs::register();
+    super::library_sidebar::register();
+    super::custom_columns::register();
+    super::index_status::register();
 }
 
 fn ensure_registry() {
@@ -407,6 +412,8 @@ pub fn dev(arg: &str) {
         super::kosync::dev_account(f);
     } else if let Some(f) = arg.strip_prefix("sync-") {
         super::sync_prefs::dev(f);
+    } else if let Some(f) = arg.strip_prefix("sources-") {
+        super::source_settings::dev(f);
     } else if let Some(f) = arg.strip_prefix("privacy-") {
         super::privacy_settings::dev(f);
     } else if arg == "email-dump" || arg == "email-test" {
@@ -815,7 +822,7 @@ fn row_text(r: &adw::PreferencesRow) -> String {
 /// The dialog: a sidebar of sections with a search entry on top and the section's page next to
 /// it. On a narrow window the sidebar becomes an overlay that a button in the header opens.
 fn assemble(sections: Vec<Section>) -> (adw::Dialog, Rc<View>) {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("Preferences"));
     dialog.set_content_width(820);
     dialog.set_content_height(600);
@@ -884,8 +891,8 @@ fn assemble(sections: Vec<Section>) -> (adw::Dialog, Rc<View>) {
     head.set_title_widget(Some(&title));
     let toggle = gtk::ToggleButton::new();
     toggle.set_icon_name("sidebar-show-symbolic");
-    toggle.set_tooltip_text(Some(&tr("Show sections")));
-    super::audit::label(&toggle, &tr("Show sections"));
+    toggle.set_tooltip_text(Some(&tr("Show Sections")));
+    super::audit::label(&toggle, &tr("Show Sections"));
     split
         .bind_property("show-sidebar", &toggle, "active")
         .bidirectional()
@@ -1180,6 +1187,7 @@ fn build_sections(
     }
     app.add(&scheme);
     page.add(&app);
+    page.add(&super::settings_io::group(parent, shared));
 
     // --- reader -----------------------------------------------------------
     let reader = adw::PreferencesGroup::builder()
@@ -1423,6 +1431,13 @@ fn build_sections(
         let id = st.id.clone();
         row.connect_active_notify(move |r| {
             let on = r.is_active();
+            if on && super::plugin_trust::needs_sheet(&shared, &id) {
+                // the capability sheet decides: Allow switches it on again, Cancel leaves it off
+                r.set_active(false);
+                let row = r.clone();
+                super::plugin_trust::show(r, &shared, &id, move || row.set_active(true));
+                return;
+            }
             let mut m = shared.plugins.borrow_mut();
             match m.set_enabled(&id, on) {
                 Ok(()) => {

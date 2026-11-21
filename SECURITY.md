@@ -22,6 +22,11 @@ tarball, distro package), what the attacker controls (a book file, an OPDS feed,
 and the smallest file or request that shows the problem. A proof of concept is welcome but not
 required — we triage on impact, not on effort. You will never be asked to write a weaponised exploit.
 
+## Who handles reports
+
+The advisory owner is the repository owner, [@adhadse](https://github.com/adhadse). Private vulnerability reporting
+is switched on for this repository, and the `security` label marks hardening work in public issues.
+
 ## What to expect
 
 | Step | Target |

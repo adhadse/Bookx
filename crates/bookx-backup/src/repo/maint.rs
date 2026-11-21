@@ -173,6 +173,7 @@ impl Repository {
 
     /// Removes the blobs a verify reported as corrupt, so the next run sends them again.
     pub fn remove_blobs(&self, ids: &[String]) -> Result<usize> {
+        let _lock = self.lock()?;
         let mut n = 0;
         for id in ids {
             if !valid_id(id) {
@@ -194,6 +195,7 @@ impl Repository {
         now: DateTime<Utc>,
         cancel: &AtomicBool,
     ) -> Result<GcReport> {
+        let _lock = self.lock()?;
         let refs = self.referenced_blobs()?;
         let mut rep = GcReport {
             referenced: refs.len(),

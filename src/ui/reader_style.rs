@@ -36,6 +36,20 @@ pub struct TweaksUi {
     optimal: adw::ExpanderRow,
     optimal_v: adw::SwitchRow,
     hyphen: adw::ComboRow,
+    weight: adw::ExpanderRow,
+    weight_v: adw::SpinRow,
+    word_sp: adw::ExpanderRow,
+    word_sp_v: adw::SpinRow,
+    contrast: adw::ExpanderRow,
+    contrast_v: adw::SpinRow,
+    kerning: adw::ExpanderRow,
+    kerning_v: adw::SwitchRow,
+    widows: adw::ExpanderRow,
+    widows_v: adw::SpinRow,
+    book_styles: adw::ExpanderRow,
+    book_styles_v: adw::SwitchRow,
+    book_fonts: adw::ExpanderRow,
+    book_fonts_v: adw::SwitchRow,
     css: gtk::TextView,
     quiet: Rc<Cell<bool>>,
     get: Get,
@@ -110,8 +124,55 @@ impl TweaksUi {
         let labels: Vec<&str> = HYPHEN_LANGUAGES.iter().map(|(_, l)| *l).collect();
         hyphen.set_model(Some(&gtk::StringList::new(&labels)));
 
+        let weight = expander(N_("Text weight"), N_("Lighter or heavier letters"));
+        let weight_v = spin(N_("Weight"), 100.0, 900.0, 100.0, 0, 400.0);
+        weight.add_row(&weight_v);
+        let word_sp = expander(N_("Word spacing"), N_("Space between words"));
+        let word_sp_v = spin(N_("Em"), -0.25, 1.0, 0.05, 2, 0.0);
+        word_sp.add_row(&word_sp_v);
+        let contrast = expander(N_("Text contrast"), N_("Softer or stronger text colour"));
+        let contrast_v = spin(N_("Contrast"), 0.0, 1.0, 0.1, 1, 0.5);
+        contrast.add_row(&contrast_v);
+        let kerning = expander(N_("Kerning"), N_("Fine spacing of letter pairs"));
+        let kerning_v = adw::SwitchRow::new();
+        kerning_v.set_title(&tr("Use kerning"));
+        kerning_v.set_active(true);
+        kerning.add_row(&kerning_v);
+        let widows = expander(
+            N_("Widows and orphans"),
+            N_("Least lines of a paragraph at the top or bottom of a page"),
+        );
+        let widows_v = spin(N_("Lines"), 1.0, 4.0, 1.0, 0, 2.0);
+        widows.add_row(&widows_v);
+        let book_styles = expander(
+            N_("Book's own styling"),
+            N_("Use or ignore the CSS of this book"),
+        );
+        let book_styles_v = adw::SwitchRow::new();
+        book_styles_v.set_title(&tr("Use the book's styling"));
+        book_styles_v.set_active(true);
+        book_styles.add_row(&book_styles_v);
+        let book_fonts = expander(
+            N_("Book's fonts and sizes"),
+            N_("Use or ignore the fonts and sizes the book asks for"),
+        );
+        let book_fonts_v = adw::SwitchRow::new();
+        book_fonts_v.set_title(&tr("Use the book's fonts"));
+        book_fonts_v.set_active(true);
+        book_fonts.add_row(&book_fonts_v);
+
         let text_group = adw::PreferencesGroup::new();
-        for r in [&spacing, &optimal] {
+        for r in [
+            &spacing,
+            &optimal,
+            &weight,
+            &word_sp,
+            &contrast,
+            &kerning,
+            &widows,
+            &book_styles,
+            &book_fonts,
+        ] {
             text_group.add(r);
         }
         text_group.add(&hyphen);
@@ -180,6 +241,20 @@ impl TweaksUi {
             optimal,
             optimal_v,
             hyphen,
+            weight,
+            weight_v,
+            word_sp,
+            word_sp_v,
+            contrast,
+            contrast_v,
+            kerning,
+            kerning_v,
+            widows,
+            widows_v,
+            book_styles,
+            book_styles_v,
+            book_fonts,
+            book_fonts_v,
             css,
             quiet: Rc::new(Cell::new(false)),
             get,
@@ -199,15 +274,36 @@ impl TweaksUi {
             &ui.font,
             &ui.justify,
             &ui.optimal,
+            &ui.weight,
+            &ui.word_sp,
+            &ui.contrast,
+            &ui.kerning,
+            &ui.widows,
+            &ui.book_styles,
+            &ui.book_fonts,
         ] {
             let e = emit.clone();
             r.connect_enable_expansion_notify(move |_| e());
         }
-        for r in [&ui.line_height_v, &ui.margin_v, &ui.spacing_v] {
+        for r in [
+            &ui.line_height_v,
+            &ui.margin_v,
+            &ui.spacing_v,
+            &ui.weight_v,
+            &ui.word_sp_v,
+            &ui.contrast_v,
+            &ui.widows_v,
+        ] {
             let e = emit.clone();
             r.connect_value_notify(move |_| e());
         }
-        for r in [&ui.justify_v, &ui.optimal_v] {
+        for r in [
+            &ui.justify_v,
+            &ui.optimal_v,
+            &ui.kerning_v,
+            &ui.book_styles_v,
+            &ui.book_fonts_v,
+        ] {
             let e = emit.clone();
             r.connect_active_notify(move |_| e());
         }
@@ -267,6 +363,34 @@ impl TweaksUi {
                 .then(|| self.optimal_v.is_active()),
             hyphenation: hyphen,
             user_css: b.text(&s, &e, false).to_string(),
+            weight: self
+                .weight
+                .enables_expansion()
+                .then(|| self.weight_v.value() as i32),
+            contrast: self
+                .contrast
+                .enables_expansion()
+                .then(|| self.contrast_v.value()),
+            word_spacing: self
+                .word_sp
+                .enables_expansion()
+                .then(|| self.word_sp_v.value()),
+            kerning: self
+                .kerning
+                .enables_expansion()
+                .then(|| self.kerning_v.is_active()),
+            widows_orphans: self
+                .widows
+                .enables_expansion()
+                .then(|| self.widows_v.value() as u8),
+            book_styles: self
+                .book_styles
+                .enables_expansion()
+                .then(|| self.book_styles_v.is_active()),
+            book_fonts: self
+                .book_fonts
+                .enables_expansion()
+                .then(|| self.book_fonts_v.is_active()),
         }
     }
 
@@ -306,6 +430,22 @@ impl TweaksUi {
             .position(|(v, _)| Some(*v) == t.hyphenation.as_deref())
             .unwrap_or(0);
         self.hyphen.set_selected(at as u32);
+        self.weight.set_enable_expansion(t.weight.is_some());
+        self.weight_v.set_value(t.weight.unwrap_or(400) as f64);
+        self.word_sp.set_enable_expansion(t.word_spacing.is_some());
+        self.word_sp_v.set_value(t.word_spacing.unwrap_or(0.0));
+        self.contrast.set_enable_expansion(t.contrast.is_some());
+        self.contrast_v.set_value(t.contrast.unwrap_or(0.5));
+        self.kerning.set_enable_expansion(t.kerning.is_some());
+        self.kerning_v.set_active(t.kerning.unwrap_or(true));
+        self.widows.set_enable_expansion(t.widows_orphans.is_some());
+        self.widows_v
+            .set_value(t.widows_orphans.unwrap_or(2) as f64);
+        self.book_styles
+            .set_enable_expansion(t.book_styles.is_some());
+        self.book_styles_v.set_active(t.book_styles.unwrap_or(true));
+        self.book_fonts.set_enable_expansion(t.book_fonts.is_some());
+        self.book_fonts_v.set_active(t.book_fonts.unwrap_or(true));
         self.css.buffer().set_text(&t.user_css);
         self.quiet.set(false);
     }
@@ -336,6 +476,34 @@ impl TweaksUi {
             "optimal" => {
                 self.optimal.set_enable_expansion(true);
                 self.optimal_v.set_active(value == "on");
+            }
+            "weight" => {
+                self.weight.set_enable_expansion(true);
+                self.weight_v.set_value(value.parse().unwrap_or(400.0));
+            }
+            "word_spacing" => {
+                self.word_sp.set_enable_expansion(true);
+                self.word_sp_v.set_value(value.parse().unwrap_or(0.0));
+            }
+            "contrast" => {
+                self.contrast.set_enable_expansion(true);
+                self.contrast_v.set_value(value.parse().unwrap_or(0.5));
+            }
+            "kerning" => {
+                self.kerning.set_enable_expansion(true);
+                self.kerning_v.set_active(value == "on");
+            }
+            "widows" => {
+                self.widows.set_enable_expansion(true);
+                self.widows_v.set_value(value.parse().unwrap_or(2.0));
+            }
+            "book_styles" => {
+                self.book_styles.set_enable_expansion(true);
+                self.book_styles_v.set_active(value == "on");
+            }
+            "book_fonts" => {
+                self.book_fonts.set_enable_expansion(true);
+                self.book_fonts_v.set_active(value == "on");
             }
             "hyphen" => {
                 let at = HYPHEN_LANGUAGES

@@ -47,6 +47,10 @@ pub const MAX_POSITION_CHARS: usize = 1000;
 pub const MAX_NAME_CHARS: usize = 128;
 pub const MAX_TITLE_CHARS: usize = 512;
 /// Largest body the handler accepts (the transport has its own, equal limit).
+/// Version of the `/bookx` wire protocol (annotations route, `/info`). Raised when a change would break
+/// an installed plugin; `MIN_PLUGIN_PROTOCOL` is the oldest plugin protocol this server still answers.
+pub const PROTOCOL: u32 = 1;
+pub const MIN_PLUGIN_PROTOCOL: u32 = 1;
 pub const MAX_BODY: usize = 1024 * 1024;
 /// Requests a user may make per window.
 pub const RATE_LIMIT: usize = 120;
@@ -136,6 +140,19 @@ pub struct Outcome {
     pub unchanged: usize,
     /// Older than what the server has, or a tie the stored version won.
     pub stale: usize,
+    /// What the accepted ones were (not sent over the wire; for the activity list).
+    #[serde(skip)]
+    pub detail: Detail,
+}
+
+/// The accepted annotations of one request by kind.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Detail {
+    pub highlights: usize,
+    pub bookmarks: usize,
+    /// Highlights that carry a note.
+    pub notes: usize,
+    pub removed: usize,
 }
 
 /// Where the data of one request comes from.
@@ -172,6 +189,8 @@ pub struct AnnotationSync {
     clock: Box<dyn Fn() -> i64 + Send + Sync>,
     rate: Mutex<HashMap<String, VecDeque<i64>>>,
     rate_limit: usize,
+    activity: Option<std::sync::Arc<crate::activity::ActivityLog>>,
+    notifier: crate::notify::Notifier,
 }
 
 fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -377,6 +396,16 @@ impl State {
                 _ => {
                     seq += 1;
                     out.accepted += 1;
+                    if a.deleted {
+                        out.detail.removed += 1;
+                    } else if a.kind == KIND_BOOKMARK {
+                        out.detail.bookmarks += 1;
+                    } else {
+                        out.detail.highlights += 1;
+                        if !a.note.trim().is_empty() {
+                            out.detail.notes += 1;
+                        }
+                    }
                     state.records.insert(
                         a.id.clone(),
                         Record {
@@ -412,7 +441,18 @@ impl AnnotationSync {
             clock: Box::new(|| chrono::Utc::now().timestamp()),
             rate: Mutex::new(HashMap::new()),
             rate_limit: RATE_LIMIT,
+            activity: None,
+            notifier: crate::notify::Notifier::default(),
         }
+    }
+
+    /// Records devices and what they sent in `log` (see [`crate::activity`]).
+    pub fn with_activity(
+        mut self,
+        log: std::sync::Arc<crate::activity::ActivityLog>,
+    ) -> AnnotationSync {
+        self.activity = Some(log);
+        self
     }
 
     /// Kept in a JSON file, written atomically after every change; starts empty if it is not there.
@@ -447,6 +487,17 @@ impl AnnotationSync {
 
     fn now(&self) -> i64 {
         (self.clock)()
+    }
+
+    /// Tells `listener` (on the thread of the request) about every request of a device that
+    /// changed the store, once per request. Bookx's own publishing does not notify.
+    pub fn on_change(&self, listener: Option<crate::notify::Listener>) {
+        self.notifier.set(listener);
+    }
+
+    /// The activity log this store reports to, if any.
+    pub fn activity(&self) -> Option<std::sync::Arc<crate::activity::ActivityLog>> {
+        self.activity.clone()
     }
 
     fn save(&self, st: &State) -> Result<()> {
@@ -568,6 +619,42 @@ impl AnnotationSync {
         if !auth(user, key) {
             return message(401, "Unauthorized");
         }
+        let resp = self.handle_authed(req, user);
+        if resp.status >= 400 {
+            self.note_refusal(req, user, &resp);
+        }
+        resp
+    }
+
+    /// A refused request of a logged-in device is a visible event, not a silent one.
+    fn note_refusal(&self, req: &Request, user: &str, resp: &Response) {
+        let Some(log) = &self.activity else { return };
+        let who = crate::activity::Ident::from_request(req);
+        log.touch(&who, user, false);
+        let reason = serde_json::from_slice::<Value>(&resp.body)
+            .ok()
+            .and_then(|v| v["message"].as_str().map(str::to_string))
+            .unwrap_or_default();
+        let doc = split_path(&req.path)
+            .and_then(|s| s.get(1).cloned())
+            .unwrap_or_default();
+        log.record_for(
+            &who,
+            &doc,
+            "",
+            crate::activity::What::Rejected {
+                status: resp.status,
+                reason,
+            },
+        );
+    }
+
+    fn handle_authed(&self, req: &Request, user: &str) -> Response {
+        if let Some(log) = &self.activity {
+            if req.method != "PUT" {
+                log.touch(&crate::activity::Ident::from_request(req), user, false);
+            }
+        }
         let Some(segs) = split_path(&req.path) else {
             return message(400, "Invalid path");
         };
@@ -600,12 +687,37 @@ impl AnnotationSync {
         }
     }
 
+    fn note_put(&self, req: &Request, user: &str, doc: &str, parsed: &Parsed, out: &Outcome) {
+        let Some(log) = &self.activity else { return };
+        let who =
+            crate::activity::Ident::from_request(req).with_body(&parsed.device, &parsed.device_id);
+        log.touch(&who, user, true);
+        let d = &out.detail;
+        let what = if out.accepted == 0 {
+            crate::activity::What::Nothing
+        } else {
+            crate::activity::What::Received {
+                highlights: d.highlights as u32,
+                bookmarks: d.bookmarks as u32,
+                notes: d.notes as u32,
+                removed: d.removed as u32,
+            }
+        };
+        log.record_for(&who, doc, &parsed.title, what);
+    }
+
     fn listing(&self, user: &str, doc: &str, since: u64, outcome: Option<Outcome>) -> Response {
         let records = self.records(user, doc, since);
         let list: Vec<Value> = records.iter().map(wire).collect();
         let mut v = json!({"document": doc, "seq": self.seq(), "annotations": list});
         if let Some(o) = outcome {
             v["result"] = serde_json::to_value(o).unwrap_or(Value::Null);
+            // whether Bookx has this book (null until the app has looked): the plugin lists the ones it has not
+            v["in_library"] = self
+                .activity
+                .as_ref()
+                .and_then(|a| a.in_library(doc))
+                .map_or(Value::Null, Value::Bool);
         }
         Response::json(200, &v)
     }
@@ -614,7 +726,7 @@ impl AnnotationSync {
         if req.body.len() > MAX_BODY {
             return message(413, "Request body too large");
         }
-        let parsed = match parse_request(&req.body, self.now()) {
+        let mut parsed = match parse_request(&req.body, self.now()) {
             Ok(p) => p,
             Err(e) => return message(422, &e),
         };
@@ -625,8 +737,23 @@ impl AnnotationSync {
             title: &parsed.title,
             authors: &parsed.authors,
         };
-        match self.put(user, doc, &src, parsed.annotations) {
-            Ok(out) => self.listing(user, doc, since, Some(out)),
+        match self.put(user, doc, &src, std::mem::take(&mut parsed.annotations)) {
+            Ok(out) => {
+                self.note_put(req, user, doc, &parsed, &out);
+                if out.accepted > 0 && parsed.origin != ORIGIN_BOOKX {
+                    self.notifier.emit(&crate::notify::Note::Annotations {
+                        user: user.to_string(),
+                        document: doc.to_string(),
+                        device: parsed.device.clone(),
+                        seq: self.seq(),
+                        highlights: out.detail.highlights,
+                        bookmarks: out.detail.bookmarks,
+                        notes: out.detail.notes,
+                        removed: out.detail.removed,
+                    });
+                }
+                self.listing(user, doc, since, Some(out))
+            }
             Err(Refusal::Invalid(m)) => message(500, &m),
             Err(Refusal::TooMany(what)) => message(413, &format!("Too many {what} stored")),
         }
@@ -685,6 +812,179 @@ mod tests {
 
     fn body(r: &Response) -> Value {
         serde_json::from_slice(&r.body).unwrap()
+    }
+
+    fn logged() -> (AnnotationSync, std::sync::Arc<crate::activity::ActivityLog>) {
+        let log = std::sync::Arc::new(crate::activity::ActivityLog::memory());
+        (sync().with_activity(log.clone()), log)
+    }
+
+    fn heard(s: &AnnotationSync) -> std::sync::Arc<std::sync::Mutex<Vec<crate::notify::Note>>> {
+        let got = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let g = got.clone();
+        s.on_change(Some(std::sync::Arc::new(move |n| {
+            g.lock().unwrap().push(n.clone())
+        })));
+        got
+    }
+
+    #[test]
+    fn a_request_that_changes_the_store_notifies_exactly_once_and_a_repeat_not_at_all() {
+        let s = sync();
+        let got = heard(&s);
+        let list = vec![
+            hl("a", "first words", NOW - 9),
+            hl("b", "second words", NOW - 9),
+        ];
+        assert_eq!(put(&s, list.clone()).status, 200);
+        assert_eq!(
+            got.lock().unwrap().len(),
+            1,
+            "one notice for two annotations"
+        );
+        match &got.lock().unwrap()[0] {
+            crate::notify::Note::Annotations {
+                document,
+                device,
+                highlights,
+                seq,
+                ..
+            } => {
+                assert_eq!(document, DOC);
+                assert_eq!(device, "Libra");
+                assert_eq!(*highlights, 2);
+                assert!(*seq >= 2);
+            }
+            other => panic!("{other:?}"),
+        }
+        put(&s, list);
+        assert_eq!(
+            got.lock().unwrap().len(),
+            1,
+            "an identical repeat changes nothing"
+        );
+        put(&s, vec![hl("a", "first words", NOW - 20)]);
+        assert_eq!(
+            got.lock().unwrap().len(),
+            1,
+            "a stale version changes nothing"
+        );
+    }
+
+    #[test]
+    fn a_refused_request_and_bookx_own_publishing_do_not_notify() {
+        let s = sync();
+        let got = heard(&s);
+        let bad = s.handle(
+            &req("PUT", DOC, &json!({"annotations": [{"id": "x"}]})),
+            &ok_auth,
+        );
+        assert_eq!(bad.status, 422);
+        let src = Source {
+            origin: ORIGIN_BOOKX,
+            device: "Bookx",
+            device_id: "",
+            title: "",
+            authors: "",
+        };
+        let a = parse_annotation(&hl("c", "from bookx here", NOW - 5), NOW).unwrap();
+        s.put("ann", DOC, &src, vec![a]).unwrap();
+        assert!(got.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn a_sync_shows_up_as_a_device_and_an_event_with_the_counts() {
+        use crate::activity::What;
+        let (s, log) = logged();
+        let mut note = hl("b", "noted words here", NOW - 9);
+        note["note"] = json!("my note");
+        let mark = json!({"id": "m", "kind": "bookmark", "updated": NOW - 8, "created": NOW - 8});
+        let r = s.handle(
+            &req(
+                "PUT",
+                DOC,
+                &json!({"device": "Kobo Libra", "device_id": "dev-1", "title": "Dune",
+                    "annotations": [hl("a", "plain words here", NOW - 10), note, mark]}),
+            )
+            .with_header("x-bookx-client", "KOReader/2026.07.2 bookx-plugin/0.3.1")
+            .with_header("x-bookx-protocol", "1"),
+            &ok_auth,
+        );
+        assert_eq!(r.status, 200);
+        let d = log.devices();
+        assert_eq!(d.len(), 1);
+        assert_eq!(d[0].name, "Kobo Libra");
+        assert_eq!(d[0].id, "dev-1");
+        assert_eq!(d[0].client, "KOReader 2026.07.2");
+        assert_eq!(d[0].plugin, "0.3.1");
+        assert!(d[0].last_sync.is_some());
+        let e = log.events(5);
+        assert_eq!(e[0].title, "Dune");
+        assert_eq!(e[0].document, DOC);
+        assert_eq!(
+            e[0].what,
+            What::Received {
+                highlights: 2,
+                bookmarks: 1,
+                notes: 1,
+                removed: 0
+            }
+        );
+        // the same request again: the device is seen, nothing is new
+        put(&s, vec![hl("a", "plain words here", NOW - 10)]);
+        assert_eq!(log.events(5)[0].what, What::Nothing);
+    }
+
+    #[test]
+    fn a_refused_request_is_an_event_not_silence() {
+        use crate::activity::What;
+        let (s, log) = logged();
+        let r = s.handle(&req("PUT", DOC, &json!({"annotations": "nope"})), &ok_auth);
+        assert_eq!(r.status, 422);
+        let e = log.events(5);
+        assert_eq!(e.len(), 1);
+        match &e[0].what {
+            What::Rejected { status, reason } => {
+                assert_eq!(*status, 422);
+                assert!(reason.contains("annotations"), "{reason}");
+            }
+            w => panic!("{w:?}"),
+        }
+        assert_eq!(
+            log.devices().len(),
+            1,
+            "the device that was refused is still seen"
+        );
+    }
+
+    #[test]
+    fn a_request_that_does_not_log_in_leaves_no_trace() {
+        let (s, log) = logged();
+        let r = s.handle(
+            &Request::new("PUT", &format!("/annotations/{DOC}"))
+                .with_header("x-auth-user", "ann")
+                .with_header("x-auth-key", "wrong")
+                .with_header("x-bookx-device", "Intruder"),
+            &ok_auth,
+        );
+        assert_eq!(r.status, 401);
+        assert!(log.devices().is_empty() && log.events(5).is_empty());
+    }
+
+    #[test]
+    fn the_answer_says_whether_bookx_has_the_book_once_the_app_knows() {
+        let (s, log) = logged();
+        assert!(body(&put(&s, vec![hl("a", "words words", NOW - 5)]))["in_library"].is_null());
+        log.set_in_library(DOC, false);
+        assert_eq!(
+            body(&put(&s, vec![hl("a", "words words", NOW - 5)]))["in_library"],
+            false
+        );
+        log.set_in_library(DOC, true);
+        assert_eq!(
+            body(&put(&s, vec![hl("a", "words words", NOW - 5)]))["in_library"],
+            true
+        );
     }
 
     #[test]

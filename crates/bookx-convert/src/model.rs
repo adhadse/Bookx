@@ -10,7 +10,7 @@ use std::collections::HashSet;
 use bookx_core::book::OpenBook;
 use bookx_core::toc::flatten;
 use bookx_core::util::{extension, is_external, parent_dir, resolve_href};
-use scraper::{ElementRef, Html, Node};
+use scraper::{ElementRef, Node};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Fmt {
@@ -860,7 +860,7 @@ impl Model {
             let Some(src) = book.archive.get_string(&path) else {
                 continue;
             };
-            let html = Html::parse_document(&src);
+            let html = bookx_core::util::parse_html_document(&src);
             let mut p = Parser {
                 book,
                 path: &path,

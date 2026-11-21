@@ -84,7 +84,7 @@ pub fn install_plugin(plugins: &Path) -> Result<PathBuf> {
     Ok(dir)
 }
 
-fn data_dir() -> PathBuf {
+pub(crate) fn data_dir() -> PathBuf {
     crate::config::stats_path()
         .and_then(|p| p.parent().map(|d| d.to_path_buf()))
         .unwrap_or_else(std::env::temp_dir)
@@ -94,6 +94,7 @@ thread_local! {
     static LAST: RefCell<String> = const { RefCell::new(String::new()) };
     static STATUS: RefCell<Option<gtk::Label>> = const { RefCell::new(None) };
     static SEEN: Cell<u64> = const { Cell::new(u64::MAX) };
+    static LAST_TOAST: RefCell<String> = const { RefCell::new(String::new()) };
     static SOURCES: RefCell<Option<std::collections::HashMap<(u64, String), String>>> = const { RefCell::new(None) };
 }
 
@@ -160,6 +161,17 @@ pub fn dev_seed_hint(book_id: u64, highlight_id: &str, text: &str, pos0: &str) {
     let _ = ledger.save(&path);
 }
 
+/// "Last synced from Kobo Libra 3 minutes ago" for the details of a book, empty when no device sent anything for it.
+pub fn last_sync_line(book_id: u64) -> String {
+    let ledger = Ledger::load(&sync::ledger_path(&data_dir()));
+    ledger
+        .last_synced
+        .get(&book_id)
+        .map_or_else(String::new, |s| {
+            crate::sync_activity::book_line(&s.device, s.time, chrono::Utc::now().timestamp())
+        })
+}
+
 /// Merges what the devices sent into the library and publishes the library's highlights for the
 /// books the devices know. `None` when the server does not serve annotations. Does nothing and
 /// returns `None` if nothing changed since the last merge and `force` is off.
@@ -176,7 +188,9 @@ pub fn sync_once(shared: &SharedRef, force: bool) -> Option<Report> {
         SEEN.with(|s| s.set(seq));
         return None;
     }
+    let before = crate::sync_bus::Snapshot::take(&lib.books);
     let report = run(&mut lib, &ann, &mut ledger);
+    publish_report(&before, &lib.books, &report);
     ledger.seen = ann.seq();
     SEEN.with(|s| s.set(ledger.seen));
     let _ = ledger.save(&path);
@@ -194,6 +208,21 @@ pub fn sync_once(shared: &SharedRef, force: bool) -> Option<Report> {
     drop(lib);
     set_status(&report.text());
     Some(report)
+}
+
+/// Tells the open readers and the library window what a merge changed: one event per book that is
+/// different now, named after the device that brought it.
+fn publish_report(
+    before: &crate::sync_bus::Snapshot,
+    books: &[crate::core::library::Book],
+    report: &Report,
+) {
+    for mut ev in before.events(books, "", crate::sync_bus::Via::Wifi) {
+        if let Some(d) = report.books.iter().find(|d| d.book_id == ev.book_id) {
+            ev.device = d.device.clone();
+        }
+        crate::sync_bus::publish(ev);
+    }
 }
 
 /// The merge itself, on a library and a store (no GTK; the tests of the pieces are in
@@ -215,6 +244,16 @@ pub fn run(
         &locator,
         chrono::Utc::now(),
     );
+    if let Some(log) = ann.activity() {
+        sync::record_merge(
+            &log,
+            ledger,
+            &report,
+            &docs,
+            &lib.books,
+            chrono::Utc::now().timestamp(),
+        );
+    }
     // The server's change number may not have moved: an older sync linked a coloured annotation
     // with Bookx's default yellow. Repair it now, before publishing anything back.
     report.looks += sync::repair_looks(&mut lib.books, &changes, ledger);
@@ -245,14 +284,149 @@ pub fn run(
 /// Starts the timer that merges new annotations (every few seconds, only when the server's change
 /// counter moved). Call once at start-up.
 pub fn install(shared: &SharedRef) {
+    install_live(shared);
     let weak = Rc::downgrade(shared);
     relm4::gtk::glib::timeout_add_seconds_local(4, move || match weak.upgrade() {
         Some(s) => {
-            sync_once(&s, false);
+            if let Some(report) = sync_once(&s, false) {
+                announce(&s, &report);
+            }
             relm4::gtk::glib::ControlFlow::Continue
         }
         None => relm4::gtk::glib::ControlFlow::Break,
     });
+}
+
+thread_local! {
+    static MERGE_PENDING: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Live updates: a device talked to the built-in server. The merge runs a moment later (a burst
+/// of requests is one merge) instead of at the next tick of the timer, and the library views, the
+/// open readers and the banner for a device that is ahead hear of it through `sync_bus`.
+fn install_live(shared: &SharedRef) {
+    let weak = Rc::downgrade(shared);
+    crate::sync_bus::install(move |notes| {
+        let Some(shared) = weak.upgrade() else { return };
+        let plan = crate::sync_bus::plan(&notes);
+        if plan.merge && !MERGE_PENDING.with(|p| p.replace(true)) {
+            let weak = Rc::downgrade(&shared);
+            relm4::gtk::glib::timeout_add_local_once(
+                std::time::Duration::from_millis(crate::sync_bus::DEBOUNCE_MS),
+                move || {
+                    MERGE_PENDING.with(|p| p.set(false));
+                    if let Some(s) = weak.upgrade() {
+                        if let Some(report) = sync_once(&s, false) {
+                            announce(&s, &report);
+                        }
+                    }
+                },
+            );
+        }
+        for p in &plan.positions {
+            publish_position(&shared, p);
+        }
+    });
+}
+
+/// A device reported where it is in a book: if the book is in the library, readers of it may offer
+/// to jump there. The library's own position is never touched here.
+fn publish_position(shared: &SharedRef, p: &crate::sync_bus::PositionNote) {
+    let own = shared.cfg.borrow().kosync.device_id.clone();
+    if !own.is_empty() && p.device_id == own {
+        return;
+    }
+    let book = {
+        let Ok(lib) = shared.lib.try_borrow() else {
+            return;
+        };
+        let path = sync::ledger_path(&data_dir());
+        let mut ledger = Ledger::load(&path);
+        let docs = vec![(
+            String::new(),
+            p.document.clone(),
+            String::new(),
+            String::new(),
+        )];
+        sync::resolve_docs(
+            &lib.root,
+            &lib.books,
+            &docs,
+            &mut ledger,
+            &sync::digest_of_file,
+        );
+        let _ = ledger.save(&path);
+        ledger.docs.get(&p.document).copied()
+    };
+    let Some(book_id) = book else { return };
+    let mut ev = crate::sync_bus::SyncEvent::new(
+        book_id,
+        crate::sync_bus::Kinds::PROGRESS,
+        &p.device,
+        crate::sync_bus::Via::Wifi,
+    );
+    ev.ahead = Some(crate::sync_bus::Ahead {
+        percentage: p.percentage,
+        device_id: p.device_id.clone(),
+        progress: p.progress.clone(),
+    });
+    crate::sync_bus::publish(ev);
+}
+
+/// What arrived in a merge, as the toast says it.
+pub fn arrivals(
+    lib: &crate::core::library::Library,
+    report: &Report,
+) -> Vec<crate::sync_activity::Arrival> {
+    report
+        .books
+        .iter()
+        .filter(|d| d.arrived() + d.bookmarks > 0)
+        .map(|d| crate::sync_activity::Arrival {
+            book_id: d.book_id,
+            title: lib
+                .get(d.book_id)
+                .map(|b| b.meta.title.clone())
+                .unwrap_or_default(),
+            device: d.device.clone(),
+            highlights: d.arrived(),
+            bookmarks: d.bookmarks,
+        })
+        .collect()
+}
+
+/// A sync arrived while Bookx is open: a toast with a button that opens Notes & Highlights for the book,
+/// and the library views (and the counts in the sidebar) read the highlights again.
+fn announce(shared: &SharedRef, report: &Report) {
+    let arrived = arrivals(&shared.lib.borrow(), report);
+    if arrived.is_empty() && report.looks + report.notes + report.removed == 0 {
+        return;
+    }
+    crate::settings_bus::sync().notify();
+    let Some(text) = crate::sync_activity::toast_text(&arrived) else {
+        return;
+    };
+    let title = arrived.first().map(|a| a.title.clone()).unwrap_or_default();
+    LAST_TOAST.with(|t| *t.borrow_mut() = text.clone());
+    let book = arrived.first().map(|a| a.book_id);
+    let open_here = book.is_some_and(crate::sync_bus::has_reader_for);
+    if let Some(overlay) = crate::ui::dialog_toast::app_overlay() {
+        match book {
+            // a book that is not open: the message can open it
+            Some(id) if !open_here => crate::ui::dialog_toast::show_action_and(
+                &overlay,
+                &text,
+                &tr("Show"),
+                move || crate::ui::sync_activity::show_notes(&title),
+                (&tr("Open Book"), move || {
+                    crate::ui::sync_activity::open_book(id)
+                }),
+            ),
+            _ => crate::ui::dialog_toast::show_action(&overlay, &text, &tr("Show"), move || {
+                crate::ui::sync_activity::show_notes(&title)
+            }),
+        }
+    }
 }
 
 /// The rows of step 3 (copy the Bookx plugin to the e-reader or a folder), with the result inline.
@@ -456,7 +630,8 @@ fn fake_device(shared: &SharedRef, spec: &str) -> Result<String> {
         &serde_json::json!({"username": "ko", "password": key}).to_string(),
     )?;
     let body = serde_json::json!({
-        "origin": "koreader", "device": v["device"], "device_id": "fake",
+        "origin": "koreader", "device": v["device"],
+        "device_id": format!("fake-{}", v["device"].as_str().unwrap_or("")),
         "title": v["title"], "authors": v["authors"], "annotations": v["annotations"],
     });
     let r = bookx_serve::httpc::request(
@@ -466,6 +641,8 @@ fn fake_device(shared: &SharedRef, spec: &str) -> Result<String> {
             ("Content-Type", "application/json"),
             ("x-auth-user", "ko"),
             ("x-auth-key", &key),
+            ("X-Bookx-Client", "KOReader/2026.07.2 bookx-plugin/0.3.1"),
+            ("X-Bookx-Protocol", "1"),
         ],
         body.to_string().as_bytes(),
         t,
@@ -479,6 +656,115 @@ fn fake_device(shared: &SharedRef, spec: &str) -> Result<String> {
         a["result"]["stale"],
         a["annotations"].as_array().map_or(0, |l| l.len()),
     ))
+}
+
+thread_local! {
+    static PUSH_CLOCK: Cell<i64> = const { Cell::new(0) };
+}
+
+/// A fake device's connection to the running server: the address of `/bookx`, the key, the document id of a book.
+fn fake_link(shared: &SharedRef, book: u64) -> Result<(String, String, String)> {
+    let url = shared
+        .sharing
+        .borrow()
+        .urls()
+        .first()
+        .cloned()
+        .context("sharing is not running")?;
+    let doc = {
+        let lib = shared.lib.borrow();
+        let b = lib.get(book).context("no such book")?;
+        sync::digest_of_file(&lib.root.join(&b.file)).context("cannot read the book")?
+    };
+    let base = format!("{}/bookx", url.trim_end_matches('/'));
+    let key = bookx_serve::kosync::md5_hex("pw");
+    let _ = bookx_serve::httpc::request(
+        "POST",
+        &format!("{base}/users/create").parse()?,
+        &[("Content-Type", "application/json")],
+        serde_json::json!({"username": "ko", "password": key})
+            .to_string()
+            .as_bytes(),
+        std::time::Duration::from_secs(10),
+    )?;
+    Ok((base, key, doc))
+}
+
+/// `koannot:push=<book>|<text>|<colour>[|<note>[|<device>]]` and `koannot:pushdel=<book>|<text>`: a
+/// device sends (or deletes) one highlight through the real HTTP server, exactly as the plugin
+/// does, and nothing else: the merge, the events and the readers' repaint happen on their own.
+fn push(shared: &SharedRef, rest: &str, delete: bool) -> Result<String> {
+    use std::hash::{Hash, Hasher};
+    let p: Vec<&str> = rest.split('|').collect();
+    let book: u64 = p.first().and_then(|b| b.parse().ok()).context("book id")?;
+    let text = p.get(1).copied().unwrap_or("");
+    let colour = p.get(2).copied().unwrap_or("yellow");
+    let note = p.get(3).copied().unwrap_or("");
+    let device = p.get(4).copied().unwrap_or("Kobo Libra");
+    let (base, key, doc) = fake_link(shared, book)?;
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    text.hash(&mut h);
+    let id = format!("live-{:x}", h.finish());
+    // each push is newer than the one before, even inside one second
+    let at = PUSH_CLOCK.with(|c| {
+        let t = chrono::Utc::now().timestamp().max(c.get() + 1);
+        c.set(t);
+        t
+    });
+    let mut a = serde_json::json!({
+        "id": id, "kind": "highlight", "text": text, "note": note, "color": colour,
+        "drawer": "lighten", "chapter": "One", "page": 3, "created": at - 5, "updated": at,
+    });
+    if delete {
+        a["deleted"] = true.into();
+    }
+    let body = serde_json::json!({
+        "origin": "koreader", "device": device, "device_id": format!("fake-{device}"),
+        "title": "UI Test Book", "authors": "Test Author", "annotations": [a],
+    });
+    let r = bookx_serve::httpc::request(
+        "PUT",
+        &format!("{base}/annotations/{doc}").parse()?,
+        &[
+            ("Content-Type", "application/json"),
+            ("x-auth-user", "ko"),
+            ("x-auth-key", &key),
+            ("X-Bookx-Client", "KOReader/2026.07.2 bookx-plugin/0.3.1"),
+            ("X-Bookx-Protocol", "1"),
+        ],
+        body.to_string().as_bytes(),
+        std::time::Duration::from_secs(10),
+    )?;
+    Ok(format!("status={} id={id}", r.status))
+}
+
+/// `koannot:progress=<book>|<percentage 0..1>|<device>`: a device stores its reading position, as
+/// KOReader's progress sync does.
+fn push_progress(shared: &SharedRef, rest: &str) -> Result<String> {
+    let p: Vec<&str> = rest.split('|').collect();
+    let book: u64 = p.first().and_then(|b| b.parse().ok()).context("book id")?;
+    let pct: f64 = p
+        .get(1)
+        .and_then(|b| b.parse().ok())
+        .context("percentage")?;
+    let device = p.get(2).copied().unwrap_or("Kobo Libra");
+    let (base, key, doc) = fake_link(shared, book)?;
+    let body = serde_json::json!({
+        "document": doc, "progress": "/body/DocFragment[3]/body", "percentage": pct,
+        "device": device, "device_id": format!("fake-{device}"),
+    });
+    let r = bookx_serve::httpc::request(
+        "PUT",
+        &format!("{base}/syncs/progress").parse()?,
+        &[
+            ("Content-Type", "application/json"),
+            ("x-auth-user", "ko"),
+            ("x-auth-key", &key),
+        ],
+        body.to_string().as_bytes(),
+        std::time::Duration::from_secs(10),
+    )?;
+    Ok(format!("status={}", r.status))
 }
 
 /// `koannot:<command>`: `start`, `device=<json file>`, `merge`, `dump`, `pull=<book id>`,
@@ -502,11 +788,35 @@ pub fn dev_command(shared: &SharedRef, arg: &str) {
             Ok(m) => eprintln!("koannot_put: {m}"),
             Err(e) => eprintln!("koannot_error: {e:#}"),
         },
+        "push" | "pushdel" => match push(shared, rest, cmd == "pushdel") {
+            Ok(m) => eprintln!("koannot_push: {m}"),
+            Err(e) => eprintln!("koannot_error: {e:#}"),
+        },
+        "progress" => match push_progress(shared, rest) {
+            Ok(m) => eprintln!("koannot_progress: {m}"),
+            Err(e) => eprintln!("koannot_error: {e:#}"),
+        },
+        // the events that reached the readers and the library: `koannot:events` prints and clears
+        "events" => {
+            for l in crate::sync_bus::dev_log_take() {
+                eprintln!("koannot_event: {l}");
+            }
+        }
+        "toast" => {
+            eprintln!(
+                "koannot_toast: {:?}",
+                LAST_TOAST.with(|t| t.borrow().clone())
+            );
+            eprintln!("koannot_lastsync: {:?}", last_sync_line(1));
+        }
         "merge" => match sync_once(shared, true) {
-            Some(r) => eprintln!(
+            Some(r) => {
+                announce(shared, &r);
+                eprintln!(
                 "koannot_merge: added={} linked={} notes={} removed={} kept={} conflicts={} unplaced={} bookmarks={} unmatched={} sent={} looks={} bookmarks_skipped={}",
                 r.added, r.linked, r.notes, r.removed, r.kept, r.conflicts, r.unplaced, r.bookmarks, r.unmatched, r.sent, r.looks, r.bookmarks_skipped
-            ),
+                )
+            }
             None => eprintln!("koannot_merge: not running"),
         },
         "dump" => {
@@ -532,7 +842,10 @@ pub fn dev_command(shared: &SharedRef, arg: &str) {
             let infos = bookmark_infos(&lib.root);
             for b in &lib.books {
                 for m in &b.bookmarks {
-                    let (src, approx) = infos.get(&(b.id, m.id.clone())).cloned().unwrap_or_default();
+                    let (src, approx) = infos
+                        .get(&(b.id, m.id.clone()))
+                        .cloned()
+                        .unwrap_or_default();
                     eprintln!(
                         "koannot_bm: book={} id={} spine={} frac={:.2} label={:?} source={:?} approx={}",
                         b.id, m.id, m.spine, m.frac, m.label, src, approx
@@ -559,9 +872,7 @@ pub fn dev_command(shared: &SharedRef, arg: &str) {
                 lib.get(id)
                     .and_then(|b| sync::digest_of_file(&lib.root.join(&b.file)))
             };
-            let list = doc
-                .map(|d| ann.records("ko", &d, 0))
-                .unwrap_or_default();
+            let list = doc.map(|d| ann.records("ko", &d, 0)).unwrap_or_default();
             for r in list.iter().filter(|r| r.origin == ORIGIN_BOOKX) {
                 eprintln!(
                     "koannot_pull: origin=bookx deleted={} note={:?} text={:?}",
@@ -614,7 +925,11 @@ pub fn dev_command(shared: &SharedRef, arg: &str) {
         "plugin" => match install_plugin(Path::new(rest)) {
             Ok(d) => {
                 let mut files: Vec<String> = std::fs::read_dir(&d)
-                    .map(|r| r.flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect())
+                    .map(|r| {
+                        r.flatten()
+                            .map(|e| e.file_name().to_string_lossy().into_owned())
+                            .collect()
+                    })
                     .unwrap_or_default();
                 files.sort();
                 eprintln!("koannot_plugin: {} files={}", d.display(), files.join(","));

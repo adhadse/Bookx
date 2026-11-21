@@ -15,6 +15,7 @@
 //!
 //! Path rendering never lets field values create path components or traverse directories.
 
+use std::collections::BTreeMap;
 use std::fmt;
 
 use bookx_core::opf::{format_index, Metadata};
@@ -104,7 +105,11 @@ fn err<T>(pos: usize, message: impl Into<String>) -> Result<T, TemplateError> {
 }
 
 fn check_field(name: &str, pos: usize) -> Result<(), TemplateError> {
-    if FIELDS.contains(&name) {
+    // `#label` is a custom column (only composite columns give it a value)
+    let custom = name
+        .strip_prefix('#')
+        .is_some_and(bookx_core::custom::is_label_shape);
+    if FIELDS.contains(&name) || custom {
         Ok(())
     } else {
         err(pos, format!("unknown field `{name}`"))
@@ -319,7 +324,14 @@ impl Template {
     /// Renders for display: values are inserted as they are, `/` is an ordinary character.
     pub fn render(&self, md: &Metadata) -> String {
         let mut out = String::new();
-        render_nodes(&self.nodes, md, false, &mut out);
+        render_nodes(&self.nodes, md, &NO_CUSTOM, false, &mut out);
+        out
+    }
+
+    /// [`render`](Self::render) with the values of custom columns for `{#label}` fields.
+    pub fn render_with_custom(&self, md: &Metadata, custom: &BTreeMap<String, String>) -> String {
+        let mut out = String::new();
+        render_nodes(&self.nodes, md, custom, false, &mut out);
         out
     }
 
@@ -328,7 +340,7 @@ impl Template {
     /// Never returns an empty list, empty components, `.` or `..`.
     pub fn render_path(&self, md: &Metadata, ext: &str) -> Vec<String> {
         let mut raw = String::new();
-        render_nodes(&self.nodes, md, true, &mut raw);
+        render_nodes(&self.nodes, md, &NO_CUSTOM, true, &mut raw);
         let mut comps: Vec<String> = raw
             .split('/')
             .map(|c| clean_component(c, 0))
@@ -356,7 +368,12 @@ impl Template {
     }
 }
 
-fn field_value(md: &Metadata, name: &str) -> String {
+static NO_CUSTOM: BTreeMap<String, String> = BTreeMap::new();
+
+fn field_value(md: &Metadata, custom: &BTreeMap<String, String>, name: &str) -> String {
+    if let Some(label) = name.strip_prefix('#') {
+        return custom.get(label).cloned().unwrap_or_default();
+    }
     match name {
         "title" => md.title.trim().to_string(),
         "title_sort" => {
@@ -539,9 +556,15 @@ fn clean_component(c: &str, reserve: usize) -> String {
     }
 }
 
-fn render_nodes(nodes: &[Node], md: &Metadata, path: bool, out: &mut String) {
+fn render_nodes(
+    nodes: &[Node],
+    md: &Metadata,
+    custom: &BTreeMap<String, String>,
+    path: bool,
+    out: &mut String,
+) {
     let val = |name: &str, filters: &[Filter]| -> String {
-        let mut v = field_value(md, name);
+        let mut v = field_value(md, custom, name);
         for f in filters {
             v = apply_filter(f, v);
         }
@@ -573,11 +596,11 @@ fn render_nodes(nodes: &[Node], md: &Metadata, path: bool, out: &mut String) {
                 then,
                 otherwise,
             } => {
-                let truthy = !field_value(md, field).trim().is_empty();
+                let truthy = !field_value(md, custom, field).trim().is_empty();
                 if truthy != *negate {
-                    render_nodes(then, md, path, out);
+                    render_nodes(then, md, custom, path, out);
                 } else {
-                    render_nodes(otherwise, md, path, out);
+                    render_nodes(otherwise, md, custom, path, out);
                 }
             }
         }
@@ -587,6 +610,16 @@ fn render_nodes(nodes: &[Node], md: &Metadata, path: bool, out: &mut String) {
 /// Parses and renders for display in one go.
 pub fn render_template(src: &str, md: &Metadata) -> Result<String, TemplateError> {
     Ok(Template::parse(src)?.render(md))
+}
+
+/// The value of a composite custom column for a book: the template rendered with the book's
+/// metadata and its other custom values. A template that does not parse gives the error text, so
+/// the column shows what is wrong instead of staying empty.
+pub fn render_composite(src: &str, book: &bookx_core::library::Book) -> String {
+    match Template::parse(src) {
+        Ok(t) => t.render_with_custom(&book.meta, &book.custom),
+        Err(e) => format!("#TEMPLATE ERROR: {e}"),
+    }
 }
 
 /// Parses and renders a save path in one go; see [`Template::render_path`].
@@ -1031,5 +1064,47 @@ mod tests {
             assert_eq!(a, b);
             assert!(a.iter().all(|c| !c.is_empty()));
         }
+    }
+}
+
+#[cfg(test)]
+mod composite_tests {
+    use super::*;
+    use bookx_core::library::Book;
+
+    fn book() -> Book {
+        let mut b: Book = serde_json::from_str(
+            r#"{"id":1,"file":"a.epub","meta":{"title":"Dune","title_sort":"Dune","authors":["Frank Herbert"],"author_sort":"Herbert, Frank","publisher":"","language":"en","description":"","tags":[],"series":"","series_index":0.0,"identifiers":[],"published":"1965","rights":"","rating":0},"added":"2026-01-01T00:00:00Z","modified":"2026-01-01T00:00:00Z","size":1}"#,
+        )
+        .unwrap();
+        b.custom.insert("mood".into(), "Tense".into());
+        b
+    }
+
+    #[test]
+    fn composite_templates_read_custom_values() {
+        let b = book();
+        assert_eq!(render_composite("{title} ({#mood})", &b), "Dune (Tense)");
+        assert_eq!(render_composite("{#unset?[:]}", &b), "");
+        assert_eq!(
+            render_composite("{if #mood}{#mood:upper}{else}-{endif}", &b),
+            "TENSE"
+        );
+        assert_eq!(render_composite("{year} {#mood?- :}", &b), "1965 - Tense");
+    }
+
+    #[test]
+    fn a_broken_composite_shows_its_error() {
+        let b = book();
+        assert!(render_composite("{nope}", &b).starts_with("#TEMPLATE ERROR"));
+        assert!(render_composite("{#Bad Label}", &b).starts_with("#TEMPLATE ERROR"));
+    }
+
+    #[test]
+    fn save_paths_ignore_custom_values() {
+        let md = book().meta;
+        let p = render_save_path("{title}/{#mood}", &md, "epub").unwrap();
+        assert_eq!(p, vec!["Dune.epub".to_string()]);
+        assert!(!p.join("/").contains("Tense"));
     }
 }

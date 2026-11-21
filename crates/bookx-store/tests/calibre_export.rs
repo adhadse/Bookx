@@ -417,3 +417,142 @@ fn calibredb_opens_the_export() {
         .unwrap();
     assert_eq!(added["uuid"].as_str().unwrap().len(), 36);
 }
+
+fn custom_defs() -> Vec<bookx_core::custom::ColumnDef> {
+    use bookx_core::custom::{ColumnDef, ColumnKind};
+    let c = |label: &str, kind| ColumnDef {
+        label: label.into(),
+        name: label.to_uppercase(),
+        kind,
+        ..Default::default()
+    };
+    let mut mood = c("mood", ColumnKind::Enumeration);
+    mood.values = vec!["Calm".into(), "Tense".into()];
+    vec![
+        c("pages", ColumnKind::Integer),
+        c("score", ColumnKind::Rating),
+        c("done", ColumnKind::Bool),
+        c("since", ColumnKind::Date),
+        c("price", ColumnKind::Float),
+        c("labels", ColumnKind::Tags),
+        c("note", ColumnKind::Text),
+        c("review", ColumnKind::LongText),
+        mood,
+    ]
+}
+
+#[test]
+fn custom_columns_go_to_calibre_and_come_back() {
+    let src = Tmp::new();
+    let out = Tmp::new();
+    let mut books = sample(src.path());
+    for (k, v) in [
+        ("pages", "412"),
+        ("score", "3.5"),
+        ("done", "true"),
+        ("since", "2024-05-17"),
+        ("price", "9.5"),
+        ("labels", "alpha, beta"),
+        ("note", "lent to Sam"),
+        ("review", "Line one\nLine two"),
+        ("mood", "Tense"),
+    ] {
+        books[0].custom.insert(k.into(), v.into());
+    }
+    books[1].custom.insert("pages".into(), "100".into());
+    let target = out.join("cal");
+    bookx_store::export_calibre_with_columns(
+        &books,
+        &custom_defs(),
+        src.path(),
+        &target,
+        &mut |_, _| {},
+        &never,
+    )
+    .unwrap();
+
+    // Calibre's tables
+    let c = Connection::open(target.join("metadata.db")).unwrap();
+    let n: i64 = c
+        .query_row("SELECT count(*) FROM custom_columns", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(n, 9);
+    let pages: i64 = c
+        .query_row(
+            "SELECT value FROM custom_column_1 WHERE book = 1",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(pages, 412);
+    let score: i64 = c
+        .query_row(
+            "SELECT v.value FROM custom_column_2 v JOIN books_custom_column_2_link l ON l.value = v.id WHERE l.book = 1",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(score, 7, "Calibre rates 0 to 10");
+    let tags: i64 = c
+        .query_row(
+            "SELECT count(*) FROM books_custom_column_6_link WHERE book = 1",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(tags, 2);
+    let ok: String = c
+        .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(ok, "ok");
+    drop(c);
+
+    // Calibre itself lists the columns and the values (skipped when calibredb is not installed)
+    if let Ok(o) = std::process::Command::new("calibredb")
+        .args(["list", "--with-library"])
+        .arg(&target)
+        .args(["--fields", "title,*pages,*mood", "--for-machine"])
+        .env("HOME", out.path())
+        .output()
+    {
+        if !o.status.success() {
+            eprintln!("calibredb: {}", String::from_utf8_lossy(&o.stderr));
+        }
+        if o.status.success() {
+            let text = String::from_utf8_lossy(&o.stdout);
+            assert!(text.contains("412") && text.contains("Tense"), "{text}");
+        }
+    }
+
+    // and back into a fresh store
+    let store = SqliteStore::open_in_memory().unwrap();
+    let imp = store
+        .import_calibre_with(&target, false, &mut |_, _| {})
+        .unwrap();
+    assert_eq!(imp.custom_columns.len(), 9, "{imp:?}");
+    let cols = store.custom_columns();
+    assert_eq!(cols.len(), 9);
+    assert_eq!(
+        cols.iter().find(|c| c.label == "mood").unwrap().values,
+        vec!["Calm", "Tense"]
+    );
+    let back = store.all_books().unwrap();
+    let dune = back.iter().find(|b| b.meta.title == "Dune").unwrap();
+    for (k, v) in [
+        ("pages", "412"),
+        ("score", "3.5"),
+        ("done", "true"),
+        ("since", "2024-05-17"),
+        ("price", "9.5"),
+        ("labels", "alpha, beta"),
+        ("note", "lent to Sam"),
+        ("review", "Line one\nLine two"),
+        ("mood", "Tense"),
+    ] {
+        assert_eq!(dune.custom_value(k), v, "{k}");
+    }
+    let hobbit = back.iter().find(|b| b.meta.title == "The Hobbit").unwrap();
+    assert_eq!(hobbit.custom_value("pages"), "100");
+    assert_eq!(hobbit.custom_value("mood"), "");
+    assert_eq!(store.search_ids("#pages:>200"), vec![dune.id]);
+}

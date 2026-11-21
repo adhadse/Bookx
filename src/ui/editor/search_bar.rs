@@ -633,7 +633,7 @@ impl Editor {
     }
 
     pub(super) fn show_text_dialog(&self, title: &str, text: &str) {
-        let dialog = adw::Dialog::new();
+        let dialog = crate::ui::dialog_toast::new_dialog();
         dialog.set_title(title);
         dialog.set_content_width(520);
         dialog.set_content_height(360);
@@ -777,7 +777,7 @@ impl Editor {
 
     fn show_fn_dialog(&self, text: &str, copy: Option<&str>) {
         self.w.sx.state.borrow_mut().dialogs += 1;
-        let dialog = adw::Dialog::new();
+        let dialog = crate::ui::dialog_toast::new_dialog();
         dialog.set_title(&tr("Function results"));
         dialog.set_content_width(520);
         dialog.set_content_height(380);

@@ -91,19 +91,15 @@ pub fn player_candidates(rate: u32) -> Vec<PlayerCommand> {
 }
 
 fn in_path(program: &str) -> bool {
-    if program.contains('/') {
-        return std::path::Path::new(program).exists();
-    }
-    std::env::var_os("PATH")
-        .map(|p| std::env::split_paths(&p).any(|d| d.join(program).is_file()))
-        .unwrap_or(false)
+    crate::command::system_program(program).is_some()
 }
 
 /// Pipes samples into a command line player.
 pub struct CommandSink {
     rate: u32,
     child: Option<Child>,
-    /// `$BOOKX_TTS_PLAYER`: a command that takes the samples on stdin, `{rate}` replaced.
+    /// `$BOOKX_TTS_PLAYER`: an absolute program path and arguments (no shell) that take the samples
+    /// on stdin, `{rate}` replaced in each argument.
     custom: Option<String>,
 }
 
@@ -126,9 +122,11 @@ impl CommandSink {
 
     fn spawn(&self, rate: u32) -> Result<Child> {
         if let Some(cmd) = &self.custom {
-            return Command::new("sh")
-                .arg("-c")
-                .arg(cmd.replace("{rate}", &rate.to_string()))
+            let (program, args) =
+                crate::command::parse_player(cmd, &[("{rate}", rate.to_string())])
+                    .context("BOOKX_TTS_PLAYER")?;
+            return Command::new(program)
+                .args(args)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
@@ -136,10 +134,10 @@ impl CommandSink {
                 .context("starting the player from BOOKX_TTS_PLAYER");
         }
         for c in player_candidates(rate) {
-            if !in_path(&c.program) {
+            let Some(program) = crate::command::system_program(&c.program) else {
                 continue;
-            }
-            if let Ok(child) = Command::new(&c.program)
+            };
+            if let Ok(child) = Command::new(program)
                 .args(&c.args)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::null())
@@ -205,6 +203,45 @@ impl Drop for CommandSink {
 mod tests {
     use super::*;
 
+    /// An executable player script (a real file, run directly).
+    fn write_player(dir: &std::path::Path, body: &str) -> std::path::PathBuf {
+        use std::os::unix::fs::PermissionsExt;
+        let p = dir.join("player.sh");
+        std::fs::write(&p, format!("#!/bin/sh\n{body}\n")).unwrap();
+        std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).unwrap();
+        p
+    }
+
+    #[test]
+    fn a_custom_player_is_never_run_through_a_shell() {
+        let dir = std::env::temp_dir().join(format!("bookx-sink-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let marker = dir.join("pwned");
+        for spec in [
+            format!("cat > /dev/null; touch {}", marker.display()),
+            format!("sh -c 'touch {}'", marker.display()),
+            format!("/bin/cat $(touch {})", marker.display()),
+        ] {
+            let sink = CommandSink {
+                rate: 0,
+                child: None,
+                custom: Some(spec),
+            };
+            if let Ok(mut c) = sink.spawn(8000) {
+                drop(c.stdin.take());
+                let _ = c.wait();
+            }
+        }
+        assert!(!marker.exists(), "a shell ran part of BOOKX_TTS_PLAYER");
+        let sink = CommandSink {
+            rate: 0,
+            child: None,
+            custom: Some("cat".into()),
+        };
+        assert!(sink.spawn(8000).is_err(), "a PATH lookup is not allowed");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
     #[test]
     fn players_get_the_rate_and_raw_mono_format() {
         let c = player_candidates(22050);
@@ -225,10 +262,11 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("bookx-sink-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         let out = dir.join("out.raw");
+        let script = write_player(&dir, &format!("cat > '{}'", out.display()));
         let mut sink = CommandSink {
             rate: 0,
             child: None,
-            custom: Some(format!("cat > {} # {{rate}}", out.display())),
+            custom: Some(format!("{} {{rate}}", script.display())),
         };
         sink.write(8000, &[1, -2, 300]).unwrap();
         sink.write(8000, &[4]).unwrap();
@@ -243,10 +281,13 @@ mod tests {
 
     #[test]
     fn flush_kills_the_player_and_the_next_write_starts_a_new_one() {
+        let dir = std::env::temp_dir().join(format!("bookx-sink-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let script = write_player(&dir, "cat > /dev/null");
         let mut sink = CommandSink {
             rate: 0,
             child: None,
-            custom: Some("cat > /dev/null".into()),
+            custom: Some(script.display().to_string()),
         };
         sink.write(8000, &[0; 10]).unwrap();
         let first = sink.child.as_ref().unwrap().id();

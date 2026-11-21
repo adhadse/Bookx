@@ -56,6 +56,8 @@ pub fn book(id: u64, title: &str, author: &str) -> Book {
         formats: Vec::new(),
         resources: Vec::new(),
         drm: String::new(),
+        custom: Default::default(),
+        marked: false,
     }
 }
 

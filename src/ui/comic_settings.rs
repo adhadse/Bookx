@@ -42,6 +42,8 @@ struct Rows {
     guided: adw::SwitchRow,
     grey: adw::SwitchRow,
     animate: adw::SwitchRow,
+    library_rtl: adw::SwitchRow,
+    ignore_info: adw::SwitchRow,
 }
 
 thread_local! {
@@ -68,7 +70,7 @@ fn apply_eink(rows: &Rows, on: bool) {
 }
 
 /// Dev hook `prefs:comic-layout=single|spread|webtoon`, `comic-fit=page|width|height|original`,
-/// `comic-cover|wide|guided|grey|animate=on|off`, `comic-dump`.
+/// `comic-cover|wide|guided|grey|animate|library-rtl|ignore-info=on|off`, `comic-dump`.
 pub fn dev(arg: &str) {
     ROWS.with(|r| {
         let r = r.borrow();
@@ -94,10 +96,12 @@ pub fn dev(arg: &str) {
             "guided" => rows.guided.set_active(on),
             "grey" => rows.grey.set_active(on),
             "animate" => rows.animate.set_active(on),
+            "library-rtl" => rows.library_rtl.set_active(on),
+            "ignore-info" => rows.ignore_info.set_active(on),
             _ => {}
         }
         eprintln!(
-            "comic_prefs: layout={} fit={} cover={} wide={} guided={} grey={} animate={} grey_sensitive={} animate_sensitive={}",
+            "comic_prefs: layout={} fit={} cover={} wide={} guided={} grey={} animate={} grey_sensitive={} animate_sensitive={} library_rtl={} ignore_info={}",
             MODES[(rows.mode.selected() as usize).min(2)].name(),
             FITS[(rows.fit.selected() as usize).min(3)].name(),
             rows.cover.is_active(),
@@ -106,7 +110,9 @@ pub fn dev(arg: &str) {
             rows.grey.is_active(),
             rows.animate.is_active(),
             rows.grey.is_sensitive(),
-            rows.animate.is_sensitive()
+            rows.animate.is_sensitive(),
+            rows.library_rtl.is_active(),
+            rows.ignore_info.is_active()
         );
     });
 }
@@ -169,7 +175,36 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
         &tr("Off when your system asks for reduced motion, and in e-ink mode"),
         s.animate,
     );
+    let library_key = ctx
+        .shared
+        .cfg
+        .borrow()
+        .library_dir
+        .to_string_lossy()
+        .into_owned();
+    let store0 = crate::comic::load();
+    let library_rtl = switch(
+        &tr("Read this library right to left"),
+        &tr("Comics of this library open right to left unless you choose otherwise for a book"),
+        store0
+            .library_rtl
+            .get(&library_key)
+            .copied()
+            .unwrap_or(false),
+    );
+    library_rtl.set_widget_name("comic-library-rtl");
+    let ignore_info = switch(
+        &tr("Ignore ComicInfo.xml when importing"),
+        &tr("Use the file name and picture order only, not the title, series, direction or cover the file claims"),
+        s.ignore_info,
+    );
+    ignore_info.set_widget_name("comic-ignore-info");
     let save: Rc<dyn Fn()> = {
+        let (library_rtl, ignore_info, library_key) = (
+            library_rtl.clone(),
+            ignore_info.clone(),
+            library_key.clone(),
+        );
         let (mode, fit, cover, wide, guided, grey, animate) = (
             mode.clone(),
             fit.clone(),
@@ -186,6 +221,12 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
             store.global.cover_alone = cover.is_active();
             store.global.wide_alone = wide.is_active();
             store.global.guided = guided.is_active();
+            store.global.ignore_info = ignore_info.is_active();
+            if library_rtl.is_active() {
+                store.library_rtl.insert(library_key.clone(), true);
+            } else {
+                store.library_rtl.remove(&library_key);
+            }
             if !EINK.with(|e| e.get()) {
                 store.global.grey = grey.is_active();
                 store.global.animate = animate.is_active();
@@ -198,7 +239,15 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
         mode.connect_selected_notify(move |_| s());
         let s = save.clone();
         fit.connect_selected_notify(move |_| s());
-        for row in [&cover, &wide, &guided, &grey, &animate] {
+        for row in [
+            &cover,
+            &wide,
+            &guided,
+            &grey,
+            &animate,
+            &library_rtl,
+            &ignore_info,
+        ] {
             let s = save.clone();
             row.connect_active_notify(move |_| s());
         }
@@ -210,6 +259,8 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     g.add(&guided);
     g.add(&grey);
     g.add(&animate);
+    g.add(&library_rtl);
+    g.add(&ignore_info);
     let rows = Rows {
         mode,
         fit,
@@ -218,6 +269,8 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
         guided,
         grey,
         animate,
+        library_rtl,
+        ignore_info,
     };
     apply_eink(&rows, EINK.with(|e| e.get()));
     ROWS.with(|r| *r.borrow_mut() = Some(rows));

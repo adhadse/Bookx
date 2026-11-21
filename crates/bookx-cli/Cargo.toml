@@ -19,6 +19,8 @@ path = "src/main.rs"
 anyhow = "1"
 bookx-backup = { path = "../bookx-backup" }
 bookx-core = { path = "../bookx-core" }
+bookx-editing = { path = "../bookx-editing" }
+bookx-plugin = { path = "../bookx-plugin" }
 bookx-formats = { path = "../bookx-formats" }
 bookx-mcp = { path = "../bookx-mcp" }
 bookx-convert = { path = "../bookx-convert" }

@@ -298,20 +298,30 @@ class Ctx:
         img = img or self.image()
         w, h = img.size
         best = None
+        # the page background is the most common colour of the area; letters are what differs from it
+        # (dark text on light paper, light text on the dark style)
+        from collections import Counter
+        area = [img.getpixel((px, py)) for px in range(max(0, x - radius), min(w, x + radius))
+                for py in range(max(0, y - radius), min(h, y + radius))]
+        if not area:
+            return None
+        bg = Counter(area).most_common(1)[0][0]
+
+        def ink(px, py):
+            p = img.getpixel((px, py))
+            return sum(abs(p[i] - bg[i]) for i in range(3)) > 300
+
         for r in range(0, radius):
             for dx in range(-r, r + 1):
                 for dy in (-r, r):
                     for (px, py) in ((x + dx, y + dy), (x + dy, y + dx)):
-                        if 0 <= px < w and 0 <= py < h:
-                            R, G, B = img.getpixel((px, py))
-                            if R + G + B < 200:
-                                # make sure it is not a lone speck: some more dark pixels around it
-                                dark = sum(1 for ddx in range(-3, 4) for ddy in range(-3, 4)
-                                           if 0 <= px + ddx < w and 0 <= py + ddy < h
-                                           and sum(img.getpixel((px + ddx, py + ddy))) < 300)
-                                if dark >= 6:
-                                    best = (px, py)
-                                    return best
+                        if 0 <= px < w and 0 <= py < h and ink(px, py):
+                            # make sure it is not a lone speck: some more ink pixels around it
+                            n = sum(1 for ddx in range(-3, 4) for ddy in range(-3, 4)
+                                    if 0 <= px + ddx < w and 0 <= py + ddy < h and ink(px + ddx, py + ddy))
+                            if n >= 6:
+                                return (px, py)
+        return best
         return best
 
 

@@ -23,6 +23,7 @@ partial MD5 of the book file, 32 hex digits). Routes below `/bookx` (the KOSync 
 |---|---|
 | `PUT /bookx/annotations/<md5>[?since=N]` | body `{origin, device, device_id, title, authors, annotations:[...]}`; idempotent upsert; the answer is `{document, seq, result:{accepted,unchanged,stale}, annotations:[records with seq > N]}` |
 | `GET /bookx/annotations/<md5>[?since=N]` | the records (tombstones included) |
+| `GET /bookx/info` | no login: `{name:"bookx", protocol, min_plugin_protocol, progress, annotations}` (added 2026-11-21). The plugin's *Test connection* reads it: server `protocol` below the plugin's → "Bookx too old"; `min_plugin_protocol` above the plugin's → "update the plugin"; `annotations:false` → "switched off"; 404 (an older Bookx) → carry on. Raise `annotation_sync::PROTOCOL` / `MIN_PLUGIN_PROTOCOL` only for a change that breaks an installed plugin |
 
 Annotation: `id` (unique in the book), `kind` (`highlight`, `bookmark`), `text`, `note`, `color`, `drawer`, `chapter`, `pos0`,
 `pos1`, `page`, `percentage`, `created`, `updated` (seconds), `deleted`. The server adds `origin`
@@ -86,6 +87,12 @@ A timer (4 s, only when the server's `seq` moved) or *Sync now* merges the store
   status, "Notes from Bookx for this book"), `socket.http` / `ssl.https`. Every method and callback KOReader invokes runs
   inside `pcall`: an error is logged and shown as a message instead of panicking the reader.
 * `_meta.lua`.
+* **Names (bug 25):** KOReader builds the plugin with `Bookx:new{dialog, view, ui, document}` and the constructor table becomes the instance, so a
+  method called `document`, `ui`, `view` or `dialog` is shadowed. Methods are `bookId`, `bookAnnotations`, `showInfo`...; only entry points
+  (`syncNow`, menu callbacks, `on*` hooks) are wrapped by `guarded`, which logs `Bookx Sync error in <where>: <message>` + traceback with
+  `logger.err`, keeps it as `state.last_error` (shown by *About / Diagnostics*), shows one short message (nothing for automatic runs).
+  Free text is cleaned before sending (valid UTF-8, no control characters, 20 000 characters; one-line fields 1000/128/512) and requests are split
+  by count (500) and bytes (600 000): the server refuses a whole request for one bad field. Details and test recipe: `docs/koreader-plugin-testing.md`.
 * Installed by Share Library → *Copy to the device* (`.adds/koreader/plugins` on a Kobo, `koreader/plugins` otherwise, only
   when KOReader's folder is there; refuses to write through symbolic links) or *Save to a folder…*. The files are embedded in the binary.
 
@@ -97,6 +104,10 @@ A timer (4 s, only when the server's `seq` moved) or *Sync now* merges the store
 * `crates/bookx-serve/tests/koreader_annotations.rs`: routes over a real socket, 401/413/422/400/405/404, and **the Lua plugin logic
   run under `lua`/`luajit` against the real server** (the mock `request` shells out to `curl`; skipped when `lua`, `curl` or `NET=0`
   say so).
+* `koreader-plugin/tests/` (`run.sh`, details in `docs/koreader-plugin-testing.md`): `scenarios.lua` (23 stories on a fake KOReader
+  that passes the plugin the same constructor arguments as `ReaderUI`; includes the bug 25 regression), `live.lua` (real `main.lua` against the real
+  server, Rust test `the_real_plugin_registers_and_syncs_against_a_real_server`), CI job `koreader-plugin`, `build-aux/plugin-tests.sh`,
+  `build-aux/package-plugin.sh` (`dist/bookx.koplugin.zip`). The older counts below are from before that:
 * `koreader-plugin/tests/run.sh`: 54 checks of the plugin logic (JSON, wire format, diff, sync with a scripted server, failures) and
   `main_load.lua`: 28 checks of `main.lua` under a mock (33 with `BOOKX_KO_FRONTEND=<copy of KOReader's frontend/>`, which also runs
   KOReader's real menu sorter on the entry).
@@ -105,6 +116,42 @@ A timer (4 s, only when the server's `seq` moved) or *Sync now* merges the store
   fallback, outgoing, document matching, plugin installer (symlinks), embedded copy == files on disk.
 * Broadway: `koreader_annotations`, `_conflicts`, `_refused`, `_ui` in `build-aux/ui-tests-koannot.sh`: the in-process fake
   KOReader client (`koannot:device=`) makes the plugin's HTTP calls against the built-in server on a random port.
+
+## Sync activity and why nothing arrived (2026-11-21, plugin 0.3.1)
+
+Owner report: "I turned on sync automatically yet I don't see the highlight I made on the e-reader; no UX shows the device connected
+and what is synced". Root cause, with evidence (Kobo v2026.07.2, read-only): (1) plugin 0.2/0.3.0 crashed in `syncNow` (bug 25) until
+the fixed plugin was installed at 11:02; the owner's highlight (*Saga Failure Modes*, 10:09:06, sidecar of 410 annotations) was made
+in that window. (2) Even with the fix, "Sync automatically" fired only on `onCloseDocument` / `onSuspend`, never when a highlight
+was made, and did nothing when `NetworkMgr:isOnline()` was false: `crash.log` at 13:00:53 `Kobo Wi-Fi: disabling Wi-Fi`, 13:01:09
+`Kobo suspend`, no `Bookx Sync:` line: the suspend sync was skipped silently (KOReader turns Wi-Fi off before sleeping). (3) Nothing on
+the Bookx side showed devices or results. Not the cause: the device copy of *Building Microservices* has another file than the library
+(14 632 174 vs 14 676 772 bytes; partial MD5 `1029314e…` vs `13ca7995…`), but the title/author fallback matches it; the other three
+books on the device have no annotations and are not in the library. Replaying the device's current sidecar (410 annotations) through
+plugin 0.3.1 → server → `annotation_sync_ui::run` on a copy of the library: 407 highlights + 3 bookmarks arrive, 403 placed, 4 single
+words (SOA, REST, GraphQL, DRY) kept unplaced, and the 10:09 highlight is placed (yellow, correct text).
+
+What 0.3.1 / this change adds:
+
+* Plugin: `onAnnotationsModified` (30 s debounce), `onReaderReady`, `onNetworkConnected`; an offline automatic run records `state.waiting`
+  (menu line, diagnostics) instead of nothing and never switches Wi-Fi on; `X-Bookx-Device`, `X-Bookx-Device-Id`, `X-Bookx-Client`
+  (`KOReader/<ver> bookx-plugin/<ver>`), `X-Bookx-Protocol` on every request (ASCII only; the body keeps the real device name); the
+  answer of a PUT carries `in_library` (true/false/null), the plugin lists `false` ones in diagnostics and warns after *Sync now*;
+  counts sent/received are kept in `state.stats`. Old plugins send no headers: the server uses the body's `device`/`device_id`, else
+  "Unknown device (KOReader)". No protocol bump (additive).
+* Server (`bookx-serve/src/activity.rs`): `ActivityLog` (devices: first/last seen, last sync, client, plugin, protocol; 200 events;
+  file `sync-activity.json`; `AnnotationSync::with_activity`, `KoSync::with_activity`). Only authenticated requests are recorded
+  (a wrong password leaves no trace on purpose); refused authenticated requests are `Rejected` events; progress PUTs are `Progress`
+  events (also from KOReader's own Progress sync).
+* App: `merge_incoming` returns per book/device deltas; `record_merge` writes `NotInLibrary` (once per change of count) and `Unplaced`
+  events, `Ledger::unmatched` (listed under *Books not found in your library*), `Ledger::last_synced` (book details, row *Sync*) and tells the
+  server which documents are in the library. UI: `src/sync_activity.rs` (text, injectable `now`), `src/ui/sync_activity.rs` (groups in the Sync
+  window and Preferences → Sync), toast with *Show* (`annotation_sync_ui::announce`, library hooks `sync_activity::set_hooks` → `Input::Refresh`,
+  `Input::ShowNotesFor`). Dev: `sync:activity`, `koannot:toast`; Broadway `koreader_annotations_activity`.
+* Not done / caveats: the *Show* button narrows Notes & Highlights by the book title (not by device and time); a device that talks only
+  once shows "Last seen …" until opened again (the status is computed when the window refreshes, every 3 s); failed logins are not listed;
+  Wi-Fi is never switched on by the plugin (an opt-in "turn on Wi-Fi to sync" would be a separate decision); the first run of 0.3.1 on
+  the device is unconfirmed.
 
 ## Colour and style (2026-11-21)
 
@@ -118,9 +165,58 @@ a drawer it does not know as the default). Look tests: `devstyle` (every colour 
 `device_sync::a_short_quote_inside_a_longer_highlight_does_not_take_its_colour`, `duplicates::merging_keeps_the_colour_and_style_of_the_copy_that_has_them`,
 `import::the_same_look_in_two_spellings_is_one_highlight`, `bookx-serve/tests/highlight_looks.rs`, `look_repair.rs`, the Lua checks of the wire format.
 
+## Live updates (2026-11-21, wave 11)
+
+Owner report: "The sync works, but the reader view doesn't update in real time." Before: the merge ran from a 4 s timer and only the
+library window was told; a book that was open kept the highlights it had loaded.
+
+**Path.** Server worker thread: `bookx_serve::notify` (`Notifier`, `Note::{Annotations,Progress}`; `AnnotationSync::on_change`,
+`KoSync::on_change`; called after the store is written and unlocked, once per request that changed the store, never for Bookx's own
+`origin:"bookx"` publishing, never for a repeat or a stale version) → `sync_bus::server_listener()` pushes the note into a `Mailbox`
+and wakes the main loop with `MainContext::invoke` (no GTK off the main thread; cap 1024 notes, oldest dropped, every note only means
+"look again") → `annotation_sync_ui::install_live` plans (`sync_bus::plan`: one merge for any number of annotation notes, the last
+position per document and device), waits 250 ms (`DEBOUNCE_MS`) and runs the normal `sync_once` → what changed is found by comparing
+`Snapshot`s of all books before and after (hashes of highlights/notes/looks/bookmarks/progress), so the Wi-Fi merge, the USB sync
+(`ui/devices.rs`) and imports (`ui/annotations.rs`) publish identical typed `SyncEvent {book_id, kinds, device, via, ahead}` →
+`sync_bus::publish` coalesces per (book, device) (`Coalescer`: 250 ms quiet or 1 s at most) → subscribers on the main thread:
+each open reader (`subscribe(Some(book))`), the library window (`subscribe(None)`). A reader that closes drops its `Subscription`.
+Total latency from the PUT: about 250 ms merge debounce + about 50-300 ms event window + the repaint, in Broadway about 0.6 s.
+
+**Reader** (`ui/reader.rs::on_sync`, `reader_pdf.rs::on_sync`, `reader_comic.rs`): `sync_live` is the pure logic (`diff` of highlight
+signatures → `draw`/`removed` lists, `repaints` only when the chapter on screen is touched, `note_action`, `Live` banner rules, `worth_offering`).
+The highlights come from the in-memory library the merge already updated, so there is nothing to load off-thread; the sidebar lists
+are rebuilt only when something changed. The book map updates in place (`reader_map::update_live`). The banner is `ui/reader_live.rs`
+(one widget for the three readers, in the page overlay). The reading position is **never** applied: a `Note::Progress` is resolved
+to a book by the partial MD5 in the ledger (`resolve_docs`, digests cached), becomes an event with `ahead`, and the reader offers
+"Continue There" only if the device is more than 1 % ahead of the reader (`kosync_sync::ASK_GAP`), is not this installation
+(`kosync.device_id`) and the switch `share.offer_jump` (Preferences → Sync, default on) is on. The library's own progress is not touched,
+so "progress only moves forward" holds trivially; Continue There moves the page and the normal progress save then raises it.
+**Library window**: `Input::SyncLive` refreshes counts, the Notes view (`reload`, scroll position kept by
+`ui::sync_activity::keep_scroll`), the card when the library position changed (`requery`, selection kept) and the details panel
+(skipped while it has the keyboard focus). The sync toast keeps *Show* and adds *Open Book* when no reader of that book is open.
+
+**Tests.** Unit: `bookx-serve` (`notify`, `annotation_sync::...notifies_exactly_once...`, e2e over localhost
+`a_plugin_style_put_over_localhost_notifies_the_listener_once_per_merge`, `a_reading_position_over_localhost_notifies_once`),
+`sync_bus` (coalescing, order, burst, snapshots, mailbox from 8 threads, drop safety, plan), `sync_live` (diff, note conflict,
+banner rules). Broadway `koreader_annotations_live_*` (reader, burst, bookmarks, library, conflict, conflict_keep, ahead, ahead_dismiss,
+ahead_off) use `koannot:push|pushdel|progress` (real HTTP PUTs, no merge call), `reader:live-state|live-edit|live-type|live-press`,
+`koannot:events`.
+
+**Limits / not done.** The merge itself still runs on the main thread (as before); 410 annotations arriving at once is a visible pause,
+a handful is a few milliseconds. The e-reader side is not real time: plugin 0.3.1 sends ~30 s after a change. A device whose KOSync
+document id is the file-name hash (not the partial MD5) is not matched for the position banner. The comic reader only gets the position
+banner (comics have no highlights or bookmarks in the library). No real GNOME session scenario was added (the session runner was busy);
+untested with a real Kobo. Strings added (no po edits): see the change description.
+
 ## Not verified / caveats
 
-* **Never run inside KOReader, on a Kobo, Kindle or any device.** Since 2026-11-20 the KOReader API use was checked by reading the frontend
+* **First device run, 2026-11-21 (bug 25):** *Test connection* worked on the owner's Kobo; *Sync now* failed with the shadowed `document` method;
+  fixed in plugin 0.3.0, **not yet confirmed on the device after the fix**. What Bookx writes for KOReader: nothing in the `.sdr`; notes made in Bookx reach
+  the device only through the plugin's inbox (*Notes from Bookx for this book*), so KOReader never has to read a notes file. The real sidecar layout
+  (annotations table with `color`/`drawer`, `datetime_updated`, bookmarks without `drawer`) matches the fixtures and `devstyle` (test
+  `every_look_word_seen_on_a_real_kobo_is_known`); `gray` is in KOReader's menu but not in its colour table, so a gray highlight shows with KOReader's fallback.
+  Times: KOReader writes local time without a zone; the plugin converts with the device's `os.time`, so a Kobo whose timezone is not set sends UTC-based times.
+* (history) **Never run inside KOReader, on a Kobo, Kindle or any device.** Since 2026-11-20 the KOReader API use was checked by reading the frontend
   of the owner's KOReader v2026.07.2, and `main.lua` runs under host luajit with the real `luasettings`, `dump`, `gettext`, `logger`,
   `ffi/sha2` and `menusorter` of that version (`koreader-plugin/tests/main_load.lua`; the widgets and `socket.http` are mocks).
   See `docs/kobo-koreader-sync-runbook.md` and bug 15. Real HTTP from KOReader's `socket.http`, the touch UI and the Wi-Fi path are not verified.

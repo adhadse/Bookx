@@ -82,6 +82,8 @@ pub enum Msg {
     PlayAudio(u64),
     AudioPopped,
     CloseReader,
+    /// Leave the comic that is open and read this book (a neighbouring volume), maybe at its end.
+    OpenVolume(u64, bool),
     BookLoaded(u64, Result<LoadedBook, String>),
     /// A PDF read from disk, for the page view.
     PdfLoaded(u64, Result<Vec<u8>, String>),
@@ -107,6 +109,8 @@ pub enum Msg {
     ShowPrefs,
     /// Preferences on the row with this title (from the command palette).
     ShowPrefsAt(String),
+    /// Preferences on the page with this id (`preferences::register_page`), over the front window.
+    ShowPrefsPage(String),
     ShowPalette,
     /// A book chosen in the palette: from the reader it closes the reader first.
     PaletteBook(u64),
@@ -126,6 +130,8 @@ pub enum Msg {
     OpenUri(String),
     Dev(String),
     OpenPaths(Vec<std::path::PathBuf>),
+    /// `bookx --doc FILE`: import if the library does not have it, then read it.
+    OpenDoc(std::path::PathBuf),
 }
 
 fn apply_scheme(s: Scheme) {
@@ -161,6 +167,7 @@ impl SimpleComponent for App {
         }
         crate::i18n::set_language(&cfg.language);
         crate::privacy::apply(cfg.offline);
+        crate::source_priority::install(&cfg.source_priority);
         crate::ui::language_settings::apply_direction();
         if crate::i18n::current_is_rtl() {
             root.set_direction(gtk::TextDirection::Rtl);
@@ -201,12 +208,27 @@ impl SimpleComponent for App {
             guard: RefCell::new(guard),
         });
         shared.start_indexing();
+        {
+            let tx = sender.input_sender().clone();
+            crate::ui::secrets_unlock::install(
+                &shared,
+                root.upcast_ref::<gtk::Window>(),
+                Rc::new(move |m| tx.emit(Msg::Toast(m))),
+            );
+        }
         crate::annotation_sync_ui::install(&shared);
-        crate::ui::kosync::start_queue(&shared);
-        crate::ui::share::restore(&shared);
+        if !crate::safe_mode::active() {
+            crate::ui::kosync::start_queue(&shared);
+            crate::ui::share::restore(&shared);
+        } else {
+            let tx = sender.input_sender().clone();
+            glib::idle_add_local_once(move || tx.emit(Msg::Toast(crate::safe_mode::summary())));
+        }
         {
             let root = shared.lib.borrow().root.clone();
-            crate::mcp_host::autostart(&root);
+            if !crate::safe_mode::active() {
+                crate::mcp_host::autostart(&root);
+            }
         }
         {
             let tx = sender.input_sender().clone();
@@ -306,6 +328,18 @@ impl SimpleComponent for App {
         {
             let tx = sender.input_sender().clone();
             add_action("preferences", Rc::new(move || tx.emit(Msg::ShowPrefs)));
+            {
+                // `app.preferences-page` takes the id of a page ("editor"): the editor opens the
+                // Editor page of Preferences instead of having a preferences window of its own
+                let tx = sender.input_sender().clone();
+                let a = gio::SimpleAction::new("preferences-page", Some(glib::VariantTy::STRING));
+                a.connect_activate(move |_, p| {
+                    if let Some(id) = p.and_then(|v| v.str()) {
+                        tx.emit(Msg::ShowPrefsPage(id.to_string()));
+                    }
+                });
+                app.add_action(&a);
+            }
             let tx = sender.input_sender().clone();
             add_action("shortcuts", Rc::new(move || tx.emit(Msg::ShowShortcuts)));
             let tx = sender.input_sender().clone();
@@ -342,6 +376,26 @@ impl SimpleComponent for App {
                 }
             });
             app.add_action(&open_uri);
+            // "Open With" while Bookx runs: the second process sends the (absolute) paths here
+            let tx = sender.input_sender().clone();
+            let open_files =
+                gio::SimpleAction::new("open-files", Some(glib::VariantTy::STRING_ARRAY));
+            open_files.connect_activate(move |_, p| {
+                if let Some(list) = p.and_then(|p| p.get::<Vec<String>>()) {
+                    tx.emit(Msg::OpenPaths(
+                        list.into_iter().map(std::path::PathBuf::from).collect(),
+                    ));
+                }
+            });
+            app.add_action(&open_files);
+            let tx = sender.input_sender().clone();
+            let open_doc = gio::SimpleAction::new("open-doc", Some(glib::VariantTy::STRING));
+            open_doc.connect_activate(move |_, p| {
+                if let Some(path) = p.and_then(|p| p.str()) {
+                    tx.emit(Msg::OpenDoc(std::path::PathBuf::from(path)));
+                }
+            });
+            app.add_action(&open_doc);
             let win = root.clone();
             add_action("quit", Rc::new(move || win.close()));
         }
@@ -371,28 +425,22 @@ impl SimpleComponent for App {
             let tx = sender.input_sender().clone();
             glib::idle_add_local_once(move || tx.emit(Msg::EditFile(req)));
         }
-        // `bookx bookx://open?id=3` (the scheme handler) opens the book.
-        for uri in crate::links::from_args(&std::env::args().skip(1).collect::<Vec<_>>()) {
+        // `bookx bookx://open?id=3` (the scheme handler), `bookx file.epub …` (and "Open With" from the file
+        // manager) and `bookx --doc file.epub` (import if needed, then read).
+        let launch = crate::launch::parse(&std::env::args().skip(1).collect::<Vec<_>>());
+        for uri in launch.links {
             let tx = sender.input_sender().clone();
             glib::idle_add_local_once(move || tx.emit(Msg::OpenUri(uri)));
         }
-        // `bookx file.epub …` (and "Open With" from the file manager) imports the given books.
         if edit_request.is_none() {
-            let files: Vec<std::path::PathBuf> = std::env::args()
-                .skip(1)
-                .filter_map(|a| {
-                    if a.starts_with("file://") {
-                        gio::File::for_uri(&a).path()
-                    } else if crate::links::is_link(&a) {
-                        None
-                    } else {
-                        Some(std::path::PathBuf::from(a)).filter(|p| p.exists())
-                    }
-                })
-                .collect();
-            if !files.is_empty() {
+            if !launch.files.is_empty() {
                 let tx = sender.input_sender().clone();
+                let files = launch.files;
                 glib::idle_add_local_once(move || tx.emit(Msg::OpenPaths(files)));
+            }
+            for doc in launch.docs {
+                let tx = sender.input_sender().clone();
+                glib::idle_add_local_once(move || tx.emit(Msg::OpenDoc(doc)));
             }
         }
 
@@ -484,12 +532,10 @@ impl SimpleComponent for App {
                 self.window.maximize();
 
                 let page = adw::NavigationPage::builder()
-                    .title(tr("Opening…"))
+                    .title(tr("Opening"))
                     .tag("loading")
                     .build();
-                let status = adw::StatusPage::builder()
-                    .title(tr("Opening book…"))
-                    .build();
+                let status = adw::StatusPage::builder().title(tr("Opening book")).build();
                 let spinner = adw::Spinner::new();
                 spinner.set_size_request(48, 48);
                 status.set_child(Some(&spinner));
@@ -564,6 +610,9 @@ impl SimpleComponent for App {
                                     .forward(sender.input_sender(), |out| match out {
                                         reader_comic::Output::Close => Msg::CloseReader,
                                         reader_comic::Output::Toast(t) => Msg::Toast(t),
+                                        reader_comic::Output::OpenVolume { id, last_page } => {
+                                            Msg::OpenVolume(id, last_page)
+                                        }
                                     });
                                 self.nav.replace(&[
                                     self.library.widget().clone(),
@@ -693,6 +742,13 @@ impl SimpleComponent for App {
             Msg::CloseReader => {
                 self.nav.pop();
             }
+            Msg::OpenVolume(id, last_page) => {
+                if last_page {
+                    crate::comic::start_at_last_page(id);
+                }
+                self.pending_read = Some(id);
+                self.nav.pop();
+            }
             Msg::PlayAudio(id) => {
                 if self.audio.is_some()
                     || self.reader.is_some()
@@ -820,6 +876,23 @@ impl SimpleComponent for App {
                 }
                 self.library.emit(library::Input::ImportPaths(files));
             }
+            Msg::OpenDoc(path) => {
+                let outcome = if crate::core::library::is_supported_file(&path) {
+                    self.shared.lib.borrow_mut().add_path(&path, false)
+                } else {
+                    Err(anyhow::anyhow!("not an e-book Bookx can open directly"))
+                };
+                match outcome {
+                    Ok(crate::core::library::AddOutcome::Added(id))
+                    | Ok(crate::core::library::AddOutcome::Duplicate(id)) => {
+                        self.library.emit(library::Input::Refresh);
+                        self.window.present();
+                        sender.input(Msg::Read(id));
+                    }
+                    // other formats (and anything that failed) go through the normal import
+                    Err(_) => sender.input(Msg::OpenPaths(vec![path])),
+                }
+            }
             Msg::ShowPrefs => {
                 let tx = sender.input_sender().clone();
                 preferences::show(
@@ -827,6 +900,16 @@ impl SimpleComponent for App {
                     &self.shared,
                     Rc::new(move |c| tx.emit(Msg::Prefs(c))),
                 );
+            }
+            Msg::ShowPrefsPage(id) => {
+                let tx = sender.input_sender().clone();
+                preferences::show_at(
+                    &self.front_window(),
+                    &self.shared,
+                    Rc::new(move |c| tx.emit(Msg::Prefs(c))),
+                    None,
+                );
+                preferences::goto_page(&id);
             }
             Msg::ShowPrefsAt(title) => {
                 let tx = sender.input_sender().clone();
@@ -929,7 +1012,7 @@ impl SimpleComponent for App {
                             .unwrap_or((arg, 0));
                         crate::devtools::screenshot(path, which)
                     }
-                    // `read:<id>` waits (up to ~20 s) for a book that is still being imported,
+                    // `read:<id>` waits (up to ~80 s) for a book that is still being imported,
                     // so scripted tests do not depend on import timing.
                     "read" => {
                         let (id, tries) = match arg.split_once('/') {
@@ -937,7 +1020,7 @@ impl SimpleComponent for App {
                             None => (arg.parse().unwrap_or(1), 0),
                         };
                         let known = self.shared.lib.borrow().get(id).is_some();
-                        if known || tries >= 40 {
+                        if known || tries >= 160 {
                             sender.input(Msg::Read(id));
                         } else {
                             let tx = sender.input_sender().clone();
@@ -993,6 +1076,13 @@ impl SimpleComponent for App {
                                 );
                             }
                         }
+                        // `app:text-scale=1.5` scales the text like the accessibility setting (Xft DPI)
+                        a if a.starts_with("text-scale=") => {
+                            let f: f64 = a[11..].parse().unwrap_or(1.0);
+                            if let Some(s) = gtk::Settings::default() {
+                                s.set_gtk_xft_dpi((96.0 * f * 1024.0) as i32);
+                            }
+                        }
                         "win-dump" => eprintln!(
                             "window: {}x{} maximized={}",
                             self.window.width(),
@@ -1046,6 +1136,64 @@ impl SimpleComponent for App {
                                 self.library.emit(library::Input::Refresh);
                             }
                             "open" => sender.input(Msg::PlayAudio(val.parse().unwrap_or(1))),
+                            // `audio:link=BOOK:PATH` links audio to an e-book; `audio:continue-listening=BOOK`
+                            // and `audio:continue-reading=BOOK` carry the place over (what the details rows do)
+                            "link" => {
+                                let (id, path) = val.split_once(':').unwrap_or(("0", ""));
+                                let id: u64 = id.parse().unwrap_or(0);
+                                let mut lib = self.shared.lib.borrow_mut();
+                                let res = lib.get(id).map(|b| {
+                                    let mut r = b.resources.clone();
+                                    r.push(crate::audiobook_link::resource_for(
+                                        std::path::Path::new(path),
+                                    ));
+                                    r
+                                });
+                                match res {
+                                    Some(r) => match lib.set_resources(id, r, "link".into()) {
+                                        Ok(()) => eprintln!("audio: linked id={id}"),
+                                        Err(e) => eprintln!("audio: link failed: {e:#}"),
+                                    },
+                                    None => eprintln!("audio: link failed: no book {id}"),
+                                }
+                            }
+                            "continue-listening" => {
+                                let id: u64 = val.parse().unwrap_or(0);
+                                let r = crate::audiobook::data_dir().map(|d| {
+                                    crate::audiobook::continue_in_audiobook(
+                                        &self.shared.lib.borrow(),
+                                        id,
+                                        &d,
+                                    )
+                                });
+                                match r {
+                                    Some(Ok(ms)) => eprintln!("audio: continue-listening ms={ms}"),
+                                    Some(Err(e)) => {
+                                        eprintln!("audio: continue-listening failed: {e:#}")
+                                    }
+                                    None => eprintln!("audio: no data folder"),
+                                }
+                            }
+                            "continue-reading" => {
+                                let id: u64 = val.parse().unwrap_or(0);
+                                let r = crate::audiobook::data_dir().map(|d| {
+                                    crate::audiobook::continue_reading(
+                                        &mut self.shared.lib.borrow_mut(),
+                                        id,
+                                        &d,
+                                    )
+                                });
+                                match r {
+                                    Some(Ok(p)) => eprintln!(
+                                        "audio: continue-reading spine={} frac={:.2}",
+                                        p.spine, p.frac
+                                    ),
+                                    Some(Err(e)) => {
+                                        eprintln!("audio: continue-reading failed: {e:#}")
+                                    }
+                                    None => eprintln!("audio: no data folder"),
+                                }
+                            }
                             "stats" => eprintln!(
                                 "{}",
                                 crate::ui::audiobook_player::dev_stats(&self.shared)
@@ -1223,6 +1371,12 @@ impl SimpleComponent for App {
                     }
                     // `koannot:<command>`: the KOReader highlight and note sync (see `annotation_sync_ui::dev_command`)
                     "koannot" => crate::annotation_sync_ui::dev_command(&self.shared, arg),
+                    // `wallabag:<command>`: the Wallabag import form (see `ui::wallabag::dev_command`)
+                    "wallabag" => crate::ui::wallabag::dev_command(
+                        &self.shared,
+                        self.window.upcast_ref(),
+                        arg,
+                    ),
                     // `kosync:<command>`: the reading-position sync (see `ui::kosync::dev_command`)
                     "kosync" => crate::ui::kosync::dev_command(&self.shared, arg),
                     // `devwin:<command>`: drive the Device window (see `ui::devices::dev_command`)
@@ -1236,6 +1390,9 @@ impl SimpleComponent for App {
                         );
                     }
                     // `plugins:dump`, `plugins:enable=<id>`, `plugins:disable=<id>`, `plugins:show`
+                    "plugins" if arg.starts_with("sheet") || arg == "state" => {
+                        crate::ui::plugin_trust::dev(&self.shared, arg);
+                    }
                     "plugins" => {
                         let mut m = self.shared.plugins.borrow_mut();
                         if let Some(id) = arg.strip_prefix("enable=") {
@@ -1459,6 +1616,11 @@ impl SimpleComponent for App {
                         }
                         _ => {}
                     },
+                    "secrets" => crate::ui::secrets_unlock::dev_command(
+                        &self.shared,
+                        self.window.upcast_ref::<gtk::Window>(),
+                        arg,
+                    ),
                     "prefs" if arg.is_empty() => sender.input(Msg::ShowPrefs),
                     "prefs" => preferences::dev(arg),
                     // `dialog:state` prints whether an AdwDialog is on the window, `dialog:close` closes it
@@ -1472,7 +1634,11 @@ impl SimpleComponent for App {
                         if arg == "ctrlw" {
                             crate::ui::dialog_toast::dev_ctrl_w(&self.window);
                         }
-                        eprintln!("dialog: open={}", self.window.visible_dialog().is_some());
+                        eprintln!(
+                            "dialog: open={} count={}",
+                            self.window.visible_dialog().is_some(),
+                            self.window.dialogs().n_items()
+                        );
                     }
                     // `sync:dump|server=on|kosync=on|notes=on|plugin|prefs|close`: the Sync window
                     "sync" if arg == "prefs" => sender.input(Msg::ShowSyncPrefs),
@@ -1481,6 +1647,7 @@ impl SimpleComponent for App {
                     "mcp" => crate::ui::mcp_settings::dev(arg),
                     "keys" => crate::ui::shortcuts_dialog::dev(arg),
                     "jobs" => eprintln!("jobs: {}", crate::ui::jobs::dev(arg)),
+                    "convert" => crate::ui::convert_options::dev(arg, &self.window),
                     // `action:NAME` activates an application action (`share`, `devices`, `stats`, `palette` …)
                     "action" => {
                         gio::prelude::ActionGroupExt::activate_action(
@@ -1490,6 +1657,52 @@ impl SimpleComponent for App {
                         );
                     }
                     "open-uri" => sender.input(Msg::OpenUri(arg.to_string())),
+                    "settings" => crate::ui::settings_io::dev(arg, &self.shared),
+                    // `safe:dump` prints `safe_mode: active=B plugins_dir=PATH plugins_found=N offline=B`
+                    "safe" => eprintln!(
+                        "safe_mode: active={} plugins_dir={} plugins_found={} offline={}",
+                        crate::safe_mode::active(),
+                        crate::plugins::plugins_dir().display(),
+                        self.shared.plugins.borrow().list().len(),
+                        bookx_sources::fetch::is_offline()
+                    ),
+                    // `launch:write=PATH|TEXT` (`\n` is a new line) makes a file; `launch:spawn=ARGS` starts a second
+                    // `bookx` with these (space separated) arguments, as a launcher or file manager does, and
+                    // prints `launch_spawn: exit=N` when it ends (0 = the running instance took the request); `launch:titles` lists the
+                    // library's titles
+                    "launch" => {
+                        if let Some(w) = arg.strip_prefix("write=") {
+                            if let Some((path, text)) = w.split_once('|') {
+                                let r = std::fs::write(path, text.replace("\\n", "\n"));
+                                eprintln!("launch_write: {:?}", r.map_err(|e| e.to_string()));
+                            }
+                        } else if arg == "titles" {
+                            let t: Vec<String> = self
+                                .shared
+                                .lib
+                                .borrow()
+                                .books
+                                .iter()
+                                .map(|b| b.meta.title.clone())
+                                .collect();
+                            eprintln!("launch_titles: {}", t.join(" | "));
+                        } else if let Some(args) = arg.strip_prefix("spawn=") {
+                            let exe = std::env::current_exe().unwrap_or_default();
+                            let child = std::process::Command::new(exe)
+                                .args(args.split(' ').filter(|a| !a.is_empty()))
+                                .env_remove("BOOKX_DEV_SCRIPT")
+                                .spawn();
+                            match child {
+                                Ok(mut c) => {
+                                    std::thread::spawn(move || {
+                                        let code = c.wait().ok().and_then(|s| s.code());
+                                        eprintln!("launch_spawn: exit={code:?}");
+                                    });
+                                }
+                                Err(e) => eprintln!("launch_spawn: failed {e}"),
+                            }
+                        }
+                    }
                     // `resolve-uri:bookx://…` prints which book of this library a link names
                     "resolve-uri" => {
                         let out = match crate::links::parse(arg) {
@@ -1551,9 +1764,7 @@ impl SimpleComponent for App {
                 let books = self.shared.lib.borrow().books.len();
                 let text = crate::diagnostics::report(&self.shared.cfg.borrow(), books);
                 self.window.clipboard().set_text(&text);
-                sender.input(Msg::Toast(tr(
-                    "Diagnostics copied. They hold no book titles or passwords.",
-                )));
+                sender.input(Msg::Toast(tr("Diagnostics Copied")));
             }
             Msg::OpenUri(uri) => match crate::links::parse(&uri) {
                 Some(link) => {
@@ -1582,16 +1793,38 @@ impl SimpleComponent for App {
                     .copyright("© 2023–2026 Anurag Dhadse")
                     .developers(vec!["Anurag Dhadse".to_string()])
                     .translator_credits(translator_credits(&tr("translator-credits")))
-                    .debug_info(crate::diagnostics::report(
+                    .release_notes_version(VERSION)
+                    .release_notes(release_notes(APPDATA, VERSION).unwrap_or_default())
+                    .debug_info(crate::debug_log::export(
                         &self.shared.cfg.borrow(),
-                        self.shared.lib.borrow().books.len(),
+                        &self.shared.lib.borrow(),
                     ))
-                    .debug_info_filename("bookx-diagnostics.txt")
+                    .debug_info_filename("bookx-debug-log.txt")
                     .build();
                 d.present(Some(&self.front_window()));
             }
         }
     }
+}
+
+/// The AppStream file that ships with the app; the About dialog shows its notes of this version.
+const APPDATA: &str = include_str!("../data/com.adhadse.Bookx.metainfo.xml");
+
+/// The release notes of `version` in an AppStream metainfo file: the inside of the `<description>`
+/// of its `<release>` (paragraphs and lists, which is what the About dialog shows).
+fn release_notes(metainfo: &str, version: &str) -> Option<String> {
+    let start = metainfo.find(&format!("<release version=\"{version}\""))?;
+    let rest = &metainfo[start..];
+    let end = rest.find("</release>")?;
+    let rel = &rest[..end];
+    let d0 = rel.find("<description>")? + "<description>".len();
+    let d1 = rel.find("</description>")?;
+    let lines: Vec<&str> = rel[d0..d1]
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect();
+    (!lines.is_empty()).then(|| lines.join("\n"))
 }
 
 /// The translators line of the About dialog: empty (hidden) while a language has not translated
@@ -1781,6 +2014,49 @@ impl App {
     }
 }
 
+/// The Library section of the Keyboard Shortcuts window: `@action` takes the keys the user has
+/// set, a literal is a fixed key. Shortcuts that work the same in every window (Preferences,
+/// Keyboard Shortcuts, Help, the main menu) are listed in each section.
+pub(crate) const LIBRARY_SHORTCUTS: &[(&str, &str)] = &[
+    (N_("Add books"), "@lib.add-books"),
+    (N_("Search"), "@lib.focus-search"),
+    (N_("Edit metadata"), "@book.edit-meta"),
+    (N_("Edit book"), "@book.edit-book"),
+    (N_("Book properties"), "@book.properties"),
+    (N_("Select all books"), "@lib.select-all"),
+    (N_("Move selected books to Trash"), "@book.delete"),
+    (N_("Clear the selection"), "Escape"),
+    (N_("Show or hide the sidebar"), "@lib.toggle-sidebar"),
+    (N_("Show or hide the details panel"), "<Shift>F9"),
+    (N_("Open the main menu"), "F10"),
+    (N_("Command palette"), "@app.palette"),
+    (N_("Preferences"), "@app.preferences"),
+    (N_("Keyboard Shortcuts"), "@app.shortcuts"),
+    (N_("Online help"), "@app.help"),
+    (N_("Quit"), "@app.quit"),
+];
+
+/// The Book editor section of the Keyboard Shortcuts window.
+pub(crate) const EDITOR_SHORTCUTS: &[(&str, &str)] = &[
+    (N_("Save"), "@editor.save"),
+    (N_("Find & replace"), "@editor.find"),
+    (N_("Find next"), "@editor.find-next"),
+    (N_("Go to line"), "@editor.go-to-line"),
+    (N_("Open a file"), "@editor.quick-open"),
+    (N_("Show or hide the sidebar"), "@editor.sidebar"),
+    (N_("Open the main menu"), "F10"),
+    (N_("Command palette"), "@editor.palette"),
+    (N_("Preferences"), "@app.preferences"),
+    (N_("Keyboard Shortcuts"), "@app.shortcuts"),
+    (N_("Check book"), "@editor.check"),
+    (N_("Next problem"), "@editor.next-problem"),
+    (N_("Previous problem"), "@editor.previous-problem"),
+    (N_("Mark selected text"), "@editor.mark"),
+    (N_("Insert a snippet"), "@editor.insert-snippet"),
+    (N_("Undo"), "<Control>z"),
+    (N_("Redo"), "<Control><Shift>z"),
+];
+
 fn show_shortcuts(parent: &impl IsA<gtk::Widget>) {
     let dialog = adw::ShortcutsDialog::new();
     let section = |title: &str, items: &[(&str, &str)]| {
@@ -1797,22 +2073,7 @@ fn show_shortcuts(parent: &impl IsA<gtk::Widget>) {
         }
         s
     };
-    dialog.add(section(
-        &tr("Library"),
-        &[
-            (N_("Add books"), "@lib.add-books"),
-            (N_("Search"), "@lib.focus-search"),
-            (N_("Edit metadata"), "@book.edit-meta"),
-            (N_("Edit book"), "@book.edit-book"),
-            (N_("Book properties"), "@book.properties"),
-            (N_("Select all books"), "@lib.select-all"),
-            (N_("Remove selected books"), "@book.delete"),
-            (N_("Command palette"), "@app.palette"),
-            (N_("Preferences"), "@app.preferences"),
-            (N_("Online help"), "@app.help"),
-            (N_("Quit"), "@app.quit"),
-        ],
-    ));
+    dialog.add(section(&tr("Library"), LIBRARY_SHORTCUTS));
     dialog.add(section(
         &tr("Reader"),
         &[
@@ -1859,30 +2120,69 @@ fn show_shortcuts(parent: &impl IsA<gtk::Widget>) {
             (N_("Page thumbnails"), "F9"),
         ],
     ));
-    dialog.add(section(
-        &tr("Book editor"),
-        &[
-            (N_("Save"), "@editor.save"),
-            (N_("Find & replace"), "@editor.find"),
-            (N_("Find next"), "@editor.find-next"),
-            (N_("Go to line"), "@editor.go-to-line"),
-            (N_("Open a file"), "@editor.quick-open"),
-            (N_("Command palette"), "@editor.palette"),
-            (N_("Check book"), "@editor.check"),
-            (N_("Next problem"), "@editor.next-problem"),
-            (N_("Previous problem"), "@editor.previous-problem"),
-            (N_("Mark selected text"), "@editor.mark"),
-            (N_("Insert a snippet"), "@editor.insert-snippet"),
-            (N_("Undo"), "<Control>z"),
-            (N_("Redo"), "<Control><Shift>z"),
-        ],
-    ));
+    dialog.add(section(&tr("Book editor"), EDITOR_SHORTCUTS));
     dialog.present(Some(parent));
 }
 
 #[cfg(test)]
+mod shortcut_list_tests {
+    use super::{EDITOR_SHORTCUTS, LIBRARY_SHORTCUTS};
+
+    fn resolved(list: &[(&str, &str)], title: &str) -> String {
+        let (_, a) = list.iter().find(|(t, _)| *t == title).expect(title);
+        match a.strip_prefix('@') {
+            Some(action) => crate::shortcuts::current().effective(action).join(" "),
+            None => a.to_string(),
+        }
+    }
+
+    /// XC-6: the standard keys are documented in the Keyboard Shortcuts window.
+    #[test]
+    fn the_standard_keys_are_listed_for_the_library_and_the_editor() {
+        for (list, side) in [
+            (LIBRARY_SHORTCUTS, "Show or hide the sidebar"),
+            (EDITOR_SHORTCUTS, "Show or hide the sidebar"),
+        ] {
+            assert_eq!(resolved(list, side), "F9");
+            assert_eq!(resolved(list, "Open the main menu"), "F10");
+            assert_eq!(resolved(list, "Preferences"), "<Control>comma");
+            assert_eq!(resolved(list, "Keyboard Shortcuts"), "<Control>question");
+        }
+        assert_eq!(
+            resolved(LIBRARY_SHORTCUTS, "Select all books"),
+            "<Control>a"
+        );
+        assert_eq!(
+            resolved(LIBRARY_SHORTCUTS, "Move selected books to Trash"),
+            "Delete"
+        );
+        assert_eq!(resolved(LIBRARY_SHORTCUTS, "Clear the selection"), "Escape");
+        assert_eq!(resolved(LIBRARY_SHORTCUTS, "Online help"), "F1");
+    }
+
+    /// Every `@action` of the lists is an action of the shortcut registry (so it can be rebound).
+    #[test]
+    fn listed_actions_are_in_the_registry() {
+        let reg = crate::shortcuts::registry();
+        for (t, a) in LIBRARY_SHORTCUTS.iter().chain(EDITOR_SHORTCUTS) {
+            if let Some(action) = a.strip_prefix('@') {
+                assert!(reg.iter().any(|r| r.action == action), "{t}: {action}");
+            }
+        }
+    }
+}
+
+#[cfg(test)]
 mod about_tests {
-    use super::translator_credits;
+    use super::{release_notes, translator_credits, APPDATA};
+    use crate::config::VERSION;
+
+    #[test]
+    fn the_about_dialog_shows_the_notes_of_this_version() {
+        let n = release_notes(APPDATA, VERSION).expect("a <release> for the version in Cargo.toml");
+        assert!(n.starts_with("<p>") && n.contains("<li>"), "{n}");
+        assert!(release_notes(APPDATA, "0.0.0-none").is_none());
+    }
 
     #[test]
     fn untranslated_credits_are_hidden() {

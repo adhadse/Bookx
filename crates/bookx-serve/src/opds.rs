@@ -48,6 +48,9 @@ pub struct OpdsConfig {
     pub title: String,
     /// URL prefix, no trailing slash.
     pub prefix: String,
+    /// What file and cover links (`/download/..`, `/cover/..`) start with when the server is
+    /// published under a sub-path (`/books`); empty at the root.
+    pub base: String,
     pub page_size: usize,
     /// Namespace for the stable `urn:uuid:` ids (one per library/server).
     pub instance_id: Uuid,
@@ -60,6 +63,7 @@ impl Default for OpdsConfig {
         OpdsConfig {
             title: "Bookx Library".into(),
             prefix: "/opds".into(),
+            base: String::new(),
             page_size: 50,
             instance_id: DEFAULT_INSTANCE,
             now: Utc::now(),
@@ -402,8 +406,8 @@ pub fn book_entry(cfg: &OpdsConfig, b: &Book) -> String {
             "image/jpeg"
         };
         for (rel, href) in [
-            (REL_IMAGE, cover_href(b.id)),
-            (REL_THUMB, thumbnail_href(b.id)),
+            (REL_IMAGE, format!("{}{}", cfg.base, cover_href(b.id))),
+            (REL_THUMB, format!("{}{}", cfg.base, thumbnail_href(b.id))),
         ] {
             s.push_str("    ");
             s.push_str(&link_xml(&Link {
@@ -417,7 +421,7 @@ pub fn book_entry(cfg: &OpdsConfig, b: &Book) -> String {
     }
     s.push_str(&format!(
         "    <link rel=\"{REL_ACQ}\" href=\"{}\" type=\"{EPUB_MIME}\" title=\"EPUB\" length=\"{}\"/>\n",
-        escape(&download_href(b.id)),
+        escape(&format!("{}{}", cfg.base, download_href(b.id))),
         b.size
     ));
     s.push_str("  </entry>\n");
@@ -719,6 +723,8 @@ mod tests {
             formats: vec![],
             resources: vec![],
             drm: String::new(),
+            custom: Default::default(),
+            marked: false,
         }
     }
 
@@ -1325,6 +1331,23 @@ mod tests {
         };
         let doc = route(&c, &[], &[], &HashMap::new()).unwrap();
         assert!(doc.body.contains("rel=\"start\" href=\"/\""));
+    }
+
+    #[test]
+    fn base_prefixes_file_and_cover_links() {
+        let mut b = book(7, "T", &["A"]);
+        b.cover = Some("c.jpg".into());
+        let c = OpdsConfig {
+            prefix: "/books/opds".into(),
+            base: "/books".into(),
+            ..cfg()
+        };
+        let x = book_entry(&c, &b);
+        assert!(x.contains("href=\"/books/download/7.epub\""), "{x}");
+        assert!(x.contains("href=\"/books/cover/7\""), "{x}");
+        assert!(x.contains("href=\"/books/cover/7/thumbnail\""), "{x}");
+        let x = book_entry(&cfg(), &b);
+        assert!(x.contains("href=\"/download/7.epub\""));
     }
 
     #[test]

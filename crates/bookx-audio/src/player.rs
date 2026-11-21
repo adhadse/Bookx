@@ -91,12 +91,7 @@ impl AudioSink for NullSink {
 }
 
 fn in_path(program: &str) -> bool {
-    if program.contains('/') {
-        return std::path::Path::new(program).exists();
-    }
-    std::env::var_os("PATH")
-        .map(|p| std::env::split_paths(&p).any(|d| d.join(program).is_file()))
-        .unwrap_or(false)
+    crate::command::system_program(program).is_some()
 }
 
 /// `(program, args)` of the command line players to try for this format, in order.
@@ -167,12 +162,16 @@ impl CommandSink {
 
     fn spawn(&self, rate: u32, channels: u8) -> Result<Child> {
         if let Some(cmd) = &self.custom {
-            return Command::new("sh")
-                .arg("-c")
-                .arg(
-                    cmd.replace("{rate}", &rate.to_string())
-                        .replace("{channels}", &channels.to_string()),
-                )
+            let (program, args) = crate::command::parse_player(
+                cmd,
+                &[
+                    ("{rate}", rate.to_string()),
+                    ("{channels}", channels.to_string()),
+                ],
+            )
+            .context("BOOKX_AUDIO_PLAYER")?;
+            return Command::new(program)
+                .args(args)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
@@ -180,10 +179,10 @@ impl CommandSink {
                 .context("starting the player from BOOKX_AUDIO_PLAYER");
         }
         for (program, args) in player_candidates(rate, channels) {
-            if !in_path(&program) {
+            let Some(program) = crate::command::system_program(&program) else {
                 continue;
-            }
-            if let Ok(c) = Command::new(&program)
+            };
+            if let Ok(c) = Command::new(program)
                 .args(&args)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::null())

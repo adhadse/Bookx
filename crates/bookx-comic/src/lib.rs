@@ -14,6 +14,7 @@
 
 pub mod cache;
 pub mod decode;
+pub mod encode;
 pub mod layout;
 pub mod meta;
 pub mod panels;
@@ -22,6 +23,7 @@ pub mod smart;
 #[doc(hidden)]
 pub mod testgen;
 pub mod view;
+pub mod volumes;
 pub mod worker;
 
 pub use panels::Rect;

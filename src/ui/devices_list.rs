@@ -7,7 +7,9 @@
 //!   list line up whatever the shape of the covers;
 //! * the title takes one line and is cut with an ellipsis, details follow on dim lines;
 //! * clicking anywhere on a row or a tile toggles it; Shift-click selects the range from the last click;
-//! * a tile shows its check box in the top-left corner and is highlighted while it is selected;
+//! * a tile is the library's card (`book_tile`): same cover size, two-line title, dim detail line; it shows
+//!   its check box in the top-left corner and is highlighted while it is selected;
+//! * the lists have no scroller of their own: the page of the window scrolls as one;
 //! * the lists carry the libadwaita `.selection-mode` class: the check boxes stay invisible at rest
 //!   and appear on hover, focus and for selected items (XC-3 / LIB-D5).
 
@@ -18,11 +20,11 @@ use std::rc::Rc;
 
 use relm4::gtk::{self, gdk, graphene, prelude::*};
 
+use super::book_tile;
+
 pub const COVER_W: i32 = 40;
 pub const COVER_H: i32 = 60;
 const CHECK_COLUMN: i32 = 34;
-const TILE_W: i32 = 104;
-const TILE_H: i32 = 156;
 
 /// One book of a list.
 #[derive(Clone, Default)]
@@ -48,6 +50,7 @@ struct Row {
     tile_check: gtk::CheckButton,
     row: gtk::ListBoxRow,
     tile: gtk::Box,
+    caption: gtk::Label,
     row_pic: gtk::Picture,
     tile_pic: gtk::Picture,
     hover: Cell<bool>,
@@ -62,37 +65,39 @@ pub struct PickList {
     state: RefCell<Vec<bool>>,
     last: Cell<Option<usize>>,
     covers: Cell<usize>,
+    cover: i32,
     on_change: Rc<dyn Fn()>,
 }
 
+/// What the grid view looks like, for the `devwin_grid` line of the UI tests.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct GridReport {
+    pub columns: usize,
+    pub tile_w: i32,
+    pub tile_h: i32,
+    pub caption_lines: usize,
+    pub clipped: bool,
+}
+
 impl PickList {
-    pub fn new(on_change: Rc<dyn Fn()>) -> Rc<PickList> {
+    pub fn new(on_change: Rc<dyn Fn()>, cover: i32) -> Rc<PickList> {
         let list = gtk::ListBox::new();
         list.set_selection_mode(gtk::SelectionMode::None);
         list.add_css_class("boxed-list");
         list.add_css_class("selection-mode");
-        let list_scroll = gtk::ScrolledWindow::new();
-        list_scroll.set_child(Some(&list));
-        list_scroll.set_min_content_height(180);
-        list_scroll.set_max_content_height(360);
-        list_scroll.set_propagate_natural_height(false);
         let grid = gtk::FlowBox::new();
         grid.set_selection_mode(gtk::SelectionMode::None);
         grid.add_css_class("selection-mode");
         grid.set_homogeneous(true);
         grid.set_max_children_per_line(8);
         grid.set_min_children_per_line(2);
-        grid.set_row_spacing(8);
-        grid.set_column_spacing(8);
+        grid.set_row_spacing(0);
+        grid.set_column_spacing(0);
+        grid.set_halign(gtk::Align::Center);
         grid.set_valign(gtk::Align::Start);
-        let grid_scroll = gtk::ScrolledWindow::new();
-        grid_scroll.set_child(Some(&grid));
-        grid_scroll.set_min_content_height(180);
-        grid_scroll.set_max_content_height(360);
-        grid_scroll.set_propagate_natural_height(false);
         let stack = gtk::Stack::new();
-        stack.add_named(&grid_scroll, Some("grid"));
-        stack.add_named(&list_scroll, Some("list"));
+        stack.add_named(&grid, Some("grid"));
+        stack.add_named(&list, Some("list"));
         stack.set_vhomogeneous(false);
         stack.set_visible_child_name("grid");
         Rc::new(PickList {
@@ -103,6 +108,7 @@ impl PickList {
             state: RefCell::default(),
             last: Cell::new(None),
             covers: Cell::new(0),
+            cover,
             on_change,
         })
     }
@@ -140,6 +146,10 @@ impl PickList {
     }
 
     /// Both views carry the libadwaita selection-mode class (XC-3).
+    pub fn cover_width(&self) -> i32 {
+        self.cover
+    }
+
     pub fn has_selection_mode_class(&self) -> bool {
         self.list.has_css_class("selection-mode") && self.grid.has_css_class("selection-mode")
     }
@@ -168,7 +178,11 @@ impl PickList {
             if r.tile_check.is_active() != on {
                 r.tile_check.set_active(on);
             }
-            for w in [r.tile.upcast_ref::<gtk::Widget>(), r.row.upcast_ref()] {
+            let cell = r.tile.parent();
+            for w in [cell.as_ref(), Some(r.row.upcast_ref::<gtk::Widget>())]
+                .into_iter()
+                .flatten()
+            {
                 if on {
                     w.add_css_class("pick-selected");
                 } else {
@@ -221,17 +235,15 @@ impl PickList {
 
     /// Shows the cover image in file `path` on item `i`.
     pub fn set_cover(&self, i: usize, path: &std::path::Path) {
-        let Some(tex) = super::covers::thumbnail(path, 100) else {
+        let Some(tex) = super::covers::thumbnail(path, self.cover.max(100)) else {
             return;
         };
         if let Some(r) = self.rows.borrow().get(i) {
             r.row_pic.set_paintable(Some(&tex));
             r.tile_pic.set_paintable(Some(&tex));
-            for p in [&r.row_pic, &r.tile_pic] {
-                for c in p.css_classes() {
-                    if c.starts_with("cover-") {
-                        p.remove_css_class(&c);
-                    }
+            for c in r.row_pic.css_classes() {
+                if c.starts_with("cover-") {
+                    r.row_pic.remove_css_class(&c);
                 }
             }
             self.covers.set(self.covers.get() + 1);
@@ -335,8 +347,8 @@ impl PickList {
             text.append(&l);
         }
         let inner = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        inner.set_margin_top(6);
-        inner.set_margin_bottom(6);
+        inner.set_margin_top(4);
+        inner.set_margin_bottom(4);
         inner.set_margin_start(6);
         inner.set_margin_end(10);
         inner.append(&check_col);
@@ -352,46 +364,32 @@ impl PickList {
         self.list.append(&row);
         self.attach_click(&row, i);
 
-        // ---- tile: cover with the check box in the corner, caption below
+        // ---- tile: the library's card, the check box in the corner of the cover
         let tile_check = check();
         tile_check.set_halign(gtk::Align::Start);
         tile_check.set_valign(gtk::Align::Start);
         tile_check.set_margin_start(6);
         tile_check.set_margin_top(6);
         tile_check.add_css_class("osd");
-        let tile_pic = pic(TILE_W - 12, TILE_H - 12);
-        let overlay = gtk::Overlay::new();
-        overlay.set_child(Some(&tile_pic));
-        overlay.add_overlay(&tile_check);
-        let cap = gtk::Label::new(Some(&it.title));
-        cap.set_ellipsize(gtk::pango::EllipsizeMode::End);
-        cap.set_max_width_chars(14);
-        cap.set_lines(2);
-        cap.set_wrap(true);
-        cap.add_css_class("caption");
-        let tile = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        tile.set_margin_top(6);
-        tile.set_margin_bottom(6);
-        tile.set_margin_start(6);
-        tile.set_margin_end(6);
-        tile.set_focusable(true);
-        tile.add_css_class("pick-tile");
-        tile.add_css_class("selection-mode");
-        tile.set_tooltip_text(Some(
-            &std::iter::once(it.title.clone())
-                .chain(it.lines.iter().cloned())
-                .chain(it.warning.clone())
-                .filter(|s| !s.is_empty())
-                .collect::<Vec<_>>()
-                .join("\n"),
-        ));
-        tile.append(&overlay);
-        tile.append(&cap);
-        if it.warning.is_some() {
-            let w = gtk::Label::new(Some("⚠"));
-            w.add_css_class("warning");
-            tile.append(&w);
-        }
+        let tooltip = std::iter::once(it.title.clone())
+            .chain(it.lines.iter().cloned())
+            .chain(it.warning.clone())
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n");
+        let t = book_tile::build(
+            &book_tile::Spec {
+                title: &it.title,
+                detail: it.lines.first().map_or("", String::as_str),
+                seed,
+                tooltip: &tooltip,
+                warning: it.warning.as_deref(),
+            },
+            self.cover,
+            &tile_check,
+        );
+        let tile = t.root;
+        let tile_pic = t.picture;
         self.grid.append(&tile);
         self.attach_click(&tile, i);
         Row {
@@ -399,6 +397,7 @@ impl PickList {
             tile_check,
             row,
             tile,
+            caption: t.caption,
             row_pic,
             tile_pic,
             hover: Cell::new(false),
@@ -477,6 +476,42 @@ impl PickList {
                 (cx, px, pw, ph)
             })
             .collect()
+    }
+
+    /// Measures the grid view for the UI tests; all zeros while the list view is shown.
+    pub fn grid_report(&self) -> GridReport {
+        if self.visible_view() != "grid" {
+            return GridReport::default();
+        }
+        let rows = self.rows.borrow();
+        let mut tiles: Vec<(f32, f32, i32, i32)> = Vec::new();
+        let mut caption_lines = 0;
+        let mut clipped = false;
+        let height = self.grid.height();
+        for r in rows.iter() {
+            if let Some(b) = r.tile.compute_bounds(&self.grid) {
+                tiles.push((b.x(), b.y(), r.tile.width(), r.tile.height()));
+                // the card's own margin sits below it
+                if b.y() as i32 + r.tile.height() + book_tile::CARD_MARGIN > height + 1 {
+                    clipped = true;
+                }
+            }
+            let layout = r.caption.layout();
+            caption_lines = caption_lines.max(layout.line_count() as usize);
+            if layout.pixel_size().1 > r.caption.height() {
+                clipped = true;
+            }
+        }
+        let Some(first) = tiles.first().copied() else {
+            return GridReport::default();
+        };
+        GridReport {
+            columns: tiles.iter().filter(|t| (t.1 - first.1).abs() < 1.0).count(),
+            tile_w: first.2,
+            tile_h: first.3,
+            caption_lines,
+            clipped,
+        }
     }
 
     /// The text of the rows, for the UI tests.

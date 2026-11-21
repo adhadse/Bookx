@@ -123,6 +123,7 @@ How it decides:
 | Markdown, Plain text, HTML | reading, printing, notes apps |
 | JSON | other tools; Bookx can import it again |
 | Obsidian note | a note with a quote callout per highlight, ready for a vault |
+| Joplin note | Markdown with the front matter Joplin reads (title, date, tags), quotes and notes; import it with *File → Import → MD* |
 | Kindle clippings | a `My Clippings.txt`-style file for tools that read Kindle exports |
 | Readwise | the JSON body of Readwise’s highlights API, if you want to send it yourself; see *Send to Readwise* below to let Bookx do it |
 
@@ -155,7 +156,7 @@ file.
 
 **Export → Send to Readwise** uploads the highlights (those ticked, or everything shown) to your Readwise library.
 
-- The first time, paste your access token (from readwise.io/access_token). It is kept in the system keyring, not in
+- The first time, paste your access token (from readwise.io/access_token). It is kept in the system keyring (or Bookx's encrypted password store), not in
   the settings file. *Readwise Access Token* in the same menu changes it.
 - Bookx remembers what it sent. A second send uploads only new highlights and the ones whose note changed.
 - There is a progress bar and a Cancel button; what was sent before you cancelled is remembered.

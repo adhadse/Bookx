@@ -161,6 +161,8 @@ pub struct JournalAppend {
     /// The record written, `None` when nothing changed.
     pub seq: Option<u64>,
     pub books: usize,
+    /// The record carries the collections (a shelf was made, renamed, filled or removed).
+    pub collections: bool,
 }
 
 // -- plumbing --------------------------------------------------------------------------------------------
@@ -696,6 +698,10 @@ impl Repository {
         let rep = Reporter::new(progress);
         let verify = opts.verify_writes;
         self.store.check()?;
+        let _lock = self.lock()?;
+        // continuing a half-sent big file needs identical bytes (plain objects) and the read-back
+        self.store
+            .allow_resume(!self.crypto.is_encrypted() && verify);
         let mut state = LocalState::load(&lib.root, &self.id, &self.crypto.fingerprint());
         let existing = self.list_snapshots()?;
         let remote_max = existing.first().map(|s| s.name.seq).unwrap_or(0);
@@ -875,6 +881,9 @@ impl Repository {
             };
             let res = self.upload_blob(&b.id, b.size, Box::new(file), verify, cancel, &|n| {
                 rep.bytes_done.fetch_add(n, Ordering::Relaxed);
+                if !self.lock_beat() {
+                    local_cancel.store(true, Ordering::Relaxed);
+                }
                 rep.emit(false);
             });
             match res {
@@ -972,7 +981,8 @@ impl Repository {
         cleanup();
         r?;
 
-        // 8. the manifest, last
+        // 8. the manifest, last (and only while the place is still ours)
+        self.lock_held()?;
         let name = SnapName {
             seq,
             at: created,
@@ -1059,10 +1069,17 @@ impl Repository {
                 }
             }
         }
-        if changed.is_empty() {
+        let cols = lib.collections()?;
+        let cols_fp = collections_fingerprint(&cols);
+        // the first look at a library only remembers the shelves: a snapshot has them already
+        let cols_changed =
+            state.collections != cols_fp && !(state.collections.is_empty() && cols.is_empty());
+        if changed.is_empty() && !cols_changed {
             state.notes = now_map;
+            state.collections = cols_fp;
             return Ok(JournalAppend::default());
         }
+        let _lock = self.lock()?;
         let remote_max = self.list_journal()?.last().map(|j| j.0).unwrap_or(0);
         let seq = remote_max.max(state.last_journal_seq) + 1;
         let at = DateTime::from_timestamp(now.timestamp(), 0).unwrap_or(now);
@@ -1072,15 +1089,18 @@ impl Repository {
             seq,
             at,
             books: changed.clone(),
+            collections: cols_changed.then(|| cols.clone()),
         };
         let path = format!("journal/{}", journal_name(seq, at));
         self.put_checked(&path, &serde_json::to_vec(&rec)?, cancel)
             .context("writing the journal record")?;
         state.last_journal_seq = seq;
         state.notes = now_map;
+        state.collections = cols_fp;
         Ok(JournalAppend {
             seq: Some(seq),
             books: changed.len(),
+            collections: cols_changed,
         })
     }
 
@@ -1089,6 +1109,7 @@ impl Repository {
     /// Applies the retention rule to the snapshots (manual ones stay) and drops journal records
     /// every kept snapshot already contains. Returns how many snapshots were removed.
     pub fn prune(&self, keep: usize, now: DateTime<Utc>) -> Result<usize> {
+        let _lock = self.lock()?;
         let all = self.list_snapshots()?;
         let input: Vec<(DateTime<Utc>, SnapshotKind)> = all
             .iter()
@@ -1114,6 +1135,7 @@ impl Repository {
     /// Removes journal records older than the oldest kept snapshot's catalogue. Only when every
     /// kept snapshot can be read (otherwise nothing is removed).
     pub fn compact_journal(&self) -> Result<usize> {
+        let _lock = self.lock()?;
         let snaps = self.list_snapshots()?;
         let Some(oldest) = snaps.last() else {
             return Ok(0);
@@ -1167,6 +1189,10 @@ pub fn estimate_new(
         first_run: true,
         estimated: true,
     })
+}
+
+fn collections_fingerprint(c: &[super::manifest::CollectionState]) -> String {
+    super::seal::hex(&Sha256::digest(serde_json::to_vec(c).unwrap_or_default()))
 }
 
 fn catalogue_size(root: &Path) -> u64 {

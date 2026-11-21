@@ -135,7 +135,10 @@ Press **⋯** on a place:
 - **Remove Old Backups** removes the backups beyond *Automatic backups to keep here* (manual ones stay) and the files
   that only they needed, after you confirm.
 
-If a check finds a missing or damaged file, press **Back Up**: it copies the missing files again.
+If a check finds a missing or damaged file, press **Back Up**: it copies the missing files again. A deep check shows
+how much it has read, how fast, and about how long is left.
+
+- **Take Over This Place** is for the case below, where another computer is marked as writing to the place.
 
 ## Encrypting copies
 
@@ -152,12 +155,21 @@ place is encrypted: books, covers, catalogue and notes.
 
 !!! warning "Do not lose the passphrase"
     There is no recovery. Without the passphrase an encrypted backup cannot be opened by anyone, including you. Write
-    it down somewhere safe. Changing the passphrase does not change the copies already made; they still need the old one.
+    it down somewhere safe.
+
+### Changing the passphrase
+
+On the Backups page press **Change** on the **Change Backup Passphrase** row. Enter the current passphrase (leave it empty to
+use the saved one), the new one twice (at least 8 characters) and press **Change**. Bookx re-encrypts every encrypted
+place in place, with a progress bar and **Cancel**. It takes about as long as reading and writing the whole backup, so
+longer on a network place. If it is stopped (Cancel, a lost connection, a power cut), nothing is lost: until it is
+finished the backup cannot be used, and running **Change** again with the same two passphrases continues where it
+stopped. The saved passphrase is replaced only when every place is done. Afterwards the old passphrase no longer opens
+the backups; anybody who kept a copy of the place from before the change can still open that copy with the old one.
 
 A plain (not encrypted) place holds your book files as they are, in a `Bookx Backup` folder, so even without Bookx you
 can get a book out by hand; a `README.txt` there explains how. Anyone who can read the place can read them: Bookx shows a note under every
-off-site place that is not encrypted. A repository belongs to the passphrase it was created with: to use a new
-passphrase, use a new folder.
+off-site place that is not encrypted.
 
 ## Restoring
 
@@ -221,17 +233,38 @@ and read the old `.db` and `.bookxbackup` files. Secrets are never taken from th
 
 ## Passwords
 
-Bookx keeps the passwords you type in Preferences, the Devices window and the Backups page (the library server,
-e-mail, reading position sync, WebDAV for devices and backups, the backup passphrase) in the **system keyring** (GNOME Keyring, KWallet, KeePassXC; in the Flatpak through the secrets portal), not in the
-settings file. Passwords saved by older versions are moved there the first time Bookx starts, and removed from the file.
+Bookx **never writes a password or token to the settings file or any other plain file**. This covers the OPDS server
+and catalogue passwords, e-mail, reading position sync, WebDAV for devices and backups, the backup passphrase, the
+Readwise token, the read-aloud server key, Wallabag credentials and the assistant access token. Where they go depends on
+your system, and the line under each password field says which:
 
-If no keyring is available, Bookx keeps working and says so next to each password: it is then kept in the settings
-file, unencrypted. Install GNOME Keyring or KeePassXC and the next save moves them.
+- **System keyring** (GNOME Keyring, KWallet, KeePassXC; on macOS the Keychain, on Windows the Credential Manager; in the
+  Flatpak the secrets portal). The keyring is protected by your login (or keyring) password. The field says *Kept in the
+  system keyring, not in the settings file.*
+- **No keyring: Bookx's encrypted password store.** The first time you save a password, Bookx offers to **create a master
+  password**. The passwords then go into one file, `secrets.vault`, in Bookx's settings folder (readable by you only),
+  encrypted with ChaCha20-Poly1305 under a key made from your master password with Argon2id. Bookx asks for the master
+  password once each time it starts (*Unlock Saved Passwords*) and never saves it anywhere. If you forget it, the
+  stored passwords cannot be recovered: choose *Forgot Password* to delete the store and type them again. The field
+  says *Kept in Bookx's encrypted password store.*
+- **No keyring and no master password** (you chose *Don't Save* or *Not Now*): the password works until you close
+  Bookx and is then forgotten. The field says *Not saved: it is forgotten when Bookx closes.* Nothing is written.
+
+Passwords that older versions left in the settings file are removed the first time this version starts (Bookx says
+*Saved passwords were removed from the settings file*). With a keyring they are moved into it; without one they stay in
+memory for that session so you can save them in the encrypted store, and if you decline you will have to type them again.
+
+What this does **not** protect against: a program running as you while the keyring is unlocked or Bookx is unlocked can
+ask for the passwords like Bookx does, and so can someone using your unlocked computer. A short master password can be
+guessed by someone who copies `secrets.vault`; use a long one. The **backup passphrase** (it encrypts your backups) and
+the **KOReader device key** (stored on the e-reader, see [KOReader sync](koreader-sync.md)) are separate secrets.
 
 ## Limits
 
-- **One computer writes to one backup.** Two computers backing up into the same place can confuse each other. Use a
-  folder for each. If a place suddenly looks older than what Bookx saw before (an old copy was put back over it),
+- **One computer writes to one backup.** While Bookx writes to a place it leaves a small note there. A second computer
+  that finds the note stops with *this backup place is in use* and the name of the other computer; wait until it is
+  done. If the other computer was switched off in the middle of a copy, use **⋯ → Take Over This Place** (a note that
+  nobody renewed for 15 minutes is ignored by itself). Reading and restoring are always allowed. If a place suddenly looks older than what Bookx saw before (an old copy was put back over it),
   Bookx stops and says so instead of overwriting newer backups.
 - **WebDAV has not been tried against a real Nextcloud or ownCloud**, only against a stand-in server. Some servers
   limit the size of one upload (for example 100 MB): a bigger book then fails with a clear message about the server's
@@ -240,8 +273,11 @@ file, unencrypted. Install GNOME Keyring or KeePassXC and the next save moves th
   GNOME's mounts, which can be slow for the first copy. A folder your cloud client syncs, or WebDAV, is faster.
 - **Names Windows cannot hold** (such as `con.epub` or names with control characters) are left out and listed.
 - A file that changes while it is being copied is left out and taken at the next backup.
-- Journal records carry highlights, notes, bookmarks and progress; a collection you create between two backups is
-  protected at the next backup.
+- Journal records carry highlights, notes, bookmarks, progress and your collections (shelves). Restoring brings back
+  the shelves and what is on them; a shelf you deleted after the last full backup comes back too.
+- Big files to WebDAV go up in pieces and an interrupted upload continues, but only when the server accepts partial
+  uploads and the place is not encrypted. Most servers (Nextcloud included) do not, and then each file is one upload; an
+  encrypted file always starts again.
 - Notes of a book are restored onto a book the restored catalogue has: a book that was added after the last full backup
   comes back with the next one.
 - The copy is verified by reading it back, which doubles the traffic of the first backup to a network place.

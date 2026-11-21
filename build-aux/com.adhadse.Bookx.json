@@ -17,6 +17,7 @@
         "--filesystem=xdg-run/gvfs",
         "--filesystem=xdg-run/gvfsd",
         "--talk-name=org.gtk.vfs.*",
+        "--own-name=org.mpris.MediaPlayer2.Bookx.*",
         "--env=RUST_LOG=bookx=info"
     ],
     "build-options": {

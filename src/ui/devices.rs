@@ -241,14 +241,16 @@ impl DevWin {
         shared: &SharedRef,
         on_changed: Rc<dyn Fn()>,
     ) -> Rc<DevWin> {
-        let dialog = adw::Dialog::new();
+        let dialog = super::dialog_toast::new_dialog();
         dialog.set_title(&tr("Devices"));
         dialog.set_follows_content_size(false);
         let settings = shared.cfg.borrow().device.clone();
-        let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
         // the dialog scrolls as a whole: the side margins keep the overlay scrollbar off the header buttons
         root.set_margin_start(12);
         root.set_margin_end(12);
+        root.set_margin_top(12);
+        root.set_margin_bottom(12);
 
         // The device selector lives outside both pages, so it is visible on Books and Settings.
         // The row itself supplies the only visible "Device" label.
@@ -296,8 +298,9 @@ impl DevWin {
                 }
             }) as Rc<dyn Fn()>
         };
-        let on_dev = PickList::new(changed.clone());
-        let to_send = PickList::new(changed);
+        let cover = super::book_tile::cover_width(shared.cfg.borrow().cover_size);
+        let on_dev = PickList::new(changed.clone(), cover);
+        let to_send = PickList::new(changed, cover);
         let grid_view = !settings_view_is_list(shared);
         on_dev.set_grid(grid_view);
         to_send.set_grid(grid_view);
@@ -320,10 +323,12 @@ impl DevWin {
         status.set_xalign(0.0);
         status.set_wrap(true);
         status.set_selectable(true);
+        status.set_margin_top(6);
         books_group.add(&status);
         let remove_btn = gtk::Button::with_label(&ds::remove_button_label(0));
         remove_btn.add_css_class("destructive-action");
         remove_btn.set_halign(gtk::Align::End);
+        remove_btn.set_margin_top(6);
         remove_btn.set_sensitive(false);
         books_group.add(&remove_btn);
         books_content.append(&books_group);
@@ -352,10 +357,12 @@ impl DevWin {
         send_status.set_xalign(0.0);
         send_status.set_wrap(true);
         send_status.add_css_class("dim-label");
+        send_status.set_margin_top(6);
         let send_btn = gtk::Button::with_label(&ds::send_button_label(0));
         send_btn.add_css_class("suggested-action");
         send_btn.add_css_class("pill");
         send_btn.set_halign(gtk::Align::End);
+        send_btn.set_margin_top(6);
         send_btn.set_sensitive(false);
         send_group.add(&to_send.widget);
         send_group.add(&send_status);
@@ -668,7 +675,7 @@ impl DevWin {
 
     fn check_dav(self: &Rc<Self>) {
         let s = self.shared.cfg.borrow().device.webdav.clone();
-        self.dav_status.set_label(&tr("Connecting…"));
+        self.dav_status.set_label(&tr("Connecting"));
         let (tx, rx) = std::sync::mpsc::channel::<String>();
         std::thread::spawn(move || {
             let r = bookx_serve::webdav::WebDav::new(&s.url, &s.user, &s.password)
@@ -733,11 +740,11 @@ impl DevWin {
         self.no_device_page.set_visible(false);
         self.books_content.set_visible(true);
         self.loading.set(true);
-        self.status.set_label(&tr("Reading the device…"));
+        self.status.set_label(&tr("Reading the device"));
         let device_name = device.name.clone();
         let settings = self.shared.cfg.borrow().device.clone();
         let drivers = dev::drivers(&settings);
-        let (_, storage) = ds::device_row_text(&device_name, &tr("Reading the device…"));
+        let (_, storage) = ds::device_row_text(&device_name, &tr("Reading the device"));
         self.device_row.set_property("subtitle", storage);
         self.shelf_row
             .set_visible(drivers.kind(&device) == Some(DeviceKind::Kobo));
@@ -885,7 +892,7 @@ impl DevWin {
     }
 
     fn do_remove(self: &Rc<Self>, device: DeviceInfo, picked: Vec<DeviceBook>) {
-        self.status.set_label(&tr("Removing…"));
+        self.status.set_label(&tr("Removing"));
         let settings = self.shared.cfg.borrow().device.clone();
         let (tx, rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
@@ -919,7 +926,7 @@ impl DevWin {
         let Some(device) = self.selected_device() else {
             return;
         };
-        self.status.set_label(&tr("Reading the reading state…"));
+        self.status.set_label(&tr("Reading the reading state"));
         let status = self.status.clone();
         let me = self.clone();
         let seen = self.clone();
@@ -1093,9 +1100,31 @@ impl DevWin {
                 .set_label(&tr("Tick the books to send first."));
             return;
         }
+        // the optional check (Preferences → Library): the window opens only when something was
+        // found, and Continue (or a clean result) goes on with the same books
+        if self.shared.cfg.borrow().metadata_prefs.preflight {
+            let (me, dev) = (self.clone(), device.clone());
+            let dest = crate::preflight::Dest::for_target(&self.chosen_format());
+            let go_ids = ids.clone();
+            let go: Rc<dyn Fn()> = Rc::new(move || me.send_now(dev.clone(), go_ids.clone()));
+            let me = self.clone();
+            crate::ui::preflight::show(
+                self.parent.upcast_ref(),
+                &self.shared,
+                ids,
+                dest,
+                Some(go),
+                Rc::new(move |msg| me.send_status.set_label(&msg)),
+            );
+            return;
+        }
+        self.send_now(device, ids);
+    }
+
+    fn send_now(self: &Rc<Self>, device: DeviceInfo, ids: Vec<u64>) {
         self.sending.set(true);
         self.update_buttons();
-        self.send_status.set_label(&tr("Sending…"));
+        self.send_status.set_label(&tr("Sending"));
         let me = self.clone();
         send_books(
             &self.shared,
@@ -1193,6 +1222,41 @@ impl DevWin {
     }
 
     /// The HIG layout report (`devwin:layout`, also printed by `devwin:dump`).
+    fn dump_grid(&self) {
+        let rel = |w: &gtk::Widget| {
+            w.compute_bounds(&self.books_content)
+                .map(|b| (b.y().round() as i32, (b.y() + b.height()).round() as i32))
+                .unwrap_or((0, 0))
+        };
+        let group_gap = if self.send_group.is_visible() {
+            rel(self.send_group.upcast_ref()).0 - rel(self.books_group.upcast_ref()).1
+        } else {
+            0
+        };
+        let status_overlaps = rel(self.status.upcast_ref()).0
+            < rel(self.on_dev.widget.upcast_ref()).1
+            && self.on_dev.widget.is_visible();
+        let send_status_overlaps = self.to_send.widget.is_visible()
+            && rel(self.send_status.upcast_ref()).0 < rel(self.to_send.widget.upcast_ref()).1;
+        let remove_gap = rel(self.remove_btn.upcast_ref()).0 - rel(self.status.upcast_ref()).1;
+        for (name, list, overlaps) in [
+            ("on_device", &self.on_dev, status_overlaps),
+            ("to_send", &self.to_send, send_status_overlaps),
+        ] {
+            let g = list.grid_report();
+            eprintln!(
+                "devwin_grid: {name} columns={} tile_w={} tile_h={} caption_lines={} clipped={} status_overlaps={overlaps} group_gap={group_gap} remove_gap={remove_gap} cover_w={} card_w={}",
+                g.columns,
+                g.tile_w,
+                g.tile_h,
+                g.caption_lines,
+                g.clipped,
+                list.cover_width(),
+                super::book_tile::card_width(list.cover_width()),
+            );
+        }
+    }
+
     fn dump_layout(&self) {
         eprintln!(
             "devwin_dialog: title={} pages={},{} active={} linked_toggles={} content_height={} dialog_alloc={}x{} parent_alloc={}x{}",
@@ -1245,6 +1309,7 @@ impl DevWin {
             menu_labels(&self.on_dev_menu).join(", "),
             menu_labels(&self.send_menu).join(", ")
         );
+        self.dump_grid();
         let (icon, state_name) = ds::view_toggle_state(self.view_toggle.is_active());
         eprintln!(
             "devwin_view_toggle: active={} icon={} state={} action={}",
@@ -1296,7 +1361,16 @@ pub fn send_books(
             .collect()
     };
     let name = device.name.clone();
-    let (tx, rx) = std::sync::mpsc::channel::<String>();
+    // the send shows in the Jobs panel like every other long task
+    let (job, _) = crate::jobs::start(
+        crate::jobs::Kind::Send,
+        &trf(
+            "Sending {} to {}",
+            &[&ntr("{} book", "{} books", ids.len()), &name],
+        ),
+        false,
+    );
+    let (tx, rx) = std::sync::mpsc::channel::<(String, bool)>();
     std::thread::spawn(move || {
         let drivers = dev::drivers(&settings);
         let opts = dev::SendOptions::from(&settings);
@@ -1326,9 +1400,12 @@ pub fn send_books(
         if !notes_out.is_empty() {
             msg.push_str(&format!(" ({})", notes_out.join("; ")));
         }
-        let _ = tx.send(msg);
+        let _ = tx.send((msg, !failed.is_empty()));
     });
-    poll(rx, done);
+    poll(rx, move |(msg, failed): (String, bool)| {
+        crate::jobs::finish(job, if failed { Err(msg.clone()) } else { Ok(()) });
+        done(msg)
+    });
 }
 
 /// How a sync starts.
@@ -1429,8 +1506,15 @@ pub fn start_sync(
             Rc::new(move || {
                 let done = {
                     let mut lib = shared.lib.borrow_mut();
+                    let snap = crate::sync_bus::Snapshot::take(&lib.books);
                     let a = ds::apply_to_library(&mut lib, &plan);
                     let _ = lib.save();
+                    crate::sync_bus::publish_changes(
+                        &snap,
+                        &lib.books,
+                        &name,
+                        crate::sync_bus::Via::Cable,
+                    );
                     a
                 };
                 if done.progress + done.highlights + done.notes > 0 {

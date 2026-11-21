@@ -78,7 +78,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
     let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("Reading Statistics"));
     dialog.set_content_width(460);
-    dialog.set_content_height(640);
+    dialog.set_content_height(560);
 
     let page = adw::PreferencesPage::new();
 

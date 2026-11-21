@@ -780,4 +780,5 @@ fn inbox_cmd(cmd: InboxCmd, root: &Path, out: &mut dyn Write) -> Result<i32> {
 /// Registers the template renderer for layouts; called once by [`crate::run`].
 pub fn init() {
     bookx_core::layout::register_template_renderer(bookx_sources::template::render_library_path);
+    bookx_core::custom::register_composite_renderer(bookx_sources::template::render_composite);
 }

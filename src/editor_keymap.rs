@@ -113,6 +113,13 @@ pub const COMMANDS: &[Cmd] = &[
         "editor:metadata"
     ),
     c!(
+        "editor.sidebar",
+        N_("Show or Hide the Sidebar"),
+        &["F9"],
+        "files contents book panel",
+        ""
+    ),
+    c!(
         "editor.preview",
         N_("Toggle Preview"),
         &["<Control><Alt>v"],

@@ -9,6 +9,7 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 anyhow = "1"
+bookx-audio = { path = "../bookx-audio" }
 flate2 = "1"
 ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "load-dynamic"] }
 serde = { version = "1", features = ["derive"] }

@@ -75,7 +75,7 @@ NOT DONE (on purpose or for lack of time): see "Not done" below.
 * No external references: tags are text only; no URL in a tag is ever fetched. Covers are accepted only when the bytes start like
   JPEG, PNG, GIF or WebP.
 * No process other than the sound player (`pacat`/`pw-cat`/`aplay` found on `PATH` by name, as read aloud does; arguments are
-  rates and channel counts that we compute; the override `BOOKX_AUDIO_PLAYER` is a shell command from the environment, same as
+  rates and channel counts that we compute; the override `BOOKX_AUDIO_PLAYER` is an absolute program path with arguments from the environment (no shell since 2026-11-21), same as
   `BOOKX_TTS_PLAYER`, and is not reachable from a file).
 * New dependency: `symphonia` 0.5.5 and its codec/format crates (MPL-2.0, pure Rust, `#![forbid(unsafe_code)]` is not set by
   them; they contain no `unsafe` in the decoders we use except SIMD behind a feature that is off). Listed in `NOTICE.md`.
@@ -106,7 +106,11 @@ NOT DONE (on purpose or for lack of time): see "Not done" below.
   (`CanSeek` false). The real-session sandbox has no media-keys daemon, so the physical key could not be tested there.
 * **Sync of the position** to other devices: nothing generic exists. KOSync is for e-book positions (xpath/percentage of an
   EPUB) and is not extended; the place is only local (catalogue + state file). Documented in the wiki.
-* No whispersync-like link between an EPUB and its audiobook (not required).
+* **One place for e-book and audiobook** (wave 11): `bookx_audio::link` maps positions (chapters with the same title are anchors, linear interpolation in between,
+  share of text by spine item size); *Continue in Audiobook* / *Continue Reading* rows in the details panel (`src/audiobook.rs`: `continue_in_audiobook`, `continue_reading`).
+  Manual, not automatic; weights are file sizes (images, markup count), so the match is rough without titles.
+* **Opus: still not played.** No Opus decoder is in `Cargo.lock` (Symphonia 0.5 has none); adding one (`libopus` binding = C code and unsafe, or an unvetted pure-Rust crate) is a dependency decision left to the owner.
+* **Position sync** to other devices: not built; the `/bookx` protocol carries e-book positions only. The local place (state file + catalogue) is the single source.
 * No fade-out for the sleep timer, no per-chapter speed, no "trim silence", no volume boost, no equaliser.
 * The details panel's *Play in Bookx* loads the cached scan on the UI thread; a first load of a linked folder of hundreds of
   files without a cache scans on the UI thread (about 0.1 s for 500 WAV parts, more for MP3 files without a Xing header).

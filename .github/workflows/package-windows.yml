@@ -1,0 +1,50 @@
+# Builds a portable Windows zip (Bookx plus the GTK 4 DLLs) with MSYS2 UCRT64. MANUAL ONLY and publishes nothing:
+# the zip is a workflow artifact. Written without a Windows machine and never run (docs/windows-port.md): the app
+# has never been compiled for Windows, so expect the first runs to fail in the build.
+name: package-windows
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  zip:
+    name: Windows zip (x64, MSYS2 UCRT64)
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            zip
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-rust
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-gtk4
+            mingw-w64-ucrt-x86_64-libadwaita
+            mingw-w64-ucrt-x86_64-gtksourceview5
+            mingw-w64-ucrt-x86_64-adwaita-icon-theme
+            mingw-w64-ucrt-x86_64-espeak-ng
+      - name: Build
+        run: cargo build --release --locked -p bookx -p bookx-cli
+      - name: Pure-logic tests
+        run: cargo test --release --locked --workspace --lib
+      - name: Bundle
+        run: build-aux/windows-bundle.sh
+      - name: "Smoke test (command line tool only, the runner has no display)"
+        run: dist/Bookx/bin/bookx-cli.exe --help
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bookx-windows-x64
+          path: |
+            dist/*.zip
+            dist/*.zip.sha256
+          retention-days: 7

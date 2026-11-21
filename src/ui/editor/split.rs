@@ -128,7 +128,7 @@ impl Editor {
         let src = buffer_text(&buf);
         let rules = split_merge::page_break_rules_for(&self.book.borrow(), &src, &path);
 
-        let dialog = adw::Dialog::new();
+        let dialog = crate::ui::dialog_toast::new_dialog();
         dialog.set_title(&tr("Split File"));
         dialog.set_content_width(480);
         dialog.set_content_height(560);

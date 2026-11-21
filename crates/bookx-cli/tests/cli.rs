@@ -1100,6 +1100,67 @@ fn serve_requires_credentials_when_users_are_given() {
 }
 
 #[test]
+fn serve_accounts_guest_prefix_and_web_client() {
+    let sb = Sandbox::new("serve-accounts");
+    sb.cli(&[
+        "library",
+        "add",
+        s(&sb.epub("a.epub", "Hidden Title", "Ann", "text.")),
+    ]);
+    let (addr, stop, h) = start_server(
+        &sb,
+        &[
+            "--account",
+            "kid:pw:nothing",
+            "--account",
+            "mum:pw2",
+            "--guest-collection",
+            "nothing",
+            "--public-prefix",
+            "books/",
+            "--trusted-proxy",
+            "127.0.0.1",
+        ],
+    );
+    // the child's collection holds no book; the account without collections sees all
+    let (code, body) = http_get(&addr, "/books/opds/all", Some("a2lkOnB3"));
+    assert_eq!(code, 200, "{body}");
+    assert!(!body.contains("Hidden Title"), "{body}");
+    let (code, body) = http_get(&addr, "/opds/all", Some("bXVtOnB3Mg=="));
+    assert_eq!(code, 200);
+    assert!(
+        body.contains("Hidden Title") && body.contains("/books/download/"),
+        "{body}"
+    );
+    // the guest sees an empty catalogue, and the web client files are served
+    let (code, body) = http_get(&addr, "/opds/all", None);
+    assert_eq!(code, 200);
+    assert!(!body.contains("Hidden Title"));
+    let (code, body) = http_get(&addr, "/books/app/manifest.webmanifest", None);
+    assert_eq!(code, 200, "{body}");
+    assert!(body.contains("Bookx"));
+    stop.store(true, Ordering::SeqCst);
+    assert_eq!(h.join().unwrap(), 0);
+}
+
+#[test]
+fn serve_refuses_bad_proxy_prefix_and_account_arguments() {
+    let sb = Sandbox::new("serve-bad-net");
+    sb.cli(&["library", "add", s(&sb.epub("a.epub", "B", "Ann", "text."))]);
+    for (flag, val, word) in [
+        ("--trusted-proxy", "0.0.0.0/0", "trusted-proxy"),
+        ("--trusted-proxy", "proxy.example.com", "trusted-proxy"),
+        ("--public-prefix", "/a/../b", "public-prefix"),
+        ("--public-prefix", "/bookx", "public-prefix"),
+        ("--account", "nopassword", "account"),
+    ] {
+        let (code, _, err) = sb.cli(&["serve", "--port", "0", flag, val]);
+        assert_eq!(code, 2, "{flag} {val}: {err}");
+        assert!(err.contains(word), "{err}");
+    }
+}
+
+#[test]
 fn serve_kosync_endpoint_is_optional() {
     let sb = Sandbox::new("serve-kosync");
     sb.cli(&["library", "add", s(&sb.epub("a.epub", "B", "Ann", "text."))]);

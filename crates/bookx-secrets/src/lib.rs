@@ -7,6 +7,9 @@
 //! The async runtime is the small `async-io` one that `zbus` already brings; nothing here needs
 //! tokio.
 //!
+//! Without a keyring the values go to an encrypted file ([`FileStore`], master password) or stay in memory;
+//! they are never written in clear text.
+//!
 //! Everything goes through the [`SecretStore`] trait, so the logic around it (migrating plain text
 //! values, falling back, caching) is tested with [`MemoryStore`] and no desktop session.
 //!
@@ -14,7 +17,14 @@
 //! carry only keys and D-Bus messages.
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+
+mod file;
+pub use file::{
+    check_passphrase, kdf_is_reasonable, probe, restrict_dir, restrict_file, FileStore, Kdf,
+    OpenError,
+};
 
 use anyhow::{anyhow, Result};
 
@@ -91,11 +101,14 @@ impl SecretStore for Unavailable {
     }
 }
 
+#[cfg(not(any(target_os = "macos", windows)))]
 const APP_ATTR: (&str, &str) = ("application", "com.adhadse.Bookx");
 
-/// The Secret Service (or the Flatpak portal) through `oo7`.
+/// The Secret Service (or the Flatpak portal) through `oo7`. Not built on macOS and Windows.
+#[cfg(not(any(target_os = "macos", windows)))]
 pub struct Oo7Store;
 
+#[cfg(not(any(target_os = "macos", windows)))]
 impl Oo7Store {
     /// Connects once to see whether a keyring answers.
     pub fn connect() -> Result<Oo7Store> {
@@ -108,10 +121,12 @@ impl Oo7Store {
     }
 }
 
+#[cfg(not(any(target_os = "macos", windows)))]
 fn attrs(key: &str) -> Vec<(&str, &str)> {
     vec![APP_ATTR, ("key", key)]
 }
 
+#[cfg(not(any(target_os = "macos", windows)))]
 impl SecretStore for Oo7Store {
     fn describe(&self) -> String {
         "the system keyring".into()
@@ -151,100 +166,342 @@ impl SecretStore for Oo7Store {
     }
 }
 
+/// Service name under which the native stores file Bookx's items.
+#[cfg_attr(not(any(target_os = "macos", windows)), allow(dead_code))]
+const NATIVE_SERVICE: &str = "com.adhadse.Bookx";
+
+/// macOS Keychain and Windows Credential Manager through the `keyring` crate (safe API).
+/// Compiled only on those systems; it has not been run on real hardware yet (docs/macos-port.md,
+/// docs/windows-port.md).
+#[cfg(any(target_os = "macos", windows))]
+pub struct NativeStore {
+    label: &'static str,
+}
+
+#[cfg(any(target_os = "macos", windows))]
+impl NativeStore {
+    /// Writes and reads back a probe item so a locked or missing store is noticed at start-up.
+    pub fn connect() -> Result<NativeStore> {
+        let label = if cfg!(target_os = "macos") {
+            "the macOS Keychain"
+        } else {
+            "the Windows Credential Manager"
+        };
+        let store = NativeStore { label };
+        store
+            .set("probe", "1")
+            .map_err(|e| anyhow!("no keyring is available ({e})"))?;
+        store.delete("probe")?;
+        Ok(store)
+    }
+
+    fn entry(&self, key: &str) -> Result<keyring::Entry> {
+        keyring::Entry::new(NATIVE_SERVICE, key).map_err(|e| anyhow!("{e}"))
+    }
+}
+
+#[cfg(any(target_os = "macos", windows))]
+impl SecretStore for NativeStore {
+    fn describe(&self) -> String {
+        self.label.into()
+    }
+
+    fn get(&self, key: &str) -> Result<Option<String>> {
+        match self.entry(key)?.get_password() {
+            Ok(v) => Ok(Some(v)),
+            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(e) => Err(anyhow!("{e}")),
+        }
+    }
+
+    fn set(&self, key: &str, value: &str) -> Result<()> {
+        self.entry(key)?
+            .set_password(value)
+            .map_err(|e| anyhow!("{e}"))
+    }
+
+    fn delete(&self, key: &str) -> Result<()> {
+        match self.entry(key)?.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+            Err(e) => Err(anyhow!("{e}")),
+        }
+    }
+}
+
+/// Which system store `open_default` tries: the Secret Service on Linux and the other Unixes, the
+/// Keychain on macOS, the Credential Manager on Windows.
+pub fn system_store_name() -> &'static str {
+    if cfg!(target_os = "macos") {
+        "keychain"
+    } else if cfg!(windows) {
+        "credential-manager"
+    } else {
+        "secret-service"
+    }
+}
+
+fn open_system_store() -> Box<dyn SecretStore> {
+    #[cfg(any(target_os = "macos", windows))]
+    {
+        match NativeStore::connect() {
+            Ok(s) => Box::new(s),
+            Err(e) => Box::new(Unavailable(format!("{e:#}"))),
+        }
+    }
+    #[cfg(not(any(target_os = "macos", windows)))]
+    {
+        match Oo7Store::connect() {
+            Ok(s) => Box::new(s),
+            Err(e) => Box::new(Unavailable(format!("{e:#}"))),
+        }
+    }
+}
+
 /// The store to use: `BOOKX_SECRETS=memory` (tests), `none` (pretend there is no keyring), else
 /// the Secret Service, and when it does not answer, [`Unavailable`].
 pub fn open_default() -> Box<dyn SecretStore> {
     match std::env::var("BOOKX_SECRETS").as_deref() {
         Ok("memory") => Box::new(MemoryStore::new()),
         Ok("none") => Box::new(Unavailable("switched off for this session".into())),
-        _ => match Oo7Store::connect() {
-            Ok(s) => Box::new(s),
-            Err(e) => Box::new(Unavailable(format!("{e:#}"))),
-        },
+        _ => open_system_store(),
     }
 }
 
 /// What a [`Vault::load`] or [`Vault::persist`] pass did.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Migration {
-    /// Values now in the store.
+    /// Values now in a store.
     pub moved: usize,
-    /// Values that could not be stored and stay in the settings file.
-    pub kept: usize,
+    /// Values that no store could take: they live in memory for this session only and are
+    /// **never** written to the settings file.
+    pub unsaved: usize,
 }
 
-/// A [`SecretStore`] plus a memory of what it holds, so saving the settings does not talk to the
-/// keyring about values that did not change.
+/// Where passwords are kept right now.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    /// The system keyring.
+    Keyring,
+    /// Bookx's encrypted file, unlocked.
+    Vault,
+    /// Bookx's encrypted file exists and is locked.
+    Locked,
+    /// No keyring and no encrypted file yet: a master password can be created.
+    Fresh,
+    /// Nothing can hold passwords (no keyring, no vault file configured): memory only.
+    SessionOnly,
+}
+
+/// Something the user should be asked about.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Prompt {
+    /// Passwords were typed or found, and there is no place to keep them: offer a master password.
+    Create,
+    /// The encrypted file exists: ask for the master password.
+    Unlock,
+}
+
+/// A [`SecretStore`] (the keyring), an optional encrypted [`FileStore`] used when there is no
+/// keyring, and a memory of what is stored, so saving the settings does not talk to the store
+/// about values that did not change.
+///
+/// Rule: a secret is **never** returned into the serialized settings. `persist` blanks every
+/// value in the copy it is given, whatever the state of the stores; a value that no store could
+/// take stays in the running program's memory only.
 pub struct Vault {
     store: Box<dyn SecretStore>,
+    file: Option<FileStore>,
     known: Mutex<HashMap<String, String>>,
+    declined: AtomicBool,
+    attention: AtomicBool,
 }
 
 impl Vault {
     pub fn new(store: Box<dyn SecretStore>) -> Vault {
         Vault {
             store,
+            file: None,
             known: Mutex::new(HashMap::new()),
+            declined: AtomicBool::new(false),
+            attention: AtomicBool::new(false),
         }
     }
 
+    /// With an encrypted file as the fallback when the keyring is not there.
+    pub fn with_file(store: Box<dyn SecretStore>, file: FileStore) -> Vault {
+        Vault {
+            file: Some(file),
+            ..Vault::new(store)
+        }
+    }
+
+    /// The store that holds passwords now, if any.
+    fn backing(&self) -> Option<&dyn SecretStore> {
+        if self.store.available() {
+            Some(&*self.store)
+        } else {
+            self.file
+                .as_ref()
+                .filter(|f| f.is_unlocked())
+                .map(|f| f as &dyn SecretStore)
+        }
+    }
+
+    pub fn mode(&self) -> Mode {
+        if self.store.available() {
+            return Mode::Keyring;
+        }
+        match &self.file {
+            None => Mode::SessionOnly,
+            Some(f) if f.is_unlocked() => Mode::Vault,
+            Some(f) if f.exists() => Mode::Locked,
+            Some(_) => Mode::Fresh,
+        }
+    }
+
+    /// True when passwords are written somewhere safe (keyring or unlocked vault).
     pub fn available(&self) -> bool {
-        self.store.available()
+        self.backing().is_some()
     }
 
     pub fn describe(&self) -> String {
-        self.store.describe()
+        match self.backing() {
+            Some(s) => s.describe(),
+            None => "no keyring".into(),
+        }
     }
 
     /// Removes a secret that no setting refers to any more (a deleted destination).
     pub fn forget(&self, key: &str) {
-        if self.store.delete(key).is_ok() {
-            self.known.lock().unwrap().remove(key);
+        if let Some(s) = self.backing() {
+            if s.delete(key).is_ok() {
+                self.known.lock().unwrap().remove(key);
+            }
         }
     }
 
-    /// After reading the settings file. A non-empty value in the file is a plain text secret from
-    /// an older version: it is stored (and the caller should save the settings, which then leave
-    /// it out of the file). An empty value is looked up in the store. Values stay in memory.
+    fn raise_attention(&self) {
+        if !self.declined.load(Ordering::Relaxed) {
+            self.attention.store(true, Ordering::Relaxed);
+        }
+    }
+
+    /// The question to ask the user now, once (None when nothing is pending or they said no).
+    pub fn take_prompt(&self) -> Option<Prompt> {
+        if self.declined.load(Ordering::Relaxed) || !self.attention.swap(false, Ordering::Relaxed) {
+            return None;
+        }
+        match self.mode() {
+            Mode::Locked => Some(Prompt::Unlock),
+            Mode::Fresh => Some(Prompt::Create),
+            _ => None,
+        }
+    }
+
+    /// "Not now" / "Don't save": no more questions this session; passwords stay in memory.
+    pub fn decline(&self) {
+        self.declined.store(true, Ordering::Relaxed);
+        self.attention.store(false, Ordering::Relaxed);
+    }
+
+    pub fn declined(&self) -> bool {
+        self.declined.load(Ordering::Relaxed)
+    }
+
+    pub fn has_file(&self) -> bool {
+        self.file.as_ref().is_some_and(|f| f.exists())
+    }
+
+    /// Makes the encrypted store with a master password and opens it. Values that were waiting in
+    /// memory are written by the next `persist`.
+    pub fn create_vault(&self, passphrase: &str) -> anyhow::Result<()> {
+        let f = self
+            .file
+            .as_ref()
+            .ok_or_else(|| anyhow!("no password store is configured"))?;
+        f.create(passphrase)?;
+        self.known.lock().unwrap().clear();
+        Ok(())
+    }
+
+    /// Opens the encrypted store. The caller then calls `load` again to fill empty settings.
+    pub fn unlock_vault(&self, passphrase: &str) -> Result<(), OpenError> {
+        let f = self.file.as_ref().ok_or(OpenError::Missing)?;
+        f.unlock(passphrase)?;
+        self.known.lock().unwrap().clear();
+        Ok(())
+    }
+
+    /// Forgets the keys and values of the encrypted store held in memory (it stays on disk).
+    pub fn lock_vault(&self) {
+        if let Some(f) = &self.file {
+            f.lock();
+        }
+        self.known.lock().unwrap().clear();
+    }
+
+    /// Deletes the encrypted file (the master password is lost); stored passwords are gone.
+    pub fn reset_vault(&self) -> anyhow::Result<()> {
+        if let Some(f) = &self.file {
+            f.destroy()?;
+        }
+        self.known.lock().unwrap().clear();
+        Ok(())
+    }
+
+    /// After reading the settings file, or after unlocking. A non-empty value is a plain text
+    /// secret of an older version (or one typed while locked): it is moved into the store, or kept
+    /// in memory when there is none. An empty value is looked up in the store. The caller must
+    /// save the settings when `moved + unsaved > 0`: that rewrites the file without them.
     pub fn load(&self, fields: &mut [(String, &mut String)]) -> Migration {
         let mut m = Migration::default();
         let mut known = self.known.lock().unwrap();
+        let backing = self.backing();
         for (key, value) in fields.iter_mut() {
             if value.is_empty() {
-                if let Ok(Some(v)) = self.store.get(key) {
+                if let Some(Ok(Some(v))) = backing.map(|s| s.get(key)) {
                     known.insert(key.clone(), v.clone());
                     **value = v;
                 }
-            } else if self.store.set(key, value).is_ok() {
+            } else if backing.is_some_and(|s| s.set(key, value).is_ok()) {
                 known.insert(key.clone(), (**value).clone());
                 m.moved += 1;
             } else {
-                m.kept += 1;
+                m.unsaved += 1;
             }
+        }
+        if m.unsaved > 0 || self.mode() == Mode::Locked {
+            self.raise_attention();
         }
         m
     }
 
     /// Before writing the settings file, on a copy of the settings: stores changed values and
-    /// empties them in the copy, removes the ones the user cleared. A value that cannot be stored
-    /// stays in the copy, so it is not lost.
+    /// **empties every secret in the copy**, removes the ones the user cleared. A value that no
+    /// store could take is only in the running program's memory.
     pub fn persist(&self, fields: &mut [(String, &mut String)]) -> Migration {
         let mut m = Migration::default();
         let mut known = self.known.lock().unwrap();
+        let backing = self.backing();
         for (key, value) in fields.iter_mut() {
             if value.is_empty() {
-                if known.contains_key(key) && self.store.delete(key).is_ok() {
+                if known.contains_key(key) && backing.is_some_and(|s| s.delete(key).is_ok()) {
                     known.remove(key);
                 }
                 continue;
             }
-            if known.get(key).is_some_and(|k| k == &**value) || self.store.set(key, value).is_ok() {
+            let stored = known.get(key).is_some_and(|k| k == &**value)
+                || backing.is_some_and(|s| s.set(key, value).is_ok());
+            if stored {
                 known.insert(key.clone(), (**value).clone());
-                value.clear();
                 m.moved += 1;
             } else {
-                m.kept += 1;
+                m.unsaved += 1;
             }
+            value.clear();
+        }
+        if m.unsaved > 0 {
+            self.raise_attention();
         }
         m
     }
@@ -254,6 +511,18 @@ impl Vault {
 mod tests {
     use super::*;
     use std::sync::Arc;
+
+    #[test]
+    fn system_store_matches_the_platform() {
+        let want = if cfg!(target_os = "macos") {
+            "keychain"
+        } else if cfg!(windows) {
+            "credential-manager"
+        } else {
+            "secret-service"
+        };
+        assert_eq!(system_store_name(), want);
+    }
 
     /// Shares a MemoryStore with the test so it can look inside.
     struct Shared(Arc<MemoryStore>);
@@ -293,7 +562,13 @@ mod tests {
         let (v, m) = vault();
         let (mut a, mut b) = ("pw1".to_string(), String::new());
         let r = v.load(&mut [("one".into(), &mut a), ("two".into(), &mut b)]);
-        assert_eq!(r, Migration { moved: 1, kept: 0 });
+        assert_eq!(
+            r,
+            Migration {
+                moved: 1,
+                unsaved: 0
+            }
+        );
         assert_eq!(a, "pw1");
         assert_eq!(m.get("one").unwrap().as_deref(), Some("pw1"));
     }
@@ -338,16 +613,220 @@ mod tests {
     }
 
     #[test]
-    fn without_a_keyring_the_values_stay_in_the_file() {
+    fn without_a_keyring_nothing_is_ever_written_into_the_copy() {
         let v = Vault::new(Box::new(Unavailable("no daemon".into())));
         assert!(!v.available());
+        assert_eq!(v.mode(), Mode::SessionOnly);
         let mut a = "pw1".to_string();
         let r = v.persist(&mut [("one".into(), &mut a)]);
-        assert_eq!(r, Migration { moved: 0, kept: 1 });
-        assert_eq!(a, "pw1");
+        assert_eq!(
+            r,
+            Migration {
+                moved: 0,
+                unsaved: 1
+            }
+        );
+        assert!(a.is_empty(), "the file copy has no secret");
         let mut b = "legacy".to_string();
         let r = v.load(&mut [("two".into(), &mut b)]);
-        assert_eq!(r.kept, 1);
-        assert_eq!(b, "legacy");
+        assert_eq!(r.unsaved, 1);
+        assert_eq!(b, "legacy", "kept in memory for this session");
+    }
+
+    fn tmp(tag: &str) -> std::path::PathBuf {
+        let d = std::env::temp_dir().join(format!("bookx-vault-lib-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        d
+    }
+
+    fn file_vault(d: &std::path::Path) -> Vault {
+        Vault::with_file(
+            Box::new(Unavailable("none".into())),
+            FileStore::with_kdf(d.join("secrets.vault"), Kdf::TEST),
+        )
+    }
+
+    #[test]
+    fn the_encrypted_file_takes_over_when_there_is_no_keyring() {
+        let d = tmp("flow");
+        let v = file_vault(&d);
+        assert_eq!(v.mode(), Mode::Fresh);
+        let mut a = "typed-secret".to_string();
+        v.persist(&mut [("one".into(), &mut a)]);
+        assert_eq!(v.take_prompt(), Some(Prompt::Create), "asked once");
+        assert_eq!(v.take_prompt(), None);
+        v.create_vault("a long master password").unwrap();
+        assert_eq!(v.mode(), Mode::Vault);
+        let mut a = "typed-secret".to_string();
+        let r = v.persist(&mut [("one".into(), &mut a)]);
+        assert_eq!((r.moved, r.unsaved), (1, 0));
+        assert!(a.is_empty());
+        let raw = std::fs::read(d.join("secrets.vault")).unwrap();
+        assert!(!String::from_utf8_lossy(&raw).contains("typed-secret"));
+        // a new session: locked, asks, unlock fills the empty settings
+        let v2 = file_vault(&d);
+        assert_eq!(v2.mode(), Mode::Locked);
+        let mut a = String::new();
+        v2.load(&mut [("one".into(), &mut a)]);
+        assert!(a.is_empty());
+        assert_eq!(v2.take_prompt(), Some(Prompt::Unlock));
+        assert!(v2.unlock_vault("wrong wrong wrong").is_err());
+        v2.unlock_vault("a long master password").unwrap();
+        v2.load(&mut [("one".into(), &mut a)]);
+        assert_eq!(a, "typed-secret");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn the_memory_store_lists_its_keys_sorted_and_never_the_values() {
+        let s = MemoryStore::new();
+        s.set("b", "secret-b").unwrap();
+        s.set("a", "secret-a").unwrap();
+        assert_eq!(s.keys(), ["a", "b"]);
+        assert_eq!(s.describe(), "a temporary in-memory keyring");
+        assert!(s.available());
+    }
+
+    #[test]
+    fn an_unavailable_store_fails_every_call_with_the_reason() {
+        let s = Unavailable("the daemon is gone".into());
+        assert!(!s.available());
+        assert_eq!(s.describe(), "no keyring");
+        for r in [s.get("k").map(|_| ()), s.set("k", "v"), s.delete("k")] {
+            assert_eq!(r.unwrap_err().to_string(), "the daemon is gone");
+        }
+    }
+
+    #[test]
+    fn the_environment_picks_the_store() {
+        // one test owns BOOKX_SECRETS, so it cannot race with another
+        std::env::set_var("BOOKX_SECRETS", "memory");
+        let m = open_default();
+        assert!(m.available());
+        m.set("k", "v").unwrap();
+        assert_eq!(m.get("k").unwrap().as_deref(), Some("v"));
+        std::env::set_var("BOOKX_SECRETS", "none");
+        let n = open_default();
+        assert!(!n.available());
+        assert_eq!(
+            n.get("k").unwrap_err().to_string(),
+            "switched off for this session"
+        );
+        std::env::remove_var("BOOKX_SECRETS");
+    }
+
+    #[test]
+    fn forgetting_removes_the_secret_from_the_store_and_the_memory() {
+        let (v, m) = vault();
+        let mut a = "pw".to_string();
+        v.persist(&mut [("one".into(), &mut a)]);
+        assert_eq!(v.mode(), Mode::Keyring);
+        assert_eq!(v.describe(), "a temporary in-memory keyring");
+        v.forget("one");
+        assert_eq!(m.get("one").unwrap(), None);
+        // the same value is written again: the vault no longer believes it is stored
+        let mut a = "pw".to_string();
+        v.persist(&mut [("one".into(), &mut a)]);
+        assert_eq!(m.get("one").unwrap().as_deref(), Some("pw"));
+        // nothing to forget without a place to keep passwords
+        let none = Vault::new(Box::new(Unavailable("x".into())));
+        none.forget("one");
+        assert_eq!(none.describe(), "no keyring");
+    }
+
+    #[test]
+    fn a_working_keyring_never_asks_and_remembers_a_refusal() {
+        let (v, _) = vault();
+        assert!(!v.declined());
+        let mut a = "pw".to_string();
+        v.persist(&mut [("one".into(), &mut a)]);
+        assert_eq!(v.take_prompt(), None);
+        v.decline();
+        assert!(v.declined());
+        assert_eq!(v.take_prompt(), None);
+    }
+
+    #[test]
+    fn a_vault_without_a_file_cannot_make_one_and_has_nothing_to_unlock() {
+        let v = Vault::new(Box::new(Unavailable("x".into())));
+        assert!(!v.has_file());
+        assert!(v
+            .create_vault("a long master password")
+            .unwrap_err()
+            .to_string()
+            .contains("no password store"));
+        assert_eq!(
+            v.unlock_vault("a long master password"),
+            Err(OpenError::Missing)
+        );
+        v.lock_vault();
+        v.reset_vault().unwrap();
+        assert_eq!(v.take_prompt(), None);
+    }
+
+    #[test]
+    fn locking_and_resetting_the_encrypted_file() {
+        let d = tmp("lockreset");
+        let v = file_vault(&d);
+        v.create_vault("a long master password").unwrap();
+        assert!(v.has_file());
+        assert!(v.available());
+        let mut a = "kept".to_string();
+        v.persist(&mut [("one".into(), &mut a)]);
+        v.lock_vault();
+        assert_eq!(v.mode(), Mode::Locked);
+        assert!(!v.available());
+        assert_eq!(v.describe(), "no keyring");
+        // locked: asking is raised by a load with nothing to read, once
+        let mut e = String::new();
+        v.load(&mut [("one".into(), &mut e)]);
+        assert_eq!(v.take_prompt(), Some(Prompt::Unlock));
+        // the master password is lost: reset deletes the file, a new one can be made
+        v.reset_vault().unwrap();
+        assert!(!v.has_file());
+        assert_eq!(v.mode(), Mode::Fresh);
+        v.create_vault("another long master password").unwrap();
+        let mut e = String::new();
+        v.load(&mut [("one".into(), &mut e)]);
+        assert!(e.is_empty(), "the old passwords are gone");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn declining_means_memory_only_and_no_more_questions() {
+        let d = tmp("decline");
+        let v = file_vault(&d);
+        v.decline();
+        let mut a = "typed".to_string();
+        let r = v.persist(&mut [("one".into(), &mut a)]);
+        assert_eq!(r.unsaved, 1);
+        assert!(a.is_empty());
+        assert_eq!(v.take_prompt(), None);
+        assert!(!d.join("secrets.vault").exists());
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn a_locked_store_never_leaks_a_value_into_the_copy_and_keeps_stored_ones() {
+        let d = tmp("locked");
+        let v = file_vault(&d);
+        v.create_vault("a long master password").unwrap();
+        let mut a = "kept".to_string();
+        v.persist(&mut [("one".into(), &mut a)]);
+        let v2 = file_vault(&d);
+        let mut b = "typed-while-locked".to_string();
+        let r = v2.persist(&mut [("two".into(), &mut b)]);
+        assert_eq!(r.unsaved, 1);
+        assert!(b.is_empty());
+        let mut c = String::new();
+        v2.persist(&mut [("one".into(), &mut c)]);
+        v2.unlock_vault("a long master password").unwrap();
+        let mut c = String::new();
+        v2.load(&mut [("one".into(), &mut c)]);
+        assert_eq!(
+            c, "kept",
+            "an empty field while locked did not delete the stored value"
+        );
+        let _ = std::fs::remove_dir_all(&d);
     }
 }

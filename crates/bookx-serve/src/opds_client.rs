@@ -904,6 +904,8 @@ mod tests {
             formats: vec![],
             resources: vec![],
             drm: String::new(),
+            custom: Default::default(),
+            marked: false,
         };
         let cfg = crate::opds::OpdsConfig::default();
         let doc =

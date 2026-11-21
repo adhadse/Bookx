@@ -9,6 +9,7 @@ pub mod mobi;
 pub mod model;
 pub mod options;
 pub mod pipeline;
+pub mod queue;
 pub mod report;
 #[cfg(test)]
 pub(crate) mod testutil;

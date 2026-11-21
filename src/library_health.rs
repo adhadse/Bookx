@@ -55,6 +55,7 @@ pub fn open(
     root: &Path,
 ) -> anyhow::Result<(bookx_core::library::Library, LibraryGuard, Option<usize>)> {
     bookx_core::layout::register_template_renderer(bookx_sources::template::render_library_path);
+    bookx_core::custom::register_composite_renderer(bookx_sources::template::render_composite);
     let force = std::env::var("BOOKX_READ_ONLY").is_ok_and(|v| v == "1");
     let g: GuardedLibrary = open_library_guarded(root, "Bookx", force)?;
     let migrated = g.opened.migrated;

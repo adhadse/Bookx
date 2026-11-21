@@ -23,7 +23,7 @@ thread_local! {
 
 /// The icon of the header button: only the jobs use it (Shelves has `bookmark-new-symbolic`, the table
 /// view `view-list-symbolic`).
-pub const JOBS_ICON: &str = "task-due-symbolic";
+pub const JOBS_ICON: &str = "blocks-symbolic";
 
 /// The icons the Jobs button may take, the first the theme has (not every theme ships the first).
 /// `process-working-symbolic` is not one of them: GTK draws it as a spinner that never stops.

@@ -120,7 +120,7 @@ impl Job {
     /// "Running", "Done", "Failed: reason", "Cancelled".
     pub fn state_text(&self) -> String {
         match &self.state {
-            State::Running if self.cancel_asked() => "Cancelling…".into(),
+            State::Running if self.cancel_asked() => "Cancelling".into(),
             State::Running => "Running".into(),
             State::Done => "Done".into(),
             State::Failed(e) => format!("Failed: {e}"),
@@ -199,7 +199,7 @@ pub fn status_lines(job: &Job, now_ms: i64) -> StatusLines {
     let quick = job.elapsed_ms(now_ms) < 1000;
     match &job.state {
         State::Running if job.cancel_asked() => StatusLines {
-            primary: tr("Cancelling…"),
+            primary: tr("Cancelling"),
             secondary: String::new(),
         },
         State::Running => {
@@ -568,7 +568,7 @@ mod tests {
         let (b, tb) = h.start(Kind::Send, "b", false, 0);
         assert!(h.cancel(a));
         assert!(ta.is_cancelled());
-        assert_eq!(h.get(a).unwrap().state_text(), "Cancelling…");
+        assert_eq!(h.get(a).unwrap().state_text(), "Cancelling");
         assert!(!h.cancel(b));
         assert!(!tb.is_cancelled());
         // the worker notices and ends: the job is Cancelled even if it reports success
@@ -764,7 +764,7 @@ mod tests {
         let l = status_lines(&j, 0);
         assert_eq!(
             (l.primary.as_str(), l.secondary.as_str()),
-            ("Cancelling…", "")
+            ("Cancelling", "")
         );
     }
 

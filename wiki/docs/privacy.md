@@ -25,7 +25,7 @@ that offline mode is on instead of failing slowly. Books, notes, search, convers
 you already have and your backups keep working.
 
 Servers you set up yourself are **not** stopped by the switch, because you chose their address: the voice server, the
-mail server, WebDAV folders, the sync server and Readwise. The library server (Sync) is not a connection from your computer:
+mail server, WebDAV folders, the sync server and Readwise. The OPDS server (Sync) is not a connection from your computer:
 other devices connect to it, only while it is on and only with the password. The environment variable
 `BOOKX_OFFLINE=1` has the same effect for one session.
 
@@ -45,7 +45,7 @@ other devices connect to it, only while it is on and only with the password. The
 | Send by e-mail | the mail server you enter | the book and the message | not stopped |
 | Cloud folders (WebDAV) for devices and backups | the WebDAV address you enter | book files; backups of your books, covers, catalogue and notes (encrypted if you chose to) | not stopped |
 | Bookx sync (reading position, highlights, notes) | the sync server you enter, or your own Bookx | a book fingerprint and your position | not stopped |
-| Sync: library server (OPDS, KOReader) | nothing: other devices connect to this computer | the books you share | not stopped |
+| Sync: OPDS server and Bookx sync | nothing: other devices connect to this computer | the books you share | not stopped |
 | Readwise upload | readwise.io | your highlights, when you press Upload | not stopped |
 
 The same list is on the Privacy page of Preferences. Translate sends the selected text to Google's translation service; if that
@@ -55,4 +55,4 @@ your reading history or any identifier of your computer.
 !!! note "Limits"
     - Plugins can only contact the hosts named in their manifest, and their requests go through the same HTTP
       client, so offline mode stops them too (see [Plugins and patches](plugins-and-patches.md)).
-    - Passwords for mail, WebDAV and similar are kept in the system keyring, not in the settings file.
+    - Passwords for mail, WebDAV and similar are kept in the system keyring or Bookx's encrypted password store, never in the settings file or any other plain file ([details](backup-and-restore.md#passwords)).

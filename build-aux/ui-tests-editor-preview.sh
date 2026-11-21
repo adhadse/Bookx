@@ -104,7 +104,7 @@ scenario editor_pv_a11y 'edit:1,wait:3000,editor:open=OEBPS/chapter-1.xhtml,wait
     ! has "^a11y-problem:"; check "the preview header, compare view, Live CSS panel, checkpoints dialog and split dialog have accessible names" $?
     [ "$(grep -c "^a11y:" <<<"$OUT")" -ge 4 ]; check "the audit ran with each of them open" $?'
 
-scenario editor_scroll_sync 'edit:1,wait:3000,editor:open=OEBPS/chapter-1.xhtml,wait:600,editor:pv-fill=150,wait:400,editor:pv-refresh,wait:800,editor:pv-sync-state,editor:pv-both=off,wait:200,editor:pv-code-scroll=120,wait:600,editor:pv-sync-state,editor:pv-code-scroll=60,wait:600,editor:pv-sync-state,editor:pv-code-scroll=1,wait:600,editor:pv-sync-state,editor:pv-preview-scroll=0.5,wait:600,editor:pv-sync-state,editor:pv-both=on,wait:200,editor:pv-preview-scroll=0.5,wait:600,editor:pv-sync-state,editor:pv-code-scroll=100,wait:600,editor:pv-sync-state,editor:find-in-text=Filler paragraph 20 of,wait:700,editor:pv-where,editor:pv-sync-state,editor:pv-hide=on,wait:300,editor:pv-code-scroll=10,wait:600,editor:pv-sync-state,quit' '
+scenario editor_scroll_sync 'edit:1,wait:3000,editor:open=OEBPS/chapter-1.xhtml,wait:600,editor:pv-fill=150,wait:400,editor:pv-refresh,wait:800,until:editor-sync-idle:8000,editor:pv-sync-state,editor:pv-both=off,wait:200,editor:pv-code-scroll=120,until:editor-sync-idle:8000,wait:250,editor:pv-sync-state,editor:pv-code-scroll=60,until:editor-sync-idle:8000,wait:250,editor:pv-sync-state,editor:pv-code-scroll=1,until:editor-sync-idle:8000,wait:250,editor:pv-sync-state,editor:pv-preview-scroll=0.5,until:editor-sync-idle:8000,wait:250,editor:pv-sync-state,editor:pv-both=on,wait:200,editor:pv-preview-scroll=0.5,until:editor-sync-idle:8000,wait:250,editor:pv-sync-state,editor:pv-code-scroll=100,until:editor-sync-idle:8000,wait:250,editor:pv-sync-state,editor:find-in-text=Filler paragraph 20 of,wait:700,editor:pv-where,editor:pv-sync-state,editor:pv-hide=on,wait:300,editor:pv-code-scroll=10,until:editor-sync-idle:8000,wait:250,editor:pv-sync-state,quit' '
     S=$(grep "^editor_sync:" <<<"$OUT")
     f() { sed -n "$1p" <<<"$S" | sed -E "s/.* $2=(Some\()?([0-9]+).*/\2/"; }
     near() { [ "$(( $1 - $2 ))" -le 1 ] && [ "$(( $2 - $1 ))" -le 1 ]; }
@@ -131,4 +131,8 @@ scenario editor_scroll_sync_old 'edit:1,wait:3000,editor:open=OEBPS/chapter-1.xh
     S=$(grep "^editor_sync:" <<<"$OUT")
     sed -n 1p <<<"$S" | grep -q "^editor_sync: both=true "; check "an old editor.json with the option off is switched on once" $?
     grep -q "\"scroll_both\": true" "$d/cfg/bookx/editor.json" && grep -q "\"scroll_both_v2\": true" "$d/cfg/bookx/editor.json"; check "the migration is written once (marker in editor.json)" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING|GLib-GObject"; check "no errors or GTK warnings" $?'
+
+scenario editor_pv_click_selects 'edit:1,wait:3000,editor:open=OEBPS/chapter-1.xhtml,wait:800,editor:pv-state,editor:pv-scroll-top,wait:300,editor:pv-click-block=3,wait:500,editor:pv-code-sel,quit' '
+    has "^editor_pv: code_sel=\"<p>Paragraph 3 of chapter .* len=[1-9][0-9]{2,}$"; check "a click in the preview selects the whole element in the code" $?
     ! has "panicked|CRITICAL|Gtk-WARNING|GLib-GObject"; check "no errors or GTK warnings" $?'

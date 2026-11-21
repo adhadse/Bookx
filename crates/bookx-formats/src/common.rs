@@ -734,8 +734,8 @@ pub fn html_to_xhtml(html: &str, rewrite: &dyn Fn(&str) -> Option<String>) -> St
 
 /// Like [`html_to_xhtml`] but returns one string per top level node of the `<body>`.
 pub fn html_blocks(html: &str, rewrite: &dyn Fn(&str) -> Option<String>) -> Vec<String> {
-    use scraper::{Html, Node};
-    let doc = Html::parse_document(html);
+    use scraper::Node;
+    let doc = bookx_core::util::parse_html_document(html);
     let mut blocks = Vec::new();
     let Some(body) = scraper::Selector::parse("body")
         .ok()
@@ -878,7 +878,7 @@ fn emit_node(
 
 /// Text of the HTML `<title>`, if any.
 pub fn html_title(html: &str) -> Option<String> {
-    let doc = scraper::Html::parse_document(html);
+    let doc = bookx_core::util::parse_html_document(html);
     let sel = scraper::Selector::parse("title").ok()?;
     let t = doc
         .select(&sel)

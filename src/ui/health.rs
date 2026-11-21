@@ -162,7 +162,7 @@ fn read_only(shared: &SharedRef) -> bool {
 }
 
 /// Reloads the books from the database after it was restored or imported into.
-fn reload_library(shared: &SharedRef) -> anyhow::Result<()> {
+pub(super) fn reload_library(shared: &SharedRef) -> anyhow::Result<()> {
     let root = root_of(shared);
     let ro = read_only(shared);
     let mut lib = Library::with_backend(&root, Box::new(SqliteCatalog::new(store_of(shared))))?;
@@ -344,7 +344,7 @@ impl Ctx {
         let store = store_of(&self.shared);
         let drift = self.drift_switch.is_active();
         self.check_btn.set_sensitive(false);
-        self.check_summary.set_subtitle(&tr("Checking…"));
+        self.check_summary.set_subtitle(&tr("Checking"));
         let weak = Rc::downgrade(self);
         glib::spawn_future_local(async move {
             let n = books.len();
@@ -462,7 +462,7 @@ impl Ctx {
         self.calibre_btn.set_sensitive(false);
         self.calibre_progress.set_visible(true);
         self.calibre_progress.set_fraction(0.0);
-        self.calibre_report.set_subtitle(&tr("Importing…"));
+        self.calibre_report.set_subtitle(&tr("Importing"));
         let worker_state = state.clone();
         let handle = gio::spawn_blocking(move || {
             bookx_store::import_calibre_into(&store, &root, &dir, copy, &mut |s, d, n| {
@@ -491,8 +491,8 @@ impl Ctx {
                 };
                 ctx.calibre_progress.set_fraction(frac);
                 ctx.calibre_report.set_subtitle(match stage {
-                    Stage::Reading => "Reading the Calibre catalogue…",
-                    Stage::Copying => "Copying book files…",
+                    Stage::Reading => "Reading the Calibre catalogue",
+                    Stage::Copying => "Copying book files",
                 });
                 glib::ControlFlow::Continue
             }
@@ -1146,7 +1146,7 @@ pub fn show_tab(
     links: Links,
     tab: &str,
 ) {
-    let dialog = adw::Dialog::new();
+    let dialog = crate::ui::dialog_toast::new_dialog();
     dialog.set_title(&tr("Library Health"));
     dialog.set_content_width(860);
     dialog.set_content_height(560);
@@ -1229,7 +1229,7 @@ pub fn show_tab(
     // import folder
     let inbox_group = adw::PreferencesGroup::new();
     inbox_group.set_title(&tr("Import folder"));
-    inbox_group.set_description(Some(&tr("New books that appear in this folder wait here for your approval; nothing is added on its own.")));
+    inbox_group.set_description(Some(&tr("New books that appear in this folder wait here for your approval, unless you switch on adding them automatically.")));
     let inbox_folder = row(&tr("Watched folder"), &tr("No folder chosen"));
     let inbox_pick = button(&tr("Choose"));
     inbox_folder.add_suffix(&inbox_pick);
@@ -1242,6 +1242,7 @@ pub fn show_tab(
     inbox_actions.add_suffix(&inbox_add_all);
     inbox_group.add(&inbox_folder);
     inbox_group.add(&inbox_actions);
+    inbox_group.add(&super::folder_watch::switch_row(shared));
     let inbox = Dynamic::new("", "");
     // history and trash
     let history_group = adw::PreferencesGroup::new();
@@ -1472,14 +1473,6 @@ impl Ctx {
         } else {
             self.show_candidates(Vec::new());
         }
-    }
-}
-
-/// Opens the window and starts the Calibre import (the *Import Calibre Library…* menu item).
-pub fn show_and_import_calibre(parent: &impl IsA<gtk::Widget>, shared: &SharedRef, notify: Notify) {
-    show(parent, shared, notify);
-    if let Some(ctx) = OPEN.with(|o| o.borrow().clone()) {
-        ctx.start_calibre();
     }
 }
 

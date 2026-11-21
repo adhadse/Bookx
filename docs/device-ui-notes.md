@@ -84,3 +84,29 @@ The exact user-visible copy, checked by `device_window_hig` and the wiki scenari
   and password), not the Share password; the KOSync routes skip the Share password, and registration is open; Bookx stores the
   positions only and does not feed them into the library's progress.
 * Not covered by a scenario: a real mouse click on a row or tile (the hook calls the same `click` function the gesture calls).
+
+## Library-style tiles and spacing (grid mode of both lists)
+
+Owner report: the grid of the Books page had huge tiles (2 per row), the count ("6 books") sat on the captions and
+the captions were clipped under the covers.
+
+* `src/ui/book_tile.rs` is the shared card builder: 2:3 cover (`.book-cover`, placeholder colour plus title when
+  there is no cover), centred two-line heading title (ellipsis), one dim `.caption` line, 10 px card margin, the check
+  box over the cover's top-left corner, a warning icon over the top-right corner. Sizing is pure (`cover_width`,
+  `cover_height`, `caption_chars`, `card_width`) and unit tested, including that `LIBRARY_COVER` (150) equals
+  `Config::default().cover_size`. The dialog takes the library's cover size, capped at 150 (three cards must fit 640 px)
+  and floored at 96. The library has its own card in `library.rs`; it can adopt `book_tile::build` later.
+* `PickList` no longer has an inner scroller: the Books page scrolls as one, so the wheel never gets trapped and nothing
+  can overlap. The consequence is that a device with hundreds of books makes a long page (the Remove button is at the end).
+* Layout: page box spacing 12 between groups, 12 px page margin, count/sync status and the Remove / Send button have a 6 px
+  margin below the list. Row mode: row padding 4 px top and bottom (was 6).
+* Selected tile: `.pick-selected` is put on the FlowBox child, so the whole card including its margin is highlighted.
+* Before: tile 104x156 slot (about 200 px wide with the stretch), 2 columns at 640 px, inner scrollers 180-360 px.
+  After: tile 150x272 (150x290 with a two-line title), 3 columns at 640 px, the same as the library tile (`library:tiles`
+  prints `size=150x272`).
+* Hooks: `devwin:layout` / `devwin:dump` print `devwin_grid: <list> columns= tile_w= tile_h= caption_lines= clipped=
+  status_overlaps= group_gap= remove_gap= cover_w= card_w=` (zeros while the list view is shown). Scenario `device_grid`
+  (fixture with two long titles) checks columns >= 3, two-line captions not clipped, status below the grid, group gap >= 10
+  and the tile width within 10 percent of the library's.
+* About four rows at 560 px is not reachable with library-sized cards (a card is about 290 px high): the first row and a
+  half are visible, the rest scrolls with the page.

@@ -102,7 +102,11 @@ The search box at the top finds highlights by words of the quote, the note or th
 
 
 The search popover opens from the magnifier in the header bar and fits the window (it is narrower and shorter in a small window). The line under the field counts
-the matches while it searches ("12 results so far…"); a search with no match shows a *No Results* page.
+the matches while it searches ("Searching, 12 so far"); a search with no match shows a *No Results* page.
+
+Three buttons under the field change what a search means: **Words** (whole words only, so *cat* does not find *concat*),
+**Aa** (match case) and **.\*** (a regular expression, for example `Chap.er [0-9]`). A regular expression that is not valid says
+so under the field. The choices are kept until you change them.
 
 To jump somewhere, open the Main Menu and choose *Go to* (or press ++ctrl+l++ or ++ctrl+g++). It asks where to go. The field says *Page, percent, location or chapter*;
 the line under it tells what the book has and, as you type, where the text leads. A text that does not work turns the
@@ -239,7 +243,10 @@ The **Text Appearance** button (the text-format button in the header bar, next t
 The **More Text Options** button in that popover opens a window with the rest:
 
 - **Colours**: *Theme / Original / Custom* and the colour pickers.
-- **Text**: hyphenate words, paragraph spacing, optimal line breaking and the hyphenation language.
+- **Text**: hyphenate words, paragraph spacing, optimal line breaking, the hyphenation language, **text weight**,
+  **word spacing**, **text contrast**, **kerning**, **widows and orphans** (the least lines of a paragraph left at the
+  bottom or carried to the top of a page, 1 to 4; the default is 2), **Book's own styling** and **Book's fonts and
+  sizes**. Each row has its own switch: while it is off the default applies.
 - **Advanced and custom CSS** (collapsed): overrides of line height, margins, font and justification, and your own
   style sheet that is applied after the book's.
 - **This book**: *Use as Default for New Books* and *Reset This Book to Defaults*, each with a line that says what it does.
@@ -255,14 +262,44 @@ from your defaults:
 others were saved to `reading-profiles-backup.json` next to the settings.)
 
 *Preferences → Reading → Use the book's own styling* applies the book's CSS classes (italic, bold, underline, small caps,
-monospace, alignment, hidden text, first-line indents and paragraph spacing) on top of the plain structure.
+monospace, alignment, hidden text, first-line indents, paragraph spacing and the fonts and relative sizes the book asks
+for) on top of the plain structure. Small capitals are drawn as real small capitals. The **Book's own styling** row in
+More Text Options overrides the preference for one book (on or off), and **Book's fonts and sizes** keeps your font
+while the rest of the styling stays. Tables are still shown as rows of cells separated by bars, and positioned text is
+not reproduced.
+
+### Reading aids
+
+*Preferences → Reading → Reading aids* has the settings of a few small helpers:
+
+- **Page-turn animation**: *None*, *Slide* or *Fade*. It is off whenever your system asks for reduced motion and in
+  e-ink mode, whatever you choose here.
+- **Auto-turn**: *Auto-Turn Pages* in the command palette turns a page every few seconds (the interval is
+  in Preferences). It waits while a menu or a selection is open or the book is read aloud, starts the time over when you
+  turn a page yourself and stops at the end of the book.
+- **Evening schedule**: between two times the page gets a warm tint (blue is taken out), growing over 30 minutes
+  before the evening and fading after it, and the dark theme is used when the reading theme is *Automatic*.
+- **Copy with a citation**: ++ctrl+shift+c++ copies the selection with its source. The template uses `{text}`,
+  `{title}`, `{author}`, `{chapter}`, `{page}`, `{date}` and `{isbn}`; a separator in front of an empty field goes with
+  it. A switch makes every copy a citation.
+- **Link hints**: *Show Link Hints* (++ctrl+semicolon++) puts a letter on every link of the page; type the letter to
+  follow it, anything else puts the hints away.
+- **Page turner keys**: the media keys (*Next*, *Previous*, *Forward*, *Rewind*), the keypad ++plus++, ++minus++ and
+  ++enter++ and ++f7++ / ++f8++ of Bluetooth page turners and presentation remotes turn pages. Add your own as
+  `KeyName=action` (actions: `next-page`, `prev-page`, `next-chapter`, `prev-chapter`, `toggle-chrome`); a key with no
+  action frees a default.
+- **Archive finished books**: off by default; when on, a book you read to its end is added to a shelf called *Archive*.
+
+Dragging the progress slider shows the chapter and percentage under the pointer. The **Contents** list can fold:
+a section with sub-sections has an arrow, and *Collapse All* / *Expand All* sit above the list. The chapter you are
+reading is always shown. Moving a handle of a saved highlight changes the highlight itself.
 
 ## The footer
 
 Under the page the footer shows reading statistics. Right-click it, or choose **Footer Statistics** in the Main Menu, to
 open the *Footer Statistics* window: the preset, the items (each with up and down buttons), how the footer looks and
 *Only for this book*, in lists; every change shows in the footer at once. The same settings are in *Preferences →
-Reading → Footer Stats*.
+Reading → Footer Statistics*.
 
 ![The footer settings](assets/reader-footer-settings-light.png#only-light)
 ![The footer settings](assets/reader-footer-settings-dark.png#only-dark)
@@ -411,7 +448,7 @@ A look-up uses **StarDict dictionaries on your computer**, so it works offline. 
   is CC BY-SA 3.0 / GFDL, WikDict CC BY-SA 4.0. Each entry has the licence, size, SHA-256 of every download and
   several origins, tried in order.
 - **Your own.** StarDict dictionaries (folders with `.ifo`, `.idx`, `.dict` or `.dict.dz`, optional `.syn`) put into
-  `~/.local/share/bookx/dictionaries/` (*Open folder* in the settings) are used too. A dictionary whose name says
+  `~/.local/share/bookx/dictionaries/` (*Open Folder* in the settings) are used too. A dictionary whose name says
   which language it is for (*German-English*) counts for that language, one that does not counts for every language,
   so Bookx does not offer a download next to your own.
 - **Remove** a downloaded dictionary with the bin button in the settings: it disappears at once and a message with **Undo** stays for 8 seconds; the files are deleted when it goes away. A download in progress shows *Downloading… 3 MB of 12 MB* in the *Get a dictionary* row, and a failure says *Could not download* and why. Downloads are checked against the SHA-256 of
@@ -435,6 +472,8 @@ Select text and a small popover appears next to it: click one of the **5 colours
 click away. Click an existing highlight to open the same popover again: change its colour or style there, edit the note,
 or remove it with the bin. Add a bookmark with the bookmark button at the left of the header bar (or ++ctrl+d++). Highlights, notes and bookmarks are listed in [the sidebar](#the-sidebar), where you can also
 search and filter them and change a highlight's note, colour or style.
+
+Highlights, notes and bookmarks that your e-reader sends over Wi-Fi appear on the open page while you read, and the page offers to continue where the e-reader is when it is further along ([live updates](koreader-sync.md#live)).
 
 Export them from the library (right-click → *Export Annotations*) to JSON, Markdown or plain text.
 [Send to a device](devices-and-sharing.md#send-to-device) adds them to the file you send (switch off in the Device window if you do not want that).
@@ -610,7 +649,8 @@ what search, the library index and *Convert To* use.
 
 CBZ and CBT comics (and CBR files that are really zip archives) open in a **comic reader** made for pictures. The
 text of ComicInfo.xml fills the library: title, series, number, writer, publisher, year, summary and genre. The same
-file says which pages are double pages or covers. Real RAR archives cannot be read (convert them to CBZ first).
+file says which pages are double pages or covers. Real RAR archives (CBR) are read when the `unrar` or `7z` program is
+installed on your computer; without it Bookx says so and you can convert the file to CBZ.
 
 - **Layout** (the **View Options** button, the display icon in the header bar, or the **M** key): *Single page*, *Two pages* (like an open book) or
   *Vertical scroll* for webtoons, where the pages follow each other as one long strip. In the two-page layout
@@ -636,7 +676,14 @@ file says which pages are double pages or covers. Real RAR archives cannot be re
   ComicInfo.xml (cover, preview, back cover, ...) are named in the tooltip.
 - **Grey pages** and **e-ink mode**: pages are shown in grey and moves are not animated. Moves are also not animated
   when your system asks for reduced motion (*Animate moves between panels* in Preferences).
-- **Defaults** for new comics are in *Preferences → Reading → Comics*.
+- **Series and volumes**: a comic with no series in ComicInfo.xml gets its series from the folder it was added from
+  (`Berserk/Berserk v03.cbz` is volume 3 of *Berserk*; folders such as Downloads or Comics are ignored). On the last
+  page, press the forward key once more: Bookx names the next volume of the series, and a second press opens it. The
+  same at the first page opens the previous volume at its last page. *View Options → Previous Volume / Next Volume* and
+  Ctrl+Page Down / Ctrl+Page Up do it at once. The order is the series number; comics without a series follow the file
+  names of their folder (only books that stay where they were, the *Linked* layout).
+- **Defaults** for new comics are in *Preferences → Reading → Comics*, including *Read this library right to left* (for
+  a library of manga) and *Ignore ComicInfo.xml when importing* (use only file names and picture order).
 
 Pages are decoded in the background and kept ready: the next few pages in your reading direction are prepared while
 you read, very large scans are reduced to a size that fits the memory, and the memory used for pages has a ceiling.
@@ -646,7 +693,7 @@ comic is added.
 !!! note "Limits"
     Panel detection looks for gutters of one plain colour (white or black) between rectangular panels. Pages with
     overlapping, slanted or borderless panels have no panels found and are shown whole. Bookx does not read the text in
-    the pictures, and a screen reader cannot read them. There is no automatic "next volume in the folder" yet.
+    the pictures, and a screen reader cannot read them.
 
 ## Vertical writing
 
@@ -711,6 +758,13 @@ combining.
       which you switch on yourself.
 
 ## Questions and answers
+
+??? question "How do I search for a whole word or with a pattern?"
+    Open the search (++ctrl+f++) and use the buttons under the field: **Words** for whole words, **Aa** to match case and
+    **.\*** for a regular expression.
+
+??? question "How do I make the page warmer in the evening?"
+    **Preferences → Reading → Reading aids → Evening schedule**: switch it on and set the two times and the warmth.
 
 ??? question "How do I change the font, the size or the line spacing?"
     Click the **Text Appearance** button in the reader's header bar (the text-format icon, next to the magnifier). The

@@ -17,10 +17,10 @@ fn user_dir() -> Option<std::path::PathBuf> {
 impl Editor {
     pub(super) fn spell_dictionaries_dialog(&mut self) {
         self.ensure_spell();
-        let dialog = adw::Dialog::new();
+        let dialog = crate::ui::dialog_toast::new_dialog();
         dialog.set_title(&tr("Spelling Dictionaries"));
         dialog.set_content_width(520);
-        dialog.set_content_height(620);
+        dialog.set_content_height(560);
         let page = adw::PreferencesPage::new();
 
         let installed = adw::PreferencesGroup::new();

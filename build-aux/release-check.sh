@@ -47,9 +47,30 @@ for a in m["finish-args"]:
 PY
 then ok "manifest valid, no broad permissions"; else bad "manifest invalid or too broad"; fi
 
+if python3 -c 'import yaml' 2>/dev/null; then
+    if python3 - <<'PY'
+import json, yaml
+dev = json.load(open("build-aux/com.adhadse.Bookx.json"))
+fh = yaml.safe_load(open("packaging/flathub/com.adhadse.Bookx.yml"))
+for k in ("id", "runtime", "runtime-version", "sdk", "command"):
+    assert dev[k] == fh[k], f"{k} differs between the dev and the Flathub manifest"
+assert sorted(dev["finish-args"]) == sorted(fh["finish-args"]), "finish-args differ between the dev and the Flathub manifest"
+src = {m["name"]: m for m in fh["modules"]}["bookx"]["sources"]
+assert any(isinstance(x, dict) and x.get("type") == "git" and x.get("tag") and x.get("commit") for x in src), "git source"
+assert "cargo-sources.json" in src
+import json as j
+assert j.load(open("packaging/flathub/flathub.json"))
+PY
+    then ok "Flathub manifest (packaging/flathub) agrees with the development manifest"
+    else bad "packaging/flathub manifest differs from build-aux/com.adhadse.Bookx.json"; fi
+else skip "python3 yaml not installed (Flathub manifest not compared)"; fi
+
 echo "==> plugin golden files (ABI compatibility)"
 if (cd crates/bookx-plugin/tests/golden && sha256sum --quiet -c SHA256SUMS); then ok "golden plugins unchanged"
 else bad "golden plugin files changed: this is an ABI break unless intended (docs/plugin-development.md)"; fi
+
+echo "==> README pictures"
+if out=$(python3 build-aux/check-readme-images.py 2>&1); then ok "$out"; else bad "README pictures: $out"; fi
 
 echo "==> desktop integration"
 if command -v desktop-file-validate >/dev/null; then

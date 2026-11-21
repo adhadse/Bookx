@@ -83,6 +83,39 @@ struct Dlg {
     preview: adw::ActionRow,
 }
 
+/// The widgets of the open Add / Edit Place window, for the developer script.
+#[derive(Clone)]
+struct EditDlg {
+    dialog: adw::Dialog,
+    kind: adw::ComboRow,
+    name: adw::EntryRow,
+    folder: adw::EntryRow,
+    url: adw::EntryRow,
+    user: adw::EntryRow,
+    pass: adw::PasswordEntryRow,
+    dav_folder: adw::EntryRow,
+    keep: adw::SpinRow,
+    encrypt: adw::SwitchRow,
+    books: adw::SwitchRow,
+    covers: adw::SwitchRow,
+    max_mb: adw::SpinRow,
+    result: adw::ActionRow,
+    folder_group: adw::PreferencesGroup,
+    dav_group: adw::PreferencesGroup,
+    save: gtk::Button,
+    test: gtk::Button,
+}
+
+/// The widgets of the open Change Backup Passphrase window.
+#[derive(Clone)]
+struct RekeyDlg {
+    go: gtk::Button,
+    old: adw::PasswordEntryRow,
+    new: adw::PasswordEntryRow,
+    repeat: adw::PasswordEntryRow,
+    status: gtk::Label,
+}
+
 /// The lines under a place: what it holds, what the next copy does, the last check.
 #[derive(Debug, Clone, Default)]
 struct PlaceExtra {
@@ -147,6 +180,10 @@ pub struct Panel {
     extras: RefCell<HashMap<String, PlaceExtra>>,
     dev_restore: RefCell<DevRestore>,
     dlg: RefCell<Option<Dlg>>,
+    edit: RefCell<Option<EditDlg>>,
+    rekey_dlg: RefCell<Option<RekeyDlg>>,
+    /// Places that were busy (another computer writing) at the last run, by id.
+    busy_ids: RefCell<Vec<String>>,
     points: RefCell<Vec<(Destination, bk::repo::RestorePoint, bool)>>,
     detail: gtk::Label,
     job: Cell<Option<u64>>,
@@ -227,6 +264,16 @@ impl Panel {
         schedule_group.add(&daily_switch);
         schedule_group.add(&pass_row);
         schedule_group.add(&pass_note);
+        let change_pass = adw::ActionRow::new();
+        change_pass.set_title(&tr("Change Backup Passphrase"));
+        change_pass.set_subtitle(&tr(
+            "Re-encrypts the backups in your encrypted places under a new passphrase",
+        ));
+        let change_btn = button(&tr("Change"));
+        super::audit::label(&change_btn, &tr("Change the backup passphrase"));
+        change_pass.add_suffix(&change_btn);
+        change_pass.set_activatable_widget(Some(&change_btn));
+        schedule_group.add(&change_pass);
 
         let box_busy = gtk::Box::new(gtk::Orientation::Vertical, 6);
         box_busy.set_margin_top(8);
@@ -272,6 +319,9 @@ impl Panel {
             extras: RefCell::new(HashMap::new()),
             dev_restore: RefCell::new(DevRestore::default()),
             dlg: RefCell::new(None),
+            edit: RefCell::new(None),
+            rekey_dlg: RefCell::new(None),
+            busy_ids: RefCell::new(Vec::new()),
             points: RefCell::new(Vec::new()),
             detail,
             job: Cell::new(None),
@@ -298,6 +348,14 @@ impl Panel {
             kdf: Kdf::DEFAULT,
         });
         p.schedule_group.add(&p.box_busy);
+        {
+            let weak = Rc::downgrade(&p);
+            change_btn.connect_clicked(move |_| {
+                if let Some(p) = weak.upgrade() {
+                    p.rekey_dialog();
+                }
+            });
+        }
         {
             let weak = Rc::downgrade(&p);
             banner_btn.connect_clicked(move |_| {
@@ -365,7 +423,7 @@ impl Panel {
                     if let Some(j) = p.job.get() {
                         crate::jobs::cancel(j);
                     }
-                    p.stage.set_text(&tr("Cancelling…"));
+                    p.stage.set_text(&tr("Cancelling"));
                     p.detail.set_text("");
                 }
             }
@@ -525,11 +583,12 @@ impl Panel {
     fn fill_menu(self: &Rc<Self>, more: &gtk::MenuButton, id: &str) {
         let pop = gtk::Popover::new();
         let col = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        let items: [(String, u8); 4] = [
+        let items: [(String, u8); 5] = [
             (tr("Back Up This Place"), 0),
             (tr("Check Backup"), 1),
             (tr("Check Backup in Depth"), 2),
             (tr("Remove Old Backups"), 3),
+            (tr("Take Over This Place"), 4),
         ];
         for (label, what) in items {
             let b = gtk::Button::with_label(&label);
@@ -537,6 +596,11 @@ impl Panel {
             if what == 2 {
                 b.set_tooltip_text(Some(&tr(
                     "Reads every file back and compares it. Slow on a network place.",
+                )));
+            }
+            if what == 4 {
+                b.set_tooltip_text(Some(&tr(
+                    "Use when another computer was backing up here and stopped. Two computers must not write at once.",
                 )));
             }
             let (weak, id, pop2) = (Rc::downgrade(self), id.to_string(), pop.clone());
@@ -547,6 +611,7 @@ impl Panel {
                     0 => p.run_places(Some(id.clone()), Rc::new(|_| {})),
                     1 => p.check_place(&id, false),
                     2 => p.check_place(&id, true),
+                    4 => p.ask_take_over(&id),
                     _ => p.ask_clean(&id),
                 }
             });
@@ -915,8 +980,257 @@ impl Panel {
         if !msg.is_empty() {
             self.say(msg.clone());
         }
+        let busy = bk::repo::busy_places(outcomes);
+        *self.busy_ids.borrow_mut() = busy.iter().map(|b| b.0.clone()).collect();
+        for (_, name) in &busy {
+            eprintln!("backup: in use {name}");
+        }
+        if !busy.is_empty() {
+            let names: Vec<String> = busy.iter().map(|b| b.1.clone()).collect();
+            self.say(bk::repo::busy_text(&names));
+        }
         self.refresh();
+        if let Some((id, _)) = busy.first().filter(|_| !autoconfirm()) {
+            self.ask_take_over(id);
+        }
         msg
+    }
+
+    // -- a place another computer is writing to ---------------------------------------------------------
+
+    fn ask_take_over(self: &Rc<Self>, id: &str) {
+        let (weak, id2) = (Rc::downgrade(self), id.to_string());
+        let go = move || {
+            if let Some(p) = weak.upgrade() {
+                p.take_over_place(&id2);
+            }
+        };
+        if autoconfirm() {
+            go();
+            return;
+        }
+        let name = self.place(id).map(|d| d.name).unwrap_or_default();
+        super::alert(
+            &self.parent,
+            &trf("{} is in use", &[&name]),
+            &tr(bk::repo::TAKE_OVER_BODY),
+            &tr("Take Over"),
+            true,
+            go,
+        );
+    }
+
+    fn take_over_place(self: &Rc<Self>, id: &str) {
+        let Some(d) = self.place(id) else { return };
+        let (weak, id) = (Rc::downgrade(self), id.to_string());
+        glib::spawn_future_local(async move {
+            let d2 = d.clone();
+            let r =
+                gio::spawn_blocking(move || bk::repo::take_over(&d2).map_err(|e| format!("{e:#}")))
+                    .await
+                    .unwrap_or_else(|_| Err("stopped unexpectedly".into()));
+            let Some(p) = weak.upgrade() else { return };
+            let text = match &r {
+                Ok(host) => {
+                    eprintln!(
+                        "backup: took over {} from {}",
+                        d.name,
+                        host.as_deref().unwrap_or("nobody")
+                    );
+                    p.busy_ids.borrow_mut().retain(|b| *b != id);
+                    trf("You took over {}. Press Back Up to copy now.", &[&d.name])
+                }
+                Err(e) => {
+                    eprintln!("backup: take over {} failed {e}", d.name);
+                    trf("Could not take over {}: {}", &[&d.name, e])
+                }
+            };
+            p.say(text.clone());
+            p.set_extra(&id, |x| x.note = text);
+        });
+    }
+
+    // -- change the passphrase -----------------------------------------------------------------------
+
+    fn rekey_dialog(self: &Rc<Self>) {
+        if self.rekey_dlg.borrow().is_some() {
+            return;
+        }
+        let dialog = super::dialog_toast::new_dialog();
+        dialog.set_title(&tr("Change Backup Passphrase"));
+        dialog.set_content_width(480);
+        let note = gtk::Label::new(Some(&tr(
+            "Every encrypted backup is re-encrypted under the new passphrase. This can take a while for big libraries or network places; you can stop it and run it again to continue. The old passphrase will not open the backups afterwards.",
+        )));
+        note.set_wrap(true);
+        note.set_xalign(0.0);
+        note.add_css_class("dim-label");
+        let group = adw::PreferencesGroup::new();
+        let old = adw::PasswordEntryRow::new();
+        old.set_title(&tr("Current passphrase (leave empty to use the saved one)"));
+        let new = adw::PasswordEntryRow::new();
+        new.set_title(&tr("New passphrase"));
+        let repeat = adw::PasswordEntryRow::new();
+        repeat.set_title(&tr("New passphrase again"));
+        group.add(&old);
+        group.add(&new);
+        group.add(&repeat);
+        let status = gtk::Label::new(None);
+        status.set_wrap(true);
+        status.set_xalign(0.0);
+        status.add_css_class("caption");
+        let go = button(&tr("Change"));
+        go.add_css_class("suggested-action");
+        go.set_sensitive(false);
+        let cancel = button(&tr("Cancel"));
+        let header = adw::HeaderBar::new();
+        header.set_show_end_title_buttons(false);
+        header.pack_start(&cancel);
+        header.pack_end(&go);
+        let body = gtk::Box::new(gtk::Orientation::Vertical, 12);
+        body.set_margin_top(12);
+        body.set_margin_bottom(12);
+        body.set_margin_start(12);
+        body.set_margin_end(12);
+        body.append(&note);
+        body.append(&group);
+        body.append(&status);
+        let view = adw::ToolbarView::new();
+        view.add_top_bar(&header);
+        view.set_content(Some(&body));
+        dialog.set_child(Some(&view));
+        let problem = {
+            let (old, new, repeat, status, go) = (
+                old.clone(),
+                new.clone(),
+                repeat.clone(),
+                status.clone(),
+                go.clone(),
+            );
+            let weak = Rc::downgrade(self);
+            Rc::new(move || {
+                let Some(p) = weak.upgrade() else { return };
+                let (o, n, r) = (
+                    old.text().to_string(),
+                    new.text().to_string(),
+                    repeat.text().to_string(),
+                );
+                let e = bk::repo::passphrase_problem(&p.passphrase(), &o, &n, &r);
+                // nothing is said before the user typed a new passphrase
+                status.set_text(&if n.is_empty() && r.is_empty() {
+                    String::new()
+                } else {
+                    e.clone().unwrap_or_default()
+                });
+                go.set_sensitive(e.is_none());
+            })
+        };
+        for r in [&old, &new, &repeat] {
+            let problem = problem.clone();
+            r.connect_changed(move |_| problem());
+        }
+        {
+            let dialog = dialog.clone();
+            cancel.connect_clicked(move |_| {
+                dialog.close();
+            });
+        }
+        {
+            let (dialog, old, new) = (dialog.clone(), old.clone(), new.clone());
+            let weak = Rc::downgrade(self);
+            go.connect_clicked(move |_| {
+                let Some(p) = weak.upgrade() else { return };
+                let saved = p.passphrase();
+                let o = old.text().to_string();
+                let o = if o.is_empty() { saved } else { o };
+                dialog.close();
+                p.run_rekey(o, new.text().to_string());
+            });
+        }
+        {
+            let weak = Rc::downgrade(self);
+            dialog.connect_closed(move |_| {
+                if let Some(p) = weak.upgrade() {
+                    *p.rekey_dlg.borrow_mut() = None;
+                }
+            });
+        }
+        *self.rekey_dlg.borrow_mut() = Some(RekeyDlg {
+            go,
+            old,
+            new,
+            repeat,
+            status,
+        });
+        dialog.present(Some(&self.parent));
+    }
+
+    /// Re-encrypts every encrypted place, with progress and Cancel; the saved passphrase is replaced
+    /// only when every place is on the new one.
+    fn run_rekey(self: &Rc<Self>, old: String, new: String) {
+        let places: Vec<Destination> = self
+            .shared
+            .cfg
+            .borrow()
+            .health
+            .backup
+            .destinations
+            .iter()
+            .filter(|d| d.encrypt)
+            .cloned()
+            .collect();
+        let Some(op) = self.op_begin(
+            &tr("Changing the backup passphrase"),
+            &tr("Re-encrypting the backups"),
+        ) else {
+            self.say(tr(
+                "Another backup operation is running. Try again when it is done.",
+            ));
+            return;
+        };
+        let (cancel, progress) = (op.cancel.clone(), op.progress.clone());
+        let kdf = self.kdf;
+        let weak = Rc::downgrade(self);
+        let new2 = new.clone();
+        glib::spawn_future_local(async move {
+            let names: Vec<String> = places.iter().map(|d| d.name.clone()).collect();
+            let r = gio::spawn_blocking(move || {
+                bk::repo::change_passphrase(&places, &old, &new, kdf, &cancel, &|name, p| {
+                    let i = names.iter().position(|x| x == name).unwrap_or(0);
+                    *progress.lock().unwrap() = Prog {
+                        stage: trf("{}: re-encrypting", &[&name]),
+                        detail: bk::repo::rekey_detail(p),
+                        fraction: bk::repo::rekey_fraction(i, names.len(), p),
+                    };
+                })
+            })
+            .await
+            .unwrap_or_default();
+            let Some(p) = weak.upgrade() else { return };
+            let stopped = p.cancel.borrow().load(Ordering::Relaxed);
+            let complete = bk::repo::rekey_complete(&r) && !stopped;
+            let text = bk::repo::rekey_text(&r, stopped);
+            for o in &r {
+                match &o.result {
+                    Ok(rep) => eprintln!(
+                        "backup: rekey {} ok objects={} converted={} already={} resumed={}",
+                        o.name, rep.objects, rep.converted, rep.already, rep.resumed
+                    ),
+                    Err(e) if o.empty => {
+                        eprintln!("backup: rekey {} nothing to change ({e})", o.name)
+                    }
+                    Err(e) => eprintln!("backup: rekey {} failed {e}", o.name),
+                }
+            }
+            p.op_end(op, if complete { Ok(()) } else { Err(text.clone()) });
+            if complete {
+                // saving the field saves the settings
+                p.pass_row.set_text(&new2);
+            }
+            eprintln!("backup: rekey done complete={complete}");
+            p.say(text);
+            p.refresh();
+        });
     }
 
     // -- check a place, remove its old backups ---------------------------------------------------------
@@ -926,7 +1240,11 @@ impl Panel {
         let pass = self.passphrase();
         let Some(op) = self.op_begin(
             &trf("Checking the backup at {}", &[&d.name]),
-            &tr("Checking the backup"),
+            &if deep {
+                tr("Reading every file back")
+            } else {
+                tr("Checking the backup")
+            },
         ) else {
             return;
         };
@@ -934,6 +1252,7 @@ impl Panel {
         let (weak, id) = (Rc::downgrade(self), id.to_string());
         glib::spawn_future_local(async move {
             let d2 = d.clone();
+            let started = std::time::Instant::now();
             let r = gio::spawn_blocking(move || {
                 bk::repo::check_place(&d2, &pass, deep, &cancel, &|done, total| {
                     let f = if total == 0 {
@@ -943,7 +1262,7 @@ impl Panel {
                     };
                     let mut g = progress.lock().unwrap();
                     g.fraction = f.clamp(0.0, 1.0);
-                    g.detail = trf("{} of {}", &[&lh::size_text(done), &lh::size_text(total)]);
+                    g.detail = bk::repo::verify_detail(done, total, started.elapsed());
                 })
                 .map_err(|e| format!("{e:#}"))
             })
@@ -1268,7 +1587,7 @@ impl Panel {
     fn restore_dialog(self: &Rc<Self>, d: Destination, pass: String, pt: bk::repo::RestorePoint) {
         let root = self.shared.lib.borrow().root.clone();
         let empty = self.shared.lib.borrow().books.is_empty();
-        let dialog = adw::Dialog::new();
+        let dialog = super::dialog_toast::new_dialog();
         dialog.set_title(&tr("Restore Backup"));
         dialog.set_content_width(480);
         let group = adw::PreferencesGroup::new();
@@ -1712,7 +2031,7 @@ impl Panel {
                 ..Destination::default()
             }
         });
-        let dialog = adw::Dialog::new();
+        let dialog = super::dialog_toast::new_dialog();
         dialog.set_title(
             &(if is_new {
                 tr("Add a Place")
@@ -1981,7 +2300,7 @@ impl Panel {
                 }
                 b.set_sensitive(false);
                 note.set_visible(true);
-                note.set_title(&tr("Connecting…"));
+                note.set_title(&tr("Connecting"));
                 note.set_subtitle("");
                 mount_uri(&parent, text.trim(), {
                     let (folder, note, b, name) =
@@ -2091,7 +2410,7 @@ impl Panel {
                     result.set_subtitle(&esc(&e));
                     return;
                 }
-                result.set_title(&tr("Testing…"));
+                result.set_title(&tr("Testing"));
                 result.set_subtitle("");
                 test_btn.set_sensitive(false);
                 let (result, test_btn) = (result.clone(), test_btn.clone());
@@ -2162,6 +2481,34 @@ impl Panel {
         view.add_top_bar(&header);
         view.set_content(Some(&page));
         dialog.set_child(Some(&view));
+        {
+            let weak = Rc::downgrade(self);
+            dialog.connect_closed(move |_| {
+                if let Some(p) = weak.upgrade() {
+                    *p.edit.borrow_mut() = None;
+                }
+            });
+        }
+        *self.edit.borrow_mut() = Some(EditDlg {
+            dialog: dialog.clone(),
+            kind: kind.clone(),
+            name: name.clone(),
+            folder: folder.clone(),
+            url: url.clone(),
+            user: user.clone(),
+            pass: pass.clone(),
+            dav_folder: dav_folder.clone(),
+            keep: keep.clone(),
+            encrypt: encrypt.clone(),
+            books: books.clone(),
+            covers: covers.clone(),
+            max_mb: max_mb.clone(),
+            result: result.clone(),
+            folder_group: folder_group.clone(),
+            dav_group: dav_group.clone(),
+            save: save.clone(),
+            test: test.clone(),
+        });
         dialog.present(Some(&self.parent));
     }
 
@@ -2203,6 +2550,113 @@ impl Panel {
             }
             d.encrypt = p.contains(&"encrypt");
             self.upsert(d);
+            return true;
+        }
+        if let Some(n) = cmd.strip_prefix("backup-edit-open=") {
+            self.edit_dialog(n.parse::<usize>().ok().and_then(|n| n.checked_sub(1)));
+            return true;
+        }
+        if let Some(kv) = cmd.strip_prefix("backup-edit-set=") {
+            let Some((k, v)) = kv.split_once('=') else {
+                return true;
+            };
+            let Some(e) = self.edit.borrow().clone() else {
+                eprintln!("backup: no place window is open");
+                return true;
+            };
+            let on = matches!(v, "1" | "on" | "true");
+            match k {
+                "kind" => e.kind.set_selected(v.parse().unwrap_or(0)),
+                "name" => e.name.set_text(v),
+                "folder" => e.folder.set_text(v),
+                "url" => e.url.set_text(v),
+                "user" => e.user.set_text(v),
+                "password" => e.pass.set_text(v),
+                "dav_folder" => e.dav_folder.set_text(v),
+                "keep" => e.keep.set_value(v.parse().unwrap_or(10.0)),
+                "encrypt" => e.encrypt.set_active(on),
+                "books" => e.books.set_active(on),
+                "covers" => e.covers.set_active(on),
+                "max_mb" => e.max_mb.set_value(v.parse().unwrap_or(0.0)),
+                other => eprintln!("backup: no field {other}"),
+            }
+            return true;
+        }
+        if let Some(spec) = cmd.strip_prefix("backup-lock=") {
+            // N|host|minutes: another computer's lock in place N (a place the user can see)
+            let p: Vec<&str> = spec.split('|').collect();
+            let d = p
+                .first()
+                .and_then(|n| n.parse::<usize>().ok())
+                .and_then(|n| n.checked_sub(1))
+                .and_then(|i| {
+                    self.shared
+                        .cfg
+                        .borrow()
+                        .health
+                        .backup
+                        .destinations
+                        .get(i)
+                        .cloned()
+                });
+            if let Some(d) = d {
+                let at = Utc::now()
+                    - chrono::Duration::minutes(p.get(2).and_then(|m| m.parse().ok()).unwrap_or(0));
+                let lock = bookx_backup::repo::LockInfo {
+                    format: 1,
+                    host: p.get(1).copied().unwrap_or("other-pc").to_string(),
+                    pid: 1,
+                    token: "dev".into(),
+                    since: at,
+                    beat: at,
+                    app: "Bookx dev".into(),
+                };
+                let r = d.repo_store().and_then(|s| {
+                    s.check()?;
+                    s.put_bytes(
+                        bookx_backup::repo::lock::LOCK_FILE,
+                        &serde_json::to_vec(&lock)?,
+                        &AtomicBool::new(false),
+                    )
+                });
+                eprintln!("backup: lock planted at {} ok={}", d.name, r.is_ok());
+            }
+            return true;
+        }
+        if let Some(n) = cmd.strip_prefix("backup-takeover=") {
+            let id = n
+                .parse::<usize>()
+                .ok()
+                .and_then(|n| n.checked_sub(1))
+                .and_then(|i| {
+                    self.shared
+                        .cfg
+                        .borrow()
+                        .health
+                        .backup
+                        .destinations
+                        .get(i)
+                        .map(|d| d.id.clone())
+                });
+            if let Some(id) = id {
+                self.ask_take_over(&id);
+            }
+            return true;
+        }
+        if let Some(kv) = cmd.strip_prefix("backup-rekey-set=") {
+            let Some((k, v)) = kv.split_once('=') else {
+                return true;
+            };
+            let Some(r) = self.rekey_dlg.borrow().clone() else {
+                eprintln!("backup: the passphrase window is not open");
+                return true;
+            };
+            match k {
+                "old" => r.old.set_text(v),
+                "new" => r.new.set_text(v),
+                "repeat" => r.repeat.set_text(v),
+                other => eprintln!("backup: no field {other}"),
+            }
             return true;
         }
         if let Some(pw) = cmd.strip_prefix("backup-passphrase=") {
@@ -2370,6 +2824,85 @@ impl Panel {
                 }
                 true
             }
+            "backup-edit-open" => {
+                self.edit_dialog(None);
+                true
+            }
+            "backup-edit-save" => {
+                let e = self.edit.borrow().clone();
+                match e {
+                    Some(e) => e.save.emit_clicked(),
+                    None => eprintln!("backup: no place window is open"),
+                }
+                true
+            }
+            "backup-edit-test" => {
+                let e = self.edit.borrow().clone();
+                match e {
+                    Some(e) => e.test.emit_clicked(),
+                    None => eprintln!("backup: no place window is open"),
+                }
+                true
+            }
+            "backup-edit-close" => {
+                let e = self.edit.borrow().clone();
+                if let Some(e) = e {
+                    e.dialog.close();
+                }
+                true
+            }
+            "backup-edit-dump" => {
+                match self.edit.borrow().as_ref() {
+                    Some(e) => eprintln!(
+                        "backup_edit: open=true title=\"{}\" kind={} name=\"{}\" folder=\"{}\" folder_group={} dav_group={} url=\"{}\" keep={} encrypt={} books={} covers={} max_mb={} result=\"{} | {}\" result_visible={} save_sensitive={}",
+                        e.dialog.title(),
+                        e.kind.selected(),
+                        e.name.text(),
+                        e.folder.text(),
+                        e.folder_group.is_visible(),
+                        e.dav_group.is_visible(),
+                        e.url.text(),
+                        e.keep.value(),
+                        e.encrypt.is_active(),
+                        e.books.is_active(),
+                        e.covers.is_active(),
+                        e.max_mb.value(),
+                        e.result.title(),
+                        e.result.subtitle().unwrap_or_default(),
+                        e.result.is_visible(),
+                        e.save.is_sensitive()
+                    ),
+                    None => eprintln!("backup_edit: closed"),
+                }
+                true
+            }
+            "backup-rekey-dialog" => {
+                self.rekey_dialog();
+                true
+            }
+            "backup-rekey-go" => {
+                let r = self.rekey_dlg.borrow().clone();
+                match r {
+                    // the real button of the window
+                    Some(r) if r.go.is_sensitive() => r.go.emit_clicked(),
+                    Some(_) => eprintln!("backup: the passphrase window does not allow it yet"),
+                    None => eprintln!("backup: the passphrase window is not open"),
+                }
+                true
+            }
+            "backup-rekey-dump" => {
+                match self.rekey_dlg.borrow().as_ref() {
+                    Some(r) => eprintln!(
+                        "backup_rekey_dialog: open=true go_sensitive={} status=\"{}\" old_len={} new_len={}",
+                        r.go.is_sensitive(),
+                        r.status.text(),
+                        r.old.text().len(),
+                        r.new.text().len()
+                    ),
+                    None => eprintln!("backup_rekey_dialog: closed"),
+                }
+                true
+            }
             "backup-journal" => {
                 journal_now(&self.shared, self.kdf);
                 true
@@ -2425,6 +2958,7 @@ impl Panel {
         eprintln!("backup_job: {:?}", self.job.get().is_some());
         eprintln!("backup_busy: {}", self.busy.get());
         eprintln!("backup_pass_set: {}", !b.passphrase.is_empty());
+        eprintln!("backup_in_use: {}", self.busy_ids.borrow().len());
     }
 }
 

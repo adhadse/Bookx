@@ -553,6 +553,129 @@ mod tests {
         assert_eq!(r.body, b"until close");
     }
 
+    fn feed_all(parts: &[&[u8]]) -> Result<Vec<u8>> {
+        let mut d = ChunkedDecoder::default();
+        let mut got = Vec::new();
+        for p in parts {
+            d.feed(p, &mut |b| {
+                got.extend_from_slice(b);
+                Ok(())
+            })?;
+        }
+        Ok(got)
+    }
+
+    #[test]
+    fn the_chunk_decoder_survives_any_split_of_the_bytes() {
+        let wire: &[u8] =
+            b"3\r\nabc\r\n2;ext=1\r\nde\r\nA\r\n0123456789\r\n0\r\nTrailer: x\r\n\r\n";
+        let want = b"abcde0123456789".to_vec();
+        assert_eq!(feed_all(&[wire]).unwrap(), want);
+        // one byte at a time, as a slow connection delivers it
+        let bytes: Vec<&[u8]> = wire.chunks(1).collect();
+        let mut d = ChunkedDecoder::default();
+        let mut got = Vec::new();
+        for b in &bytes {
+            d.feed(b, &mut |x| {
+                got.extend_from_slice(x);
+                Ok(())
+            })
+            .unwrap();
+        }
+        assert!(d.done());
+        assert_eq!(got, want);
+        // bytes after the end are ignored
+        d.feed(b"junk", &mut |_| panic!("no data after the end"))
+            .unwrap();
+    }
+
+    #[test]
+    fn the_chunk_decoder_refuses_hostile_framing() {
+        for bad in [
+            &b"zz\r\nabc\r\n"[..],       // size is not hex
+            &b"\xff\xfe\r\n"[..],        // not text
+            &b"3\r\nabcXY0\r\n\r\n"[..], // data is not followed by CRLF
+        ] {
+            let e = feed_all(&[bad]).unwrap_err().to_string();
+            assert!(e.contains("malformed"), "{bad:?}: {e}");
+        }
+        // a size line that never ends is cut off instead of buffered for ever
+        let long = vec![b'1'; 5000];
+        assert!(feed_all(&[&long])
+            .unwrap_err()
+            .to_string()
+            .contains("malformed"));
+        // an error from the receiver (the disk is full) stops the decoding
+        let mut d = ChunkedDecoder::default();
+        let e = d
+            .feed(b"1\r\na\r\n", &mut |_| Err(anyhow!("disk full")))
+            .unwrap_err();
+        assert_eq!(e.to_string(), "disk full");
+    }
+
+    #[test]
+    fn a_streamed_download_goes_to_the_sink_and_is_capped() {
+        let u = serve_once(
+            b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n"
+                .to_vec(),
+        );
+        let mut out: Vec<u8> = Vec::new();
+        let r = request_stream(
+            "GET",
+            &u,
+            &[],
+            Body::Bytes(b""),
+            Duration::from_secs(5),
+            None,
+            1024,
+            Some(Sink {
+                out: &mut out,
+                max: 100,
+            }),
+        )
+        .unwrap();
+        assert_eq!((r.status, r.streamed), (200, 11));
+        assert!(r.body.is_empty());
+        assert_eq!(out, b"hello world");
+        // a length-delimited body over the cap is refused, whatever the server claims
+        let u = serve_once(b"HTTP/1.1 200 OK\r\nContent-Length: 11\r\n\r\nhello world".to_vec());
+        let mut out: Vec<u8> = Vec::new();
+        let e = request_stream(
+            "GET",
+            &u,
+            &[],
+            Body::Bytes(b""),
+            Duration::from_secs(5),
+            None,
+            1024,
+            Some(Sink {
+                out: &mut out,
+                max: 4,
+            }),
+        )
+        .unwrap_err();
+        assert!(e.to_string().contains("too big"), "{e}");
+        // a chunked body that stops early is cut short, not silently accepted
+        let u =
+            serve_once(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhel".to_vec());
+        let mut out: Vec<u8> = Vec::new();
+        let e = request_stream(
+            "GET",
+            &u,
+            &[],
+            Body::Bytes(b""),
+            Duration::from_secs(5),
+            None,
+            1024,
+            Some(Sink {
+                out: &mut out,
+                max: 100,
+            }),
+        )
+        .unwrap_err();
+        assert!(e.to_string().contains("cut short"), "{e}");
+    }
+
     #[test]
     fn broken_answers_are_errors() {
         let u = serve_once(b"garbage\r\n\r\n".to_vec());

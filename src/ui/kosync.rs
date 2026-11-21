@@ -397,9 +397,9 @@ pub fn account_action(
         return;
     }
     report(if register {
-        tr("Registering…")
+        tr("Registering")
     } else {
-        tr("Logging in…")
+        tr("Logging in")
     });
     let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
@@ -511,7 +511,7 @@ pub fn dev_account(cmd: &str) {
 }
 
 /// The rows of step 2 (user name, password, Register / Log in with the result inline) and the
-/// server address row for Advanced. It is the Bookx sync account, not the Share Library password.
+/// server address row for Advanced. It is the Bookx sync account, not the OPDS server password.
 pub fn account_rows(shared: &SharedRef) -> (Vec<gtk::Widget>, adw::EntryRow) {
     let cur = shared.cfg.borrow().kosync.clone();
     let server = entry(&tr("Server address"), &cur.server);
@@ -522,7 +522,7 @@ pub fn account_rows(shared: &SharedRef) -> (Vec<gtk::Widget>, adw::EntryRow) {
     let use_own = gtk::Button::with_label(&tr("Use Bookx server"));
     use_own.set_valign(gtk::Align::Center);
     use_own.set_tooltip_text(Some(&tr(
-        "Fill in the address of the library server that is running here (Sync shows the same)",
+        "Fill in the address of the OPDS server that is running here (Sync shows the same)",
     )));
     super::audit::label(
         &use_own,

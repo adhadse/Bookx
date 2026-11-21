@@ -558,7 +558,7 @@ impl Editor {
         let generation = self.spelling.generation;
         let ui = self.spelling.ui();
         ui.spinner.start();
-        ui.status.set_label(&tr("Checking the book…"));
+        ui.status.set_label(&tr("Checking the book"));
         self.refresh_dict_choices();
         let tx = self.sender.input_sender().clone();
         glib::spawn_future_local(async move {
@@ -959,7 +959,7 @@ impl Editor {
     }
 
     fn spell_excluded_dialog(&mut self) {
-        let dialog = adw::Dialog::new();
+        let dialog = crate::ui::dialog_toast::new_dialog();
         dialog.set_title(&tr("Files Left Out of the Spell Check"));
         dialog.set_content_width(420);
         dialog.set_content_height(360);

@@ -500,3 +500,118 @@ fn manager_uses_the_injected_network() {
 fn base64_zip() -> String {
     epub_b64("Reader out")
 }
+
+// -- trust (X3 / G10) ---------------------------------------------------------------------------
+
+#[test]
+fn trust_is_recorded_persisted_and_pinned_to_the_files() {
+    use bookx_plugin::TrustState;
+    let env = Env::new();
+    env.add("one", "org.one", "transform", "", &echo());
+    let mut m = env.manager();
+    m.scan();
+    assert_eq!(m.trust_state("org.one"), TrustState::NeverAsked);
+    m.trust("org.one").unwrap();
+    m.set_enabled("org.one", true).unwrap();
+    assert_eq!(m.trust_state("org.one"), TrustState::Trusted);
+
+    // a new manager (a new session) still knows
+    let mut m2 = env.manager();
+    m2.scan();
+    assert_eq!(m2.trust_state("org.one"), TrustState::Trusted);
+    assert!(m2.is_enabled("org.one"));
+
+    // the module is swapped on disk: no longer trusted, and it is not registered
+    std::fs::write(
+        env.plugins().join("one").join("plugin.wasm"),
+        always(&ok("1")),
+    )
+    .unwrap();
+    m2.scan();
+    assert_eq!(m2.trust_state("org.one"), TrustState::Changed);
+    let mut reg = Registry::<dyn Transform>::default();
+    let errors = m2.register_transforms(&mut reg);
+    assert_eq!(errors.len(), 1);
+    assert!(
+        errors[0].1.contains("changed since you allowed"),
+        "{errors:?}"
+    );
+    assert!(reg.is_empty());
+
+    // allowing again pins the new files
+    m2.trust("org.one").unwrap();
+    assert_eq!(m2.trust_state("org.one"), TrustState::Trusted);
+    assert!(m2.register_transforms(&mut reg).is_empty());
+
+    m2.revoke_trust("org.one").unwrap();
+    assert_eq!(m2.trust_state("org.one"), TrustState::NeverAsked);
+    assert!(!m2.is_enabled("org.one"));
+}
+
+#[test]
+fn a_plugin_enabled_before_trust_existed_keeps_running() {
+    use bookx_plugin::TrustState;
+    let env = Env::new();
+    env.add("one", "org.one", "transform", "", &echo());
+    std::fs::create_dir_all(env.state().parent().unwrap()).unwrap();
+    std::fs::write(env.state(), r#"{"enabled":["org.one"]}"#).unwrap();
+    let mut m = env.manager();
+    m.scan();
+    assert_eq!(m.trust_state("org.one"), TrustState::NeverAsked);
+    let mut reg = Registry::<dyn Transform>::default();
+    assert!(m.register_transforms(&mut reg).is_empty());
+}
+
+#[test]
+fn hand_edited_trust_entries_are_validated() {
+    use bookx_plugin::TrustState;
+    let env = Env::new();
+    env.add("one", "org.one", "transform", "", &echo());
+    std::fs::create_dir_all(env.state().parent().unwrap()).unwrap();
+    std::fs::write(
+        env.state(),
+        r#"{"enabled":[],"trusted":{"org.one":"not-a-hash","x":5}}"#,
+    )
+    .unwrap();
+    let mut m = env.manager();
+    m.scan();
+    // the second entry has the wrong type: the whole file is reported as corrupt, nothing is trusted
+    assert!(m.state_error().is_some());
+    assert_eq!(m.trust_state("org.one"), TrustState::NeverAsked);
+    std::fs::write(
+        env.state(),
+        r#"{"enabled":[],"trusted":{"org.one":"not-a-hash"}}"#,
+    )
+    .unwrap();
+    let mut m = env.manager();
+    m.scan();
+    assert_eq!(m.trust_state("org.one"), TrustState::NeverAsked);
+}
+
+#[test]
+fn signature_status_reaches_the_manager() {
+    use bookx_plugin::trust::{UnsupportedVerifier, SIGNATURE_FILE};
+    use bookx_plugin::SignatureStatus;
+    let env = Env::new();
+    env.add("one", "org.one", "transform", "", &echo());
+    let mut m = env.manager();
+    m.scan();
+    assert_eq!(
+        m.signature_status("org.one", &UnsupportedVerifier),
+        Some(SignatureStatus::Unsigned)
+    );
+    std::fs::write(
+        env.plugins().join("one").join(SIGNATURE_FILE),
+        format!(
+            "bookx-plugin-signature 1\nkey: {}\nsignature: {}\n",
+            "11".repeat(32),
+            "22".repeat(64)
+        ),
+    )
+    .unwrap();
+    assert!(matches!(
+        m.signature_status("org.one", &UnsupportedVerifier),
+        Some(SignatureStatus::Unverified { .. })
+    ));
+    assert_eq!(m.signature_status("nope", &UnsupportedVerifier), None);
+}

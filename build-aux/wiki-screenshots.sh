@@ -19,6 +19,10 @@
 #   DRY=1 build-aux/wiki-screenshots.sh                 # shoot into $RESULTS only, leave wiki/docs/assets alone
 #   JOBS=2                                              # sessions at a time (default 2; each uses ~15 inotify instances)
 #
+# The pictures at the top of README.md and in the AppStream metainfo are NOT separate copies: they point at these same
+# files (README: <picture> with the -dark / -light pair; metainfo: raw.githubusercontent URLs), so a run of this script
+# refreshes them too. build-aux/check-readme-images.py (run by release-check.sh) fails when README.md uses anything else.
+#
 # Details and usage steps (a menu, a popover, a dialog, one panel) are crops of the same kind of capture: a scene calls
 # wshot(c, name, crop=NODE | [NODES] | (x0, y0, x1, y1), pad=..., scale=..., minsize=(w, h)) or dialog_shot / popover_shot
 # (they find the popup by what it changes on the screen). Such a picture gets a `.detail` marker next to the raw capture and is

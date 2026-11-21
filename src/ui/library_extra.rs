@@ -719,7 +719,70 @@ pub(super) fn search_tips(search: &gtk::SearchEntry, save: Rc<dyn Fn(String)>) -
 }
 
 impl LibraryView {
-    fn dev_wave9_more(&mut self, _c: &str, _sender: &ComponentSender<Self>) -> bool {
-        false
+    fn dev_wave9_more(&mut self, c: &str, sender: &ComponentSender<Self>) -> bool {
+        self.dev_t3(c, sender)
     }
+}
+
+/// A dialog listing every entry of a sidebar group (authors, tags, shelves...) with a search
+/// field: how a group that is hidden from the sidebar stays reachable (command palette).
+pub(super) fn browse_dialog(
+    parent: &impl IsA<gtk::Widget>,
+    title: &str,
+    items: Vec<(String, usize)>,
+    go: Rc<dyn Fn(String)>,
+    search_for: Rc<dyn Fn(&str) -> String>,
+) {
+    let dialog = crate::ui::dialog_toast::new_dialog();
+    dialog.set_title(title);
+    dialog.set_content_width(400);
+    dialog.set_content_height(520);
+    let entry = gtk::SearchEntry::new();
+    entry.set_placeholder_text(Some(&tr("Filter")));
+    crate::ui::audit::label(&entry, &tr("Filter"));
+    entry.set_margin_start(12);
+    entry.set_margin_end(12);
+    entry.set_margin_bottom(6);
+    let list = gtk::ListBox::new();
+    list.add_css_class("boxed-list");
+    list.set_selection_mode(gtk::SelectionMode::None);
+    list.set_margin_start(12);
+    list.set_margin_end(12);
+    list.set_margin_bottom(12);
+    for (name, count) in &items {
+        let r = adw::ActionRow::builder()
+            .title(glib::markup_escape_text(name))
+            .activatable(true)
+            .build();
+        r.add_suffix(&count_label(*count));
+        let (go, q, dialog) = (go.clone(), search_for(name), dialog.clone());
+        r.connect_activated(move |_| {
+            dialog.close();
+            go(q.clone());
+        });
+        list.append(&r);
+    }
+    {
+        let e2 = entry.clone();
+        list.set_filter_func(move |r| {
+            let q = e2.text().to_lowercase();
+            q.is_empty()
+                || r.downcast_ref::<adw::ActionRow>()
+                    .is_some_and(|a| a.title().to_lowercase().contains(&q))
+        });
+        let list = list.clone();
+        entry.connect_search_changed(move |_| list.invalidate_filter());
+    }
+    let scroll = gtk::ScrolledWindow::new();
+    scroll.set_vexpand(true);
+    scroll.set_child(Some(&list));
+    let body = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    body.append(&entry);
+    body.append(&scroll);
+    let view = adw::ToolbarView::new();
+    view.add_top_bar(&adw::HeaderBar::new());
+    view.set_content(Some(&body));
+    dialog.set_child(Some(&view));
+    dialog.set_focus(Some(&entry));
+    dialog.present(Some(parent));
 }

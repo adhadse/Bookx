@@ -317,6 +317,46 @@ impl WebDav {
         }
     }
 
+    /// Uploads `len` bytes from `reader` as the bytes `from..from + len` of a file that will be
+    /// `total` bytes long (`PUT` with `Content-Range`, which only some servers honour; see
+    /// `DavStore`'s probe). The first chunk (`from == 0`) creates the file, later ones continue it.
+    pub fn put_range(
+        &self,
+        parts: &[String],
+        reader: &mut dyn std::io::Read,
+        from: u64,
+        len: u64,
+        total: u64,
+    ) -> Result<()> {
+        check_segments(parts)?;
+        if len == 0 || from.checked_add(len).is_none_or(|e| e > total) {
+            bail!("a bad byte range");
+        }
+        let u = url::Url::parse(&self.url_for(parts, false)).context("bad address")?;
+        let range = format!("bytes {}-{}/{}", from, from + len - 1, total);
+        let mut h: Vec<(&str, &str)> = vec![
+            ("Content-Type", "application/octet-stream"),
+            ("Content-Range", range.as_str()),
+        ];
+        if let Some(a) = &self.auth {
+            h.push(("Authorization", a.as_str()));
+        }
+        let r = crate::httpc::request_stream(
+            "PUT",
+            &u,
+            &h,
+            crate::httpc::Body::Stream(reader, len),
+            Duration::from_secs(12 * 3600),
+            None,
+            crate::httpc::MAX_BODY,
+            None,
+        )?;
+        match r.status {
+            200 | 201 | 204 | 206 => Ok(()),
+            s => Err(Self::explain(s, "Uploading")),
+        }
+    }
+
     /// Downloads the file at `parts` into `out` as it arrives; more than `max` bytes is an error.
     pub fn get_to(&self, parts: &[String], out: &mut dyn std::io::Write, max: u64) -> Result<u64> {
         check_segments(parts)?;

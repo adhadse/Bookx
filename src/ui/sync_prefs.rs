@@ -1,6 +1,6 @@
 //! Preferences → Sync: the configuration side of Sync. It starts with a numbered setup checklist
 //! (server, account, plugin, test on the device), then what Bookx sync does, USB device sync and
-//! the library servers; everything technical sits in one collapsed “Advanced” row, so every setting
+//! the OPDS server; everything technical sits in one collapsed “Advanced” row, so every setting
 //! stays reachable (`sync_model::GROUPS`, `docs/sync-ux-notes.md`). The Sync window of the main menu
 //! shows the same state as task cards and follows these rows over the sync settings bus.
 
@@ -45,6 +45,8 @@ fn activate(w: &gtk::Widget, action: &str) {
     let _ = w.activate_action(action, None);
 }
 
+/// A row that opens another view: the whole row is activatable and ends with an arrow. `button` names
+/// the action for screen readers and the tooltip.
 fn link_row(
     title: &str,
     subtitle: &str,
@@ -54,14 +56,15 @@ fn link_row(
     let r = adw::ActionRow::builder()
         .title(glib::markup_escape_text(title))
         .subtitle(glib::markup_escape_text(subtitle))
+        .activatable(true)
         .build();
     r.set_subtitle_lines(0);
     r.set_title_lines(0);
-    let b = gtk::Button::with_label(button);
-    b.set_valign(gtk::Align::Center);
-    super::audit::label(&b, &format!("{button}: {title}"));
-    b.connect_clicked(move |b| on(b.upcast_ref()));
-    r.add_suffix(&b);
+    r.set_tooltip_text(Some(button));
+    let arrow = gtk::Image::from_icon_name("go-next-symbolic");
+    arrow.set_accessible_role(gtk::AccessibleRole::Presentation);
+    r.add_suffix(&arrow);
+    r.connect_activated(move |r| on(r.upcast_ref()));
     r
 }
 
@@ -165,7 +168,44 @@ fn checklist_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
 fn what_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     let (g, switch) = notes_group_for(&ctx.parent, &ctx.shared);
     NOTES_SW.with(|n| *n.borrow_mut() = Some(switch));
+    g.add(&offer_jump_row(&ctx.shared));
     g
+}
+
+/// The switch *Offer to jump when a device is ahead*: while a book is open, a message offers to
+/// continue where an e-reader has got to. On by default; the page never moves by itself.
+fn offer_jump_row(shared: &SharedRef) -> adw::SwitchRow {
+    let row = adw::SwitchRow::builder()
+        .title(tr("Offer to jump when a device is ahead"))
+        .subtitle(tr(
+            "While you read, a message offers to continue where your e-reader is. The page never moves by itself.",
+        ))
+        .build();
+    row.set_active(shared.cfg.borrow().share.offer_jump);
+    {
+        let shared = shared.clone();
+        row.connect_active_notify(move |r| {
+            {
+                let mut c = shared.cfg.borrow_mut();
+                if c.share.offer_jump == r.is_active() {
+                    return;
+                }
+                c.share.offer_jump = r.is_active();
+                c.save();
+            }
+            crate::settings_bus::sync().notify();
+        });
+    }
+    let (sh, sw) = (shared.clone(), row.downgrade());
+    follow(&row, move || {
+        let on = sh.cfg.borrow().share.offer_jump;
+        if let Some(s) = sw.upgrade() {
+            if s.is_active() != on {
+                s.set_active(on);
+            }
+        }
+    });
+    row
 }
 
 /// The group “What Bookx sync does” (also the switch for highlights, notes and bookmarks).
@@ -245,7 +285,7 @@ fn usb_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     g
 }
 
-// ---- 4. library servers -----------------------------------------------------------------------
+// ---- 4. OPDS server -----------------------------------------------------------------------
 
 fn servers_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     let g = adw::PreferencesGroup::new();
@@ -325,7 +365,7 @@ const REQUIREMENTS_TITLE: &str = N_("What each sync type needs");
 /// The requirements table as a dialog: one group per sync type with its columns as a small table, the stock
 /// Kobo/Kindle note on top. The page only has a row that opens it.
 pub fn requirements_dialog(parent: &gtk::Widget) -> adw::Dialog {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr(REQUIREMENTS_TITLE));
     dialog.set_content_width(560);
     dialog.set_content_height(520);
@@ -384,6 +424,9 @@ fn advanced_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     }
     // the technical server settings
     for w in super::share::advanced_rows(&ctx.parent, shared) {
+        adv.add_row(&w);
+    }
+    for w in super::proxy_settings::rows(shared) {
         adv.add_row(&w);
     }
     // reverse proxy (with the request limits), privacy and other transfers
@@ -447,7 +490,7 @@ fn all_text(w: &gtk::Widget, out: &mut Vec<String>) {
 fn info_only_rows(w: &gtk::Widget) -> Vec<String> {
     fn walk(w: &gtk::Widget, out: &mut Vec<String>) {
         if let Some(r) = w.downcast_ref::<adw::PreferencesRow>() {
-            let plain = r.type_() == adw::ActionRow::static_type();
+            let plain = r.type_() == adw::ActionRow::static_type() && !in_activity(r.upcast_ref());
             if plain && !r.is_activatable() && !has_button(r.upcast_ref()) && r.is_visible() {
                 out.push(r.title().to_string());
             }
@@ -474,6 +517,18 @@ fn info_only_rows(w: &gtk::Widget) -> Vec<String> {
     let mut out = Vec::new();
     walk(w, &mut out);
     out
+}
+
+/// True for a row inside the Sync activity groups: their rows show facts, not controls.
+fn in_activity(w: &gtk::Widget) -> bool {
+    let mut p = w.parent();
+    while let Some(x) = p {
+        if x.widget_name() == super::sync_activity::BLOCK_NAME {
+            return true;
+        }
+        p = x.parent();
+    }
+    false
 }
 
 fn expander_titles(w: &gtk::Widget, out: &mut Vec<String>) {
@@ -523,6 +578,16 @@ fn find_titled(w: &gtk::Widget, title: &str) -> Option<gtk::Widget> {
 /// `adv` (what Advanced holds and whether its fields are on screen), `server=on|off`,
 /// `opds=on|off`, `port=N`.
 pub fn dev(cmd: &str) {
+    if let Some(f) = cmd.strip_prefix("qr") {
+        let parent = ADVANCED.with(|a| a.borrow().as_ref().and_then(|w| w.upgrade()));
+        super::qr_dialog::dev(f, parent.map(|p| p.upcast()));
+        return;
+    }
+    if let Some(f) = cmd.strip_prefix("proxy") {
+        let sh = SHARED.with(|s| s.borrow().clone());
+        super::proxy_settings::dev(f, sh.as_ref());
+        return;
+    }
     if let Some(v) = cmd.strip_prefix("advanced=") {
         if let Some(a) = ADVANCED.with(|a| a.borrow().as_ref().and_then(|w| w.upgrade())) {
             a.set_expanded(v != "close");
@@ -678,7 +743,7 @@ pub fn dev(cmd: &str) {
             all.contains("More tools → Bookx Sync"),
             steps_ok,
             all.contains("Choose any user name and password"),
-            all.contains("not the Share Library password"),
+            all.contains("not the OPDS server password"),
             kosync_labels,
             all.contains(&tr(sync_model::BRAND_EXPLAINED)),
             titles.iter().any(|t| *t == tr("Advanced")),
@@ -692,8 +757,35 @@ pub fn dev(cmd: &str) {
     super::share::dev_prefs(cmd, SHARED.with(|s| s.borrow().clone()).as_ref());
 }
 
+thread_local! {
+    /// The three activity groups are made together (they share one set of rows); the later two wait here.
+    static ACTIVITY: RefCell<Option<super::sync_activity::Groups>> = const { RefCell::new(None) };
+}
+
+fn activity_unmatched_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
+    let g = super::sync_activity::build(&ctx.shared);
+    let first = g.unmatched.clone();
+    ACTIVITY.with(|a| *a.borrow_mut() = Some(g));
+    first
+}
+
+fn activity_devices_group(_ctx: &PrefCtx) -> adw::PreferencesGroup {
+    ACTIVITY
+        .with(|a| a.borrow().as_ref().map(|g| g.devices.clone()))
+        .unwrap_or_default()
+}
+
+fn activity_recent_group(_ctx: &PrefCtx) -> adw::PreferencesGroup {
+    ACTIVITY
+        .with(|a| a.borrow().as_ref().map(|g| g.activity.clone()))
+        .unwrap_or_default()
+}
+
 pub fn register() {
     let o = sync_model::order;
+    register_group("sync", o("activity"), activity_unmatched_group);
+    register_group("sync", o("activity") + 1, activity_devices_group);
+    register_group("sync", o("activity") + 2, activity_recent_group);
     register_group("sync", o("checklist"), checklist_group);
     register_group("sync", o("what"), what_group);
     register_group("sync", o("usb"), usb_group);

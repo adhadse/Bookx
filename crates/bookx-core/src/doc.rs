@@ -13,6 +13,12 @@ pub struct Style {
     pub sup: bool,
     pub sub: bool,
     pub small: bool,
+    /// `font-variant: small-caps`: lower case letters are set as small capitals.
+    pub small_caps: bool,
+    /// Font family the book's CSS asks for (`None` = the reader's font).
+    pub font: Option<String>,
+    /// Size relative to the text around it in percent, when the book's CSS changes it (50 to 300).
+    pub size_pct: Option<u16>,
     /// Text colour the book's CSS asks for (`None` = the reader's colour).
     pub color: Option<Rgb8>,
     /// Ruby (furigana): the annotation that is set beside this text (`<ruby>` base and `<rt>`).

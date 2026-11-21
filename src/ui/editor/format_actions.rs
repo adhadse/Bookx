@@ -237,7 +237,10 @@ impl Editor {
     }
 
     pub(super) fn open_url(&self, url: &str) {
-        let launcher = gtk::UriLauncher::new(url);
+        let Some(url) = crate::core::util::safe_external_url(url) else {
+            return;
+        };
+        let launcher = gtk::UriLauncher::new(&url);
         launcher.launch(Some(&self.w.win), gio::Cancellable::NONE, |_| {});
     }
 

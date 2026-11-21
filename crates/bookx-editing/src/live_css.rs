@@ -13,7 +13,7 @@ use anyhow::{bail, Context, Result};
 use bookx_core::archive::Archive;
 use bookx_core::util::{parent_dir, resolve_href};
 use bookx_text::css::{media_applies, parse_selector_list, MediaEnv};
-use scraper::{ElementRef, Html};
+use scraper::ElementRef;
 
 use crate::markup::{scan, tag_attr, Event};
 
@@ -560,7 +560,7 @@ fn element_label(el: ElementRef) -> String {
 pub fn inspect(archive: &Archive, html_path: &str, src: &str, offset: usize) -> Result<LiveCss> {
     let offset = offset.min(src.len());
     let (path, tag) = element_at(src, offset).context("no element at the cursor")?;
-    let doc = Html::parse_document(src);
+    let doc = bookx_core::util::parse_html_document(src);
     let root = doc.root_element();
     let el =
         find_by_path(root, &path).context("the element could not be found in the parsed page")?;

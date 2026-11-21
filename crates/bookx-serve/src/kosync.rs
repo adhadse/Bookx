@@ -21,7 +21,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use crate::http::{constant_time_eq, split_path, Request, Response};
+use crate::http::{split_path, Request, Response};
 
 /// MD5 hex digest, the "key" KOReader sends for a password.
 pub fn md5_hex(password: &str) -> String {
@@ -63,19 +63,32 @@ impl State {
         if self.users.contains_key(user) {
             return false;
         }
-        self.users.insert(user.to_string(), key.to_string());
+        self.users
+            .insert(user.to_string(), crate::keyhash::hash_key(key));
         true
     }
 
     fn check_user(&self, user: &str, key: &str) -> bool {
         match self.users.get(user) {
-            Some(k) => constant_time_eq(k.as_bytes(), key.as_bytes()),
+            Some(k) => crate::keyhash::verify(user, k, key),
             None => {
                 // spend comparable time so unknown users are not distinguishable by timing
-                let _ = constant_time_eq(b"", key.as_bytes());
+                crate::keyhash::dummy_verify(key);
                 false
             }
         }
+    }
+
+    /// Records of older versions hold the raw key: hash them. True when something changed.
+    fn upgrade_legacy(&mut self) -> bool {
+        let mut changed = false;
+        for v in self.users.values_mut() {
+            if !crate::keyhash::is_hashed(v) {
+                *v = crate::keyhash::hash_key(v);
+                changed = true;
+            }
+        }
+        changed
     }
 }
 
@@ -131,7 +144,7 @@ pub struct JsonFileStore {
 impl JsonFileStore {
     /// Opens the file, or starts empty if it does not exist yet.
     pub fn open(path: &Path) -> Result<JsonFileStore> {
-        let state = if path.exists() {
+        let mut state = if path.exists() {
             let text = std::fs::read_to_string(path)
                 .with_context(|| format!("reading {}", path.display()))?;
             if text.trim().is_empty() {
@@ -142,10 +155,16 @@ impl JsonFileStore {
         } else {
             State::default()
         };
-        Ok(JsonFileStore {
+        let upgraded = state.upgrade_legacy();
+        let store = JsonFileStore {
             path: path.to_path_buf(),
             state: Mutex::new(state),
-        })
+        };
+        if upgraded {
+            // raw keys of an older version are rewritten as salted hashes right away
+            store.save(&lock(&store.state))?;
+        }
+        Ok(store)
     }
 
     fn save(&self, state: &State) -> Result<()> {
@@ -153,7 +172,20 @@ impl JsonFileStore {
             std::fs::create_dir_all(dir)?;
         }
         let tmp = self.path.with_extension("json.tmp");
-        std::fs::write(&tmp, serde_json::to_vec_pretty(state)?)?;
+        let _ = std::fs::remove_file(&tmp);
+        let mut o = std::fs::OpenOptions::new();
+        o.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            o.mode(0o600);
+        }
+        {
+            use std::io::Write;
+            let mut f = o.open(&tmp)?;
+            f.write_all(&serde_json::to_vec_pretty(state)?)?;
+            f.sync_all()?;
+        }
         std::fs::rename(&tmp, &self.path)?;
         Ok(())
     }
@@ -196,6 +228,8 @@ pub struct KoSync {
     store: Box<dyn KoSyncStore>,
     allow_registration: bool,
     clock: Box<dyn Fn() -> i64 + Send + Sync>,
+    activity: Option<std::sync::Arc<crate::activity::ActivityLog>>,
+    notifier: crate::notify::Notifier,
 }
 
 const MAX_NAME: usize = 128;
@@ -224,13 +258,31 @@ impl KoSync {
             store,
             allow_registration,
             clock: Box::new(|| chrono::Utc::now().timestamp()),
+            activity: None,
+            notifier: crate::notify::Notifier::default(),
         }
+    }
+
+    /// Tells `listener` (on the thread of the request) about every stored reading position.
+    pub fn on_change(&self, listener: Option<crate::notify::Listener>) {
+        self.notifier.set(listener);
+    }
+
+    /// Records devices and reading progress in `log` (see [`crate::activity`]).
+    pub fn with_activity(mut self, log: std::sync::Arc<crate::activity::ActivityLog>) -> KoSync {
+        self.activity = Some(log);
+        self
     }
 
     /// Replaces the clock (tests).
     pub fn with_clock(mut self, clock: impl Fn() -> i64 + Send + Sync + 'static) -> KoSync {
         self.clock = Box::new(clock);
         self
+    }
+
+    /// The activity log this handler reports to, if any.
+    pub fn activity(&self) -> Option<std::sync::Arc<crate::activity::ActivityLog>> {
+        self.activity.clone()
     }
 
     pub fn store(&self) -> &dyn KoSyncStore {
@@ -264,7 +316,10 @@ impl KoSync {
             ("GET" | "HEAD", ["healthcheck"]) => Response::json(200, &json!({"state": "OK"})),
             ("POST", ["users", "create"]) => self.create(req),
             ("GET", ["users", "auth"]) => match self.authenticate(req) {
-                Some(_) => Response::json(200, &json!({"authorized": "OK"})),
+                Some(user) => {
+                    self.touch(req, &user, "", false);
+                    Response::json(200, &json!({"authorized": "OK"}))
+                }
                 None => message(401, "Unauthorized"),
             },
             ("PUT", ["syncs", "progress"]) => self.put(req),
@@ -277,6 +332,13 @@ impl KoSync {
                 message(405, "Method not allowed").with_header("Allow", "GET, POST, PUT")
             }
             _ => message(404, "Not found"),
+        }
+    }
+
+    fn touch(&self, req: &Request, user: &str, device: &str, synced: bool) {
+        if let Some(log) = &self.activity {
+            let who = crate::activity::Ident::from_request(req).with_body(device, "");
+            log.touch(&who, user, synced);
         }
     }
 
@@ -333,8 +395,32 @@ impl KoSync {
                 .to_string(),
             timestamp: ts,
         };
+        let before = self.store.get_progress(&user, doc).map(|p| p.percentage);
+        let (device, device_id, to) = (p.device.clone(), p.device_id.clone(), p.percentage);
+        let progress = p.progress.clone();
         match self.store.put_progress(&user, p) {
-            Ok(()) => Response::json(200, &json!({"document": doc, "timestamp": ts})),
+            Ok(()) => {
+                if let Some(log) = &self.activity {
+                    let who =
+                        crate::activity::Ident::from_request(req).with_body(&device, &device_id);
+                    log.touch(&who, &user, true);
+                    log.record_for(
+                        &who,
+                        doc,
+                        "",
+                        crate::activity::What::Progress { from: before, to },
+                    );
+                }
+                self.notifier.emit(&crate::notify::Note::Progress {
+                    user,
+                    document: doc.to_string(),
+                    device,
+                    device_id,
+                    percentage: to,
+                    progress,
+                });
+                Response::json(200, &json!({"document": doc, "timestamp": ts}))
+            }
             Err(_) => message(500, "Unknown server error."),
         }
     }
@@ -343,6 +429,7 @@ impl KoSync {
         let Some(user) = self.authenticate(req) else {
             return message(401, "Unauthorized");
         };
+        self.touch(req, &user, "", false);
         if !valid_document(doc) {
             return message(400, "Invalid request");
         }
@@ -532,6 +619,43 @@ mod tests {
     }
 
     #[test]
+    fn progress_moves_are_events_with_where_they_came_from() {
+        use crate::activity::{ActivityLog, What};
+        let log = Arc::new(ActivityLog::memory());
+        let s = sync().with_activity(log.clone());
+        create(&s, "alice", "pw");
+        s.handle(
+            &authed("PUT", "/syncs/progress", "alice", "pw").with_body(&put_body("doc1", 0.1)),
+        );
+        s.handle(
+            &authed("PUT", "/syncs/progress", "alice", "pw").with_body(&put_body("doc1", 0.4)),
+        );
+        let e = log.events(5);
+        assert_eq!(
+            e[0].what,
+            What::Progress {
+                from: Some(0.1),
+                to: 0.4
+            }
+        );
+        assert_eq!(
+            e[1].what,
+            What::Progress {
+                from: None,
+                to: 0.1
+            }
+        );
+        assert_eq!(e[0].document, "doc1");
+        assert_eq!(log.devices().len(), 1);
+        assert!(log.devices()[0].last_sync.is_some());
+        let r = s.handle(
+            &authed("PUT", "/syncs/progress", "alice", "bad").with_body(&put_body("d", 0.5)),
+        );
+        assert_eq!(r.status, 401);
+        assert_eq!(log.events(10).len(), 2, "a wrong password leaves no trace");
+    }
+
+    #[test]
     fn progress_requires_auth() {
         let s = sync();
         create(&s, "alice", "pw");
@@ -634,6 +758,45 @@ mod tests {
             404
         );
         assert_eq!(s.handle(&Request::new("GET", "/syncs/../x")).status, 400);
+    }
+
+    #[test]
+    fn the_account_key_is_never_on_disk_and_old_files_are_upgraded() {
+        let dir = std::env::temp_dir().join(format!("bookx-kosync-{}", uuid::Uuid::new_v4()));
+        let path = dir.join("kosync.json");
+        let key = md5_hex("hunter2");
+        {
+            let st = JsonFileStore::open(&path).unwrap();
+            st.create_user("alice", &key).unwrap();
+        }
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(
+            !text.contains(&key),
+            "the MD5 key is a login: it is not stored"
+        );
+        assert!(text.contains("$a2id$"));
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600);
+        }
+        // a file of an older version, with the raw key
+        std::fs::write(
+            &path,
+            format!(r#"{{"users":{{"bob":"{key}"}},"progress":{{}}}}"#),
+        )
+        .unwrap();
+        let st = JsonFileStore::open(&path).unwrap();
+        assert!(st.check_user("bob", &key), "the old account still works");
+        assert!(!st.check_user("bob", "wrong"));
+        assert!(!st.check_user("nobody", &key));
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(
+            !text.contains(&key),
+            "and the file was rewritten without the key"
+        );
+        std::fs::remove_dir_all(dir).ok();
     }
 
     #[test]

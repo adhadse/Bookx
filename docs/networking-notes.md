@@ -18,18 +18,29 @@ Internal. The user page is `wiki/docs/reverse-proxy.md`. Keep both in step when 
   15 s, response base 30 s + 128 KiB/s minimum rate, 64 connections (`503`), 32 per peer, 1000 requests per connection,
   8 handler threads.
 * The failed-credential throttle (`AuthThrottle`, 10 per 60 s, blocks 60 s with `429`) is keyed on the **socket peer
-  address**. Behind a proxy that is the proxy for every client. Bookx deliberately does not trust `X-Forwarded-For`
-  (a spoofable header would let anyone dodge the throttle). If this becomes a problem, the fix is an explicit
-  "trusted proxy addresses" setting, not trusting the header by default. Not done; this is a security change (§8).
+  address**. Behind a proxy that is the proxy for every client. `X-Forwarded-For` is believed **only** for connections whose
+  socket peer is in `Limits::trusted_proxies` (`--trusted-proxy`, Preferences → Sync → Advanced → Trusted proxy addresses,
+  `net::client_ip`): read from the right, trusted hops skipped, the first other address is the client, garbage stops the walk, `/0` is refused.
+  Default empty = never trusted. (2026-11-21)
 * OPDS/download/cover links are root-relative (`/opds/...`). Hosting them under another public prefix needs the
-  proxy to rewrite bodies; documented as unsupported. `OpdsConfig::prefix` exists but the server always uses `/opds`.
+  proxy to rewrite bodies; **since 2026-11-21 `ServerConfig::public_prefix` (`--public-prefix`, the Sub-path row in Sync → Advanced)** puts the
+  prefix in every link (`OpdsConfig::prefix = {prefix}/opds`, `OpdsConfig::base` for files and covers, `render_index_at`) and the server accepts requests with or
+  without it (`strip_public_prefix`, whole segment only). `clean_public_prefix` refuses `..`, odd characters and the fixed routes (`/bookx`, `/opds`, ...).
 * The sync routes depend on the `/bookx` prefix being preserved. Never document a stripped-prefix setup.
 * `Cache-Control: no-store` is set when users are configured (everything but `/healthcheck`).
 * `/bookx/healthcheck` exists only when sync is on (`KoSync::owns`), `/healthcheck` always.
 * No upload route larger than 1 MiB exists; downloads are streamed with `Range`.
-* No `Host` check on the content server (the proxy should serve one name; the wiki shows a default-server catch-all).
-  An `Origin`/`Host` check for mutations on the content server is the §8 expectation for listeners; sync PUT/POST use
-  header accounts, not cookies, so browser CSRF does not apply. Revisit if cookies/sessions are ever added.
+* **Host and Origin checks (2026-11-21):** every listener answers only to known `Host` names (`crates/bookx-serve/src/hostguard.rs`:
+  IP literals, one-label names, `.local`, `.localhost`, `.home.arpa`, `.lan`, `.internal`, the machine name, plus `--allow-host` /
+  `$BOOKX_ALLOWED_HOSTS`) and refuses a foreign `Origin` or `Sec-Fetch-Site: cross-site` on non-GET requests. A proxy that forwards a public
+  name must be listed, or every request gets `403 Host not allowed`. The app has *Allowed host names* in Sync → Advanced (validated by
+  `hostguard::parse_host_list`), next to the environment variable (Flatpak: `flatpak override --user --env=BOOKX_ALLOWED_HOSTS=...`).
+* **Web client `/app/` (2026-11-21, `pwa.rs`)**: `/app/` (page) needs the login; manifest, icon, script, style and `sw.js` are public static text. Strict CSP
+  (`default-src 'none'; script-src 'self'; ...`), no inline script, only `textContent`. The service worker only handles `/download`, `/cover`, `/opds`, `/app` of
+  its own origin; `Service-Worker-Allowed` is the public prefix. Language: English only (not translated).
+* **Accounts (`accounts.rs`)**: `ServerConfig::accounts` (Argon2id hash through `keyhash`, per-account collections = book tags) and `guest` (read only,
+  listed collections). Filtering is on the snapshot (`access_of`), so catalogue, search, downloads and covers agree. Wrong credentials never become guest.
+  The app keeps them in `ShareSettings::accounts` / `guest_collections` (hash only); no screen edits them yet, `bookx-cli serve --account/--guest-collection` does.
 
 ## Security checklist (docs/security.md §8) for this change
 

@@ -104,6 +104,10 @@ pub enum Dir {
 #[derive(Debug)]
 pub enum Input {
     Poll,
+    /// A device reported a position (see `sync_bus`).
+    Sync(crate::sync_bus::SyncEvent),
+    /// A button of the sync banner.
+    LiveAnswer(super::reader_live::Answer),
     Resize(i32, i32),
     Turn(Turn),
     Arrow(Dir),
@@ -145,11 +149,18 @@ pub enum Input {
     Fullscreen,
     Quit,
     Dev(String),
+    /// Open the previous (`false`) or next volume of the series.
+    Volume(bool),
 }
 
 #[derive(Debug)]
 pub enum Output {
     Close,
+    /// Close this volume and open another one; `last_page` starts it at its end.
+    OpenVolume {
+        id: u64,
+        last_page: bool,
+    },
     #[allow(dead_code)]
     Toast(String),
 }
@@ -193,6 +204,11 @@ pub struct ReaderComic {
     book_id: u64,
     title: String,
     book_rtl: bool,
+    library_key: String,
+    /// The previous and next volume of the series, and the end of the book that was just reached
+    /// (a second push on the same side opens the volume).
+    volumes: [Option<(u64, String)>; 2],
+    edge_armed: Option<(bool, Instant)>,
     worker: Worker,
     sizes: Vec<(u32, u32)>,
     double: Vec<bool>,
@@ -201,6 +217,10 @@ pub struct ReaderComic {
     plan: Vec<Vec<usize>>,
     /// The first page on screen (in a webtoon: the page in view).
     page: usize,
+    /// A device that is further along is offered here (see `sync_live`).
+    sync_banner: Rc<super::reader_live::LiveBanner>,
+    _sync_sub: Option<crate::sync_bus::Subscription>,
+    seen_page: Cell<usize>,
     /// The stop of guided view the camera is on.
     stop: Option<usize>,
     pending: Option<Pending>,
@@ -345,6 +365,8 @@ fn key_input(key: gdk::Key, ctrl: bool, shift: bool) -> Option<Input> {
         Key::Left => Input::Arrow(Dir::Left),
         Key::Up => Input::Arrow(Dir::Up),
         Key::Down => Input::Arrow(Dir::Down),
+        Key::Page_Down if ctrl => Input::Volume(true),
+        Key::Page_Up if ctrl => Input::Volume(false),
         Key::Page_Down => Input::Turn(Turn::Next),
         Key::Page_Up => Input::Turn(Turn::Prev),
         Key::space => Input::Space(shift),
@@ -514,6 +536,9 @@ impl ReaderComic {
             return;
         }
         self.page = page.min(self.n() - 1);
+        if self.seen_page.replace(self.page) != self.page {
+            self.sync_banner.page_turned();
+        }
         if self.eff.mode != Mode::Webtoon {
             self.page = self
                 .plan
@@ -847,7 +872,59 @@ impl ReaderComic {
         }
         if let Some(s) = layout::turned(self.screen(), self.plan.len(), t) {
             self.show(self.plan[s][0], false);
+        } else {
+            self.edge_hit(t == Turn::Next);
         }
+    }
+
+    /// Opens the neighbouring volume; going back starts it at its last page.
+    fn open_volume(&mut self, forward: bool) {
+        let v = self.volumes[forward as usize].clone();
+        match v {
+            Some((id, _)) => {
+                let _ = self.sender.output(Output::OpenVolume {
+                    id,
+                    last_page: !forward,
+                });
+            }
+            None => {
+                let msg = if forward {
+                    tr("This is the last volume of the series")
+                } else {
+                    tr("This is the first volume of the series")
+                };
+                let _ = self.sender.output(Output::Toast(msg));
+            }
+        }
+    }
+
+    /// Pushing past the first or last page: says which volume is next, and a second push within a
+    /// few seconds opens it.
+    fn edge_hit(&mut self, forward: bool) {
+        let Some((_, title)) = self.volumes[forward as usize].clone() else {
+            return;
+        };
+        if self
+            .edge_armed
+            .is_some_and(|(f, at)| f == forward && at.elapsed() < Duration::from_secs(6))
+        {
+            self.edge_armed = None;
+            self.open_volume(forward);
+            return;
+        }
+        self.edge_armed = Some((forward, Instant::now()));
+        let msg = if forward {
+            trf(
+                "End of the volume. Turn again for the next volume: {}",
+                &[&title],
+            )
+        } else {
+            trf(
+                "Start of the volume. Turn again for the previous volume: {}",
+                &[&title],
+            )
+        };
+        let _ = self.sender.output(Output::Toast(msg));
     }
 
     /// An arrow key: moves the picture when it can move that way, otherwise turns the page.
@@ -896,6 +973,8 @@ impl ReaderComic {
         if let Some(s) = layout::turned(self.screen(), self.plan.len(), t) {
             let first = self.plan[s][0];
             self.show(first, !forward);
+        } else {
+            self.edge_hit(forward);
         }
     }
 
@@ -955,7 +1034,9 @@ impl ReaderComic {
     }
 
     fn refresh_effective(&mut self) {
-        self.eff = self.store.effective(self.book_id, self.book_rtl);
+        self.eff = self
+            .store
+            .effective_in(self.book_id, self.book_rtl, &self.library_key);
     }
 
     /// New mode, direction or colours: lay the pages out again at the same page.
@@ -1134,6 +1215,11 @@ impl ReaderComic {
                 .get(self.book_id)
                 .and_then(|b| b.position.as_ref().map(|p| p.spine))
                 .unwrap_or(0);
+            let start = if crate::comic::take_last_page(self.book_id) {
+                self.n().saturating_sub(1)
+            } else {
+                start
+            };
             self.show(start, false);
             return;
         }
@@ -1207,7 +1293,8 @@ impl ReaderComic {
             .filter(|p| v.cache.peek(p.page).is_some_and(|s| s.grey))
             .count();
         format!(
-            "comic_state: order={} grey_pages={} pages={} page={} screen={}/{} mode={} fit={} rtl={} guided={} grey={} zoom={:.3} fitted={} cx={:.0} cy={:.0} shows={} stop={} stops={} panels={} cached={} failed={} animating={} draws={} draw_ms={:.0} sidebar={} thumbs={} view={:.0}x{:.0} pending={} gen={} label=\"{}\"",
+            "comic_state: book={} order={} grey_pages={} pages={} page={} screen={}/{} mode={} fit={} rtl={} guided={} grey={} zoom={:.3} fitted={} cx={:.0} cy={:.0} shows={} stop={} stops={} panels={} cached={} failed={} animating={} draws={} draw_ms={:.0} sidebar={} thumbs={} view={:.0}x{:.0} pending={} gen={} label=\"{}\"",
+            self.book_id,
             order.join("-"),
             grey_pages,
             self.n(),
@@ -1281,6 +1368,37 @@ impl ReaderComic {
             Input::Turn(t) => self.turn(t),
             Input::Arrow(d) => self.arrow(d),
             Input::Space(back) => self.space(back),
+            Input::Sync(ev) => {
+                if let Some(a) = &ev.ahead {
+                    let (enabled, mine) = {
+                        let c = self.shared.cfg.borrow();
+                        (c.share.offer_jump, c.kosync.device_id.clone())
+                    };
+                    let n = self.n();
+                    let local = if n > 0 {
+                        self.page as f64 / n as f64
+                    } else {
+                        0.0
+                    };
+                    let same = !mine.is_empty() && a.device_id == mine;
+                    if crate::sync_live::worth_offering(enabled, local, a.percentage, same) {
+                        let page = crate::sync_live::page_at(a.percentage, n);
+                        self.sync_banner.offer_ahead(&ev.device, a.percentage, page);
+                    }
+                }
+            }
+            Input::LiveAnswer(a) => {
+                if let super::reader_live::Answer::Primary(crate::sync_live::Banner::Ahead {
+                    percentage,
+                    ..
+                }) = a
+                {
+                    let n = self.n();
+                    if n > 0 {
+                        self.go_page(((percentage * n as f64) as usize).min(n - 1));
+                    }
+                }
+            }
             Input::GoPage(p) => self.go_page(p),
             Input::ThumbGo(p) => {
                 self.go_page(p);
@@ -1450,6 +1568,7 @@ impl ReaderComic {
                 self.refresh_effective();
                 self.relayout(had_rtl != self.eff.rtl);
             }
+            Input::Volume(forward) => self.open_volume(forward),
             Input::GotoDialog => self.goto_dialog(),
             Input::Properties => self.properties(),
             Input::SidebarShown => self.sidebar_changed(),
@@ -1535,6 +1654,14 @@ impl ReaderComic {
             Some((x.parse().ok()?, y.parse().ok()?))
         };
         match cmd {
+            "live-state" => {
+                eprintln!(
+                    "live_state: page={} banner={}",
+                    self.page,
+                    self.sync_banner.dev_state()
+                );
+            }
+            "live-press" => self.sync_banner.dev_press(arg != "secondary"),
             // `reader:menu-dump` prints the Main Menu, `reader:header-dump` the header, `reader:view-dump` the View popover
             "menu-dump" => {
                 let mut list = Vec::new();
@@ -1637,6 +1764,13 @@ impl ReaderComic {
             "comic-cover-alone" => self.input(Input::SetCoverAlone(arg == "on")),
             "comic-wide-alone" => self.input(Input::SetWideAlone(arg == "on")),
             "comic-reset" => self.input(Input::ResetBook),
+            // `reader:comic-volume=next|prev` opens the neighbour, `comic-volumes` prints them
+            "comic-volume" => self.input(Input::Volume(arg == "next")),
+            "comic-volumes" => eprintln!(
+                "comic_volumes: prev={} next={}",
+                self.volumes[0].as_ref().map_or("-", |v| v.1.as_str()),
+                self.volumes[1].as_ref().map_or("-", |v| v.1.as_str())
+            ),
             "comic-animate" => self.animate_override = Some(arg == "on"),
             "comic-key" => {
                 let (mods, name) = arg.rsplit_once('+').unwrap_or(("", arg));
@@ -1796,7 +1930,13 @@ impl SimpleComponent for ReaderComic {
             .collect();
         let double = meta::double_flags(&comic.info, n);
         let store = crate::comic::load();
-        let eff = store.effective(book_id, comic.rtl);
+        let library_key = shared
+            .cfg
+            .borrow()
+            .library_dir
+            .to_string_lossy()
+            .into_owned();
+        let eff = store.effective_in(book_id, comic.rtl, &library_key);
         let worker = Worker::new(source.clone(), 2);
         let updating_ui = Rc::new(Cell::new(false));
         let alive = Rc::new(Cell::new(true));
@@ -2109,6 +2249,35 @@ impl SimpleComponent for ReaderComic {
         vbox.append(&rtl);
         vbox.append(&guided);
         vbox.append(&grey);
+        let volumes = [
+            crate::comic::neighbour_of(&shared.lib.borrow(), book_id, false),
+            crate::comic::neighbour_of(&shared.lib.borrow(), book_id, true),
+        ];
+        vbox.append(&heading(&tr("Series")));
+        let prev_vol = gtk::Button::with_label(&tr("Previous Volume"));
+        let next_vol = gtk::Button::with_label(&tr("Next Volume"));
+        for (b, v, fwd) in [
+            (&prev_vol, &volumes[0], false),
+            (&next_vol, &volumes[1], true),
+        ] {
+            b.add_css_class("flat");
+            b.set_halign(gtk::Align::Start);
+            b.set_widget_name(if fwd {
+                "comic-next-volume"
+            } else {
+                "comic-prev-volume"
+            });
+            b.set_sensitive(v.is_some());
+            if let Some((_, t)) = v {
+                b.set_tooltip_text(Some(t));
+            }
+            let (tx, p) = (sender.input_sender().clone(), pop.clone());
+            b.connect_clicked(move |_| {
+                p.popdown();
+                tx.emit(Input::Volume(fwd));
+            });
+            vbox.append(b);
+        }
         let reset = gtk::Button::with_label(&tr("Use the Defaults for This Book"));
         reset.set_visible(false);
         reset.add_css_class("flat");
@@ -2199,7 +2368,18 @@ impl SimpleComponent for ReaderComic {
 
         let toolbar = adw::ToolbarView::new();
         toolbar.add_top_bar(&header);
-        toolbar.set_content(Some(&split));
+        let sync_banner = {
+            let tx = sender.input_sender().clone();
+            super::reader_live::LiveBanner::new(move |a| tx.emit(Input::LiveAnswer(a)))
+        };
+        let sync_sub = {
+            let tx = sender.input_sender().clone();
+            crate::sync_bus::subscribe(Some(book_id), move |e| tx.emit(Input::Sync(e.clone())))
+        };
+        let page_overlay = gtk::Overlay::new();
+        page_overlay.set_child(Some(&split));
+        page_overlay.add_overlay(&sync_banner.widget);
+        toolbar.set_content(Some(&page_overlay));
         toolbar.add_bottom_bar(&bottom);
         bin.set_child(Some(&toolbar));
         root.set_child(Some(&bin));
@@ -2263,22 +2443,36 @@ impl SimpleComponent for ReaderComic {
             })
         };
         {
-            let (st, alive) = (Rc::downgrade(&view_state), alive.clone());
+            let (st, alive2) = (Rc::downgrade(&view_state), alive.clone());
             crate::devtools::probe("comic", move || {
-                alive.get()
+                alive2.get()
                     && st.upgrade().is_some_and(|st| {
                         let v = st.borrow();
                         !v.placed.is_empty()
                             && v.placed.iter().take(2).any(|p| v.cache.contains(p.page))
                     })
             });
+            let (st, alive) = (Rc::downgrade(&view_state), alive.clone());
+            crate::devtools::probe("comic-ahead", move || {
+                alive.get()
+                    && st.upgrade().is_some_and(|st| {
+                        let v = st.borrow();
+                        !v.placed.is_empty() && v.cache.len() > AHEAD.min(2)
+                    })
+            });
         }
 
         let mut model = ReaderComic {
+            sync_banner,
+            _sync_sub: Some(sync_sub),
+            seen_page: Cell::new(usize::MAX),
             shared,
             book_id,
             title: title_text,
             book_rtl: comic.rtl,
+            library_key,
+            volumes,
+            edge_armed: None,
             worker,
             sizes,
             double,

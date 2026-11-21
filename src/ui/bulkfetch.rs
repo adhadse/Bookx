@@ -445,7 +445,7 @@ impl Ctx {
         self.undo_btn
             .set_sensitive(!self.applied.borrow().is_empty());
         if self.running.get() {
-            self.summary.set_text(&tr("Looking the books up…"));
+            self.summary.set_text(&tr("Looking the books up"));
         } else {
             let mut s = r.summary();
             if r.not_found() > 0 {

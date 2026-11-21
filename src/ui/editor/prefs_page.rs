@@ -56,6 +56,15 @@ pub fn preview_style(mut st: CanvasStyle, look: &EditorLook) -> CanvasStyle {
     if look.preview_min_size > 0 {
         st.font_size = st.font_size.max(look.preview_min_size as f64);
     }
+    if let Some(c) = ep::parse_hex_color(&look.preview_fg) {
+        st.palette.fg = c;
+    }
+    if let Some(c) = ep::parse_hex_color(&look.preview_bg) {
+        st.palette.bg = c;
+    }
+    if let Some(c) = ep::parse_hex_color(&look.preview_link) {
+        st.palette.link = c;
+    }
     st
 }
 
@@ -333,21 +342,13 @@ impl Editor {
         self.prefs.ignored_checks = file.ignored_checks;
     }
 
+    /// The editor has no preferences window of its own: this opens the Bookx Preferences on the
+    /// Editor page (the one place with the search field and the sidebar).
     fn open_editor_prefs(&mut self) {
-        let ctx = PrefCtx {
-            parent: self.w.win.clone().upcast(),
-            shared: self.shared.clone(),
-            on_change: Rc::new(|_| {}),
-        };
-        let page = adw::PreferencesPage::new();
-        page.set_title(&tr("Editor"));
-        for g in groups(&ctx) {
-            page.add(&g);
-        }
-        let d = adw::PreferencesDialog::new();
-        d.set_title(&tr("Editor Preferences"));
-        d.add(&page);
-        d.present(Some(&self.w.win));
+        let _ = self
+            .w
+            .win
+            .activate_action("app.preferences-page", Some(&"editor".to_variant()));
     }
 
     /// Dev hooks `editor:prefs-…`; `true` when the command was one of them.
@@ -393,6 +394,32 @@ impl Editor {
         }
         if c == "clear-marks" {
             self.prefs_update(PrefsAct::ClearMarks);
+            return true;
+        }
+        if let Some(accel) = c.strip_prefix("key=") {
+            // a key as the shortcut controllers get it: `editor:key=F9`
+            let canon = crate::shortcuts::canonical(accel).unwrap_or_default();
+            let cur = crate::shortcuts::current();
+            let found = crate::editor_keymap::COMMANDS
+                .iter()
+                .find(|k| cur.effective(k.id).contains(&canon));
+            match found {
+                Some(k) => {
+                    eprintln!("editor_key: {accel} -> {}", k.id);
+                    if let Some(i) = super::keymap::input_for(k.id) {
+                        self.sender.input(i);
+                    }
+                }
+                None => eprintln!("editor_key: {accel} -> none"),
+            }
+            return true;
+        }
+        if c == "sidebar-state" {
+            eprintln!(
+                "editor_sidebar: shown={} collapsed={}",
+                self.w.split.shows_sidebar(),
+                self.w.split.is_collapsed()
+            );
             return true;
         }
         if c == "prefs-open" {
@@ -462,6 +489,9 @@ fn set_field(l: &mut EditorLook, k: &str, v: &str) {
         "preview_font" => l.preview_font = v.into(),
         "preview_min_size" => l.preview_min_size = v.parse().unwrap_or(0),
         "preview_follow" => l.preview_follow = b(),
+        "preview_fg" => l.preview_fg = v.into(),
+        "preview_bg" => l.preview_bg = v.into(),
+        "preview_link" => l.preview_link = v.into(),
         _ => {}
     }
 }
@@ -482,15 +512,6 @@ pub fn register() {
     {
         register_group("editor", 10 * (i as i32 + 1), f);
     }
-}
-
-fn groups(ctx: &PrefCtx) -> Vec<adw::PreferencesGroup> {
-    vec![
-        text_group(ctx),
-        scheme_group(ctx),
-        typing_group(ctx),
-        preview_group(ctx),
-    ]
 }
 
 fn switch(
@@ -560,6 +581,51 @@ fn font_row(
     }
     row.add_suffix(&reset);
     row.add_suffix(&btn);
+    row
+}
+
+/// A colour override of the preview: a colour button and a button that goes back to the theme's colour.
+fn color_row(
+    title: &str,
+    value: &str,
+    set: impl Fn(&mut EditorLook, String) + 'static,
+) -> adw::ActionRow {
+    let row = adw::ActionRow::builder()
+        .title(glib::markup_escape_text(title))
+        .subtitle(tr("Empty means the colour of the reader theme"))
+        .build();
+    let btn = gtk::ColorDialogButton::new(Some(gtk::ColorDialog::new()));
+    btn.set_valign(gtk::Align::Center);
+    crate::ui::audit::label(&btn, title);
+    if let Some((r, g, b)) = ep::parse_hex_color(value) {
+        btn.set_rgba(&gtk::gdk::RGBA::new(r as f32, g as f32, b as f32, 1.0));
+    }
+    let set = std::rc::Rc::new(set);
+    let reset_flag = std::rc::Rc::new(std::cell::Cell::new(false));
+    {
+        let (set, flag) = (set.clone(), reset_flag.clone());
+        btn.connect_rgba_notify(move |b| {
+            if flag.get() {
+                return;
+            }
+            let c = b.rgba();
+            let hex = ep::hex_color((c.red() as f64, c.green() as f64, c.blue() as f64));
+            EditorLook::update(|l| set(l, hex.clone()));
+        });
+    }
+    let reset = gtk::Button::from_icon_name("edit-undo-symbolic");
+    reset.add_css_class("flat");
+    reset.set_valign(gtk::Align::Center);
+    reset.set_tooltip_text(Some(&tr("Use the theme colour")));
+    crate::ui::audit::label(&reset, &trf("Use the theme {}", &[&title.to_lowercase()]));
+    row.add_suffix(&reset);
+    row.add_suffix(&btn);
+    reset.connect_clicked(move |_| {
+        reset_flag.set(true);
+        btn.set_rgba(&gtk::gdk::RGBA::new(0.0, 0.0, 0.0, 1.0));
+        reset_flag.set(false);
+        EditorLook::update(|l| set(l, String::new()));
+    });
     row
 }
 
@@ -844,6 +910,19 @@ fn preview_group(_: &PrefCtx) -> adw::PreferencesGroup {
         48,
         |l, v| l.preview_min_size = v,
     ));
+    g.add(&color_row(&tr("Text colour"), &look.preview_fg, |l, c| {
+        l.preview_fg = c
+    }));
+    g.add(&color_row(
+        &tr("Background colour"),
+        &look.preview_bg,
+        |l, c| l.preview_bg = c,
+    ));
+    g.add(&color_row(
+        &tr("Link colour"),
+        &look.preview_link,
+        |l, c| l.preview_link = c,
+    ));
     g.add(&switch(
         &tr("Follow the cursor"),
         &tr("The preview scrolls to the element at the cursor when the editor opens"),
@@ -882,6 +961,24 @@ mod tests {
             font_css("Monospace"),
             ".code-view { font-family: \"Monospace\", monospace; }"
         );
+    }
+
+    #[test]
+    fn colour_overrides_replace_the_theme_colours_and_bad_ones_are_ignored() {
+        let base = CanvasStyle::default();
+        let l = EditorLook {
+            preview_fg: "#ff0000".into(),
+            preview_bg: "00ff00".into(),
+            preview_link: "nonsense".into(),
+            ..EditorLook::default()
+        };
+        let st = preview_style(base.clone(), &l);
+        assert_eq!(st.palette.fg, (1.0, 0.0, 0.0));
+        assert_eq!(st.palette.bg, (0.0, 1.0, 0.0));
+        assert_eq!(st.palette.link, base.palette.link);
+        assert_eq!(ep::hex_color((1.0, 0.0, 0.5)), "#ff0080");
+        // a hand-edited file cannot smuggle a bad value in
+        assert_eq!(l.sanitized().preview_link, "");
     }
 
     #[test]

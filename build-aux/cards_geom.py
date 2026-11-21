@@ -28,12 +28,24 @@ def meets(a, b, gap=0.0):
 
 
 shown, pops = rects("shown"), rects("pops")
+target = rects("target")
 cards = list(shown.values())
 ok = True
 if mode == "count":
     ok = len(cards) == int(sys.argv[3])
 elif mode == "disjoint":
     ok = len(cards) == 2 and not meets(cards[0], cards[1], 8.0)
+elif mode == "target_disjoint":
+    # the places the cards slide to (what is drawn in between depends on how far the slide has got)
+    t = list(target.values())
+    ok = len(t) == 2 and not meets(t[0], t[1], 8.0)
+elif mode == "yielded":
+    # card ID is asked to go somewhere other than where it was drawn on line argv[3]
+    cid, before = int(sys.argv[3]), int(sys.argv[4])
+    prev = [l for l in open(sys.argv[5]).read().splitlines() if l.startswith("cards:")][before - 1]
+    old = re.search(r"shown=\[([^\]]*)\]", prev).group(1)
+    old = {int(i): tuple(map(float, v.split(","))) for i, v in (it.split(":") for it in old.split(";") if it)}
+    ok = any(abs(a - b) > 2 for a, b in zip(old[cid], target[cid]))
 elif mode == "centred":
     # side by side, a gap of about 12 px, the group centred, bottoms level
     a, b = sorted(cards)

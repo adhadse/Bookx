@@ -24,8 +24,9 @@ the repository in the same place.
 UI scenarios in `build-aux/ui-tests.sh`: `backup_destinations`, `backup_restore_from_destination`,
 `backup_restore_encrypted`, `backup_remove`, `backup_webdav` (a Python WebDAV server, `build-aux/fake-webdav.py`, with
 basic auth), `backup_webdav_wrong_password`, `backup_on_exit`, `secrets_migrate`, `secrets_in_keyring`,
-`secrets_no_keyring`. `BOOKX_SECRETS=memory` is set for every scenario (and the session tests); `none` pretends there
-is no keyring.
+`secrets_no_keyring`, `secrets_no_keyring_not_in_file`, `secrets_master_password_vault`, `secrets_migrate_plaintext`
+(`build-aux/ui-tests-secrets.sh`). `BOOKX_SECRETS=memory` is set for every scenario (and the session tests); `none` pretends
+there is no keyring (then the encrypted store `secrets.vault` or memory-only is used; passwords never go to `config.json`).
 
 Dev hooks (`library:health=…`; the newer ones are listed in `_developer/docs.md`): `backup-add=NAME|PATH[|encrypt][|keep=N][|auto][|nobooks][|nocovers][|maxmb=N]`, `backup-add-dav=NAME|URL|USER|PASSWORD|FOLDER[|encrypt]`,
 `backup-passphrase=…`, `backup-remove1`, `backup-reload`, `backup-restore-remote1`, `backup-pick=N`, `backup-cancel`, `backup-scope`
@@ -264,13 +265,14 @@ Performance (release, this machine): seal + open 32 MiB 65 ms; unchanged library
 
 ### Limits and caveats (D9)
 
-* One writer per repository; no locking in the place (a second writer could reuse a snapshot or journal number; the
-  rollback check and per-run listing make it detectable, not impossible).
+* One writer per repository, enforced by `lock.json` in the place (see "Lock, pieces, passphrase change" below). The
+  lock is advisory and best effort: write, read back, whose token is there wins; a very simultaneous start on a
+  share without atomic create can still slip through (the rollback check stays as the second line).
 * WebDAV: not run against a real Nextcloud/ownCloud; tested with an in-process stand-in (with and without `MOVE`). The
   Python `build-aux/fake-webdav.py` has no `MOVE`, which exercises the direct-PUT fallback (mid-file cancel is then
   best-effort). Uploads are one `Connection: close` request per object, so many small files over a high-latency link
   are slow (3 in flight by default); a server limit on request size (e.g. 100 MB on some proxies) will fail big files
-  with a clear "server answered 413"; chunked upload is not implemented.
+  with a clear "server answered 413" unless the server takes pieces (see below).
 * Verify-after-write reads every uploaded object back: it doubles traffic of the first backup over a network place
   (`RunOptions::verify_writes = false` to skip; the UI should offer that only for fast links).
 * A new file is read twice (hash, upload). Files that change *while* being copied are left out and reported, then taken
@@ -280,13 +282,14 @@ Performance (release, this machine): seal + open 32 MiB 65 ms; unchanged library
 * `ReplaceAll` restoring a library the app has open is the caller's responsibility (the CLI takes the library lock; the
   UI must close the library first). The catalogue is replaced through SQLite's online-backup API, so the open file is
   consistent, but the app's in-memory books are stale.
-* Collections are in the notes-state blob and the catalogue, but *journal records do not carry collections* (only
-  highlights, notes, bookmarks, position, progress and reading status): a collection created between snapshots is
-  protected at the next snapshot.
+* Collections (shelves) are in the notes-state blob and the catalogue and, since the lock change, also in journal
+  records (`JournalRecord.collections`, the complete list, written when any shelf changed; latest record wins on
+  replay; missing shelves are created, membership is set to the record's, shelves the record does not name are left
+  alone, books the catalogue lacks are skipped).
 * Journal replay never creates or deletes books: notes of a book the restored catalogue lacks are counted
   (`journal_books_missing`), not recreated.
-* Passphrase change: a repository keeps the passphrase it was created with; changing it needs a new repository
-  (a different folder), as with `.bookxbackup`.
+* Passphrase change: done in place (`Repository::change_passphrase`), see below. The `.bookxbackup` files are not
+  re-encrypted.
 * Windows/macOS file-name rules: names Windows cannot hold (reserved device names) are skipped with a report; names with
   `:` or trailing dots are kept (restoring on Linux/macOS is fine).
 * The CLI `backup run` takes no library lock (it only reads the catalogue through SQLite's backup API, safe while the app
@@ -344,6 +347,51 @@ real restore dialog by hand (the Broadway scenarios drive it through the hooks, 
 look during a long copy, and the wiki screenshot of the Backups page (needs the session screenshots to be retaken).
 The `i18n` catalogues (`po/`) were not updated: see the msgid list in the change report.
 
+### Lock, pieces, passphrase change (wave 11)
+
+* **Lock** (`repo/lock.rs`): `lock.json` {host, pid, token, since, beat}. Taken by `run`, `journal_append` (only when it
+  has something to write), `prune`, `compact_journal`, `gc`, `remove_blobs`, `change_passphrase`; re-entrant per
+  handle. A lock with no beat for 15 minutes, or this computer's own with a dead pid (Linux `/proc`), is taken
+  without asking; a damaged or over-4 KiB lock file is replaced. Writers renew it once a minute from the upload
+  progress; `lock_held()` is checked before the snapshot manifest is written (`LockLost`). `RepoLocked` (typed,
+  message starts `this backup place is in use`) -> the app shows *Take Over This Place* (menu of the place, and a
+  question after a run that hit it); `Repository::take_over_lock(store)` needs no passphrase. Scheduled runs and the
+  notes timer just record the failure text. Tests: `tests/repo_lock.rs`, `src/backups.rs`.
+* **Pieces and resume** (`DavStore`): at `check()` the server is probed once for `PUT` with `Content-Range` (two
+  one-byte pieces, read back). Where it works, objects of 32 MiB or more go up in 8 MiB pieces to
+  `.<name>.part-resume`, then `MOVE`. An interrupted upload keeps its pieces; the next run continues from the size
+  the server holds, **only for unencrypted places with read-back on** (`RepoStore::allow_resume`): the bytes are the
+  same every time, and the whole object is still read back and compared (the skipped bytes pass through the hash).
+  Encrypted objects are sealed with fresh random salt and nonce, so they restart (making them deterministic would
+  reuse a keystream if a file changed mid-copy: refused). Servers without `Content-Range` (most: Apache, nginx,
+  SabreDAV/Nextcloud, x/net webdav) keep the single `PUT`; Nextcloud's own chunking API is not implemented. Verified
+  only against the in-process stand-in (`tests/repo_lock.rs`). Per-byte progress of the repository run existed
+  already (`RunProgress.bytes_done`); the old whole-file `.bookxbackup` push is still by stage.
+* **Passphrase change** (`repo/rekey.rs`): keeps the *id key* (object names stay; it is sealed under the new keys in
+  `bookx-repo.json` as `id_key`), rotates the encryption key. `rekey.json` marker first, then every object (blobs,
+  snapshots, journal, `gc/pending.json`) is opened with the old keys, sealed with the new and put at the same path
+  through the store's atomic `put`, blobs checked against their keyed id on the way and the result read back. Objects
+  that already open with the new keys are skipped, so a cut run continues when run again with the same passphrases.
+  Commit = one atomic write of `bookx-repo.json` (`check`, `kdf`, `id_key`, `rekeyed`), then the marker is removed. While
+  a change is unfinished `open` fails with `RekeyPending`. Another computer (or an attacker) holding the *old*
+  passphrase can still confirm known files by id and can read copies of the place made before the change. The
+  app's single saved passphrase is replaced only when every encrypted place finished; places already done are
+  skipped on the retry. CLI: not added yet. Tests: `tests/repo_rekey.rs` (crash at several points, before the
+  commit, cancel, hostile marker, damaged object, big objects), perf budget in `tests/perf_budgets.rs`.
+* **UI**: Backups page, *Change Backup Passphrase* row; place menu *Take Over This Place*; deep check shows
+  "1.2 GB of 4 GB · 38 MB/s · about 2 minutes left". Broadway: `build-aux/ui-tests-backup9.sh` (real Add/Edit Place
+  window, busy place and take over, old lock, passphrase change and refusals).
+
+### Security checklist addendum (wave 11)
+
+* Untrusted bytes: `lock.json` (≤ 4 KiB, parse failure = replaced), `rekey.json` (≤ 64 KiB, KDF cost bounded before any
+  work: `a_hostile_marker_cannot_make_the_change_do_huge_work`), journal `collections` (name ≤ 1 KiB, ≤ 100 000).
+* Paths: only `lock.json`, `rekey.json` and existing repository paths (`valid_path`). No process, no listener, no new
+  dependency (`bookx-tts` gained a path dependency on `bookx-audio`, which is in the workspace).
+* Secrets: passphrases only in memory; the marker and config hold salts, check values and a sealed id key.
+* Tests that fail without the fix: `a_second_computer_cannot_write_…`, `taking_over_stops_the_old_writer_…`,
+  `a_break_in_the_middle_is_finished_by_running_it_again`, `an_encrypted_big_upload_starts_over_…`.
+
 ## Not done, or only partly
 
 - **Real services**: not run against Google Drive, OneDrive, iCloud, a real SMB/NFS share, Nextcloud/ownCloud, or a real
@@ -356,7 +404,7 @@ The `i18n` catalogues (`po/`) were not updated: see the msgid list in the change
 - **Unit-tested GTK parts**: the add/edit dialog, `mount_uri` and "Online Accounts…" are only exercised by hand (not by
   the UI scenarios); the scenarios use the dev hooks that bypass the dialog. The Cancel button is only unit-tested at
   the `push` level.
-- **Passphrase change** does not re-encrypt existing copies.
+- **Passphrase change** (old `.bookxbackup` files only): not re-encrypted. Repositories are (D9 below).
 - **Windows/macOS**: nothing here is portable beyond folders and WebDAV; GVfs and the Secret Service are Linux.
 - The E-mail/Share/KOSync/Device dialogs got a keyring caption; the Device window's WebDAV password shows it in the status
   line (it has no description field).

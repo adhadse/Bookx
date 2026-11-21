@@ -96,7 +96,12 @@ hour); it is kept apart from reading time.
 
 An audiobook that is linked to a book (**Library** menu → *Audiobooks*, see [the library](library.md#audiobooks)) also plays in
 Bookx: select the book and use **Play in Bookx** in the details panel. Its place and bookmarks are kept separately from
-your reading place in the e-book. Bookx does not follow one place across the e-book and the audiobook.
+your reading place in the e-book.
+
+The details panel also has **Continue in Audiobook**, which starts the audio at the place where you stopped reading, and
+**Continue Reading**, which opens the e-book where you stopped listening. Chapters with the same title in the book and
+the audio line the two up; elsewhere Bookx uses the same share of the text and of the audio, so the place can be off by a
+few paragraphs or minutes. The two places are not kept in step by themselves: choose the row when you switch.
 
 ## What it does not do
 

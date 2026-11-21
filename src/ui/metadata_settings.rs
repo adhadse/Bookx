@@ -59,6 +59,40 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
         });
     }
     g.add(&on);
+    let guess = adw::SwitchRow::new();
+    guess.set_title(&tr("Read the file name of new books"));
+    guess.set_subtitle(&tr("When a new book has no author, or its title is only the file name, use what the file name says, such as Author - Title"));
+    guess.set_active(ctx.shared.cfg.borrow().guess_filename);
+    {
+        let shared = ctx.shared.clone();
+        guess.connect_active_notify(move |s| {
+            shared.cfg.borrow_mut().guess_filename = s.is_active();
+            shared.cfg.borrow().save();
+        });
+    }
+    g.add(&guess);
+    let patterns = adw::EntryRow::new();
+    patterns.set_title(&tr("File name patterns"));
+    patterns.set_tooltip_text(Some(&tr(
+        "Separate with ;  Use {author}, {title}, {series} and {index}; start with re: for a regular expression. Empty uses the built-in patterns.",
+    )));
+    patterns.set_text(&ctx.shared.cfg.borrow().filename_patterns);
+    patterns.set_show_apply_button(true);
+    {
+        let shared = ctx.shared.clone();
+        patterns.connect_apply(move |e| {
+            let text = e.text().to_string();
+            if let Some(err) = crate::library_add::patterns_error(&text) {
+                e.add_css_class("error");
+                e.set_tooltip_text(Some(&err));
+                return;
+            }
+            e.remove_css_class("error");
+            shared.cfg.borrow_mut().filename_patterns = text;
+            shared.cfg.borrow().save();
+        });
+    }
+    g.add(&patterns);
     let cache = adw::ActionRow::new();
     cache.set_title(&tr("Source cache"));
     cache.set_subtitle(&tr(

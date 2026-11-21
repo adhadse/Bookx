@@ -100,12 +100,22 @@ bookx-cli library cite --style bibtex -o refs.bib "author:herbert"   # bibtex, r
 bookx-cli library fixity                    # SHA-256 check of the book files; exit 1 when one is damaged
 bookx-cli library covers --json             # small or odd covers (--all: every cover with its size)
 bookx-cli library inbox set ~/Downloads/books   # then: inbox scan | add-all | dismiss-all
+bookx-cli library columns add "Pages" --type integer   # custom columns: list [--json] [--values LABEL], remove LABEL
+bookx-cli library columns add "Mood" --type enumeration --values "Calm, Tense"
+bookx-cli library columns set 12 pages 412  # an empty value clears it; invalid values are refused with the reason
+bookx-cli library replace --field title --find "the " --with "" --dry-run   # fields: title authors series publisher language tags comments #label
 ```
 
 `import-calibre` keeps the files in the Calibre folder unless you pass `--copy`. `export-calibre` writes
 `Author/Title (id)/` folders with the book files, `cover.jpg` and `metadata.opf`, plus a `metadata.db`, into a
 folder that does not exist yet or is empty (it refuses anything else, and a folder inside the library). It only reads
 your library, prints its progress on standard error and exits with 1 when some files could not be copied.
+
+`columns add` takes `--type text|long_text|integer|float|rating|bool|date|tags|enumeration|composite`, `--label` (default: made from the name),
+`--values` for an enumeration and `--template` for a composite column. Search them as `#label:value`
+(`bookx-cli search '#pages:>300'`); `library info` and `library list --json` show the values and `library dump` has the
+definitions and the values. `replace` takes `--regex`, `--case` and a search for the books to change (default: all), and
+is one undo step (`library undo`).
 
 ### highlights
 
@@ -122,6 +132,26 @@ Bookx sync server received and Bookx’s own sync records are always used when t
 another settings folder). Highlights are matched by their words; nothing is added or deleted, a colour you chose in
 Bookx is left alone, and `--apply` writes one entry in the library’s history so `library undo` takes it back. Running it
 again changes nothing. See [Colours and styles from your e-reader](annotations.md#colours-and-styles-from-your-e-reader).
+
+### catalog, polish, fonts, saved-search, fetch-news, plugin
+
+```bash
+bookx-cli catalog --columns title,authors,series --format csv "tag:fantasy" > fantasy.csv
+bookx-cli catalog --columns title,#pages --format json    # #label adds a custom column
+bookx-cli catalog --format epub --output catalog.epub     # a catalogue book: by title, author, series and tag
+bookx-cli polish messy.epub clean.epub      # the editor's automatic fixes, exit 1 if problems remain
+bookx-cli fonts book.epub                   # embedded fonts, unused ones, families that are not embedded
+bookx-cli saved-search list
+bookx-cli saved-search run "To read" --json
+bookx-cli fetch-news daily.toml daily.epub  # builds the EPUB of a news recipe (needs the internet)
+bookx-cli plugin run ./trim-whitespace trim author:austen          # shows what would change
+bookx-cli plugin run ./trim-whitespace trim author:austen --apply  # writes the books
+```
+
+`catalog` prints CSV or JSON with the columns you choose (cells that start with `=`, `+`, `-` or `@` are made safe for
+spreadsheets). `saved-search` reads the searches saved in the app; a saved search that uses other saved searches can only
+be run in the app. `plugin run` runs one *editor action* of a plugin folder over every book a search finds; without
+`--apply` nothing is written, with it the library must not be open in Bookx. Only EPUB books are changed.
 
 ### edit
 
@@ -142,6 +172,13 @@ bookx-cli serve --tls-cert cert.pem --tls-key key.pem        # HTTPS
 
 It binds to `127.0.0.1` by default; use `--bind 0.0.0.0` to reach it from other devices. Without `--user` access is
 open, so always set a user when you bind beyond your own computer. `--read-only` and `--title` are also available.
+The server only answers to `Host` names it knows (IP addresses, `localhost`, one-word and `.local`/`.lan` names); add a
+public name with `--allow-host books.example.com` or `BOOKX_ALLOWED_HOSTS`.
+`--account name:password:Kids,Comics` adds a login that sees only the books tagged with one of those collections (no
+collections: all books; repeatable); the password is kept only as a salted hash. `--guest-collection Kids` lets visitors
+without a login read, never change, the books of that collection. `--trusted-proxy 127.0.0.1` and `--public-prefix /books`
+are for a reverse proxy (see below). The web client at `/app/` (login of the server needed) lists and searches the library and keeps books on
+the device for offline reading.
 To publish it (or `mcp --http`) under a name such as `https://bookx.lan/bookx`, see
 [Put Bookx behind a reverse proxy](reverse-proxy.md).
 
@@ -158,14 +195,14 @@ Lets AI assistants search and read the library. It is read-only unless `--allow-
 
 !!! note "Limitations"
     - `meta set` edits EPUB files.
-    - `bookx-cli` is not installed by `run.sh` or `make install`, and the Flatpak does not include it.
+    - `bookx-cli` is installed by `make install`; the Flatpak includes it too (`flatpak run --command=bookx-cli com.adhadse.Bookx`).
     - The output above reflects the current `--help`; options may be added over time.
 
 ## Questions and answers
 
 ??? question "How do I install bookx-cli?"
-    Build it with `cargo build --release -p bookx-cli`. It is not installed by `run.sh` or `make install`, and the Flatpak
-    does not include it. See [Install](install.md#command-line-tool).
+    Build it with `cargo build --release -p bookx-cli` (`make install` puts it next to `bookx`). The Flatpak includes it:
+    `flatpak run --command=bookx-cli com.adhadse.Bookx --help`. See [Install](install.md#command-line-tool).
 
 ??? question "Which library does it use?"
     `--library DIR`, else the `BOOKX_LIBRARY` variable, else `~/Documents/Bookx Library`, the same default as the app.
@@ -201,7 +238,7 @@ Lets AI assistants search and read the library. It is read-only unless `--allow-
 ??? question "How do I check what is on my e-reader?"
     `bookx-cli device-check /run/media/me/KOBOeReader`, with `--all` for every book. It never writes to the device.
 
-??? question "How do I run the library server without the app?"
+??? question "How do I run the OPDS server without the app?"
     `bookx-cli serve --port 8080 --user me:secret --kosync kosync.json`. It listens on `127.0.0.1` unless you add `--bind
     0.0.0.0`, and you should always set `--user` when you do. The `--kosync` file keeps the Bookx sync accounts. To publish it
     under a name, use a [reverse proxy](reverse-proxy.md).

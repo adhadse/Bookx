@@ -27,7 +27,7 @@ Nothing goes to a cloud: the server is your own computer, a self-hosted server y
    (for example `http://192.168.1.5:8080/bookx`) with a copy button.
 2. **Create your sync account.** Type any **User name** and **Password** and press **Register** (this also logs in).
    There is no existing KOReader account: you make it here. These are what you type into Bookx Sync on the e-reader.
-   They are **not** the Share Library password. The result shows next to the buttons; if the name is taken, choose
+   They are **not** the OPDS server password. The result shows next to the buttons; if the name is taken, choose
    another or press **Log in** if the account is yours.
 3. **Install the Bookx plugin on KOReader.** **Copy to the device** puts it in KOReader’s plugins folder on the
    connected e-reader, or **Save to a folder** lets you copy it yourself. Without the plugin only the reading position
@@ -46,8 +46,8 @@ address**; the same **User name**, **Password**, **Register** and **Log in** app
 
 **Sync highlights, notes and bookmarks** (*What Bookx sync does*) is **on by default**. It is independent of the server: while the server is off nothing listens, and once the server is on (step 1) the Bookx plugin can sync highlights, notes and bookmarks without any further switch. Turn it off there if you only want the reading position.
 
-The password is kept in the system keyring, like the Share Library and e-mail passwords (the settings file only when
-there is no keyring).
+The password is kept in the system keyring, like the OPDS server and e-mail passwords, or in Bookx's encrypted password
+store when there is no keyring; never in the settings file (see [Passwords](backup-and-restore.md#passwords)).
 
 ## What happens
 

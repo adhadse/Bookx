@@ -186,7 +186,7 @@ pub fn import_to_epub(path: &Path) -> Result<Archive> {
         "md" | "markdown" => markdown_chapters(&text, &mut md),
         "html" | "htm" | "xhtml" => {
             let doc = parse_html(&text, "import.html");
-            let title = scraper::Html::parse_document(&text)
+            let title = crate::util::parse_html_document(&text)
                 .select(&scraper::Selector::parse("title").unwrap())
                 .next()
                 .map(|t| t.text().collect::<String>().trim().to_string())

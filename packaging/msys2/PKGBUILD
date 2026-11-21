@@ -1,0 +1,60 @@
+# MSYS2 package for Bookx (UCRT64 and CLANG64). A recipe for the msys2/MINGW-packages repository
+# (mingw-w64-bookx/PKGBUILD) or for a local `makepkg-mingw`. NOT TESTED: no Windows machine was available;
+# the app has never been compiled for Windows (docs/windows-port.md).
+#
+#   pacman -S --needed base-devel mingw-w64-ucrt-x86_64-toolchain
+#   cd packaging/msys2 && MINGW_ARCH=ucrt64 makepkg-mingw -sCLf
+#
+# Upload the sha256sum of the release tarball into `sha256sums` before building.
+
+_realname=bookx
+pkgbase=mingw-w64-${_realname}
+pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
+pkgver=0.3.0
+pkgrel=1
+pkgdesc="E-book library, reader and editor with GTK 4 and libadwaita (mingw-w64)"
+arch=('any')
+mingw_arch=('ucrt64' 'clang64')
+url='https://bookx.adhadse.com'
+msys2_repository_url='https://github.com/adhadse/Bookx'
+license=('spdx:GPL-3.0-or-later')
+depends=("${MINGW_PACKAGE_PREFIX}-gtk4"
+         "${MINGW_PACKAGE_PREFIX}-libadwaita"
+         "${MINGW_PACKAGE_PREFIX}-gtksourceview5"
+         "${MINGW_PACKAGE_PREFIX}-adwaita-icon-theme"
+         "${MINGW_PACKAGE_PREFIX}-espeak-ng")
+makedepends=("${MINGW_PACKAGE_PREFIX}-cc"
+             "${MINGW_PACKAGE_PREFIX}-rust"
+             "${MINGW_PACKAGE_PREFIX}-pkgconf")
+source=("${_realname}-${pkgver}.tar.gz::${msys2_repository_url}/archive/refs/tags/v${pkgver}.tar.gz")
+sha256sums=('SKIP') # replace with the real checksum before submitting
+
+prepare() {
+  cd "${srcdir}/Bookx-${pkgver}"
+  cargo fetch --locked
+}
+
+build() {
+  cd "${srcdir}/Bookx-${pkgver}"
+  cargo build --release --frozen -p bookx -p bookx-cli
+}
+
+check() {
+  cd "${srcdir}/Bookx-${pkgver}"
+  # the pure logic only; the UI scenarios need Broadway and do not run on Windows
+  cargo test --release --frozen --workspace --lib
+}
+
+package() {
+  cd "${srcdir}/Bookx-${pkgver}"
+  install -Dm755 target/release/bookx.exe "${pkgdir}${MINGW_PREFIX}/bin/bookx.exe"
+  install -Dm755 target/release/bookx-cli.exe "${pkgdir}${MINGW_PREFIX}/bin/bookx-cli.exe"
+  install -Dm644 data/icons/hicolor/scalable/apps/com.adhadse.Bookx.svg \
+    "${pkgdir}${MINGW_PREFIX}/share/icons/hicolor/scalable/apps/com.adhadse.Bookx.svg"
+  install -Dm644 data/icons/hicolor/scalable/apps/com.adhadse.Bookx-symbolic.svg \
+    "${pkgdir}${MINGW_PREFIX}/share/icons/hicolor/symbolic/apps/com.adhadse.Bookx-symbolic.svg"
+  install -Dm644 data/com.adhadse.Bookx.metainfo.xml \
+    "${pkgdir}${MINGW_PREFIX}/share/metainfo/com.adhadse.Bookx.metainfo.xml"
+  install -Dm644 LICENSE "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE"
+  install -Dm644 NOTICE.md "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/NOTICE.md"
+}

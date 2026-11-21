@@ -359,7 +359,7 @@ fn run_export(
     use adw::prelude::*;
     let bar = gtk::ProgressBar::new();
     bar.set_show_text(true);
-    bar.set_text(Some(&tr("Loading the voice…")));
+    bar.set_text(Some(&tr("Loading the voice")));
     let dlg = adw::AlertDialog::new(
         Some(&tr("Saving as audio")),
         Some(&tr("This can take a while for a whole book.")),

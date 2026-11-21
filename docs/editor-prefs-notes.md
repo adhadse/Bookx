@@ -26,8 +26,10 @@ Rows: CE-086, 107, 110, 357, 383, 385, 386, 387, 400-406, 424, 425 (status in `c
 * Shortcuts: Editor keys only overlap with Editor keys (`Group::overlaps`), the window has its own controllers. Menu items do not show
   the key text (they are plain `GMenu` entries); the palette and Preferences do. The keys of the file list (F2, Delete) and of the code
   view itself (undo, clipboard, Tab) are not registry entries.
-* Cursor width and blink (CE-357): GTK 4 has them only as display-wide settings; not implemented.
-* Preview: "lines above the sync point" and per-family fonts (CE-402) are not offered.
+* Cursor width and blink (CE-357): GTK 4 has them only as display-wide settings; not implemented and not possible per view (verified wave 11: `GtkText`/`GtkTextView` have no cursor-width property; `caret-color` in CSS sets the colour only).
+* Preview: text, background and link colour overrides are offered (wave 11, `editor-look.json` keys `preview_fg|bg|link`, `#rrggbb`, bad values
+  dropped on load). "Lines above the sync point" and per-family fonts (CE-402) are still not offered: the canvas (bookx-text) has one font family and
+  the sync scroll puts the element at a fixed fraction; both need a change in the layout entry points.
 * Selected-text stops use GtkSourceView's own snippet engine: the body is rewritten (`with_selection`) before `push_snippet`, escaping
   `$`, `}` and `\` of the selection. Every starred stop of a snippet takes the selection.
 * Bug fixed on the way (found with real keys): the end mark of the snippet region had right gravity, so text typed right after an

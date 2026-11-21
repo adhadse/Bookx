@@ -21,7 +21,10 @@ The folders can also be set with the `BOOKX_PLUGINS` and `BOOKX_PATCHES` environ
 
 1. Put the plugin folder (with `plugin.toml` and `plugin.wasm`) into the plugins folder. Open the main menu →
    **Preferences**, choose the **Extensions** page and press **Open plugins folder** to get there.
-2. Back on the Extensions page, switch the plugin on.
+2. Back on the Extensions page, switch the plugin on. Bookx first shows what the plugin may do ("Read the book that is open
+   in the editor", "Connect to example.org") and whether it is signed. Press **Allow** to switch it on. Plugins without a
+   signature are allowed, with a warning. Bookx remembers your choice together with a fingerprint of the plugin files:
+   if the files change later, the plugin stops running until you switch it off and on again and allow it again.
 
 What a plugin adds shows up in the app:
 
@@ -50,6 +53,8 @@ editor" (`editor.read`). Every action first takes a checkpoint called "Before: \
 step, and *Tools → Restore Checkpoint* undoes them; an action that fails leaves the book as it was. A plugin cannot
 touch `mimetype` or `META-INF/`, other files on your computer or the network. The actions appear in *Tools → Plugins* and
 in the command palette (Ctrl+Shift+P); a plugin may suggest a keyboard shortcut, but Bookx never binds one by itself.
+
+To run an editor action on many books at once, use `bookx-cli plugin run` (see [Command line](command-line.md)).
 
 Plugins run in an interpreter with limits on memory, instructions and time. A crashing or misbehaving plugin
 becomes an error message in the app, never a crash.

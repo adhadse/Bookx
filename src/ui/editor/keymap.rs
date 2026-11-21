@@ -23,6 +23,7 @@ pub(super) fn input_for(id: &str) -> Option<Input> {
         "editor.preferences" => Input::Prefs(PrefsAct::Open),
         "editor.metadata" => Input::EditMetadata,
         "editor.preview" => Input::TogglePreview,
+        "editor.sidebar" => Input::ToggleSidebar,
         "editor.beautify" => Input::Reformat,
         "editor.find" => Input::ToggleFind,
         "editor.replace-bar" => Input::ToggleReplace,

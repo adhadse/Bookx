@@ -115,11 +115,13 @@
 //! is `docs/plugin-development.md`; user patches (TOML, no WebAssembly) are in [`patch`].
 
 pub mod adapters;
+pub mod batch;
 pub mod editor;
 pub mod manager;
 pub mod manifest;
 pub mod patch;
 pub mod runtime;
+pub mod trust;
 
 pub use adapters::{
     MountProvider, PluginDevice, PluginMetadataSource, PluginReader, PluginTransform, PluginWriter,
@@ -132,3 +134,4 @@ pub use manifest::{
 };
 pub use patch::{Hook, Patch, PatchManager, PatchReport, PatchSet, PatchStatus};
 pub use runtime::{CallStats, Host, HostLog, HostNetwork, NoNetwork, NullLog, Plugin};
+pub use trust::{Capability, SignatureStatus, TrustState};

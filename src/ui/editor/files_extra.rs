@@ -177,7 +177,7 @@ impl Editor {
             f,
             &notes,
         )));
-        unsafe { row.set_data("path", f.to_string()) };
+        super::row_data::set_path(&row, f.to_string());
         if at.is_some() {
             self.make_draggable(&row, f);
         }
@@ -668,7 +668,7 @@ impl Editor {
             flow.append(&child);
             cells.push((p.clone(), child));
         }
-        let dialog = adw::Dialog::new();
+        let dialog = crate::ui::dialog_toast::new_dialog();
         dialog.set_title(&tr("Images"));
         let (w, h) = fit_dialog(&self.w.win, 760, 560);
         dialog.set_content_width(w);

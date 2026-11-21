@@ -22,6 +22,8 @@ const CALLS: &[&str] = &[
     "set_placeholder_text(Some(",
     "set_tooltip_text(Some(",
     "set_heading(Some(",
+    // the name of a file chooser filter
+    "set_name(Some(",
 ];
 
 /// The production part of a file: everything before its `#[cfg(test)]` module.
@@ -66,6 +68,32 @@ fn files(dir: &Path, out: &mut Vec<PathBuf>) {
 
 fn report_only(rel: &str) -> bool {
     REPORT_ONLY.iter().any(|p| rel.starts_with(p))
+}
+
+/// Files whose dialogs are not made with `dialog_toast::new_dialog()` yet (X9: Ctrl+W closes a
+/// dialog made with it). Remove an entry when its file is converted.
+const OWN_DIALOGS: &[&str] = &["dialog_toast.rs", "i18n_lint.rs"];
+
+#[test]
+fn lint_dialogs_are_made_with_new_dialog() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/ui");
+    let mut all = Vec::new();
+    files(&root, &mut all);
+    let mut bad = Vec::new();
+    for f in all {
+        let name = f.file_name().unwrap().to_string_lossy().to_string();
+        if OWN_DIALOGS.contains(&name.as_str()) {
+            continue;
+        }
+        let text = std::fs::read_to_string(&f).unwrap();
+        if production(&text).contains("adw::Dialog::new()") {
+            bad.push(f.strip_prefix(&root).unwrap().display().to_string());
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "use dialog_toast::new_dialog() (Ctrl+W closes it): {bad:?}"
+    );
 }
 
 #[test]
@@ -165,4 +193,143 @@ fn lint_finds_an_unmarked_constant() {
         "const A: &str = \"hello\";\nconst B: &str = N_(\"ok\");\nconst C: &str = \"unused\";\n\
                fn f() { tr(A); tr(B); }";
     assert_eq!(const_not_marked(src), vec!["A".to_string()]);
+}
+
+// ---- XC-5: header capitalisation of buttons, menu entries, tooltips and alert buttons -----------------
+
+/// Words that stay in lower case inside a header-caps label (HIG "Writing Style").
+const SMALL_WORDS: &[&str] = &[
+    "a", "an", "the", "and", "or", "of", "in", "on", "to", "for", "with", "from", "as", "at", "by",
+    "vs",
+];
+
+/// What is wrong with a button, tooltip or menu label: a word that should start with a capital
+/// (header caps), or an ending in an ellipsis (D14). `None` when it is fine.
+pub fn header_caps_problem(label: &str) -> Option<String> {
+    if label.ends_with('…') || label.ends_with("...") {
+        return Some("ends in an ellipsis".into());
+    }
+    for (i, w) in label.split_whitespace().enumerate() {
+        let w = w.trim_matches(|c: char| !c.is_alphanumeric());
+        let Some(first) = w.chars().next() else {
+            continue;
+        };
+        if !first.is_alphabetic() || w.chars().any(|c| c.is_uppercase()) && !first.is_uppercase() {
+            continue;
+        }
+        if first.is_lowercase() && (i == 0 || !SMALL_WORDS.contains(&w)) {
+            return Some(format!("“{w}” should start with a capital"));
+        }
+    }
+    None
+}
+
+/// The labels of buttons, tooltips and alert buttons written as string literals passed to `tr` in `src`.
+fn control_labels(src: &str) -> Vec<String> {
+    const OPENERS: &[&str] = &[
+        "Button::with_label(&tr(\"",
+        "set_tooltip_text(Some(&tr(\"",
+        "set_button_label(Some(&tr(\"",
+        "icon_button(\"edit-copy-symbolic\", &tr(\"",
+        "icon_button(\"view-refresh-symbolic\", &tr(\"",
+    ];
+    let src = production(src);
+    let mut out = Vec::new();
+    for o in OPENERS {
+        let mut from = 0;
+        while let Some(i) = src[from..].find(o) {
+            let start = from + i + o.len();
+            from = start;
+            if let Some(end) = src[start..].find('"') {
+                out.push(src[start..start + end].to_string());
+            }
+        }
+    }
+    // alert buttons: `("id", &tr("Label"))`
+    let mut from = 0;
+    while let Some(i) = src[from..].find(", &tr(\"") {
+        let start = from + i + 7;
+        from = start;
+        let line_start = src[..start].rfind('\n').map_or(0, |n| n + 1);
+        if src[line_start..start].contains("(\"") && src[line_start..start].contains("add_respons")
+            || src[line_start..start].trim_start().starts_with("(\"")
+        {
+            if let Some(end) = src[start..].find('"') {
+                out.push(src[start..start + end].to_string());
+            }
+        }
+    }
+    out
+}
+
+#[test]
+fn header_caps_rule() {
+    assert_eq!(header_caps_problem("Open from Start"), None);
+    assert_eq!(header_caps_problem("Accept and Download"), None);
+    assert_eq!(header_caps_problem("Mark as Finished"), None);
+    assert!(header_caps_problem("Open folder").is_some());
+    assert!(header_caps_problem("Copy install command").is_some());
+    assert!(header_caps_problem("Choose…").is_some());
+    assert_eq!(header_caps_problem("Play"), None);
+    assert_eq!(header_caps_problem("Send {} Books"), None);
+}
+
+#[test]
+fn lint_buttons_and_tooltips_of_the_settings_files_use_header_caps() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/ui");
+    let mut bad = Vec::new();
+    let mut seen = 0;
+    for f in [
+        "preferences.rs",
+        "mcp_settings.rs",
+        "dict_settings.rs",
+        "reading_ruler.rs",
+        "tts_settings.rs",
+        "library_banner.rs",
+    ] {
+        let text = std::fs::read_to_string(root.join(f)).unwrap();
+        for l in control_labels(&text) {
+            seen += 1;
+            if let Some(p) = header_caps_problem(&l) {
+                bad.push(format!("{f}: {l:?}: {p}"));
+            }
+        }
+    }
+    assert!(seen > 10, "the scan found only {seen} labels");
+    assert!(bad.is_empty(), "labels without header caps: {bad:#?}");
+}
+
+#[test]
+fn lint_row_titles_of_the_settings_files_are_short_and_neutral() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/ui");
+    let mut bad = Vec::new();
+    let mut seen = 0;
+    for f in [
+        "preferences.rs",
+        "mcp_settings.rs",
+        "dict_settings.rs",
+        "reading_ruler.rs",
+        "tts_settings.rs",
+        "library_banner.rs",
+    ] {
+        let text = std::fs::read_to_string(root.join(f)).unwrap();
+        let src = production(&text);
+        for o in [".title(tr(\"", "set_title(&tr(\""] {
+            let mut from = 0;
+            while let Some(i) = src[from..].find(o) {
+                let start = from + i + o.len();
+                from = start;
+                let Some(end) = src[start..].find('"') else {
+                    continue;
+                };
+                let t = &src[start..start + end];
+                seen += 1;
+                if let Some(p) = super::preferences::title_problem(t) {
+                    bad.push(format!("{f}: {t:?}: {p}"));
+                }
+            }
+        }
+    }
+    assert!(seen > 20, "the scan found only {seen} titles");
+    assert!(bad.is_empty(), "titles to fix: {bad:#?}");
 }

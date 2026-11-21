@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bookx Library</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app.css">
+<meta name="theme-color" content="#3584e4">
+</head>
+<body>
+<header>
+<h1 id="title">Bookx Library</h1>
+<p id="status" role="status"></p>
+<input id="search" type="search" placeholder="Search" aria-label="Search the library">
+<nav><button id="tab-all" aria-pressed="true">Library</button> <button id="tab-saved" aria-pressed="false">Saved on this device</button></nav>
+</header>
+<main><ul id="list"></ul><p id="more-row"><button id="more" hidden>Show more</button></p></main>
+<noscript><p>This page needs JavaScript. The plain catalogue is at <a href="../opds">OPDS</a>.</p></noscript>
+<script src="app.js"></script>
+</body>
+</html>

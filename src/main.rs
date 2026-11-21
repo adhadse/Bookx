@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+// No console window next to the app on Windows (bookx-cli is a separate, console program).
+#![cfg_attr(windows, windows_subsystem = "windows")]
 #![allow(
     clippy::type_complexity,
     clippy::large_enum_variant,
@@ -21,6 +23,7 @@
 )]
 
 mod a11y;
+mod aids_prefs;
 mod annotation_export;
 mod annotation_ids;
 mod annotation_import;
@@ -38,8 +41,10 @@ mod card_layout;
 mod chrome_visibility;
 mod comic;
 mod config;
+mod convert_prefs;
 mod cover_color;
 mod crate_labels;
+mod debug_log;
 mod desktop_integration;
 mod device_covers;
 mod device_sync;
@@ -89,9 +94,15 @@ mod jump_history;
 mod kobo_real_check;
 mod kosync_queue;
 mod kosync_sync;
+mod launch;
 mod libraries;
+mod library_add;
+mod library_cover;
+mod library_custom;
 mod library_health;
 mod library_nav;
+mod library_related;
+mod library_tagtree;
 mod links;
 mod look_sync;
 mod map_thumb_disk;
@@ -120,18 +131,25 @@ mod readwise_sync;
 mod release_consistency;
 mod remove_undo;
 mod rsvp_view;
+mod safe_mode;
 mod saved_searches;
 mod secrets;
 mod selection_handles;
 mod send_notes;
 mod series_view;
 mod settings_bus;
+mod settings_io;
 mod sharing;
 mod shelves;
 mod shortcuts;
 mod side_notes;
+mod source_priority;
+mod sync_activity;
+mod sync_bus;
+mod sync_live;
 mod sync_model;
 mod tags;
+mod toc_fold;
 mod tracker_sync;
 mod tts;
 mod tts_export;
@@ -141,6 +159,7 @@ mod ui;
 mod vocab_marks;
 mod vocabulary;
 mod voice_download;
+mod web_accounts;
 mod web_import;
 mod work_groups;
 mod works;
@@ -153,7 +172,10 @@ use relm4::RelmApp;
 fn main() {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
+        .with_ansi(false)
+        .with_writer(debug_log::Tee)
         .init();
+    safe_mode::init();
 
     // File arguments are handled by the app itself, not by GApplication.
     let app = RelmApp::new(config::APP_ID).with_args(vec![]);
@@ -164,18 +186,26 @@ fn main() {
     app.run::<app::App>(());
 }
 
-/// `bookx bookx://open?id=3` while Bookx runs: hand the link to that process and leave.
+/// A second `bookx` while Bookx runs (`bookx bookx://open?id=3`, Open With, `bookx --doc book.epub`): hands what
+/// it was asked to the running process through application actions and leaves.
 fn forward_links_to_running_instance() {
     use relm4::gtk::prelude::*;
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let links = links::from_args(&args);
-    if links.is_empty() {
+    let req = launch::parse(&args);
+    if !req.is_forwardable() {
         return;
     }
     let app = relm4::main_adw_application();
     if app.register(relm4::gtk::gio::Cancellable::NONE).is_ok() && app.is_remote() {
-        for l in links {
+        for l in &req.links {
             app.activate_action("open-uri", Some(&l.to_variant()));
+        }
+        if !req.files.is_empty() {
+            let files: Vec<String> = req.files.iter().map(|p| p.display().to_string()).collect();
+            app.activate_action("open-files", Some(&files.to_variant()));
+        }
+        for d in &req.docs {
+            app.activate_action("open-doc", Some(&d.display().to_string().to_variant()));
         }
         // let the message go out before this process ends
         app.activate();

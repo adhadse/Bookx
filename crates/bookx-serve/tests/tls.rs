@@ -198,6 +198,8 @@ fn https_large_download_arrives_intact() {
             formats: vec![],
             resources: vec![],
             drm: String::new(),
+            custom: Default::default(),
+            marked: false,
         }
     };
     let snap = LibrarySnapshot {

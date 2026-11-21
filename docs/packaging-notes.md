@@ -66,15 +66,14 @@ flatpak-github-actions:gnome-50` image name is an assumption from the `gnome-49`
 
 * `src/diagnostics.rs`: `Facts`, `render`, `redact` (home → `~`, user name, e-mail, URL credentials, `password|token|key: …`, IPv4,
   MAC, 28+ character tokens; the application id is kept). Shown in About → Troubleshooting (`debug_info`), copied by
-  `app.copy-diagnostics` (main menu, palette). Safe mode and a debug-log export (X19) are **not done**.
+  `app.copy-diagnostics` (main menu, palette). Wave 11: the debug log (`src/debug_log.rs`: in-memory ring of the last 400 tracing lines via `Tee`, `scrub` removes library folder, titles (longest 5000), exact secret values, then `diagnostics::redact`) is the About → Troubleshooting `debug_info` (the AdwAboutDialog gives Save and Copy). Safe mode (`src/safe_mode.rs`): `--safe-mode` or `BOOKX_SAFE_MODE=1`; plugins/patches dirs replaced by empty temp dirs, `privacy::apply(true)` (offline), MCP/share/KOSync not started, `Config::load` returns defaults and `Config::save` is a no-op. Other files (editor.json, vocabulary, …) are still written in safe mode; the library is opened as usual.
 * `src/links.rs`: `bookx://open?id=N`, `bookx://book/<identifier>`; `app.open-uri` action; a second `bookx` process forwards links
   to the running one (`main.rs`) and exits. Link forwarding was exercised only through the `open-uri:` dev command, never from a
   real desktop launcher.
 * `data/com.adhadse.Bookx.desktop` registers 16 media types + `x-scheme-handler/bookx`; `data/com.adhadse.Bookx.mime.xml` defines
   KEPUB and AZW; `src/desktop_integration.rs` tests that desktop file, metainfo, MIME file, icon and manifest agree, and fails when
   a new readable extension is neither listed nor deliberately left out.
-* Opening a file from the file manager while Bookx runs still starts a second process that imports the file (GApplication runs
-  with empty args); only `bookx://` links are forwarded.
+* Wave 11: `src/launch.rs` parses links, files, `--doc FILE` and `--edit`; the second process forwards links (`app.open-uri`), files (`app.open-files`, absolute paths) and documents (`app.open-doc`) and exits. `--doc` imports synchronously if the format is EPUB or importable and opens the reader, else falls back to the import. Tested with the real second process through the `launch:spawn` dev hook in Broadway scenarios `launch_forward_doc` and `launch_forward_open_with` (real GApplication on the scenario's D-Bus session). Not tested: a real desktop launcher / file manager (needs the real-session suite).
 
 ## Release pipeline (wave 6, PP-C-19)
 

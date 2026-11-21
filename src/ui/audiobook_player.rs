@@ -1029,6 +1029,8 @@ pub fn details_group(
     shared: &SharedRef,
     b: &Book,
     play: Rc<dyn Fn(u64)>,
+    read: Rc<dyn Fn(u64)>,
+    toast: Rc<dyn Fn(String)>,
 ) -> Option<adw::PreferencesGroup> {
     if !b.resources.iter().any(|r| r.kind == AUDIOBOOK) {
         return None;
@@ -1090,10 +1092,59 @@ pub fn details_group(
             audit::label(&btn, &tr("Play in Bookx"));
             btn.set_tooltip_text(Some(&tr("Play in Bookx")));
             play_row.add_suffix(&btn);
-            let (p1, p2) = (play.clone(), play);
+            let (p1, p2) = (play.clone(), play.clone());
             btn.connect_clicked(move |_| p1(id));
             play_row.connect_activated(move |_| p2(id));
             g.add(&play_row);
+            // an e-book with audio linked: one place for both
+            if !ab::is_own(b) {
+                let mk = |title: String, subtitle: String, name: &str| {
+                    let r = adw::ActionRow::builder()
+                        .title(title)
+                        .subtitle(subtitle)
+                        .activatable(true)
+                        .build();
+                    r.set_widget_name(name);
+                    r
+                };
+                let listen = mk(
+                    tr("Continue in Audiobook"),
+                    tr("Start listening where you stopped reading"),
+                    "audio-continue-listening",
+                );
+                listen.set_sensitive(b.position.is_some());
+                let (sh, p, t) = (shared.clone(), play.clone(), toast.clone());
+                listen.connect_activated(move |_| {
+                    let Some(data) = ab::data_dir() else { return };
+                    let r = ab::continue_in_audiobook(&sh.lib.borrow(), id, &data);
+                    match r {
+                        Ok(_) => p(id),
+                        Err(e) => t(trf(
+                            "Could not continue in the audiobook: {}",
+                            &[&format!("{e:#}")],
+                        )),
+                    }
+                });
+                g.add(&listen);
+                let reading = mk(
+                    tr("Continue Reading"),
+                    tr("Open the e-book where you stopped listening"),
+                    "audio-continue-reading",
+                );
+                let (sh, r2, t) = (shared.clone(), read.clone(), toast.clone());
+                reading.connect_activated(move |_| {
+                    let Some(data) = ab::data_dir() else { return };
+                    let res = ab::continue_reading(&mut sh.lib.borrow_mut(), id, &data);
+                    match res {
+                        Ok(_) => {
+                            let _ = sh.lib.borrow().save();
+                            r2(id)
+                        }
+                        Err(e) => t(trf("Could not continue reading: {}", &[&format!("{e:#}")])),
+                    }
+                });
+                g.add(&reading);
+            }
         }
         Err(e) => {
             g.add(&row(&tr("Audio"), &format!("{e:#}")));

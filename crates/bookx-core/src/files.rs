@@ -245,6 +245,7 @@ impl Library {
                 }
                 self.save()
             }
+            OpKind::SetCustom { before } => self.undo_custom(before),
             OpKind::AddFormat { id, file } => self.undo_add_format(*id, file),
             OpKind::RemoveFormat {
                 id,
@@ -347,7 +348,10 @@ impl Library {
             formats: Vec::new(),
             resources: Vec::new(),
             drm: p.drm,
+            custom: Default::default(),
+            marked: false,
         });
+        self.refresh_composites_of(&[id]);
         self.log(label, OpKind::Import { ids: vec![id] });
         // a PDF is shown from the file itself (page view); the EPUB made from it is the reflowed text
         if let Some(src) = source_pdf {
@@ -593,6 +597,9 @@ impl Library {
         let new_meta = book.metadata().clone();
         let label = format!("Edited \"{}\"", new_meta.title);
         let cover_undo = self.refresh_after_edit(id, new_meta, cover)?;
+        if self.refresh_composites_of(&[id]) > 0 {
+            self.save()?;
+        }
         self.log(
             label,
             OpKind::Edit {

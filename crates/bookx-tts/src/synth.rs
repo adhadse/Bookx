@@ -93,6 +93,48 @@ impl Pcm {
     }
 }
 
+/// The fastest speed the local engines (Kokoro, Piper) are asked for; servers take up to 4.
+pub const ENGINE_MAX_SPEED: f64 = 2.0;
+
+/// The most any speed is stretched afterwards (the limit of `bookx_audio::stretch`).
+pub const MAX_STRETCH: f64 = 3.0;
+
+/// The engine's own speed limit, from its cache id (servers are `server-…`).
+pub fn engine_max_speed(engine_id: &str) -> f64 {
+    if engine_id.starts_with("server-") {
+        4.0
+    } else {
+        ENGINE_MAX_SPEED
+    }
+}
+
+/// Splits the wanted speed (`speed / pitch`) into what the engine is asked for and a factor to
+/// speed the audio up afterwards without changing its pitch (1.0 = none). The model speed never
+/// exceeds `max`, the stretch never exceeds [`MAX_STRETCH`]; their product is the wanted speed.
+pub fn split_speed(wanted: f64, max: f64) -> (f64, f64) {
+    let wanted = if wanted.is_finite() { wanted } else { 1.0 }.clamp(0.25, 4.0);
+    let model = wanted.min(max);
+    (model, (wanted / model).clamp(1.0, MAX_STRETCH))
+}
+
+impl Pcm {
+    /// Plays `factor` times faster at the same pitch (WSOLA, `bookx_audio::stretch`). Below 1.02
+    /// the audio is returned unchanged.
+    pub fn time_stretch(self, factor: f64) -> Pcm {
+        if !factor.is_finite() || factor < 1.02 || self.samples.is_empty() || self.rate == 0 {
+            return self;
+        }
+        let mut st = bookx_audio::stretch::Stretcher::new(self.rate, 1, factor as f32);
+        let mut out = Vec::with_capacity((self.samples.len() as f64 / factor) as usize + 4096);
+        st.push(&self.samples, &mut out);
+        st.finish(&mut out);
+        Pcm {
+            rate: self.rate,
+            samples: out,
+        }
+    }
+}
+
 /// Linear resampling from `from` Hz to `to` Hz.
 pub fn resample(samples: &[f32], from: u32, to: u32) -> Vec<f32> {
     if from == to || samples.is_empty() || from == 0 || to == 0 {
@@ -232,6 +274,48 @@ pub trait Synthesizer: Send {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn speed_above_what_an_engine_takes_is_made_up_by_stretching() {
+        assert_eq!(split_speed(1.5, 2.0), (1.5, 1.0));
+        let (m, s) = split_speed(2.5, 2.0);
+        assert_eq!(m, 2.0);
+        assert!((m * s - 2.5).abs() < 1e-9);
+        // a server takes it all
+        assert_eq!(
+            split_speed(2.5, engine_max_speed("server-openai-x")),
+            (2.5, 1.0)
+        );
+        assert_eq!(engine_max_speed("kokoro"), 2.0);
+        // never more than the stretcher allows, never NaN
+        let (m, s) = split_speed(4.0, 0.5);
+        assert!(m <= 0.5 && s <= MAX_STRETCH);
+        assert_eq!(split_speed(f64::NAN, 2.0), (1.0, 1.0));
+    }
+
+    #[test]
+    fn stretched_speech_is_shorter_by_the_factor_and_keeps_its_pitch() {
+        let rate = 16000;
+        let p = Pcm {
+            rate,
+            samples: (0..rate as usize * 2)
+                .map(|i| (i as f32 / rate as f32 * 200.0 * std::f32::consts::TAU).sin() * 0.5)
+                .collect(),
+        };
+        let q = p.clone().time_stretch(1.5);
+        let ratio = p.samples.len() as f64 / q.samples.len() as f64;
+        assert!((ratio - 1.5).abs() < 0.1, "{ratio}");
+        // zero crossings per second stay at about 2 x 200
+        let zc = |x: &Pcm| {
+            x.samples
+                .windows(2)
+                .filter(|w| w[0] <= 0.0 && w[1] > 0.0)
+                .count() as f64
+                / x.duration_secs()
+        };
+        assert!((zc(&q) - zc(&p)).abs() < 25.0, "{} vs {}", zc(&q), zc(&p));
+        assert_eq!(p.clone().time_stretch(1.0), p, "no change below 1.02");
+    }
 
     fn sine(rate: u32, hz: f32, secs: f32) -> Pcm {
         Pcm {

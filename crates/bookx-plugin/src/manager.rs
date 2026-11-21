@@ -5,7 +5,7 @@
 //! in a small JSON state file chosen by the caller: `{"enabled": ["id", …]}`. A corrupt state file is
 //! treated as empty and reported by [`PluginManager::state_error`].
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -21,11 +21,15 @@ use crate::adapters::{
 };
 use crate::manifest::{Manifest, PluginKind};
 use crate::runtime::{Host, Plugin};
+use crate::trust::{self, SignatureStatus, SignatureVerifier, TrustState};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct StateFile {
     #[serde(default)]
     enabled: Vec<String>,
+    /// Plugin id -> fingerprint of the files the user allowed in the capability sheet.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    trusted: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -98,6 +102,7 @@ pub struct PluginManager {
     host: Host,
     entries: Vec<Entry>,
     enabled: BTreeSet<String>,
+    trusted: BTreeMap<String, String>,
     state_error: Option<String>,
 }
 
@@ -110,6 +115,7 @@ impl PluginManager {
             host,
             entries: Vec::new(),
             enabled: BTreeSet::new(),
+            trusted: BTreeMap::new(),
             state_error: None,
         };
         m.read_state();
@@ -118,6 +124,7 @@ impl PluginManager {
 
     fn read_state(&mut self) {
         self.enabled.clear();
+        self.trusted.clear();
         self.state_error = None;
         let text = match std::fs::read_to_string(&self.state_path) {
             Ok(t) => t,
@@ -128,7 +135,15 @@ impl PluginManager {
             }
         };
         match serde_json::from_str::<StateFile>(&text) {
-            Ok(s) => self.enabled = s.enabled.into_iter().collect(),
+            Ok(s) => {
+                self.enabled = s.enabled.into_iter().collect();
+                // keep only well-formed fingerprints: the file is user-editable
+                self.trusted = s
+                    .trusted
+                    .into_iter()
+                    .filter(|(_, f)| f.len() == 64 && f.bytes().all(|b| b.is_ascii_hexdigit()))
+                    .collect();
+            }
             Err(e) => self.state_error = Some(format!("plugin state is corrupt: {e}")),
         }
     }
@@ -136,6 +151,7 @@ impl PluginManager {
     fn write_state(&self) -> Result<()> {
         let state = StateFile {
             enabled: self.enabled.iter().cloned().collect(),
+            trusted: self.trusted.clone(),
         };
         if let Some(parent) = self.state_path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -222,6 +238,59 @@ impl PluginManager {
         report.removed = old.iter().map(|o| o.key().to_string()).collect();
         self.entries = entries;
         report
+    }
+
+    fn entry_of(&self, id: &str) -> Option<(&Path, &Manifest)> {
+        let e = &self.entries[self.find(id)?];
+        Some((e.dir.as_path(), e.manifest.as_ref().ok()?))
+    }
+
+    /// Whether the user allowed this plugin in the capability sheet, and whether its files are still
+    /// the ones that were allowed. A plugin enabled before trust was recorded counts as
+    /// [`TrustState::NeverAsked`] but keeps running until it is switched off and on again.
+    pub fn trust_state(&self, id: &str) -> TrustState {
+        let Some(want) = self.trusted.get(id) else {
+            return TrustState::NeverAsked;
+        };
+        match self
+            .entry_of(id)
+            .and_then(|(d, m)| trust::fingerprint(d, m).ok())
+        {
+            Some(now) if &now == want => TrustState::Trusted,
+            _ => TrustState::Changed,
+        }
+    }
+
+    /// Records that the user allowed the plugin as it is now (the Allow button of the capability sheet).
+    pub fn trust(&mut self, id: &str) -> Result<()> {
+        let (d, m) = self
+            .entry_of(id)
+            .ok_or_else(|| anyhow!("no valid plugin with id `{id}`"))?;
+        let fp = trust::fingerprint(d, m)?;
+        self.trusted.insert(id.to_string(), fp);
+        self.write_state()
+    }
+
+    /// Forgets the user's approval (the plugin is switched off too).
+    pub fn revoke_trust(&mut self, id: &str) -> Result<()> {
+        self.trusted.remove(id);
+        self.enabled.remove(id);
+        self.write_state()
+    }
+
+    /// The detached signature status of an installed plugin (see [`crate::trust`]).
+    pub fn signature_status(
+        &self,
+        id: &str,
+        verifier: &dyn SignatureVerifier,
+    ) -> Option<SignatureStatus> {
+        let (d, m) = self.entry_of(id)?;
+        Some(trust::check_signature(d, m, verifier))
+    }
+
+    /// The manifest of an installed, valid plugin (for the capability sheet).
+    pub fn manifest_of(&self, id: &str) -> Option<&Manifest> {
+        self.entry_of(id).map(|(_, m)| m)
     }
 
     /// Alias of [`PluginManager::scan`]: hot reload by modification time.
@@ -355,6 +424,14 @@ impl PluginManager {
         let mut ok = Vec::new();
         let mut errors = Vec::new();
         for id in ids {
+            if self.trust_state(&id) == TrustState::Changed {
+                errors.push((
+                    id,
+                    "the plugin files changed since you allowed it; switch it off and on again to review it"
+                        .to_string(),
+                ));
+                continue;
+            }
             match self.plugin(&id) {
                 Ok(p) => ok.push(p),
                 Err(e) => errors.push((id, format!("{e:#}"))),

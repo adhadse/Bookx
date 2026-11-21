@@ -107,6 +107,9 @@ struct State {
     caption: gtk::Label,
     title: adw::WindowTitle,
     dialog: adw::Dialog,
+    /// Marks and notes after a sync changed the book while the map is open (they replace the ones
+    /// the map was opened with).
+    live: RefCell<Option<(Vec<Marker>, Vec<(usize, Swatch, String)>)>>,
 }
 
 thread_local! {
@@ -553,8 +556,19 @@ fn draw_levels(st: &State, cr: &gtk::cairo::Context, w: i32, h: i32) {
 }
 
 impl State {
+    /// The notes now (a sync may have changed them since the map was opened).
+    fn notes_now(&self) -> Vec<(usize, Swatch, String)> {
+        match &*self.live.borrow() {
+            Some((_, n)) => n.clone(),
+            None => self.data.notes.clone(),
+        }
+    }
+
     fn marks_all(&self) -> Vec<Marker> {
-        let mut v = self.data.marks.clone();
+        let mut v = match &*self.live.borrow() {
+            Some((m, _)) => m.clone(),
+            None => self.data.marks.clone(),
+        };
         v.extend(mapview::history_markers(&self.data.history, 9));
         v
     }
@@ -751,12 +765,9 @@ impl State {
     fn cell_notes(&self, page: usize) -> Option<String> {
         let g = self.grid.borrow();
         let cell = g.cell_of(page);
-        let mut notes: Vec<&(usize, Swatch, String)> = self
-            .data
-            .notes
-            .iter()
-            .filter(|n| g.cell_of(n.0) == cell)
-            .collect();
+        let all = self.notes_now();
+        let mut notes: Vec<&(usize, Swatch, String)> =
+            all.iter().filter(|n| g.cell_of(n.0) == cell).collect();
         notes.sort_by_key(|n| n.0);
         let lines: Vec<&str> = notes
             .iter()
@@ -788,12 +799,9 @@ impl State {
             h: BLOCK_H,
         };
         // the distinct note colours of the cell, in the order they are drawn
-        let mut notes: Vec<&(usize, Swatch, String)> = self
-            .data
-            .notes
-            .iter()
-            .filter(|n| g.cell_of(n.0) == cell)
-            .collect();
+        let all = self.notes_now();
+        let mut notes: Vec<&(usize, Swatch, String)> =
+            all.iter().filter(|n| g.cell_of(n.0) == cell).collect();
         notes.sort_by_key(|n| n.0);
         let mut distinct: Vec<&(usize, Swatch, String)> = Vec::new();
         for n in notes {
@@ -1076,6 +1084,21 @@ fn legend_item(kind: &'static str, text: &str) -> gtk::Box {
 }
 
 /// Opens the map over `parent`.
+/// A sync changed the book while the map is open: its marks and notes are replaced and it is drawn
+/// again (nothing else moves: not the cursor, not the zoom, not the card). Returns whether a map
+/// was open.
+pub fn update_live(marks: Vec<Marker>, notes: Vec<(usize, Swatch, String)>) -> bool {
+    OPEN.with(|o| {
+        let Some(st) = o.borrow().clone() else {
+            return false;
+        };
+        *st.live.borrow_mut() = Some((marks, notes));
+        *st.summary.borrow_mut() = (0, BTreeMap::new());
+        st.area.queue_draw();
+        true
+    })
+}
+
 pub fn show(parent: &gtk::Widget, data: MapData) {
     let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("Book Map"));
@@ -1253,6 +1276,7 @@ pub fn show(parent: &gtk::Widget, data: MapData) {
         caption,
         title,
         dialog: dialog.clone(),
+        live: RefCell::new(None),
     });
     *st.me.borrow_mut() = Rc::downgrade(&st);
     {
@@ -1482,7 +1506,7 @@ pub fn dev(cmd: &str) -> String {
         }
         // the keyboard cursor onto the first page that has a note: the card shows the note too
         "focus-note" => {
-            if let Some(page) = st.data.notes.first().map(|n| n.0) {
+            if let Some(page) = st.notes_now().first().map(|n| n.0) {
                 st.grid.borrow_mut().reveal(page);
                 st.pointer.set(None);
                 st.set_cursor(page, None);
@@ -1533,6 +1557,11 @@ pub fn dev(cmd: &str) -> String {
             let Some(th) = st.data.thumbs.clone() else {
                 return "thumb none".into();
             };
+            // `disk:` first asks the disk cache, like the map does when it is opened again
+            let (from_disk, arg) = match arg.strip_prefix("disk:") {
+                Some(rest) => (true, rest),
+                None => (false, arg),
+            };
             let page: usize = arg
                 .split('|')
                 .next()
@@ -1540,7 +1569,7 @@ pub fn dev(cmd: &str) -> String {
                 .unwrap_or(0);
             let cached = th.cached(page).is_some();
             let t0 = std::time::Instant::now();
-            let made = if cached {
+            let made = if cached || from_disk {
                 th.render(page)
             } else {
                 // not from the disk cache: the check is about how the page is laid out

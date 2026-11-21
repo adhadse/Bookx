@@ -97,6 +97,7 @@ pub struct RestoreReport {
     pub journal_records: usize,
     pub journal_books_updated: usize,
     pub journal_books_missing: usize,
+    pub journal_collections: usize,
     pub journal_errors: Vec<String>,
     pub dry_run: bool,
 }
@@ -108,6 +109,8 @@ pub struct ReplayReport {
     pub books_updated: usize,
     /// Notes of books the restored catalogue does not have (they are not recreated).
     pub books_missing: usize,
+    /// Collections whose books were set from the journal.
+    pub collections_updated: usize,
     pub errors: Vec<String>,
 }
 
@@ -433,6 +436,7 @@ impl Repository {
                 rep.journal_records = r.records;
                 rep.journal_books_updated = r.books_updated;
                 rep.journal_books_missing = r.books_missing;
+                rep.journal_collections = r.collections_updated;
                 rep.journal_errors = r.errors;
             }
             Ok(())
@@ -460,6 +464,7 @@ impl Repository {
             books.values().map(|b| (b.file.clone(), b.id)).collect();
         let mut touched: HashSet<u64> = HashSet::new();
         let mut statuses: HashMap<u64, String> = HashMap::new();
+        let mut collections: Option<Vec<super::manifest::CollectionState>> = None;
         for (seq, at, _) in self.list_journal()? {
             if seq <= after_seq || until.is_some_and(|u| at > u) {
                 continue;
@@ -472,6 +477,9 @@ impl Repository {
                 }
             };
             rep.records += 1;
+            if let Some(c) = rec.collections {
+                collections = Some(c);
+            }
             for n in rec.books {
                 let id = match books.get(&n.id) {
                     Some(b) if n.file.is_empty() || b.file == n.file => Some(n.id),
@@ -507,8 +515,44 @@ impl Repository {
                     .map_err(|e| anyhow!("status of book {id}: {e:#}"))?;
             }
         }
+        if let Some(cols) = collections {
+            rep.collections_updated =
+                apply_collections(store, &cols).map_err(|e| anyhow!("collections: {e:#}"))?;
+        }
         Ok(rep)
     }
+}
+
+/// Makes the collections of `store` hold the books `cols` names (a collection that is missing
+/// is created; one the record does not name is left alone; books the catalogue lacks are
+/// ignored). The newest journal record that carries collections is the one applied.
+fn apply_collections(
+    store: &SqliteStore,
+    cols: &[super::manifest::CollectionState],
+) -> Result<usize> {
+    let existing = store.list_collections()?;
+    let mut n = 0;
+    for c in cols.iter().take(100_000) {
+        let name = c.name.trim();
+        if name.is_empty() || name.len() > 1024 {
+            continue;
+        }
+        let id = match existing.iter().find(|e| e.name.eq_ignore_ascii_case(name)) {
+            Some(e) => e.id,
+            None => store.create_collection(name)?,
+        };
+        let want: HashSet<u64> = c.books.iter().copied().collect();
+        let have: HashSet<u64> = store.collection_books(id).into_iter().collect();
+        for b in want.difference(&have) {
+            // a book the catalogue does not have is not an error here
+            let _ = store.add_to_collection(id, *b);
+        }
+        for b in have.difference(&want) {
+            store.remove_from_collection(id, *b)?;
+        }
+        n += 1;
+    }
+    Ok(n)
 }
 
 struct CancelWrite<'a, W: std::io::Write> {

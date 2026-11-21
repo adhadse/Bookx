@@ -161,7 +161,7 @@ pub fn start(title: &str, packs: Vec<Pack>) -> u64 {
         i.status = Some(Status::Running {
             done: 0,
             total: 0,
-            line: tr("Starting…"),
+            line: tr("Starting"),
         });
         i.active = Some(Active {
             rx,

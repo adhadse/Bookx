@@ -379,6 +379,13 @@ fn shelf_row(ctx: &Ctx, c: &Collection) -> adw::ActionRow {
     {
         let (ctx, name) = (ctx.clone(), name.clone());
         entry(
+            &tr("Send to Device"),
+            Box::new(move || send_shelf(&ctx, &name)),
+        );
+    }
+    {
+        let (ctx, name) = (ctx.clone(), name.clone());
+        entry(
             &tr("Move Up"),
             Box::new(move || {
                 move_shelf(&ctx.shared, &name, -1);
@@ -413,6 +420,26 @@ fn shelf_row(ctx: &Ctx, c: &Collection) -> adw::ActionRow {
     }
     attach_drop(&row, ctx, &c.name);
     row
+}
+
+/// The ids of the books on the shelf, in the user's order for the shelf.
+pub fn shelf_book_ids(shared: &SharedRef, name: &str) -> Vec<u64> {
+    find(shared, name)
+        .map(|c| shared.guard.borrow().store.collection_books(c.id))
+        .unwrap_or_default()
+}
+
+/// Opens the Devices window with the books of the shelf as the books to send.
+fn send_shelf(ctx: &Ctx, name: &str) {
+    let ids = shelf_book_ids(&ctx.shared, name);
+    if ids.is_empty() {
+        (ctx.toast)(trf("The shelf “{}” has no books to send", &[&name]));
+        return;
+    }
+    super::devices::set_library_selection(&ids);
+    if let Some(app) = gio::Application::default() {
+        gio::prelude::ActionGroupExt::activate_action(&app, "devices", None);
+    }
 }
 
 // ---- dialogs ----
@@ -622,6 +649,12 @@ pub fn dev(ctx: &Ctx, selected: &[u64], cmd: &str) -> String {
                 }
                 Err(e) => format!("error {e}"),
             }
+        }
+        // the Send to Device of a shelf row (opens the Devices window with the shelf's books)
+        "send" => {
+            let ids = shelf_book_ids(&ctx.shared, arg);
+            send_shelf(ctx, arg);
+            format!("send {arg} ids={ids:?}")
         }
         "delete" => {
             let ok = delete(&ctx.shared, arg);

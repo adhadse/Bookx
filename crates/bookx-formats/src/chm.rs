@@ -329,7 +329,7 @@ pub struct TocItem {
 
 /// Parses a sitemap `.hhc` file.
 pub fn parse_hhc(html: &str) -> Vec<TocItem> {
-    let doc = scraper::Html::parse_document(html);
+    let doc = bookx_core::util::parse_html_document(html);
     let mut out = Vec::new();
     let Ok(sel) = scraper::Selector::parse("object") else {
         return out;

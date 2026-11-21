@@ -271,7 +271,7 @@ pub fn parse_documents(book: &OpenBook) -> Vec<Html> {
         .iter()
         .filter(|i| i.media_type == "application/xhtml+xml" || i.media_type == "text/html")
         .filter_map(|i| book.archive.get_string(&book.package.item_path(i)))
-        .map(|t| Html::parse_document(&t))
+        .map(|t| bookx_core::util::parse_html_document(&t))
         .collect()
 }
 

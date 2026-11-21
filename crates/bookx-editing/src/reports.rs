@@ -517,7 +517,7 @@ fn parse_docs(book: &OpenBook) -> Vec<Html> {
     book_text_files(book)
         .iter()
         .filter_map(|p| book.archive.get_string(p))
-        .map(|t| Html::parse_document(&t))
+        .map(|t| bookx_core::util::parse_html_document(&t))
         .collect()
 }
 

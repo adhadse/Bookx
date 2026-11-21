@@ -41,6 +41,9 @@ pub struct McpArgs {
     /// Another web origin that may call the HTTP endpoint (repeatable)
     #[arg(long = "allow-origin")]
     allow_origin: Vec<String>,
+    /// Another host name the endpoint may be reached by (repeatable; see `BOOKX_ALLOWED_HOSTS`)
+    #[arg(long = "allow-host")]
+    allow_host: Vec<String>,
 }
 
 fn default_stats() -> Option<PathBuf> {
@@ -105,6 +108,7 @@ pub fn run(
     http.bind = bind;
     http.port = port;
     http.allowed_origins = a.allow_origin.clone();
+    http.allowed_hosts.extend(a.allow_host.iter().cloned());
     if let (Some(cert), Some(key)) = (&a.tls_cert, &a.tls_key) {
         http.tls = Some(bookx_serve::net::tls_config(cert, key)?);
     }

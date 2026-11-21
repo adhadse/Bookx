@@ -91,6 +91,37 @@ pub fn show_action(
     overlay.add_toast(toast);
 }
 
+/// Like [`show_action`] with a second, plain button inside the message (for example "Show" and
+/// "Open Book"); `second` runs once when that one is pressed and the toast goes away.
+pub fn show_action_and(
+    overlay: &adw::ToastOverlay,
+    text: &str,
+    button: &str,
+    action: impl Fn() + 'static,
+    second: (&str, impl Fn() + 'static),
+) {
+    let toast = build_toast(&toast_spec(text, false, false));
+    toast.set_button_label(Some(button));
+    toast.set_timeout(UNDO_TIMEOUT_SECS);
+    toast.connect_button_clicked(move |_| action());
+    let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let label = gtk::Label::new(Some(text));
+    label.set_wrap(true);
+    label.set_xalign(0.0);
+    row.append(&label);
+    let extra = gtk::Button::with_label(second.0);
+    extra.add_css_class("flat");
+    super::audit::label(&extra, second.0);
+    let (t, run) = (toast.clone(), second.1);
+    extra.connect_clicked(move |_| {
+        run();
+        t.dismiss();
+    });
+    row.append(&extra);
+    toast.set_custom_title(Some(&row));
+    overlay.add_toast(toast);
+}
+
 /// The overlay of the application window (for a toast with a button from code that only has the
 /// plain toast callback).
 pub fn app_overlay() -> Option<adw::ToastOverlay> {

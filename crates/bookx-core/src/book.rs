@@ -122,8 +122,8 @@ impl OpenBook {
 
     /// CSS that applies to a chapter, in document order.
     pub fn chapter_stylesheets(&self, source: &str, path: &str) -> Vec<String> {
-        use scraper::{Html, Selector};
-        let html = Html::parse_document(source);
+        use scraper::Selector;
+        let html = crate::util::parse_html_document(source);
         let mut out = Vec::new();
         let (Ok(link), Ok(style), Ok(any)) = (
             Selector::parse("link[rel~=stylesheet], link[rel~=Stylesheet], style"),

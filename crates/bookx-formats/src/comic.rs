@@ -4,8 +4,8 @@
 //! name order; the front cover (or first image) is the cover. `ComicInfo.xml` supplies title,
 //! series, writers, summary, genre, language and the manga reading direction.
 //!
-//! CBR: there is no pure-Rust RAR decoder, so real RAR archives are rejected with a clear
-//! error. Many `.cbr` files are really zip archives; those are read as CBZ.
+//! CBR: real RAR archives go through `unrar` or 7-Zip when installed (see `rar`); without one
+//! they are rejected with a message. Many `.cbr` files are really zip archives; those are read as CBZ.
 
 use std::cmp::Ordering;
 use std::io::Read;
@@ -28,7 +28,7 @@ pub struct CbtReader;
 /// Reader for `.cbr` (zip-in-disguise only, see the module docs).
 pub struct CbrReader;
 
-const RAR_MAGIC: &[u8] = b"Rar!\x1a\x07";
+use crate::rar::RAR_MAGIC;
 
 /// Compares file names the way people expect: `page2` before `page10`, case-insensitive.
 pub fn natural_cmp(a: &str, b: &str) -> Ordering {
@@ -172,7 +172,7 @@ impl FormatReader for CbrReader {
     }
     fn read(&self, bytes: &[u8]) -> Result<Archive> {
         if bytes.starts_with(RAR_MAGIC) {
-            bail!("RAR comic archives (CBR) are not supported: no pure-Rust RAR decoder is available. Convert the file to CBZ first");
+            return convert_files(crate::rar::extract(bytes)?);
         }
         if bytes.starts_with(b"PK\x03\x04") {
             return CbzReader.read(bytes);
@@ -259,8 +259,36 @@ fn parse_comic_info(text: &str) -> Option<ComicInfo> {
     Some(ci)
 }
 
+/// How a comic archive is converted.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ComicOptions {
+    /// Do not use `ComicInfo.xml` (title, series, direction, cover, page types): the file name
+    /// and the picture order are all there is.
+    pub ignore_info: bool,
+}
+
+/// Reads a comic archive of the kind `ext` names (`cbz`, `cbt`, `cbr`; the content decides when
+/// the extension lies) with options.
+pub fn read_with(ext: &str, bytes: &[u8], opts: ComicOptions) -> Result<Archive> {
+    let files = if bytes.starts_with(RAR_MAGIC) {
+        crate::rar::extract(bytes)?
+    } else if bytes.starts_with(b"PK\x03\x04") {
+        read_zip(bytes)?.files
+    } else if bytes.len() > 262 && &bytes[257..262] == b"ustar" {
+        read_tar(bytes)?
+    } else {
+        bail!("not a comic archive (.{ext})");
+    };
+    convert_files_with(files, opts)
+}
+
 /// Builds the EPUB from the extracted files of a comic archive.
 pub fn convert_files(files: Vec<(String, Vec<u8>)>) -> Result<Archive> {
+    convert_files_with(files, ComicOptions::default())
+}
+
+/// [`convert_files`] with options.
+pub fn convert_files_with(files: Vec<(String, Vec<u8>)>, opts: ComicOptions) -> Result<Archive> {
     let info_data = files
         .iter()
         .find(|(n, _)| {
@@ -271,6 +299,7 @@ pub fn convert_files(files: Vec<(String, Vec<u8>)>) -> Result<Archive> {
         .map(|(_, d)| decode_xml(d));
     let info = info_data
         .as_deref()
+        .filter(|_| !opts.ignore_info)
         .and_then(parse_comic_info)
         .unwrap_or_default();
 
@@ -351,6 +380,40 @@ pub(crate) mod tests {
             ("pages/Thumbs.db", b"junk"),
             ("pages/fake.jpg", b"not an image"),
         ])
+    }
+
+    #[test]
+    fn a_real_rar_comic_is_read_when_a_helper_exists() {
+        if crate::rar::find_tool().is_none() {
+            eprintln!("skipped: no unrar or 7z");
+            return;
+        }
+        let rar = crate::rar::tests::stored_rar(&[
+            ("ComicInfo.xml", INFO.as_bytes()),
+            ("p/10.jpg", &img(10, "jpg")),
+            ("p/2.png", &img(2, "png")),
+            ("p/1.jpg", &img(1, "jpg")),
+            ("junk.txt", b"x"),
+        ]);
+        let book = validate(&CbrReader.read(&rar).unwrap());
+        assert_eq!(book.spine_paths().len(), 3);
+        assert_eq!(book.package.metadata.series, "Space Saga");
+        let plain = read_with("cbr", &rar, ComicOptions { ignore_info: true }).unwrap();
+        assert!(!plain
+            .get_string("OEBPS/content.opf")
+            .unwrap()
+            .contains("Space Saga"));
+    }
+
+    #[test]
+    fn ignoring_comic_info_drops_title_series_direction_and_cover() {
+        let ignored = read_with("cbz", &sample(), ComicOptions { ignore_info: true }).unwrap();
+        let opf = ignored.get_string("OEBPS/content.opf").unwrap();
+        assert!(!opf.contains("Space Saga"));
+        assert!(!opf.contains("rtl"));
+        let used = read_with("cbz", &sample(), ComicOptions::default()).unwrap();
+        let opf = used.get_string("OEBPS/content.opf").unwrap();
+        assert!(opf.contains("Space Saga"));
     }
 
     #[test]
@@ -577,11 +640,7 @@ pub(crate) mod tests {
     #[test]
     fn cbr_rar_is_rejected_clearly_and_disguised_zip_is_read() {
         let rar = b"Rar!\x1a\x07\x01\x00rest of the archive".to_vec();
-        let err = CbrReader.read(&rar).unwrap_err().to_string();
-        assert!(
-            err.contains("RAR") && err.contains("not supported"),
-            "{err}"
-        );
+        assert!(CbrReader.read(&rar).is_err(), "garbage RAR is an error");
         assert!(CbrReader.sniff(&rar));
         assert!(!CbrReader.sniff(&sample()));
         let book = validate(&CbrReader.read(&sample()).unwrap());

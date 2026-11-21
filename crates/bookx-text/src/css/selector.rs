@@ -235,7 +235,12 @@ fn match_compound(c: &Compound, el: ElementRef<'_>) -> bool {
 struct P {
     s: Vec<char>,
     i: usize,
+    /// How many `:not(` we are inside.
+    depth: u8,
 }
+
+/// `:not(:not(:not(...)))` deeper than this is refused: the parser recurses once per level.
+const MAX_NOT_DEPTH: u8 = 8;
 
 impl P {
     fn peek(&self) -> Option<char> {
@@ -543,9 +548,13 @@ fn parse_compound(p: &mut P, spec: &mut [u32; 3], first_letter: &mut bool) -> Op
                         Pseudo::NthOfType(x, y)
                     }
                     ("not", Some(a)) => {
+                        if p.depth >= MAX_NOT_DEPTH {
+                            return None;
+                        }
                         let mut inner = P {
                             s: a.trim().chars().collect(),
                             i: 0,
+                            depth: p.depth + 1,
                         };
                         let mut ispec = [0u32; 3];
                         let mut fl = false;
@@ -576,6 +585,7 @@ fn parse_one(text: &str) -> Option<Selector> {
     let mut p = P {
         s: text.trim().chars().collect(),
         i: 0,
+        depth: 0,
     };
     let mut spec = [0u32; 3];
     let mut first_letter = false;
@@ -859,6 +869,18 @@ mod tests {
         );
         assert_eq!(parse_selector_list("p /* c, d */ , q").unwrap().len(), 2);
         assert_eq!(parse_selector_list("p /* unterminated").unwrap().len(), 1);
+    }
+
+    #[test]
+    fn deeply_nested_not_is_refused_instead_of_overflowing_the_stack() {
+        let deep = format!("{}a{}", ":not(".repeat(100_000), ")".repeat(100_000));
+        assert!(parse_selector_list(&format!("p{deep}")).is_none());
+        let ok = ":not(.a)".to_string();
+        assert!(parse_selector_list(&format!("p{ok}")).is_some());
+        let eight = format!("{}.a{}", ":not(".repeat(8), ")".repeat(8));
+        assert!(parse_selector_list(&format!("p{eight}")).is_some());
+        let nine = format!("{}.a{}", ":not(".repeat(9), ")".repeat(9));
+        assert!(parse_selector_list(&format!("p{nine}")).is_none());
     }
 
     #[test]

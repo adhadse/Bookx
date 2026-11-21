@@ -152,6 +152,17 @@ pub struct Dav {
     pub log: Arc<Mutex<Vec<String>>>,
     pub allow_move: Arc<AtomicBool>,
     pub puts: Arc<AtomicUsize>,
+    pub knobs: Arc<Knobs>,
+}
+
+/// What the stand-in server does with `Content-Range` uploads.
+pub struct Knobs {
+    /// Honour `Content-Range` (write at the offset); off: the range is ignored, as many servers do.
+    pub ranged: AtomicBool,
+    /// Answer 503 to every ranged `PUT` from this number on (counting from 0).
+    pub fail_range_from: AtomicUsize,
+    pub range_puts: AtomicUsize,
+    pub range_bytes: AtomicUsize,
 }
 
 const SEG: &percent_encoding::AsciiSet = &percent_encoding::NON_ALPHANUMERIC
@@ -170,18 +181,32 @@ pub fn dav() -> Dav {
         log: Arc::default(),
         allow_move: Arc::new(AtomicBool::new(true)),
         puts: Arc::default(),
+        knobs: Arc::new(Knobs {
+            ranged: AtomicBool::new(true),
+            fail_range_from: AtomicUsize::new(usize::MAX),
+            range_puts: AtomicUsize::new(0),
+            range_bytes: AtomicUsize::new(0),
+        }),
     };
-    let (f, di, lg, mv, pu) = (
+    let (f, di, lg, mv, pu, kn) = (
         d.files.clone(),
         d.dirs.clone(),
         d.log.clone(),
         d.allow_move.clone(),
         d.puts.clone(),
+        d.knobs.clone(),
     );
     std::thread::spawn(move || {
         for s in l.incoming().flatten() {
-            let (f, di, lg, mv, pu) = (f.clone(), di.clone(), lg.clone(), mv.clone(), pu.clone());
-            std::thread::spawn(move || serve(s, &f, &di, &lg, &mv, &pu));
+            let (f, di, lg, mv, pu, kn) = (
+                f.clone(),
+                di.clone(),
+                lg.clone(),
+                mv.clone(),
+                pu.clone(),
+                kn.clone(),
+            );
+            std::thread::spawn(move || serve(s, &f, &di, &lg, &mv, &pu, &kn));
         }
     });
     d
@@ -200,6 +225,7 @@ fn serve(
     log: &Mutex<Vec<String>>,
     allow_move: &AtomicBool,
     puts: &AtomicUsize,
+    knobs: &Knobs,
 ) {
     s.set_read_timeout(Some(Duration::from_secs(10))).ok();
     let mut buf = Vec::new();
@@ -266,8 +292,33 @@ fn serve(
             }
         }
         "PUT" => {
+            let range = header("content-range");
             if !dirs.contains(&parent) {
                 reply(&mut s, 409, "text/plain", b"");
+            } else if !range.is_empty() && knobs.ranged.load(Ordering::Relaxed) {
+                // "bytes a-b/total": write at the offset, which must be the end (or the start)
+                let from: usize = range
+                    .trim_start_matches("bytes ")
+                    .split('-')
+                    .next()
+                    .and_then(|x| x.parse().ok())
+                    .unwrap_or(0);
+                let n = knobs.range_puts.fetch_add(1, Ordering::Relaxed);
+                if n >= knobs.fail_range_from.load(Ordering::Relaxed) {
+                    reply(&mut s, 503, "text/plain", b"");
+                    return;
+                }
+                knobs.range_bytes.fetch_add(body.len(), Ordering::Relaxed);
+                let cur = files.entry(key).or_default();
+                if from == 0 {
+                    cur.clear();
+                }
+                if from != cur.len() {
+                    reply(&mut s, 416, "text/plain", b"");
+                    return;
+                }
+                cur.extend_from_slice(&body);
+                reply(&mut s, 201, "text/plain", b"");
             } else {
                 puts.fetch_add(1, Ordering::Relaxed);
                 files.insert(key, body);

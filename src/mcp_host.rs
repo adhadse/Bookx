@@ -22,7 +22,9 @@ pub struct McpSettings {
     pub port: u16,
     /// Assistants may change the library. Off until the user switches it on.
     pub write: bool,
-    /// The token, kept here only when there is no keyring to hold it.
+    /// A token that an older version wrote into `mcp.json` in plain text. It is only read (to move
+    /// it into the keyring or the encrypted store, or keep it for this session) and never written.
+    #[serde(skip_serializing)]
     pub token_fallback: String,
 }
 
@@ -61,6 +63,7 @@ pub fn save_to(path: &Path, s: &McpSettings) -> Result<()> {
     }
     let tmp = path.with_extension("json.tmp");
     std::fs::write(&tmp, serde_json::to_vec_pretty(s)?)?;
+    bookx_secrets::restrict_file(&tmp);
     std::fs::rename(&tmp, path)?;
     Ok(())
 }
@@ -75,14 +78,29 @@ pub fn save(s: &McpSettings) {
     }
 }
 
-/// The access token: from the keyring, made on first use. Without a keyring it is kept in the
-/// settings file, which is said on the page.
+/// The token a session without any store holds in memory (never on disk).
+static SESSION_TOKEN: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
+/// The access token: from the keyring or the encrypted store, made on first use. When neither
+/// can hold it the token lives in memory for this session and a new one is made at the next start;
+/// it is never written to `mcp.json`.
 pub fn token(settings: &mut McpSettings) -> String {
     let vault = crate::secrets::vault();
-    let mut t = settings.token_fallback.clone();
+    let legacy = !settings.token_fallback.is_empty();
+    let mut t = std::mem::take(&mut settings.token_fallback);
     vault.load(&mut [(TOKEN_KEY.to_string(), &mut t)]);
+    let session = SESSION_TOKEN.lock().unwrap().clone();
+    if !session.is_empty() && session != t && !vault.available() {
+        // made while the store was locked or missing: the running server already uses it
+        t = session;
+    } else if t.is_empty() {
+        t = session;
+    }
     if t.is_empty() {
         t = bookx_mcp::generate_token();
+        store_token(settings, &t);
+    } else if legacy {
+        // an older version left it in the file: rewrite the file without it
         store_token(settings, &t);
     }
     t
@@ -91,8 +109,8 @@ pub fn token(settings: &mut McpSettings) -> String {
 fn store_token(settings: &mut McpSettings, token: &str) {
     let mut copy = token.to_string();
     crate::secrets::vault().persist(&mut [(TOKEN_KEY.to_string(), &mut copy)]);
-    // a token the keyring did not take stays in the settings file, so it is not lost
-    settings.token_fallback = copy;
+    *SESSION_TOKEN.lock().unwrap() = token.to_string();
+    settings.token_fallback.clear();
     save(settings);
 }
 
@@ -316,7 +334,24 @@ mod tests {
             token_fallback: "x".into(),
         };
         save_to(&p, &s2).unwrap();
-        assert_eq!(load_from(&p), s2);
+        assert!(
+            !std::fs::read_to_string(&p).unwrap().contains("token"),
+            "the token never reaches mcp.json"
+        );
+        assert_eq!(
+            load_from(&p),
+            McpSettings {
+                token_fallback: String::new(),
+                ..s2.clone()
+            }
+        );
+        // a file of an older version still loads, and the token in it is only an input
+        std::fs::write(
+            &p,
+            r#"{"enabled":true,"token_fallback":"legacy-token-0123456789"}"#,
+        )
+        .unwrap();
+        assert_eq!(load_from(&p).token_fallback, "legacy-token-0123456789");
         // a damaged file means the defaults, and older files without every field still load
         std::fs::write(&p, "{{{").unwrap();
         assert_eq!(load_from(&p), McpSettings::default());
@@ -398,12 +433,19 @@ mod tests {
         };
         // port 0 is below the allowed range for the page, so ask for a free high port by trying
         assert!(start(&root, &mut s).is_err());
-        let port = {
+        // another parallel test can take the port between our probe and the server's bind:
+        // ask the OS for a new free port and retry instead of failing
+        let mut started = None;
+        for _ in 0..20 {
             let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-            l.local_addr().unwrap().port()
-        };
-        s.port = port.max(1024);
-        let url = start(&root, &mut s).unwrap();
+            s.port = l.local_addr().unwrap().port().max(1024);
+            drop(l);
+            if let Ok(u) = start(&root, &mut s) {
+                started = Some(u);
+                break;
+            }
+        }
+        let url = started.expect("no free port after 20 tries");
         assert!(running() && url.ends_with("/mcp") && url.contains(&s.port.to_string()));
         assert_eq!(self::url().as_deref(), Some(url.as_str()));
         assert!(clients().is_empty());

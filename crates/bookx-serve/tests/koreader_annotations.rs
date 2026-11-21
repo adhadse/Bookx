@@ -19,8 +19,11 @@ const DOC: &str = "0123456789abcdef0123456789abcdef";
 fn start(with_annotations: bool) -> (ServerHandle, Arc<AnnotationSync>) {
     let provider: bookx_serve::server::LibraryProvider = Arc::new(LibrarySnapshot::default);
     let mut cfg = ServerConfig::new(provider);
-    cfg.kosync = Some(Arc::new(KoSync::new(Box::new(MemoryStore::new()), true)));
-    let ann = Arc::new(AnnotationSync::memory());
+    let log = Arc::new(bookx_serve::activity::ActivityLog::memory());
+    cfg.kosync = Some(Arc::new(
+        KoSync::new(Box::new(MemoryStore::new()), true).with_activity(log.clone()),
+    ));
+    let ann = Arc::new(AnnotationSync::memory().with_activity(log));
     if with_annotations {
         cfg.annotations = Some(ann.clone());
     }
@@ -291,4 +294,158 @@ fn a_real_shaped_sidecar_keeps_every_look_over_the_wire() {
         assert_eq!(r.annotation.color, words[4], "{t}");
         assert_eq!(r.annotation.drawer, words[6], "{t}");
     }
+}
+
+/// The REAL `main.lua` (menu, Register account, Test connection, Sync now) in a fake KOReader, talking over
+/// localhost to the real Bookx sync server: the whole path the owner's Kobo takes, minus KOReader's own
+/// widgets. Skipped with NET=0, or when lua or curl is missing.
+#[test]
+fn the_real_plugin_registers_and_syncs_against_a_real_server() {
+    if std::env::var("NET").is_ok_and(|v| v == "0") {
+        return;
+    }
+    let Some(lua) = lua() else {
+        eprintln!("lua not installed: plugin test skipped");
+        return;
+    };
+    if Command::new("curl").arg("--version").output().is_err() {
+        eprintln!("curl not installed: plugin test skipped");
+        return;
+    }
+    let (h, ann) = start(true);
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../koreader-plugin/tests");
+    let out = Command::new(&lua)
+        .arg("live.lua")
+        .current_dir(&dir)
+        .env("BOOKX_URL", format!("{}/bookx", h.base_url()))
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let docs = ann.documents();
+    assert_eq!(docs.len(), 1, "one book was synced");
+    let recs = ann.records("zoe", &docs[0].1, 0);
+    assert!(
+        recs.len() >= 14,
+        "the fixture entries arrived: {}",
+        recs.len()
+    );
+    let odd = recs
+        .iter()
+        .find(|r| r.annotation.color == "teal")
+        .expect("an unknown colour is kept as written");
+    assert_eq!(odd.annotation.drawer, "wavy");
+    assert!(
+        !odd.annotation.text.contains('\u{1}') && !odd.annotation.text.contains('\r'),
+        "control characters were removed before sending"
+    );
+    assert!(
+        odd.annotation.text.contains('\u{FFFD}'),
+        "invalid bytes were replaced"
+    );
+    assert_eq!(odd.device, "Live Kobo");
+    // the server knows the device and what it did (what the Sync window shows)
+    let log = ann.activity().expect("the test server records activity");
+    let devices = log.devices();
+    assert_eq!(devices.len(), 1, "{devices:?}");
+    assert_eq!(devices[0].name, "Live Kobo");
+    assert_eq!(devices[0].client, "KOReader 2026.07.2-test");
+    assert!(!devices[0].plugin.is_empty(), "the plugin version is sent");
+    assert_eq!(devices[0].protocol, 1);
+    assert!(devices[0].last_sync.is_some());
+    let events = log.events(50);
+    assert!(
+        events.iter().any(|e| matches!(
+            e.what,
+            bookx_serve::activity::What::Received { highlights, .. } if highlights >= 14
+        )),
+        "the sync is an event with its counts: {events:?}"
+    );
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e.what, bookx_serve::activity::What::Rejected { .. })),
+        "a wrong password is not logged as a device event (anyone on the network could fill the list)"
+    );
+    // the info route the plugin's version check uses
+    let r = request(
+        "GET",
+        &format!("{}/bookx/info", h.base_url()).parse().unwrap(),
+        &[],
+        b"",
+        Duration::from_secs(10),
+    )
+    .unwrap();
+    assert_eq!(r.status, 200);
+}
+
+#[test]
+fn a_plugin_style_put_over_localhost_notifies_the_listener_once_per_merge() {
+    if std::env::var("NET").is_ok_and(|v| v == "0") {
+        return;
+    }
+    use bookx_serve::notify::Note;
+    let (h, ann) = start(true);
+    let api = Api::new(&h);
+    let got: Arc<std::sync::Mutex<Vec<Note>>> = Arc::default();
+    let g = got.clone();
+    ann.on_change(Some(Arc::new(move |n| g.lock().unwrap().push(n.clone()))));
+    let t = now() - 5;
+    // 8 devices' worth of racing requests: every one changes the store, each is heard once
+    std::thread::scope(|sc| {
+        for i in 0..8 {
+            let api = &api;
+            sc.spawn(move || {
+                let (s, _) = api.put(json!([hl(&format!("h{i}"), "A line of text here.", t)]));
+                assert_eq!(s, 200);
+            });
+        }
+    });
+    assert_eq!(got.lock().unwrap().len(), 8);
+    // the same requests again change nothing: nobody is told
+    let (_, v) = api.put(json!([hl("h0", "A line of text here.", t)]));
+    assert_eq!(v["result"]["unchanged"], 1);
+    assert_eq!(got.lock().unwrap().len(), 8);
+    // a colour change is a change
+    let mut recoloured = hl("h0", "A line of text here.", t + 10);
+    recoloured["color"] = json!("purple");
+    api.put(json!([recoloured]));
+    let heard = got.lock().unwrap();
+    assert_eq!(heard.len(), 9);
+    assert!(matches!(heard.last(), Some(Note::Annotations { document, .. }) if document == DOC));
+}
+
+#[test]
+fn a_reading_position_over_localhost_notifies_once() {
+    if std::env::var("NET").is_ok_and(|v| v == "0") {
+        return;
+    }
+    use bookx_serve::notify::Note;
+    let provider: bookx_serve::server::LibraryProvider = Arc::new(LibrarySnapshot::default);
+    let mut cfg = ServerConfig::new(provider);
+    let ko = Arc::new(KoSync::new(Box::new(MemoryStore::new()), true));
+    let got: Arc<std::sync::Mutex<Vec<Note>>> = Arc::default();
+    let g = got.clone();
+    ko.on_change(Some(Arc::new(move |n| g.lock().unwrap().push(n.clone()))));
+    cfg.kosync = Some(ko);
+    let h = Server::start(cfg).unwrap();
+    let api = Api::new(&h);
+    let (s, _) = api.call(
+        "PUT",
+        "/syncs/progress",
+        &api.key,
+        json!({"document": DOC, "progress": "/body/DocFragment[3]/body", "percentage": 0.62, "device": "Kobo Libra", "device_id": "k1"})
+            .to_string()
+            .as_bytes(),
+    );
+    assert_eq!(s, 200);
+    let heard = got.lock().unwrap();
+    assert_eq!(heard.len(), 1);
+    assert!(
+        matches!(&heard[0], Note::Progress { percentage, device, .. } if (*percentage - 0.62).abs() < 1e-9 && device == "Kobo Libra")
+    );
 }

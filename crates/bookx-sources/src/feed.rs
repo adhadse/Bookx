@@ -10,7 +10,6 @@ use anyhow::{anyhow, bail, Result};
 use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use regex::Regex;
 use roxmltree::{Document, Node, ParsingOptions};
-use scraper::Html;
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -172,7 +171,7 @@ pub fn parse_date(s: &str) -> Option<DateTime<Utc>> {
 pub fn plain_text(s: &str) -> String {
     let s = s.trim();
     let t = if s.contains('&') || s.contains('<') {
-        Html::parse_fragment(s)
+        bookx_core::util::parse_html_fragment(s)
             .root_element()
             .text()
             .collect::<String>()

@@ -122,6 +122,12 @@ impl Fetcher for MockFiles {
     }
 }
 
+/// The user added this catalogue, so its own host may be on the LAN. Any other host a feed points
+/// to still goes through the private-address guard (`bookx_sources::netguard`).
+fn trust_catalogue(c: &Catalog) {
+    bookx_sources::netguard::trust_url(&c.url);
+}
+
 /// `Authorization: Basic …` for a catalogue with a user name.
 pub fn auth_headers(c: &Catalog) -> Vec<(String, String)> {
     if c.user.is_empty() {
@@ -134,6 +140,7 @@ pub fn auth_headers(c: &Catalog) -> Vec<(String, String)> {
 
 /// Downloads and parses one feed. Credentials are sent only to the host of the catalogue.
 pub fn load(fetcher: &dyn Fetcher, c: &Catalog, url: &str) -> Result<Feed> {
+    trust_catalogue(c);
     let headers = if same_host(&c.url, url) {
         auth_headers(c)
     } else {
@@ -155,6 +162,7 @@ fn same_host(a: &str, b: &str) -> bool {
 
 /// The address to load for a search in `feed`; follows an OpenSearch description if needed.
 pub fn search_url(fetcher: &dyn Fetcher, c: &Catalog, feed: &Feed, terms: &str) -> Result<String> {
+    trust_catalogue(c);
     let terms = terms.trim();
     if terms.is_empty() {
         bail!("Type something to search for");
@@ -239,6 +247,7 @@ fn file_stem(title: &str) -> String {
 
 /// Downloads the entry's best format into `dir` and returns the path. Never overwrites.
 pub fn download(fetcher: &dyn Fetcher, c: &Catalog, e: &Entry, dir: &Path) -> Result<PathBuf> {
+    trust_catalogue(c);
     let link = pick_link(e).ok_or_else(|| anyhow!("“{}” has nothing to download", e.title))?;
     let headers = if same_host(&c.url, &link.href) {
         auth_headers(c)

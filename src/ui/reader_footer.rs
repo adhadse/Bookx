@@ -1,5 +1,5 @@
 //! The footer statistics editor: which items the reader's footer shows and in which order. One
-//! widget, used by Preferences → Reading and by the footer's own "Configure Footer" popover.
+//! group in Preferences → Reading, and the Footer Statistics dialog opened from the reader.
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -11,24 +11,23 @@ use super::preferences::{register_group, PrefCtx};
 use crate::footer_stats::{Align, FooterConfig, Preset, SEPARATORS};
 use crate::i18n::tr;
 
-/// The widgets of the editor, for the dev hooks (the last one built; the Preferences one is kept apart).
+/// The widgets of the Preferences group, for the dev hooks.
 #[derive(Clone)]
 struct Handles {
-    list: gtk::ListBox,
-    presets: gtk::DropDown,
-    align: gtk::DropDown,
-    sep: gtk::DropDown,
-    size: gtk::Scale,
+    items: Rc<RefCell<Vec<adw::SwitchRow>>>,
+    presets: adw::ComboRow,
+    align: adw::ComboRow,
+    sep: adw::ComboRow,
+    size: adw::SpinRow,
 }
 
 thread_local! {
     /// The open Footer Statistics dialog (dev hooks): its items list and the config it edits.
     static DIALOG: RefCell<Option<(gtk::ListBox, Rc<RefCell<FooterConfig>>, adw::Dialog)>> = const { RefCell::new(None) };
-    static LAST: RefCell<Option<Handles>> = const { RefCell::new(None) };
     static PREFS: RefCell<Option<Handles>> = const { RefCell::new(None) };
 }
 
-/// Dev hook (`prefs:footer-…`): drives the editor in Preferences through its real widgets:
+/// Dev hook (`prefs:footer-…`): drives the group in Preferences through its real widgets:
 /// `toggle=KEY`, `align=spread|centered`, `preset=NAME`, `sep=N`, `size=PCT`.
 pub fn dev(arg: &str) {
     let Some(h) = PREFS.with(|p| p.borrow().clone()) else {
@@ -39,21 +38,15 @@ pub fn dev(arg: &str) {
     eprintln!("prefs_footer: {cmd}={val}");
     match cmd {
         "toggle" => {
-            let label = crate::footer_stats::Item::from_key(val).map(|i| tr(i.label()));
-            let mut row = h.list.first_child();
-            while let Some(r) = row {
-                if let Some(c) = r
-                    .first_child()
-                    .and_then(|b| b.first_child())
-                    .and_then(|w| w.downcast::<gtk::CheckButton>().ok())
-                {
-                    if Some(c.label().unwrap_or_default().to_string()) == label {
-                        c.set_active(!c.is_active());
-                        eprintln!("prefs_footer: toggled {val}");
-                        break;
-                    }
-                }
-                row = r.next_sibling();
+            let row = h
+                .items
+                .borrow()
+                .iter()
+                .find(|r| r.widget_name() == val)
+                .cloned();
+            if let Some(r) = row {
+                r.set_active(!r.is_active());
+                eprintln!("prefs_footer: toggled {val}");
             }
         }
         "align" => h.align.set_selected(u32::from(val != "spread")),
@@ -75,119 +68,67 @@ pub fn register() {
     register_group("reading", 60, group);
 }
 
+/// The names of every item, so the settings search finds "battery" or "clock" in this group.
+fn items_description() -> String {
+    let names: Vec<String> = crate::footer_stats::Item::ALL
+        .iter()
+        .map(|i| tr(i.label()))
+        .collect();
+    format!(
+        "{} {}",
+        tr("The statistics under the page: choose what shows, in which order, and how it looks."),
+        names.join(", ")
+    )
+}
+
 fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     let g = adw::PreferencesGroup::new();
-    g.set_title(&tr("Footer Stats"));
-    g.set_description(Some(&tr(
-        "The statistics under the page: choose what shows, in which order, and how it looks.",
-    )));
+    g.set_title(&tr("Footer Statistics"));
+    g.set_description(Some(&items_description()));
     let shared = ctx.shared.clone();
-    let cfg = shared.cfg.borrow().footer.clone();
-    let editor = editor(
-        cfg,
-        Rc::new(move |c| {
-            let mut cfg = shared.cfg.borrow_mut();
-            cfg.footer = c;
-            cfg.save();
-            drop(cfg);
-            // every open reader shows the new footer at once
-            crate::settings_bus::footer().notify();
-        }),
-    );
-    g.add(&editor);
-    LAST.with(|l| PREFS.with(|p| *p.borrow_mut() = l.borrow().clone()));
-    g
-}
-
-const SEPARATOR_NAMES: [&str; 4] = ["Dot", "Bar", "Bullet", "Space"];
-
-fn fill(list: &gtk::ListBox, cfg: &Rc<RefCell<FooterConfig>>, changed: &Rc<dyn Fn()>) {
-    while let Some(c) = list.first_child() {
-        list.remove(&c);
-    }
-    let items = cfg.borrow().items.clone();
-    let n = items.len();
-    for (i, e) in items.iter().enumerate() {
-        let row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-        row.set_margin_start(6);
-        row.set_margin_end(6);
-        row.set_margin_top(2);
-        row.set_margin_bottom(2);
-        let check = gtk::CheckButton::with_label(&tr(e.item.label()));
-        check.set_active(e.on);
-        check.set_hexpand(true);
-        let item = e.item;
-        {
-            let (cfg, changed) = (cfg.clone(), changed.clone());
-            check.connect_toggled(move |c| {
-                cfg.borrow_mut().set_on(item, c.is_active());
-                changed();
-            });
-        }
-        row.append(&check);
-        for (icon, tip, to, enabled) in [
-            ("go-up-symbolic", tr("Move up"), i.wrapping_sub(1), i > 0),
-            ("go-down-symbolic", tr("Move down"), i + 1, i + 1 < n),
-        ] {
-            let b = gtk::Button::from_icon_name(icon);
-            b.add_css_class("flat");
-            b.set_sensitive(enabled);
-            b.set_tooltip_text(Some(&format!("{tip}: {}", tr(item.label()))));
-            super::audit::label(&b, &format!("{tip}: {}", tr(item.label())));
-            let (cfg, changed, list) = (cfg.clone(), changed.clone(), list.clone());
-            b.connect_clicked(move |_| {
-                cfg.borrow_mut().move_item(i, to);
-                fill(&list, &cfg, &changed);
-                changed();
-            });
-            row.append(&b);
-        }
-        list.append(&row);
-    }
-}
-
-/// The editor. `on_change` gets the new config after every edit.
-pub fn editor(initial: FooterConfig, on_change: Rc<dyn Fn(FooterConfig)>) -> gtk::Box {
-    let cfg = Rc::new(RefCell::new(initial.normalized()));
-    let root = gtk::Box::new(gtk::Orientation::Vertical, 8);
+    let cfg = Rc::new(RefCell::new(
+        shared.cfg.borrow().footer.clone().normalized(),
+    ));
+    let on_change: Rc<dyn Fn(FooterConfig)> = Rc::new(move |c| {
+        let mut cfg = shared.cfg.borrow_mut();
+        cfg.footer = c;
+        cfg.save();
+        drop(cfg);
+        // every open reader shows the new footer at once
+        crate::settings_bus::footer().notify();
+    });
     let busy = Rc::new(Cell::new(false));
 
-    let presets = gtk::DropDown::from_strings(&[
+    let presets = adw::ComboRow::new();
+    presets.set_title(&tr("Preset"));
+    presets.set_model(Some(&gtk::StringList::new(&[
         &tr("Minimal"),
         &tr("Standard"),
         &tr("Everything"),
         &tr("Custom"),
-    ]);
-    super::audit::label(&presets, &tr("Footer preset"));
-    let list = gtk::ListBox::new();
-    list.set_selection_mode(gtk::SelectionMode::None);
-    list.add_css_class("boxed-list");
-    super::audit::label(&list, &tr("Footer items"));
-    let align = gtk::DropDown::from_strings(&[
+    ])));
+    let align = adw::ComboRow::new();
+    align.set_title(&tr("Position"));
+    align.set_model(Some(&gtk::StringList::new(&[
         &tr("Page number at the left, the rest at the right"),
         &tr("One line in the middle of the page"),
-    ]);
-    super::audit::label(&align, &tr("Footer position"));
-    let sep = gtk::DropDown::from_strings(
-        &SEPARATOR_NAMES
-            .iter()
-            .map(|n| tr(n))
-            .collect::<Vec<_>>()
-            .iter()
-            .map(|s| s.as_str())
-            .collect::<Vec<_>>(),
-    );
-    super::audit::label(&sep, &tr("Separator"));
-    let size = gtk::Scale::with_range(gtk::Orientation::Horizontal, 70.0, 160.0, 5.0);
-    size.set_draw_value(true);
-    size.set_hexpand(true);
-    size.set_value_pos(gtk::PositionType::Right);
-    super::audit::label(&size, &tr("Footer text size (percent)"));
-    let opacity = gtk::Scale::with_range(gtk::Orientation::Horizontal, 30.0, 100.0, 5.0);
-    opacity.set_draw_value(true);
-    opacity.set_hexpand(true);
-    opacity.set_value_pos(gtk::PositionType::Right);
-    super::audit::label(&opacity, &tr("Footer text opacity (percent)"));
+    ])));
+    let sep = adw::ComboRow::new();
+    sep.set_title(&tr("Separator"));
+    let sep_names: Vec<String> = SEPARATOR_NAMES.iter().map(|n| tr(n)).collect();
+    sep.set_model(Some(&gtk::StringList::new(
+        &sep_names.iter().map(String::as_str).collect::<Vec<_>>(),
+    )));
+    let size = adw::SpinRow::with_range(70.0, 160.0, 5.0);
+    size.set_title(&tr("Text size"));
+    size.set_subtitle(&tr("Percent"));
+    let opacity = adw::SpinRow::with_range(30.0, 100.0, 5.0);
+    opacity.set_title(&tr("Opacity"));
+    opacity.set_subtitle(&tr("Percent"));
+
+    let item_rows: Rc<RefCell<Vec<adw::SwitchRow>>> = Rc::new(RefCell::new(Vec::new()));
+    // The widgets of the group in order, rebuilt when the items move.
+    let rebuild: Rc<RefCell<Option<Rc<dyn Fn()>>>> = Rc::new(RefCell::new(None));
 
     let sync = {
         let (cfg, presets, align, sep, size, opacity, busy) = (
@@ -202,12 +143,7 @@ pub fn editor(initial: FooterConfig, on_change: Rc<dyn Fn(FooterConfig)>) -> gtk
         Rc::new(move || {
             busy.set(true);
             let c = cfg.borrow();
-            presets.set_selected(match c.preset() {
-                Some(Preset::Minimal) => 0,
-                Some(Preset::Standard) => 1,
-                Some(Preset::Everything) => 2,
-                None => 3,
-            });
+            presets.set_selected(preset_index(&c));
             align.set_selected(u32::from(c.align() == Align::Centered));
             sep.set_selected(
                 SEPARATORS
@@ -232,10 +168,105 @@ pub fn editor(initial: FooterConfig, on_change: Rc<dyn Fn(FooterConfig)>) -> gtk
             on_change(cfg.borrow().clone());
         })
     };
-    fill(&list, &cfg, &changed);
+
+    let build_items = {
+        let (g, cfg, changed, item_rows, rebuild) = (
+            g.clone(),
+            cfg.clone(),
+            changed.clone(),
+            item_rows.clone(),
+            rebuild.clone(),
+        );
+        let (presets, align, sep, size, opacity) = (
+            presets.clone(),
+            align.clone(),
+            sep.clone(),
+            size.clone(),
+            opacity.clone(),
+        );
+        let first = Rc::new(Cell::new(true));
+        Rc::new(move || {
+            if !first.replace(false) {
+                g.remove(&presets);
+                for r in item_rows.borrow().iter() {
+                    g.remove(r);
+                }
+                for w in [&align, &sep] {
+                    g.remove(w);
+                }
+                g.remove(&size);
+                g.remove(&opacity);
+            }
+            item_rows.borrow_mut().clear();
+            g.add(&presets);
+            let items = cfg.borrow().items.clone();
+            let n = items.len();
+            for (i, e) in items.iter().enumerate() {
+                let row = adw::SwitchRow::new();
+                row.set_title(&tr(e.item.label()));
+                row.set_widget_name(e.item.key());
+                row.set_active(e.on);
+                let item = e.item;
+                {
+                    let (cfg, changed) = (cfg.clone(), changed.clone());
+                    row.connect_active_notify(move |r| {
+                        cfg.borrow_mut().set_on(item, r.is_active());
+                        changed();
+                    });
+                }
+                let menu = gtk::MenuButton::new();
+                menu.set_icon_name("view-more-symbolic");
+                menu.set_valign(gtk::Align::Center);
+                menu.add_css_class("flat");
+                let name = format!("{}: {}", tr("Move"), tr(item.label()));
+                menu.set_tooltip_text(Some(&name));
+                super::audit::label(&menu, &name);
+                let pop = gtk::Popover::new();
+                let bx = gtk::Box::new(gtk::Orientation::Vertical, 2);
+                for (label, to, enabled, id) in [
+                    (tr("Move Up"), i.wrapping_sub(1), i > 0, "up"),
+                    (tr("Move Down"), i + 1, i + 1 < n, "down"),
+                ] {
+                    let b = gtk::Button::with_label(&label);
+                    b.add_css_class("flat");
+                    b.set_widget_name(id);
+                    b.set_sensitive(enabled);
+                    let (cfg, changed, pop, rebuild) =
+                        (cfg.clone(), changed.clone(), pop.clone(), rebuild.clone());
+                    b.connect_clicked(move |_| {
+                        pop.popdown();
+                        cfg.borrow_mut().move_item(i, to);
+                        if let Some(rb) = rebuild.borrow().clone() {
+                            rb();
+                        }
+                        changed();
+                    });
+                    bx.append(&b);
+                }
+                pop.set_child(Some(&bx));
+                menu.set_popover(Some(&pop));
+                row.add_suffix(&menu);
+                g.add(&row);
+                item_rows.borrow_mut().push(row);
+            }
+            for w in [
+                align.upcast_ref::<gtk::Widget>(),
+                sep.upcast_ref(),
+                size.upcast_ref(),
+                opacity.upcast_ref(),
+            ] {
+                if let Some(r) = w.downcast_ref::<adw::PreferencesRow>() {
+                    g.add(r);
+                }
+            }
+        })
+    };
+    *rebuild.borrow_mut() = Some(build_items.clone() as Rc<dyn Fn()>);
+    build_items();
 
     {
-        let (cfg, list, changed, busy) = (cfg.clone(), list.clone(), changed.clone(), busy.clone());
+        let (cfg, changed, busy, rebuild) =
+            (cfg.clone(), changed.clone(), busy.clone(), rebuild.clone());
         presets.connect_selected_notify(move |d| {
             if busy.get() {
                 return;
@@ -247,7 +278,9 @@ pub fn editor(initial: FooterConfig, on_change: Rc<dyn Fn(FooterConfig)>) -> gtk
                 _ => return,
             };
             *cfg.borrow_mut() = p.config();
-            fill(&list, &cfg, &changed);
+            if let Some(rb) = rebuild.borrow().clone() {
+                rb();
+            }
             changed();
         });
     }
@@ -279,7 +312,7 @@ pub fn editor(initial: FooterConfig, on_change: Rc<dyn Fn(FooterConfig)>) -> gtk
     }
     {
         let (cfg, changed, busy) = (cfg.clone(), changed.clone(), busy.clone());
-        size.connect_value_changed(move |s| {
+        size.connect_value_notify(move |s| {
             if busy.get() {
                 return;
             }
@@ -289,7 +322,7 @@ pub fn editor(initial: FooterConfig, on_change: Rc<dyn Fn(FooterConfig)>) -> gtk
     }
     {
         let (cfg, changed, busy) = (cfg.clone(), changed.clone(), busy.clone());
-        opacity.connect_value_changed(move |s| {
+        opacity.connect_value_notify(move |s| {
             if busy.get() {
                 return;
             }
@@ -297,39 +330,19 @@ pub fn editor(initial: FooterConfig, on_change: Rc<dyn Fn(FooterConfig)>) -> gtk
             changed();
         });
     }
-
-    let labelled = |text: &str, w: &gtk::Widget| {
-        let r = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        let l = gtk::Label::new(Some(text));
-        l.set_xalign(0.0);
-        l.set_width_chars(10);
-        r.append(&l);
-        w.set_hexpand(true);
-        r.append(w);
-        r
-    };
-    LAST.with(|l| {
-        *l.borrow_mut() = Some(Handles {
-            list: list.clone(),
-            presets: presets.clone(),
-            align: align.clone(),
-            sep: sep.clone(),
-            size: size.clone(),
+    PREFS.with(|p| {
+        *p.borrow_mut() = Some(Handles {
+            items: item_rows,
+            presets,
+            align,
+            sep,
+            size,
         })
     });
-    root.append(&labelled(&tr("Preset"), presets.upcast_ref()));
-    let hint = gtk::Label::new(Some(&tr("Items are shown in this order.")));
-    hint.add_css_class("dim-label");
-    hint.add_css_class("caption");
-    hint.set_xalign(0.0);
-    root.append(&hint);
-    root.append(&list);
-    root.append(&labelled(&tr("Position"), align.upcast_ref()));
-    root.append(&labelled(&tr("Separator"), sep.upcast_ref()));
-    root.append(&labelled(&tr("Text size"), size.upcast_ref()));
-    root.append(&labelled(&tr("Opacity"), opacity.upcast_ref()));
-    root
+    g
 }
+
+const SEPARATOR_NAMES: [&str; 4] = ["Dot", "Bar", "Bullet", "Space"];
 
 /// Draws the footer labels at the size and opacity of the config.
 pub fn style_labels(labels: &[&gtk::Label], cfg: &FooterConfig) {

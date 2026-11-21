@@ -22,7 +22,7 @@ KEYSYMS = {
     "Return": 0xFF0D, "Escape": 0xFF1B, "Tab": 0xFF09, "BackSpace": 0xFF08, "Delete": 0xFFFF,
     "Left": 0xFF51, "Up": 0xFF52, "Right": 0xFF53, "Down": 0xFF54,
     "Home": 0xFF50, "End": 0xFF57, "Page_Up": 0xFF55, "Page_Down": 0xFF56,
-    "Shift": 0xFFE1, "Control": 0xFFE3, "Alt": 0xFFE9, "Super": 0xFFEB, "space": 0x20,
+    "comma": 0x2C, "question": 0x3F, "period": 0x2E, "slash": 0x2F, "Shift": 0xFFE1, "Control": 0xFFE3, "Alt": 0xFFE9, "Super": 0xFFEB, "space": 0x20,
     **{f"F{n}": 0xFFBD + n for n in range(1, 13)},
 }
 

@@ -79,10 +79,15 @@ impl Subscription {
             .feeds
             .iter()
             .map(|f| {
+                let word = match f.full_article {
+                    Some(true) => " full",
+                    Some(false) => " summary",
+                    None => "",
+                };
                 if self.disabled_feeds.contains(&f.url) {
-                    format!("# {}", f.url)
+                    format!("# {}{word}", f.url)
                 } else {
-                    f.url.clone()
+                    format!("{}{word}", f.url)
                 }
             })
             .collect();
@@ -334,7 +339,7 @@ pub fn prune_plan(books: &[Book], key: &str, keep: usize) -> Vec<u64> {
 
 /// The title of the feed at `url`, to prefill the name of a new subscription.
 pub fn feed_title(url: &str, fetcher: &dyn Fetcher) -> Result<String> {
-    let url = crate::web_import::normalize_url(url)?;
+    let url = crate::web_import::normalize_url(url.split_whitespace().next().unwrap_or(""))?;
     let body = fetcher.get(&url, &[])?;
     let feed = parse_feed(&body)?;
     let t = feed.title.trim();
@@ -356,7 +361,7 @@ pub fn feed_lines(text: &str) -> Result<(String, Vec<String>)> {
                 if rest.is_empty() {
                     continue;
                 }
-                off.push(crate::web_import::normalize_url(rest)?);
+                off.push(crate::web_import::normalize_url(split_feed_line(rest)?.0)?);
                 all.push(rest.to_string());
             }
             None => all.push(line.to_string()),
@@ -400,6 +405,32 @@ pub fn parse_opml(text: &str) -> Result<Vec<(String, String)>> {
     Ok(out)
 }
 
+/// A line of the feed box: the address, then optionally `full` (download this feed's articles in
+/// full whatever the subscription says) or `summary` (use the text in the feed).
+pub fn split_feed_line(line: &str) -> Result<(&str, Option<bool>)> {
+    let mut words = line.split_whitespace();
+    let address = words.next().unwrap_or("");
+    let option = match words.next() {
+        None => None,
+        Some(w) if w.eq_ignore_ascii_case("full") => Some(true),
+        Some(w) if w.eq_ignore_ascii_case("summary") => Some(false),
+        Some(w) => bail!(
+            "{}",
+            trf(
+                "The address must not contain spaces. After it only “full” or “summary” may follow, not “{}”.",
+                &[&w]
+            )
+        ),
+    };
+    if words.next().is_some() {
+        bail!(
+            "{}",
+            tr("A feed line is an address and at most one of “full” or “summary”.")
+        );
+    }
+    Ok((address, option))
+}
+
 /// Builds a recipe from what the edit dialog collects. `feeds` is one URL per line (blank lines
 /// ignored); every URL is normalised. `base` is the recipe being edited, if any.
 pub fn recipe_from_form(
@@ -416,10 +447,15 @@ pub fn recipe_from_form(
     }
     let mut specs = Vec::new();
     for line in feeds.lines().map(str::trim).filter(|l| !l.is_empty()) {
+        let (address, full_article) = split_feed_line(line)?;
+        let url = crate::web_import::normalize_url(address)?;
+        // an edited feed keeps the section title and article limit the form does not show
+        let old = base.and_then(|b| b.feeds.iter().find(|f| f.url == url));
         specs.push(FeedSpec {
-            url: crate::web_import::normalize_url(line)?,
-            title: None,
-            max_articles: None,
+            title: old.and_then(|f| f.title.clone()),
+            max_articles: old.and_then(|f| f.max_articles),
+            url,
+            full_article,
         });
     }
     if specs.is_empty() {
@@ -941,6 +977,8 @@ mod tests {
             formats: vec![],
             resources: vec![],
             drm: String::new(),
+            custom: Default::default(),
+            marked: false,
         }
     }
 
@@ -1039,6 +1077,7 @@ mod tests {
             url: "https://bad.example/feed.xml".into(),
             title: None,
             max_articles: None,
+            full_article: None,
         });
         let mut s = Subscription::new(r);
         s.disabled_feeds = vec!["https://bad.example/feed.xml".into()];
@@ -1049,6 +1088,42 @@ mod tests {
             .push("https://news.example/feed.xml".into());
         let e = run_subscription(&s, &f, t(12, 9, 0)).err().unwrap();
         assert!(format!("{e:#}").contains("switched off"));
+    }
+
+    #[test]
+    fn a_feed_line_can_ask_for_full_articles_or_the_summary() {
+        let r = recipe_from_form(
+            "T",
+            "a.example/f full\nb.example/g summary\nc.example/h",
+            5,
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+        let f: Vec<_> = r.feeds.iter().map(|f| f.full_article).collect();
+        assert_eq!(f, vec![Some(true), Some(false), None]);
+        assert!(recipe_from_form("T", "a.example/f maybe", 5, false, None, None).is_err());
+        assert!(recipe_from_form("T", "a.example/f full extra", 5, false, None, None).is_err());
+        // the box shows it again, also for a switched-off feed, and what was set survives editing
+        let mut s = Subscription::new(r.clone());
+        s.disabled_feeds = vec!["https://b.example/g".into()];
+        let text = s.feeds_text();
+        assert_eq!(
+            text,
+            "https://a.example/f full\n# https://b.example/g summary\nhttps://c.example/h"
+        );
+        let (clean, off) = feed_lines(&text).unwrap();
+        assert_eq!(off, vec!["https://b.example/g".to_string()]);
+        let again = recipe_from_form("T", &clean, 5, false, None, Some(&r)).unwrap();
+        assert_eq!(again.feeds, r.feeds);
+        // a section title typed into the file by hand is not lost by saving the form
+        let mut base = r.clone();
+        base.feeds[0].title = Some("Alpha".into());
+        base.feeds[0].max_articles = Some(3);
+        let again = recipe_from_form("T", &clean, 5, false, None, Some(&base)).unwrap();
+        assert_eq!(again.feeds[0].title.as_deref(), Some("Alpha"));
+        assert_eq!(again.feeds[0].max_articles, Some(3));
     }
 
     #[test]

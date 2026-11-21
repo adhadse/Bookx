@@ -131,6 +131,8 @@ fn prepare_unpatched(path: &Path) -> Result<Prepared> {
         .any(|r| r.extensions().iter().any(|e| e.eq_ignore_ascii_case(&ext)));
     let archive = if by_plugin {
         crate::plugins::read(&plugins, name, &bytes)
+    } else if matches!(ext.as_str(), "cbz" | "cbr" | "cbt") {
+        crate::comic::read_for_import(path, &ext, &bytes, crate::comic::load().global.ignore_info)
     } else {
         read_any(name, &bytes)
     }

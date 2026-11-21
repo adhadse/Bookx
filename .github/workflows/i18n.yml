@@ -1,0 +1,80 @@
+name: Translations
+
+# Keeps po/ in step with the source: the template is current, POTFILES.in is current, every
+# shipped language is complete (de, es) or a valid starter (fr, hi), LINGUAS = LANGUAGES, and
+# po/STATUS.md lists each language with a review state. Never run before it was written.
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "src/**"
+      - "po/**"
+      - "build-aux/i18n*.sh"
+      - "build-aux/gen-potfiles.sh"
+      - ".github/workflows/i18n.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "po/**"
+      - "build-aux/i18n*.sh"
+      - "build-aux/gen-potfiles.sh"
+      - ".github/workflows/i18n.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+concurrency:
+  group: i18n-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  i18n:
+    name: Template, languages, status
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          dnf install -y gcc gcc-c++ make pkgconf-pkg-config rust cargo \
+            gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
+            gdk-pixbuf2-devel openssl-devel gettext git grep diffutils
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: cargo-i18n-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-i18n-${{ runner.os }}-
+      - name: po/bookx.pot is up to date
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          BOOKX_UPDATE_POT=1 cargo test -p bookx --locked --quiet i18n::tests::the_template_lists_every_marked_string
+          git diff --exit-code po/bookx.pot || {
+            echo "::error::po/bookx.pot is out of date: run build-aux/i18n.sh and commit it"; exit 1; }
+      - name: po/POTFILES.in is up to date
+        run: build-aux/gen-potfiles.sh --check
+      - name: Every shipped language is complete and well formed
+        run: "cargo test -p bookx --locked --quiet i18n::"
+      - name: po/LINGUAS matches LANGUAGES in src/i18n.rs
+        run: |
+          from_code=$(sed -n '/pub const LANGUAGES/,/^\];/p' src/i18n.rs \
+            | grep -o '("[a-z_A-Z]*", "[^"]*", Some' | cut -d'"' -f2 | LC_ALL=C sort)
+          from_files=$(grep -v '^#' po/LINGUAS | LC_ALL=C sort)
+          from_dir=$(ls po/*.po | sed 's#po/##; s#\.po$##' | LC_ALL=C sort)
+          [ "$from_code" = "$from_files" ] || { echo "::error::LANGUAGES in src/i18n.rs and po/LINGUAS differ"; echo "$from_code"; echo --; echo "$from_files"; exit 1; }
+          [ "$from_dir" = "$from_files" ] || { echo "::error::po/*.po and po/LINGUAS differ"; exit 1; }
+      - name: msgfmt accepts every language file
+        run: for f in po/*.po; do msgfmt --check-format -o /dev/null "$f"; done
+      - name: Review state table (po/STATUS.md)
+        run: build-aux/i18n-status.sh --check

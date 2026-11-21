@@ -42,6 +42,14 @@ impl CatalogBackend for SqliteCatalog {
     fn commit(&mut self, next_id: u64, upserts: &[&Book], removed: &[u64]) -> Result<()> {
         self.store.commit_catalog(next_id, upserts, removed)
     }
+
+    fn load_columns(&mut self) -> Result<Vec<bookx_core::custom::ColumnDef>> {
+        Ok(self.store.custom_columns())
+    }
+
+    fn save_columns(&mut self, columns: &[bookx_core::custom::ColumnDef]) -> Result<()> {
+        self.store.set_custom_columns(columns)
+    }
 }
 
 /// An opened library with the store behind it (shared with the full-text index).

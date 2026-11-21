@@ -189,7 +189,10 @@ pub fn url_host(url: &str) -> Option<String> {
         return None;
     }
     if let Some((_, port)) = authority.split_once(':') {
-        if port.is_empty() || !port.chars().all(|c| c.is_ascii_digit()) {
+        if port.is_empty()
+            || !port.chars().all(|c| c.is_ascii_digit())
+            || port.parse::<u16>().is_err()
+        {
             return None;
         }
     }

@@ -1181,6 +1181,210 @@ pub mod repo {
         };
         repo.restore(snapshot, target, &opts, progress, cancel)
     }
+
+    // -- one writer per place, taking over a lock ----------------------------------------------------------
+
+    /// Whether an error text says another computer is writing to the place.
+    pub fn is_in_use(err: &str) -> bool {
+        err.contains(bookx_backup::repo::lock::IN_USE)
+    }
+
+    impl RepoOutcome {
+        /// The place was busy (another computer holds its lock).
+        pub fn in_use(&self) -> bool {
+            self.result.as_ref().err().is_some_and(|e| is_in_use(e))
+        }
+    }
+
+    /// The outcomes that failed because the place was busy, with the place's id and name.
+    pub fn busy_places(outcomes: &[RepoOutcome]) -> Vec<(String, String)> {
+        outcomes
+            .iter()
+            .filter(|o| o.in_use())
+            .map(|o| (o.id.clone(), o.name.clone()))
+            .collect()
+    }
+
+    /// Removes the lock of a place after the user confirmed that nobody is writing to it. Returns
+    /// the name of the computer that held it, when it said.
+    pub fn take_over(d: &Destination) -> anyhow::Result<Option<String>> {
+        let store = d.repo_store()?;
+        Ok(Repository::take_over_lock(store.as_ref())?.map(|l| l.host))
+    }
+
+    /// What to ask before taking over.
+    pub const TAKE_OVER_BODY: &str = N_("Do this only when you are sure that the other computer is not backing up to this place right now, for example because it was switched off in the middle of a copy. Two computers writing at the same time can damage the backup.");
+
+    /// The sentence for a place that is busy.
+    pub fn busy_text(names: &[String]) -> String {
+        trf(
+            "{} is in use by another computer. Wait until it is done, or take the place over if you know it stopped.",
+            &[&names.join(", ")],
+        )
+    }
+
+    // -- changing the backup passphrase --------------------------------------------------------------------
+
+    /// What happened to one place when the passphrase was changed.
+    #[derive(Debug, Clone)]
+    pub struct RekeyOutcome {
+        pub name: String,
+        pub result: Result<bookx_backup::repo::RekeyReport, String>,
+        pub cancelled: bool,
+        /// The place has no copy yet: nothing to re-encrypt.
+        pub empty: bool,
+    }
+
+    /// Re-encrypts every encrypted place that has a backup, from `old` to `new`. Places already on
+    /// the new passphrase are reported as done; a failure at one place does not stop the others.
+    /// `progress` gets the place's name and what is being done.
+    pub fn change_passphrase(
+        places: &[Destination],
+        old: &str,
+        new: &str,
+        kdf: Kdf,
+        cancel: &AtomicBool,
+        progress: &(dyn Fn(&str, &bookx_backup::repo::RekeyProgress) + Sync),
+    ) -> Vec<RekeyOutcome> {
+        let mut out = Vec::new();
+        for d in places.iter().filter(|d| d.encrypt) {
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                break;
+            }
+            let r = (|| -> anyhow::Result<bookx_backup::repo::RekeyReport> {
+                let store = d.repo_store()?;
+                check_readable(d, store.as_ref())?;
+                Repository::change_passphrase(
+                    store,
+                    old,
+                    new,
+                    &bookx_backup::repo::RekeyOptions {
+                        kdf,
+                        ..Default::default()
+                    },
+                    cancel,
+                    &|p| progress(&d.name, p),
+                )
+            })();
+            let cancelled = r
+                .as_ref()
+                .err()
+                .is_some_and(|e| e.downcast_ref::<Cancelled>().is_some());
+            let empty = r.as_ref().err().is_some_and(|e| {
+                e.downcast_ref::<bookx_backup::repo::NoRepository>()
+                    .is_some()
+            });
+            out.push(RekeyOutcome {
+                name: d.name.clone(),
+                result: r.map_err(|e| format!("{e:#}")),
+                cancelled,
+                empty,
+            });
+        }
+        out
+    }
+
+    /// Every place is on the new passphrase (or has nothing to change): the saved passphrase may be
+    /// replaced.
+    pub fn rekey_complete(outcomes: &[RekeyOutcome]) -> bool {
+        outcomes.iter().all(|o| o.empty || o.result.is_ok())
+    }
+
+    /// The message after a change.
+    pub fn rekey_text(outcomes: &[RekeyOutcome], stopped: bool) -> String {
+        if stopped || outcomes.iter().any(|o| o.cancelled) {
+            return tr("Passphrase change stopped. Nothing is lost: change it again with the same passphrases to finish.");
+        }
+        let failed: Vec<String> = outcomes
+            .iter()
+            .filter(|o| !o.empty)
+            .filter_map(|o| o.result.as_ref().err().map(|e| format!("{}: {e}", o.name)))
+            .collect();
+        if !failed.is_empty() {
+            return trf(
+                "The passphrase was not changed everywhere: {}. The old passphrase is still saved; change it again to finish.",
+                &[&failed.join("; ")],
+            );
+        }
+        let changed = outcomes
+            .iter()
+            .filter(|o| !o.empty && o.result.is_ok())
+            .count();
+        if changed == 0 {
+            tr("The new passphrase is saved. No encrypted backup exists yet, so nothing had to be re-encrypted.")
+        } else {
+            trf(
+                "The backup passphrase was changed at {}. Keep the new one safe: it cannot be recovered.",
+                &[&crate::library_health::plural(changed, "place")],
+            )
+        }
+    }
+
+    /// What is wrong with the three fields of the change dialog, if anything.
+    pub fn passphrase_problem(saved: &str, old: &str, new: &str, repeat: &str) -> Option<String> {
+        if old.is_empty() && saved.is_empty() {
+            return Some(tr("Enter the current passphrase"));
+        }
+        if new.is_empty() {
+            return Some(tr("Enter a new passphrase"));
+        }
+        if new.chars().count() < 8 {
+            return Some(tr("Use at least 8 characters"));
+        }
+        if new != repeat {
+            return Some(tr("The two new passphrases are not the same"));
+        }
+        let current = if old.is_empty() { saved } else { old };
+        if current == new {
+            return Some(tr("The new passphrase is the same as the current one"));
+        }
+        None
+    }
+
+    /// 0..1 over the objects of one place and the places in turn.
+    pub fn rekey_fraction(i: usize, n: usize, p: &bookx_backup::repo::RekeyProgress) -> f64 {
+        let part = if p.bytes_total > 0 {
+            p.bytes_done as f64 / p.bytes_total as f64
+        } else if p.objects_total > 0 {
+            p.objects_done as f64 / p.objects_total as f64
+        } else {
+            0.0
+        };
+        ((i as f64 + part.clamp(0.0, 1.0)) / n.max(1) as f64).clamp(0.0, 1.0)
+    }
+
+    /// "120 of 340 files · 1.2 GB of 4 GB".
+    pub fn rekey_detail(p: &bookx_backup::repo::RekeyProgress) -> String {
+        use crate::library_health::size_text;
+        if p.objects_total == 0 {
+            return String::new();
+        }
+        format!(
+            "{} · {}",
+            trf("{} of {} files", &[&p.objects_done, &p.objects_total]),
+            trf(
+                "{} of {}",
+                &[&size_text(p.bytes_done), &size_text(p.bytes_total)]
+            )
+        )
+    }
+
+    /// The line under the bar of a deep check: "1.2 GB of 4 GB · 38 MB/s · about 2 minutes left".
+    pub fn verify_detail(done: u64, total: u64, elapsed: Duration) -> String {
+        use crate::library_health::size_text;
+        let mut parts = vec![trf("{} of {}", &[&size_text(done), &size_text(total)])];
+        let secs = elapsed.as_secs_f64();
+        if done > 0 && secs >= 2.0 {
+            let rate = done as f64 / secs;
+            parts.push(trf("{}/s", &[&size_text(rate as u64)]));
+            if total > done {
+                parts.push(eta_phrase(Duration::from_secs_f64(
+                    (total - done) as f64 / rate,
+                )));
+            }
+        }
+        parts.join(" · ")
+    }
 }
 
 #[cfg(test)]
@@ -1188,7 +1392,8 @@ mod tests {
     use super::repo::*;
     use super::*;
     use bookx_backup::repo::{
-        LibrarySource, Phase, Plan, Report, RestoreMode, RestoreReport, RunProgress,
+        LibrarySource, Phase, Plan, Report, Repository, RestoreMode, RestoreReport, RunProgress,
+        Secrets,
     };
     use chrono::TimeZone;
 
@@ -1989,5 +2194,202 @@ mod tests {
         assert!(base.join("new-name/Bookx Backup/README.txt").exists());
         let _ = std::fs::remove_dir_all(root);
         let _ = std::fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn a_busy_place_is_told_apart_from_a_broken_one_and_can_be_taken_over() {
+        let base = tmp();
+        let place = base.join("nas");
+        std::fs::create_dir_all(&place).unwrap();
+        let d = folder("nas", &place);
+        // another computer's fresh lock
+        let repo_dir = place.join("Bookx Backup");
+        std::fs::create_dir_all(&repo_dir).unwrap();
+        let now = Utc::now();
+        let lock = serde_json::json!({
+            "format": 1, "host": "kitchen-pc", "pid": 7, "token": "t",
+            "since": now, "beat": now, "app": "Bookx"
+        });
+        std::fs::write(repo_dir.join("lock.json"), lock.to_string()).unwrap();
+        let root = tmp();
+        let lib = library(&root);
+        put(&root, "Ann/One/one.epub", "one");
+        let out = run_all(
+            &lib,
+            std::slice::from_ref(&d),
+            "",
+            true,
+            Utc::now(),
+            Kdf::TEST,
+            &AtomicBool::new(false),
+            &|_, _| {},
+        );
+        assert!(out[0].in_use(), "{:?}", out[0].result);
+        assert!(out[0].result.as_ref().unwrap_err().contains("kitchen-pc"));
+        assert_eq!(
+            busy_places(&out),
+            vec![("nas".to_string(), "nas".to_string())]
+        );
+        assert!(!is_in_use("the folder is not there"));
+        // taking over names the other computer and the next run goes through
+        assert_eq!(take_over(&d).unwrap().as_deref(), Some("kitchen-pc"));
+        assert_eq!(take_over(&d).unwrap(), None, "nothing to take over twice");
+        let out = run_all(
+            &lib,
+            std::slice::from_ref(&d),
+            "",
+            true,
+            Utc::now(),
+            Kdf::TEST,
+            &AtomicBool::new(false),
+            &|_, _| {},
+        );
+        assert!(out[0].result.is_ok(), "{:?}", out[0].result);
+        assert!(!repo_dir.join("lock.json").exists(), "released afterwards");
+        assert!(busy_text(&["nas".into()]).contains("nas"));
+        let _ = std::fs::remove_dir_all(root);
+        let _ = std::fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn the_passphrase_dialog_checks_its_fields() {
+        assert!(passphrase_problem("", "", "longenough", "longenough").is_some());
+        assert!(passphrase_problem("old-pass", "", "", "").is_some());
+        assert!(passphrase_problem("old-pass", "", "short", "short").is_some());
+        assert!(passphrase_problem("old-pass", "", "new-pass-1", "new-pass-2").is_some());
+        assert!(passphrase_problem("old-pass", "", "old-pass", "old-pass").is_some());
+        assert!(passphrase_problem("old-pass", "other-old", "other-old", "other-old").is_some());
+        // the saved one stands in for an empty current field
+        assert_eq!(
+            passphrase_problem("old-pass", "", "new-pass-1", "new-pass-1"),
+            None
+        );
+        assert_eq!(
+            passphrase_problem("", "typed-old", "new-pass-1", "new-pass-1"),
+            None
+        );
+    }
+
+    #[test]
+    fn changing_the_passphrase_re_encrypts_every_encrypted_place_and_skips_the_rest() {
+        let base = tmp();
+        let root = tmp();
+        let lib = library(&root);
+        put(&root, "Ann/One/one.epub", "one");
+        let mut enc = folder("enc", &base.join("enc"));
+        enc.encrypt = true;
+        let plain = folder("plain", &base.join("plain"));
+        let mut later = folder("later", &base.join("later"));
+        later.encrypt = true;
+        std::fs::create_dir_all(base.join("later")).unwrap();
+        std::fs::create_dir_all(base.join("enc")).unwrap();
+        std::fs::create_dir_all(base.join("plain")).unwrap();
+        let places = vec![enc.clone(), plain.clone(), later.clone()];
+        let out = run_all(
+            &lib,
+            &[enc.clone(), plain.clone()],
+            "old-pass-1",
+            true,
+            Utc::now(),
+            Kdf::TEST,
+            &AtomicBool::new(false),
+            &|_, _| {},
+        );
+        assert!(out.iter().all(|o| o.result.is_ok()), "{out:?}");
+        let seen = std::sync::Mutex::new(Vec::new());
+        let r = change_passphrase(
+            &places,
+            "old-pass-1",
+            "new-pass-2",
+            Kdf::TEST,
+            &AtomicBool::new(false),
+            &|name, p| {
+                seen.lock()
+                    .unwrap()
+                    .push((name.to_string(), p.objects_total))
+            },
+        );
+        // the plain place is left alone; the encrypted place with no copy yet has nothing to do
+        assert_eq!(r.len(), 2, "{r:?}");
+        assert!(r[0].result.is_ok() && !r[0].empty);
+        assert!(r[1].empty);
+        assert!(rekey_complete(&r));
+        assert!(seen
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|(n, t)| n == "enc" && *t > 0));
+        assert!(rekey_text(&r, false).contains('1'));
+        // the new passphrase opens it, the old one does not
+        assert!(Repository::open(
+            enc.repo_store().unwrap(),
+            &Secrets::passphrase("new-pass-2")
+        )
+        .is_ok());
+        assert!(Repository::open(
+            enc.repo_store().unwrap(),
+            &Secrets::passphrase("old-pass-1")
+        )
+        .is_err());
+        // a second go (a place of the same account that was already done) is not an error
+        let again = change_passphrase(
+            &places,
+            "old-pass-1",
+            "new-pass-2",
+            Kdf::TEST,
+            &AtomicBool::new(false),
+            &|_, _| {},
+        );
+        assert!(rekey_complete(&again), "{again:?}");
+        // a wrong current passphrase fails the place and is not "complete"
+        let bad = change_passphrase(
+            &places,
+            "not-it-at-all",
+            "third-pass-3",
+            Kdf::TEST,
+            &AtomicBool::new(false),
+            &|_, _| {},
+        );
+        assert!(!rekey_complete(&bad));
+        assert!(rekey_text(&bad, false).contains("not changed everywhere"));
+        // nothing to re-encrypt anywhere
+        let none = change_passphrase(
+            &[plain],
+            "a",
+            "b",
+            Kdf::TEST,
+            &AtomicBool::new(false),
+            &|_, _| {},
+        );
+        assert!(none.is_empty() && rekey_complete(&none));
+        assert!(rekey_text(&none, false).contains("No encrypted backup"));
+        assert!(
+            rekey_text(&none, true).contains("stopped"),
+            "a stop is not a success"
+        );
+        let _ = std::fs::remove_dir_all(root);
+        let _ = std::fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn rekey_and_verify_progress_read_well() {
+        let p = bookx_backup::repo::RekeyProgress {
+            objects_done: 5,
+            objects_total: 20,
+            bytes_done: 1 << 20,
+            bytes_total: 4 << 20,
+            current: String::new(),
+        };
+        assert!((rekey_fraction(0, 2, &p) - 0.125).abs() < 1e-9);
+        assert!((rekey_fraction(1, 2, &p) - 0.625).abs() < 1e-9);
+        assert!(rekey_detail(&p).contains("5 of 20 files"));
+        assert_eq!(rekey_detail(&Default::default()), "");
+        // a deep check: speed and time left appear once there is something to measure
+        let early = verify_detail(10 << 20, 100 << 20, Duration::from_millis(500));
+        assert!(!early.contains("/s") && !early.contains("left"), "{early}");
+        let later = verify_detail(40 << 20, 100 << 20, Duration::from_secs(4));
+        assert!(later.contains("/s") && later.contains("left"), "{later}");
+        let done = verify_detail(100 << 20, 100 << 20, Duration::from_secs(9));
+        assert!(done.contains("/s") && !done.contains("left"), "{done}");
     }
 }

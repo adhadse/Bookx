@@ -272,6 +272,30 @@ fn foreign_origins_are_refused_even_with_the_token() {
 }
 
 #[test]
+fn a_dns_rebinding_host_is_refused_even_with_the_token() {
+    let f = Fixture::new("http-host");
+    let h = server(&f);
+    let ping = json!({"jsonrpc":"2.0","id":1,"method":"ping"}).to_string();
+    let raw = |host: &str| {
+        let mut s = TcpStream::connect(h.addr()).unwrap();
+        s.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+        let req = format!(
+            "POST /mcp HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\nAuthorization: Bearer {TOKEN}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{ping}",
+            ping.len()
+        );
+        s.write_all(req.as_bytes()).unwrap();
+        let mut out = String::new();
+        let _ = s.read_to_string(&mut out);
+        out.split(' ').nth(1).unwrap_or("").to_string()
+    };
+    assert_eq!(raw("evil.example:8765"), "403");
+    assert_eq!(raw("localhost.evil.example"), "403");
+    assert_eq!(raw("127.0.0.1:8765"), "200");
+    assert_eq!(raw("localhost"), "200");
+    h.shutdown();
+}
+
+#[test]
 fn the_endpoint_needs_a_long_token_and_listens_on_loopback_by_default() {
     let f = Fixture::new("http-token");
     let s = bookx_mcp::new_server(f.config());

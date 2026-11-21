@@ -14,7 +14,8 @@ on the way out with *Convert To* in the book's right-click menu.
 | Word, OpenDocument, RTF | `docx`, `odt`, `ott`, `rtf` | supported |
 | HTML archives, text archives | `htmlz`, `txtz` | supported |
 | Plain text, Markdown (with front matter), HTML | `txt`, `md`, `markdown`, `html`, `htm`, `xhtml` | supported |
-| Comics | `cbz`, `cbr`, `cbt`, `cbc` | supported |
+| Comics | `cbz`, `cbr`, `cbt`, `cbc` | supported; real RAR archives (`cbr`) need the `unrar` or `7z` program installed (Bookx runs it, it does not ship it), otherwise convert them to CBZ |
+| DjVu | `djvu`, `djv` | pages become pictures, like a comic; needs DjVuLibre (`ddjvu`, `djvused`) installed; the text layer is not read |
 | eReader, Palm, others | `pdb`, `pml`, `pmlz`, `rb`, `snb`, `tcr`, `chm` | supported |
 | Sony LRF | `lrf` | best effort: text, images and contents; no page layout, fonts, buttons or sound; encrypted LRX is rejected |
 | Kindle Print Replica | `azw4` | only when it is an ordinary MOBI inside; replicas (a PDF inside) are rejected |
@@ -38,6 +39,16 @@ copy in your library as it is.
 | eReader, PML archive, Rocket eBook, Bambook SNB | `pdb`, `pmlz`, `rb`, `snb` | older readers |
 | OEB folder as a zip | `oeb`, `zip` | |
 | Plain text, Markdown, HTML | `txt`, `md`, `html` | |
+
+### Conversion options
+
+*Convert To → Conversion Options* sets what EPUB, KEPUB, MOBI, AZW3 and FictionBook output does beyond the built-in
+choices: the EPUB version, smart or plain punctuation, removing unused styles, blank paragraphs and fake margins,
+splitting large files, and a contents page in MOBI and AZW3. Changes are kept and used every time you convert to that
+format, including when Bookx converts for a device. *Use the Built-in Options* undoes them for the format.
+
+*Convert at a time* in the same dialog says how many books are converted together when you convert many (half of your
+processors by default). Lower it on a small machine; conversions started one after another share the same limit.
 
 Plug-ins can add more entries, shown as "name (.ext, plugin)". See [Plugins and patches](plugins-and-patches.md).
 The same right-click menu has *Send To → Save a Copy* (the book as it is, no conversion) and *Show in Files*.
@@ -126,6 +137,9 @@ Kindle, KOReader, a Kobo or calibre. See [Highlights and notes](annotations.md).
     3. Watch the progress in the background jobs button of the header bar. A toast says when it is done.
     A small `.report.txt` is saved next to the result; see [Conversion report](#conversion-report).
 
+??? question "Why does converting a long list slow my computer down?"
+    Lower *Convert at a time* in *Convert To → Conversion Options*.
+
 ??? question "How do I convert many books at once?"
     Select them (Ctrl or Shift-click), right-click → **Convert To** → format, then choose one folder. A book that fails is
     named in the final message; the others still convert.
@@ -140,7 +154,7 @@ Kindle, KOReader, a Kobo or calibre. See [Highlights and notes](annotations.md).
     kept in the library's `.bookx/preflight-backups` folder.
 
 ??? question "How do I make the check run on its own?"
-    Open Check Before Sending once and switch on *Check automatically before converting or e-mailing*. From then on the
+    Open Check Before Sending once and switch on *Check automatically before converting or e-mailing*. From then on (also when you send books from the Devices window) the
     window only appears when something was found, and *Continue Anyway* goes on.
 
 ??? question "How do I get a report of what the conversion changed?"
@@ -152,7 +166,7 @@ Kindle, KOReader, a Kobo or calibre. See [Highlights and notes](annotations.md).
     Copy** (++ctrl+shift+s++); see [Editing](editing.md#book-menu).
 
 ??? question "How do I edit a book that is not an EPUB?"
-    In the book editor open the main menu (☰) → **More Ways to Open → Open a Book of Another Format to Edit**. See
+    In the book editor open the main menu (☰) → **More Ways to Open → Open Another Format**. See
     [Editing](editing.md#book-menu).
 
 ??? question "How do I convert from the command line?"

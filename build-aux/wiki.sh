@@ -54,6 +54,7 @@ echo "==> Checking the pictures against build-aux/wiki-pictures.txt (every pictu
 python3 build-aux/check-wiki-pictures.py || exit 1
 python3 build-aux/check-wiki-frames.py || exit 1
 python3 build-aux/check-wiki-centred.py || exit 1
+python3 build-aux/check-wiki-contrast.py || exit 1
 
 echo "==> Checking the screenshots for focus rings"
 "$VENV/bin/python" build-aux/check-screenshots.py wiki/docs/assets || exit 1

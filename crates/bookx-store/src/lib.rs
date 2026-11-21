@@ -12,11 +12,14 @@
 //!   restore, library check with drift) and [`provenance`] (where each field came from).
 
 mod calibre;
+mod calibre_custom;
 mod calibre_export;
 mod catalog;
+mod custom;
 pub mod formats;
 pub mod guard;
 pub mod health;
+pub mod notes;
 pub mod provenance;
 mod registry;
 mod store;
@@ -24,8 +27,8 @@ mod works;
 
 pub use calibre::{import_calibre_into, CalibreImport, ImportReport, Stage};
 pub use calibre_export::{
-    check_target as check_calibre_export_target, export_calibre, language_to_calibre,
-    CalibreExport, CALIBRE_USER_VERSION,
+    check_target as check_calibre_export_target, export_calibre, export_calibre_with_columns,
+    language_to_calibre, CalibreExport, CALIBRE_USER_VERSION,
 };
 pub use catalog::{
     has_library, library_db_path, open_library, CatalogWatcher, OpenedLibrary, SqliteCatalog,

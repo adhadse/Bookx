@@ -13,6 +13,10 @@ anyhow = "1"
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
 md5 = "0.7"
+argon2 = "0.5"
+getrandom = "0.2"
+hmac = "0.12"
+sha2 = "0.10"
 percent-encoding = "2"
 roxmltree = "0.21"
 serde = { version = "1", features = ["derive"] }
@@ -29,9 +33,12 @@ rustls-pki-types = { version = "1", features = ["std"] }
 rcgen = { version = "0.14", default-features = false, features = ["ring", "pem"] }
 rusqlite = { version = "0.42", features = ["bundled"] }
 webpki-roots = "1"
-nix = { version = "0.31", default-features = false, features = ["fs", "user"] }
+
 lettre = { version = "0.11", default-features = false, features = ["builder", "rustls-tls", "smtp-transport"] }
 
 [dev-dependencies]
 mail-parser = "0.11.9"
 roxmltree = "0.21"
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.31", default-features = false, features = ["fs", "user"] }

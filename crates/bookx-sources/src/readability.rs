@@ -912,7 +912,7 @@ pub struct Fragment {
 
 /// Cleans an HTML fragment with the same whitelist as [`extract`], without searching for a container.
 pub fn clean_fragment(html: &str, base_url: &str) -> Fragment {
-    let doc = Html::parse_fragment(html);
+    let doc = bookx_core::util::parse_html_fragment(html);
     let page = match Page::new(&doc, &[]) {
         Ok(p) => p,
         Err(_) => return Fragment::default(),
@@ -936,7 +936,7 @@ pub fn clean_fragment(html: &str, base_url: &str) -> Fragment {
 
 /// Like [`extract`] with selectors and limits.
 pub fn extract_with(html: &str, base_url: &str, opts: &ExtractOptions) -> Result<Article> {
-    let doc = Html::parse_document(html);
+    let doc = bookx_core::util::parse_html_document(html);
     let page = Page::new(&doc, &opts.remove)?;
 
     let ld = ld_info(&doc);
@@ -1252,6 +1252,7 @@ pub(crate) fn write_full_metadata(archive: &mut Archive, md: &Metadata) -> Resul
     pkg.metadata.series_index = md.series_index;
     pkg.metadata.publisher = md.publisher.clone();
     pkg.metadata.language = md.language.clone();
+    pkg.metadata.rights = md.rights.clone();
     pkg.write_metadata(archive)
 }
 

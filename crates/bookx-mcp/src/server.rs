@@ -4,7 +4,7 @@
 //! 2025-03-26 or 2024-11-05): `initialize`, `ping`, `tools/*`, `resources/*`, `prompts/*`,
 //! `logging/setLevel`, pagination cursors, progress and cancellation notifications.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -57,7 +57,13 @@ pub struct Session {
     pub log_level: usize,
     /// Accept requests without `initialize` (HTTP clients that keep no session).
     pub lenient: bool,
+    /// Resource URIs the client subscribed to (`resources/subscribe`). Shared with the transport's
+    /// watcher thread, which sends `notifications/resources/updated`.
+    pub subscriptions: Arc<Mutex<HashSet<String>>>,
 }
+
+/// Most resources one session may subscribe to.
+pub const MAX_SUBSCRIPTIONS: usize = 200;
 
 pub const LOG_LEVELS: [&str; 8] = [
     "debug",
@@ -80,6 +86,7 @@ impl Session {
             client_version: String::new(),
             log_level: 1,
             lenient,
+            subscriptions: Arc::new(Mutex::new(HashSet::new())),
         }
     }
 }
@@ -362,6 +369,37 @@ impl Server {
                     .unwrap_or_else(|| json!({}));
                 prompts::get(&self.app, name, &args)
             }
+            "resources/subscribe" | "resources/unsubscribe" => {
+                args_obj(params)?;
+                let uri = params
+                    .get("uri")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| RpcError::invalid("`uri` is required"))?;
+                if s.lenient {
+                    return Err(RpcError::new(
+                        METHOD_NOT_FOUND,
+                        "subscriptions need the stdio transport: the HTTP endpoint cannot push messages",
+                    ));
+                }
+                if resources::parse(uri).is_none() {
+                    return Err(RpcError::new(
+                        RESOURCE_NOT_FOUND,
+                        format!("unknown resource: {uri}"),
+                    ));
+                }
+                let mut subs = lock(&s.subscriptions);
+                if method == "resources/subscribe" {
+                    if !subs.contains(uri) && subs.len() >= MAX_SUBSCRIPTIONS {
+                        return Err(RpcError::invalid(format!(
+                            "at most {MAX_SUBSCRIPTIONS} subscriptions per session"
+                        )));
+                    }
+                    subs.insert(uri.to_string());
+                } else {
+                    subs.remove(uri);
+                }
+                Ok(json!({}))
+            }
             "logging/setLevel" => {
                 let level = params
                     .get("level")
@@ -415,7 +453,8 @@ impl Server {
             "protocolVersion": s.protocol,
             "capabilities": {
                 "tools": {"listChanged": false},
-                "resources": {"subscribe": false, "listChanged": false},
+                // only the stdio transport can push a message to the client
+                "resources": {"subscribe": !s.lenient, "listChanged": !s.lenient},
                 "prompts": {"listChanged": false},
                 "logging": {}
             },
@@ -431,9 +470,124 @@ impl Server {
     }
 }
 
+/// What changed in a book between two looks at the catalogue: its id and when it was last modified.
+pub type Snapshot = BTreeMap<u64, i64>;
+
+pub fn snapshot(books: &[bookx_core::library::Book]) -> Snapshot {
+    books
+        .iter()
+        .map(|b| (b.id, b.modified.timestamp_millis()))
+        .collect()
+}
+
+/// The notifications that follow from `old` becoming `new`: `notifications/resources/list_changed` when books
+/// were added or removed, and `notifications/resources/updated` for each subscribed URI whose book changed
+/// (or, for `bookx://library/stats`, whenever anything did).
+pub fn changes(old: &Snapshot, new: &Snapshot, subscribed: &HashSet<String>) -> Vec<Value> {
+    let mut out = Vec::new();
+    let added_or_removed = old.keys().ne(new.keys());
+    if added_or_removed {
+        out.push(json!({"jsonrpc":"2.0","method":"notifications/resources/list_changed"}));
+    }
+    let touched: HashSet<u64> = new
+        .iter()
+        .filter(|(id, m)| old.get(id) != Some(m))
+        .map(|(id, _)| *id)
+        .chain(old.keys().filter(|id| !new.contains_key(id)).copied())
+        .collect();
+    if touched.is_empty() {
+        return out;
+    }
+    let mut uris: Vec<&String> = subscribed.iter().collect();
+    uris.sort();
+    for uri in uris {
+        use resources::Target::*;
+        let hit = match resources::parse(uri) {
+            Some(Stats) => true,
+            Some(Book(id)) | Some(Cover(id)) | Some(Chapter(id, _)) => touched.contains(&id),
+            None => false,
+        };
+        if hit {
+            out.push(json!({"jsonrpc":"2.0","method":"notifications/resources/updated","params":{"uri":uri}}));
+        }
+    }
+    out
+}
+
 fn with_cursor(mut v: Value, next: Option<String>) -> Value {
     if let Some(n) = next {
         v["nextCursor"] = json!(n);
     }
     v
+}
+
+#[cfg(test)]
+mod change_tests {
+    use super::*;
+
+    fn snap(v: &[(u64, i64)]) -> Snapshot {
+        v.iter().copied().collect()
+    }
+    fn subs(v: &[&str]) -> HashSet<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+    fn methods(v: &[Value]) -> Vec<String> {
+        v.iter()
+            .map(|n| {
+                format!(
+                    "{}{}",
+                    n["method"].as_str().unwrap(),
+                    n["params"]["uri"]
+                        .as_str()
+                        .map(|u| format!(" {u}"))
+                        .unwrap_or_default()
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn nothing_changed_nothing_sent() {
+        let a = snap(&[(1, 10), (2, 20)]);
+        assert!(changes(&a, &a, &subs(&["bookx://book/1", "bookx://library/stats"])).is_empty());
+    }
+
+    #[test]
+    fn a_change_updates_only_the_subscribers_of_that_book() {
+        let (a, b) = (snap(&[(1, 10), (2, 20)]), snap(&[(1, 10), (2, 25)]));
+        let s = subs(&[
+            "bookx://book/1",
+            "bookx://book/2",
+            "bookx://book/2/cover",
+            "bookx://book/2/chapter/0",
+            "bookx://library/stats",
+        ]);
+        assert_eq!(
+            methods(&changes(&a, &b, &s)),
+            vec![
+                "notifications/resources/updated bookx://book/2",
+                "notifications/resources/updated bookx://book/2/chapter/0",
+                "notifications/resources/updated bookx://book/2/cover",
+                "notifications/resources/updated bookx://library/stats",
+            ]
+        );
+    }
+
+    #[test]
+    fn added_and_removed_books_change_the_list() {
+        let a = snap(&[(1, 10)]);
+        let added = snap(&[(1, 10), (2, 5)]);
+        assert_eq!(
+            methods(&changes(&a, &added, &subs(&[]))),
+            vec!["notifications/resources/list_changed"]
+        );
+        let out = methods(&changes(&added, &a, &subs(&["bookx://book/2", "bad uri"])));
+        assert_eq!(
+            out,
+            vec![
+                "notifications/resources/list_changed",
+                "notifications/resources/updated bookx://book/2"
+            ]
+        );
+    }
 }

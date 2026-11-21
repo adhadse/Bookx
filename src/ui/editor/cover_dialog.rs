@@ -89,7 +89,7 @@ impl Editor {
         let images = book_images(&book.borrow());
         let current = book.borrow().package.cover_path();
 
-        let dialog = adw::Dialog::new();
+        let dialog = crate::ui::dialog_toast::new_dialog();
         dialog.set_title(&tr("Set Cover"));
         let (w, h) = fit_dialog(&self.w.win, 560, 720);
         dialog.set_content_width(w);

@@ -1,4 +1,4 @@
-//! The library server behind Sync: OPDS, the web page and Bookx sync. The rows live in Preferences
+//! The OPDS server behind Sync: OPDS, the web page and Bookx sync. The rows live in Preferences
 //! → Sync (`step_server_rows`, `opds_rows`, `advanced_rows`); the Sync window (`sync_window`)
 //! starts and stops the same server through [`set_server`], and both follow each other over the
 //! sync settings bus.
@@ -16,7 +16,7 @@ use crate::sharing::ShareSettings;
 thread_local! {
     /// The address row of step 1 in Preferences → Sync (the UI tests read it).
     static KO_PREFS: RefCell<Option<adw::ActionRow>> = const { RefCell::new(None) };
-    /// The Bookx sync switch (step 1), the library server switch and the port of Preferences → Sync.
+    /// The Bookx sync switch (step 1), the OPDS server switch and the port of Preferences → Sync.
     static SYNC_SW: RefCell<Option<adw::SwitchRow>> = const { RefCell::new(None) };
     static OPDS_SW: RefCell<Option<adw::SwitchRow>> = const { RefCell::new(None) };
     static PORT_SP: RefCell<Option<adw::SpinRow>> = const { RefCell::new(None) };
@@ -215,6 +215,10 @@ pub fn step_server_rows(shared: &SharedRef) -> Vec<gtk::Widget> {
         .title(tr("Bookx sync server"))
         .build();
     let (addr, copy) = address_row(&tr("Address for the e-reader"));
+    addr.add_suffix(&super::qr_dialog::button(tr("Address for the e-reader"), {
+        let shared = shared.clone();
+        move || crate::sharing::kosync_url(&shared.sharing.borrow().urls())
+    }));
     let quiet = Rc::new(Cell::new(false));
     let view = {
         let (shared, sw, addr, copy, quiet) = (
@@ -278,15 +282,23 @@ pub fn step_server_rows(shared: &SharedRef) -> Vec<gtk::Widget> {
     vec![sw.upcast(), addr.upcast(), error_label().upcast()]
 }
 
-/// The library server (OPDS and web page) switch with its address, for Library servers.
+/// The OPDS server (catalogue and web page) switch with its address.
 pub fn opds_rows(shared: &SharedRef) -> Vec<gtk::Widget> {
     let sw = adw::SwitchRow::builder()
-        .title(tr("Share this library"))
+        .title(tr("OPDS server"))
         .subtitle(tr(
             "OPDS catalogue and web page for other apps and e-readers. Off until you switch it on.",
         ))
         .build();
     let (addr, copy) = address_row(&tr("Address"));
+    addr.add_suffix(&super::qr_dialog::button(tr("OPDS catalogue address"), {
+        let shared = shared.clone();
+        move || {
+            let urls = shared.sharing.borrow().urls();
+            urls.last()
+                .map(|u| format!("{}/opds", u.trim_end_matches('/')))
+        }
+    }));
     let quiet = Rc::new(Cell::new(false));
     let view = {
         let (shared, sw, addr, copy, quiet) = (

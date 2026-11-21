@@ -357,10 +357,23 @@ pub fn export_calibre(
     progress: &mut dyn FnMut(usize, usize),
     cancelled: &dyn Fn() -> bool,
 ) -> Result<CalibreExport> {
+    export_calibre_with_columns(books, &[], root, target, progress, cancelled)
+}
+
+/// [`export_calibre`] that also writes the custom columns `columns` and every book's values
+/// (see `calibre_custom.rs` for what maps to what).
+pub fn export_calibre_with_columns(
+    books: &[Book],
+    columns: &[bookx_core::custom::ColumnDef],
+    root: &Path,
+    target: &Path,
+    progress: &mut dyn FnMut(usize, usize),
+    cancelled: &dyn Fn() -> bool,
+) -> Result<CalibreExport> {
     check_target(root, target)?;
     let created_root = !target.exists();
     fs::create_dir_all(target).with_context(|| format!("cannot create {}", target.display()))?;
-    let r = write_all(books, root, target, progress, cancelled);
+    let r = write_all(books, columns, root, target, progress, cancelled);
     match &r {
         Ok(out) if !out.cancelled => {}
         _ => clean_up(target, created_root),
@@ -370,6 +383,7 @@ pub fn export_calibre(
 
 fn write_all(
     books: &[Book],
+    columns: &[bookx_core::custom::ColumnDef],
     root: &Path,
     target: &Path,
     progress: &mut dyn FnMut(usize, usize),
@@ -564,6 +578,7 @@ fn write_all(
             out.books += 1;
         }
         if !out.cancelled {
+            crate::calibre_custom::write_calibre_custom(&tx, columns, books)?;
             tx.execute(
                 "INSERT INTO library_id(uuid) VALUES(?1)",
                 params![uuid::Uuid::new_v4().to_string()],
@@ -710,6 +725,8 @@ mod tests {
             formats: vec![],
             resources: vec![],
             drm: String::new(),
+            custom: Default::default(),
+            marked: false,
         };
         b.meta.title = "../Dune: Part 1".into();
         b.meta.authors = vec!["Frank/Herbert".into()];
@@ -737,6 +754,8 @@ mod tests {
             formats: vec![],
             resources: vec![],
             drm: String::new(),
+            custom: Default::default(),
+            marked: false,
         };
         b.meta.title = "A & B <c>".into();
         b.meta.authors = vec!["Ada Lovelace".into()];

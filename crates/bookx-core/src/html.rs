@@ -1,7 +1,7 @@
 //! XHTML / HTML chapter -> [`Doc`].
 
 use bookx_text::css::{ComputedStyle, Display, Float, FontStyle, StyleSheetSet, TextAlign};
-use scraper::{ElementRef, Html, Node};
+use scraper::{ElementRef, Node};
 
 use super::doc::*;
 use super::util::*;
@@ -68,7 +68,7 @@ pub fn parse_html(source: &str, chapter_path: &str) -> Doc {
 
 /// Like [`parse_html`], applying the author's CSS when `styling` is given.
 pub fn parse_html_styled(source: &str, chapter_path: &str, styling: Option<&Styling>) -> Doc {
-    let html = Html::parse_document(source);
+    let html = crate::util::parse_html_document(source);
     let mut b = Builder {
         styling,
         base_dir: parent_dir(chapter_path),
@@ -118,6 +118,25 @@ fn style_attr_has(el: &ElementRef, needle: &str) -> bool {
 
 /// `px` expressed in em of a font of `font_px`, clamped to `lo..=hi` (a stylesheet cannot push the
 /// text off the page).
+/// The font a book asks for: its first family, with the generic names mapped to the system's.
+/// Names with anything but letters, digits, spaces, hyphens and dots are dropped (the name ends up in
+/// markup).
+fn book_font(families: &[String]) -> Option<String> {
+    let f = families.first()?.trim();
+    let name = match f.to_ascii_lowercase().as_str() {
+        "serif" => "Serif",
+        "sans-serif" | "system-ui" | "ui-sans-serif" => "Sans",
+        "monospace" | "ui-monospace" => return None,
+        "cursive" | "fantasy" | "inherit" | "initial" | "" => return None,
+        _ => f,
+    };
+    (name.chars().count() <= 64
+        && name
+            .chars()
+            .all(|c| c.is_alphanumeric() || matches!(c, ' ' | '-' | '.' | '_')))
+    .then(|| name.to_string())
+}
+
 fn em_of(px: f64, font_px: f64, lo: f32, hi: f32) -> f32 {
     if !px.is_finite() || font_px <= 0.0 {
         return 0.0;
@@ -362,7 +381,16 @@ impl<'a> Builder<'a> {
             style.strike = true;
         }
         if author.small_caps && !base.small_caps {
-            style.small = true;
+            style.small_caps = true;
+        }
+        if author.font_family != base.font_family {
+            style.font = book_font(&author.font_family);
+        }
+        if base.font_size > 0.0 && author.font_size.is_finite() {
+            let r = author.font_size / base.font_size;
+            if (r - 1.0).abs() > 0.02 {
+                style.size_pct = Some((r * 100.0).round().clamp(50.0, 300.0) as u16);
+            }
         }
         let mono = |c: &ComputedStyle| {
             c.font_family
@@ -890,8 +918,41 @@ mod css_tests {
         let get = |t: &str| s.iter().find(|(x, _)| x.contains(t)).unwrap().1.clone();
         assert!(get("under").underline);
         assert!(get("strike").strike);
-        assert!(get("caps").small);
+        assert!(get("caps").small_caps);
         assert!(get("mono").code);
+    }
+
+    #[test]
+    fn book_fonts_and_sizes_reach_the_spans() {
+        let d = styled(
+            r#"<p>plain <span class="f">fancy</span> <span class="g">sans</span> <span class="big">big</span> <span class="x">weird</span></p>"#,
+            ".f { font-family: 'EB Garamond', serif } .g { font-family: sans-serif } \
+             .big { font-size: 1.5em } .x { font-family: \"a<b>\" }",
+        );
+        let s = styles(&d);
+        let get = |t: &str| s.iter().find(|(x, _)| x.contains(t)).unwrap().1.clone();
+        assert_eq!(get("fancy").font.as_deref(), Some("EB Garamond"));
+        assert_eq!(get("sans").font.as_deref(), Some("Sans"));
+        assert_eq!(get("big").size_pct, Some(150));
+        assert_eq!(
+            get("weird").font,
+            None,
+            "names that could break markup are dropped"
+        );
+        assert_eq!(get("plain").font, None);
+        assert_eq!(get("plain").size_pct, None);
+    }
+
+    #[test]
+    fn small_caps_is_its_own_flag() {
+        let d = styled(
+            r#"<p><span class="sc">caps</span> <small>small</small></p>"#,
+            ".sc { font-variant: small-caps }",
+        );
+        let s = styles(&d);
+        let get = |t: &str| s.iter().find(|(x, _)| x.contains(t)).unwrap().1.clone();
+        assert!(get("caps").small_caps && !get("caps").small);
+        assert!(get("small").small && !get("small").small_caps);
     }
 
     #[test]

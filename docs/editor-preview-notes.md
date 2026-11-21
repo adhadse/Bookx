@@ -31,7 +31,7 @@ Scenarios: `build-aux/ui-tests-editor-preview.sh` (10), `build-aux/session/scena
 
 ## Not done / caveats
 - Dragging in the Contents is still missing (CE-120).
-- Click in the preview places the caret; it does not select the element.
+- Click in the preview places the caret at the start of the block and (wave 11) selects the block's source (`pv.ends`, from `Segment::range.end`). Vertical-text markers: still horizontal text only.
 - Marker line and block positions are for horizontal text only.
 - CE-228/229 not possible: the catalogue stores no originals.
 - `wiki/docs/editing.md` contains some sections twice (an earlier merge by another agent); the new sections are

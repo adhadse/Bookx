@@ -234,6 +234,9 @@ fn valid_wasm_name(w: &str) -> bool {
         && !w.contains('\0')
 }
 
+/// Most permission lines a manifest may carry (a real plugin asks for a handful).
+pub const MAX_PERMISSIONS: usize = 64;
+
 impl Manifest {
     /// Parses and validates manifest text (does not touch the file system).
     pub fn parse(text: &str) -> Result<Manifest> {
@@ -274,6 +277,9 @@ impl Manifest {
         let wasm = raw.wasm.unwrap_or_else(|| "plugin.wasm".to_string());
         if !valid_wasm_name(&wasm) {
             bail!("invalid wasm file name `{wasm}` (must be a `*.wasm` file inside the plugin folder)");
+        }
+        if raw.permissions.len() > MAX_PERMISSIONS {
+            bail!("more than {MAX_PERMISSIONS} permissions");
         }
         let mut permissions: Vec<Permission> = Vec::new();
         for p in &raw.permissions {

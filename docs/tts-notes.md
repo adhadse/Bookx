@@ -39,11 +39,21 @@ and compare `kokoro-int8` and `kokoro-fp32`, and judge the espeak-based English 
   available: the RTF there is an estimate.
 * XTTS API server and Fish Speech API server clients are tested against fakes built from their documentation.
 * Flatpak: needs `espeak-ng` (module) and `--socket=pulseaudio` plus a player (`pacat`) or a `cpal` sink. Not changed.
-* `cpal` sink (no ALSA/Pulse development headers here).
-* MP3/OGG export: needs an encoder, none is pure Rust. WAV only.
-* Kokoro Japanese/Chinese (needs misaki G2P).
+* `cpal` sink: **not done (wave 11)**. `cpal` is not in `Cargo.lock`; even as an optional feature it adds about fifteen
+  crates to the lock file and so to `build-aux/cargo-sources.json` (the Flatpak build and CI `--check` compare them), the
+  shared generated file other tracks edit at the same time; and there are no ALSA headers here (`alsa-sys` cannot build),
+  so it could only be compile-checked for another target. Licence is fine (Apache-2.0, deps MIT/Apache). To do: add
+  `cpal = { version = "0.16", optional = true }`, feature `cpal-sink`, a `CpalSink` over a bounded ring buffer (resample
+  to the device rate), regenerate `cargo-sources.json`, `cargo check --features cpal-sink` on a machine with `libasound2-dev`.
+* MP3/OGG export: **blocked (wave 11)**: every encoder crate binds C (`mp3lame-encoder`, `vorbis_rs`, `opus`); no
+  pure-Rust MP3/Vorbis encoder is usable offline. `flacenc` (pure Rust, Apache-2.0) would give FLAC but was not asked for.
+  WAV only; `ffmpeg` converts.
+* Kokoro Japanese/Chinese: **not done (wave 11)**: Kokoro's `jf_*`/`zf_*` voices are trained on misaki phonemes; the
+  espeak-ng path (`cmn`, `ja`) gives other symbols, so output would be wrong. Needs a misaki G2P port.
 * Orpheus-3B GGUF as a future "even more natural" tier (llama.cpp + SNAC decoder).
-* Speed above 2.0 is clamped inside Kokoro and Piper (the slider goes to 2.5).
+* Speed above 2.0 (wave 11, done): the engine is asked for at most 2.0 (`synth::split_speed`, servers up to 4.0) and the
+  rest is WSOLA time stretch (`Pcm::time_stretch`, `bookx_audio::stretch`) before the pitch step, also in *Save as
+  audio*. The cache holds the unstretched audio. Not listened to on real speech at 2.5x.
 * Pause, wave 4: the player takes back what the sink had buffered (kills `pacat`, as stop does) and writes the unheard
   part again on resume (`Player::drain` / `undrain`, with the event clock shifted). Tested with a simulated real-time
   sink; **not heard on a real sound card**, where `pacat`'s own start-up latency adds to the resume.

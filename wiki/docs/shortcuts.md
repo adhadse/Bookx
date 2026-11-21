@@ -30,10 +30,17 @@ Preferences. See [Accessibility](accessibility.md#command-palette) for the detai
 | Select all books | ++ctrl+a++ |
 | Clear the selection (also the header's Cancel button) | ++escape++ |
 | Add the selected books to Favourites (or remove them) | ++ctrl+d++ |
-| Remove selected books | ++delete++ |
+| Move the selected books to Trash (a message with **Undo** stays for a few seconds) | ++delete++ |
+| Show or hide the sidebar (an overlay in a narrow window) | ++f9++ |
+| Show or hide the details panel | ++shift+f9++ |
+| Open the main menu | ++f10++ |
+| Command palette | ++ctrl+k++ or ++ctrl+shift+p++ |
 | Preferences | ++ctrl+comma++ |
 | Keyboard shortcuts | ++ctrl+question++ |
+| Online help | ++f1++ |
 | Quit | ++ctrl+q++ |
+
+Delete and ++ctrl+a++ leave a text field alone: while the search field has the focus they edit its text.
 
 ## Reader
 
@@ -99,6 +106,10 @@ These are the defaults; every one of them can be changed under [Changing shortcu
 | Action | Shortcut |
 |---|---|
 | Save | ++ctrl+s++ |
+| Show or hide the file sidebar (an overlay in a narrow window) | ++f9++ |
+| Open the main menu | ++f10++ |
+| Preferences | ++ctrl+comma++ |
+| Keyboard shortcuts | ++ctrl+question++ |
 | Find and replace | ++ctrl+h++ or ++ctrl+f++ |
 | Next / previous match | ++f3++ or ++ctrl+g++ / ++shift+f3++ or ++ctrl+shift+g++ |
 | Replace and find next / previous | `Ctrl+]` or ++ctrl+r++ / `Ctrl+[` |

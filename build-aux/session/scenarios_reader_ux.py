@@ -460,7 +460,7 @@ def lookup_dictionary_download(c):
         c.check("and Choose another and Learn more", c.find("button", "Choose another") and c.find("button", "Learn more"))
         c.check("the old message is not shown", not c.find("label", rx="No dictionaries installed"))
         c.click_node(c.wait_node("button", rx=r"^Download dictionary"))
-        c.wait(lambda: c.find("button", "Downloading…") or c.find("label", rx=r"A mock definition"), 8, every=0.1)
+        c.wait(lambda: c.find("button", "Downloading") or c.find("label", rx=r"A mock definition"), 8, every=0.1)
         c.shot("dict-downloading")
         res = c.wait_node("label", rx="A mock definition of", timeout=25)
         c.shot("dict-definition")

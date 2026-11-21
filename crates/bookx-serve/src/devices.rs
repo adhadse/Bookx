@@ -193,6 +193,57 @@ pub fn default_roots_for(user: Option<&str>) -> Vec<PathBuf> {
     roots
 }
 
+/// macOS mounts every volume under `/Volumes/<name>`: the entries of that directory, without the
+/// boot volume (a symlink to `/` named like `Macintosh HD`, which the caller filters out by passing
+/// only real directories) and hidden entries. Pure: the caller lists the directory.
+pub fn macos_volume_roots(volume_names: &[String]) -> Vec<PathBuf> {
+    let mut v: Vec<PathBuf> = volume_names
+        .iter()
+        .filter(|n| !n.is_empty() && !n.starts_with('.') && !n.contains('/') && *n != "..")
+        .filter(|n| {
+            !n.starts_with("Macintosh HD")
+                && !matches!(n.as_str(), "Recovery" | "Preboot" | "VM" | "Update")
+        })
+        .map(|n| PathBuf::from("/Volumes").join(n))
+        .collect();
+    v.sort();
+    v
+}
+
+/// Windows exposes removable drives as `E:\`, `F:\`...: the drive letters D to Z that
+/// `is_present` reports (C is the system drive, A and B are legacy floppies). Pure: the caller
+/// supplies the existence check.
+pub fn windows_drive_roots(is_present: impl Fn(char) -> bool) -> Vec<PathBuf> {
+    ('D'..='Z')
+        .filter(|c| is_present(*c))
+        .map(|c| PathBuf::from(format!("{c}:\\")))
+        .collect()
+}
+
+/// Where to look for mounted readers on this operating system: `(roots, mounts)`. A *root* is a
+/// directory whose sub-directories are the mounts (Linux: `/run/media/$USER`, `/media/$USER`,
+/// `/mnt`); a *mount* is a mount point itself (macOS: each entry of `/Volumes`; Windows: each present
+/// drive letter D to Z).
+pub fn platform_scan(user: Option<&str>) -> (Vec<PathBuf>, Vec<PathBuf>) {
+    if cfg!(target_os = "macos") {
+        let names: Vec<String> = std::fs::read_dir("/Volumes")
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter(|e| e.path().is_dir() && !e.path().is_symlink())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        (Vec::new(), macos_volume_roots(&names))
+    } else if cfg!(windows) {
+        (
+            Vec::new(),
+            windows_drive_roots(|c| Path::new(&format!("{c}:\\")).exists()),
+        )
+    } else {
+        (default_roots_for(user), Vec::new())
+    }
+}
+
 const MAX_NAME_BYTES: usize = 200;
 
 /// Makes a name safe on FAT/exFAT/ext4 (no separators, reserved characters, control characters,
@@ -311,6 +362,8 @@ fn collect_books(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) {
 #[derive(Debug, Clone)]
 pub struct MassStorageDriver {
     roots: Vec<PathBuf>,
+    /// Mount points scanned directly (macOS volumes, Windows drives), not their sub-directories.
+    mounts: Vec<PathBuf>,
     proc_mounts: Option<PathBuf>,
 }
 
@@ -324,8 +377,10 @@ impl MassStorageDriver {
     /// Default roots for the current user and `/proc/mounts`.
     pub fn new() -> MassStorageDriver {
         let user = std::env::var("USER").ok();
+        let (roots, mounts) = platform_scan(user.as_deref());
         MassStorageDriver {
-            roots: default_roots_for(user.as_deref()),
+            roots,
+            mounts,
             proc_mounts: Some(PathBuf::from("/proc/mounts")),
         }
     }
@@ -334,6 +389,7 @@ impl MassStorageDriver {
     pub fn with_roots(roots: Vec<PathBuf>) -> MassStorageDriver {
         MassStorageDriver {
             roots,
+            mounts: Vec::new(),
             proc_mounts: None,
         }
     }
@@ -362,6 +418,7 @@ impl MassStorageDriver {
             dirs.sort();
             out.extend(dirs);
         }
+        out.extend(self.mounts.iter().filter(|m| m.is_dir()).cloned());
         if let Some(pm) = &self.proc_mounts {
             if let Ok(text) = std::fs::read_to_string(pm) {
                 out.extend(removable_mounts(&parse_proc_mounts(&text)));
@@ -705,6 +762,49 @@ garbage
     }
 
     #[test]
+    fn macos_volumes_skip_boot_and_hidden_entries() {
+        let names: Vec<String> = [
+            "KOBOeReader",
+            "Macintosh HD",
+            "Macintosh HD - Data",
+            ".timemachine",
+            "Kindle",
+            "Recovery",
+            "a/b",
+            "",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+        assert_eq!(
+            macos_volume_roots(&names),
+            vec![
+                PathBuf::from("/Volumes/KOBOeReader"),
+                PathBuf::from("/Volumes/Kindle")
+            ]
+        );
+        assert!(macos_volume_roots(&[]).is_empty());
+    }
+
+    #[test]
+    fn windows_drives_are_d_to_z_and_present() {
+        let roots = windows_drive_roots(|c| matches!(c, 'C' | 'E' | 'G' | 'a'));
+        assert_eq!(roots, vec![PathBuf::from("E:\\"), PathBuf::from("G:\\")]);
+        assert!(windows_drive_roots(|_| false).is_empty());
+        assert_eq!(windows_drive_roots(|_| true).len(), 23);
+    }
+
+    #[test]
+    fn platform_scan_on_linux_is_the_media_directories() {
+        if cfg!(target_os = "linux") {
+            assert_eq!(
+                platform_scan(Some("anna")),
+                (default_roots_for(Some("anna")), Vec::new())
+            );
+        }
+    }
+
+    #[test]
     fn default_roots() {
         assert_eq!(
             default_roots_for(Some("anna")),
@@ -789,6 +889,20 @@ garbage
         assert_eq!(kobo.name, "Kobo (KOBOeReader)");
         assert!(found.iter().any(|f| f.id.starts_with("kindle:")));
         assert_eq!(d.id(), "usb-mass-storage");
+    }
+
+    #[test]
+    fn detect_scans_direct_mounts_like_macos_volumes_and_windows_drives() {
+        let t = Tmp::new();
+        let kobo_mount = t.dir("Volumes/KOBOeReader");
+        std::fs::create_dir_all(kobo_mount.join(".kobo")).unwrap();
+        let other = t.dir("Volumes/Backup");
+        let mut d = MassStorageDriver::with_roots(vec![]);
+        d.mounts = vec![kobo_mount.clone(), other, t.0.join("Volumes/Missing")];
+        let found = d.detect();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].mount, kobo_mount);
+        assert!(found[0].id.starts_with("kobo:"));
     }
 
     #[test]

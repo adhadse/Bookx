@@ -1,0 +1,8 @@
+Path = a/1.jpg
+Size = 12
+Folder = -
+Attributes = A
+
+Path = ..\\evil.jpg
+Size = 99999999999
+Folder = -

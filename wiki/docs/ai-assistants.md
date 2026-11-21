@@ -39,8 +39,8 @@ groups, top to bottom:
    Just below, **Allow changes to the library** (off by default) decides whether assistants may change anything; see
    [What assistants can change](#what-assistants-can-change). Switching it on asks for confirmation.
 2. **Access token.** Bookx makes a random token the first time and keeps it in the system keyring (the
-   page says so; without a keyring it is kept in Bookx's settings file). The row shows it hidden. The first button
-   copies the token, the second, **Make a new token**, asks first, because every assistant that has the old token stops
+   page says so; without a keyring it is kept in Bookx's encrypted password store, or only in memory until Bookx closes, and a new one is made at the next start; it is never written to a file in clear text). The row shows it hidden. The first button
+   copies the token, the second, **Make a New Token**, asks first, because every assistant that has the old token stops
    working until you paste the new settings into it; then it replaces the token (the server restarts) and says
    *New token made*.
 3. **Connect an assistant.** For Claude Desktop, Claude Code, Cursor and opencode there are two buttons:
@@ -171,6 +171,13 @@ Only when you allow it (the switch in Preferences, or `--allow-write`):
 * **No telemetry.** Bookx sends nothing anywhere for this feature. `fetch_metadata` contacts Open Library,
   Google Books and Wikidata only if you started the server with `--allow-network`.
 
+## Change notifications
+
+Over stdio (`bookx-cli mcp`) a client can subscribe to a resource (`resources/subscribe`, for example `bookx://book/42` or
+`bookx://library/stats`) and gets `notifications/resources/updated` when the book changes, and
+`notifications/resources/list_changed` when books are added or removed. Bookx looks at the library every two seconds. The
+HTTP endpoint does not push messages, so it does not offer subscriptions.
+
 ## Troubleshooting
 
 * *The assistant says the server failed to start.* Run the command from a terminal:
@@ -209,7 +216,7 @@ Only when you allow it (the switch in Preferences, or `--allow-write`):
     `Authorization: Bearer` header.
 
 ??? question "How do I make a new access token?"
-    Preferences → MCP → **Access token** → **Make a new token**. Bookx asks first, replaces the token and restarts the
+    Preferences → MCP → **Access token** → **Make a New Token**. Bookx asks first, replaces the token and restarts the
     server. Every assistant that used the old token stops working until you copy its settings again from **Connect an
     assistant**. Do this if the token was ever shared by mistake.
 

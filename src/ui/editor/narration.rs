@@ -120,8 +120,8 @@ impl Editor {
 
         let bar = gtk::ProgressBar::new();
         bar.set_show_text(true);
-        bar.set_text(Some(&tr("Loading the voice…")));
-        let dlg = adw::Dialog::new();
+        bar.set_text(Some(&tr("Loading the voice")));
+        let dlg = crate::ui::dialog_toast::new_dialog();
         dlg.set_title(&tr("Adding Narration"));
         dlg.set_content_width(420);
         let note = gtk::Label::new(Some(&tr(

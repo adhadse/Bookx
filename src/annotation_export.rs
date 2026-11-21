@@ -46,6 +46,11 @@ pub const FORMATS: &[Format] = &[
         extension: "md",
     },
     Format {
+        id: "joplin",
+        label: "Joplin note",
+        extension: "md",
+    },
+    Format {
         id: "kindle",
         label: "Kindle clippings (My Clippings.txt)",
         extension: "txt",
@@ -127,6 +132,7 @@ pub fn render(items: &[AnnotationItem], id: &str, now: DateTime<Utc>) -> Option<
         "json" => ExportFormat::Json,
         "txt" => ExportFormat::Text,
         "obsidian" => ExportFormat::Obsidian,
+        "joplin" => ExportFormat::Joplin,
         "kindle" => ExportFormat::KindleClippings,
         "readwise" => {
             return serde_json::to_string_pretty(&ex::readwise_payload(items, &opts)).ok();
@@ -222,6 +228,8 @@ mod tests {
             formats: vec![],
             resources: vec![],
             drm: String::new(),
+            custom: Default::default(),
+            marked: false,
         }
     }
 

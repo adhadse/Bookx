@@ -32,6 +32,14 @@ pub trait CatalogBackend: Send {
     fn load(&mut self) -> Result<(u64, Vec<Book>)>;
     /// Atomically stores `upserts`, deletes `removed` and records `next_id`.
     fn commit(&mut self, next_id: u64, upserts: &[&Book], removed: &[u64]) -> Result<()>;
+    /// The custom column definitions (empty for a backend that cannot keep them).
+    fn load_columns(&mut self) -> Result<Vec<crate::custom::ColumnDef>> {
+        Ok(Vec::new())
+    }
+    /// Replaces the custom column definitions.
+    fn save_columns(&mut self, _columns: &[crate::custom::ColumnDef]) -> Result<()> {
+        Ok(())
+    }
 }
 
 /// A backend that keeps everything in memory. Clones share the data, so it can stand in for a
@@ -39,6 +47,7 @@ pub trait CatalogBackend: Send {
 #[derive(Clone, Default)]
 pub struct MemoryBackend {
     data: std::sync::Arc<std::sync::Mutex<(u64, Vec<Book>)>>,
+    columns: std::sync::Arc<std::sync::Mutex<Vec<crate::custom::ColumnDef>>>,
 }
 
 impl MemoryBackend {
@@ -57,6 +66,19 @@ impl MemoryBackend {
 }
 
 impl CatalogBackend for MemoryBackend {
+    fn load_columns(&mut self) -> Result<Vec<crate::custom::ColumnDef>> {
+        Ok(self
+            .columns
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone())
+    }
+
+    fn save_columns(&mut self, columns: &[crate::custom::ColumnDef]) -> Result<()> {
+        *self.columns.lock().unwrap_or_else(|e| e.into_inner()) = columns.to_vec();
+        Ok(())
+    }
+
     fn load(&mut self) -> Result<(u64, Vec<Book>)> {
         let d = self.lock();
         Ok((d.0, d.1.clone()))
@@ -188,6 +210,12 @@ pub struct Book {
     /// Copy protection found at import (`Kindle`, `Adobe ADEPT`, ...); empty when none.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub drm: String,
+    /// Values of the custom columns by label, as [`crate::custom::ColumnDef::normalize`] stores them.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub custom: BTreeMap<String, String>,
+    /// Temporarily marked in this session (search `marked:true`); never saved.
+    #[serde(skip)]
+    pub marked: bool,
 }
 
 impl Book {
@@ -357,6 +385,7 @@ pub struct Library {
     pub(crate) layout: Layout,
     pub(crate) template_fn: Option<TemplateFn>,
     pub(crate) read_only: bool,
+    pub(crate) columns: Vec<crate::custom::ColumnDef>,
     pub(crate) ops: Vec<crate::history::Op>,
     /// True while an undo runs, so it is not logged as an operation of its own.
     pub(crate) replaying: bool,
@@ -442,6 +471,9 @@ impl Library {
     pub fn with_backend(root: &Path, mut backend: Box<dyn CatalogBackend>) -> Result<Library> {
         std::fs::create_dir_all(root)?;
         let (next_id, books) = backend.load().context("reading the library catalogue")?;
+        let columns = backend
+            .load_columns()
+            .context("reading the custom columns")?;
         let next_id = next_id
             .max(books.iter().map(|b| b.id + 1).max().unwrap_or(1))
             .max(1);
@@ -462,9 +494,17 @@ impl Library {
             layout: layout::load_layout(root),
             template_fn: None,
             read_only: false,
+            columns,
             ops: crate::history::load_ops(root),
             replaying: false,
         })
+    }
+
+    pub(crate) fn backend_save_columns(&self, defs: &[crate::custom::ColumnDef]) -> Result<()> {
+        self.backend
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .save_columns(defs)
     }
 
     /// A library whose catalogue lives only in memory (tests).
@@ -756,6 +796,8 @@ mod backend_tests {
             formats: Vec::new(),
             resources: Vec::new(),
             drm: String::new(),
+            custom: Default::default(),
+            marked: false,
         }
     }
 

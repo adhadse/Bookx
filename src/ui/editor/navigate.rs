@@ -220,7 +220,7 @@ impl Editor {
 
     pub(super) fn open_rename_class(&mut self, old: &str) {
         let texts = Rc::new(self.all_code_texts());
-        let dialog = adw::Dialog::new();
+        let dialog = crate::ui::dialog_toast::new_dialog();
         dialog.set_title(&tr("Rename Class"));
         dialog.set_content_width(520);
         let toolbar = adw::ToolbarView::new();

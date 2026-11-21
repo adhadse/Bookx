@@ -106,7 +106,7 @@ impl Ctx {
             (lib.root.clone(), files)
         };
         self.verify_btn.set_sensitive(false);
-        self.verify_row.set_subtitle(&tr("Checking…"));
+        self.verify_row.set_subtitle(&tr("Checking"));
         let weak = Rc::downgrade(self);
         glib::spawn_future_local(async move {
             let report = gio::spawn_blocking(move || {
@@ -180,7 +180,7 @@ impl Ctx {
                 .collect()
         };
         self.scan_btn.set_sensitive(false);
-        self.scan_row.set_subtitle(&tr("Looking at the covers…"));
+        self.scan_row.set_subtitle(&tr("Looking at the covers"));
         let weak = Rc::downgrade(self);
         glib::spawn_future_local(async move {
             let found = gio::spawn_blocking(move || {

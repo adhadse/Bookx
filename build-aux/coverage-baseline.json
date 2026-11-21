@@ -1,0 +1,27 @@
+{
+  "comment": "Lines coverage per group (cargo llvm-cov, inline test modules and GTK glue excluded). A PR may not lower a group by more than tolerance_pp. Raise with build-aux/coverage.sh --update-baseline. Goal: every group at target; see docs/ci-gates.md. bookx-ui is the Broadway-suite number of build-aux/coverage-ui.sh (80.06% measured on 2026-11-21, 3810 checks passed, 12 failed), kept a point lower because timing varies.",
+  "tolerance_pp": 0.2,
+  "target": 90.0,
+  "groups": {
+    "bookx-audio": 85.98,
+    "bookx-backup": 90.53,
+    "bookx-cli": 86.33,
+    "bookx-comic": 98.14,
+    "bookx-convert": 95.08,
+    "bookx-core": 91.07,
+    "bookx-editing": 95.33,
+    "bookx-formats": 95.57,
+    "bookx-logic": 88.77,
+    "bookx-lookup": 98.04,
+    "bookx-mcp": 95.46,
+    "bookx-pdf": 90.87,
+    "bookx-plugin": 93.41,
+    "bookx-secrets": 88.7,
+    "bookx-serve": 95.31,
+    "bookx-sources": 96.98,
+    "bookx-store": 93.42,
+    "bookx-text": 98.67,
+    "bookx-tts": 85.82,
+    "bookx-ui": 79.0
+  }
+}

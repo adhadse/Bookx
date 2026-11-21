@@ -111,7 +111,7 @@ def sync_case(c, size, dark, lang):
     c.check("three choice cards say when to use them", len(use) >= 3, str(use))
     c.check("each card has its button",
             c.find("button", rx=r"^(Start setup|Einrichtung starten)") and c.find("button", rx=r"^(Open device window|Geräte-Fenster öffnen)")
-            and c.find("button", rx=r"^(Start library server|Bibliotheksserver starten)"))
+            and c.find("button", rx=r"^(Start OPDS server|OPDS-Server starten)"))
     c.check("no KOSync label on the first screen", not [l for l in labels if "KOSync" in l])
     c.check("no /kosync text", not [l for l in labels if "/kosync" in l])
     c.check("Advanced is there", c.find(None, rx=r"^(Advanced|Erweitert)"))
@@ -126,16 +126,16 @@ def sync_case(c, size, dark, lang):
     time.sleep(0.5)
     c.shot(f"{tag}-sync-window-step2")
     c.check("step 2 shows its text and the Open Preferences button",
-            any("not the Share Library password" in l or "nicht das Passwort" in l for l in _labels(c)))
+            any("not the OPDS server password" in l or "nicht das Passwort des OPDS-Servers" in l for l in _labels(c)))
     _press(c, sbox, r"^(Step|Schritt) 2 (of|von) 4", "button")
     c.sb.scroll(-40, dx + dw * 0.62, dy + dh * 0.5)
-    # the third card starts the library server and says so
-    btn = _press(c, sbox, r"^(Start library server|Bibliotheksserver starten)")
-    c.check("the library server card starts the server", btn)
+    # the third card starts the OPDS server and says so
+    btn = _press(c, sbox, r"^(Start OPDS server|OPDS-Server starten)")
+    c.check("the OPDS server card starts the server", btn)
     time.sleep(1.0)
-    c.check("the card now offers Stop library server", c.find("button", rx=r"^(Stop library server|Bibliotheksserver stoppen)"))
+    c.check("the card now offers Stop OPDS server", c.find("button", rx=r"^(Stop OPDS server|OPDS-Server stoppen)"))
     c.shot(f"{tag}-sync-window-opds-on")
-    _press(c, sbox, r"^(Stop library server|Bibliotheksserver stoppen)")
+    _press(c, sbox, r"^(Stop OPDS server|OPDS-Server stoppen)")
     # Advanced
     adv = _scroll_to(c, sbox, r"^(Advanced|Erweitert)")
     if adv:
@@ -179,8 +179,8 @@ def sync_case(c, size, dark, lang):
             any(re.match(r"(User name|Benutzername)", l) for l in labels) and any(re.match(r"(Password|Passwort)", l) for l in labels), str(labels[:40]))
     c.check("it has Register and Log in buttons",
             c.find("button", rx=r"^(Register|Registrieren)") and c.find("button", rx=r"^(Log in|Anmelden)"))
-    c.check("the step text says it is not the Share Library password",
-            any("not the Share Library password" in l or "nicht das Passwort" in l for l in labels))
+    c.check("the step text says it is not the OPDS server password",
+            any("not the OPDS server password" in l or "nicht das Passwort des OPDS-Servers" in l for l in labels))
     # step 3: the plugin, copied onto the fake e-reader
     h3 = _scroll_to(c, pd.box, STEP % 3, "button", step=3)
     if h3:
@@ -223,8 +223,17 @@ def sync_case(c, size, dark, lang):
                 str(labels[:40]))
     c.sb.key("Escape")
     time.sleep(1.0)
+    # one window: Preferences replaced the Sync window, so Escape leaves only the library; reopening Sync shows the new state
+    c.check("Escape closes Preferences and no Sync window is left behind", not [n for n in c.tree().nodes if n.role == "dialog" and n.showing])
+    if not c.wait_node("toggle button", rx=MENU, timeout=3):
+        _click(c, "toggle button", "^(Sidebar|Seitenleiste)$")
+    _click(c, "toggle button", MENU)
+    found = [n for n in (c.find("menu item", rx=SYNC_ENTRY) or []) if n.showing and n.box[2] > 0]
+    if found:
+        c.click_node(max(found, key=lambda n: n.box[1]))
+        time.sleep(1.5)
     labels = _labels(c)
-    c.check("the Sync window below followed: Bookx sync is ready",
+    c.check("the reopened Sync window says Bookx sync is ready",
             any(re.match(r"Bookx[ -]sync is ready|Bookx-Sync ist bereit", l, re.I) for l in labels), str(labels[:30]))
     c.shot(f"{tag}-sync-window-ready")
     c.check("the app is alive", c.is_alive())

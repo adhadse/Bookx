@@ -4,7 +4,7 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <name>Bookx</name>
-  <summary>A modern e-book library, reader and editor</summary>
+  <summary>E-book library, reader and editor</summary>
   <description>
     <p>
       Bookx is a native GNOME application for your e-books, written entirely in Rust.
@@ -33,40 +33,41 @@
   <launchable type="desktop-id">com.adhadse.Bookx.desktop</launchable>
   <screenshots>
     <screenshot type="default">
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/library-banner-hero-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/library-banner-hero-light.png</image>
       <caption>Your library as covers, with search and the tag browser</caption>
     </screenshot>
     <screenshot>
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/library-table-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/library-table-light.png</image>
       <caption>The library as a table, sorted and filtered</caption>
     </screenshot>
     <screenshot>
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/reader-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/reader-light.png</image>
       <caption>The reader on a light page</caption>
     </screenshot>
     <screenshot>
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/reader-dark.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/reader-dark.png</image>
       <caption>The reader in the dark theme</caption>
     </screenshot>
     <screenshot>
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/editor-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/editor-light.png</image>
       <caption>The built-in EPUB editor with live preview</caption>
     </screenshot>
     <screenshot>
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/device-window-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/device-window-light.png</image>
       <caption>Send books to an e-reader and bring reading progress back</caption>
     </screenshot>
     <screenshot>
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/read-aloud-reading-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/read-aloud-reading-light.png</image>
       <caption>Read aloud with the sentence highlighted</caption>
     </screenshot>
     <screenshot>
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/master/wiki/docs/assets/preferences-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/preferences-light.png</image>
       <caption>Preferences, with a search box</caption>
     </screenshot>
   </screenshots>
   <url type="homepage">https://github.com/adhadse/Bookx</url>
   <url type="bugtracker">https://github.com/adhadse/Bookx/issues</url>
+  <url type="vcs-browser">https://github.com/adhadse/Bookx</url>
   <url type="help">https://bookx.adhadse.com</url>
   <url type="translate">https://bookx.adhadse.com/translating/</url>
   <url type="contribute">https://bookx.adhadse.com/contributing/</url>
@@ -93,6 +94,7 @@
     <mediatype>application/vnd.comicbook+zip</mediatype>
     <mediatype>application/vnd.comicbook-rar</mediatype>
     <mediatype>application/x-cbt</mediatype>
+    <mediatype>image/vnd.djvu</mediatype>
     <mediatype>application/pdf</mediatype>
     <mediatype>application/rtf</mediatype>
     <mediatype>application/vnd.oasis.opendocument.text</mediatype>

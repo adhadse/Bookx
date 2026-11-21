@@ -93,9 +93,51 @@ scenario win9_vocab_header 'vocab:own=Zed|the last letter,vocab:show-words,wait:
 # the lint (ui/i18n_lint.rs) is the test of XC-2: `cargo test lint`
 
 # XC-7 / X6: with the text 1.5 times larger in a 900x600 window every secondary window still fits and its main button is on screen
-scenario win9_scale_dialogs 'app:win-size=900x600,wait:800,library:opds=open,wait:2500,a11y-audit:,dialog:ctrlw,wait:600,library:citations=open,wait:2500,a11y-audit:,dialog:ctrlw,wait:600,library:audiobooks=open,wait:2500,a11y-audit:,dialog:ctrlw,wait:600,library:trackers=open,wait:2500,a11y-audit:,dialog:ctrlw,wait:600,vocab:show-words,wait:2500,a11y-audit:,dialog:ctrlw,wait:600,quit' '
+scenario win9_scale_dialogs 'app:win-size=900x600,wait:800,library:opds=open,wait:2500,a11y-audit:,library:nav=home,wait:600,library:citations=open,wait:2500,a11y-audit:,dialog:ctrlw,wait:600,library:audiobooks=open,wait:2500,a11y-audit:,dialog:ctrlw,wait:600,library:trackers=open,wait:2500,a11y-audit:,dialog:ctrlw,wait:600,vocab:show-words,wait:2500,a11y-audit:,dialog:ctrlw,wait:600,quit' '
     D=$(grep "^dialog_fit:" <<<"$OUT")
-    [ "$(grep -c " fits=true " <<<"$D")" = 5 ]; check "all five windows fit in a 900x600 window with 1.5 times larger text" $?
+    [ "$(grep -c " fits=true " <<<"$D")" = 4 ]; check "all four windows fit in a 900x600 window with 1.5 times larger text (Online Catalogues is a page of the library now)" $?
+    has "^a11y: controls=[0-9]+ problems=0"; check "the Online Catalogues page has named controls at 1.5 times larger text" $?
     ! grep -q "default_visible=false" <<<"$D"; check "the default button of every window is on screen" $?
     ! grep -q "clipped_buttons=[1-9]" <<<"$D"; check "no button cuts its label" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# ---- wave 11 (HIG): Sync window rows, one window --------------------------------------------------------------
+# Dev commands: `dialog:state` prints `dialog: open=B count=N` (N = dialogs on the main window), `sync:dump` adds
+# `error_banner=B`.
+
+scenario win11_sync_rows_one_window 'share:port0,action:sync,wait:900,dialog:state,sync:dump,a11y-audit:,sync:card=wifi,wait:900,dialog:state,quit' '
+    D=$(grep "^dialog: open" <<<"$OUT")
+    sed -n 1p <<<"$D" | grep -q "count=1"; check "the Sync window is one dialog" $?
+    has "^sync_window: .*cards=wifi:Start setup:.*usb:.*opds:.*use_when=3 .*error_banner=false"; check "the three choices are rows with their use-when text and one button each, no error banner" $?
+    has "^a11y: controls=[0-9]+ problems=0"; check "every control of the Sync window has a name" $?
+    sed -n 2p <<<"$D" | grep -q "count=1"; check "Start setup replaces the Sync window by Preferences: exactly one dialog is open" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# ---- wave 11 (HIG): XC-7 text 1.5 times larger at 900x600 on every surface ----------------------------------------
+# Dev commands: `app:text-scale=1.5` (Xft DPI, like the accessibility setting), `a11y-audit:` prints `window_fit: window=WxH
+# offscreen=N clipped_buttons=M ...` (controls outside the window that are not in a scrolled area, buttons that cut their
+# label) next to `dialog_fit:`.
+
+scenario win11_scale_library 'app:win-size=900x600,app:text-scale=1.5,wait:1000,library:annotate,library:annotate-more,a11y-audit:,library:table,wait:700,a11y-audit:,library:notes,wait:800,a11y-audit:,library:nav=home,wait:500,library:health=open,wait:1500,a11y-audit:,dialog:ctrlw,wait:600,action:devices,wait:1500,a11y-audit:,dialog:ctrlw,wait:600,prefs:,wait:1200,a11y-audit:,prefs:pick=Sync,wait:500,a11y-audit:,dialog:ctrlw,wait:600,quit' '
+    W=$(grep "^window_fit:" <<<"$OUT")
+    [ "$(grep -c "^window_fit:" <<<"$OUT")" -ge 7 ]; check "the grid, table, notes, Health, devices and Preferences were all measured" $?
+    ! grep -q "window=[0-9]*x[0-9]* offscreen=[1-9]" <<<"$W"; check "no control is pushed outside the window by the larger text" $?
+    ! grep -q "clipped_buttons=[1-9]" <<<"$W"; check "no button of the library cuts its label" $?
+    D=$(grep "^dialog_fit:" <<<"$OUT")
+    [ "$(grep -c " fits=true " <<<"$D")" -ge 4 ]; check "Health, Devices and Preferences fit the window" $?
+    ! grep -q "default_visible=false\|clipped_buttons=[1-9]" <<<"$D"; check "their main buttons are on screen and keep their labels" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario win11_scale_reader 'app:win-size=900x600,app:text-scale=1.5,wait:800,read:1,wait:2500,a11y-audit:,reader:menu,wait:500,a11y-audit:,quit' '
+    W=$(grep "^window_fit:" <<<"$OUT")
+    [ "$(grep -c "^window_fit:" <<<"$OUT")" -ge 2 ]; check "the reader was measured" $?
+    ! grep -q "offscreen=[1-9]" <<<"$W"; check "no reader control is pushed outside the window" $?
+    ! grep -q "clipped_buttons=[1-9]" <<<"$W"; check "no reader button cuts its label" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario win11_scale_editor 'edit:1,wait:3000,editor:resize=900x600,app:text-scale=1.5,wait:1000,a11y-audit:,editor:book-menu,wait:400,a11y-audit:,quit' '
+    W=$(grep "^window_fit:" <<<"$OUT")
+    [ "$(grep -c "^window_fit:" <<<"$OUT")" -ge 2 ]; check "the editor was measured" $?
+    ! grep -q "offscreen=[1-9]" <<<"$W"; check "no editor control is pushed outside the window" $?
+    ! grep -q "clipped_buttons=[1-9]" <<<"$W"; check "no editor header button cuts its label" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'

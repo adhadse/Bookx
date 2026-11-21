@@ -1,0 +1,124 @@
+[package]
+name = "bookx-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+description = "Fuzz targets for the parsers and wire formats of Bookx (docs/security.md, P1.1)"
+
+# Not part of the main workspace: `cargo test --workspace` never builds it.
+[workspace]
+
+[features]
+# `cargo fuzz run <target>` builds with libFuzzer (nightly). Without it each target is an ordinary
+# program that replays the files named on its command line, so it also checks on stable:
+#   cargo check --manifest-path fuzz/Cargo.toml --no-default-features
+default = ["libfuzzer"]
+libfuzzer = ["dep:libfuzzer-sys"]
+
+[dependencies]
+libfuzzer-sys = { version = "0.4", optional = true }
+bookx-core = { path = "../crates/bookx-core" }
+bookx-formats = { path = "../crates/bookx-formats" }
+bookx-text = { path = "../crates/bookx-text" }
+bookx-serve = { path = "../crates/bookx-serve" }
+bookx-backup = { path = "../crates/bookx-backup" }
+bookx-plugin = { path = "../crates/bookx-plugin" }
+bookx-comic = { path = "../crates/bookx-comic" }
+bookx-pdf = { path = "../crates/bookx-pdf" }
+bookx-sources = { path = "../crates/bookx-sources" }
+bookx-secrets = { path = "../crates/bookx-secrets" }
+serde_json = "1"
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "epub"
+path = "fuzz_targets/epub.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "formats"
+path = "fuzz_targets/formats.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "css"
+path = "fuzz_targets/css.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "wire"
+path = "fuzz_targets/wire.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "lua"
+path = "fuzz_targets/lua.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "backup"
+path = "fuzz_targets/backup.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "plugin"
+path = "fuzz_targets/plugin.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "comic"
+path = "fuzz_targets/comic.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "pdf"
+path = "fuzz_targets/pdf.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "html"
+path = "fuzz_targets/html.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "url"
+path = "fuzz_targets/url.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "helpers"
+path = "fuzz_targets/helpers.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vault"
+path = "fuzz_targets/vault.rs"
+test = false
+doc = false
+bench = false

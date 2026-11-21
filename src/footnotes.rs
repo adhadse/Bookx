@@ -5,7 +5,7 @@
 //! rearnote, note), or is a list item, or its id/class says so (`fn1`, `footnote-3`, `note`), and
 //! its text is short. Anything else (a heading, a chapter, a long section) is followed normally.
 
-use scraper::{ElementRef, Html};
+use scraper::ElementRef;
 
 /// Longest note shown in a popup; longer targets are navigated to.
 pub const MAX_CHARS: usize = 1200;
@@ -111,7 +111,7 @@ pub fn preview(source: &str, frag: &str) -> Option<String> {
     if frag.is_empty() {
         return None;
     }
-    let html = Html::parse_document(source);
+    let html = crate::core::util::parse_html_document(source);
     let target = html
         .root_element()
         .descendants()

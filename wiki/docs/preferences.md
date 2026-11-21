@@ -15,7 +15,7 @@ the main menu, and the Library page has a row that opens it (see [Backup and res
 
 | Page | What it holds |
 |---|---|
-| General | The colour scheme, **E-ink mode** (black on white, no animations, bars that stay, wide tap zones) and the [interface language](#language) |
+| General | The colour scheme, **E-ink mode** (black on white, no animations, bars that stay, wide tap zones) the [interface language](#language) and **Settings Backup**: *Export Settings* saves your preferences to a JSON file (never passwords, tokens, the library folder or window size), *Import Settings* shows which settings the file would change before you confirm; restart Bookx afterwards to apply all of them |
 | Library | The library folder (**Change** asks before it opens another folder, and names it), the **Continue reading banner** (Adaptive, Large, Compact or Hidden; see [the library](library.md#views)), *Library files* (where books are kept inside the folder, the path template, and a row that opens Library Health for backups, checks, trash and history) and [metadata lookup](library.md#fetch-metadata-for-new-books) (fetch for new books, the source cache) |
 | Reading | Reader defaults: theme, layout, font size, justification, hyphenation, the book's own styling, a **Touch and e-ink readers** group (tap zones, large touch controls), footnote popups, the statistics in the footer (items, order, preset, position), the [reading ruler](accessibility.md#reading-ruler) and the comics settings |
 | Dictionaries | The [dictionaries](reading.md#dictionaries) Bookx looks words up in (automatic download, the ones installed, getting another, your own folder), *Your vocabulary* and whether vocabulary terms are marked in the text |
@@ -23,6 +23,7 @@ the main menu, and the Library page has a row that opens it (see [Backup and res
 | Text to Speech | The voice engine, the voice, model downloads, the audio cache and the voice server: see [Read aloud](read-aloud.md#settings) |
 | Sync | The settings for everything that syncs: a setup checklist for [Bookx sync](progress-sync.md) (server, account, plugin, test), what it does, USB devices, the library server (OPDS), and a collapsed **Advanced** row with every technical setting (server address, port and firewall, HTTPS, book matching, privacy and offline mode, reverse proxy, requirements). The **Always sync when connected** switch for USB e-readers is in [Devices → Settings](devices-and-sharing.md#settings-page), not here |
 | E-mail | Mail server and addresses for *Send by E-mail* |
+| Library → Metadata sources | which source wins for each field when several know it (title, authors, publisher, date, description, tags, language, series, cover; *Automatic* keeps the built-in order), and the **author name order**: *Automatic* leaves Chinese, Japanese and Korean names as written, *Last name, first name* always rearranges, *As written* never does |
 | Extensions | Plugins, which can add metadata sources, file formats, conversion steps and device support (an empty list says where to put them and has a button that opens the folder), and **Patches**: small rule files that fix books when they are imported or opened; each has a switch and a **⋯** menu (dry run, apply earlier, apply later) |
 | Privacy | [Offline mode](privacy.md#offline-mode) and the list of everything Bookx can connect to (plain text rows that the keyboard skips) |
 | Keyboard Shortcuts | Every action of the library, the reader and the book editor with its keys: [change, reset, export and import them](shortcuts.md#changing-shortcuts) |
@@ -78,7 +79,7 @@ page.
 
 Preferences → Reading has the **Reader defaults** (*Theme*, *Layout*, *Font size*, *Justify text*, *Hyphenate words*,
 *Use the book's own styling*), the **Touch and e-ink readers** group (*Tap zones*, *Large touch controls*), the footnote
-popup switch, **Footer Stats**, the **Reading ruler** and the comics settings. The same choices can be changed while
+popup switch, **Footer Statistics**, the **Reading ruler** and the comics settings. The same choices can be changed while
 reading from the reader's **Appearance** menu; this page sets what a book starts with.
 
 ### Sync
@@ -92,7 +93,7 @@ reading from the reader's **Appearance** menu; this page sets what a book starts
 The Sync page walks you through four steps in its **Setup checklist** (turn on the Bookx sync server, create your sync
 account, install the plugin on KOReader, test on the device). The server switch in step 1 is remembered, so the server
 starts again by itself when you open Bookx; once you have registered or logged in, step 2 reads *Logged in as* your user
-name. Below the checklist come *What Bookx sync does*, USB device sync and *Library servers (OPDS)*. The
+name. Below the checklist come *What Bookx sync does*, USB device sync and *OPDS server*. The
 **Always sync when connected** switch for a USB e-reader is in [Devices → Settings](devices-and-sharing.md#settings-page),
 off by default; the library banner's **Sync** button only syncs once. The last row, **Advanced**, is collapsed; open it for
 the server address, port and firewall, HTTPS and certificates, how books are matched, the status lines, the request limits,
@@ -148,7 +149,7 @@ You can also use the command palette (++ctrl+k++): choosing a setting there open
 
 - ++tab++ moves between the search entry, the list of sections and the settings; ++up++ and ++down++ move through the
   sections, which open as you move. ++ctrl+page-down++ and ++ctrl+page-up++ open the next and the previous section
-  (the ones the search leaves in the list) from anywhere in Preferences.
+  (the ones the search leaves in the list) from anywhere in Preferences. They are listed, but cannot be changed, on the *Keyboard Shortcuts* page.
 - Messages such as *Removed German dictionary* appear at the bottom of the window; the ones that can be taken back have an
   **Undo** button for a few seconds.
 - In a narrow window the list of sections becomes an overlay. The button at the top left of the settings (or ++ctrl+f++)
@@ -173,7 +174,7 @@ Preferences list unless another place is named.
 
 - Dictionaries → **Mark vocabulary terms in the text**: on, so your own definitions are underlined as you read.
 - Dictionaries → **Download dictionaries automatically**: on, for books in other languages.
-- Reading → **Footer Stats**: choose the items you want in the footer, so you always see how far you are.
+- Reading → **Footer Statistics**: choose the items you want in the footer, so you always see how far you are.
 - Library → **Fetch metadata for new books**: on, so titles, authors and identifiers are filled in for citations (see
   [Export citations](library.md#export-citations)).
 - Reading → **Show footnotes in a popup**: on, so you do not lose your place.
@@ -251,7 +252,7 @@ Preferences list unless another place is named.
 
 ??? question "How do I install a dictionary?"
     Preferences → Dictionaries. Under **Get a dictionary** pick a language and press **Download**, or put your own
-    StarDict dictionary into the folder that **Your own dictionaries** → **Open folder** shows. Installed ones are listed
+    StarDict dictionary into the folder that **Your own dictionaries** → **Open Folder** shows. Installed ones are listed
     with a remove button and an **Undo** toast. See [Dictionaries](reading.md#dictionaries).
 
 ??? question "How do I make Bookx download dictionaries by itself?"
@@ -313,7 +314,7 @@ Preferences list unless another place is named.
     made again when needed.
 
 ??? question "How do I change how the footer shows my reading statistics?"
-    Preferences → Reading → **Footer Stats**: the preset, items, order, position and size. The same dialog can be set
+    Preferences → Reading → **Footer Statistics**: the preset, items, order, position and size. The same dialog can be set
     for one book only. See [The footer](reading.md#the-footer).
 
 ??? question "How do I change the Continue reading banner?"

@@ -145,7 +145,7 @@ scenario editor_a11y_sets 'edit:1,wait:3000,editor:tool=upgrade,wait:900,editor:
     sed -n 4p <<<"$S" | grep -q "text=\"textual,visual; textual\" boxes=8"; check "Add Alternative Set adds a second set" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
-scenario editor_chars_narrow 'edit:1,wait:3000,editor:chars:size=900x560,wait:700,editor:chars:layout,editor:chars:size=500x500,wait:900,editor:chars:layout,quit' '
+scenario editor_chars_narrow 'edit:1,wait:3000,editor:chars:size=900x560,wait:1500,editor:chars:layout,editor:chars:size=500x500,wait:1500,editor:chars:layout,quit' '
     L=$(grep "^editor_chars_layout:" <<<"$OUT")
     sed -n 1p <<<"$L" | grep -q "list=yes drop=no"; check "the wide window lists the character groups" $?
     sed -n 2p <<<"$L" | grep -q "list=no drop=yes"; check "below 720sp the groups become a drop-down" $?
@@ -212,4 +212,57 @@ scenario editor_book_menu_enabled 'edit:1,wait:3000,editor:book-menu-state,wait:
     grep -q "Preferences activated=true dialog_over_editor=true" <<<"$A"; check "Preferences opens over the editor" $?
     grep -q "Keyboard Shortcuts activated=true dialog_over_editor=true" <<<"$A"; check "Keyboard Shortcuts opens over the editor" $?
     grep -q "About Bookx activated=true dialog_over_editor=true" <<<"$A"; check "About opens over the editor" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# wave 10, XC-6 and WIN-E4: F9 shows and hides the file sidebar of the editor; Preferences is the Bookx Preferences on
+# the Editor page (there is no second preferences window). Dev commands: `editor:key=ACCEL` prints `editor_key: ACCEL ->
+# <id>` and runs the command, `editor:sidebar-state` prints `editor_sidebar: shown=<bool> collapsed=<bool>`,
+# `editor:prefs-open` is what the palette's Editor Preferences does.
+scenario editor10_sidebar_key_and_prefs 'edit:1,wait:3000,editor:sidebar-state,editor:key=F9,wait:400,editor:sidebar-state,editor:key=F9,wait:400,editor:sidebar-state,editor:prefs-open,wait:1200,prefs:dump,quit' '
+    K=$(grep "^editor_key:" <<<"$OUT"); S=$(grep "^editor_sidebar:" <<<"$OUT")
+    sed -n 1p <<<"$K" | grep -q "F9 -> editor.sidebar"; check "F9 is bound to the editor sidebar" $?
+    sed -n 1p <<<"$S" | grep -q "shown=true"; check "the file sidebar is shown to begin with" $?
+    sed -n 2p <<<"$S" | grep -q "shown=false"; check "F9 hides it" $?
+    sed -n 3p <<<"$S" | grep -q "shown=true"; check "F9 shows it again" $?
+    has "^prefs: .*selected=Editor "; check "Editor Preferences opens the Bookx Preferences on the Editor page" $?
+    has "^prefs: .*sections=General"; check "with the other pages and the search (one Preferences window for everything)" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# ---- wave 11 (T7 plugin trust, T9 launcher, safe mode, debug log). Dev commands: `plugins:sheet=ID` opens the
+# capability sheet and prints `plugin_sheet: title="…" lines=A|B warning=B`, `plugins:sheet-allow` presses Allow
+# (`plugin_sheet: allowed state=Trusted`), `plugins:state` prints `plugin_trust: ID State`, `safe:dump`
+# (`safe_mode: active=B plugins_dir=P plugins_found=N offline=B`), `launch:write=PATH|TEXT`, `launch:spawn=ARGS`
+# (`launch_spawn: exit=N`) starts a second bookx as a launcher does.
+
+scenario editor_plugin_trust_sheet "plugins:state,plugins:sheet=$EDP,wait:600,dialog:state,plugins:sheet-allow,wait:400,plugins:state,plugins:enable=$EDP,edit:1,wait:3000,editor:tool=plugin:action:$EDP:trim,wait:600,dialog:state,quit" '
+    S=$(grep "^plugin_sheet:" <<<"$OUT"); T=$(grep "^plugin_trust:" <<<"$OUT")
+    sed -n 1p <<<"$T" | grep -q "$EDP NeverAsked"; check "a plugin nobody allowed has never been asked about" $?
+    sed -n 1p <<<"$S" | grep -q "title=\"Allow Trim trailing whitespace to run?\" lines=Read the book that is open in the editor|Change the book that is open in the editor.* warning=true"; check "the sheet lists what the plugin may do in words and warns that it is unsigned" $?
+    has "^dialog: open=true"; check "the sheet is a dialog" $?
+    sed -n 2p <<<"$S" | grep -q "allow_pressed=true"; check "Allow was there to press" $?
+    sed -n 3p <<<"$S" | grep -q "allowed state=Trusted"; check "Allow remembers the approval" $?
+    sed -n 2p <<<"$T" | grep -q "$EDP Trusted"; check "the plugin is trusted afterwards" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario launch_forward_doc 'launch:write=@D@/Forwarded.md|---\ntitle: Forwarded Book\nauthor: Zed Writer\n---\n# One\n\nA second process hands this to the first.\n,launch:spawn=--doc @D@/Forwarded.md,wait:5000,reader:dump,quit' '
+    has "^launch_write: Ok"; check "the sample book was written" $?
+    has "^launch_spawn: exit=Some\(0\)"; check "the second bookx handed the request over and left at once" $?
+    has "^labels:"; check "the running instance imported the book and opened it in the reader" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario launch_forward_open_with 'launch:write=@D@/OpenedWith.md|---\ntitle: Open With Book\nauthor: Zed Writer\n---\n# One\n\nSent by the file manager.\n,launch:spawn=@D@/OpenedWith.md,wait:4000,launch:titles,quit' '
+    has "^launch_spawn: exit=Some\(0\)"; check "Open With: the second bookx forwarded the file and left" $?
+    has "^launch_titles: .*Open With Book"; check "the running instance imported it" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario editor_plugin_safe_mode 'safe:dump,plugins:enable=org.bookx.example.trim-whitespace,prefs:eink=on,wait:300,quit' '
+    has "^safe_mode: active=true .*plugins_found=0 offline=true"; check "safe mode starts without plugins and offline" $?
+    has "^plugin_enable: Err"; check "a plugin cannot be switched on in safe mode" $?
+    [ ! -s "$d/cfg/bookx/config.json" ]; check "nothing is written to the settings file in safe mode" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario editor11_preview_colours "edit:1,wait:3000,editor:prefs-set=preview_fg=#ff0000,editor:prefs-set=preview_bg=#00ff00,editor:prefs-set=preview_link=zzz,wait:500,editor:prefs-open,wait:900,a11y-audit:,quit" '
+    grep -q "\"preview_fg\": \"#ff0000\"" "$d/cfg/bookx/editor-look.json"; check "the preview text colour override is saved" $?
+    grep -q "\"preview_bg\": \"#00ff00\"" "$d/cfg/bookx/editor-look.json"; check "and the background override" $?
+    ! has "^a11y-problem:"; check "the colour buttons have names" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'

@@ -25,6 +25,8 @@ use crate::core::library::{Bookmark, Highlight, ReadPos};
 use crate::core::toc::{flatten, FlatToc};
 use crate::core::util::*;
 
+#[path = "reader_aids.rs"]
+mod aids;
 #[path = "reader_vocab.rs"]
 mod reader_vocab;
 
@@ -53,6 +55,8 @@ pub fn color_of(name: &str) -> Rgb {
 #[derive(Debug)]
 pub enum Input {
     Turn(bool),
+    /// Auto-turn, citation, link hints and page turner keys (`reader_aids.rs`).
+    Aids(aids::Cmd),
     Chapter(bool),
     GoSpine(usize, Option<f64>, Option<String>),
     GoHref(String),
@@ -104,6 +108,12 @@ pub enum Input {
     Properties,
     /// A request from the sidebar.
     Side(super::reader_side::Cmd),
+    /// A sync changed this book (highlights, notes, bookmarks, colours) or a device reported a position.
+    Sync(crate::sync_bus::SyncEvent),
+    /// A button of the sync banner was pressed.
+    LiveAnswer(super::reader_live::Answer),
+    /// The note dialog of the sidebar was closed.
+    NoteEditorClosed,
     /// The note written for a highlight in the sidebar (id, text).
     SideNote(String, String),
     /// The footer statistics were edited in the footer's own popover.
@@ -299,6 +309,7 @@ pub struct Reader {
     /// Style used for the next highlight (and shown for the selected one).
     hl_style: HighlightStyle,
     tweaks_ui: Rc<RefCell<Option<super::reader_style::TweaksUi>>>,
+    aids: aids::AidsCtl,
     tts: TtsCtl,
     /// Speed reading: the card and the word marks on the page.
     rsvp: Rc<super::rsvp::RsvpCtl>,
@@ -316,6 +327,18 @@ pub struct Reader {
     opening_shown: bool,
     /// (reading speed in words per minute, seconds read today) from the statistics, for the footer.
     live: Cell<(Option<f64>, u64)>,
+    /// Live sync: the highlights as last painted (to find what a sync changed), the banner over the
+    /// page, the subscription to the events of this book, the note editors that are open and the
+    /// counters the tests read (events heard, repaints done).
+    sync_sigs: RefCell<Vec<crate::sync_live::HlSig>>,
+    sync_banner: Rc<super::reader_live::LiveBanner>,
+    _sync_sub: Option<crate::sync_bus::Subscription>,
+    pop_editing: RefCell<Option<crate::sync_live::Editing>>,
+    dialog_editing: RefCell<Option<(crate::sync_live::Editing, gtk::TextView)>>,
+    sync_stats: Cell<(u32, u32)>,
+    /// The highlights the last sync made the page draw again (ids).
+    last_drawn: RefCell<Vec<String>>,
+    last_turn: Cell<(usize, usize)>,
     /// When this book was opened (the footer's session time).
     opened: std::time::Instant,
     footer_timer: Option<glib::SourceId>,
@@ -552,7 +575,7 @@ impl Reader {
             let r = &cfg.reader;
             let tweaks = cfg.tweaks.effective(self.book_id);
             (
-                r.publisher_styles || r.colors == ColorMode::Original,
+                tweaks.styled(r.publisher_styles) || r.colors == ColorMode::Original,
                 tweaks.css(),
                 tweaks.hyphenation_language(&self.book.metadata().language),
             )
@@ -598,6 +621,197 @@ impl Reader {
         self.update_bookmark_button();
     }
 
+    /// The marks of the book map (bookmarks, highlights, notes) and the notes with their text,
+    /// for a book of `total` map pages.
+    fn map_marks_notes(
+        &self,
+        total: usize,
+    ) -> (
+        Vec<bookx_lookup::mapview::Marker>,
+        Vec<(usize, bookx_lookup::mapview::Swatch, String)>,
+    ) {
+        use bookx_lookup::mapview::{page_of_fraction, MarkStyle, Marker, MarkerKind, Swatch};
+        let page_of =
+            |spine: usize, frac: f64| page_of_fraction(self.overall_of(spine, frac), total);
+        let mut marks: Vec<Marker> = Vec::new();
+        let mut notes: Vec<(usize, Swatch, String)> = Vec::new();
+        let lib = self.shared.lib.borrow();
+        let Some(b) = lib.get(self.book_id) else {
+            return (marks, notes);
+        };
+        let w = |i: usize| self.weights.get(i).copied().unwrap_or(1.0).max(1.0);
+        marks.extend(
+            b.bookmarks
+                .iter()
+                .filter(|m| m.spine < self.spine.len())
+                .map(|m| Marker::new(page_of(m.spine, m.frac), MarkerKind::Bookmark)),
+        );
+        // a highlight knows its character position, not its fraction: this is an estimate;
+        // its colour and style are the stored ones, a note adds a pencil in the same colour
+        for h in b
+            .highlights
+            .iter()
+            .filter(|h| h.spine < self.spine.len() && !crate::core::anchor::is_unanchored(h))
+        {
+            let page = page_of(
+                h.spine,
+                (h.start.max(0) as f64 / (w(h.spine) * 0.7)).clamp(0.0, 1.0),
+            );
+            let c = color_of(&h.color);
+            let swatch = Swatch {
+                rgb: [
+                    (c.0 * 255.0).round() as u8,
+                    (c.1 * 255.0).round() as u8,
+                    (c.2 * 255.0).round() as u8,
+                ],
+                style: MarkStyle::from_name(&h.style),
+            };
+            marks.push(Marker::coloured(page, MarkerKind::Highlight, swatch));
+            if !h.note.is_empty() {
+                marks.push(Marker::coloured(page, MarkerKind::Note, swatch));
+                // the text of a note shows in the card when the pointer is on the pencil
+                notes.push((page, swatch, h.note.clone()));
+            }
+        }
+        (marks, notes)
+    }
+
+    /// A sync changed this book: paint what changed, refresh the sidebar lists, the bookmark
+    /// button and an open book map, and look after a note the reader is writing. Reads the
+    /// library (the merge already put the new data there); nothing is read from disk, so it is
+    /// quick (a few milliseconds for hundreds of highlights).
+    fn on_sync(&mut self, ev: &crate::sync_bus::SyncEvent) {
+        use crate::sync_bus::Kinds;
+        let (heard, repaints) = self.sync_stats.get();
+        self.sync_stats.set((heard + 1, repaints));
+        if ev.kinds.annotations() {
+            let after = self
+                .shared
+                .lib
+                .borrow()
+                .get(self.book_id)
+                .map(crate::sync_live::sigs_of)
+                .unwrap_or_default();
+            let before = self.sync_sigs.borrow().clone();
+            let d = crate::sync_live::diff(&before, &after);
+            if d.repaints(&before, &after, self.spine_idx) {
+                *self.last_drawn.borrow_mut() = d.draw(&after);
+                self.refresh_highlights();
+                let (heard, repaints) = self.sync_stats.get();
+                self.sync_stats.set((heard, repaints + 1));
+            } else {
+                *self.sync_sigs.borrow_mut() = after;
+            }
+            if !d.is_empty() || ev.kinds.intersects(Kinds::BOOKMARKS) {
+                self.rebuild_lists();
+                self.update_bookmark_button();
+                let total = match &self.page_map {
+                    Some(m) if m.total_pages() > 0 => m.total_pages(),
+                    _ => self.book_pages().1.max(1),
+                };
+                let (marks, notes) = self.map_marks_notes(total);
+                super::reader_map::update_live(marks, notes);
+            }
+            self.check_open_note();
+        }
+        if let Some(a) = &ev.ahead {
+            let (enabled, mine) = {
+                let c = self.shared.cfg.borrow();
+                (c.share.offer_jump, c.kosync.device_id.clone())
+            };
+            let same = !mine.is_empty() && a.device_id == mine;
+            if crate::sync_live::worth_offering(
+                enabled,
+                self.overall_fraction(),
+                a.percentage,
+                same,
+            ) {
+                let page = crate::sync_live::page_at(a.percentage, self.book_pages().1);
+                self.sync_banner.offer_ahead(&ev.device, a.percentage, page);
+            }
+        }
+    }
+
+    /// The note the reader is writing now (in the sidebar's dialog or in the page popover):
+    /// which highlight, what it held when it opened, and its text view.
+    fn open_editor(&self) -> Option<(crate::sync_live::Editing, gtk::TextView)> {
+        if let Some((e, tv)) = &*self.dialog_editing.borrow() {
+            return Some((e.clone(), tv.clone()));
+        }
+        let e = self.pop_editing.borrow().clone()?;
+        let open = self.w.sel_pop.is_visible()
+            && self.w.sel_stack.visible_child_name().as_deref() == Some("note");
+        open.then(|| (e, self.w.note_view.clone()))
+    }
+
+    fn set_editing_original(&self, id: &str, text: &str) {
+        if let Some((e, _)) = self.dialog_editing.borrow_mut().as_mut() {
+            if e.id == id {
+                e.original = text.to_string();
+            }
+        }
+        if let Some(e) = self.pop_editing.borrow_mut().as_mut() {
+            if e.id == id {
+                e.original = text.to_string();
+            }
+        }
+    }
+
+    /// A note that is open for editing and changed on the e-reader: the editor stays as it is
+    /// (focus, cursor, text), and the reader is asked what to do when something was typed.
+    fn check_open_note(&self) {
+        use crate::sync_live::{Banner, NoteAction};
+        let Some((ed, tv)) = self.open_editor() else {
+            return;
+        };
+        let now = self.shared.lib.borrow().get(self.book_id).and_then(|b| {
+            b.highlights
+                .iter()
+                .find(|h| h.id == ed.id)
+                .map(|h| h.note.clone())
+        });
+        let buf = tv.buffer();
+        let (st, en) = buf.bounds();
+        let typed = buf.text(&st, &en, false).to_string();
+        match crate::sync_live::note_action(Some(&ed), now.as_deref(), &typed) {
+            NoteAction::Nothing => {}
+            NoteAction::ReplaceQuietly(t) => {
+                buf.set_text(&t);
+                self.set_editing_original(&ed.id, &t);
+            }
+            NoteAction::Ask { theirs } => {
+                self.sync_banner
+                    .offer_note(Banner::NoteChanged { id: ed.id, theirs });
+            }
+            NoteAction::Gone => {
+                self.sync_banner.offer_note(Banner::NoteGone { id: ed.id });
+            }
+        }
+    }
+
+    fn on_live_answer(&mut self, a: super::reader_live::Answer, sender: &ComponentSender<Self>) {
+        use super::reader_live::Answer;
+        use crate::sync_live::Banner;
+        match a {
+            Answer::Primary(Banner::Ahead { percentage, .. }) => {
+                let (spine, frac) = crate::kosync_sync::position_of(&self.weights, percentage);
+                sender.input(Input::GoSpine(spine, Some(frac), None));
+            }
+            Answer::Primary(Banner::NoteChanged { id, theirs }) => {
+                if let Some((_, tv)) = self.open_editor() {
+                    tv.buffer().set_text(&theirs);
+                }
+                self.set_editing_original(&id, &theirs);
+            }
+            // "Keep Mine": what is typed stays; the note of the device is now what the editor
+            // is compared with, so the same note does not ask again
+            Answer::Secondary(Banner::NoteChanged { id, theirs }) => {
+                self.set_editing_original(&id, &theirs);
+            }
+            _ => {}
+        }
+    }
+
     fn refresh_highlights(&self) {
         let lib = self.shared.lib.borrow();
         let Some(b) = lib.get(self.book_id) else {
@@ -620,6 +834,7 @@ impl Reader {
                 note: h.note.clone(),
             })
             .collect();
+        *self.sync_sigs.borrow_mut() = crate::sync_live::sigs_of(b);
         self.canvas.set_highlights(hl);
     }
 
@@ -640,6 +855,8 @@ impl Reader {
             let today = now.with_timezone(&chrono::Local).date_naive();
             hub.mark_finished(self.book_id, today);
         }
+        drop(hub);
+        self.archive_if_finished(frac);
     }
 
     fn save_progress(&self) {
@@ -920,6 +1137,59 @@ impl Reader {
                     self.w.side.dev_summary()
                 );
             }
+            "live-state" => {
+                let lib = self.shared.lib.borrow();
+                let (h, n, b, cols) =
+                    lib.get(self.book_id)
+                        .map_or((0, 0, 0, String::new()), |bk| {
+                            let mut cols: Vec<String> =
+                                bk.highlights.iter().map(|h| h.color.clone()).collect();
+                            cols.sort();
+                            (
+                                bk.highlights.len(),
+                                bk.highlights.iter().filter(|h| !h.note.is_empty()).count(),
+                                bk.bookmarks.len(),
+                                cols.join("+"),
+                            )
+                        });
+                let looks: Vec<String> = self
+                    .canvas
+                    .dev_painted_looks()
+                    .iter()
+                    .map(|(_, c, st)| format!("{c}/{st}"))
+                    .collect();
+                let (heard, repaints) = self.sync_stats.get();
+                eprintln!(
+                    "live_state: highlights={h} notes={n} bookmarks={b} colours={cols} painted={} looks={} events={heard} repaints={repaints} drawn={} banner={} editor={} {}",
+                    looks.len(),
+                    looks.join(","),
+                    self.last_drawn.borrow().len(),
+                    self.sync_banner.dev_state(),
+                    self.open_editor().map_or("none".to_string(), |(e, tv)| {
+                        let bf = tv.buffer();
+                        let (a, z) = bf.bounds();
+                        format!("{}:{:?}", e.id, bf.text(&a, &z, false))
+                    }),
+                    self.w.side.dev_summary()
+                );
+            }
+            "live-press" => self.sync_banner.dev_press(arg != "secondary"),
+            // opens the sidebar's note dialog of the nth highlight
+            "live-edit" => {
+                let n: usize = arg.parse().unwrap_or(0);
+                if let Some(id) = first_id(self, n) {
+                    sender.input(Input::Side(Cmd::EditNote(id)));
+                }
+            }
+            "live-type" => {
+                if let Some((_, tv)) = self.open_editor() {
+                    tv.buffer().set_text(arg);
+                }
+            }
+            "live-save" => {
+                // the dialog keeps its own buttons: only the popover editor can be saved from here
+                self.w.note_save.emit_clicked();
+            }
             "side-filter" => {
                 // text|colour|style|note
                 let p: Vec<&str> = arg.split('|').collect();
@@ -1134,7 +1404,7 @@ impl Reader {
             return;
         };
         let m = &b.meta;
-        let d = adw::Dialog::new();
+        let d = crate::ui::dialog_toast::new_dialog();
         d.set_title(&tr("Properties"));
         d.set_content_width(480);
         d.set_content_height(620);
@@ -1263,7 +1533,7 @@ impl Reader {
 
     fn apply_prefs(&self) {
         let prefs = self.shared.cfg.borrow().reader.clone();
-        let dark = system_is_dark();
+        let dark = self.night_dark(&prefs, system_is_dark());
         let mut style = prefs.canvas_style(dark);
         let tweaks = self.shared.cfg.borrow().tweaks.effective(self.book_id);
         tweaks.apply(&mut style);
@@ -1282,6 +1552,9 @@ impl Reader {
         {
             style.palette = crate::a11y::high_contrast_palette(dark);
         }
+        self.night_warm(&mut style);
+        self.canvas
+            .set_page_animation(self.shared.cfg.borrow().aids.page_animation);
         self.canvas.set_style(style);
         self.canvas.set_tap_zones(prefs.tap_zones);
         if crate::eink::is_active() {
@@ -1374,6 +1647,11 @@ impl Reader {
                 })
             })
             .unwrap_or_default();
+        *self.pop_editing.borrow_mut() =
+            info.highlight.as_ref().map(|id| crate::sync_live::Editing {
+                id: id.clone(),
+                original: note.clone(),
+            });
         self.w.note_view.buffer().set_text(&note);
         self.w.note_label.set_text(&note);
         self.w.note_preview.set_visible(!note.trim().is_empty());
@@ -2550,9 +2828,7 @@ impl Reader {
     /// Opens the book map: every page of the book, the time spent on them, bookmarks, highlights,
     /// notes and the places you jumped from.
     fn book_map(&mut self) {
-        use bookx_lookup::mapview::{
-            fraction_of_page, page_of_fraction, MarkStyle, Marker, MarkerKind, Swatch,
-        };
+        use bookx_lookup::mapview::{fraction_of_page, page_of_fraction};
         self.dwell_tick();
         crate::reading_dwell::flush();
         let (layout_total, _) = (self.book_pages().1, ());
@@ -2575,45 +2851,7 @@ impl Reader {
             }
             chapters.push((start, title));
         }
-        let mut marks: Vec<Marker> = Vec::new();
-        {
-            let lib = self.shared.lib.borrow();
-            let Some(b) = lib.get(self.book_id) else {
-                return;
-            };
-            let w = |i: usize| self.weights.get(i).copied().unwrap_or(1.0).max(1.0);
-            marks.extend(
-                b.bookmarks
-                    .iter()
-                    .filter(|m| m.spine < self.spine.len())
-                    .map(|m| Marker::new(page_of(m.spine, m.frac), MarkerKind::Bookmark)),
-            );
-            // a highlight knows its character position, not its fraction: this is an estimate;
-            // its colour and style are the stored ones, a note adds a pencil in the same colour
-            for h in b
-                .highlights
-                .iter()
-                .filter(|h| h.spine < self.spine.len() && !crate::core::anchor::is_unanchored(h))
-            {
-                let page = page_of(
-                    h.spine,
-                    (h.start.max(0) as f64 / (w(h.spine) * 0.7)).clamp(0.0, 1.0),
-                );
-                let c = color_of(&h.color);
-                let swatch = Swatch {
-                    rgb: [
-                        (c.0 * 255.0).round() as u8,
-                        (c.1 * 255.0).round() as u8,
-                        (c.2 * 255.0).round() as u8,
-                    ],
-                    style: MarkStyle::from_name(&h.style),
-                };
-                marks.push(Marker::coloured(page, MarkerKind::Highlight, swatch));
-                if !h.note.is_empty() {
-                    marks.push(Marker::coloured(page, MarkerKind::Note, swatch));
-                }
-            }
-        }
+        let (marks, notes) = self.map_marks_notes(total);
         let history: Vec<usize> = self
             .jumps
             .back_places()
@@ -2691,41 +2929,6 @@ impl Reader {
                 }
             })
         };
-        // the notes (their text shows in the card when the pointer is on the pencil)
-        let notes: Vec<(usize, Swatch, String)> = {
-            let lib = self.shared.lib.borrow();
-            lib.get(self.book_id)
-                .map(|b| {
-                    b.highlights
-                        .iter()
-                        .filter(|h| {
-                            h.spine < self.spine.len()
-                                && !h.note.is_empty()
-                                && !crate::core::anchor::is_unanchored(h)
-                        })
-                        .map(|h| {
-                            let c = color_of(&h.color);
-                            let sw = Swatch {
-                                rgb: [
-                                    (c.0 * 255.0).round() as u8,
-                                    (c.1 * 255.0).round() as u8,
-                                    (c.2 * 255.0).round() as u8,
-                                ],
-                                style: MarkStyle::from_name(&h.style),
-                            };
-                            let page = page_of(
-                                h.spine,
-                                (h.start.max(0) as f64
-                                    / (self.weights.get(h.spine).copied().unwrap_or(1.0).max(1.0)
-                                        * 0.7))
-                                    .clamp(0.0, 1.0),
-                            );
-                            (page, sw, h.note.clone())
-                        })
-                        .collect()
-                })
-                .unwrap_or_default()
-        };
         // thumbnails: a small canvas of the reader's size and style lays out the hovered chapter
         let thumbs = {
             let (styled, user_css, lang) = {
@@ -2733,7 +2936,7 @@ impl Reader {
                 let r = &cfg.reader;
                 let tweaks = cfg.tweaks.effective(self.book_id);
                 (
-                    r.publisher_styles || r.colors == ColorMode::Original,
+                    tweaks.styled(r.publisher_styles) || r.colors == ColorMode::Original,
                     tweaks.css(),
                     tweaks.hyphenation_language(&self.book.metadata().language),
                 )
@@ -2812,7 +3015,9 @@ impl Reader {
                             "{}|{:?}|{}",
                             cfg.tweaks.effective(self.book_id).css(),
                             cfg.reader.colors,
-                            cfg.reader.publisher_styles
+                            cfg.tweaks
+                                .effective(self.book_id)
+                                .styled(cfg.reader.publisher_styles)
                         );
                         let lib = self.shared.lib.borrow();
                         let hl: String = lib
@@ -3820,6 +4025,13 @@ impl SimpleComponent for Reader {
         search_scroll.set_vexpand(true);
         search_scroll.set_child(Some(&search_list));
         search_box.append(&search_entry);
+        {
+            let tx = sender.input_sender().clone();
+            let e = search_entry.clone();
+            search_box.append(&aids::search_options_row(move || {
+                tx.emit(Input::Search(e.text().to_string()))
+            }));
+        }
         search_box.append(&search_status);
         search_box.append(&search_scroll);
         let search_empty = super::reader_search::empty_page();
@@ -4326,7 +4538,7 @@ impl SimpleComponent for Reader {
                 }
             });
         }
-        let more_dialog = adw::Dialog::new();
+        let more_dialog = crate::ui::dialog_toast::new_dialog();
         more_dialog.set_title(&tr("More Text Options"));
         more_dialog.set_content_width(480);
         more_dialog.set_content_height(560);
@@ -4459,6 +4671,13 @@ impl SimpleComponent for Reader {
             crate::devtools::probe("cards-settled", super::card_drag::settled);
             let o = split.clone();
             crate::devtools::probe("reader", move || o.is_mapped());
+            // the header has been laid out for the current window width (after `app:win-size=`)
+            let h = header.clone();
+            crate::devtools::probe("header-settled", move || {
+                h.root()
+                    .and_then(|r| r.downcast::<gtk::Window>().ok())
+                    .is_some_and(|w| h.width() > 0 && h.width() <= w.width() + 4)
+            });
             // the book is laid out: the page has text
             let (o, c) = (split.clone(), canvas.clone());
             crate::devtools::probe("page-ready", move || {
@@ -4486,9 +4705,14 @@ impl SimpleComponent for Reader {
             spinner.set_size_request(48, 48);
             opening.set_child(Some(&spinner));
         }
+        let sync_banner = {
+            let tx = sender.input_sender().clone();
+            super::reader_live::LiveBanner::new(move |a| tx.emit(Input::LiveAnswer(a)))
+        };
         let page_overlay = gtk::Overlay::new();
         page_overlay.set_child(Some(&split));
         page_overlay.add_overlay(&opening);
+        page_overlay.add_overlay(&sync_banner.widget);
         page_overlay.add_overlay(&tts_ui.player.widget);
         page_overlay.add_overlay(&rsvp_ctl.widget);
         super::card_drag::install(
@@ -4689,6 +4913,7 @@ impl SimpleComponent for Reader {
             fullscreen_btn.connect_clicked(move |_| tx.emit(Input::Fullscreen));
             let tx = sender.input_sender().clone();
             slider.connect_change_value(move |_, _, v| {
+                tx.emit(Input::Aids(aids::Cmd::Skim((v / 1000.0).clamp(0.0, 1.0))));
                 tx.emit(Input::Seek((v / 1000.0).clamp(0.0, 1.0)));
                 glib::Propagation::Proceed
             });
@@ -4733,6 +4958,7 @@ impl SimpleComponent for Reader {
             let tx = sender.input_sender().clone();
             let root_c = root.clone();
             let kb_canvas = canvas.clone();
+            let kb_shared = shared.clone();
             keys.connect_key_pressed(move |_, key, _, mods| {
                 use gdk::Key;
                 // let text entries keep their keys
@@ -4742,6 +4968,16 @@ impl SimpleComponent for Reader {
                             return glib::Propagation::Proceed;
                         }
                     }
+                }
+                // link hints: letters choose a link, anything else puts the hints away
+                if kb_canvas.hints_active() {
+                    match key.to_unicode().filter(|c| c.is_alphabetic()) {
+                        Some(c) => {
+                            kb_canvas.hint_key(c);
+                        }
+                        None => kb_canvas.clear_link_hints(),
+                    }
+                    return glib::Propagation::Stop;
                 }
                 // keys the user has changed (Preferences → Keyboard Shortcuts)
                 if super::shortcuts_dialog::handle_reader_key(root_c.upcast_ref(), key, mods)
@@ -4837,6 +5073,13 @@ impl SimpleComponent for Reader {
                         ..Default::default()
                     })),
                     _ => {
+                        // keys of Bluetooth page turners and presentation remotes
+                        if !ctrl && !alt {
+                            if let Some(a) = aids::remote_action(&kb_shared, key) {
+                                tx.emit(Input::Aids(aids::Cmd::Remote(a)));
+                                return glib::Propagation::Stop;
+                            }
+                        }
                         // keys from other readers (Calibre, Foliate, KOReader, Okular) that the
                         // lines above do not know: the registry's defaults of the reader
                         if super::shortcuts_dialog::handle_reader_default(
@@ -4874,6 +5117,12 @@ impl SimpleComponent for Reader {
                 group.add_action(&a);
             };
             add("next-page", Rc::new(|| Input::Turn(true)));
+            add("auto-turn", Rc::new(|| Input::Aids(aids::Cmd::AutoTurn)));
+            add(
+                "copy-citation",
+                Rc::new(|| Input::Aids(aids::Cmd::CopyCitation)),
+            );
+            add("link-hints", Rc::new(|| Input::Aids(aids::Cmd::LinkHints)));
             add("prev-page", Rc::new(|| Input::Turn(false)));
             add("next-chapter", Rc::new(|| Input::Chapter(true)));
             add("prev-chapter", Rc::new(|| Input::Chapter(false)));
@@ -5125,6 +5374,7 @@ impl SimpleComponent for Reader {
             fetch_gen: Rc::new(Cell::new(0)),
             hl_style: HighlightStyle::default(),
             tweaks_ui: Rc::new(RefCell::new(Some(tweaks_ui))),
+            aids: Default::default(),
             fixed,
             first_layout_pending: true,
             initial_start: {
@@ -5135,6 +5385,17 @@ impl SimpleComponent for Reader {
             hl_target: None,
             opening_shown: false,
             live: Cell::new((None, 0)),
+            sync_sigs: RefCell::new(Vec::new()),
+            sync_banner,
+            _sync_sub: Some({
+                let tx = sender.input_sender().clone();
+                crate::sync_bus::subscribe(Some(book_id), move |e| tx.emit(Input::Sync(e.clone())))
+            }),
+            pop_editing: RefCell::new(None),
+            dialog_editing: RefCell::new(None),
+            sync_stats: Cell::new((0, 0)),
+            last_drawn: RefCell::new(Vec::new()),
+            last_turn: Cell::new((usize::MAX, 0)),
             opened: std::time::Instant::now(),
             footer_timer: None,
             overlay_guard: {
@@ -5245,6 +5506,7 @@ impl SimpleComponent for Reader {
     fn update(&mut self, msg: Input, sender: ComponentSender<Self>) {
         match msg {
             Input::Turn(fwd) => self.canvas.turn(fwd),
+            Input::Aids(c) => self.aids_cmd(c),
             Input::Chapter(fwd) => {
                 let i = self.spine_idx;
                 if fwd && i + 1 < self.spine.len() {
@@ -5326,7 +5588,10 @@ impl SimpleComponent for Reader {
             }
             Input::FollowLink(l) => {
                 if is_external(&l) {
-                    open_uri(&l);
+                    if !super::open_external_link(&l) {
+                        let _ =
+                            sender.output(Output::Toast(tr("That link points outside the book")));
+                    }
                 } else if let Some((i, frag)) = self.book.locate(&l) {
                     self.note_jump();
                     if i == self.spine_idx {
@@ -5413,6 +5678,9 @@ impl SimpleComponent for Reader {
             }
             Input::Position(p) => {
                 self.pos = p;
+                if self.last_turn.replace((self.spine_idx, p.page)) != (self.spine_idx, p.page) {
+                    self.sync_banner.page_turned();
+                }
                 self.vocab_ensure_marks();
                 if !self.dict_opened.replace(true) {
                     // a book whose language has no dictionary: with the setting on, it is fetched now
@@ -5441,6 +5709,7 @@ impl SimpleComponent for Reader {
                 }
                 None => {
                     self.w.handles.refresh();
+                    *self.aids.adjusting.borrow_mut() = None;
                     // clicking away while the note box is open keeps what was typed
                     if self.w.sel_stack.visible_child_name().as_deref() == Some("note") {
                         let b = self.w.note_view.buffer();
@@ -5489,6 +5758,7 @@ impl SimpleComponent for Reader {
             Input::VocabMark(info) => self.vocab_mark_click(&info),
             Input::VocabTerms => self.vocab_terms(),
             Input::HighlightClick(info) => {
+                *self.aids.adjusting.borrow_mut() = info.highlight.clone();
                 self.selection = Some(info.clone());
                 self.show_selection_popover(&info);
             }
@@ -5655,11 +5925,14 @@ impl SimpleComponent for Reader {
                     .selected_text()
                     .or_else(|| self.selection.as_ref().map(|s| s.text.clone()))
                 {
+                    let t = self.copy_text(t);
                     self.canvas.area.clipboard().set_text(&t);
                     let _ = sender.output(Output::Toast(tr("Copied to clipboard")));
                 }
             }
             Input::PopClosed => {
+                self.pop_editing.borrow_mut().take();
+                self.sync_banner.editor_closed();
                 // dismissed (Esc / click away) while writing a note: keep what was typed
                 if self.w.sel_stack.visible_child_name().as_deref() == Some("note") {
                     let b = self.w.note_view.buffer();
@@ -5906,6 +6179,7 @@ impl SimpleComponent for Reader {
             Input::FooterScope(own) => self.set_footer_scope(own),
             Input::FooterTick => {
                 self.refresh_live();
+                self.night_check();
                 if self
                     .shared
                     .cfg
@@ -5935,6 +6209,7 @@ impl SimpleComponent for Reader {
                 d.present(Some(&self.w.page));
             }
             Input::HandlesDone => {
+                self.adjust_highlight();
                 self.canvas.commit_selection();
             }
             Input::Side(cmd) => {
@@ -5961,10 +6236,19 @@ impl SimpleComponent for Reader {
                             .and_then(|b| b.highlights.iter().find(|h| h.id == id))
                             .map(|h| h.note.clone())
                             .unwrap_or_default();
-                        let tx = sender.input_sender().clone();
-                        super::reader_side::edit_note_dialog(&self.w.page, &note, move |t| {
-                            tx.emit(Input::SideNote(id.clone(), t))
-                        });
+                        let (tx, tx2) =
+                            (sender.input_sender().clone(), sender.input_sender().clone());
+                        let editing = crate::sync_live::Editing {
+                            id: id.clone(),
+                            original: note.clone(),
+                        };
+                        let tv = super::reader_side::edit_note_dialog_with(
+                            &self.w.page,
+                            &note,
+                            move |t| tx.emit(Input::SideNote(id.clone(), t)),
+                            move || tx2.emit(Input::NoteEditorClosed),
+                        );
+                        *self.dialog_editing.borrow_mut() = Some((editing, tv));
                     }
                     Cmd::Recolor(id, color) => {
                         self.edit_highlight(&id, |h| h.color = color);
@@ -5974,6 +6258,12 @@ impl SimpleComponent for Reader {
                     }
                 }
             }
+            Input::NoteEditorClosed => {
+                self.dialog_editing.borrow_mut().take();
+                self.sync_banner.editor_closed();
+            }
+            Input::Sync(ev) => self.on_sync(&ev),
+            Input::LiveAnswer(a) => self.on_live_answer(a, &sender),
             Input::SideNote(id, text) => {
                 self.edit_highlight(&id, |h| h.note = text.trim().to_string());
             }
@@ -6141,8 +6431,18 @@ impl SimpleComponent for Reader {
                     self.w.search_status.set_label("");
                     return;
                 }
-                self.w.search_status.set_label(&tr("Searching…"));
-                let hits_now = self.canvas.find_all(&q);
+                let re = match aids::search_pattern(&q) {
+                    Ok(Some(re)) => re,
+                    Ok(None) => return,
+                    Err(_) => {
+                        self.w
+                            .search_status
+                            .set_label(&tr("This is not a valid regular expression"));
+                        return;
+                    }
+                };
+                self.w.search_status.set_label(&tr("Searching"));
+                let hits_now = self.canvas.find_all_re(&re);
                 self.canvas.set_hits(hits_now, None);
                 let gen = self.search_gen.get() + 1;
                 self.search_gen.set(gen);
@@ -6151,7 +6451,6 @@ impl SimpleComponent for Reader {
                 let spine = self.spine.clone();
                 let gen_cell = self.search_gen.clone();
                 let tx = sender.input_sender().clone();
-                let ql = q.to_lowercase();
                 let total = Rc::new(Cell::new(0usize));
                 let next = Rc::new(Cell::new(0usize));
                 glib::idle_add_local(move || {
@@ -6169,29 +6468,15 @@ impl SimpleComponent for Reader {
                         let mut nth = 0;
                         for b in &doc.blocks {
                             let text = b.plain_text();
-                            let lower = text.to_lowercase();
-                            let mut from = 0;
-                            while let Some(pos) = lower[from..].find(&ql) {
-                                let at = from + pos;
-                                let start = lower[..at]
-                                    .char_indices()
-                                    .rev()
-                                    .nth(30)
-                                    .map(|(i, _)| i)
-                                    .unwrap_or(0);
-                                let end = lower[at..]
-                                    .char_indices()
-                                    .nth(ql.chars().count() + 40)
-                                    .map(|(i, _)| at + i)
-                                    .unwrap_or(lower.len());
-                                let snippet =
-                                    text.get(start..end).unwrap_or(&text).replace('\n', " ");
-                                batch.push((i, nth, snippet));
+                            for m in re.find_iter(&text).filter(|m| !m.is_empty()) {
+                                let (snippet, _) = bookx_lookup::search::make_snippet(
+                                    &text,
+                                    m.start(),
+                                    m.end(),
+                                    36,
+                                );
+                                batch.push((i, nth, snippet.trim_matches('…').to_string()));
                                 nth += 1;
-                                from = at + ql.len().max(1);
-                                if from >= lower.len() {
-                                    break;
-                                }
                             }
                         }
                     }
@@ -6297,6 +6582,7 @@ impl SimpleComponent for Reader {
                         || c.starts_with("handle")
                         || c == "demo-highlights"
                         || c == "properties"
+                        || c.starts_with("live-")
                         || c.starts_with("bulk-highlights=") =>
                     {
                         self.dev_side(c, &sender);
@@ -6790,6 +7076,14 @@ impl SimpleComponent for Reader {
                         eprintln!("shot: {}", self.canvas.dev_screenshot(&other[8..]));
                         return;
                     }
+                    other if other.starts_with("toc-fold=") => {
+                        eprintln!("{}", self.w.side.dev_fold(&other[9..]));
+                        return;
+                    }
+                    other if other.starts_with("aids:") => {
+                        self.aids_dev(&other[5..]);
+                        return;
+                    }
                     other if other.starts_with("ui-tweak:") => {
                         if let Some((k, v)) = other[9..].split_once('=') {
                             if let Some(ui) = self.tweaks_ui.borrow().as_ref() {
@@ -6807,6 +7101,7 @@ impl SimpleComponent for Reader {
                         );
                         let (m, ls, para) = self.canvas.dev_style();
                         eprintln!("tweaked: margin={m} line_spacing={ls} paragraph={para:?}");
+                        eprintln!("tweaked2: {}", self.canvas.dev_style_more());
                         return;
                     }
                     "tts-play" | "tts-pause" | "tts-stop" => {

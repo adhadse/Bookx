@@ -100,6 +100,9 @@ pub struct Limits {
     pub auth_window: Duration,
     /// How long a peer is answered with `429` after too many failures.
     pub auth_block: Duration,
+    /// Reverse proxies whose `X-Forwarded-For` is believed, so the throttle counts the real
+    /// client instead of the proxy. Empty (the default) trusts no header at all.
+    pub trusted_proxies: Vec<ProxyNet>,
 }
 
 impl Default for Limits {
@@ -121,8 +124,92 @@ impl Default for Limits {
             auth_max_failures: 10,
             auth_window: Duration::from_secs(60),
             auth_block: Duration::from_secs(60),
+            trusted_proxies: Vec::new(),
         }
     }
+}
+
+// ------------------------------------------------------------------------------ trusted proxies
+
+/// An address or a network (`10.0.0.0/8`) of a reverse proxy the user trusts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ProxyNet {
+    addr: IpAddr,
+    bits: u8,
+}
+
+impl ProxyNet {
+    /// Parses `192.0.2.1`, `10.0.0.0/8`, `::1` or `fd00::/8`. A prefix of `/0` is refused: it would
+    /// trust every address on the Internet.
+    pub fn parse(s: &str) -> Option<ProxyNet> {
+        let s = s.trim();
+        let (a, len) = match s.split_once('/') {
+            Some((a, l)) => (a, Some(l.parse::<u8>().ok()?)),
+            None => (s, None),
+        };
+        let addr: IpAddr = a.parse().ok()?;
+        let addr = addr.to_canonical();
+        let max = if addr.is_ipv4() { 32 } else { 128 };
+        let bits = len.unwrap_or(max);
+        if bits == 0 || bits > max {
+            return None;
+        }
+        Some(ProxyNet { addr, bits })
+    }
+
+    pub fn contains(&self, ip: IpAddr) -> bool {
+        let ip = ip.to_canonical();
+        match (self.addr, ip) {
+            (IpAddr::V4(a), IpAddr::V4(b)) => {
+                let m = u32::MAX << (32 - u32::from(self.bits));
+                u32::from(a) & m == u32::from(b) & m
+            }
+            (IpAddr::V6(a), IpAddr::V6(b)) => {
+                let m = u128::MAX << (128 - u32::from(self.bits));
+                u128::from(a) & m == u128::from(b) & m
+            }
+            _ => false,
+        }
+    }
+}
+
+/// Parses a list of proxies separated by commas, spaces or semicolons. `Err` names the first bad item.
+pub fn parse_proxy_list(s: &str) -> Result<Vec<ProxyNet>, String> {
+    s.split([',', ' ', ';', '\n'])
+        .map(str::trim)
+        .filter(|x| !x.is_empty())
+        .map(|x| ProxyNet::parse(x).ok_or_else(|| x.to_string()))
+        .collect()
+}
+
+/// The address a request really came from. Only when the socket peer is a trusted proxy is
+/// `X-Forwarded-For` read, from the right: each hop that is itself a trusted proxy is skipped and
+/// the first other address is the client (what the nearest proxy saw). Everything left of it is
+/// client-controlled and ignored. A malformed entry stops the walk at the peer's side.
+pub fn client_ip(peer: IpAddr, forwarded_for: &[&str], trusted: &[ProxyNet]) -> IpAddr {
+    let peer = peer.to_canonical();
+    let is_trusted = |ip: IpAddr| trusted.iter().any(|n| n.contains(ip));
+    if !is_trusted(peer) {
+        return peer;
+    }
+    let hops: Vec<&str> = forwarded_for
+        .iter()
+        .flat_map(|h| h.split(','))
+        .map(str::trim)
+        .collect();
+    let mut best = peer;
+    for h in hops.iter().rev() {
+        match h.parse::<IpAddr>() {
+            Ok(ip) => {
+                best = ip.to_canonical();
+                if !is_trusted(best) {
+                    return best;
+                }
+            }
+            Err(_) => return best,
+        }
+    }
+    best
 }
 
 /// The application behind the transport.
@@ -1098,6 +1185,17 @@ async fn handle(
     let lim = &sh.limits;
     let (parts, body) = req.into_parts();
     let target = check_head(&parts, lim)?;
+    let ip = if lim.trusted_proxies.is_empty() {
+        ip
+    } else {
+        let xff: Vec<&str> = parts
+            .headers
+            .get_all("x-forwarded-for")
+            .iter()
+            .filter_map(|v| v.to_str().ok())
+            .collect();
+        client_ip(ip, &xff, &lim.trusted_proxies)
+    };
     if let Some(wait) = lock(&sh.throttle).check(ip, Instant::now()) {
         return Ok(
             Response::text(429, "Too many failed logins; try again later")
@@ -1529,6 +1627,78 @@ mod tests {
     }
 
     // ------------------------------------------------------------------------ throttle
+
+    fn nets(s: &str) -> Vec<ProxyNet> {
+        parse_proxy_list(s).unwrap()
+    }
+
+    #[test]
+    fn proxy_nets_parse_and_match() {
+        assert!(ProxyNet::parse("10.0.0.0/8")
+            .unwrap()
+            .contains("10.9.8.7".parse().unwrap()));
+        assert!(!ProxyNet::parse("10.0.0.0/8")
+            .unwrap()
+            .contains("11.0.0.1".parse().unwrap()));
+        assert!(ProxyNet::parse("192.0.2.1")
+            .unwrap()
+            .contains("192.0.2.1".parse().unwrap()));
+        assert!(!ProxyNet::parse("192.0.2.1")
+            .unwrap()
+            .contains("192.0.2.2".parse().unwrap()));
+        assert!(ProxyNet::parse("fd00::/8")
+            .unwrap()
+            .contains("fd12::1".parse().unwrap()));
+        // an IPv4-mapped peer matches the IPv4 entry
+        assert!(ProxyNet::parse("127.0.0.1")
+            .unwrap()
+            .contains("::ffff:127.0.0.1".parse().unwrap()));
+        for bad in [
+            "",
+            "0.0.0.0/0",
+            "::/0",
+            "10.0.0.0/33",
+            "x",
+            "10.0.0.0/",
+            "example.com",
+            "1.2.3.4/-1",
+        ] {
+            assert!(ProxyNet::parse(bad).is_none(), "{bad}");
+        }
+        assert_eq!(nets("127.0.0.1, 10.0.0.0/8;::1").len(), 3);
+        assert_eq!(parse_proxy_list("127.0.0.1 nope").unwrap_err(), "nope");
+        assert!(parse_proxy_list("").unwrap().is_empty());
+    }
+
+    #[test]
+    fn forwarded_for_is_believed_only_from_a_trusted_proxy() {
+        let trusted = nets("10.0.0.1");
+        let peer: IpAddr = "10.0.0.1".parse().unwrap();
+        let stranger: IpAddr = "203.0.113.9".parse().unwrap();
+        // an untrusted peer cannot choose its address
+        assert_eq!(client_ip(stranger, &["1.2.3.4"], &trusted), stranger);
+        assert_eq!(
+            client_ip(peer, &["198.51.100.7"], &trusted),
+            "198.51.100.7".parse::<IpAddr>().unwrap()
+        );
+        // nothing to read: the proxy itself
+        assert_eq!(client_ip(peer, &[], &trusted), peer);
+        // the client's own forged left part is ignored, the proxy appended the real one
+        assert_eq!(
+            client_ip(peer, &["6.6.6.6, 198.51.100.7"], &trusted),
+            "198.51.100.7".parse::<IpAddr>().unwrap()
+        );
+        // two proxies in a chain are skipped
+        let t2 = nets("10.0.0.0/24");
+        assert_eq!(
+            client_ip(peer, &["198.51.100.7", "10.0.0.2"], &t2),
+            "198.51.100.7".parse::<IpAddr>().unwrap()
+        );
+        // garbage stops the walk
+        assert_eq!(client_ip(peer, &["1.2.3.4, nonsense"], &trusted), peer);
+        // no trusted proxies: never believed
+        assert_eq!(client_ip(peer, &["1.2.3.4"], &[]), peer);
+    }
 
     fn throttle() -> AuthThrottle {
         AuthThrottle::new(3, Duration::from_secs(60), Duration::from_secs(120))

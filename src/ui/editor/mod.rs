@@ -65,6 +65,7 @@ pub mod prefs_page;
 mod preview;
 mod preview_find;
 mod reports;
+mod row_data;
 mod search;
 mod search_bar;
 mod search_fn;
@@ -124,6 +125,8 @@ pub enum Input {
     Check,
     Reformat,
     TogglePreview,
+    /// F9: the file sidebar (an overlay when the window is narrow).
+    ToggleSidebar,
     RefreshPreview,
     Rehighlight,
     Restyle,
@@ -1192,7 +1195,7 @@ impl SimpleComponent for Editor {
         {
             let tx = sender.input_sender().clone();
             files.connect_row_activated(move |_, r| {
-                if let Some(p) = unsafe { r.data::<String>("path").map(|p| p.as_ref().clone()) } {
+                if let Some(p) = row_data::path(r) {
                     tx.emit(Input::SelectFile(p));
                 }
             });
@@ -1200,8 +1203,7 @@ impl SimpleComponent for Editor {
             files.connect_selected_rows_changed(move |l| {
                 let rows = l.selected_rows();
                 if let [r] = rows.as_slice() {
-                    if let Some(p) = unsafe { r.data::<String>("path").map(|p| p.as_ref().clone()) }
-                    {
+                    if let Some(p) = row_data::path(r) {
                         tx.emit(Input::SelectFile(p));
                     }
                 }
@@ -1534,10 +1536,7 @@ impl SimpleComponent for Editor {
                 if guard.get() {
                     return;
                 }
-                if let Some(p) = t
-                    .selected_page()
-                    .and_then(|pg| unsafe { pg.data::<String>("path").map(|s| s.as_ref().clone()) })
-                {
+                if let Some(p) = t.selected_page().and_then(|pg| row_data::path(&pg)) {
                     tx.emit(Input::SelectFile(p));
                 }
             });
@@ -2179,6 +2178,10 @@ impl SimpleComponent for Editor {
                         Err(e) => self.toast(&trf("Cannot reformat: {}", &[&e])),
                     }
                 }
+            }
+            Input::ToggleSidebar => {
+                let on = !self.w.split.shows_sidebar();
+                self.w.split.set_show_sidebar(on);
             }
             Input::TogglePreview => {
                 self.w

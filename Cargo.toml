@@ -1,5 +1,6 @@
 [workspace]
 members = [".", "crates/*"]
+exclude = ["fuzz"]
 
 [package]
 name = "bookx"
@@ -23,6 +24,7 @@ bookx-mcp = { path = "crates/bookx-mcp" }
 bookx-pdf = { path = "crates/bookx-pdf" }
 bookx-plugin = { path = "crates/bookx-plugin" }
 bookx-secrets = { path = "crates/bookx-secrets" }
+zeroize = "1"
 bookx-serve = { path = "crates/bookx-serve" }
 bookx-sources = { path = "crates/bookx-sources" }
 bookx-store = { path = "crates/bookx-store" }

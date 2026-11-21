@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.10.0.schema.json
+PackageIdentifier: adhadse.Bookx
+PackageVersion: 0.3.0
+PackageLocale: en-US
+Publisher: Anurag Dhadse
+PublisherUrl: https://adhadse.com
+PublisherSupportUrl: https://github.com/adhadse/Bookx/issues
+PackageName: Bookx
+PackageUrl: https://bookx.adhadse.com
+License: GPL-3.0-or-later
+LicenseUrl: https://github.com/adhadse/Bookx/blob/main/LICENSE
+Copyright: Copyright (C) 2023-2026 Anurag Dhadse and the Bookx contributors
+ShortDescription: E-book library, reader and editor
+Description: Bookx manages your e-books like Calibre, reads EPUB and other formats, edits EPUB files, and sends books to Kobo, Kindle and other e-readers.
+Moniker: bookx
+Tags:
+- ebook
+- epub
+- reader
+- library
+- calibre
+ReleaseNotesUrl: https://github.com/adhadse/Bookx/releases/tag/v0.3.0
+ManifestType: defaultLocale
+ManifestVersion: 1.10.0

@@ -1,0 +1,36 @@
+{
+    "version": "0.3.0",
+    "description": "E-book library, reader and editor",
+    "homepage": "https://bookx.adhadse.com",
+    "license": "GPL-3.0-or-later",
+    "notes": "UNTESTED on Windows (docs/windows-port.md in the source tree). Read aloud needs an audio sink that is not built for Windows yet.",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/adhadse/Bookx/releases/download/v0.3.0/Bookx-0.3.0-windows-x64.zip",
+            "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+    },
+    "extract_dir": "Bookx",
+    "bin": [
+        "bin\\bookx-cli.exe"
+    ],
+    "shortcuts": [
+        [
+            "bin\\bookx.exe",
+            "Bookx"
+        ]
+    ],
+    "checkver": {
+        "github": "https://github.com/adhadse/Bookx"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/adhadse/Bookx/releases/download/v$version/Bookx-$version-windows-x64.zip"
+            }
+        },
+        "hash": {
+            "url": "$url.sha256"
+        }
+    }
+}

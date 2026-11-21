@@ -336,7 +336,7 @@ fn test_voice(
     }
     let prefs = c.prefs().clamped();
     let lang = system_language();
-    row.set_subtitle(&tr("Starting the voice…"));
+    row.set_subtitle(&tr("Starting the voice"));
     let opened = match tts::open_engine(&prefs, &lang) {
         Ok(o) => o,
         Err(e) => {
@@ -485,7 +485,7 @@ They are kept in {}",
         .build();
     if bookx_tts::phonemize::espeak_program().is_none() {
         if let Some(cmd) = tts::espeak_install_command() {
-            let copy = gtk::Button::with_label(&tr("Copy install command"));
+            let copy = gtk::Button::with_label(&tr("Copy Install Command"));
             copy.set_valign(gtk::Align::Center);
             copy.connect_clicked(move |b| b.display().clipboard().set_text(&cmd));
             espeak.add_suffix(&copy);
@@ -647,11 +647,11 @@ fn licence_dialog(parent: &gtk::Widget, it: &Item, download: bool, on_go: impl F
     if download {
         d.add_responses(&[
             ("cancel", &tr("Cancel")),
-            ("go", &tr("Accept and download")),
+            ("go", &tr("Accept and Download")),
         ]);
         d.set_response_appearance("go", adw::ResponseAppearance::Suggested);
     } else {
-        d.add_responses(&[("cancel", &tr("Close")), ("open", &tr("Open licence page"))]);
+        d.add_responses(&[("cancel", &tr("Close")), ("open", &tr("Open Licence Page"))]);
     }
     d.set_close_response("cancel");
     let url = it.license_url.clone();
@@ -807,7 +807,7 @@ responsibility. If the server wants a key, enter it below; it is kept in the sys
         let row = test.clone();
         btn.connect_clicked(move |b| {
             let cfg = c.prefs().server;
-            row.set_subtitle(&tr("Connecting…"));
+            row.set_subtitle(&tr("Connecting"));
             b.set_sensitive(false);
             let (tx, rx) = mpsc::channel();
             std::thread::spawn(move || {

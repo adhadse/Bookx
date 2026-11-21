@@ -151,3 +151,141 @@ fn covers_lists_sizes() {
     assert_eq!(code, 0);
     assert!(!out.is_empty());
 }
+
+#[test]
+fn custom_columns_are_managed_and_searched_from_the_command_line() {
+    let s = Sandbox::new();
+    s.add("Alpha", "A");
+    s.add("Beta", "B");
+    let (code, out, _) = s.cli(&["library", "columns", "list"]);
+    assert_eq!(code, 0);
+    assert!(out.contains("no custom columns"), "{out}");
+
+    let (code, out, err) = s.cli(&["library", "columns", "add", "Pages", "--type", "integer"]);
+    assert_eq!(code, 0, "{out} {err}");
+    let (code, _, err) = s.cli(&[
+        "library",
+        "columns",
+        "add",
+        "Mood",
+        "--type",
+        "enumeration",
+        "--values",
+        "Calm, Tense",
+    ]);
+    assert_eq!(code, 0, "{err}");
+    let (code, _, err) = s.cli(&[
+        "library",
+        "columns",
+        "add",
+        "Tag line",
+        "--type",
+        "composite",
+        "--template",
+        "{title}: {#mood}",
+    ]);
+    assert_eq!(code, 0, "{err}");
+    // bad input is refused with a message
+    let (code, _, err) = s.cli(&["library", "columns", "add", "Pages", "--type", "integer"]);
+    assert_eq!(code, 2);
+    assert!(err.contains("twice") || err.contains("used"), "{err}");
+    let (code, _, err) = s.cli(&["library", "columns", "add", "X", "--type", "bogus"]);
+    assert_eq!(code, 2);
+    assert!(err.contains("unknown type"), "{err}");
+
+    let (_, out, _) = s.cli(&["library", "columns", "list"]);
+    assert!(
+        out.contains("#pages") && out.contains("integer") && out.contains("[Calm, Tense]"),
+        "{out}"
+    );
+    let (_, json, _) = s.cli(&["library", "columns", "list", "--json"]);
+    assert!(json.contains("\"label\": \"tag_line\""), "{json}");
+
+    let (code, _, err) = s.cli(&["library", "columns", "set", "1", "pages", "412"]);
+    assert_eq!(code, 0, "{err}");
+    s.cli(&["library", "columns", "set", "2", "pages", "30"]);
+    let (code, _, err) = s.cli(&["library", "columns", "set", "1", "pages", "lots"]);
+    assert_eq!(code, 2);
+    assert!(err.contains("not a whole number"), "{err}");
+    s.cli(&["library", "columns", "set", "1", "mood", "tense"]);
+
+    let (_, out, _) = s.cli(&["search", "#pages:>100"]);
+    assert!(out.contains("Alpha") && !out.contains("Beta"), "{out}");
+    let (_, out, _) = s.cli(&["search", "#mood:empty"]);
+    assert!(out.contains("Beta") && !out.contains("Alpha"), "{out}");
+    let (_, out, _) = s.cli(&["library", "info", "1"]);
+    assert!(
+        out.contains("#pages:") && out.contains("412") && out.contains("Alpha: Tense"),
+        "{out}"
+    );
+    let (_, out, _) = s.cli(&["library", "list", "--json"]);
+    assert!(out.contains("\"pages\": \"412\""), "{out}");
+    let (_, out, _) = s.cli(&["library", "columns", "list", "--values", "pages"]);
+    assert!(out.contains("412") && out.contains("30"), "{out}");
+
+    // the catalogue dump has them (backup and export)
+    let (_, dump, _) = s.cli(&["library", "dump"]);
+    assert!(dump.contains("custom_columns") && dump.contains("\"pages\": \"412\""));
+
+    let (code, out, _) = s.cli(&["library", "columns", "remove", "pages"]);
+    assert_eq!(code, 0, "{out}");
+    assert!(out.contains("2 book(s)"), "{out}");
+    let (_, out, _) = s.cli(&["search", "#pages:>1"]);
+    assert!(!out.contains("Alpha"), "{out}");
+}
+
+#[test]
+fn replace_shows_a_preview_then_changes_and_the_change_can_be_undone() {
+    let s = Sandbox::new();
+    s.add("The Alpha", "A");
+    s.add("The Beta", "B");
+    s.add("Gamma", "C");
+    let (code, out, err) = s.cli(&[
+        "library",
+        "replace",
+        "--field",
+        "title",
+        "--find",
+        "the ",
+        "--dry-run",
+    ]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(
+        out.contains("\"The Alpha\" -> \"Alpha\"") && out.contains("2 book(s) would change"),
+        "{out}"
+    );
+    let (_, out, _) = s.cli(&["library", "list"]);
+    assert!(
+        out.contains("The Alpha"),
+        "a dry run changes nothing: {out}"
+    );
+    let (code, out, err) = s.cli(&[
+        "library", "replace", "--field", "title", "--find", "the ", "--with", "",
+    ]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(out.contains("2 book(s) changed"), "{out}");
+    let (_, out, _) = s.cli(&["library", "list"]);
+    assert!(out.contains("Alpha") && !out.contains("The Alpha"), "{out}");
+    // a bad pattern and a bad field are explained
+    let (code, _, err) = s.cli(&[
+        "library", "replace", "--field", "title", "--find", "(", "--regex",
+    ]);
+    assert_eq!(code, 2);
+    assert!(err.contains("not valid"), "{err}");
+    let (code, _, err) = s.cli(&["library", "replace", "--field", "size", "--find", "x"]);
+    assert_eq!(code, 2);
+    assert!(err.contains("unknown field"), "{err}");
+    // only the books a search finds
+    let (_, out, _) = s.cli(&[
+        "library",
+        "replace",
+        "--field",
+        "authors",
+        "--find",
+        "A",
+        "--with",
+        "Zed",
+        "author:=A",
+    ]);
+    assert!(out.contains("1 book(s) changed"), "{out}");
+}

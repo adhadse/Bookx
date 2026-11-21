@@ -5,7 +5,7 @@
 use std::collections::{BTreeMap, HashSet};
 use std::io::{Read, Write};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -44,6 +44,12 @@ pub trait RepoStore: Send + Sync {
     fn get_to(&self, path: &str, out: &mut dyn Write, max: u64) -> Result<u64>;
     /// Removes an object (missing is fine).
     fn delete(&self, path: &str) -> Result<()>;
+
+    /// Whether an interrupted large upload may be continued from what the place already holds
+    /// (decided by the repository: only worth it when objects are byte for byte the same each
+    /// time, and only safe when uploads are read back and checked). Places that cannot resume
+    /// ignore it.
+    fn allow_resume(&self, _yes: bool) {}
 
     /// The size of the object at `path`, `None` when it is not there.
     fn stat(&self, path: &str) -> Result<Option<u64>> {
@@ -93,6 +99,12 @@ impl<T: RepoStore + ?Sized> RepoStore for std::sync::Arc<T> {
     }
     fn delete(&self, path: &str) -> Result<()> {
         (**self).delete(path)
+    }
+    fn allow_resume(&self, yes: bool) {
+        (**self).allow_resume(yes)
+    }
+    fn stat(&self, path: &str) -> Result<Option<u64>> {
+        (**self).stat(path)
     }
 }
 
@@ -336,7 +348,19 @@ pub struct DavStore {
     folder: Vec<String>,
     ensured: Mutex<HashSet<String>>,
     no_move: AtomicBool,
+    /// The server honours `Content-Range` on `PUT` (probed by `check`).
+    ranged: AtomicBool,
+    resume: AtomicBool,
+    /// Objects of at least `chunk_min` bytes go up in pieces of `chunk` bytes when `ranged`.
+    chunk_min: AtomicU64,
+    chunk: AtomicU64,
 }
+
+/// Objects below this size are one request; from here on they are sent in pieces (when the
+/// server can take pieces), so a dropped connection costs at most one piece.
+pub const CHUNK_MIN: u64 = 32 * 1024 * 1024;
+/// The size of one piece.
+pub const CHUNK: u64 = 8 * 1024 * 1024;
 
 impl DavStore {
     /// `folder` is the path below the address, without [`REPO_DIR`].
@@ -356,7 +380,138 @@ impl DavStore {
             folder: parts,
             ensured: Mutex::new(HashSet::new()),
             no_move: AtomicBool::new(false),
+            ranged: AtomicBool::new(false),
+            resume: AtomicBool::new(false),
+            chunk_min: AtomicU64::new(CHUNK_MIN),
+            chunk: AtomicU64::new(CHUNK),
         })
+    }
+
+    /// Sends objects of `min` bytes or more in pieces of `chunk` bytes (tests use small values).
+    pub fn with_chunking(self, min: u64, chunk: u64) -> DavStore {
+        self.chunk_min.store(min.max(1), Ordering::Relaxed);
+        self.chunk.store(chunk.max(1), Ordering::Relaxed);
+        self
+    }
+
+    /// Whether the server takes pieces (known after `check`).
+    pub fn takes_pieces(&self) -> bool {
+        self.ranged.load(Ordering::Relaxed) && !self.no_move.load(Ordering::Relaxed)
+    }
+
+    /// Does `PUT` with `Content-Range` write at an offset here? Two pieces of one byte, read back.
+    fn probe_ranged(&self) -> bool {
+        let Ok(name) = super::seal::random_hex(4) else {
+            return false;
+        };
+        let mut p = self.folder.clone();
+        p.push(format!(".probe-r-{name}"));
+        let ok = (|| -> Result<bool> {
+            self.dav
+                .put_range(&p, &mut std::io::Cursor::new(b"a"), 0, 1, 2)?;
+            self.dav
+                .put_range(&p, &mut std::io::Cursor::new(b"b"), 1, 1, 2)?;
+            let mut v = Vec::new();
+            self.dav.get_to(&p, &mut v, 16)?;
+            Ok(v == b"ab")
+        })()
+        .unwrap_or(false);
+        let _ = self.dav.delete_file(&p[..p.len() - 1], p.last().unwrap());
+        ok
+    }
+
+    /// Sends the object in pieces to a temporary name that keeps its place between runs, then
+    /// moves it into place. Continues from what the server already holds when allowed.
+    fn put_pieces(
+        &self,
+        path: &str,
+        data: &mut dyn Read,
+        len: u64,
+        cancel: &AtomicBool,
+    ) -> Result<()> {
+        let fin = self.parts(path)?;
+        let (dir, name) = split(path);
+        self.ensure(dir)?;
+        let temp_name = format!(".{name}.part-resume");
+        let mut temp = fin.clone();
+        *temp.last_mut().unwrap() = temp_name.clone();
+        let held = self
+            .list(dir)?
+            .into_iter()
+            .find(|e| !e.is_dir && e.name == temp_name)
+            .map(|e| e.size);
+        let mut offset = match held {
+            Some(s) if s > 0 && s < len && self.resume.load(Ordering::Relaxed) => s,
+            Some(_) => {
+                self.dav
+                    .delete_file(&temp[..temp.len() - 1], temp.last().unwrap())?;
+                0
+            }
+            None => 0,
+        };
+        // the bytes the server already holds are read and dropped; they still pass through the
+        // caller's hash, so the read-back check covers the whole object
+        let mut skip = offset;
+        let mut buf = vec![0u8; 256 * 1024];
+        while skip > 0 {
+            if cancel.load(Ordering::Relaxed) {
+                return Err(anyhow::Error::new(Cancelled));
+            }
+            let want = buf.len().min(skip as usize);
+            match data.read(&mut buf[..want]) {
+                Ok(0) => bail!("the data ended before its announced length"),
+                Ok(n) => skip -= n as u64,
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                Err(e) => return Err(anyhow::Error::new(e)),
+            }
+        }
+        let chunk = self.chunk.load(Ordering::Relaxed).max(1);
+        while offset < len {
+            if cancel.load(Ordering::Relaxed) {
+                return Err(anyhow::Error::new(Cancelled));
+            }
+            let n = chunk.min(len - offset);
+            let mut piece = CancelRead {
+                inner: &mut (&mut *data).take(n),
+                cancel,
+            };
+            if let Err(e) = self.dav.put_range(&temp, &mut piece, offset, n, len) {
+                // what was sent stays: the next run continues from it
+                if cancel.load(Ordering::Relaxed) {
+                    return Err(anyhow::Error::new(Cancelled));
+                }
+                return Err(e);
+            }
+            offset += n;
+        }
+        let mut probe = [0u8; 1];
+        if !matches!(data.read(&mut probe), Ok(0)) {
+            let _ = self
+                .dav
+                .delete_file(&temp[..temp.len() - 1], temp.last().unwrap());
+            bail!("the data is longer than its announced length");
+        }
+        let size = self
+            .list(dir)?
+            .into_iter()
+            .find(|e| !e.is_dir && e.name == temp_name)
+            .map(|e| e.size);
+        if size != Some(len) {
+            let _ = self
+                .dav
+                .delete_file(&temp[..temp.len() - 1], temp.last().unwrap());
+            bail!("the server holds {size:?} bytes of an upload of {len}; it was removed");
+        }
+        match self.dav.move_file(&temp, &fin) {
+            Ok(true) => Ok(()),
+            Ok(false) => {
+                let _ = self
+                    .dav
+                    .delete_file(&temp[..temp.len() - 1], temp.last().unwrap());
+                bail!("the server stopped accepting MOVE; try again")
+            }
+            Err(e) => Err(e),
+        }
     }
 
     fn parts(&self, path: &str) -> Result<Vec<String>> {
@@ -413,6 +568,8 @@ impl RepoStore for DavStore {
             .put_stream(&pa, &mut std::io::Cursor::new(b"x"), 1)?;
         let moved = self.dav.move_file(&pa, &pb).unwrap_or(false);
         self.no_move.store(!moved, Ordering::Relaxed);
+        self.ranged
+            .store(moved && self.probe_ranged(), Ordering::Relaxed);
         let leftover = if moved { &pb } else { &pa };
         let _ = self
             .dav
@@ -445,7 +602,14 @@ impl RepoStore for DavStore {
             .collect())
     }
 
+    fn allow_resume(&self, yes: bool) {
+        self.resume.store(yes, Ordering::Relaxed);
+    }
+
     fn put(&self, path: &str, data: &mut dyn Read, len: u64, cancel: &AtomicBool) -> Result<()> {
+        if self.takes_pieces() && len >= self.chunk_min.load(Ordering::Relaxed) {
+            return self.put_pieces(path, data, len, cancel);
+        }
         let fin = self.parts(path)?;
         let (dir, name) = split(path);
         self.ensure(dir)?;
@@ -578,7 +742,9 @@ impl RepoStore for MemStore {
     fn put(&self, path: &str, data: &mut dyn Read, len: u64, cancel: &AtomicBool) -> Result<()> {
         self.up()?;
         check_path(path)?;
-        {
+        // the lock file is bookkeeping: it is not counted, failed or corrupted by the test switches
+        let bookkeeping = path == super::lock::LOCK_FILE;
+        if !bookkeeping {
             let mut n = self.puts.lock().unwrap();
             if self.fail_after.lock().unwrap().is_some_and(|k| *n >= k) {
                 bail!("the place refused the upload");
@@ -587,7 +753,7 @@ impl RepoStore for MemStore {
         }
         let mut v = Vec::new();
         copy_exact(data, &mut v, len, cancel)?;
-        if *self.corrupt.lock().unwrap() {
+        if !bookkeeping && *self.corrupt.lock().unwrap() {
             if let Some(b) = v.last_mut() {
                 *b ^= 0xff;
             }

@@ -27,6 +27,9 @@ pub struct InboxState {
     /// Keys of files that were added or dismissed.
     #[serde(default)]
     pub done: BTreeSet<String>,
+    /// Add new books of the folder as they appear, without asking (off unless the user turns it on).
+    #[serde(default)]
+    pub watch: bool,
 }
 
 pub fn state_path(root: &Path) -> PathBuf {
@@ -144,6 +147,41 @@ pub fn scan(
     out
 }
 
+/// The files of `files` (what the caller found in the folder) that are settled and not handled
+/// yet, with their keys, oldest name first. Reads no book: this is cheap enough to run on every
+/// change of the folder.
+pub fn pending_files(
+    state: &InboxState,
+    files: &[PathBuf],
+    now: SystemTime,
+    settle: Duration,
+) -> Vec<(PathBuf, String)> {
+    let mut out = Vec::new();
+    for path in files {
+        let Ok(m) = std::fs::metadata(path) else {
+            continue;
+        };
+        if !m.is_file() {
+            continue;
+        }
+        let (mtime, secs) = mtime_of(&m);
+        if !is_settled(mtime, now, settle) {
+            continue;
+        }
+        let key = file_key(path, m.len(), secs);
+        if !state.done.contains(&key) {
+            out.push((path.clone(), key));
+        }
+    }
+    out.sort();
+    out
+}
+
+/// Remembers keys as handled.
+pub fn mark_done(state: &mut InboxState, keys: impl IntoIterator<Item = String>) {
+    state.done.extend(keys);
+}
+
 /// Adds the book to the library and remembers it. A book that is already in the library counts
 /// as handled too (the outcome says so).
 pub fn accept(
@@ -204,6 +242,28 @@ mod tests {
             !is_settled(now + Duration::from_secs(10), now, SETTLE),
             "a time in the future"
         );
+    }
+
+    #[test]
+    fn pending_files_skip_what_is_handled_or_still_changing() {
+        let d = tmp();
+        let a = md(&d, "A");
+        let b = md(&d, "B");
+        let files = vec![a.clone(), b.clone(), d.join("missing.epub"), d.clone()];
+        let mut st = InboxState::default();
+        assert!(
+            pending_files(&st, &files, SystemTime::now(), SETTLE).is_empty(),
+            "just written"
+        );
+        let p = pending_files(&st, &files, later(), SETTLE);
+        assert_eq!(
+            p.iter().map(|x| x.0.clone()).collect::<Vec<_>>(),
+            vec![a, b]
+        );
+        mark_done(&mut st, p.iter().map(|x| x.1.clone()));
+        assert!(pending_files(&st, &files, later(), SETTLE).is_empty());
+        assert!(!InboxState::default().watch, "off by default");
+        let _ = std::fs::remove_dir_all(d);
     }
 
     #[test]

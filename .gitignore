@@ -22,3 +22,10 @@ __pycache__/
 /dist/
 /bookx.flatpak
 /bookx.flatpak.sha256
+
+# Coverage (cargo-llvm-cov; also written under $CARGO_TARGET_DIR/llvm-cov)
+*.profraw
+*.profdata
+lcov.info
+lcov*.info
+/coverage/

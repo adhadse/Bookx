@@ -19,7 +19,9 @@ use anyhow::{anyhow, Result};
 use crate::cache::{cache_key, SentenceCache};
 use crate::session::{Engine, Event, EventKind, Voice};
 use crate::sink::AudioSink;
-use crate::synth::{resample, Cancel, Pcm, SynthRequest, Synthesizer};
+use crate::synth::{
+    engine_max_speed, resample, split_speed, Cancel, Pcm, SynthRequest, Synthesizer,
+};
 
 #[derive(Debug, Clone)]
 struct Settings {
@@ -298,7 +300,10 @@ fn worker_loop(
         match job {
             Work::Quit => break,
             Work::Prefetch { texts, settings } => {
-                let speed = (settings.speed / settings.pitch).clamp(0.25, 4.0);
+                let (speed, _) = split_speed(
+                    settings.speed / settings.pitch,
+                    engine_max_speed(&synth.id()),
+                );
                 for text in texts {
                     let cancel = shared.cancel.lock().unwrap().clone();
                     if cancel.is_cancelled() {
@@ -343,7 +348,10 @@ fn worker_loop(
                 }
                 let cancel = shared.cancel.lock().unwrap().clone();
                 // a higher pitch is made by playing faster: ask the model for a slower voice
-                let speed = (settings.speed / settings.pitch).clamp(0.25, 4.0);
+                let (speed, stretch) = split_speed(
+                    settings.speed / settings.pitch,
+                    engine_max_speed(&synth.id()),
+                );
                 let scope = shared.scope.lock().unwrap().clone();
                 let key = cache_key(
                     &synth.id(),
@@ -383,7 +391,7 @@ fn worker_loop(
                         let _ = play.send(Play::Audio {
                             id,
                             gen,
-                            pcm: p.with_pitch(settings.pitch),
+                            pcm: p.time_stretch(stretch).with_pitch(settings.pitch),
                         });
                     }
                     Err(e) => {
@@ -923,6 +931,27 @@ mod tests {
             "{got:?}"
         );
         assert_eq!(s.state(), State::Stopped);
+    }
+
+    #[test]
+    fn speed_above_two_asks_the_engine_for_two_and_stretches_the_rest() {
+        let (mut e, sink, calls) = engine(0, None);
+        e.set_speed(3.0);
+        e.set_voice("f1");
+        e.set_language("en");
+        let mut s = Session::new();
+        s.load(&mut e, &"x".repeat(400));
+        s.play_from(&mut e, 0);
+        run(&mut s, &mut e, 5);
+        let c = calls.lock().unwrap();
+        assert!(
+            (c[0].1 - 2.0).abs() < 1e-9,
+            "the engine gets its maximum: {}",
+            c[0].1
+        );
+        // 400 chars at speed 2 = 8000 samples, stretched by 1.5 = about 5333
+        let n = sink.written.lock().unwrap().len() as i64;
+        assert!((n - 5333).abs() < 600, "{n}");
     }
 
     #[test]

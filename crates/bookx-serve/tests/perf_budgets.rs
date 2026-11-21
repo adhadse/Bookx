@@ -59,6 +59,8 @@ fn synthetic_book(i: u64) -> Book {
         formats: vec![],
         resources: vec![],
         drm: String::new(),
+        custom: Default::default(),
+        marked: false,
     }
 }
 

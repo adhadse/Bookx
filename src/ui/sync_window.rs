@@ -29,6 +29,7 @@ struct Win {
     advanced: adw::ExpanderRow,
     banner: adw::Banner,
     result: gtk::Label,
+    error: adw::Banner,
     refresh: Rc<dyn Fn()>,
 }
 
@@ -64,6 +65,20 @@ fn wrapped(text: &str, class: Option<&str>) -> gtk::Label {
     l
 }
 
+/// Preferences opens at the Sync page in place of this window, never on top of it (one window).
+fn open_sync_prefs(_: &gtk::Button) {
+    let d = WIN.with(|w| w.borrow().as_ref().map(|w| w.dialog.clone()));
+    if let Some(d) = d {
+        d.force_close();
+    }
+    // through the application: the button is gone with the dialog
+    gtk::gio::prelude::ActionGroupExt::activate_action(
+        &relm4::main_application(),
+        "sync-prefs",
+        None,
+    );
+}
+
 fn button(label: &str, name: &str) -> gtk::Button {
     let b = gtk::Button::with_label(label);
     super::audit::label(&b, name);
@@ -71,7 +86,7 @@ fn button(label: &str, name: &str) -> gtk::Button {
 }
 
 pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr(sync_model::TITLE));
     dialog.set_content_width(520);
     dialog.set_content_height(760);
@@ -91,18 +106,14 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
     primary.add_css_class("suggested-action");
     primary.add_css_class("pill");
     primary.set_valign(gtk::Align::Center);
-    let link = button(
-        &tr("Open Preferences → Sync"),
-        &tr("Open Preferences → Sync"),
-    );
-    link.add_css_class("flat");
-    link.set_halign(gtk::Align::Start);
+    let link = gtk::Button::with_label(&tr("Sync Settings"));
+    super::audit::label(&link, &tr("Sync Settings"));
+    link.set_tooltip_text(Some(&tr("Open Preferences at the Sync Page")));
     let result = wrapped("", Some("dim-label"));
     result.set_visible(false);
     result.set_selectable(true);
     let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     actions.append(&primary);
-    actions.append(&link);
     for w in [
         headline.upcast_ref::<gtk::Widget>(),
         sentence.upcast_ref(),
@@ -113,22 +124,37 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
     }
     column.append(&padded(&inner));
 
-    // ---- the three choice cards ---------------------------------------------------------
+    // ---- sync activity: devices and what they sent ------------------------------------------
+    let (activity, activity_refresh) = super::sync_activity::column(shared);
+    column.append(&activity);
+
+    // ---- the three choice rows (a boxed list: use-when text as the subtitle, status and the
+    // one button as the suffix); the Wi-Fi row is followed by its setup stepper ----------------
+    let choices = adw::PreferencesGroup::new();
     let mut cards: Vec<(&'static str, gtk::Button, gtk::Label)> = Vec::new();
     let mut wifi_stepper: Option<Rc<Stepper>> = None;
-    let mut message: Option<gtk::Label> = None;
     let mut account_hint = gtk::Label::new(None);
     for card in snap.cards() {
-        let inner = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        let top = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        top.append(&wrapped(&card.title, Some("title-4")));
-        let status = wrapped(&card.status, Some("heading"));
-        status.set_hexpand(false);
+        let row = adw::ActionRow::builder()
+            .title(&card.title)
+            .subtitle(&card.use_when)
+            .build();
+        row.set_title_lines(0);
+        row.set_subtitle_lines(0);
+        let status = gtk::Label::new(Some(&card.status));
+        status.set_wrap(true);
         status.set_xalign(1.0);
-        status.set_halign(gtk::Align::End);
-        top.append(&status);
-        inner.append(&top);
-        inner.append(&wrapped(&card.use_when, Some("dim-label")));
+        status.add_css_class("heading");
+        let b = button(&card.button, &format!("{}: {}", card.button, card.title));
+        b.set_halign(gtk::Align::End);
+        let suffix = gtk::Box::new(gtk::Orientation::Vertical, 6);
+        suffix.set_valign(gtk::Align::Center);
+        suffix.set_margin_top(8);
+        suffix.set_margin_bottom(8);
+        suffix.append(&status);
+        suffix.append(&b);
+        row.add_suffix(&suffix);
+        choices.add(&row);
         if card.id == "wifi" {
             // the four steps of the setup as a compact stepper; every step opens to its text
             let open_prefs = |help: &str, with_button: bool| -> gtk::Widget {
@@ -140,9 +166,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
                         &tr("Open Preferences → Sync"),
                     );
                     btn.set_halign(gtk::Align::Start);
-                    btn.connect_clicked(|b| {
-                        let _ = b.activate_action("app.sync-prefs", None);
-                    });
+                    btn.connect_clicked(open_sync_prefs);
                     b.append(&btn);
                 }
                 b.upcast()
@@ -169,26 +193,29 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
                 true,
             );
             st.close_all();
+            let inner = gtk::Box::new(gtk::Orientation::Vertical, 6);
+            inner.set_margin_top(8);
+            inner.set_margin_bottom(10);
+            inner.set_margin_start(12);
+            inner.set_margin_end(12);
             inner.append(st.widget());
-            wifi_stepper = Some(st);
             inner.append(&wrapped(&tr(sync_model::STEP_TEST_HELP), Some("dim-label")));
             account_hint = wrapped(&tr(sync_model::ACCOUNT_ONE_LINER), Some("dim-label"));
             inner.append(&account_hint);
+            let steps_row = gtk::ListBoxRow::new();
+            steps_row.set_activatable(false);
+            steps_row.set_selectable(false);
+            steps_row.set_child(Some(&inner));
+            choices.add(&steps_row);
+            wifi_stepper = Some(st);
         }
-        if card.id == "opds" {
-            let m = wrapped("", Some("error"));
-            m.set_visible(false);
-            inner.append(&m);
-            message = Some(m);
-        }
-        let b = button(&card.button, &format!("{}: {}", card.button, card.title));
-        b.set_halign(gtk::Align::Start);
-        b.set_margin_top(4);
-        inner.append(&b);
-        column.append(&padded(&inner));
         cards.push((card.id, b, status));
     }
-    let message = message.unwrap_or_default();
+    column.append(&choices);
+    // a failure to start or stop the server is an inline banner, not a label in a card
+    let message = adw::Banner::new("");
+    message.set_button_label(Some(&tr("Dismiss")));
+    message.connect_button_clicked(|b| b.set_revealed(false));
 
     // ---- advanced -----------------------------------------------------------------------
     let adv_group = adw::PreferencesGroup::new();
@@ -226,7 +253,17 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
     let banner = adw::Banner::new(&tr(sync_model::LAN_BANNER));
     banner.set_revealed(snap.lan_open());
     let refresh = {
-        let (shared, headline, primary, cards, wifi_stepper, prefs_row, account_hint, banner) = (
+        let (
+            shared,
+            headline,
+            primary,
+            cards,
+            wifi_stepper,
+            prefs_row,
+            account_hint,
+            banner,
+            activity_refresh,
+        ) = (
             shared.clone(),
             headline.clone(),
             primary.clone(),
@@ -235,6 +272,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
             prefs_row.clone(),
             account_hint.clone(),
             banner.clone(),
+            activity_refresh.clone(),
         );
         Rc::new(move || {
             let snap: Snapshot = sync_prefs::current(&shared);
@@ -254,6 +292,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
             ));
             account_hint.set_visible(!snap.account);
             banner.set_revealed(snap.lan_open());
+            activity_refresh();
         })
     };
     refresh();
@@ -285,13 +324,11 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
                 result.set_label(&text);
                 result.set_visible(true);
             } else {
-                let _ = b.activate_action("app.sync-prefs", None);
+                open_sync_prefs(b);
             }
         });
         for b in [&link, &prefs_btn] {
-            b.connect_clicked(|b| {
-                let _ = b.activate_action("app.sync-prefs", None);
-            });
+            b.connect_clicked(open_sync_prefs);
         }
         proxy_btn.connect_clicked(|b| {
             let uri = "https://bookx.adhadse.com/reverse-proxy/".to_variant();
@@ -300,19 +337,17 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
         for (id, b, _) in &cards {
             let (sh, msg) = (shared.clone(), message.clone());
             match *id {
-                "wifi" => b.connect_clicked(|b| {
-                    let _ = b.activate_action("app.sync-prefs", None);
-                }),
+                "wifi" => b.connect_clicked(open_sync_prefs),
                 "usb" => b.connect_clicked(|b| {
                     let _ = b.activate_action("app.devices", None);
                 }),
                 _ => b.connect_clicked(move |_| {
                     let on = !sh.sharing.borrow().running();
                     match share::set_server(&sh, on) {
-                        Ok(_) => msg.set_visible(false),
+                        Ok(_) => msg.set_revealed(false),
                         Err(e) => {
-                            msg.set_label(&e);
-                            msg.set_visible(true);
+                            msg.set_title(&e);
+                            msg.set_revealed(true);
                         }
                     }
                 }),
@@ -330,8 +365,11 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
         .child(&scroll)
         .build();
     let toolbar = adw::ToolbarView::new();
-    toolbar.add_top_bar(&adw::HeaderBar::new());
+    let header = adw::HeaderBar::new();
+    header.pack_start(&link);
+    toolbar.add_top_bar(&header);
     toolbar.add_top_bar(&banner);
+    toolbar.add_top_bar(&message);
     toolbar.set_content(Some(&clamp));
     dialog.set_child(Some(&toolbar));
     WIN.with(|w| {
@@ -346,6 +384,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
             advanced,
             banner,
             result,
+            error: message.clone(),
             refresh: refresh.clone(),
         })
     });
@@ -378,6 +417,30 @@ fn texts(w: &gtk::Widget, out: &mut Vec<String>) {
 /// Dev hook `sync:…`: `dump`, `primary` (press the big button), `card=wifi|usb|opds` (press that
 /// card’s button), `advanced=open|close`, `close`.
 pub fn dev(arg: &str, shared: &SharedRef) {
+    if arg == "activity" {
+        // devices and recent activity as the window shows them (read fresh), and the window's rows
+        let sh = shared.clone();
+        let rows = WIN.with(|w| {
+            w.borrow().as_ref().map(|win| {
+                (win.refresh)();
+                let mut all = Vec::new();
+                texts(&win.root, &mut all);
+                all
+            })
+        });
+        eprintln!("sync_activity:\n{}", super::sync_activity::dump(&sh));
+        if let Some(all) = rows {
+            let has = |t: &str| all.iter().any(|x| x.contains(t));
+            eprintln!(
+                "sync_activity_window: groups_connected={} groups_recent={} empty_state={} show_all={}",
+                has(&tr("Connected devices")),
+                has(&tr("Recent activity")),
+                has("Nothing has synced yet"),
+                has(&tr("Show All")),
+            );
+        }
+        return;
+    }
     if arg == "close" {
         let d = WIN.with(|w| w.borrow().as_ref().map(|w| w.dialog.clone()));
         if let Some(d) = d {
@@ -422,18 +485,22 @@ pub fn dev(arg: &str, shared: &SharedRef) {
                 .map(|(id, b, s)| format!("{id}:{}:{}", b.label().unwrap_or_default(), s.text()))
                 .collect();
             eprintln!(
-                "sync_window: title={} headline={:?} primary={:?} cards={} use_when={} sentence={} kosync_labels={} advanced={} account_hint={} result={:?} lan_banner={} stepper=[{}] {}",
+                "sync_window: title={} headline={:?} primary={:?} cards={} use_when={} sentence={} kosync_labels={} advanced={} account_hint={} result={:?} lan_banner={} error_banner={} stepper=[{}] {}",
                 win.dialog.title(),
                 win.headline.text(),
                 win.primary.label().unwrap_or_default(),
                 cards.join("|"),
-                all.iter().filter(|t| t.starts_with("Use this ")).count(),
+                all.iter()
+                    .filter(|t| t.starts_with("Use this "))
+                    .collect::<std::collections::BTreeSet<_>>()
+                    .len(),
                 joined.contains("Use USB for devices without KOReader"),
                 all.iter().filter(|t| t.contains("KOSync")).count(),
                 if win.advanced.is_expanded() { "open" } else { "collapsed" },
                 win.account_hint.is_visible(),
                 if win.result.is_visible() { win.result.text().to_string() } else { String::new() },
                 win.banner.is_revealed(),
+                win.error.is_revealed(),
                 win.stepper.as_ref().map(|s| s.dump()).unwrap_or_default(),
                 sync_prefs::current(shared).dump()
             );

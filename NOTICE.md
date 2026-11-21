@@ -3,6 +3,7 @@
 | Asset | Source | Licence |
 |---|---|---|
 | `data/icons/hicolor/scalable/actions/wikipedia-symbolic.svg` (Wikipedia "W" glyph) | [Simple Icons](https://simpleicons.org) `icons/wikipedia.svg` | CC0 1.0 Universal |
+| `data/icons/hicolor/scalable/actions/blocks-symbolic.svg` (Background Jobs button; the `blocks` icon, also known as multitasking) | [GNOME Icon Development Kit](https://gitlab.gnome.org/Teams/Design/icon-development-kit) `icons/blocks.svg`, by Jakub Steiner (the kit's `COPYING.md` and the file's metadata: CC0) | CC0 1.0 Universal |
 | `data/icons/hicolor/scalable/actions/funnel-symbolic.svg` (funnel for Filter buttons) | drawn for Bookx | CC0 1.0 Universal |
 
 "Wikipedia" and the Wikipedia logo are trademarks of the Wikimedia Foundation, Inc. Bookx is not
@@ -43,6 +44,7 @@ generated in code.
 - Read aloud downloads (`bookx-tts`): `zip` 9 (MIT) reads the directory of the NuGet package of ONNX Runtime (no decompression through it; the member is inflated with `flate2`); the same `zip` crate as the rest of the application. The library itself (ONNX Runtime 1.31.1, MIT) is downloaded by the user from nuget.org or GitHub, never bundled.
 - Media keys for read aloud (`src/mpris.rs`): `zbus` 5 (MIT) used directly for the MPRIS service; it was already in the tree through `oo7`.
 - Password storage (`bookx-secrets`): `oo7` 0.5 (MIT; Secret Service client and Flatpak secrets portal, with `zbus`, `ashpd`, `async-io` and their dependencies, MIT / Apache-2.0 / MPL-2.0 where noted by those crates), `async-io` 2 (Apache-2.0 OR MIT). `oo7` 0.5 is the newest release that builds with the Rust version this project pins.
+- Password storage on macOS and Windows (`bookx-secrets`, only compiled there, not yet run): `keyring` 3.6 (MIT OR Apache-2.0) with its `security-framework` 2 and 3 (MIT OR Apache-2.0; macOS Keychain), `windows-sys` 0.60 (MIT OR Apache-2.0; Windows Credential Manager), `byteorder`, `zeroize`.
 - Function mode of the editor's search & replace (`src/editor_search_fn.rs`): `rhai` 1 (MIT OR Apache-2.0, with `rhai_codegen`, `smartstring`, `ahash`, `num-traits`, `thin-vec`, `bitflags`, `no-std-compat` and their dependencies, MIT / Apache-2.0). Why Rhai: Calibre's function mode is Python, which is excluded by "Rust only"; Rhai is a pure Rust scripting engine with no I/O of its own, operation, time, call-depth and string/array/map size limits, so a user's replacement function runs sandboxed (no files, no network, no modules, no `eval`). Built without `no_module`-incompatible features (`no_module`, `no_time`, `no_custom_syntax`).
 - MCP server (`bookx-mcp`): no new third-party crate. The Model Context Protocol (JSON-RPC 2.0, specification at modelcontextprotocol.io, MIT licence for the schema/docs) is implemented on `serde_json` with the blocking HTTP server of `bookx-serve`; the official Rust SDK `rmcp` (Apache-2.0) was considered and not used (async/tokio dependency tree, see `docs/mcp-notes.md`).
 - Dev only: mail-parser, wat
@@ -78,6 +80,12 @@ Nothing below is bundled or distributed with Bookx. The models and the runtime a
 - Rust crates added: `ort` (MIT OR Apache-2.0), `sha2` (MIT OR Apache-2.0), `flate2` (MIT OR Apache-2.0), `tar`
   (MIT OR Apache-2.0).
 - PDF (`bookx-pdf`): `hayro` 0.9 with `hayro-syntax`, `hayro-interpret`, `hayro-font`, `hayro-cmap`, `hayro-ccitt`, `hayro-jbig2`, `hayro-jpeg2000`, `hayro-postscript` (Apache-2.0 OR MIT; pure Rust). Embedded data: `hayro-font` carries the 14 standard PDF fonts as the Foxit `.pfb` files extracted from PDFium (BSD-3-Clause, Copyright 2014 PDFium Authors / Foxit Software; the licence text is `LICENSE_FOXIT` in that crate and applies to binary redistribution), `hayro-interpret` carries two ICC colour profiles (CC0-1.0), `vello_cpu`/`vello_common`/`peniko`/`kurbo`/`fearless_simd`/`pic-scale`/`moxcms`/`zune-jpeg`/`zune-core`/`skrifa`/`read-fonts` (Apache-2.0 OR MIT). It needs Rust 1.92, so `crates/bookx-pdf` declares `rust-version = "1.92"`. No system library is needed, the Flatpak manifest is unchanged. Why: `docs/pdf-research.md`.
+
+## Helper programs run on request (not bundled, not linked)
+- `unrar` (RARLAB freeware licence, not open source) or 7-Zip (`7z`/`7zz`, LGPL with the unRAR restriction) unpack CBR (RAR)
+  comics. Bookx runs the program the user has installed; it ships none of them and links none of their code.
+- DjVuLibre (`ddjvu`, `djvused`, GPL-2.0-or-later) renders DjVu pages the same way.
+Nothing else runs in the background. No Rust crate was added for these (`bookx-comic` gained a JPEG *encoder* use of the `image` crate it already depends on).
 
 ## Test tools (not distributed, not linked)
 - `epubveri` (AGPL-3.0-only OR commercial, <https://github.com/veripublica/epubveri>) is used only as an external

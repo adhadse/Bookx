@@ -36,7 +36,7 @@ status and a check mark when done); the main menu → **Sync** window shows the 
 ## Which user name and password? { #account }
 
 The user name and password are your **Bookx sync account**. There is no pre-existing KOReader account and they are
-**not** the Share Library password and **not** a Bookx login.
+**not** the OPDS server password and **not** a Bookx login.
 
 1. **Create it in Bookx**: main menu → **Preferences** → **Sync**, step *2. Create your sync account*, then **Register**. Or in KOReader:
    **Tools → Progress sync → Custom sync server**, the same address Bookx shows, `http://<host-ip>:<port>/bookx`, then **Register**.
@@ -46,6 +46,16 @@ The user name and password are your **Bookx sync account**. There is no pre-exis
 3. Highlight sync and reading-progress sync use the **same account over the same `/bookx` connection**.
 
 Stock Kobo and Kindle firmware has no wireless sync with Bookx; those readers sync over the USB cable only.
+
+!!! warning "What is stored on the e-reader"
+    The plugin never stores your password. It stores the **MD5 hash** of it (the *key*) in KOReader's settings
+    (`settings/bookx_sync.lua`), because the KOReader sync protocol sends that hash with every request and KOReader has no
+    keyring. MD5 is fast to guess, and the key works as a login on its own, so anyone who can read the e-reader's files
+    can sync as you. Use a sync password **that you use nowhere else**, and treat the e-reader's storage as unprotected.
+    On the computer side, Bookx does not keep that key either: the sync server stores only a salted Argon2id hash of it
+    (older files are converted the first time the server starts), and the sync password in Bookx lives in the
+    [keyring or the encrypted password store](backup-and-restore.md#passwords). To revoke a lost e-reader, change the
+    sync account password in Bookx and enter the new one on your devices.
 
 ## What happens
 
@@ -76,6 +86,56 @@ Stock Kobo and Kindle firmware has no wireless sync with Bookx; those readers sy
 - The sync line of the window counts the bookmarks it added and the ones that were already in your library.
 - Syncing the same thing twice never duplicates anything. If the connection fails, nothing is lost: the next sync repeats it.
 
+## Seeing what synced { #activity }
+
+Open the main menu → **Sync** (or **Preferences → Sync**). Under the setup you find:
+
+- **Connected devices**: one row per e-reader that has talked to Bookx, with its name, the KOReader and plugin version, when it
+  last synced, and a status: **Connected now** (it was in touch in the last two minutes), **Last seen 5 minutes ago** or
+  **Never connected**. A device with an older plugin, or one that only uses KOReader's Progress sync, shows as *Unknown device
+  (KOReader)* or by the name KOReader gives it.
+- **Recent activity**: the newest syncs, most recent first (the last 200 are kept; **Show All** lists them). Each row names the book, the
+  device, the time and what happened: *Progress 12% → 34%*, *3 highlights added or updated, 2 with notes, 1 bookmark*,
+  *1 highlight could not be placed in the book*, *Book not found in your library*, or *Server rejected it* with the reason.
+  The line above the list counts the day (“Today: 12 highlights, 3 bookmarks, progress for 2 books”). Press a row to open that book in
+  **Notes & Highlights**.
+- **Books not found in your library**: books the device sent highlights for that Bookx has no matching book for. Nothing is
+  imported for them (and nothing is lost: add the book to your library, press **Sync now**, and the waiting highlights are imported).
+  The row shows the title the e-reader gave and a short code of the book.
+
+While Bookx is open, a message appears when a sync arrives (“Synced 3 highlights from Kobo Libra for Building Microservices”) with
+a **Show** button that opens the book in **Notes & Highlights**; the counts there and in the sidebar update without reopening
+anything. The details of a book say when and from which device it last synced.
+
+On the e-reader, **Bookx Sync → About / Diagnostics** shows the same from its side: the last sync, how much was sent and received,
+whether a sync is waiting for Wi-Fi, and the books Bookx said it has no match for. After **Sync now** the screen says what was sent
+(“Sent 3 highlights, received 1 note from Bookx”) and warns when Bookx does not have the book.
+
+## When does “Sync automatically” sync? { #auto-sync }
+
+With **Bookx Sync → Sync automatically** on, the plugin syncs about **30 seconds after the last change** to a highlight, note or
+bookmark, when you **close the book**, when the device **goes to sleep**, and when you **open a book** with Wi-Fi on. It never switches
+Wi-Fi on by itself (that would drain the battery). If Wi-Fi is off at that moment, the plugin remembers that something is waiting
+(the Bookx Sync menu says *Waiting for Wi-Fi*) and sends it the next time a book is open with Wi-Fi on. To send now, turn Wi-Fi on and
+choose **Sync now**.
+
+## Live updates { #live }
+
+While Bookx is open, what the e-reader sends shows up **at once**, without closing and reopening anything. If the book is open in the
+reader, new highlights are drawn on the page, a changed colour or style changes on the page, a highlight you removed on the e-reader
+disappears, and the **Bookmarks** and **Notes** tabs of the sidebar, the page bookmark button and the [book map](reading.md#book-map)
+follow. The **Notes & Highlights** view, its counts and the details of the book in the library follow too, and the page stays where
+it is: your selection, the open popover and a note you are typing are left alone.
+
+- **A note you are editing** is never replaced behind your back. If the same note changed on the e-reader, a small message at the top
+    of the page says *This note changed on your e-reader* with **Use Theirs** and **Keep Mine**.
+- **Reading position.** When the e-reader reports that it is further along than you, a message offers *Your Kobo Libra is at 62%
+    (page 143)* with **Continue There** and **Dismiss**. The page never moves by itself. The message goes away after 15 seconds or when you
+    turn a page. Switch it off with **Preferences → Sync → Offer to jump when a device is ahead**. Your own reading progress is never
+    lowered.
+- The live part is on the Bookx side and takes about a second. **How soon the e-reader sends is up to the plugin**: it syncs about 30
+    seconds after you make a highlight (see [below](#auto-sync)), so “real time” starts when the plugin sends, not when you lift your finger.
+
 ## Limits
 
 - Bookx knows a book of the device by KOReader’s book fingerprint (the same one the progress sync uses). If the copy on the
@@ -97,6 +157,31 @@ Stock Kobo and Kindle firmware has no wireless sync with Bookx; those readers sy
 Annotations received from devices are kept in Bookx’s data folder (`koreader-annotations.json`) for the account that sent
 them; the library receives them as normal highlights. Switching the option off stops the server routes; nothing already in your
 library is removed.
+
+## If it does not work { #troubleshooting }
+
+The plugin always says what went wrong in one line, and keeps the details:
+
+| Message on the e-reader | What to do |
+|---|---|
+| *cannot reach 192.168.1.5:8080 (connection refused)* | Bookx is not running, the sync server is off, or the port is wrong. Check the address in **Server and account** against the one Bookx shows. |
+| *cannot reach … (timed out)* / *(unknown host)* | The e-reader is not on the same network as the computer, or a firewall blocks the port. |
+| *wrong user name or password* | Type the password again in **Server and account** and press **Save**. |
+| *the Bookx server has no KOReader sync here* (404) | The address must end in `/bookx`, and the sync switch must be on in Bookx. |
+| *This Bookx is too old for the plugin* / *Bookx needs a newer Bookx Sync plugin* | Update Bookx, or reinstall the plugin from Bookx (**Preferences → Sync → Copy to the device**). |
+| *Bookx has no matching book in your library* (after Sync now) | The book on the e-reader is not in your Bookx library, or it is a different file with a different title. Add the book to Bookx and sync again; the highlights are kept on the server meanwhile. |
+| *Waiting for Wi-Fi* in the Bookx Sync menu | Automatic sync does not turn Wi-Fi on. Turn it on and open a book, or choose **Sync now**. |
+| *Bookx sync: unexpected error: …* | A fault in the plugin. Open **Bookx Sync → About / Diagnostics**. |
+
+**About / Diagnostics** (top menu → More tools → Bookx Sync) shows the plugin version, the server, the last test, the last sync
+and the last error with its details. **Copy diagnostics** saves the same text as `bookx_diagnostics.txt` in KOReader's `settings`
+folder (on a Kobo: `.adds/koreader/settings`), without your password; send that file if you ask for help.
+
+KOReader's own log is the file `crash.log` in KOReader's folder (on a Kobo: `.adds/koreader/crash.log`). Lines from the plugin
+start with `Bookx Sync`, and an error is followed by the full trace. The log starts afresh every time KOReader starts, so look at
+it before you restart KOReader.
+
+After updating Bookx, install the plugin again and restart KOReader; **About / Diagnostics** shows which version is running.
 
 ## Using a reverse proxy
 
@@ -137,9 +222,29 @@ that KOReader trusts also solves the self-signed HTTPS limit above.
     to *Bookx sync is connected* once a device has synced.
 
 ??? question "How do I sync automatically?"
-    On the device: **Bookx Sync** → **Server and account** → switch on **Sync automatically**. It then syncs when you close
-    a book and when the device goes to sleep. Reading position itself is kept in step by KOReader's own Progress sync
-    when you point it at the same address.
+    On the device: **Bookx Sync** → tick **Sync automatically**. It then syncs about 30 seconds after a
+    highlight, when you close a book, when the device goes to sleep and when you open a book, as long as Wi-Fi is on (the plugin never
+    turns it on; a sync that finds Wi-Fi off waits, see [When does “Sync automatically” sync?](#auto-sync)). Reading position itself is kept in step by KOReader's own Progress
+    sync when you point it at the same address.
+
+??? question "Do highlights from my e-reader appear while I read?"
+    Yes. With the book open in Bookx, a highlight, note, bookmark or colour change that the e-reader sends is drawn on the page and
+    listed in the sidebar about a second after it arrives, and the Notes & Highlights view updates as well. The e-reader sends it about
+    30 seconds after you make it (or at once with **Sync now**), so that is the delay you see. A note you are typing in Bookx is not
+    replaced: you are asked. See [Live updates](#live).
+
+??? question "Why don't my highlights show up in Bookx?"
+    Check in this order. 1. **Is the plugin the current one?** On the e-reader, **Bookx Sync → About / Diagnostics** must show a
+    version of 0.3.1 or newer and a last sync; an error there is the answer (send the *Copy diagnostics* file). 2. **Did it sync?**
+    The Bookx **Sync** window lists every sync under **Recent activity**. If your device is not under **Connected devices**, it never
+    reached Bookx: check the address (ending in `/bookx`), the port in your firewall and that Wi-Fi was on. The plugin does not
+    switch Wi-Fi on by itself, so with *Sync automatically* a highlight made with Wi-Fi off waits (*Waiting for Wi-Fi*) until you
+    open a book with Wi-Fi on or choose **Sync now**. 3. **Does Bookx have the book?** Bookx finds the book by KOReader's fingerprint
+    of the file, then by title and author. A copy that was converted or re-saved has a different fingerprint, and a book that is not
+    in your library at all is listed under **Books not found in your library**; add it, then press **Sync now**. 4. **Could the quote be
+    found?** A highlight whose text is not in Bookx's copy of the book, or is shorter than 8 characters, shows in *Recent activity*
+    as “could not be placed” and in **Notes & Highlights** as “Could not be located in the book”. 5. **The log:** KOReader's
+    `crash.log` (on a Kobo `.adds/koreader/crash.log`), lines starting with `Bookx Sync`.
 
 ??? question "Do I need the plugin for reading progress?"
     No. KOReader's built-in **Tools → Progress sync → Custom sync server** works against the same `/bookx` address and

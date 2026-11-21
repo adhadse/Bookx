@@ -1,0 +1,85 @@
+# Builds Bookx.app and a .dmg on a macOS runner. MANUAL ONLY and publishes nothing: the .dmg is a workflow
+# artifact. Written without a Mac and never run (docs/macos-port.md): expect the first run to fail somewhere in
+# the build (the app has never been compiled on macOS) or in build-aux/macos-bundle.sh.
+#
+# Signing and notarization need secrets that do not exist yet (Apple Developer ID); without them the app is signed
+# ad hoc. See the "Owner" section of docs/macos-port.md.
+name: package-macos
+
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: "Runner architecture"
+        type: choice
+        options: [arm64, x86_64]
+        default: arm64
+      sign:
+        description: "Sign and notarize (needs the APPLE_* secrets)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  dmg:
+    name: Bookx.app and .dmg (${{ inputs.arch }})
+    # macos-14 is Apple silicon; macos-15-intel is the Intel image (macos-13 was retired)
+    runs-on: ${{ inputs.arch == 'arm64' && 'macos-14' || 'macos-15-intel' }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Homebrew dependencies
+        run: |
+          brew update
+          brew install pkgconf gtk4 libadwaita gtksourceview5 adwaita-icon-theme librsvg dylibbundler create-dmg espeak-ng
+          pkg-config --modversion gtk4 libadwaita-1 gtksourceview-5
+      - name: Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+      - name: Cache cargo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: macos-${{ inputs.arch }}-cargo-${{ hashFiles('Cargo.lock') }}
+      - name: Build
+        run: cargo build --release --locked -p bookx -p bookx-cli
+      - name: Import the signing certificate
+        if: ${{ inputs.sign }}
+        env:
+          APPLE_CERT_P12_BASE64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
+          APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/build.keychain"
+          security create-keychain -p "" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "" "$keychain"
+          echo "$APPLE_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" "$keychain"
+          security list-keychains -d user -s "$keychain" login.keychain
+          rm -f "$RUNNER_TEMP/cert.p12"
+          xcrun notarytool store-credentials bookx-notary --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD"
+          identity="$(security find-identity -v -p codesigning "$keychain" | sed -n 's/.*"\(Developer ID Application:.*\)".*/\1/p' | head -1)"
+          echo "CODESIGN_IDENTITY=$identity" >> "$GITHUB_ENV"
+          echo "NOTARY_PROFILE=bookx-notary" >> "$GITHUB_ENV"
+      - name: Bundle
+        run: build-aux/macos-bundle.sh
+      - name: "Smoke test the bundle (command line tool only, the runner has no display)"
+        run: |
+          dist/Bookx.app/Contents/MacOS/bookx-cli --help
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bookx-macos-${{ inputs.arch }}
+          path: |
+            dist/*.dmg
+            dist/*.dmg.sha256
+          retention-days: 7

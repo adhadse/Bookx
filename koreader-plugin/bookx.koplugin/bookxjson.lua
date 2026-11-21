@@ -13,6 +13,41 @@ local function escape_char(c)
     return escapes[c] or string.format("\\u%04x", c:byte())
 end
 
+--- `s` with every byte that is not part of well-formed UTF-8 replaced by U+FFFD, so the text is
+--- always valid JSON text (a server refuses a body that is not UTF-8).
+function M.clean_utf8(s)
+    if not s:find("[\128-\255]") then return s end
+    local out, i, n = {}, 1, #s
+    while i <= n do
+        local c = s:byte(i)
+        local len
+        if c < 0x80 then len = 1
+        elseif c >= 0xC2 and c <= 0xDF then len = 2
+        elseif c >= 0xE0 and c <= 0xEF then len = 3
+        elseif c >= 0xF0 and c <= 0xF4 then len = 4 end
+        local ok = len ~= nil and i + len - 1 <= n
+        if ok and len > 1 then
+            for k = i + 1, i + len - 1 do
+                local b = s:byte(k)
+                if b < 0x80 or b > 0xBF then ok = false break end
+            end
+            if ok then
+                local b2 = s:byte(i + 1)
+                if (c == 0xE0 and b2 < 0xA0) or (c == 0xED and b2 > 0x9F)
+                    or (c == 0xF0 and b2 < 0x90) or (c == 0xF4 and b2 > 0x8F) then ok = false end
+            end
+        end
+        if ok then
+            out[#out + 1] = s:sub(i, i + len - 1)
+            i = i + len
+        else
+            out[#out + 1] = "\239\191\189"
+            i = i + 1
+        end
+    end
+    return table.concat(out)
+end
+
 local function is_array(t)
     if getmetatable(t) == M.object_mt then return false end
     local n = 0
@@ -46,7 +81,7 @@ local function encode(v, out, depth)
             out[#out + 1] = string.format("%.14g", v)
         end
     elseif t == "string" then
-        out[#out + 1] = '"' .. v:gsub('[%c"\\]', escape_char) .. '"'
+        out[#out + 1] = '"' .. M.clean_utf8(v):gsub('[%c"\\]', escape_char) .. '"'
     elseif t == "table" then
         if is_array(v) then
             out[#out + 1] = "["
@@ -65,7 +100,7 @@ local function encode(v, out, depth)
             table.sort(keys)
             for i, k in ipairs(keys) do
                 if i > 1 then out[#out + 1] = "," end
-                out[#out + 1] = '"' .. k:gsub('[%c"\\]', escape_char) .. '":'
+                out[#out + 1] = '"' .. M.clean_utf8(k):gsub('[%c"\\]', escape_char) .. '":'
                 encode(v[k], out, depth + 1)
             end
             out[#out + 1] = "}"

@@ -95,6 +95,10 @@ pub enum OpKind {
     RepairHighlights {
         before: Vec<(u64, Vec<crate::library::Highlight>)>,
     },
+    /// Custom column values changed; the full value maps the books had before.
+    SetCustom {
+        before: Vec<(u64, std::collections::BTreeMap<String, String>)>,
+    },
     /// Files were moved to follow a layout change or a bulk rename.
     Move { moves: Vec<BookMove> },
 }

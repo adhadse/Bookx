@@ -342,6 +342,28 @@ mod tests {
         assert_eq!(to_kobo_color("orange"), 0);
     }
 
+    /// Read from the owner's Kobo (KOReader v2026.07.2, 2026-11-21): the sidecar of a book with 400 highlights
+    /// holds exactly these words, and KOReader's own menu (`readerhighlight.lua`) offers the nine colours and
+    /// four drawers listed in this module. Nothing the device wrote is outside the tables.
+    #[test]
+    fn every_look_word_seen_on_a_real_kobo_is_known() {
+        for c in [
+            "red", "orange", "yellow", "green", "olive", "cyan", "purple",
+        ] {
+            assert!(KOREADER_COLORS.contains(&c), "{c}");
+            assert_eq!(koreader_color(c).as_deref(), Some(c));
+            assert_eq!(to_koreader_color(&canonical_color(c).unwrap()), c);
+        }
+        for d in ["lighten", "underscore"] {
+            assert!(KOREADER_DRAWERS.iter().any(|(k, _)| *k == d), "{d}");
+            assert_eq!(to_koreader_drawer(style_from_any(d).unwrap()), d);
+        }
+        // KOReader's menu also has blue, gray, strikeout and invert; they must stay in the tables
+        for c in ["blue", "gray"] {
+            assert!(KOREADER_COLORS.contains(&c));
+        }
+    }
+
     #[test]
     fn koreader_colours_and_drawers_map_both_ways() {
         for c in ["yellow", "red", "green", "blue", "orange", "purple", "gray"] {

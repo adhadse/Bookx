@@ -361,16 +361,16 @@ fn registry_is_consistent() {
     assert_eq!(
         ids,
         vec![
-            "azw4", "cbc", "cbr", "cbt", "cbz", "chm", "docx", "fb2", "fbz", "html", "htmlz",
-            "lit", "lrf", "md", "mobi", "odt", "pdb", "pdf", "pml", "pmlz", "rb", "rtf", "snb",
-            "tcr", "txt", "txtz"
+            "azw4", "cbc", "cbr", "cbt", "cbz", "chm", "djvu", "docx", "fb2", "fbz", "html",
+            "htmlz", "lit", "lrf", "md", "mobi", "odt", "pdb", "pdf", "pml", "pmlz", "rb", "rtf",
+            "snb", "tcr", "txt", "txtz"
         ]
     );
     let all = supported_extensions();
     for e in [
         "fb2", "fbz", "htmlz", "txtz", "txt", "md", "html", "rtf", "docx", "odt", "cbz", "cbt",
         "cbr", "mobi", "azw", "azw3", "prc", "pdb", "pml", "pmlz", "rb", "snb", "tcr", "cbc",
-        "chm", "lit", "lrf", "pdf", "azw4",
+        "chm", "lit", "lrf", "pdf", "azw4", "djvu", "djv",
     ] {
         assert!(all.contains(&e), "{e}");
     }

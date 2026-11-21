@@ -1,0 +1,11 @@
+{
+  "name": "Bookx Library",
+  "short_name": "Bookx",
+  "description": "Browse and save books of your Bookx library for offline reading",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#3584e4",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

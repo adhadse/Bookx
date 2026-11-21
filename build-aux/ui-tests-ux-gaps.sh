@@ -88,7 +88,7 @@ scenario jobs_panel 'jobs:dump,jobs:start=convert|Convert Book|cancel,jobs:start
     sed -n 1p <<<"$J" | grep -q "running=0 1|Import|Done|1.00|Importing 2 files|cancellable=true|log=[0-9]"; check "the import at start-up is listed as a finished job with its log" $?
     has "^jobs: cancel 3 accepted=false"; check "a job that cannot be stopped refuses to be cancelled" $?
     has "^jobs: cancel 2 accepted=true"; check "a job that can be stopped accepts" $?
-    has "^jobs: running=2 .*2\|Conversion\|Cancelling…\|0.40\|Convert Book\|cancellable=true\|log=2"; check "a cancel request shows while the job winds down, with progress and its log" $?
+    has "^jobs: running=2 .*2\|Conversion\|Cancelling\|0.40\|Convert Book\|cancellable=true\|log=2"; check "a cancel request shows while the job winds down, with progress and its log" $?
     J2=$(grep "^jobs: running=" <<<"$OUT")
     has "^jobs: running=1 .*2\|Conversion\|Cancelled\|0.40"; check "a cancelled job ends as Cancelled" $?
     has "^jobs: running=1 .*3\|Send\|Failed: boom"; check "a failed job shows the reason" $?
@@ -277,20 +277,20 @@ scenario map_thumb_faithful "library:import=$ROOT/mapbook/lib,wait:3000,read:3,w
 mkdir -p "$ROOT/alicebook/lib"
 if [ -s "$HOME/.cache/bookx-testbooks/alice.epub" ]; then cp "$HOME/.cache/bookx-testbooks/alice.epub" "$ROOT/alicebook/lib/"; else cp "$ROOT/mapbook/lib/map.epub" "$ROOT/alicebook/lib/"; fi
 PF=1; [ "${PROFILE:-debug}" = release ] || PF=12
-scenario map_thumb_perf "library:import=$ROOT/alicebook/lib,wait:4000,read:3,wait:3500,reader:map,wait:50,reader:map-thumb=100,reader:map-thumb=100,reader:map-thumb=101,wait:$((2500 * PF)),reader:map-stats,reader:map-close,wait:500,reader:map,wait:$((1500 * PF)),reader:map-thumb=100,reader:map-stats,reader:map-close,quit" '
+scenario map_thumb_perf "library:import=$ROOT/alicebook/lib,wait:4000,read:3,wait:3500,reader:map,wait:50,reader:map-thumb=100,reader:map-thumb=100,reader:map-thumb=101,wait:$((2500 * PF)),reader:map-stats,reader:map-close,wait:500,reader:map,wait:$((1500 * PF)),reader:map-thumb=disk:100,reader:map-stats,reader:map-close,quit" '
     M=$(grep "^book_map:" <<<"$OUT")
     num() { sed -E "s/.* $2=([0-9]+).*/\1/" <<<"$1"; }
     A=$(sed -n 1p <<<"$M"); B=$(sed -n 2p <<<"$M"); C=$(sed -n 3p <<<"$M")
-    [ "$(num "$A" ms)" -le $((150 * '$PF')) ]; check "the first thumbnail of a chapter (layout included) takes $(num "$A" ms) ms (budget $((150 * '$PF')) ms)" $?
-    [ "$(num "$B" ms)" -le $((5 * '$PF')) ]; check "a thumbnail that is cached takes $(num "$B" ms) ms (budget $((5 * '$PF')) ms)" $?
-    [ "$(num "$C" ms)" -le $((40 * '$PF')) ]; check "another page of the same chapter takes $(num "$C" ms) ms (no new layout)" $?
+    [ "$(num "$A" ms)" -le $((150 * '$PF')) ]; rc=$?; check "the first thumbnail of a chapter (layout included) takes $(num "$A" ms) ms (budget $((150 * '$PF')) ms)" $rc
+    [ "$(num "$B" ms)" -le $((5 * '$PF')) ]; rc=$?; check "a thumbnail that is cached takes $(num "$B" ms) ms (budget $((5 * '$PF')) ms)" $rc
+    [ "$(num "$C" ms)" -le $((40 * '$PF')) ]; rc=$?; check "another page of the same chapter takes $(num "$C" ms) ms (no new layout)" $rc
     S=$(sed -n 4p <<<"$M")
-    grep -qE "queued=0" <<<"$S"; check "the 40 pages nearest the pointer were made ahead within $((2500 * '$PF')) ms of opening the map" $?
-    [ "$(num "$S" max_paint_slice_ms)" -le $((16 * '$PF')) ]; check "a prefetch slice that only paints held the main loop at most $(num "$S" max_paint_slice_ms) ms (budget $((16 * '$PF')) ms)" $?
+    grep -qE "queued=0" <<<"$S"; rc=$?; check "the 40 pages nearest the pointer were made ahead within $((2500 * '$PF')) ms of opening the map" $rc
+    [ "$(num "$S" max_paint_slice_ms)" -le $((16 * '$PF')) ]; rc=$?; check "a prefetch slice that only paints held the main loop at most $(num "$S" max_paint_slice_ms) ms (budget $((16 * '$PF')) ms)" $rc
     S2=$(sed -n 7p <<<"$M")
-    [ "$(num "$S2" disk_hits)" -ge 1 ]; check "the second map of the book reads its pages from the disk cache ($(num "$S2" disk_hits) hits)" $?
+    [ "$(num "$S2" disk_hits)" -ge 1 ]; rc=$?; check "the second map of the book reads its pages from the disk cache ($(num "$S2" disk_hits) hits)" $rc
     [ "$(num "$S2" layouts)" -le 3 ]; check "and lays out at most three chapters again (pages that were not made the first time)" $?
-    [ "$(num "$(sed -n 6p <<<"$M")" ms)" -le $((15 * '$PF')) ]; check "a page from the disk cache is there in $(num "$(sed -n 6p <<<"$M")" ms) ms (budget $((15 * '$PF')) ms)" $?
+    [ "$(num "$(sed -n 6p <<<"$M")" ms)" -le $((15 * '$PF')) ]; rc=$?; check "a page from the disk cache is there in $(num "$(sed -n 6p <<<"$M")" ms) ms (budget $((15 * '$PF')) ms)" $rc
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
 # the Background Jobs panel: rows that fit the popover at any text length, rings, clear status lines
@@ -309,7 +309,7 @@ scenario jobs_layout "jobs:start=voice|$LONG|cancel,jobs:progress=2|0.98|130 MB 
     grep -q "Failed: .*…" <<<"$R" && ! grep -q "After [0-9]* ms" <<<"$R"; check "a failed job shows a cut reason and no \"After 0 ms\" (the elapsed time starts at one second)" $?
     grep -qE "Short / Done( ;|$)" <<<"$R" && ! grep -q "Took [0-9]* ms" <<<"$R"; check "a job done in under a second shows the result and no elapsed time" $?
     G=$(grep "^jobs: rings" <<<"$OUT")
-    grep -q "header=fraction" <<<"$G"; check "the header button shows a ring with the overall progress ($(sed "s/.*header=\([a-z0-9% ]*\) rows.*/\1/" <<<"$G"))" $?
+    grep -q "header=fraction" <<<"$G"; rc=$?; check "the header button shows a ring with the overall progress ($(sed "s/.*header=\([a-z0-9% ]*\) rows.*/\1/" <<<"$G"))" $rc
     grep -q "2=fraction 98%" <<<"$G"; check "a row ring shows the percent of a job that knows it" $?
     grep -qE "3=busy (static|turning)" <<<"$G"; check "a job that does not know shows a turning (or, with reduced motion, static) arc" $?
     grep -q "5=idle" <<<"$G"; check "a finished job has no arc, a check icon instead" $?
@@ -323,7 +323,7 @@ for SZ in 900x600 800x600 700x500 360x294 1400x900; do
   scenario header_fits_$SZ$L 'library:sidebar,wait:800,library:header,library:selectall,wait:600,library:header,quit' '
     H=$(grep "^header:" <<<"$OUT"); N=$(grep "^layout:" <<<"$OUT")
     for i in 1 2; do
-        sed -n ${i}p <<<"$H" | grep -q "clipped=\[\]"; check "nothing sticks out of the header (report $i: $(sed -n ${i}p <<<"$H" | sed "s/header: //"))" $?
+        sed -n ${i}p <<<"$H" | grep -q "clipped=\[\]"; rc=$?; check "nothing sticks out of the header (report $i: $(sed -n ${i}p <<<"$H" | sed "s/header: //"))" $rc
         [ "$(sed -n ${i}p <<<"$H" | sed "s/.*children=\([0-9]*\) .*/\1/")" -ge 4 ]; check "the view options, the title and the window buttons are all there" $?
     done
     W=$(sed -n 1p <<<"$N" | sed "s/layout: window=\([0-9]*\) .*/\1/")
@@ -341,11 +341,11 @@ done
 scenario sidebar_filter_search 'library:searchstate,library:go=author:=Nobody Here,wait:700,library:searchstate,library:nav=recent,wait:700,library:searchstate,library:go=author:=Nobody Here,wait:500,library:nav=home,wait:700,library:searchstate,library:search=zzz,wait:600,library:searchstate,library:nav=home,wait:700,library:searchstate,library:search=zzz,wait:600,library:go=tag:=none,wait:600,library:searchstate,quit' '
     S=$(grep "^searchstate:" <<<"$OUT")
     s() { sed -n "$1p" <<<"$S"; }
-    s 1 | grep -q "bar=false text=\"\" books=2"; check "at the start the search bar is closed and all books show ($(s 1))" $?
-    s 2 | grep -q "bar=true text=\"author:=Nobody Here\" books=0 view=home"; check "a filter row opens the bar with its query and filters the books ($(s 2))" $?
-    s 3 | grep -q "bar=false text=\"\" books=2 view=recent"; check "Recent closes the bar, clears the query and shows all books of the view ($(s 3))" $?
-    s 4 | grep -q "bar=false text=\"\" books=2 view=home"; check "Home clears the filter (bar closed, empty entry, all books) ($(s 4))" $?
-    s 5 | grep -q "bar=true text=\"zzz\" books=0"; check "a typed search shows the bar ($(s 5))" $?
-    s 6 | grep -q "bar=false text=\"\" books=2 view=home"; check "Home clears a typed search too ($(s 6))" $?
-    s 7 | grep -q "bar=true text=\"tag:=none\" books=0"; check "a second filter replaces the first and the bar stays open ($(s 7))" $?
+    s 1 | grep -q "bar=false text=\"\" books=2"; rc=$?; check "at the start the search bar is closed and all books show ($(s 1))" $rc
+    s 2 | grep -q "bar=true text=\"author:=Nobody Here\" books=0 view=home"; rc=$?; check "a filter row opens the bar with its query and filters the books ($(s 2))" $rc
+    s 3 | grep -q "bar=false text=\"\" books=2 view=recent"; rc=$?; check "Recent closes the bar, clears the query and shows all books of the view ($(s 3))" $rc
+    s 4 | grep -q "bar=false text=\"\" books=2 view=home"; rc=$?; check "Home clears the filter (bar closed, empty entry, all books) ($(s 4))" $rc
+    s 5 | grep -q "bar=true text=\"zzz\" books=0"; rc=$?; check "a typed search shows the bar ($(s 5))" $rc
+    s 6 | grep -q "bar=false text=\"\" books=2 view=home"; rc=$?; check "Home clears a typed search too ($(s 6))" $rc
+    s 7 | grep -q "bar=true text=\"tag:=none\" books=0"; rc=$?; check "a second filter replaces the first and the bar stays open ($(s 7))" $rc
     ! has "panicked|CRITICAL"; check "no errors" $?'

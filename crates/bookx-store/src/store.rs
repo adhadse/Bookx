@@ -13,7 +13,7 @@ use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
 use serde::Deserialize;
 
 /// Schema version written to `PRAGMA user_version` by the newest migration.
-pub const SCHEMA_VERSION: i32 = 7;
+pub const SCHEMA_VERSION: i32 = 9;
 
 /// Catalogue persisted in SQLite. Cheap to share between threads (`Send + Sync`).
 pub struct SqliteStore {
@@ -85,6 +85,8 @@ struct JsonCatalog {
     next_id: u64,
     #[serde(default)]
     books: Vec<Book>,
+    #[serde(default)]
+    custom_columns: Vec<bookx_core::custom::ColumnDef>,
 }
 
 // -- migrations -----------------------------------------------------------
@@ -104,6 +106,8 @@ fn migrate(conn: &mut Connection) -> Result<()> {
             5 => migrate_v5(&tx)?,
             6 => migrate_v6(&tx)?,
             7 => crate::works::migrate_v7(&tx)?,
+            8 => crate::custom::migrate_v8(&tx)?,
+            9 => crate::notes::migrate_v9(&tx)?,
             _ => bail!("no migration to schema version {v}"),
         }
         tx.execute_batch(&format!("PRAGMA user_version = {v}"))?;
@@ -613,10 +617,13 @@ impl SqliteStore {
         #[derive(serde::Serialize)]
         struct Out {
             next_id: u64,
+            #[serde(skip_serializing_if = "Vec::is_empty")]
+            custom_columns: Vec<bookx_core::custom::ColumnDef>,
             books: Vec<Book>,
         }
         let out = Out {
             next_id: self.next_id(),
+            custom_columns: self.custom_columns(),
             books: self.all_books()?,
         };
         Ok(serde_json::to_string_pretty(&out)?)
@@ -747,6 +754,18 @@ impl SqliteStore {
     }
 
     /// Number of books that have content text indexed.
+    /// Forgets the indexed text of every book (the next indexing run reads them all again).
+    /// Returns how many books had indexed text.
+    pub fn clear_text_index(&self) -> Result<usize> {
+        let mut conn = self.lock();
+        let tx = conn.transaction()?;
+        let n: i64 = tx.query_row("SELECT count(*) FROM text_stamps", [], |r| r.get(0))?;
+        tx.execute("DELETE FROM fts_text", [])?;
+        tx.execute("DELETE FROM text_stamps", [])?;
+        tx.commit()?;
+        Ok(n as usize)
+    }
+
     pub fn indexed_text_count(&self) -> usize {
         self.lock()
             .query_row("SELECT count(*) FROM fts_text", [], |r| r.get::<_, i64>(0))
@@ -776,6 +795,10 @@ impl SqliteStore {
             "UPDATE meta SET value = max(value, ?1) WHERE key = 'next_id'",
             [to_i64(cat.next_id)?],
         )?;
+        // the definitions of a catalogue file are used only when this store has none yet
+        if !cat.custom_columns.is_empty() && crate::custom::load_columns(&tx).is_empty() {
+            crate::custom::store_columns(&tx, &cat.custom_columns)?;
+        }
         tx.commit()?;
         Ok(report)
     }

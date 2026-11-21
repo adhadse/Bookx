@@ -3,6 +3,10 @@ name: Release
 # Push a tag like v0.2.0: checks that the tag, Cargo.toml, the metainfo and CHANGELOG.md agree, builds the release
 # binaries, a tarball, a .deb, an .rpm and a Flatpak bundle, and attaches them with SHA256SUMS to a GitHub release.
 # Nothing here creates or pushes a tag. This workflow has never run on GitHub: it was only parsed locally.
+# Signing (docs/security.md, "Release signing"): there is no signing key to keep. The publish job signs every file with
+# Sigstore cosign "keyless" (the GitHub Actions OIDC identity of this workflow, recorded in the public Rekor log) and
+# attaches a GitHub build-provenance attestation (SLSA style). Users verify with `cosign verify-blob` or
+# `gh attestation verify` (wiki/docs/install.md, "Verify your download").
 
 on:
   push:
@@ -82,10 +86,14 @@ jobs:
             bookx.flatpak.sha256
 
   publish:
-    name: Attach to the release
+    name: Sign and attach to the release
     needs: [tarball, flatpak]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write       # keyless signing: the workflow's OIDC token
+      attestations: write   # build provenance
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -96,6 +104,29 @@ jobs:
           cd dist
           sha256sum $(ls | grep -v -e '\.sha256$' -e '^SHA256SUMS$') > SHA256SUMS
           cat SHA256SUMS
+      - name: Build provenance attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/*
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+      - name: Sign every file with cosign (keyless, bundle next to the file)
+        run: |
+          cd dist
+          for f in $(ls | grep -v '\.sigstore\.json$'); do
+            cosign sign-blob --yes --bundle "$f.sigstore.json" "$f"
+          done
+          ls -l
+      - name: Verify what was just signed (same check users run)
+        run: |
+          cd dist
+          for f in $(ls | grep -v '\.sigstore\.json$'); do
+            cosign verify-blob \
+              --bundle "$f.sigstore.json" \
+              --certificate-identity-regexp '^https://github\.com/adhadse/Bookx/\.github/workflows/release\.yml@refs/tags/v' \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              "$f"
+          done
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*

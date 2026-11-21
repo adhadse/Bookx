@@ -26,6 +26,8 @@ fn book(id: u64, meta: Metadata) -> Book {
         formats: vec![],
         resources: vec![],
         drm: String::new(),
+        custom: Default::default(),
+        marked: false,
     }
 }
 

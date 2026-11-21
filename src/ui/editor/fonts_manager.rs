@@ -39,7 +39,7 @@ fn subtitle(f: &ManagedFont) -> String {
 impl Editor {
     pub(super) fn tool_fonts(&self) {
         let fonts = fonts_manage::list_fonts(&self.book.borrow());
-        let dialog = adw::Dialog::new();
+        let dialog = crate::ui::dialog_toast::new_dialog();
         dialog.set_title(&tr("Manage Fonts"));
         let (w, h) = fit_dialog(&self.w.win, 600, 720);
         dialog.set_content_width(w);

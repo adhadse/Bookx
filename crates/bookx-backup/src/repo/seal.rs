@@ -35,6 +35,15 @@ pub const OBJ_HEADER: usize = 8 + 1 + 16 + 7;
 pub const CHUNK: usize = 64 * 1024;
 const TAG: usize = 16;
 
+/// The content size of an encrypted object of `stored` bytes, `None` when no content size gives
+/// that length.
+pub fn plain_len(stored: u64) -> Option<u64> {
+    let body = stored.checked_sub(OBJ_HEADER as u64)?;
+    let chunks = body.div_ceil((CHUNK + TAG) as u64).max(1);
+    let plain = body.checked_sub(chunks * TAG as u64)?;
+    (sealed_len(plain) == stored).then_some(plain)
+}
+
 /// The size of the stored object for `plain` bytes of content in an encrypted place.
 pub fn sealed_len(plain: u64) -> u64 {
     let chunks = plain.div_ceil(CHUNK as u64).max(1);
@@ -74,6 +83,24 @@ impl Keys {
             enc: hmac(master, &[b"bookx-backup/v1/enc"]),
             idk: hmac(master, &[b"bookx-backup/v1/id"]),
         }
+    }
+
+    /// Keys for a new passphrase that keep the id key of `old`: object names stay valid, so a
+    /// repository can be re-encrypted in place.
+    pub fn from_master_keeping_ids(master: &[u8; 32], old: &Keys) -> Keys {
+        Keys {
+            enc: hmac(master, &[b"bookx-backup/v1/enc"]),
+            idk: old.idk,
+        }
+    }
+
+    /// The id key, to be stored sealed under the new keys after a passphrase change.
+    pub(crate) fn id_key(&self) -> [u8; 32] {
+        self.idk
+    }
+
+    pub(crate) fn set_id_key(&mut self, idk: [u8; 32]) {
+        self.idk = idk;
     }
 
     fn object_key(&self, salt: &[u8]) -> [u8; 32] {
@@ -145,6 +172,13 @@ pub enum Crypto {
 impl Crypto {
     pub fn is_encrypted(&self) -> bool {
         matches!(self, Crypto::Keyed(_))
+    }
+
+    pub(crate) fn keys(&self) -> Option<&Keys> {
+        match self {
+            Crypto::Keyed(k) => Some(k),
+            Crypto::Plain => None,
+        }
     }
 
     pub fn id_hasher(&self) -> IdHasher {

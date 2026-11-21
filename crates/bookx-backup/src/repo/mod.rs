@@ -20,8 +20,10 @@
 //!
 //! See [`Repository`] for the API and [`seal`] for the encryption.
 
+pub mod lock;
 pub mod maint;
 pub mod manifest;
+pub mod rekey;
 pub mod restore;
 pub mod run;
 pub mod seal;
@@ -43,7 +45,9 @@ use manifest::{
 use seal::{ids_equal, Crypto, IdHasher, Keys};
 use store::RepoStore;
 
+pub use lock::{LockInfo, LockLost, RepoLocked};
 pub use maint::{GcReport, VerifyReport};
+pub use rekey::{RekeyOptions, RekeyPending, RekeyProgress, RekeyReport};
 pub use restore::{CatalogueAction, ReplayReport, RestoreMode, RestoreOptions, RestoreReport};
 pub use run::{estimate_new, JournalAppend, Phase, Plan, Report, RunOptions, RunProgress};
 pub use source::{LibrarySource, Scope};
@@ -136,6 +140,13 @@ struct RepoConfig {
     /// A sealed known text: opening it proves the passphrase.
     #[serde(default)]
     check: Option<String>,
+    /// After a passphrase change: the id key of the first passphrase, sealed under the current
+    /// keys (object names were made with it and stay as they are).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    id_key: Option<String>,
+    /// After a passphrase change: the id of the change that produced this file.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    rekeyed: Option<String>,
 }
 
 const CHECK_TEXT: &[u8] = b"bookx-repository";
@@ -145,6 +156,7 @@ pub struct Repository {
     pub(crate) store: Box<dyn RepoStore>,
     pub(crate) id: String,
     pub(crate) crypto: Crypto,
+    pub(crate) lock_state: std::sync::Mutex<lock::LockState>,
 }
 
 /// One snapshot in the place, from its file name alone (nothing is decrypted to list them).
@@ -192,11 +204,80 @@ fn readme(encrypted: bool) -> String {
     t
 }
 
+/// The keys of an encrypted repository for a passphrase; `None` when the passphrase is wrong.
+fn crypto_for(cfg: &RepoConfig, secrets: &Secrets) -> Result<Option<Crypto>> {
+    let k = cfg
+        .kdf
+        .as_ref()
+        .filter(|k| k.algorithm == "argon2id")
+        .ok_or_else(|| anyhow!("the repository uses an unknown key method"))?;
+    let pass = secrets
+        .passphrase
+        .as_deref()
+        .filter(|p| !p.is_empty())
+        .ok_or_else(|| {
+            anyhow!("this backup is encrypted: enter the backup passphrase to open it")
+        })?;
+    if !crate::crypto::kdf_is_reasonable(k.memory_kib, k.passes, k.lanes) {
+        bail!("the backup asks for unreasonable key settings; refusing to open it");
+    }
+    let salt = seal::unhex(&k.salt)?;
+    if salt.len() < 16 || salt.len() > 64 {
+        bail!("the repository settings (bookx-repo.json) are damaged");
+    }
+    let mut master = crypto::derive(
+        pass,
+        &salt,
+        Kdf {
+            memory_kib: k.memory_kib,
+            passes: k.passes,
+            lanes: k.lanes,
+        },
+    )?;
+    let keys = Keys::from_master(&master);
+    zeroize::Zeroize::zeroize(&mut master);
+    let check = cfg
+        .check
+        .as_deref()
+        .ok_or_else(|| anyhow!("the repository settings (bookx-repo.json) are damaged"))?;
+    let sealed = seal::unhex(check)?;
+    let c = Crypto::Keyed(keys);
+    match c.open_bytes("bookx-repo.json#check", &sealed, 1024) {
+        Ok(t) if ids_equal(&seal::hex(&t), &seal::hex(CHECK_TEXT)) => {}
+        _ => return Ok(None),
+    }
+    Ok(Some(match &cfg.id_key {
+        None => c,
+        Some(sealed_id) => {
+            let raw = c
+                .open_bytes("bookx-repo.json#idkey", &seal::unhex(sealed_id)?, 64)
+                .context("the repository settings (bookx-repo.json) are damaged")?;
+            let idk: [u8; 32] = raw
+                .as_slice()
+                .try_into()
+                .map_err(|_| anyhow!("the repository settings (bookx-repo.json) are damaged"))?;
+            let Crypto::Keyed(mut k) = c else {
+                unreachable!("keys were just made")
+            };
+            k.set_id_key(idk);
+            Crypto::Keyed(k)
+        }
+    }))
+}
+
 impl Repository {
     /// Opens the repository in `store`. Fails with [`NoRepository`] (downcast the error) when the
     /// place has none, and with a clear message when it is encrypted and the passphrase is
     /// missing or wrong.
     pub fn open(store: Box<dyn RepoStore>, secrets: &Secrets) -> Result<Repository> {
+        Repository::open_with(store, secrets, false)
+    }
+
+    pub(crate) fn open_with(
+        store: Box<dyn RepoStore>,
+        secrets: &Secrets,
+        allow_unfinished_change: bool,
+    ) -> Result<Repository> {
         let bytes = match store.stat(CONFIG)? {
             Some(_) => store
                 .get_bytes(CONFIG, MAX_CONFIG_BYTES)
@@ -215,53 +296,27 @@ impl Repository {
             bail!("the repository settings (bookx-repo.json) are damaged");
         }
         let crypto = if cfg.encrypted {
-            let k = cfg
-                .kdf
-                .as_ref()
-                .filter(|k| k.algorithm == "argon2id")
-                .ok_or_else(|| anyhow!("the repository uses an unknown key method"))?;
-            let pass = secrets
-                .passphrase
-                .as_deref()
-                .filter(|p| !p.is_empty())
-                .ok_or_else(|| {
-                    anyhow!("this backup is encrypted: enter the backup passphrase to open it")
-                })?;
-            if !crate::crypto::kdf_is_reasonable(k.memory_kib, k.passes, k.lanes) {
-                bail!("the backup asks for unreasonable key settings; refusing to open it");
+            match crypto_for(&cfg, secrets)? {
+                Some(c) => c,
+                None => {
+                    // half way through a passphrase change the settings still describe the old one
+                    if !allow_unfinished_change {
+                        rekey::refuse_unfinished(store.as_ref(), &cfg)?;
+                    }
+                    bail!("wrong passphrase for this backup")
+                }
             }
-            let salt = seal::unhex(&k.salt)?;
-            if salt.len() < 16 || salt.len() > 64 {
-                bail!("the repository settings (bookx-repo.json) are damaged");
-            }
-            let mut master = crypto::derive(
-                pass,
-                &salt,
-                Kdf {
-                    memory_kib: k.memory_kib,
-                    passes: k.passes,
-                    lanes: k.lanes,
-                },
-            )?;
-            let c = Crypto::Keyed(Keys::from_master(&master));
-            zeroize::Zeroize::zeroize(&mut master);
-            let check = cfg
-                .check
-                .as_deref()
-                .ok_or_else(|| anyhow!("the repository settings (bookx-repo.json) are damaged"))?;
-            let sealed = seal::unhex(check)?;
-            match c.open_bytes("bookx-repo.json#check", &sealed, 1024) {
-                Ok(t) if ids_equal(&seal::hex(&t), &seal::hex(CHECK_TEXT)) => {}
-                _ => bail!("wrong passphrase for this backup"),
-            }
-            c
         } else {
             Crypto::Plain
         };
+        if !allow_unfinished_change {
+            rekey::refuse_unfinished(store.as_ref(), &cfg)?;
+        }
         Ok(Repository {
             store,
             id: cfg.repo,
             crypto,
+            lock_state: Default::default(),
         })
     }
 
@@ -310,12 +365,19 @@ impl Repository {
             encrypted: encrypt,
             kdf: kdf_cfg,
             check,
+            id_key: None,
+            rekeyed: None,
         };
         let no = AtomicBool::new(false);
         // the README first (harmless alone), the config last: a repository exists once it has one
         store.put_bytes(README, readme(encrypt).as_bytes(), &no)?;
         store.put_bytes(CONFIG, &serde_json::to_vec_pretty(&cfg)?, &no)?;
-        Ok(Repository { store, id, crypto })
+        Ok(Repository {
+            store,
+            id,
+            crypto,
+            lock_state: Default::default(),
+        })
     }
 
     /// Opens the repository, or creates it when the place has none. An existing repository whose

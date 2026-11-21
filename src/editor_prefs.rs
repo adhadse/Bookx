@@ -71,6 +71,10 @@ pub struct EditorLook {
     pub preview_min_size: u32,
     /// The preview follows the cursor when the editor starts.
     pub preview_follow: bool,
+    /// Colour overrides of the preview as `#rrggbb`; empty = the theme's colour (CE-402).
+    pub preview_fg: String,
+    pub preview_bg: String,
+    pub preview_link: String,
 }
 
 impl Default for EditorLook {
@@ -91,6 +95,9 @@ impl Default for EditorLook {
             preview_font: String::new(),
             preview_min_size: 0,
             preview_follow: true,
+            preview_fg: String::new(),
+            preview_bg: String::new(),
+            preview_link: String::new(),
         }
     }
 }
@@ -100,12 +107,42 @@ pub fn look_path() -> Option<PathBuf> {
         .map(|d| d.config_dir().join("editor-look.json"))
 }
 
+/// `#rrggbb` (or `rrggbb`) as 0..1 channels.
+pub fn parse_hex_color(s: &str) -> Option<(f64, f64, f64)> {
+    let h = s.trim().strip_prefix('#').unwrap_or(s.trim());
+    if h.len() != 6 || !h.is_ascii() {
+        return None;
+    }
+    let c = |i: usize| {
+        u8::from_str_radix(&h[i..i + 2], 16)
+            .ok()
+            .map(|v| v as f64 / 255.0)
+    };
+    Some((c(0)?, c(2)?, c(4)?))
+}
+
+/// 0..1 channels as `#rrggbb`.
+pub fn hex_color(c: (f64, f64, f64)) -> String {
+    let b = |v: f64| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+    format!("#{:02x}{:02x}{:02x}", b(c.0), b(c.1), b(c.2))
+}
+
 impl EditorLook {
     /// Values brought into a usable range.
     pub fn sanitized(mut self) -> EditorLook {
         self.tab_width = self.tab_width.clamp(1, 16);
         self.right_margin_column = self.right_margin_column.clamp(20, 200);
         self.preview_min_size = self.preview_min_size.min(48);
+        // only well-formed colours survive a hand-edited file
+        for c in [
+            &mut self.preview_fg,
+            &mut self.preview_bg,
+            &mut self.preview_link,
+        ] {
+            if !c.is_empty() && parse_hex_color(c).is_none() {
+                c.clear();
+            }
+        }
         self
     }
 

@@ -34,7 +34,7 @@ computer, unless you point Bookx at a server somewhere else.
    which needs no download.
 
 Kokoro and Piper turn text into sounds with `espeak-ng`. If it is missing, the card shows the install command for your
-system (for example `sudo dnf install espeak-ng`) with a **Copy install command** button; in the Flatpak it is included.
+system (for example `sudo dnf install espeak-ng`) with a **Copy Install Command** button; in the Flatpak it is included.
 The engine row in the settings shows what reads and, if it is not the one you chose, why. Kokoro is the default; a
 downloaded Piper voice reads the languages Kokoro does not.
 
@@ -230,7 +230,8 @@ Memory: about 400 MB with Kokoro loaded.
 
 ## Limits
 
-* Speed above 2× is capped at 2× by Kokoro and Piper.
+* Speed above 2× (the settings go up to 2.5×) is made by speeding up the finished audio without raising the voice; very fast
+  speech sounds a little less smooth than the voice's own speed.
 * Kokoro's Japanese and Chinese voices are not available (they need a different text-to-sound tool). Use a voice server
   for those languages.
 * Numbers, dates and abbreviations are read the way `espeak-ng` expands them; unusual ones can be wrong.

@@ -156,7 +156,7 @@ fn server_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
         .subtitle(tr("Switch on “Let AI assistants connect” to start it. Assistants can still use the command-line tool below."))
         .subtitle_selectable(true)
         .build();
-    let copy = icon_button("edit-copy-symbolic", &tr("Copy the server address"));
+    let copy = icon_button("edit-copy-symbolic", &tr("Copy the Server Address"));
     status.add_suffix(&copy);
     let write = adw::SwitchRow::builder()
         .title(tr("Allow changes to the library"))
@@ -270,8 +270,8 @@ fn token_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     let row = adw::ActionRow::builder().title(tr("Token")).build();
     let token = host::token(&mut st.borrow_mut());
     row.set_subtitle(&host::masked(&token));
-    let copy = icon_button("edit-copy-symbolic", &tr("Copy the token"));
-    let renew = icon_button("view-refresh-symbolic", &tr("Make a new token"));
+    let copy = icon_button("edit-copy-symbolic", &tr("Copy the Token"));
+    let renew = icon_button("view-refresh-symbolic", &tr("Make a New Token"));
     row.add_suffix(&copy);
     row.add_suffix(&renew);
     g.add(&row);

@@ -25,10 +25,10 @@ scenario big_book_editor 'wait:500,edit:1,wait:12000,editor:toc-rows,editor:synt
     grep "^editor_toc_rows:" <<<"$OUT" | sed -n 2p | grep -q "selected=7 "; check "selecting an entry selects its row in the virtual list" $?
     has "^editor_toc: entries=20[0-9]+ dirty=false selected=Some\(7\)"; check "selecting an entry changes nothing in the book" $?
     S=$(grep "^editor_syntax:" <<<"$OUT")
-    sed -n 1p <<<"$S" | grep -q "page=longline .*plain=true"; check "a chapter that is one 450 KB line is not put into the text view, the page that offers line breaks is shown: $(sed -n 1p <<<"$S")" $?
+    sed -n 1p <<<"$S" | grep -q "page=longline .*plain=true"; rc=$?; check "a chapter that is one 450 KB line is not put into the text view, the page that offers line breaks is shown: $(sed -n 1p <<<"$S")" $rc
     sed -n 2p <<<"$S" | grep -q "file=OEBPS/nav.xhtml page=longline .*plain=true"; check "neither is the 1.2 MB navigation document" $?
     sed -n 3p <<<"$S" | grep -q "file=OEBPS/part2.xhtml page=longline"; check "nor the third chapter" $?
-    sed -n 4p <<<"$S" | grep -q "file=OEBPS/part2.xhtml page=code .*language=true highlight=true plain=false"; check "after Add Line Breaks the file opens in the text view, coloured again: $(sed -n 4p <<<"$S")" $?
+    sed -n 4p <<<"$S" | grep -q "file=OEBPS/part2.xhtml page=code .*language=true highlight=true plain=false"; rc=$?; check "after Add Line Breaks the file opens in the text view, coloured again: $(sed -n 4p <<<"$S")" $rc
     sed -n 4p <<<"$S" | grep -qE "chars=[0-9]{6}"; check "the text kept its content (only white space between tags was added)" $?
     L=$(longest_stall "edit:1")
     [ "$L" -le "${STALL_BUDGET_MS:-3000}" ]; check "opening the book in the editor blocks the main loop for at most ${STALL_BUDGET_MS:-3000} ms in a debug build (${L} ms; it was 2590 ms in release and 7.5 s in all at first)" $?

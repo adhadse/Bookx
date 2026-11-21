@@ -103,6 +103,7 @@ fn editor_input(id: &str) -> Option<Input> {
         "go-to-line" => Input::PromptLine,
         "quick-open" => Input::QuickOpen,
         "preview" => Input::TogglePreview,
+        "sidebar" => Input::ToggleSidebar,
         "beautify" => Input::Reformat,
         "mark" => Input::MarkSelection,
         "metadata" => Input::EditMetadata,

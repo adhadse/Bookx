@@ -30,6 +30,9 @@ pub struct HttpConfig {
     pub tls: Option<Arc<TlsConfig>>,
     /// Origins besides loopback ones that may call (browser based clients).
     pub allowed_origins: Vec<String>,
+    /// Host names besides IP addresses, single-label and `.local` names accepted in the `Host`
+    /// header (DNS-rebinding defence, see `bookx_serve::hostguard`).
+    pub allowed_hosts: Vec<String>,
 }
 
 impl HttpConfig {
@@ -40,6 +43,7 @@ impl HttpConfig {
             token: token.into(),
             tls: None,
             allowed_origins: Vec::new(),
+            allowed_hosts: bookx_serve::hostguard::default_allowed_hosts(),
         }
     }
 }
@@ -150,6 +154,11 @@ impl Endpoint {
     }
 
     pub fn handle(&self, req: &Request) -> Response {
+        if let Some(host) = req.header("host") {
+            if !bookx_serve::hostguard::host_allowed(host, &self.cfg.allowed_hosts) {
+                return http_error(403, INVALID_REQUEST, "host not allowed");
+            }
+        }
         if let Some(origin) = req.header("origin") {
             if !origin_allowed(origin, &self.cfg.allowed_origins) {
                 return http_error(403, INVALID_REQUEST, "origin not allowed");

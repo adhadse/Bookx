@@ -6,7 +6,7 @@ use std::io::{Seek, SeekFrom, Write};
 
 use anyhow::{bail, Result};
 
-use crate::synth::{Cancel, Pcm, SynthRequest, Synthesizer};
+use crate::synth::{engine_max_speed, split_speed, Cancel, Pcm, SynthRequest, Synthesizer};
 use crate::text::Sentence;
 
 /// Synthesizes the sentences one after the other with `gap_ms` between them. `progress`
@@ -24,7 +24,7 @@ pub fn synthesize_all(
     progress: &mut dyn FnMut(usize, usize),
 ) -> Result<Pcm> {
     let mut out = Pcm::default();
-    let model_speed = (speed / pitch).clamp(0.25, 4.0);
+    let (model_speed, stretch) = split_speed(speed / pitch, engine_max_speed(&synth.id()));
     for (i, s) in sentences.iter().enumerate() {
         if cancel.is_cancelled() {
             bail!("cancelled");
@@ -37,6 +37,7 @@ pub fn synthesize_all(
                 speed: model_speed,
                 cancel,
             })?
+            .time_stretch(stretch)
             .with_pitch(pitch);
         out.append(&pcm, if i == 0 { 0 } else { gap_ms });
         progress(i + 1, sentences.len());
@@ -126,7 +127,7 @@ pub fn synthesize_to_wav<W: Write + Seek>(
     if sentences.is_empty() {
         bail!("there is no text to read");
     }
-    let model_speed = (speed / pitch).clamp(0.25, 4.0);
+    let (model_speed, stretch) = split_speed(speed / pitch, engine_max_speed(&synth.id()));
     let mut out = Some(out);
     let mut writer: Option<WavWriter<W>> = None;
     for (i, s) in sentences.iter().enumerate() {
@@ -141,6 +142,7 @@ pub fn synthesize_to_wav<W: Write + Seek>(
                 speed: model_speed,
                 cancel,
             })?
+            .time_stretch(stretch)
             .with_pitch(pitch);
         if writer.is_none() {
             writer = Some(WavWriter::new(out.take().expect("one output"), pcm.rate)?);

@@ -118,6 +118,16 @@ A complete example in Rust (no dependencies, about 150 lines) is `examples/plugi
 `cargo build --release --target wasm32-unknown-unknown` and copy the `.wasm` as `plugin.wasm` next to `plugin.toml`
 (a prebuilt `plugin.wasm` is included).
 
+### Trust, signatures and running on a whole library
+
+Before a user can switch a plugin on, Bookx shows a capability sheet built from `permissions`; their approval is pinned to the SHA-256 of
+`plugin.toml` and the `.wasm`, so **shipping a new build means the user is asked again**. An optional detached `plugin.sig` (format in
+`docs/editor-plugins-design.md`) is read; this build cannot verify ed25519 yet and shows such a plugin as "signed, not verified". Unsigned plugins
+are allowed with a warning.
+
+An editor action can be tried on many books: `bookx-cli plugin run <plugin folder> <action id> [search] [--apply]`. Without `--apply` it reports
+which books would change and writes nothing. In this mode there is no open file, no selection and no metadata write-back.
+
 ### Compatibility and the ABI stability policy
 
 Plugins are compiled once and then live for years, so the host treats the ABI like a public API:

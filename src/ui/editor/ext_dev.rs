@@ -449,9 +449,7 @@ impl Editor {
                 let mut row = self.w.files.first_child();
                 while let Some(r) = row {
                     if let Some(r) = r.downcast_ref::<gtk::ListBoxRow>() {
-                        if let Some(p) =
-                            unsafe { r.data::<String>("path").map(|p| p.as_ref().clone()) }
-                        {
+                        if let Some(p) = super::row_data::path(r) {
                             parts.push(format!("{}:{}", r.widget_name(), p));
                         }
                     }

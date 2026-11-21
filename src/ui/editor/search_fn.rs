@@ -51,7 +51,7 @@ impl Editor {
 
     pub(super) fn open_functions_dialog(&mut self) {
         let m = Rc::new(Manager {
-            dialog: adw::Dialog::new(),
+            dialog: crate::ui::dialog_toast::new_dialog(),
             list: gtk::ListBox::new(),
             user: RefCell::new(self.w.sx.state.borrow().user_fns.clone()),
             tx: self.sender.input_sender().clone(),
@@ -148,7 +148,7 @@ impl Editor {
     /// Opens the editor for the function called `name` (a new one when there is none).
     pub(super) fn edit_function_dialog(&mut self, name: &str) {
         let m = Rc::new(Manager {
-            dialog: adw::Dialog::new(),
+            dialog: crate::ui::dialog_toast::new_dialog(),
             list: gtk::ListBox::new(),
             user: RefCell::new(self.w.sx.state.borrow().user_fns.clone()),
             tx: self.sender.input_sender().clone(),
@@ -229,7 +229,7 @@ fn edit_fn(m: &Rc<Manager>, f: Option<Function>) {
     let builtin = f.as_ref().is_some_and(|f| f.builtin);
     let old_name = f.as_ref().map(|f| f.name.clone());
     let f = f.unwrap_or_else(|| Function::new("New function", "", NEW_SOURCE));
-    let dialog = adw::Dialog::new();
+    let dialog = crate::ui::dialog_toast::new_dialog();
     dialog.set_title(
         &(if builtin {
             tr("Built-in Function")
@@ -238,7 +238,7 @@ fn edit_fn(m: &Rc<Manager>, f: Option<Function>) {
         }),
     );
     dialog.set_content_width(720);
-    dialog.set_content_height(680);
+    dialog.set_content_height(560);
 
     let name = adw::EntryRow::new();
     name.set_title(&tr("Name"));

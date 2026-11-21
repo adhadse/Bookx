@@ -1,0 +1,35 @@
+# Settings of the Weblate component for Bookx (hosted.weblate.org, libre hosting).
+# Weblate has no importer for this file: it is the list the project admin enters in
+# Manage > Settings of the component (or sends to the API). See docs/translations-hosting.md.
+project:
+  name: Bookx
+  slug: bookx
+  web: https://bookx.adhadse.com
+component:
+  name: bookx
+  slug: bookx
+  source_language: en
+  vcs: github              # pull requests; "git" with a push branch works too
+  repo: https://github.com/adhadse/Bookx.git
+  branch: main
+  push_branch: weblate-translations
+  merge_style: rebase
+  commit_message: "i18n: update {{ language_name }} translation"
+  file_format: po          # gettext PO file (bilingual, the English text is the key)
+  filemask: po/*.po
+  new_base: po/bookx.pot
+  template: ""             # no monolingual base file
+  new_lang: add            # let translators start a language; it still needs LANGUAGES in src/i18n.rs
+  language_code_style: posix   # de, es, pt_BR
+  check_flags: rust-format
+  enable_review: true
+  edit_template: false
+  manage_units: false
+  push_on_commit: true
+  addons:
+    - weblate.gettext.msgmerge        # update PO files to match POT
+    - weblate.cleanup.generic         # cleanup translation files
+    - weblate.gettext.customize       # no wrapping (width -1), no locations
+    - weblate.git.squash              # squash commits per file
+  webhook: https://hosted.weblate.org/hooks/github/   # add to the GitHub repository (push events)
+  widget_badge: https://hosted.weblate.org/widget/bookx/bookx/svg-badge.svg

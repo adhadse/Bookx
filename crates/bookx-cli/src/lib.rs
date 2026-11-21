@@ -8,11 +8,14 @@
 
 mod backup;
 mod catalogue;
+mod columns;
 mod device_check;
 mod extras;
 mod highlights;
 mod libtools;
 mod mcp;
+mod more;
+mod replace;
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -148,6 +151,42 @@ enum Cmd {
     Highlights(highlights::HighlightsCmd),
     /// Run the Model Context Protocol server so AI assistants can use the library (stdio, or --http)
     Mcp(mcp::McpArgs),
+    /// Print the library (or the books a search finds) as CSV or JSON with the columns you choose
+    Catalog {
+        /// csv, json or epub (a catalogue book; needs --output; convert it with `bookx-cli convert` for other formats)
+        #[arg(long, default_value = "csv")]
+        format: String,
+        /// Comma separated: id,title,authors,series,index,tags,formats,publisher,language,published,size,
+        /// and #label for a custom column
+        #[arg(long)]
+        columns: Option<String>,
+        /// The file to write (needed for epub; csv and json go to the screen)
+        #[arg(long, short)]
+        output: Option<PathBuf>,
+        /// A library search (default: every book)
+        query: Vec<String>,
+    },
+    /// Build the EPUB of a news recipe (TOML or JSON) from its feeds
+    FetchNews { recipe: PathBuf, output: PathBuf },
+    /// Repair a book with the editor's automatic fixes and write the result (exit 1 if problems remain)
+    Polish {
+        file: PathBuf,
+        output: PathBuf,
+        #[arg(long)]
+        json: bool,
+    },
+    /// List the embedded fonts of a book, which are unused, and which families are not embedded
+    Fonts {
+        file: PathBuf,
+        #[arg(long)]
+        json: bool,
+    },
+    /// The searches saved in the app
+    #[command(subcommand)]
+    SavedSearch(more::SavedCmd),
+    /// Plugins: run an editor action over the library
+    #[command(subcommand)]
+    Plugin(more::PluginCmd),
     /// List the built-in conversion presets
     Presets {
         #[arg(long)]
@@ -290,6 +329,11 @@ enum LibCmd {
     Export { id: u64, dest: PathBuf },
     /// Print the whole catalogue (every field of every book) as JSON: a backup and an export
     Dump,
+    /// The custom columns: list, add, remove and set values
+    #[command(subcommand)]
+    Columns(columns::ColumnsCmd),
+    /// Search and replace in one field of many books (one undo step; --dry-run only shows)
+    Replace(replace::ReplaceArgs),
     #[command(flatten)]
     Tools(libtools::ToolsCmd),
     #[command(flatten)]
@@ -314,6 +358,25 @@ struct ServeArgs {
     kosync: Option<PathBuf>,
     #[arg(long, default_value = "Bookx Library")]
     title: String,
+    /// Another host name the server may be reached by, such as the public name behind a reverse
+    /// proxy (repeatable; also `BOOKX_ALLOWED_HOSTS`). IP addresses, `localhost` and `.local` names always work
+    #[arg(long = "allow-host")]
+    allow_host: Vec<String>,
+    /// An extra login `name:password[:collection,collection]`, repeatable. The account sees only the
+    /// books with one of the listed tags (all books when none are listed); the password is stored
+    /// only as a hash in memory
+    #[arg(long = "account")]
+    account: Vec<String>,
+    /// Collections (tags) that visitors without a login may read, repeatable; without it a login is always needed
+    #[arg(long = "guest-collection")]
+    guest_collection: Vec<String>,
+    /// Address or network (`10.0.0.0/8`) of a reverse proxy whose `X-Forwarded-For` is believed, so the
+    /// failed-login limit counts each real client (repeatable). Without it the header is never trusted
+    #[arg(long = "trusted-proxy")]
+    trusted_proxy: Vec<String>,
+    /// The sub-path a reverse proxy publishes the server under, such as `/books`; links start with it
+    #[arg(long = "public-prefix")]
+    public_prefix: Option<String>,
     /// Serve HTTPS: PEM certificate chain (needs --tls-key)
     #[arg(long, requires = "tls_key")]
     tls_cert: Option<PathBuf>,
@@ -446,6 +509,38 @@ fn dispatch(
         }
         Cmd::Backup(c) => backup::run(c, root, out, err),
         Cmd::Mcp(a) => mcp::run(a, root, env, out, err),
+        Cmd::Catalog {
+            format,
+            columns,
+            output,
+            query,
+        } => {
+            migrate_note(root, err)?;
+            more::catalog(
+                root,
+                &query.join(" "),
+                &format,
+                columns.as_deref(),
+                output.as_deref(),
+                out,
+            )
+        }
+        Cmd::FetchNews { recipe, output } => more::fetch_news(
+            &recipe,
+            &output,
+            &bookx_sources::fetch::UreqFetcher::new(),
+            out,
+        ),
+        Cmd::Polish { file, output, json } => more::polish(&file, &output, json, out),
+        Cmd::Fonts { file, json } => more::fonts(&file, json, out),
+        Cmd::SavedSearch(c) => {
+            migrate_note(root, err)?;
+            more::saved(c, root, out)
+        }
+        Cmd::Plugin(c) => {
+            migrate_note(root, err)?;
+            more::plugin(c, root, out)
+        }
     }
 }
 
@@ -965,6 +1060,7 @@ fn book_json(b: &bookx_core::library::Book) -> serde_json::Value {
         "size": b.size,
         "progress": b.progress,
         "status": b.status(),
+        "custom": b.custom,
     })
 }
 
@@ -1123,6 +1219,13 @@ fn library(cmd: LibCmd, root: &Path, out: &mut dyn Write, err: &mut dyn Write) -
                         b.all_formats().iter().map(|f| f.format.clone()).collect();
                     writeln!(out, "Formats:     {}", all.join(", "))?;
                 }
+                for (label, value) in &b.custom {
+                    writeln!(
+                        out,
+                        "#{label}:{}{value}",
+                        " ".repeat(12usize.saturating_sub(label.len() + 2).max(1))
+                    )?;
+                }
                 if !b.drm.is_empty() {
                     writeln!(
                         out,
@@ -1171,6 +1274,8 @@ fn library(cmd: LibCmd, root: &Path, out: &mut dyn Write, err: &mut dyn Write) -
             writeln!(out, "{}", opened.store.export_catalog_json()?)?;
             Ok(0)
         }
+        LibCmd::Columns(c) => columns::run(c, root, out),
+        LibCmd::Replace(a) => replace::run(a, root, out),
         LibCmd::Tools(t) => libtools::run(t, root, out, err),
         LibCmd::Catalogue(c) => catalogue::run(c, root, out),
         LibCmd::Extras(c) => extras::run(c, root, out),
@@ -1213,6 +1318,20 @@ fn serve(a: ServeArgs, root: &Path, env: &Env, out: &mut dyn Write) -> Result<i3
     cfg.title = a.title;
     cfg.users = users;
     cfg.read_only = a.read_only;
+    cfg.allowed_hosts.extend(a.allow_host.iter().cloned());
+    for a in &a.account {
+        cfg.accounts
+            .push(bookx_serve::accounts::parse_arg(a).map_err(|e| anyhow!("--account: {e}"))?);
+    }
+    if !a.guest_collection.is_empty() {
+        cfg.guest = Some(a.guest_collection.clone());
+    }
+    cfg.limits.trusted_proxies = bookx_serve::net::parse_proxy_list(&a.trusted_proxy.join(","))
+        .map_err(|bad| anyhow!("--trusted-proxy {bad}: expected an IP address or a network such as 10.0.0.0/8 (not /0)"))?;
+    if let Some(p) = &a.public_prefix {
+        cfg.public_prefix = bookx_serve::server::clean_public_prefix(p)
+            .ok_or_else(|| anyhow!("--public-prefix {p}: expected a plain path such as /books"))?;
+    }
     if let (Some(cert), Some(key)) = (&a.tls_cert, &a.tls_key) {
         cfg.tls = Some(bookx_serve::net::tls_config(cert, key)?);
     }

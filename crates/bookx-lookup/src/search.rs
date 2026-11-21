@@ -213,9 +213,75 @@ pub fn search<S: AsRef<str>>(
     Ok(out)
 }
 
+/// The non-overlapping matches of `re` in `text` as `(first char, end char)` pairs, at most `limit`;
+/// empty matches are skipped. This is the search of one page or paragraph: positions are in
+/// characters, like the reader's own text offsets.
+pub fn char_ranges(re: &Regex, text: &str, limit: usize) -> Vec<(usize, usize)> {
+    let mut out = Vec::new();
+    // byte offset of every char start, to turn the regex's byte offsets into char offsets
+    let mut chars_before = 0usize;
+    let mut last_byte = 0usize;
+    for m in re.find_iter(text) {
+        if m.is_empty() {
+            continue;
+        }
+        if out.len() >= limit {
+            break;
+        }
+        chars_before += text[last_byte..m.start()].chars().count();
+        let len = text[m.start()..m.end()].chars().count();
+        out.push((chars_before, chars_before + len));
+        chars_before += len;
+        last_byte = m.end();
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn char_ranges_count_characters_not_bytes() {
+        let o = SearchOptions::default();
+        let re = compile("é", &o).unwrap().unwrap();
+        assert_eq!(
+            char_ranges(&re, "aé éé b", 10),
+            vec![(1, 2), (3, 4), (4, 5)]
+        );
+        let re = compile(
+            "b+",
+            &SearchOptions {
+                regex: true,
+                ..o.clone()
+            },
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(char_ranges(&re, "日本 bbb x b", 10), vec![(3, 6), (9, 10)]);
+        assert_eq!(char_ranges(&re, "日本 bbb x b", 1), vec![(3, 6)]);
+        let empty = compile("x*", &SearchOptions { regex: true, ..o })
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            char_ranges(&empty, "ax", 10),
+            vec![(1, 2)],
+            "empty matches are skipped"
+        );
+    }
+
+    #[test]
+    fn whole_word_matches_words_only_in_the_page_search() {
+        let o = SearchOptions {
+            whole_word: true,
+            ..Default::default()
+        };
+        let re = compile("cat", &o).unwrap().unwrap();
+        assert_eq!(
+            char_ranges(&re, "cat concat cat. cats", 10),
+            vec![(0, 3), (11, 14)]
+        );
+    }
 
     fn run(chapters: &[&str], q: &str, o: &SearchOptions) -> Vec<(usize, usize)> {
         search(chapters, q, o, None)

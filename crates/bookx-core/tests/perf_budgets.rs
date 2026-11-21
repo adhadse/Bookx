@@ -70,6 +70,8 @@ fn synthetic_book(i: u64) -> Book {
         formats: Vec::new(),
         resources: Vec::new(),
         drm: String::new(),
+        custom: Default::default(),
+        marked: false,
     }
 }
 
@@ -324,4 +326,69 @@ fn a_book_with_20000_contents_entries_opens_and_lists_fast() {
     // the editor asks for the same notes of every file: the semantics are read once, not once per file
     let (_, took) = timed(|| book.spine_paths().len());
     check("listing the spine of a 20 000 entry book", took, budget(20));
+}
+
+#[test]
+fn custom_column_search_sort_and_regex_over_100k_books_are_fast() {
+    use bookx_core::custom::{ColumnDef, ColumnKind};
+    let dir = tempdir("custom100k");
+    let mut lib = library_of(100_000, &dir);
+    lib.set_columns(vec![
+        ColumnDef {
+            label: "pages".into(),
+            name: "Pages".into(),
+            kind: ColumnKind::Integer,
+            ..Default::default()
+        },
+        ColumnDef {
+            label: "mood".into(),
+            name: "Mood".into(),
+            kind: ColumnKind::Text,
+            ..Default::default()
+        },
+    ])
+    .unwrap();
+    for (i, b) in lib.books.iter_mut().enumerate() {
+        b.custom.insert("pages".into(), (i % 1000).to_string());
+        if i % 7 == 0 {
+            b.custom.insert("mood".into(), "calm".into());
+        }
+    }
+    let (hits, took) = timed(|| lib.search("#pages:>=990 #mood:calm", SortKey::Title, true));
+    assert!(!hits.is_empty());
+    check(
+        "a custom column search over 100 000 books",
+        took,
+        budget(1500),
+    );
+    let (hits, took) = timed(|| {
+        lib.search(
+            "(#mood:calm OR tag:fiction) -#pages:<500",
+            SortKey::Title,
+            true,
+        )
+    });
+    assert!(!hits.is_empty());
+    check("a grouped search over 100 000 books", took, budget(1500));
+    let (hits, took) = timed(|| {
+        lib.search(
+            "title:~^Book\\s*9[0-9]+$ added:>=2000-01-01",
+            SortKey::Title,
+            true,
+        )
+    });
+    assert!(hits.len() < 100_000);
+    check(
+        "a regular expression search over 100 000 books",
+        took,
+        budget(2500),
+    );
+    let mut ids: Vec<u64> = lib.books.iter().map(|b| b.id).collect();
+    let ((), took) = timed(|| lib.sort_by_custom(&mut ids, "pages", true));
+    check(
+        "sorting 100 000 books by a custom column",
+        took,
+        budget(600),
+    );
+    std::fs::remove_dir_all(dir).ok();
 }

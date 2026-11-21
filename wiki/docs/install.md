@@ -1,6 +1,18 @@
 # Install
 
-Bookx is not published as a package yet. You build it from source.
+Bookx is not published as a package yet. Today you build it from source, or build the Flatpak yourself (below).
+
+## Where Bookx will be available
+
+| System | Channel | State |
+|---|---|---|
+| Linux | **Flathub** (the recommended way once it is there) | Not published yet. A Flatpak can be built from the repository (below); the Flathub submission has not been made |
+| Linux | `.deb`, `.rpm`, tarball and Flatpak bundle from [GitHub releases](https://github.com/adhadse/Bookx/releases) | Built by the release workflow; little tested outside the build machine |
+| macOS | Homebrew (`brew tap adhadse/bookx`) | Coming. Not built or tested on a Mac yet: build from source today |
+| Windows | winget and Scoop | Coming. Not built or tested on Windows yet: build from source today |
+
+No dates are promised. Read aloud with natural voices and audiobooks currently play sound through PulseAudio or
+PipeWire, so on macOS and Windows they will not be available until that changes.
 
 ## Requirements
 
@@ -118,6 +130,41 @@ The package registers Bookx for EPUB, KEPUB, MOBI, AZW, AZW3, FB2, FBZ, CBZ, CBR
 (as an *Open With* choice; it does not take over PDF) and for `bookx://` [links](troubleshooting.md#bookx-links).
 Text, HTML and Markdown files are not registered; add them from inside Bookx.
 
+## Verify your download
+
+Every file of a release (tarball, `.deb`, `.rpm`, Flatpak bundle and `SHA256SUMS`) is signed by the release workflow on
+GitHub, with no key that anyone holds: the signature says "this file was built by the `release.yml` workflow of
+`adhadse/Bookx` for a version tag", and is recorded in the public [Sigstore](https://www.sigstore.dev/) log. Each file has
+a `.sigstore.json` file next to it. Release files are also covered by a GitHub build-provenance attestation.
+
+1. Check the file against the checksums (catches a damaged download):
+
+    ```bash
+    sha256sum -c SHA256SUMS --ignore-missing
+    ```
+
+2. Check who built it, with [cosign](https://docs.sigstore.dev/cosign/system_config/installation/):
+
+    ```bash
+    cosign verify-blob \
+      --bundle SHA256SUMS.sigstore.json \
+      --certificate-identity-regexp '^https://github\.com/adhadse/Bookx/\.github/workflows/release\.yml@refs/tags/v' \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+      SHA256SUMS
+    ```
+
+    Do the same with any single file (replace `SHA256SUMS`). It prints `Verified OK`; anything else means do not install it.
+
+3. Or with the GitHub CLI, which checks the build-provenance attestation:
+
+    ```bash
+    gh attestation verify bookx-0.3.0.tar.gz --repo adhadse/Bookx
+    ```
+
+If a check fails, do not install the file and report it as described in the
+[security policy](https://github.com/adhadse/Bookx/blob/main/SECURITY.md). The source you build yourself is the same code
+as the tag: compare `git rev-parse v0.3.0` with the commit shown on the release page.
+
 ## Where things are stored
 
 | What | Where |
@@ -129,8 +176,8 @@ Text, HTML and Markdown files are not registered; add them from inside Bookx.
 
 !!! note "Limitations"
     - Release files (tarball, `.deb`, `.rpm`, Flatpak bundle, `SHA256SUMS`) are attached to each GitHub release once a version is
-      tagged; there is no AppImage and no Flathub listing yet, and no Windows or macOS builds. Check a download with
-      `sha256sum -c SHA256SUMS`. The packages have not been tested on other distributions than the build machine's.
+      tagged; there is no AppImage and no Flathub listing yet, and no Windows or macOS builds. Check a download as described in
+      [Verify your download](#verify-your-download). The packages have not been tested on other distributions than the build machine's.
     - The Flatpak has been built and started on one machine only; devices and the natural voices are not tested inside
       the sandbox. The Flatpak translations are the built-in ones (see [Translating Bookx](translating.md)).
     - Older GNOME releases (before 49) are not supported when you build from source; the Flatpak needs the GNOME 50

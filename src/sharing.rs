@@ -29,6 +29,9 @@ pub struct ShareSettings {
     /// Also take highlights, notes and bookmarks from the Bookx plugin of KOReader (on by default;
     /// it only matters while the server runs with `kosync`, because it uses the same accounts).
     pub annotations: bool,
+    /// While reading, offer to jump when an e-reader reports a position further along (on by
+    /// default). Nothing ever moves the page by itself.
+    pub offer_jump: bool,
     /// The Bookx plugin was copied to a KOReader device or folder from the Sync page.
     pub plugin_copied: bool,
     /// Serve HTTPS instead of HTTP.
@@ -41,6 +44,27 @@ pub struct ShareSettings {
     /// The server was on when Bookx last ran: it is started again at launch. Set only by the
     /// switches (see [`ShareSettings::remember`]), never by a failed start or by closing the app.
     pub running: bool,
+    /// Extra host names the server answers to, besides IP addresses, `localhost` and `.local`
+    /// names (the public name behind a reverse proxy). Typed as a list, see
+    /// [`bookx_serve::hostguard::parse_host_list`].
+    pub allowed_hosts: String,
+    /// Reverse proxies (addresses or networks) whose `X-Forwarded-For` is believed by the
+    /// failed-login limit; see [`bookx_serve::net::parse_proxy_list`].
+    pub trusted_proxies: String,
+    /// The sub-path a reverse proxy publishes the server under, such as `/books`.
+    pub public_prefix: String,
+    /// Extra logins of the library server with the collections each may see (the settings file
+    /// holds the Argon2id hash, never the password). No screen edits them yet.
+    pub accounts: Vec<SharedAccount>,
+    /// Collections (tags) a visitor without a login may read; empty means a login is always needed.
+    pub guest_collections: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SharedAccount {
+    pub name: String,
+    pub hash: String,
+    pub collections: Vec<String>,
 }
 
 impl Default for ShareSettings {
@@ -51,11 +75,17 @@ impl Default for ShareSettings {
             password: String::new(),
             kosync: false,
             annotations: true,
+            offer_jump: true,
             plugin_copied: false,
             https: false,
             cert_file: String::new(),
             key_file: String::new(),
             running: false,
+            allowed_hosts: String::new(),
+            trusted_proxies: String::new(),
+            public_prefix: String::new(),
+            accounts: Vec::new(),
+            guest_collections: Vec::new(),
         }
     }
 }
@@ -76,6 +106,31 @@ impl ShareSettings {
             return Some(
                 tr("Choose both a certificate file and a key file, or neither to use a self-signed certificate."),
             );
+        }
+        if let Some(p) = self.proxy_problem() {
+            return Some(p);
+        }
+        None
+    }
+
+    /// Why the reverse-proxy fields (host names, trusted proxies, sub-path) are not usable.
+    pub fn proxy_problem(&self) -> Option<String> {
+        if let Err(bad) = bookx_serve::hostguard::parse_host_list(&self.allowed_hosts) {
+            return Some(trf(
+                "“{}” is not a host name. Use names such as books.example.com, separated by commas.",
+                &[&bad],
+            ));
+        }
+        if let Err(bad) = bookx_serve::net::parse_proxy_list(&self.trusted_proxies) {
+            return Some(trf(
+                "“{}” is not an address of a proxy. Use an IP address or a network such as 10.0.0.0/8.",
+                &[&bad],
+            ));
+        }
+        if bookx_serve::server::clean_public_prefix(&self.public_prefix).is_none() {
+            return Some(tr(
+                "The sub-path must be a plain path such as /books (letters, digits, - and _).",
+            ));
         }
         None
     }
@@ -133,6 +188,26 @@ pub fn server_config(
     cfg.bind = settings.bind().to_string();
     cfg.port = settings.port;
     cfg.title = tr("Bookx Library");
+    cfg.allowed_hosts.extend(
+        bookx_serve::hostguard::parse_host_list(&settings.allowed_hosts).unwrap_or_default(),
+    );
+    cfg.limits.trusted_proxies =
+        bookx_serve::net::parse_proxy_list(&settings.trusted_proxies).unwrap_or_default();
+    cfg.public_prefix =
+        bookx_serve::server::clean_public_prefix(&settings.public_prefix).unwrap_or_default();
+    cfg.accounts = settings
+        .accounts
+        .iter()
+        .filter(|a| bookx_serve::keyhash::is_hashed(&a.hash) && !a.name.is_empty())
+        .map(|a| bookx_serve::accounts::Account {
+            name: a.name.clone(),
+            hash: a.hash.clone(),
+            collections: a.collections.clone(),
+        })
+        .collect();
+    if !settings.guest_collections.is_empty() {
+        cfg.guest = Some(settings.guest_collections.clone());
+    }
     if settings.lan || !settings.password.is_empty() {
         cfg.users = vec![User {
             name: USER.into(),
@@ -144,15 +219,27 @@ pub fn server_config(
     }
     if settings.kosync {
         let store = JsonFileStore::open(&data_dir.join("kosync.json"))?;
-        cfg.kosync = Some(Arc::new(KoSync::new(Box::new(store), true)));
+        let log = Arc::new(bookx_serve::activity::ActivityLog::open(&activity_path(
+            data_dir,
+        ))?);
+        let ko = KoSync::new(Box::new(store), true).with_activity(log.clone());
+        ko.on_change(Some(crate::sync_bus::server_listener()));
+        cfg.kosync = Some(Arc::new(ko));
         if settings.annotations {
             let ann = bookx_serve::annotation_sync::AnnotationSync::open(
                 &data_dir.join("koreader-annotations.json"),
-            )?;
+            )?
+            .with_activity(log);
+            ann.on_change(Some(crate::sync_bus::server_listener()));
             cfg.annotations = Some(Arc::new(ann));
         }
     }
     Ok(cfg)
+}
+
+/// The file of the sync activity (devices that connected and what they sent).
+pub fn activity_path(data_dir: &Path) -> PathBuf {
+    data_dir.join("sync-activity.json")
 }
 
 /// Folder inside the data folder where the self-signed certificate is kept.
@@ -217,6 +304,7 @@ pub fn tls_for(
 pub struct Sharing {
     handle: Option<bookx_serve::server::ServerHandle>,
     annotations: Option<Arc<bookx_serve::annotation_sync::AnnotationSync>>,
+    activity: Option<Arc<bookx_serve::activity::ActivityLog>>,
     settings: Option<ShareSettings>,
 }
 
@@ -236,12 +324,14 @@ impl Sharing {
         self.stop();
         let cfg = server_config(settings, provider(root.to_path_buf()), data_dir)?;
         let annotations = cfg.annotations.clone();
+        let activity = cfg.kosync.as_ref().and_then(|k| k.activity());
         let handle = bookx_serve::server::Server::start(cfg).map_err(|e| {
             anyhow::anyhow!("Could not start sharing on port {}: {e:#}", settings.port)
         })?;
         let urls = urls(settings, handle.addr().port());
         self.handle = Some(handle);
         self.annotations = annotations;
+        self.activity = activity;
         self.settings = Some(settings.clone());
         Ok(urls)
     }
@@ -252,11 +342,17 @@ impl Sharing {
         }
         self.settings = None;
         self.annotations = None;
+        self.activity = None;
     }
 
     /// The KOReader annotation store of the running server, when it serves one.
     pub fn annotations(&self) -> Option<Arc<bookx_serve::annotation_sync::AnnotationSync>> {
         self.annotations.clone()
+    }
+
+    /// The activity log of the running server (devices and what they sent), when it is on.
+    pub fn activity(&self) -> Option<Arc<bookx_serve::activity::ActivityLog>> {
+        self.activity.clone()
     }
 
     /// Addresses of the running server.
@@ -306,6 +402,15 @@ fn lan_address() -> Option<std::net::IpAddr> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn offering_to_jump_is_on_by_default_and_for_a_settings_file_that_has_not_heard_of_it() {
+        assert!(ShareSettings::default().offer_jump);
+        let old: ShareSettings = serde_json::from_str(r#"{"port":8080,"kosync":true}"#).unwrap();
+        assert!(old.offer_jump);
+        let off: ShareSettings = serde_json::from_str(r#"{"offer_jump":false}"#).unwrap();
+        assert!(!off.offer_jump);
+    }
+
     #[test]
     fn the_server_wish_survives_a_failed_start_and_is_cleared_only_by_switching_off() {
         let mut s = super::ShareSettings::default();
@@ -411,6 +516,35 @@ mod tests {
             .and_then(|c| c.parse().ok())
             .unwrap_or(0);
         (code, buf)
+    }
+
+    #[test]
+    fn accounts_and_guest_reach_the_server_config_and_plain_passwords_do_not() {
+        let lib: bookx_serve::server::LibraryProvider =
+            std::sync::Arc::new(bookx_serve::server::LibrarySnapshot::default);
+        let good = bookx_serve::accounts::Account::new("kid", "pw", &["kids".into()]);
+        let s = ShareSettings {
+            accounts: vec![
+                SharedAccount {
+                    name: good.name.clone(),
+                    hash: good.hash.clone(),
+                    collections: good.collections.clone(),
+                },
+                // a hand-written plain password in the file is not a login
+                SharedAccount {
+                    name: "plain".into(),
+                    hash: "secret".into(),
+                    collections: vec![],
+                },
+            ],
+            guest_collections: vec!["kids".into()],
+            ..ShareSettings::default()
+        };
+        let cfg = server_config(&s, lib, std::path::Path::new("/nonexistent")).unwrap();
+        assert_eq!(cfg.accounts.len(), 1);
+        assert_eq!(cfg.guest.as_deref(), Some(&["kids".to_string()][..]));
+        let json = serde_json::to_string(&s).unwrap();
+        assert!(!json.contains("\"pw\""));
     }
 
     #[test]

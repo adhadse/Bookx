@@ -10,7 +10,7 @@ use bookx_core::book::OpenBook;
 use bookx_core::util::{extension, join_path, parent_dir, relative_href, resolve_href};
 use bookx_text::css::{FontStyle, StyleSheetSet};
 use regex::Regex;
-use scraper::{ElementRef, Html};
+use scraper::ElementRef;
 use serde::{Deserialize, Serialize};
 
 use crate::markup::*;
@@ -327,7 +327,7 @@ pub fn used_characters(book: &OpenBook) -> BTreeMap<FaceKey, BTreeSet<char>> {
             }
             s
         });
-        let doc = Html::parse_document(&src);
+        let doc = bookx_core::util::parse_html_document(&src);
         walk_text(
             doc.root_element(),
             sheets,

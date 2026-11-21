@@ -451,7 +451,7 @@ fn write_xhtml(el: scraper::ElementRef<'_>, out: &mut String) {
 /// tags, bare ampersands, undeclared entities, mismatched nesting). Returns `None` when even
 /// the rebuilt text is not well-formed XML.
 pub fn repair_to_xhtml(src: &str) -> Option<String> {
-    let doc = scraper::Html::parse_document(src);
+    let doc = bookx_core::util::parse_html_document(src);
     let mut body = String::new();
     let mut head = String::new();
     for child in doc.root_element().children() {

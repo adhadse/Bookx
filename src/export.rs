@@ -121,8 +121,8 @@ pub fn target(id: &str) -> Option<&'static Target> {
         .or_else(|| crate::plugins::target(id))
 }
 
-/// Options for a target: its preset when it has one, otherwise the defaults.
-pub fn options_for(t: &Target) -> Result<ConvertOptions> {
+/// The built-in options of a target: its preset when it has one, otherwise the defaults.
+pub fn builtin_options(t: &Target) -> Result<ConvertOptions> {
     match t.preset {
         None => Ok(ConvertOptions::default()),
         Some(name) => builtin_presets()
@@ -132,6 +132,25 @@ pub fn options_for(t: &Target) -> Result<ConvertOptions> {
             .map(|p| p.options)
             .ok_or_else(|| anyhow!("the built-in preset `{name}` is missing")),
     }
+}
+
+/// `user` (what the options dialog saved for the target) when there is something, else the
+/// built-in options.
+pub fn options_with(t: &Target, user: Option<ConvertOptions>) -> Result<ConvertOptions> {
+    match user {
+        Some(o) => Ok(o),
+        None => builtin_options(t),
+    }
+}
+
+/// Options for a target: the ones saved in *Conversion Options*, otherwise the built-in ones.
+/// (The tests never read the user's file.)
+pub fn options_for(t: &Target) -> Result<ConvertOptions> {
+    #[cfg(not(test))]
+    let user = crate::convert_prefs::user_options(t.id);
+    #[cfg(test)]
+    let user = None;
+    options_with(t, user)
 }
 
 /// `"Title.ext"` with characters that are not safe in file names removed.
@@ -255,6 +274,21 @@ mod tests {
         assert!(o.device.is_some());
         let d = options_for(target("fb2").unwrap()).unwrap();
         assert!(d.device.is_none());
+    }
+
+    #[test]
+    fn saved_options_replace_the_built_in_ones_of_their_format_only() {
+        let kindle = target("azw3").unwrap();
+        let builtin = builtin_options(kindle).unwrap();
+        assert_eq!(options_with(kindle, None).unwrap(), builtin);
+        let mut mine = builtin.clone();
+        mine.smarten_punctuation = !builtin.smarten_punctuation;
+        assert_eq!(options_with(kindle, Some(mine.clone())).unwrap(), mine);
+        assert_eq!(
+            options_for(kindle).unwrap(),
+            builtin,
+            "tests ignore the user's file"
+        );
     }
 
     #[test]

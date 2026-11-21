@@ -1,6 +1,6 @@
 # Put Bookx behind a reverse proxy
 
-Bookx can run small servers: the **library server** of Sync (OPDS catalogue, web page, downloads and the `/bookx` sync
+Bookx can run small servers: the **OPDS server** of Sync (OPDS catalogue, web page, downloads and the `/bookx` sync
 endpoint for reading position and KOReader highlights), `bookx-cli serve`, and the **MCP** server for AI assistants.
 They are meant for a trusted home network. If you want to reach them from more devices, from a nicer address such as
 `https://bookx.lan/bookx`, or from outside the house, put a **reverse proxy** in front of them and let only the proxy
@@ -257,12 +257,27 @@ Do not add a `stripPrefix` middleware. For a Bookx container, put the same rule 
 * **Keep Bookx’s accounts on.** Do not turn off the library password under main menu → Preferences → Sync → Advanced or leave `bookx-cli serve` without `--user`
   because "the proxy has a login". Do not let the proxy add its own `Authorization` header for Bookx either. The sync
   account (the key that KOReader sends) must reach Bookx unchanged.
-* **Pass `Host`, `X-Forwarded-For` and `X-Forwarded-Proto`.** Bookx does not use them for decisions, but your logs and the
-  proxy’s own limits do. Bookx does not read `X-Forwarded-For`, so in Bookx’s own logic every request comes from the
-  proxy’s address.
-* **Failed logins are throttled per connecting address** (10 wrong passwords in a minute, then 429 for a minute). Behind a
-  proxy that means one person typing a wrong password can block everyone for a minute. Do the fine-grained rate
-  limiting in the proxy (per client) and treat Bookx’s limit as the last line.
+* **Pass `Host`, `X-Forwarded-For` and `X-Forwarded-Proto`.** Bookx ignores `X-Forwarded-*` unless you list your proxy as
+  trusted (next point), so by default every request comes from the proxy’s address in Bookx’s own logic.
+* **Trusted proxy addresses (optional).** Enter the address of your proxy (`127.0.0.1`, or a network such as `10.0.0.0/8`) in
+  Preferences → Sync → Advanced → *Trusted proxy addresses*, or use `bookx-cli serve --trusted-proxy 127.0.0.1`. Bookx then
+  reads `X-Forwarded-For` **only for connections from those addresses**, from the right: the last address that is not itself a
+  trusted proxy is the client. The failed-login limit then counts each client on its own. A network of `/0` is refused. Never list an address that
+  strangers can connect from.
+* **Sub-path.** To publish Bookx under `https://example.com/books`, enter `/books` as *Sub-path behind a proxy* (or
+  `--public-prefix /books`). Links in the web page and the OPDS catalogue then start with `/books`. The proxy may strip the
+  prefix or keep it; both work. The sync address for KOReader becomes `https://example.com/books/bookx`.
+* **Tell Bookx the name people use.** Bookx answers only to `Host` names it knows, so that a web page cannot reach it through
+  a hostile DNS name (“DNS rebinding”). IP addresses, `localhost`, one-word names and names ending in `.local`, `.lan`,
+  `.internal`, `.localhost` or `.home.arpa` always work. Any other name (`books.example.com`, `nas.fritz.box`) has to be
+  listed: `bookx-cli serve --allow-host books.example.com`, `bookx-cli mcp --http … --allow-host books.example.com`, or
+  *Allowed host names* in Preferences → Sync → Advanced (several names separated by commas), or
+  `BOOKX_ALLOWED_HOSTS=books.example.com,nas.fritz.box` in the environment of the app (Flatpak: `flatpak override --user
+  --env=BOOKX_ALLOWED_HOSTS=books.example.com com.adhadse.Bookx`). Requests from a browser page of another site (an
+  `Origin` that is not the server itself) are refused as well; KOReader and OPDS apps send no `Origin`.
+* **Failed logins are throttled per client address** (10 wrong passwords in a minute, then 429 for a minute). Without a
+  trusted proxy that address is the proxy itself, so one person typing a wrong password can block everyone for a minute: list the
+  proxy as trusted (see above), and do the fine-grained rate limiting in the proxy too.
 * **Connections:** Bookx accepts 64 connections at once, 32 from one address. A proxy keeps few connections open, which
   fits. Do not configure hundreds of upstream keep-alive connections.
 * **Body size:** Bookx refuses request bodies over 1 MiB (`413`). Sync requests are far smaller (annotations: up to 1 MiB, at most
@@ -322,6 +337,7 @@ Bookx’s plugin) and open a book to see whether the position is fetched.
 |---|---|
 | `404 Not found` on `/bookx/...` | The proxy removed the prefix (nginx trailing slash, Traefik `stripPrefix`, Caddy `handle_path`), or sync is not switched on in Bookx. |
 | `404` on `/bookx/annotations/...` only | *KOReader highlights and notes* is off, or Bookx runs as `bookx-cli serve` (no annotation sync there). |
+| `403` `Host not allowed` | The proxy passes a name Bookx does not know. Add it with `--allow-host` or `BOOKX_ALLOWED_HOSTS` (see “Tell Bookx the name people use”). |
 | `401` | Wrong account, or the proxy replaced/dropped the `x-auth-user`, `x-auth-key` or `Authorization` headers. |
 | `429` | Too many wrong passwords in a minute; wait. Behind a proxy this affects every client. |
 | `413` | The proxy or Bookx got a body over its limit (1 MiB for Bookx). |

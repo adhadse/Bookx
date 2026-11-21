@@ -593,7 +593,7 @@ impl Editor {
             .modal(true)
             .build();
         let filter = gtk::FileFilter::new();
-        filter.set_name(Some("EPUB books"));
+        filter.set_name(Some(&tr("EPUB books")));
         filter.add_suffix("epub");
         let filters = gio::ListStore::new::<gtk::FileFilter>();
         filters.append(&filter);
@@ -754,7 +754,7 @@ impl Editor {
             d.dialog.present(Some(&self.w.win));
             return;
         }
-        let dialog = adw::Dialog::new();
+        let dialog = crate::ui::dialog_toast::new_dialog();
         dialog.set_title(&tr("Checkpoints"));
         dialog.set_content_width(560);
         dialog.set_content_height(520);

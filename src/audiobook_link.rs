@@ -30,9 +30,11 @@ pub struct Proposal {
 /// no library data in it, so it can run on a worker thread).
 pub fn scan_candidates(root: &Path, extra: &[PathBuf]) -> Vec<Candidate> {
     let mut cands: Vec<Candidate> = scan(root, DEPTH);
+    let mut seen: std::collections::HashSet<PathBuf> =
+        cands.iter().map(|c| c.path.clone()).collect();
     for d in extra {
         for c in scan(d, DEPTH) {
-            if !cands.iter().any(|x| x.path == c.path) {
+            if seen.insert(c.path.clone()) {
                 cands.push(c);
             }
         }
@@ -50,10 +52,11 @@ pub fn pair_candidates(lib: &Library, cands: &[Candidate]) -> Vec<Proposal> {
         .collect();
     let dir_of = |b: &Book| -> Option<PathBuf> { lib.book_dir_of(b).map(|d| lib.root.join(d)) };
     let pairs: Vec<Pairing> = pair(&books, cands, &dir_of);
+    let by_id: std::collections::HashMap<u64, &Book> = books.iter().map(|b| (b.id, b)).collect();
     pairs
         .into_iter()
         .filter_map(|p| {
-            let b = books.iter().find(|b| b.id == p.book)?;
+            let b = by_id.get(&p.book)?;
             Some(Proposal {
                 book: p.book,
                 book_title: b.meta.title.clone(),

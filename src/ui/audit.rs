@@ -313,6 +313,58 @@ fn clipped_buttons(w: &gtk::Widget, out: &mut Vec<String>) {
     }
 }
 
+/// Mapped buttons that do not sit in a scrolled area and lie partly outside `root` (XC-7: a control
+/// pushed off the window by larger text). Returns their names with the box.
+fn offscreen_controls(root: &gtk::Widget, w: &gtk::Widget, out: &mut Vec<String>) {
+    if w.is::<gtk::ScrolledWindow>() || w.is::<gtk::Popover>() || !w.is_mapped() {
+        return;
+    }
+    if w.is::<gtk::Button>() || w.is::<gtk::MenuButton>() || w.is::<gtk::ToggleButton>() {
+        if let Some(r) = w.compute_bounds(root) {
+            let size = (root.width(), root.height());
+            if !box_within((r.x(), r.y(), r.width(), r.height()), size) && r.width() > 0.0 {
+                out.push(format!(
+                    "{}@{:.0},{:.0},{:.0}x{:.0}",
+                    w.widget_name(),
+                    r.x(),
+                    r.y(),
+                    r.width(),
+                    r.height()
+                ));
+            }
+        }
+    }
+    let mut c = w.first_child();
+    while let Some(x) = c {
+        offscreen_controls(root, &x, out);
+        c = x.next_sibling();
+    }
+}
+
+/// The `window_fit:` line for an application window: controls outside it and buttons that cut their
+/// label (large text at 900x600, XC-7). Dialogs are checked by `dialog_fit:`.
+pub fn window_fit_line(window: &adw::ApplicationWindow) -> String {
+    let root: gtk::Widget = window.clone().upcast();
+    let mut off = Vec::new();
+    let mut clipped = Vec::new();
+    let skip_dialog = window.visible_dialog().is_some();
+    if let Some(content) = window.content() {
+        offscreen_controls(&root, &content, &mut off);
+        if !skip_dialog {
+            clipped_buttons(&content, &mut clipped);
+        }
+    }
+    format!(
+        "window_fit: window={}x{} offscreen={} clipped_buttons={} offscreen_list={:?} clipped={:?}",
+        window.width(),
+        window.height(),
+        off.len(),
+        clipped.len(),
+        off,
+        clipped
+    )
+}
+
 /// The `dialog_fit:` line for the dialog that is open over `window`, if any: its size against the
 /// window's, whether its default button is on screen, and how many buttons cut their label.
 pub fn dialog_fit_line(window: &adw::ApplicationWindow) -> Option<String> {
@@ -351,6 +403,7 @@ pub fn report() {
             if let Some(line) = dialog_fit_line(w) {
                 eprintln!("{line}");
             }
+            eprintln!("{}", window_fit_line(w));
         }
     }
     let all = controls();

@@ -8,12 +8,12 @@
 scenario sync_menu 'share:port0,library:menus,action:sync,wait:900,sync:dump,sync:step=2,wait:300,sync:dump,sync:step=2,wait:300,sync:dump,a11y-audit:,library:icons,sync:card=opds,wait:600,sync:dump,sync:advanced=open,wait:400,sync:dump,a11y-audit:,sync:card=opds,wait:500,sync:dump,sync:close,wait:300,dialog:state,quit' '
     has "^mainmenu: .*Sync \\[app.sync\\] \\| Devices \\[app.devices\\]"; check "the main menu has Sync, with the plural Devices entry next to it" $?
     ! has "^mainmenu: .*Share Library"; check "Share Library is gone from the main menu" $?
-    has "^sync_window: title=Sync headline=\"Bookx sync is off\" primary=\"Set up Bookx sync\" cards=wifi:Start setup:Bookx sync is off\\|usb:Open device window:[^|]*\\|opds:Start library server:off use_when=3 sentence=true kosync_labels=0 advanced=collapsed account_hint=true"; check "first screen: a status card (Bookx sync is off) with one big button, three choice cards with a Use this when text and one button each, no KOSync label, Advanced collapsed" $?
+    has "^sync_window: title=Sync headline=\"Bookx sync is off\" primary=\"Set up Bookx sync\" cards=wifi:Start setup:Bookx sync is off\\|usb:Open device window:[^|]*\\|opds:Start OPDS server:off use_when=3 sentence=true kosync_labels=0 advanced=collapsed account_hint=true"; check "first screen: a status card (Bookx sync is off) with one big button, three choice cards with a Use this when text and one button each, no KOSync label, Advanced collapsed" $?
     has "^sync_window: .* stepper=\\[steps=4 active=none states=pending,pending,pending,pending open=false,false,false,false statuses=Off\\|Not created yet\\|Not checked\\|Not checked"; check "the Wi-Fi card shows the setup as a compact stepper of four steps, all closed" $?
     has "^sync_window: .* stepper=\\[steps=4 active=2 states=pending,active,pending,pending open=false,true,false,false"; check "a step opens when it is picked (non-linear)" $?
-    has "^sync_window: .*cards=wifi:Start setup:.*\\|opds:Stop library server:on .* opds=on"; check "the library server card starts the server and turns into Stop library server" $?
+    has "^sync_window: .*cards=wifi:Start setup:.*\\|opds:Stop OPDS server:on .* opds=on"; check "the library server card starts the server and turns into Stop library server" $?
     has "^sync_window: .*advanced=open"; check "Advanced opens" $?
-    has "^sync_window: .*cards=.*opds:Start library server:off .*opds=off"; check "and the same card stops it again" $?
+    has "^sync_window: .*cards=.*opds:Start OPDS server:off .*opds=off"; check "and the same card stops it again" $?
     has "^a11y: controls=[0-9]+ problems=0"; check "every control of the Sync window has a name (also with Advanced open)" $?
     has "^icons: checked=[0-9]+ missing=\\[\\]"; check "the icons exist" $?
     has "^dialog: open=false"; check "the window closes" $?
@@ -38,7 +38,7 @@ scenario sync_prefs_ia 'prefs:,wait:900,prefs:dump,prefs:pick=Devices and Sharin
     has "^icons: checked=[0-9]+ missing=\\[\\]"; check "the icons exist" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
-scenario sync_prefs_live 'action:sync,wait:800,sync:dump,sync:card=wifi,wait:900,prefs:sync-port=38742,prefs:sync-server=on,wait:600,sync:dump,prefs:sync-plugin,wait:500,sync:dump,sync:card=opds,wait:500,prefs:sync-dump,dialog:close,wait:300,sync:dump,quit' '
+scenario sync_prefs_live 'action:sync,wait:800,sync:dump,sync:prefs,wait:900,prefs:sync-port=38742,prefs:sync-server=on,wait:600,sync:dump,prefs:sync-plugin,wait:500,sync:dump,sync:card=opds,wait:500,prefs:sync-dump,dialog:close,wait:300,sync:dump,quit' '
     has "^sync_window: title=Sync headline=\"Bookx sync is off\""; check "the Sync window opens off" $?
     has "^sync_window: title=Sync headline=\"Bookx sync is ready\" primary=\"Create account\" .*state=ready steps=1000"; check "the Start setup button opens Preferences; switching step 1 on there shows Bookx sync is ready in the open Sync window" $?
     has "^prefs_plugin: copied=true"; check "step 3 copies the plugin onto the (fake) KOReader device" $?
@@ -54,7 +54,7 @@ scenario koreader_annotations_sync_states 'koannot:start,wait:500,action:sync,wa
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
 scenario sync_account_ui 'share:kosync,wait:500,prefs:,wait:900,prefs:pick=Sync,wait:300,prefs:sync-req,prefs:sync-account-dump,prefs:sync-account=alice;secret,prefs:sync-account-register,wait:1800,prefs:sync-account-dump,prefs:sync-account-register,wait:1800,prefs:sync-account-dump,prefs:sync-account-login,wait:1800,prefs:sync-account-dump,a11y-audit:,quit' '
-    has "^prefs_sync_req: .*steps=true account_help=true not_share=true"; check "step 2 is on the page: Create your sync account, the instruction, and that it is not the Share Library password" $?
+    has "^prefs_sync_req: .*steps=true account_help=true not_share=true"; check "step 2 is on the page: Create your sync account, the instruction, and that it is not the OPDS server password" $?
     has "^prefs_account: server=\"http://127\\.0\\.0\\.1:[0-9]+/bookx\" user=\"\" register=true login=true"; check "the server address is filled in from the running Bookx server (ending in /bookx) and Register and Log in are there" $?
     has "^kosync_account: Registered and logged in"; check "Register creates the account on Bookx’s own server" $?
     has "^prefs_account: .*user=\"alice\".*status=\"Registered and logged in"; check "the result is shown inline under the fields" $?
@@ -91,4 +91,31 @@ scenario sync_restart 'wait:1200,prefs:,wait:900,prefs:pick=Sync,wait:300,prefs:
     has "^prefs_sync: server=true opds=true wifi=on .* state=ready steps=1100"; check "a server that was on when Bookx last ran is on again after the restart (switch on, account step done)" $?
     has "^share_ko: visible=true address=http://[0-9.]+:[0-9]+/bookx$"; check "and it answers on its address" $?
     has "^prefs_account: .*status_title=\"Logged in as alice\""; check "the account row says Logged in as alice instead of Log in" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario sync_proxy_settings 'prefs:,wait:900,prefs:pick=Sync,wait:300,prefs:sync-advanced=open,wait:400,prefs:sync-proxy-dump,prefs:sync-proxy=Books.Example.com:8443 nas;10.0.0.0/8 ::1;books/,wait:400,prefs:sync-proxy-dump,prefs:sync-proxy=https://bad.example/x;;,wait:300,prefs:sync-proxy-dump,prefs:sync-proxy=;0.0.0.0/0;,wait:300,prefs:sync-proxy-dump,prefs:sync-proxy=;;/a/../b,wait:300,prefs:sync-proxy-dump,a11y-audit:,quit' '
+    D=$(grep "^prefs_proxy: " <<<"$OUT")
+    sed -n 1p <<<"$D" | grep -q "hosts= proxies= prefix= error=none saved=||"; check "the three reverse proxy rows start empty and nothing is saved" $?
+    sed -n 2p <<<"$D" | grep -q "error=none saved=Books.Example.com:8443 nas|10.0.0.0/8 ::1|/books$"; check "valid host names, proxy networks and a sub-path are saved (the sub-path normalised to /books)" $?
+    sed -n 3p <<<"$D" | grep -q "error=“https://bad.example/x” is not a host name.* saved=Books.Example.com:8443 nas|10.0.0.0/8 ::1|/books$"; check "a URL as host name is refused with the item named, and the saved value stays" $?
+    sed -n 4p <<<"$D" | grep -q "error=“0.0.0.0/0” is not an address of a proxy"; check "a proxy network that would trust the whole Internet (/0) is refused" $?
+    sed -n 5p <<<"$D" | grep -q "error=The sub-path must be a plain path"; check "a sub-path with .. is refused" $?
+    has "^a11y: controls=[0-9]+ problems=0"; check "every new row has a name" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario sync_qr_code 'prefs:,wait:900,prefs:pick=Sync,wait:300,prefs:sync-qr-dump,prefs:sync-qr=http://192.168.1.20:8080/bookx,wait:500,prefs:sync-qr-dump,dialog:state,a11y-audit:,dialog:close,wait:300,dialog:state,quit' '
+    has "^qr: none"; check "no code before one is shown" $?
+    has "^qr: text=http://192.168.1.20:8080/bookx version=[1-3] size=(21|25|29) dark=[0-9]{3,}"; check "the QR code of the address is drawn (version 1 to 3 for a 31 character address, hundreds of dark modules)" $?
+    has "^a11y: controls=[0-9]+ problems=0"; check "the code has a text alternative and the dialog controls have names" $?
+    D=$(grep "^dialog: " <<<"$OUT")
+    sed -n 1p <<<"$D" | grep -q "count=2"; check "the code opens in a dialog over Preferences" $?
+    tail -n 1 <<<"$D" | grep -q "open=true count=1"; check "closing it leaves Preferences open" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario sources_priority_ui 'prefs:,wait:900,prefs:pick=Library,wait:400,prefs:sources-dump,prefs:sources-set=description;openlibrary,prefs:sources-set=series;google,prefs:sources-order=as-written,wait:300,prefs:sources-dump,prefs:sources-set=description;auto,wait:200,prefs:sources-dump,a11y-audit:,quit' '
+    S=$(grep "^prefs_sources: " <<<"$OUT")
+    sed -n 1p <<<"$S" | grep -q "title=auto authors=auto publisher=auto published=auto description=auto tags=auto language=auto series=auto cover=auto name_order=0"; check "every field starts on Automatic and the name order too" $?
+    sed -n 2p <<<"$S" | grep -q "description=openlibrary .* series=google cover=auto name_order=2"; check "a preferred source per field and the name order can be chosen" $?
+    sed -n 3p <<<"$S" | grep -q "description=auto .* series=google"; check "Automatic goes back to the built-in order" $?
+    has "^a11y: controls=[0-9]+ problems=0"; check "every row has a name" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'

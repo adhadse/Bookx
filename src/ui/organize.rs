@@ -4,7 +4,9 @@
 //! `needs_attention`.
 
 use crate::i18n::tr;
-use crate::i18n::trf;
+use crate::i18n::{ntr, trf};
+use std::cell::RefCell;
+use std::collections::HashSet;
 use std::rc::Rc;
 
 use relm4::adw::{self, prelude::*};
@@ -20,6 +22,54 @@ pub type Search = Rc<dyn Fn(String)>;
 pub type Fetch = Rc<dyn Fn(Vec<u64>)>;
 /// Saves, redraws, toasts.
 pub type Notify = Rc<dyn Fn(String)>;
+
+/// The books *Fetch Metadata* works on: the ticked ones, or every listed book when none is ticked.
+pub fn fetch_targets(all: &[u64], selected: &HashSet<u64>) -> Vec<u64> {
+    if selected.is_empty() {
+        all.to_vec()
+    } else {
+        all.iter()
+            .copied()
+            .filter(|i| selected.contains(i))
+            .collect()
+    }
+}
+
+/// The label of the fetch button: with a selection it says how many books it takes.
+pub fn fetch_label(selected: usize) -> String {
+    if selected == 0 {
+        tr("Fetch Metadata")
+    } else {
+        ntr(
+            "Fetch Metadata for {} Book",
+            "Fetch Metadata for {} Books",
+            selected as u32,
+        )
+    }
+}
+
+/// What a list shows while rows are ticked: "N selected" (the library's selection title), else the
+/// normal description.
+pub fn selection_text(selected: usize, normal: &str) -> String {
+    if selected == 0 {
+        normal.to_string()
+    } else {
+        trf("{} selected", &[&selected])
+    }
+}
+
+/// The live state of the Needs Attention list, for the dev hooks.
+struct AttState {
+    selected: Rc<RefCell<HashSet<u64>>>,
+    checks: Vec<(u64, gtk::CheckButton)>,
+    group: adw::PreferencesGroup,
+    cancel: gtk::Button,
+    fetch: gtk::Button,
+}
+
+thread_local! {
+    static ATT: RefCell<Option<AttState>> = const { RefCell::new(None) };
+}
 
 fn esc(s: &str) -> String {
     glib::markup_escape_text(s).to_string()
@@ -257,6 +307,7 @@ pub fn attention_page(
     };
     let fetch_all = gtk::Button::with_label(&tr("Fetch Metadata"));
     fetch_all.add_css_class("suggested-action");
+    let att_selected: RefCell<Option<Rc<RefCell<HashSet<u64>>>>> = RefCell::new(None);
     {
         let g = adw::PreferencesGroup::new();
         g.set_title(&tr("Weak metadata"));
@@ -267,7 +318,13 @@ pub fn attention_page(
             .join(" · "))));
         let show = gtk::Button::with_label(&tr("Show in Library"));
         show.add_css_class("flat");
-        g.set_header_suffix(Some(&show));
+        let cancel = gtk::Button::with_label(&tr("Cancel"));
+        cancel.add_css_class("flat");
+        cancel.set_visible(false);
+        let head = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+        head.append(&cancel);
+        head.append(&show);
+        g.set_header_suffix(Some(&head));
         let (d, search) = (dialog.clone(), search.clone());
         show.connect_clicked(move |_| {
             search(na::QUERY.to_string());
@@ -281,12 +338,95 @@ pub fn attention_page(
             ));
             g.add(&r);
         }
+        // the library's selection pattern: a check box on every row that shows on hover, focus or
+        // once ticked; with a book ticked every box shows, the group says "N selected" and Cancel
+        // clears the selection
+        let normal = counts
+            .iter()
+            .map(|(w, n)| format!("{n} {}", w.label()))
+            .collect::<Vec<_>>()
+            .join(" · ");
+        let selected: Rc<RefCell<HashSet<u64>>> = Rc::new(RefCell::new(HashSet::new()));
+        let mut checks: Vec<(u64, gtk::CheckButton)> = Vec::new();
         for it in items.iter().take(300) {
             let r = adw::ActionRow::new();
             r.set_title(&esc(&it.title));
             r.set_subtitle(&esc(&it.reasons_text()));
+            let check = gtk::CheckButton::new();
+            check.set_valign(gtk::Align::Center);
+            super::audit::label(&check, &trf("Select {}", &[&it.title]));
+            check.set_opacity(0.0);
+            r.add_prefix(&check);
+            let motion = gtk::EventControllerMotion::new();
+            {
+                let entered = check.clone();
+                motion.connect_enter(move |_, _, _| entered.set_opacity(1.0));
+                let (check, selected) = (check.clone(), selected.clone());
+                motion.connect_leave(move |_| {
+                    if selected.borrow().is_empty() && !check.has_focus() {
+                        check.set_opacity(0.0);
+                    }
+                });
+            }
+            r.add_controller(motion);
+            checks.push((it.id, check));
             g.add(&r);
         }
+        let checks_rc = Rc::new(checks.clone());
+        let update = {
+            let (selected, checks, g, cancel, fetch_all, normal) = (
+                selected.clone(),
+                checks_rc.clone(),
+                g.clone(),
+                cancel.clone(),
+                fetch_all.clone(),
+                normal.clone(),
+            );
+            Rc::new(move || {
+                let n = selected.borrow().len();
+                g.set_description(Some(&esc(&selection_text(n, &normal))));
+                cancel.set_visible(n > 0);
+                fetch_all.set_label(&fetch_label(n));
+                for (id, c) in checks.iter() {
+                    c.set_opacity(if n > 0 || selected.borrow().contains(id) {
+                        1.0
+                    } else {
+                        0.0
+                    });
+                }
+            })
+        };
+        for (id, c) in checks_rc.iter() {
+            let (selected, update, id) = (selected.clone(), update.clone(), *id);
+            c.connect_toggled(move |c| {
+                if c.is_active() {
+                    selected.borrow_mut().insert(id);
+                } else {
+                    selected.borrow_mut().remove(&id);
+                }
+                update();
+            });
+        }
+        {
+            let (checks, selected, update) = (checks_rc.clone(), selected.clone(), update.clone());
+            cancel.connect_clicked(move |_| {
+                selected.borrow_mut().clear();
+                for (_, c) in checks.iter() {
+                    c.set_active(false);
+                }
+                update();
+            });
+        }
+        att_selected.replace(Some(selected.clone()));
+        ATT.with(|a| {
+            *a.borrow_mut() = Some(AttState {
+                selected: selected.clone(),
+                checks: checks_rc.as_ref().clone(),
+                group: g.clone(),
+                cancel: cancel.clone(),
+                fetch: fetch_all.clone(),
+            })
+        });
         page.add(&g);
     }
     if !ids.is_empty() {
@@ -330,8 +470,10 @@ pub fn attention_page(
     {
         let ids: Vec<u64> = items.iter().map(|i| i.id).collect();
         let d = dialog.clone();
+        let selected = att_selected.take();
         fetch_all.connect_clicked(move |_| {
-            fetch(ids.clone());
+            let picked = selected.as_ref().map(|s| s.borrow().clone());
+            fetch(fetch_targets(&ids, &picked.unwrap_or_default()));
             d.close();
         });
     }
@@ -383,6 +525,37 @@ pub fn dev(
                 );
             }
         }
+        // `attention-tick=N` ticks (or unticks) the N-th row (1-based); `attention-cancel` presses Cancel;
+        // `attention-state` prints `attention_sel: selected=N description=.. cancel=B fetch=.. visible_checks=V`
+        c if c.starts_with("attention-tick=") => {
+            let n: usize = c[15..].parse().unwrap_or(1);
+            let check = ATT.with(|a| {
+                a.borrow()
+                    .as_ref()
+                    .and_then(|s| s.checks.get(n.saturating_sub(1)).map(|c| c.1.clone()))
+            });
+            if let Some(c) = check {
+                c.set_active(!c.is_active());
+            }
+        }
+        "attention-cancel" => {
+            let b = ATT.with(|a| a.borrow().as_ref().map(|s| s.cancel.clone()));
+            if let Some(b) = b {
+                b.emit_clicked();
+            }
+        }
+        "attention-state" => ATT.with(|a| match a.borrow().as_ref() {
+            Some(s) => eprintln!(
+                "attention_sel: selected={} description={:?} cancel={} fetch={:?} visible_checks={} checks={}",
+                s.selected.borrow().len(),
+                s.group.description().unwrap_or_default(),
+                s.cancel.is_visible(),
+                s.fetch.label().unwrap_or_default(),
+                s.checks.iter().filter(|c| c.1.opacity() > 0.5).count(),
+                s.checks.len()
+            ),
+            None => eprintln!("attention_sel: closed"),
+        }),
         "attention-dump" => {
             let lib = shared.lib.borrow();
             let items = na::items(&lib.books);
@@ -410,5 +583,27 @@ pub fn dev(
             notify(trf("Identifiers tidied in {} books", &[&n]));
         }
         _ => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fetch_takes_the_ticked_books_or_all_of_them() {
+        let all = [1, 2, 3, 4];
+        assert_eq!(fetch_targets(&all, &HashSet::new()), vec![1, 2, 3, 4]);
+        assert_eq!(fetch_targets(&all, &HashSet::from([4, 2])), vec![2, 4]);
+        assert_eq!(fetch_targets(&all, &HashSet::from([9])), Vec::<u64>::new());
+    }
+
+    #[test]
+    fn the_group_says_how_many_are_selected() {
+        assert_eq!(selection_text(0, "3 no cover"), "3 no cover");
+        assert_eq!(selection_text(2, "3 no cover"), "2 selected");
+        assert_eq!(fetch_label(0), "Fetch Metadata");
+        assert_eq!(fetch_label(1), "Fetch Metadata for 1 Book");
+        assert_eq!(fetch_label(3), "Fetch Metadata for 3 Books");
     }
 }

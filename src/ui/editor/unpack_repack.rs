@@ -1,4 +1,4 @@
-//! Editing books that are not EPUB (CE-429): Book → Open a Book of Another Format to Edit converts an AZW3, MOBI,
+//! Editing books that are not EPUB (CE-429): Book → Open Another Format converts an AZW3, MOBI,
 //! FB2, DOCX, RTF, HTMLZ, TXTZ… file to a temporary EPUB in memory (a KEPUB is edited as it is, spans kept). Saving
 //! asks: save as an EPUB, or convert back into the original format (the original is kept as a backup). The
 //! decisions and the file handling are in `editor_structure.rs`.
@@ -42,7 +42,7 @@ impl Editor {
         let filters = gio::ListStore::new::<gtk::FileFilter>();
         filters.append(&filter);
         let dlg = gtk::FileDialog::builder()
-            .title(tr("Open a Book of Another Format to Edit"))
+            .title(tr("Open Another Format"))
             .filters(&filters)
             .build();
         let tx = self.sender.input_sender().clone();

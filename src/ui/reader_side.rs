@@ -39,6 +39,48 @@ pub struct TocItem {
     pub href: String,
 }
 
+/// A row of the contents list: the entry, its place in the whole list and whether it can fold.
+#[derive(Debug, Clone)]
+struct TocRow {
+    item: TocItem,
+    idx: usize,
+    parent: bool,
+    folded: bool,
+}
+
+/// The whole contents and which parents are folded (R28).
+#[derive(Default)]
+struct Fold {
+    all: Vec<TocItem>,
+    folded: std::collections::BTreeSet<usize>,
+    visible: Vec<usize>,
+}
+
+impl Fold {
+    fn depths(&self) -> Vec<usize> {
+        self.all.iter().map(|t| t.depth).collect()
+    }
+
+    /// Fills `store` with the entries that are shown.
+    fn refill(&mut self, store: &gio::ListStore) {
+        let depths = self.depths();
+        self.visible = crate::toc_fold::visible(&depths, &self.folded);
+        let rows: Vec<glib::BoxedAnyObject> = self
+            .visible
+            .iter()
+            .map(|&i| {
+                obj(TocRow {
+                    item: self.all[i].clone(),
+                    idx: i,
+                    parent: crate::toc_fold::is_parent(&depths, i),
+                    folded: self.folded.contains(&i),
+                })
+            })
+            .collect();
+        store.splice(0, store.n_items(), &rows);
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct BmItem {
     pub id: String,
@@ -73,6 +115,10 @@ struct State {
     dirty: Cell<bool>,
     rebuilds: Cell<u32>,
     toc_current: Cell<Option<u32>>,
+    /// The entry (in the whole list) of the chapter on the page.
+    current_all: Cell<Option<usize>>,
+    fold: Rc<RefCell<Fold>>,
+    fold_bar: gtk::Box,
 }
 
 #[derive(Clone)]
@@ -215,38 +261,84 @@ impl Side {
 
         // ---- contents -----------------------------------------------------------
         let toc_store = gio::ListStore::new::<glib::BoxedAnyObject>();
+        let fold: Rc<RefCell<Fold>> = Rc::new(RefCell::new(Fold::default()));
         let toc_sel = gtk::SingleSelection::new(Some(toc_store.clone()));
         toc_sel.set_autoselect(false);
         toc_sel.set_can_unselect(true);
         toc_sel.set_selected(gtk::INVALID_LIST_POSITION);
         let f = gtk::SignalListItemFactory::new();
-        f.connect_setup(|_, li| {
-            let Some(li) = li.downcast_ref::<gtk::ListItem>() else {
-                return;
-            };
-            let l = gtk::Label::new(None);
-            l.set_xalign(0.0);
-            l.set_wrap(true);
-            l.set_wrap_mode(pango::WrapMode::WordChar);
-            l.set_margin_end(8);
-            l.set_margin_top(6);
-            l.set_margin_bottom(6);
-            li.set_child(Some(&l));
-            let l2 = l.clone();
-            li.connect_item_notify(move |li| {
-                let Some(o) = li.item().and_downcast::<glib::BoxedAnyObject>() else {
+        {
+            let (fold, store) = (fold.clone(), toc_store.clone());
+            f.connect_setup(move |_, li| {
+                let Some(li) = li.downcast_ref::<gtk::ListItem>() else {
                     return;
                 };
-                let t = o.borrow::<TocItem>();
-                l2.set_label(&t.title);
-                l2.set_margin_start(10 + 14 * t.depth as i32);
-                if t.depth == 0 {
-                    l2.add_css_class("heading");
-                } else {
-                    l2.remove_css_class("heading");
+                let row = gtk::Box::new(gtk::Orientation::Horizontal, 2);
+                let arrow = gtk::Button::new();
+                arrow.add_css_class("flat");
+                arrow.add_css_class("circular");
+                arrow.set_valign(gtk::Align::Center);
+                arrow.set_focus_on_click(false);
+                let l = gtk::Label::new(None);
+                l.set_xalign(0.0);
+                l.set_hexpand(true);
+                l.set_wrap(true);
+                l.set_wrap_mode(pango::WrapMode::WordChar);
+                l.set_margin_end(8);
+                l.set_margin_top(6);
+                l.set_margin_bottom(6);
+                row.append(&arrow);
+                row.append(&l);
+                li.set_child(Some(&row));
+                let (l2, arrow2, row2) = (l.clone(), arrow.clone(), row.clone());
+                let idx_slot: Rc<Cell<usize>> = Rc::new(Cell::new(0));
+                {
+                    let (fold, store, idx_slot) = (fold.clone(), store.clone(), idx_slot.clone());
+                    arrow.connect_clicked(move |_| {
+                        let i = idx_slot.get();
+                        let mut f = fold.borrow_mut();
+                        if !f.folded.remove(&i) {
+                            f.folded.insert(i);
+                        }
+                        f.refill(&store);
+                    });
                 }
+                li.connect_item_notify(move |li| {
+                    let Some(o) = li.item().and_downcast::<glib::BoxedAnyObject>() else {
+                        return;
+                    };
+                    let r = o.borrow::<TocRow>();
+                    idx_slot.set(r.idx);
+                    l2.set_label(&r.item.title);
+                    row2.set_margin_start(4 + 14 * r.item.depth as i32);
+                    arrow2.set_visible(r.parent);
+                    // a leaf keeps the room of the arrow so that the titles line up
+                    arrow2.set_opacity(1.0);
+                    arrow2.set_icon_name(if r.folded {
+                        "pan-end-symbolic"
+                    } else {
+                        "pan-down-symbolic"
+                    });
+                    let tip = if r.folded {
+                        tr("Show the sections")
+                    } else {
+                        tr("Hide the sections")
+                    };
+                    arrow2.set_tooltip_text(Some(&tip));
+                    super::audit::label(&arrow2, &tip);
+                    if !r.parent {
+                        l2.set_margin_start(30);
+                    } else {
+                        l2.set_margin_start(0);
+                    }
+                    if r.item.depth == 0 {
+                        l2.add_css_class("heading");
+                    } else {
+                        l2.remove_css_class("heading");
+                    }
+                });
             });
-        });
+        }
         let toc_view = gtk::ListView::new(Some(toc_sel.clone()), Some(f));
         toc_view.add_css_class("navigation-sidebar");
         toc_view.set_single_click_activate(true);
@@ -259,20 +351,50 @@ impl Side {
                     .and_then(|m| m.item(pos))
                     .and_downcast::<glib::BoxedAnyObject>()
                 {
-                    s(Cmd::GoHref(o.borrow::<TocItem>().href.clone()));
+                    s(Cmd::GoHref(o.borrow::<TocRow>().item.href.clone()));
                 }
             });
         }
         let toc_scroll = gtk::ScrolledWindow::new();
         toc_scroll.set_child(Some(&toc_view));
         toc_scroll.set_vexpand(true);
+        // Collapse All / Expand All, shown when the contents have sections
+        let fold_bar = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        fold_bar.set_margin_start(8);
+        fold_bar.set_margin_end(8);
+        fold_bar.set_margin_top(4);
+        fold_bar.set_visible(false);
+        let collapse_all = gtk::Button::with_label(&tr("Collapse All"));
+        let expand_all = gtk::Button::with_label(&tr("Expand All"));
+        for b in [&collapse_all, &expand_all] {
+            b.add_css_class("flat");
+            b.add_css_class("caption");
+            fold_bar.append(b);
+        }
+        {
+            let (fold_a, store_a) = (fold.clone(), toc_store.clone());
+            collapse_all.connect_clicked(move |_| {
+                let mut f = fold_a.borrow_mut();
+                f.folded = crate::toc_fold::fold_all(&f.depths());
+                f.refill(&store_a);
+            });
+            let (fold_b, store_b) = (fold.clone(), toc_store.clone());
+            expand_all.connect_clicked(move |_| {
+                let mut f = fold_b.borrow_mut();
+                f.folded.clear();
+                f.refill(&store_b);
+            });
+        }
+        let toc_list = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        toc_list.append(&fold_bar);
+        toc_list.append(&toc_scroll);
         let toc_empty = adw::StatusPage::new();
         toc_empty.set_icon_name(Some("view-list-symbolic"));
         toc_empty.set_title(&tr("No table of contents"));
         toc_empty.set_description(Some(&tr("This book does not define one")));
         toc_empty.add_css_class("compact");
         let toc_stack = gtk::Stack::new();
-        toc_stack.add_named(&toc_scroll, Some("list"));
+        toc_stack.add_named(&toc_list, Some("list"));
         toc_stack.add_named(&toc_empty, Some("empty"));
         toc_stack.set_visible_child_name("empty");
         {
@@ -468,6 +590,9 @@ impl Side {
             dirty: Cell::new(false),
             rebuilds: Cell::new(0),
             toc_current: Cell::new(None),
+            current_all: Cell::new(None),
+            fold,
+            fold_bar,
         });
         let side = Side { root, stack, st };
 
@@ -599,16 +724,36 @@ impl Side {
     }
 
     pub fn set_toc(&self, items: &[TocItem]) {
-        let objs: Vec<glib::BoxedAnyObject> = items.iter().cloned().map(obj).collect();
+        {
+            let mut f = self.st.fold.borrow_mut();
+            f.all = items.to_vec();
+            f.folded.clear();
+            f.refill(&self.st.toc_store);
+        }
+        let depths: Vec<usize> = items.iter().map(|t| t.depth).collect();
         self.st
-            .toc_store
-            .splice(0, self.st.toc_store.n_items(), &objs);
+            .fold_bar
+            .set_visible((0..depths.len()).any(|i| crate::toc_fold::is_parent(&depths, i)));
         self.st.toc_current.set(None);
+        self.st.current_all.set(None);
     }
 
-    /// Marks the contents entry of the chapter on the page.
+    /// Marks the contents entry of the chapter on the page. A chapter inside a folded section
+    /// opens the section (the page you are on is never hidden).
     pub fn select_toc(&self, idx: Option<usize>) {
-        let pos = idx.map(|i| i as u32);
+        if let Some(i) = idx {
+            let mut f = self.st.fold.borrow_mut();
+            let depths = f.depths();
+            if crate::toc_fold::reveal(&depths, &mut f.folded, i) {
+                f.refill(&self.st.toc_store);
+                self.st.toc_current.set(None);
+            }
+        }
+        self.st.current_all.set(idx);
+        let pos = idx.and_then(|i| {
+            let f = self.st.fold.borrow();
+            crate::toc_fold::position_of(&f.depths(), &f.visible, i).map(|p| p as u32)
+        });
         if self.st.toc_current.get() == pos {
             return;
         }
@@ -710,6 +855,38 @@ impl Side {
                 format!("{} / {}", b.title, b.sub)
             })
             .collect()
+    }
+
+    /// Dev hook: `collapse`, `expand` or `toggle=N` (the Nth entry of the whole list); prints the
+    /// number of rows shown and the selected position.
+    pub fn dev_fold(&self, cmd: &str) -> String {
+        {
+            let mut f = self.st.fold.borrow_mut();
+            match cmd {
+                "collapse" => f.folded = crate::toc_fold::fold_all(&f.depths()),
+                "expand" => f.folded.clear(),
+                c => {
+                    if let Some(n) = c.strip_prefix("toggle=").and_then(|n| n.parse().ok()) {
+                        if !f.folded.remove(&n) {
+                            f.folded.insert(n);
+                        }
+                    }
+                }
+            }
+            f.refill(&self.st.toc_store);
+        }
+        self.st.toc_current.set(None);
+        let cur = self.st.current_all.get();
+        self.select_toc(cur);
+        let f = self.st.fold.borrow();
+        format!(
+            "toc_fold: shown={} of={} folded={} selected={:?} bar={}",
+            f.visible.len(),
+            f.all.len(),
+            f.folded.len(),
+            self.st.toc_current.get(),
+            self.st.fold_bar.is_visible()
+        )
     }
 
     /// For the dev hooks: `toc=2000 bookmarks=3 notes_rows=510 notes=500 rebuilds=2 ...`.
@@ -847,12 +1024,14 @@ fn build_note_row(li: &gtk::ListItem, send: Send) {
     });
 }
 
-/// A dialog to write the note of a highlight; `save` gets the text.
-pub fn edit_note_dialog(
+/// A dialog to write the note of a highlight; `save` gets the text. Returns its text view (a sync that changes the note meanwhile can show it
+/// there) and calls `closed` when the dialog goes away, saved or not.
+pub fn edit_note_dialog_with(
     parent: &impl IsA<gtk::Widget>,
     initial: &str,
     save: impl Fn(String) + 'static,
-) {
+    closed: impl Fn() + 'static,
+) -> gtk::TextView {
     let d = adw::AlertDialog::new(Some(&tr("Note")), None);
     d.add_response("cancel", &tr("Cancel"));
     d.add_response("save", &tr("Save"));
@@ -880,7 +1059,9 @@ pub fn edit_note_dialog(
             let (s, e) = b.bounds();
             save(b.text(&s, &e, false).to_string());
         }
+        closed();
     });
     d.present(Some(parent));
     tv.grab_focus();
+    tv
 }

@@ -13,6 +13,25 @@ os.makedirs(root, exist_ok=True)
 EXPECTED = "Basic " + base64.b64encode(creds.encode()).decode()
 
 
+def safe(fn):
+    """A request that raises (a file removed or a folder made by a concurrent request) is answered with a
+    status, never by closing the connection: the client would see "closed without answering"."""
+
+    def run(self):
+        try:
+            fn(self)
+        except (BrokenPipeError, ConnectionResetError):
+            raise
+        except FileExistsError:
+            self.reply(405)
+        except FileNotFoundError:
+            self.reply(404)
+        except Exception:
+            self.reply(500)
+
+    return run
+
+
 class H(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
@@ -42,6 +61,7 @@ class H(BaseHTTPRequestHandler):
         n = int(self.headers.get("Content-Length") or 0)
         return self.rfile.read(n) if n else b""
 
+    @safe
     def do_PROPFIND(self):
         self.body()
         if not self.auth():
@@ -53,16 +73,23 @@ class H(BaseHTTPRequestHandler):
         entries = [(href, p)]
         if os.path.isdir(p) and self.headers.get("Depth", "1") != "0":
             for n in sorted(os.listdir(p)):
+                if not os.path.exists(os.path.join(p, n)):
+                    continue  # deleted while listing (concurrent probe/part files)
                 entries.append((href.rstrip("/") + "/" + urllib.parse.quote(n), os.path.join(p, n)))
         x = '<?xml version="1.0"?><d:multistatus xmlns:d="DAV:">'
         for h, f in entries:
+            try:
+                size = 0 if os.path.isdir(f) else os.path.getsize(f)
+            except OSError:
+                continue  # a concurrent DELETE removed it since the listing
             if os.path.isdir(f):
                 x += f"<d:response><d:href>{h.rstrip('/')}/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>"
             else:
-                x += f"<d:response><d:href>{h}</d:href><d:propstat><d:prop><d:resourcetype/><d:getcontentlength>{os.path.getsize(f)}</d:getcontentlength></d:prop></d:propstat></d:response>"
+                x += f"<d:response><d:href>{h}</d:href><d:propstat><d:prop><d:resourcetype/><d:getcontentlength>{size}</d:getcontentlength></d:prop></d:propstat></d:response>"
         x += "</d:multistatus>"
         self.reply(207, x.encode(), "application/xml")
 
+    @safe
     def do_MKCOL(self):
         self.body()
         if not self.auth():
@@ -77,6 +104,7 @@ class H(BaseHTTPRequestHandler):
         os.mkdir(p)
         self.reply(201)
 
+    @safe
     def do_PUT(self):
         data = self.body()
         if not self.auth():
@@ -88,6 +116,7 @@ class H(BaseHTTPRequestHandler):
             f.write(data)
         self.reply(201)
 
+    @safe
     def do_GET(self):
         if not self.auth():
             return
@@ -97,6 +126,7 @@ class H(BaseHTTPRequestHandler):
         with open(p, "rb") as f:
             self.reply(200, f.read(), "application/octet-stream")
 
+    @safe
     def do_DELETE(self):
         if not self.auth():
             return
@@ -106,6 +136,17 @@ class H(BaseHTTPRequestHandler):
             return self.reply(204)
         self.reply(404)
 
+
+def unsupported(self):
+    # MOVE, OPTIONS, a PUT with Content-Range on a server that ignores it...: answer, keep serving
+    n = int(self.headers.get("Content-Length") or 0)
+    if n:
+        self.rfile.read(n)
+    self.reply(501)
+
+
+for _m in ("MOVE", "COPY", "OPTIONS", "HEAD", "PATCH", "PROPPATCH", "LOCK", "UNLOCK", "POST"):
+    setattr(H, "do_" + _m, unsupported)
 
 ThreadingHTTPServer.request_queue_size = 64  # a real server queues more than 5 connections
 srv = ThreadingHTTPServer(("127.0.0.1", 0), H)

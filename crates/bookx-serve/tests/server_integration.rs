@@ -156,6 +156,8 @@ fn make_book(id: u64, title: &str, author: &str, file: &str) -> Book {
         formats: vec![],
         resources: vec![],
         drm: String::new(),
+        custom: Default::default(),
+        marked: false,
     }
 }
 

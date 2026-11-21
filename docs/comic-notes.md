@@ -49,8 +49,15 @@ Comics edits the global part. A book's direction falls back to ComicInfo (`Manga
 
 ## Not done / caveats
 
-* **Next volume in the folder**, series from folder names, per-library direction, "ignore ComicInfo" switch: not built.
-* **CBR** (real RAR): still rejected with a message; no pure-Rust RAR decoder.
+* **Built in wave 11:** next/previous volume (`bookx_comic::volumes::neighbour`: series order, else files of one folder; only books kept
+  where they were, the Linked layout, have a folder; the webtoon strip has no end-of-book push, only the View Options buttons and
+  Ctrl+Page keys), series from folder names at import (`volumes::series_from_path`, generic names ignored), per-library direction
+  (`Store.library_rtl`, keyed by the library folder; the book's own choice wins, then ComicInfo `Manga`), "ignore ComicInfo" (`Global.ignore_info`, applies
+  to files imported afterwards; already imported books keep what they have).
+* **CBR** (real RAR) runs `unrar` or 7-Zip (`bookx-formats/src/rar.rs`; fixed system directories, argv only, listing checked first: 20,000 entries, 256 MiB per file,
+  1 GiB total, 120 s; contents read from the helper's stdout and cut by the listed sizes, nothing written to disk except the private temporary copy of the archive).
+  Without a helper the import fails with a message. Encrypted archives fail (no password prompt). Tested with hand-built stored RAR 1.5 archives only: **RAR5 and compressed
+  archives were not tried** (no `rar` binary here).
 * Pages are shown with cairo's bilinear / "good" filter from the reduced bitmap; no sharpening, no gamma, no auto-crop of white margins,
   no contrast slider for e-ink. A page is decoded once per size cap; zooming to 6x shows the reduced bitmap enlarged (4096 px cap).
 * The thumbnail strip is the comic's own sidebar, not the EPUB *Book map* (that window is for text books). Thumbnails are decoded

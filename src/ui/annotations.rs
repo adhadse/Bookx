@@ -178,8 +178,15 @@ pub fn run(
             Rc::new(move || {
                 let done = {
                     let mut lib = shared.lib.borrow_mut();
+                    let snap = crate::sync_bus::Snapshot::take(&lib.books);
                     let a = import::apply(&mut lib, &plan);
                     let _ = lib.save();
+                    crate::sync_bus::publish_changes(
+                        &snap,
+                        &lib.books,
+                        "",
+                        crate::sync_bus::Via::Import,
+                    );
                     a
                 };
                 eprintln!(

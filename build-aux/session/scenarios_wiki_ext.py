@@ -726,6 +726,9 @@ def _wiki_lib_device(c):
     os.makedirs(books, exist_ok=True)
     shutil.copy(c.books["tiny"], os.path.join(books, "Tiny Book.epub"))
     shutil.copy(c.books["alice"], os.path.join(books, "Alice in Wonderland.epub"))
+    # a fuller shelf, with titles long enough to need two caption lines
+    for name in ("Bhagavad-Gita As It Is", "A Study in Scarlet", "The Adventures of Sherlock Holmes", "Pride and Prejudice"):
+        shutil.copy(c.books["tiny"], os.path.join(books, name + ".epub"))
     lib_start(c)
     time.sleep(1.5)
     banner = (c.find(None, "E-reader connected") + c.find("button", "Sync")

@@ -284,7 +284,7 @@ impl Editor {
     pub(super) fn show_report(&mut self) {
         self.flush();
         let rows = editor_tools::report_rows(&self.book.borrow());
-        let dialog = adw::Dialog::new();
+        let dialog = crate::ui::dialog_toast::new_dialog();
         dialog.set_title(&tr("Book Report"));
         dialog.set_content_width(480);
         dialog.set_content_height(460);

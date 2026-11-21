@@ -64,12 +64,14 @@ pub enum ExportFormat {
     Json,
     KindleClippings,
     Obsidian,
+    /// A Markdown note with the front matter that Joplin's Markdown import reads.
+    Joplin,
 }
 
 impl ExportFormat {
     pub fn extension(self) -> &'static str {
         match self {
-            Self::Markdown | Self::Obsidian => "md",
+            Self::Markdown | Self::Obsidian | Self::Joplin => "md",
             Self::Text | Self::KindleClippings => "txt",
             Self::Html => "html",
             Self::Json => "json",
@@ -84,6 +86,7 @@ impl ExportFormat {
             "json" => Some(Self::Json),
             "kindle" | "clippings" => Some(Self::KindleClippings),
             "obsidian" => Some(Self::Obsidian),
+            "joplin" => Some(Self::Joplin),
             _ => None,
         }
     }
@@ -413,6 +416,43 @@ fn render_kindle(
     out
 }
 
+fn render_joplin(
+    title: &str,
+    author: Option<&str>,
+    items: &[&AnnotationItem],
+    opts: &ExportOptions,
+    now: DateTime<Utc>,
+) -> String {
+    // Joplin reads `title`, `created`, `updated` and a `tags` list from the front matter
+    let mut out = String::from("---\n");
+    let _ = writeln!(out, "title: {}", yaml_quote(&one_line(title)));
+    let _ = writeln!(
+        out,
+        "created: {}",
+        now.to_rfc3339_opts(SecondsFormat::Secs, true)
+    );
+    out.push_str("tags:\n  - bookx\n  - highlights\n---\n\n");
+    let _ = write!(out, "# {}\n\n", one_line(title));
+    if let Some(a) = author.map(one_line).filter(|a| !a.is_empty()) {
+        let _ = write!(out, "*{a}*\n\n");
+    }
+    for (chapter, group) in chapter_groups(items, opts) {
+        if let Some(c) = chapter {
+            let _ = write!(out, "## {}\n\n", one_line(c));
+        }
+        for it in group {
+            if !it.text.trim().is_empty() {
+                out.push_str(&quote_lines(&it.text, "> "));
+                out.push('\n');
+            }
+            if let Some(n) = note_of(it, opts) {
+                let _ = write!(out, "**Note:** {}\n\n", one_line(n));
+            }
+        }
+    }
+    out
+}
+
 fn render_obsidian(
     title: &str,
     author: Option<&str>,
@@ -504,6 +544,7 @@ pub fn export(
                     ExportFormat::Markdown => render_markdown(t, *a, its, opts),
                     ExportFormat::Text => render_text(t, *a, its, opts),
                     ExportFormat::KindleClippings => render_kindle(t, *a, its, opts),
+                    ExportFormat::Joplin => render_joplin(t, *a, its, opts, now),
                     _ => render_obsidian(t, *a, its, opts, now),
                 });
             }
@@ -949,6 +990,38 @@ Dune & Co\n- Your Note | Added on Friday, January 5, 2024 12:00:00 PM\n\njust a 
 ## Part 2\n\n\
 > [!quote] underline\n> 日本語 text\n\n";
         assert_eq!(out, expected);
+    }
+
+    #[test]
+    fn joplin_note_has_front_matter_tags_and_plain_quotes() {
+        let o = ExportOptions {
+            group_by_chapter: true,
+            ..opts()
+        };
+        let out = export(&[a(), b()], ExportFormat::Joplin, &o, now());
+        assert!(
+            out.starts_with(
+                "---\ntitle: \"Dune & Co\"\ncreated: 2026-11-12T08:30:00Z\ntags:\n  - bookx\n  - highlights\n---\n\n# Dune & Co\n\n*Frank <Herbert>*\n\n## Part 1\n\n"
+            ),
+            "{out}"
+        );
+        assert!(out.contains("> Fear is the “mind-killer”.\n"), "{out}");
+        assert!(out.contains("**Note:** Litany: `a` & b\n"), "{out}");
+        assert!(
+            !out.contains("[!quote]"),
+            "no Obsidian callouts in a Joplin note"
+        );
+        assert_eq!(
+            out.matches("\n---\n").count(),
+            1,
+            "front matter closes once"
+        );
+        assert_eq!(
+            ExportFormat::from_name("Joplin"),
+            Some(ExportFormat::Joplin)
+        );
+        assert_eq!(ExportFormat::Joplin.extension(), "md");
+        assert_eq!(export(&[], ExportFormat::Joplin, &opts(), now()), "");
     }
 
     #[test]

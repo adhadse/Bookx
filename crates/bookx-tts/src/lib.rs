@@ -10,6 +10,7 @@
 //! * [`cache`], [`sink`], [`prefs`]
 
 pub mod cache;
+pub mod command;
 #[rustfmt::skip]
 pub mod catalog_data;
 pub mod download;

@@ -131,3 +131,66 @@ fn a_manifest_of_200000_files_validates_and_round_trips() {
     let took = t.elapsed();
     assert!(took < budget(2.5), "a 200000-file manifest took {took:?}");
 }
+
+#[test]
+fn a_passphrase_change_of_a_few_hundred_objects_and_big_files_is_quick() {
+    let lib = common::Lib::new("perf-rekey");
+    for i in 0..300 {
+        let rel = format!("Author {}/Book {i}/book-{i}.epub", i % 20);
+        lib.write(&rel, format!("content {i}").repeat(50).as_bytes());
+    }
+    for i in 0..4 {
+        // not compressible, several chunks each
+        let mut x = 0x9e3779b97f4a7c15u64 ^ i;
+        let big: Vec<u8> = (0..8 << 20)
+            .map(|_| {
+                x ^= x << 13;
+                x ^= x >> 7;
+                x ^= x << 17;
+                (x >> 24) as u8
+            })
+            .collect();
+        lib.write(&format!("Big/Big {i}/big-{i}.epub"), &big);
+    }
+    let m = Arc::new(MemStore::default());
+    let repo = Repository::open_or_create(
+        Box::new(m.clone()),
+        &Secrets::passphrase("a"),
+        true,
+        Kdf::TEST,
+    )
+    .unwrap();
+    repo.run(
+        &lib.source(),
+        &RunOptions {
+            jobs: 4,
+            gc_grace: None,
+            ..RunOptions::default()
+        },
+        &|_| {},
+        &no(),
+    )
+    .unwrap();
+    drop(repo);
+    let t = Instant::now();
+    let r = Repository::change_passphrase(
+        Box::new(m.clone()),
+        "a",
+        "b",
+        &bookx_backup::repo::RekeyOptions {
+            kdf: Kdf::TEST,
+            verify: true,
+            jobs: 4,
+        },
+        &no(),
+        &|_| {},
+    )
+    .unwrap();
+    let took = t.elapsed();
+    assert!(r.converted > 300, "{r:?}");
+    assert!(
+        took < budget(3.0),
+        "re-encrypting {} objects (32 MiB of big files) took {took:?}",
+        r.converted
+    );
+}

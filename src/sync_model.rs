@@ -35,12 +35,18 @@ pub struct Group {
 
 /// The groups of Preferences → Sync: what most people need first, everything technical in the
 /// last one (a collapsed “Advanced” row). Registered by `ui::sync_prefs`.
-pub const GROUPS: [Group; 5] = [
+pub const GROUPS: [Group; 6] = [
     Group {
         id: "checklist",
         title: N_("Setup checklist"),
         connection: Connection::Wifi,
         order: 10,
+    },
+    Group {
+        id: "activity",
+        title: N_("Connected devices"),
+        connection: Connection::Wifi,
+        order: 12,
     },
     Group {
         id: "what",
@@ -56,7 +62,7 @@ pub const GROUPS: [Group; 5] = [
     },
     Group {
         id: "servers",
-        title: N_("Library servers (OPDS)"),
+        title: N_("OPDS server"),
         connection: Connection::Servers,
         order: 40,
     },
@@ -100,7 +106,7 @@ pub const STEP_SERVER_HINT: &str = N_("Starts the server, opens it to your local
 /// The persistent banner of the Sync window while the server is open to the network.
 pub const LAN_BANNER: &str = N_("Other devices on your network can reach this server");
 pub const STEP_ACCOUNT: &str = N_("Create your sync account");
-pub const STEP_ACCOUNT_HELP: &str = N_("Choose any user name and password. Copy these into Bookx Sync on the e-reader. This is not the Share Library password. There is no existing KOReader account. If the server is not on yet, switch on step 1 first.");
+pub const STEP_ACCOUNT_HELP: &str = N_("Choose any user name and password. Copy these into Bookx Sync on the e-reader. This is not the OPDS server password. There is no existing KOReader account. If the server is not on yet, switch on step 1 first.");
 pub const STEP_PLUGIN: &str = N_("Install the Bookx plugin on KOReader");
 pub const STEP_PLUGIN_HELP: &str = N_("Copies the plugin into KOReader’s plugins folder on the connected e-reader, or into a folder you choose. Restart KOReader afterwards. Without the plugin only the reading position is synced.");
 pub const STEP_TEST: &str = N_("Test on the device");
@@ -422,7 +428,7 @@ impl Snapshot {
             },
             Card {
                 id: "opds",
-                title: tr("Share books (OPDS)"),
+                title: tr("OPDS server"),
                 use_when: tr("Use this to let another device or app download books from this computer."),
                 status: if self.opds_on() {
                     tr("on")
@@ -430,9 +436,9 @@ impl Snapshot {
                     tr("off")
                 },
                 button: if self.opds_on() {
-                    tr("Stop library server")
+                    tr("Stop OPDS server")
                 } else {
-                    tr("Start library server")
+                    tr("Start OPDS server")
                 },
             },
         ]
@@ -581,9 +587,9 @@ pub const REQUIREMENTS: [Requirement; 5] = [
     },
     Requirement {
         id: "opds",
-        sync_type: N_("Library server (OPDS and web page)"),
+        sync_type: N_("OPDS server (catalogue and web page)"),
         works_between: N_("Bookx and reader apps or e-readers that browse OPDS"),
-        bookx_needs: N_("The library server on"),
+        bookx_needs: N_("The OPDS server on"),
         reader_needs: N_("An app or browser on the same network, or one that can reach this computer (KOReader, Moon+ Reader, Librera, Kybook)"),
         connection: N_("Wi-Fi or local network"),
         syncs: N_("Books and the catalogue only"),
@@ -758,7 +764,7 @@ mod tests {
         assert_eq!(c[0].button, "Start setup");
         assert_eq!(c[1].button, "Open device window");
         assert_eq!(c[1].status, "not connected");
-        assert_eq!(c[2].button, "Start library server");
+        assert_eq!(c[2].button, "Start OPDS server");
         for card in &c {
             assert!(card.use_when.starts_with("Use this "), "{}", card.id);
             assert!(!card.button.is_empty() && !card.status.is_empty());
@@ -774,7 +780,7 @@ mod tests {
         let c = on.cards();
         assert_eq!(c[0].button, "Open setup guide");
         assert_eq!(c[1].status, "connected (Kobo)");
-        assert_eq!(c[2].button, "Stop library server");
+        assert_eq!(c[2].button, "Stop OPDS server");
         assert_eq!(c[2].status, "on");
     }
 
@@ -786,7 +792,7 @@ mod tests {
         for (_, title, _) in steps {
             assert!(!title.starts_with(|c: char| c.is_ascii_digit()), "{title}");
         }
-        assert!(STEP_ACCOUNT_HELP.contains("not the Share Library password"));
+        assert!(STEP_ACCOUNT_HELP.contains("not the OPDS server password"));
         assert!(STEP_TEST_HELP.contains("More tools → Bookx Sync → Sync now"));
     }
 
@@ -875,6 +881,35 @@ mod tests {
         let s = snapshot(&c, true, None, true);
         assert!(s.account && s.plugin_copied);
         assert_eq!(s.readiness(), Readiness::Connected);
+    }
+
+    #[test]
+    fn the_shared_library_is_the_opds_server_everywhere() {
+        let snap = Snapshot {
+            server_running: true,
+            ..Snapshot::default()
+        };
+        let mut texts: Vec<String> = vec![
+            STEP_ACCOUNT_HELP.into(),
+            title("servers"),
+            REQUIREMENTS
+                .iter()
+                .map(|r| format!("{} {}", r.sync_type, r.bookx_needs))
+                .collect(),
+        ];
+        for c in snap.cards() {
+            texts.push(format!("{} {}", c.title, c.button));
+        }
+        let all = texts.join(" | ");
+        assert!(all.contains("OPDS server"), "{all}");
+        for old in [
+            "Library server",
+            "library server",
+            "Share Library",
+            "Share books",
+        ] {
+            assert!(!all.contains(old), "`{old}` in {all}");
+        }
     }
 
     #[test]

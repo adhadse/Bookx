@@ -14,19 +14,33 @@ Click the **+** button at the top of the sidebar, choose *Add from the Web* and 
 - A **page address** becomes a readable book, to read later. Images are included.
 - A **feed address** (RSS, Atom or JSON Feed) becomes a news book of its latest articles.
 
+- Type `wikipedia:Ada Lovelace` to make a book of a Wikipedia article. Several articles go in one book: `wikipedia:Berlin|Hamburg`; a language
+  goes in front of the title: `wikipedia:de:Berlin`. An article address of Wikipedia works too. Each article is a chapter and the book names Wikipedia and its licence
+  (CC BY-SA 4.0). Pictures are not included.
+
 The new book lands in your library like any other and can be read, edited and sent to a device.
+
+### Import from Wallabag
+
+In the same window, *Import from Wallabag* adds the articles you saved in your own [Wallabag](https://wallabag.org) server as books.
+Enter the address of the server and either an **access token** or the **API client** of your account (Wallabag → *API clients
+management*: client ID and secret, plus your user name and password). Bookx takes the 25 newest unread articles (switch on *Include
+articles already read* for the others, or enter a tag), and remembers which ones it has imported: a second import adds only new ones.
+
+The text comes from Wallabag, not from the original site; the pictures are downloaded from the original site. The secrets are kept in the
+system keyring like every other password. The server may be on your home network.
 
 ## Online catalogues
 
 <figure markdown="1">
-![The Online Catalogues window](assets/library-catalogues-light.png#only-light)
-![The Online Catalogues window](assets/library-catalogues-dark.png#only-dark)
+![The Online Catalogues page](assets/library-catalogues-light.png#only-light)
+![The Online Catalogues page](assets/library-catalogues-dark.png#only-dark)
 <figcaption markdown="1">Online Catalogues: Project Gutenberg and Standard Ebooks are built in; add your own OPDS address with **+**.</figcaption>
 </figure>
 
 
-The **Library** menu in the header bar (next to *View options*) → *Online Catalogues* browses OPDS catalogues. Project Gutenberg and Standard Ebooks are listed; the **+** button
-adds others, such as a Calibre server (`http://host:8080/opds`) or another Bookx that shares its library. A user
+**Online Catalogues** in the sidebar (or the **Library** menu in the header bar, next to *View options*) opens a page in the library that browses OPDS catalogues, with its own **Back** button. Project Gutenberg and Standard Ebooks are listed; the **+** button
+adds others, such as a Calibre server (`http://host:8080/opds`) or another Bookx that runs its OPDS server. Removing a catalogue you added shows a message with **Undo**. A user
 name and password are only needed when the server asks for them; they are sent to that server only, and the password is
 kept in the system keyring.
 
@@ -49,8 +63,9 @@ Long lists end with *Load more*. Limits: no sign-in pages other than basic authe
 Open **News Subscriptions** to have Bookx build a news book for you on a schedule. Click the **Library** button in the header bar (next to *View options*) and choose *Subscribe to News*; the **welcome page** of an empty library has the same button.
 
 1. Press *Add*. Give it a **name** (the refresh button next to the name takes it from the feed).
-2. Enter one or more **feed addresses**, one per line. A line starting with `#` switches a feed off. You can also
-   import an **OPML** file.
+2. Enter one or more **feed addresses**, one per line. A line starting with `#` switches a feed off. Put the word `full`
+   after an address to download the articles of that feed in full whatever the setting below says, or `summary` to use only the
+   feed text (`https://example.com/feed.xml full`). You can also import an **OPML** file.
 3. Choose the number of **articles per feed**, and whether to download **full articles** (each article's web page
    instead of the feed text).
 4. Choose the **schedule**: manual, hourly, daily, or weekly, with a time of day (`HH:MM`, in your local time) and,
@@ -86,7 +101,7 @@ Subscriptions are stored in `news.json` next to the settings file.
     In the subscription set *Issues to keep*; older issues are removed after each download.
 
 ??? question "How do I browse Project Gutenberg or my Calibre server?"
-    **Library** menu → *Online Catalogues*. Gutenberg and Standard Ebooks are listed; press **+** to add your own
+    **Online Catalogues** in the sidebar. Gutenberg and Standard Ebooks are listed; press **+** to add your own
     OPDS address.
 
 ??? question "Can I buy or borrow books there?"

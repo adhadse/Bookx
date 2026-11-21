@@ -27,8 +27,19 @@ const BOOK_FOLDERS: &[&str] = &["Books", "books", "eBooks", "Documents", "Downlo
 pub fn default_gvfs_dir() -> PathBuf {
     match std::env::var_os("XDG_RUNTIME_DIR").filter(|v| !v.is_empty()) {
         Some(d) => PathBuf::from(d).join("gvfs"),
-        None => PathBuf::from(format!("/run/user/{}/gvfs", nix::unistd::getuid().as_raw())),
+        None => PathBuf::from(format!("/run/user/{}/gvfs", user_id())),
     }
+}
+
+#[cfg(unix)]
+fn user_id() -> u32 {
+    nix::unistd::getuid().as_raw()
+}
+
+/// GVfs does not exist outside Unix; the path is never found.
+#[cfg(not(unix))]
+fn user_id() -> u32 {
+    0
 }
 
 /// The driver. `gvfs_dir` holds the `mtp:host=…` mounts.

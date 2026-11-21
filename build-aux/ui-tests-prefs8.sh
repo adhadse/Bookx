@@ -50,7 +50,7 @@ scenario prefs8_library_folder_confirm 'prefs:,wait:900,prefs:pick=Library,wait:
     has "^dialog: open=true"; check "the confirmation dialog is really open" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
-scenario prefs8_sync_banner 'share:port0,action:sync,wait:800,sync:dump,sync:card=wifi,wait:900,prefs:sync-server=on,wait:700,sync:dump,prefs:sync-server=off,wait:600,sync:dump,quit' '
+scenario prefs8_sync_banner 'share:port0,action:sync,wait:800,sync:dump,sync:prefs,wait:900,prefs:sync-server=on,wait:700,sync:dump,prefs:sync-server=off,wait:600,sync:dump,quit' '
     W=$(grep "^sync_window: " <<<"$OUT")
     sed -n 1p <<<"$W" | grep -q "lan_banner=false"; check "no network banner while the server is off" $?
     sed -n 2p <<<"$W" | grep -q "lan_banner=true"; check "step 1 opens the server to the network and the window says so" $?
@@ -142,3 +142,51 @@ scenario prefs10_mcp_search 'prefs:,wait:900,prefs:search=assistant,wait:300,pre
     sed -n 3p <<<"$P" | grep -q "sections=.*MCP"; check "searching MCP finds the page" $?
     sed -n 4p <<<"$P" | grep -q "selected=MCP"; check "the old name AI Assistants still opens the page" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# ---- wave 10: footer group, section keys in the shortcuts page, OPDS naming, audiobook audit ----------------
+scenario prefs11_footer_group 'prefs:,wait:900,prefs:pick=Reading,wait:400,prefs:footer-preset=everything,prefs:footer-toggle=battery,prefs:footer-toggle=battery,prefs:search=battery,wait:300,prefs:dump,prefs:search=,a11y-audit:,quit' '
+    has "^prefs_footer: preset=everything"; check "the Footer Statistics preset row is driven by its own widget" $?
+    has "^prefs_footer: toggled battery"; check "each footer item is its own switch row" $?
+    P=$(grep "^prefs: query" <<<"$OUT")
+    grep -q "sections=.*Reading" <<<"$P"; check "searching an item name (battery) finds the Reading page" $?
+    ! has "^a11y-problem:"; check "every control of the footer group has an accessible name" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario prefs11_section_keys_listed 'prefs:,wait:900,prefs:search=Next Section,wait:300,prefs:dump,prefs:search=OPDS,wait:300,prefs:dump,quit' '
+    P=$(grep "^prefs: query" <<<"$OUT")
+    sed -n 1p <<<"$P" | grep -q "sections=.*Keyboard Shortcuts"; check "the shortcuts page lists the Preferences section keys" $?
+    sed -n 2p <<<"$P" | grep -q "sections=.*Sync"; check "the Sync page is found by its OPDS server name" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario a11y_audit_audiobook "audio:add=$AUD/Tale,audio:open=3,wait:700,a11y-audit:,audio:dump,audio:close,quit" '
+    [ "$(grep -c "^a11y:" <<<"$OUT")" -eq 1 ]; check "the audit ran with the audiobook player open" $?
+    ! has "^a11y-problem:"; check "every control of the audiobook player has an accessible name" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario a11y_audit_prefs_all 'app:win-size=900x600,wait:800,prefs:,wait:900,prefs:dump,prefs:pick=#1,wait:350,a11y-audit:,prefs:pick=#2,wait:350,a11y-audit:,prefs:pick=#3,wait:350,a11y-audit:,prefs:pick=#4,wait:350,a11y-audit:,prefs:pick=#5,wait:350,a11y-audit:,prefs:pick=#6,wait:350,a11y-audit:,prefs:pick=#7,wait:350,a11y-audit:,prefs:pick=#8,wait:350,a11y-audit:,prefs:pick=#9,wait:350,a11y-audit:,prefs:pick=#10,wait:350,a11y-audit:,prefs:pick=#11,wait:350,a11y-audit:,prefs:pick=#12,wait:350,a11y-audit:,quit' '
+    [ "$(grep -c "^a11y:" <<<"$OUT")" -eq 12 ]; check "the audit ran on each of the twelve Preferences pages in a 900x600 window" $?
+    ! has "^a11y-problem:"; check "every control of every Preferences page has an accessible name" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# ---- wave 11 (X10 settings import/export). Dev commands: `settings:export=PATH` (`settings_io: exported bytes=N`),
+# `settings:import=PATH` (`settings_io: preview changed=a,b unknown=… skipped=…` and the preview dialog, or
+# `settings_io: refused REASON`), `settings:import-apply` (`settings_io: applied`), `settings:get=KEY`
+# (`settings_io: KEY=JSON`).
+
+scenario prefs11_settings_export_import 'prefs:,wait:900,prefs:eink=on,wait:300,settings:export=@D@/s.json,prefs:eink=off,wait:300,settings:get=eink,settings:import=@D@/s.json,wait:400,dialog:state,settings:import-apply,wait:300,settings:get=eink,launch:write=@D@/bad.json|not json at all,settings:import=@D@/bad.json,launch:write=@D@/other.json|{"format":"x"},settings:import=@D@/other.json,quit' '
+    G=$(grep "^settings_io: eink=" <<<"$OUT")
+    has "^settings_io: exported bytes=[1-9]"; check "Export Settings writes a file" $?
+    sed -n 1p <<<"$G" | grep -q "eink=false"; check "the setting was off before the import" $?
+    has "^settings_io: preview changed=.*eink"; check "the preview says the E-ink setting would change" $?
+    has "^dialog: open=true"; check "the preview is a dialog" $?
+    has "^settings_io: applied"; check "Import applies the file" $?
+    sed -n 2p <<<"$G" | grep -q "eink=true"; check "afterwards the setting is back on" $?
+    has "^settings_io: refused .*not valid JSON"; check "a file that is not JSON is refused with a reason" $?
+    has "^settings_io: refused .*not a Bookx settings file"; check "another JSON file is refused too" $?
+    ! grep -qiE "password\": \"[^\"]" "$d/s.json"; check "the exported file holds no password" $?
+    grep -q "\"format\": \"bookx-settings\"" "$d/s.json"; check "the file says what it is" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario prefs11_phone_360x640 'prefs:,wait:900,prefs:fit,prefs:pick=Reading,wait:300,prefs:fit,prefs:pick=Editor,wait:300,prefs:fit,quit' '
+    [ "$(grep -c "^prefs_fit: .* fits=true" <<<"$OUT")" = 3 ]; check "at 360x640 the dialog fits inside the window on the General, Reading and Editor pages" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings at phone size" $?'

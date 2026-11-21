@@ -291,7 +291,7 @@ impl PlayerCard {
         status_row.set_halign(gtk::Align::End);
         let status_cancel = gtk::Button::with_label(&tr("Cancel"));
         let status_retry = gtk::Button::with_label(&tr("Try again"));
-        let status_copy = gtk::Button::with_label(&tr("Copy install command"));
+        let status_copy = gtk::Button::with_label(&tr("Copy Install Command"));
         status_row.append(&status_copy);
         status_row.append(&status_retry);
         status_row.append(&status_cancel);
