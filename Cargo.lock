@@ -495,7 +495,7 @@ name = "bookx"
 version = "0.2.0"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
+ "base64 0.23.1",
  "bookx-audio",
  "bookx-backup",
  "bookx-comic",
@@ -619,7 +619,7 @@ name = "bookx-convert"
 version = "0.2.0"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
+ "base64 0.23.1",
  "bookx-core",
  "bookx-formats",
  "bzip2",
@@ -686,7 +686,7 @@ name = "bookx-formats"
 version = "0.2.0"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
+ "base64 0.23.1",
  "bookx-comic",
  "bookx-core",
  "bookx-pdf",
@@ -726,7 +726,7 @@ name = "bookx-mcp"
 version = "0.2.0"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
+ "base64 0.23.1",
  "bookx-convert",
  "bookx-core",
  "bookx-lookup",
@@ -753,7 +753,7 @@ name = "bookx-plugin"
 version = "0.2.0"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
+ "base64 0.23.1",
  "bookx-core",
  "regex",
  "serde",
@@ -777,7 +777,7 @@ name = "bookx-serve"
 version = "0.2.0"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
+ "base64 0.23.1",
  "bookx-core",
  "chrono",
  "http-body-util",
