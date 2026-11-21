@@ -51,7 +51,7 @@ jobs:
           cargo install --locked cargo-deb cargo-generate-rpm
           cargo deb --no-build -p bookx --output dist/
           cargo generate-rpm -p . -o dist/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: tarball
           path: |
@@ -74,7 +74,7 @@ jobs:
           cache-key: flatpak-release-${{ github.sha }}
       - name: Checksum
         run: sha256sum bookx.flatpak > bookx.flatpak.sha256
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: flatpak
           path: |
