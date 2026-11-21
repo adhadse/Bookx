@@ -79,6 +79,12 @@ class Ctx:
         else:
             self.failed += 1
             self._say("FAIL", text + (f"  ({detail})" if detail else ""))
+            if os.environ.get("DUMP_TREE_ON_FAIL"):
+                try:
+                    with open(os.path.join(self.results, f"{self.name}-tree-{self.failed}.txt"), "w") as f:
+                        f.write(self.tree().dump())
+                except Exception:
+                    pass
         return bool(cond)
 
     def note(self, text):

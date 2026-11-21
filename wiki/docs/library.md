@@ -21,8 +21,8 @@ book, its details on the right. Search and the view options are in the header ba
 The sidebar is always there on a wide window. In a window narrower than about 920 px it turns into an overlay on top of
 the books (so they keep at least about 670 px) and a sidebar button appears at the left of the header bar to open it;
 picking an entry closes it again. The details panel becomes an overlay too below about 1170 px, before it could squeeze
-the covers. The header never clips: the title shortens with "…", and below about 600 px the device button moves into the
-*View options* popover. The smallest window is 360 × 294 px.
+the covers. The header never clips: the title shortens with "…", and below about 600 px the Devices button moves into
+the *View options* popover. The smallest window is 360 × 294 px.
 
 | Entry | Shows |
 |---|---|
@@ -33,7 +33,7 @@ the covers. The header never clips: the title shortens with "…", and below abo
 | **Shelves** | your [shelves](#shelves-collections-and-tags) and smart shelves; the **+** makes a new one |
 | **Saved Searches** | searches you named; the pinned one is the virtual library |
 | **Series**, **Authors**, **Tags**, **Publishers**, **Languages**, **Ratings**, **Reading status** | click an entry to filter; the buttons on the *Series* and *Authors* rows open the series overview and the author manager |
-| **Library Health** | at the bottom: checks, duplicates, editions, books that need attention, backups, trash and history (a badge shows how many books need attention) |
+| **Library Health** | at the bottom: checks, duplicates, editions, books that need attention, backups, trash and history (a badge shows how many books need attention). Backups protect the catalogue, not the book files; see [Backup & Restore](backup-and-restore.md) |
 
 The view you picked is remembered for the next start.
 
@@ -58,13 +58,15 @@ switcher, the search button and the main menu. The header bar of the books shows
 
 Highlights are grouped by book. A card is one or two lines of the quote drawn the way it looks on the page (its
 colour and style), the note you wrote in its own **Note** line below it, and the chapter and date at the right next to the
-**⋮** menu (edit the note, copy, delete, colour, style; the same menu as in the reader). The tick box on the left
-picks cards to export (nothing ticked exports everything shown). Click a card, or press Enter on it, to open the book
+**⋮** menu (edit the note, copy, delete, colour, style; the same menu as in the reader). A tick box appears
+in the corner of a card when you hover it or focus it; ticking one starts selection: the header says **N selected** with a
+**Cancel** button, ++ctrl+a++ selects everything shown, and the bar at the bottom offers **Copy**, **Delete** (asks first, naming
+the count) and **Export**. With nothing selected **Export** exports everything shown, and its menu says so. Click a card, or press Enter on it, to open the book
 at the passage.
 
-One toolbar row holds the search box, **Filter**, the sort button and the group button. **Filter** opens a popover
+One toolbar row holds the search box, **Filter** and **View** (the order and the grouping). **Filter** opens a popover
 with colour, book, with or without a note, **From** and **To** (calendar buttons, *Any time* by default) and
-**Clear filters**; a number on the button says how many filters are on, and each active filter also shows as a small
+**Clear Filters**; a number on the button says how many filters are on, and each active filter also shows as a small
 chip under the toolbar that you can click to remove. The line at the right of the chips says how many highlights are
 shown.
 
@@ -77,9 +79,14 @@ shown.
 </figure>
 
 
-- **Grid or table.** Switch in the main menu. The table has sortable columns for title, author, series, rating,
-  progress, date and size.
-- **Sort and cover size** are set in the main menu.
+- **Grid or table.** Switch in *View options* (the button's icon shows the current view). The table has sortable columns for title, author, series, rating,
+  progress, date and size. Click a header to sort by it and again to reverse; the sort in *View options* follows the
+  header and the other way round. The table shows the columns that fit its width (the low-value ones, such as
+  *Published*, *Rating* and *Series*, go first in a narrow window), so it does not scroll sideways; *View options* →
+  *Columns* picks them by hand and *Fit to Window* goes back. On a very wide window the cover grid stops at 1800 px.
+- **Sort and cover size** are set in *View options*. New libraries sort by *Title* (books are found by name; *Home* and
+  *Recent* show what you read last). Cover size and grouping of editions only apply to the grid and are
+  hidden in the table. The sort direction button says whether the list is ascending or descending.
 - **Covers keep their size.** Opening or closing the sidebar or the details panel, or resizing the window, never
   stretches or shrinks the covers: the grid reflows instead, and books move to the next row (or back up) as the
   room changes, as in the icon view of Files. The covers are not redrawn when a panel opens.
@@ -88,12 +95,13 @@ shown.
   Favourites, format, language, tags and comments, and a *Properties* button with every detail (path, identifiers,
   sources, annotations). For several books it shows how many are selected and the actions for all of them: bulk
   edit, fetch metadata, favourites, mark read or unread, e-mail and remove. In a narrow window the panel would cover the
-  books, so the selection bar at the bottom has a *Details* button instead.
+  books, so the selection bar at the bottom has a *Details* button instead. The **Details** button at the right end of
+  the header (++shift+f9++) shows or hides the panel; Bookx remembers what you chose, so a panel you closed stays closed.
 - **Continue Reading banner.** It is about the book you read last, and it changes with the situation:
     - **Nothing in progress** (a new library): no banner, just the welcome page.
     - **When you open Bookx** it is a **hero card** across the book area (centred, at most about 1100 px wide): the cover,
       *Continue reading*, the title, the author, the progress with the chapter and a rough time left, a prominent
-      **Continue** button and the small buttons *Details*, *Open from start* and *Mark finished*; on a wide window the other
+      **Continue** button and the small buttons *Details*, *Open from Start* and *Mark as Finished*; on a wide window the other
       books you are reading appear as larger covers (72 × 108 px) under *Also reading*, each with a thin progress bar,
       a highlight on hover and a focus ring from the keyboard; the whole button opens the book and its tooltip shows the
       title and progress. Its colours come from the cover (softened, with
@@ -130,8 +138,10 @@ shown.
 <figcaption markdown="1">The slim strip keeps the library's covers in view and still offers *Continue*.</figcaption>
 </figure>
 
-- **Device button.** While an e-reader is connected, its name appears in the header bar. It opens the
-  [Device window](devices-and-sharing.md#the-device-window).
+- **Devices button.** While an e-reader is connected, its name appears in the header bar. Its tooltip is **Connected
+  e-reader: sync, send and manage books**; it opens the [Devices window](devices-and-sharing.md#the-devices-window).
+  A connection also shows the **E-reader connected** banner with a one-shot **Sync** button and a dismiss button. It
+  has no *Always* or *Not now* answer; sync on every connection is a switch in Devices → Settings.
 
 ## Selecting books
 
@@ -144,8 +154,15 @@ The same as in Files:
 - **Right-click** a book that is not selected selects only that book and opens its menu; right-click a book that is
   part of the selection and the menu works on the whole selection.
 - **Touch:** a long press picks a book into the selection.
+- **Check boxes:** a check box appears at the bottom left of a cover while the pointer or the keyboard is on it, and stays
+  on the selected books. Ticking one starts selecting: a plain click on another book then adds or removes it.
+- **Dropping files** on the books shows *Drop to Add*. **Pasting** a web address (++ctrl+v++) on Home opens *Add from the
+  Web* with it filled in.
 
-A bar at the bottom appears for two or more books with *Read*, *Edit Metadata*, *Remove* and a clear button.
+While a book is selected the title of the header becomes **N selected** and a **Cancel** button appears at its start
+(also ++escape++). For two or more books a bar at the bottom offers *Edit Metadata*, *Add to Shelf*, *Send to Device*,
+*Convert* and *Remove*; a single book keeps *Read*. In a window narrower than 600 sp the extra actions move into a **More**
+menu (the three dots) so none is out of reach.
 
 <figure markdown="1">
 ![The library as a table](assets/library-table-light.png#only-light)
@@ -158,7 +175,7 @@ A bar at the bottom appears for two or more books with *Read*, *Edit Metadata*, 
 <figure markdown="1">
 ![The context menu of a book](assets/library-book-menu-light.png#only-light)
 ![The context menu of a book](assets/library-book-menu-dark.png#only-dark)
-<figcaption markdown="1">Right-click a book: read, favourite, then the Edit, Organise and Export and Send submenus, Properties, Show in Files and Remove.</figcaption>
+<figcaption markdown="1">Right-click a book: read, favourite, then the Edit, Add to Shelf, Reading Status, Send To, Convert To and Export Annotations submenus, Properties, Show in Files and Move to Trash.</figcaption>
 </figure>
 
 
@@ -167,45 +184,57 @@ Right-click a book (or several) for what concerns the selected books only, in sh
 - *Read*
 - *Add to Favourites* / *Remove from Favourites*
 - *Edit* ▸ *Edit Metadata* (bulk for several books), *Edit Book*, *Fetch Metadata*
-- *Organise* ▸ *Mark as Read* / *Mark as Unread*, *Add to Shelf* (and, on a shelf, *Remove from This Shelf* and moving
-  it), *Merge as Formats of One Book* (with two or more books selected; see [formats](#formats-of-one-book))
-- *Export and Send* ▸ *Convert To*, *Send by E-mail*, *Check Before Sending*, *Send to Device* (opens the
-  [Device window](devices-and-sharing.md#send-to-device) with these books ready; greyed out without a device),
-  *Save a Copy*, *Export Annotations*, *Import Highlights*
+- *Add to Shelf* ▸ your shelves and *New Shelf* (on a shelf the entry is *Shelves* and also has *Remove from This Shelf*
+  and moving the book on it)
+- *Reading Status* ▸ *Mark as Read* / *Mark as Unread*
+- *Send To* ▸ *Send to Device* (opens the [Devices window](devices-and-sharing.md#send-to-device) with these books
+  ready; greyed out without a device), *Send by E-mail*, *Check Before Sending*, *Copy Citation* (APA text of the
+  selected books to the clipboard), *Save a Copy*
+- *Convert To* ▸ the formats
+- *Export Annotations* ▸ Markdown, HTML, JSON, plain text, Obsidian note, Kindle clippings
+- *Editions* ▸ *Merge as Formats of One Book*, *Link as Editions*, *Show Editions*, *Unlink All Editions* (when they apply)
 - *Properties*, *Show in Files*
-- *Remove*
+- *Move to Trash*: no question is asked; a message with **Undo** brings the books back from the Trash
+  (*Library Health* → *Trash* deletes for good)
 
-Everything else about e-readers lives in the [Device window](devices-and-sharing.md).
+Everything else about e-readers lives in the [Devices window](devices-and-sharing.md).
 
 ## The main menu
 
 <figure markdown="1">
 ![The main menu of the library](assets/library-main-menu-light.png#only-light)
 ![The main menu of the library](assets/library-main-menu-dark.png#only-dark)
-<figcaption markdown="1">The main menu: statistics, vocabulary and trackers, import and export, sharing, the device, Library Health, Preferences and help.</figcaption>
+<figcaption markdown="1">The main menu: Open Library Folder, Sync, Devices, Library Health, Preferences, Keyboard Shortcuts, Help and About.</figcaption>
 </figure>
 
 
-The hamburger menu holds the view options (grid or table, sort, cover size) and, in groups: *Open Library Folder*,
-*Saved Searches*, *Online Catalogues* · statistics, *Vocabulary*, *Reading Trackers*, *Audiobooks* · *Import Calibre
-Library*, *Export as Calibre Library*, *Import Highlights*, *Export All Annotations*, *Sync*, *Device* · *Library Health* ·
-*Preferences*, *Keyboard Shortcuts*, *Copy Diagnostics*, *About Bookx*.
+The hamburger menu (**Main Menu**, ++f10++) has eight entries: *Open Library Folder* · *Sync*, *Devices* ·
+*Library Health* · *Preferences*, *Keyboard Shortcuts*, *Help* (++f1++), *About Bookx*. Every entry has an access key
+(an underlined letter) once the menu is open. *Copy Diagnostics* is in *About Bookx*.
 
-*News Subscriptions* and adding books are in the **+** menu (and on the welcome page). *Series* and *Notes &
-Highlights* are in the sidebar. *Find Duplicates*, *Editions & Formats* and *Needs Attention* are tabs of **Library
+The **Library** menu next to *View options* in the header holds *Reading Statistics*, *Vocabulary*, *Reading Trackers*,
+*Audiobooks*, *Online Catalogues*, *Subscribe to News* and the library-wide exports *Export as Calibre Library* and *Export Citations*.
+*Import Calibre Library* and *Import Highlights* are in the **+** menu; annotations are exported from *Notes &
+Highlights* → *Export*.
+
+Adding books (*Add Books*, *Add from the Web*, *Add Folder*, which also adds the books in its subfolders and says how many it added, *Add Audiobook*, the two imports) is in the **+** menu (and on the welcome page). *Saved Searches* are a group of the sidebar. *Series* and *Notes &
+Highlights* are in the sidebar. *Find Duplicates*, *Editions* and *Needs Attention* are pages of **Library
 Health** (next section).
 
 ## Library Health
 
-Open it from the sidebar or the main menu. Its tabs:
+Open it from the sidebar or the main menu. Its pages are in a sidebar:
 
-- **Health**: the check of the database and the files, the import folder, importing from Calibre, tidy names.
+- **Health**: the check of the database and the files (one *Check Library* row with a *Check Now* button; the list of
+  problems appears after the first check), the import folder, tidy names. The library folder row has an *Open* button.
 - **Duplicates**: copies of the same book, with a choice of which to keep (merge).
-- **Editions & Formats**: books that are the same work in other formats or editions; merge them as formats.
+- **Editions**: books that are the same work in other formats or editions; merge them as formats.
 - **Needs Attention**: books without an author, with a file-name title, no cover or no language, and identifiers that
   can be tidied; *Fetch Metadata* looks them all up.
-- **Backups**: snapshots and [off-site backups](backup-and-restore.md).
-- **Trash & History**: take back an operation, restore deleted books, empty the trash.
+- **Backups**: snapshots, [off-site backups](backup-and-restore.md) and the history of operations you can take back.
+- **Trash**: restore deleted books or empty the trash (the confirmation names how many books go).
+
+On a window narrower than about 620 px the list of tabs becomes a sidebar that a button in the header opens.
 
 ## Favourites, ratings and tags
 
@@ -330,7 +359,7 @@ batches show the first 400 rows (*Accept All* still includes the rest).
 failures) is remembered when you close Bookx. The answers of the sources are kept on disk for a short time (6 hours
 for Google Books, 24 hours for Open Library and Wikidata, 1 hour for "not found"), so asking again about the same
 book does not use the network. The cache is limited to 32 MB; *Preferences → Library → Metadata lookup → Clear*
-empties it.
+empties it and says *Source cache cleared*.
 
 ### Fetch metadata for new books
 
@@ -487,12 +516,14 @@ Menu → *Reading Trackers* exchanges reading data with Goodreads, StoryGraph an
 
 * **Import**: choose the CSV export of the service. Books are matched by ISBN, then by title and author; the window
   tells you how many rows matched and how many would change before anything is written. Imported are the rating
-  (kept as is when the book already has one, unless you switch on *Replace ratings I already have*), the shelves as
-  tags (a to-read shelf adds a `to-read` tag), the reading status, and the date read. The ratings and tags are one
-  *Undo* step. Hardcover columns are found by name; if your export has other column names and a file is refused, tell
+  (kept as is when the book already has one, unless you switch on *Replace Existing Ratings*), the shelves as
+  tags (a to-read shelf adds a `to-read` tag), the reading status, and the date read. After you choose the file a
+  **What Would Change** group shows the rows in the file, how many matched your books and how many would change, and
+  a **Not Found** list with the titles that match no book. The button at the top right says what it will do
+  (*Import 12 Books*); nothing is written before you press it. The ratings and tags are one *Undo* step. Hardcover columns are found by name; if your export has other column names and a file is refused, tell
   us.
-* **Export**: *Goodreads / Hardcover* writes the Goodreads layout (which Hardcover and StoryGraph also import),
-  *StoryGraph* its own layout, with reading status, rating (stars) and date read.
+* **Export**: the *Goodreads and Hardcover* row writes the Goodreads layout (which Hardcover and StoryGraph also
+  import), the *StoryGraph* row its own layout, with reading status, rating (stars) and date read.
 
 ## Audiobooks
 
@@ -509,7 +540,10 @@ Audiobooks are books of the library that Bookx plays itself: see [Audiobooks](au
 Menu → *Audiobooks* is for the other case: audio you already have next to your e-books. It finds `.m4b` files and
 folders of audio parts (`.mp3`, `.m4a`, `.ogg`, `.opus`, `.flac`) in your library folder and in folders you add, and
 pairs them with your books: an audiobook in a book's own folder, one with the same ISBN in its name, or one named like
-the book and its author (`Frank Herbert - Dune.m4b`). You see the pairings and press *Link All*. A linked audiobook
+the book and its author (`Frank Herbert - Dune.m4b`). Bookx searches in the background (a spinner shows meanwhile). Every pairing has a tick box, all on at first: untick a
+wrong one and press **Link Selected** (the number of ticked books is in the button). *Search Another Folder* adds a
+folder and searches again in the same window. When nothing is found the window says *No Audiobooks Found* and offers
+the same button. A linked audiobook
 shows in the details panel with **Play in Bookx** (see [Audiobooks](audiobooks.md#an-audiobook-for-an-e-book-you-own)),
 **Open**, which starts your system's audio player, and **Unlink**, which takes the link off and leaves the files where
 they are.
@@ -540,7 +574,7 @@ pointed out. Nothing changes until you press *Clean Up*, and it can be undone.
 </figure>
 
 
-Menu → *Saved Searches* keeps searches under a name. Type the name and a search (the window starts with what is in
+The **?** button of the search bar (*Search Tips*) explains the search words and has *Save This Search*; the **Saved Searches** group of the sidebar lists them, and its ⋯ button opens the window that keeps searches under a name. Type the name and a search (the window starts with what is in
 the search bar) and press *Save Search*. Then:
 
 - Click a saved search in the list, or in the **Saved Searches** group of the browse panel, to run it.
@@ -646,7 +680,7 @@ downloads of voices and dictionaries, scheduled backups and news downloads.
 </figure>
 
 
-Menu → *Export Citations* writes a bibliography of the whole library, or of the books the current search shows, as
+Library menu → *Export Citations* writes a bibliography of the whole library, or of the books the current search shows, as
 **BibTeX**, **RIS** (Zotero, EndNote, Mendeley), **CSL JSON** (Zotero, Pandoc) or **APA 7** text. *Copy* puts it on the
 clipboard, *Save* writes a file. Each reference has the authors (as `Last, First`), title, publisher, year of the
 published date, ISBN, language and series; BibTeX keys look like `herbert1965dune` and stay unique in one file. The
@@ -684,7 +718,7 @@ Changing the layout shows what will move first, and it either moves everything o
 <figure markdown="1">
 ![The Library Health window, Health tab](assets/library-health-checks-light.png#only-light)
 ![The Library Health window, Health tab](assets/library-health-checks-dark.png#only-dark)
-<figcaption markdown="1">Library Health, *Health* tab: where the library lives, *Check Library* and its result, then imports from Calibre.</figcaption>
+<figcaption markdown="1">Library Health, *Health* tab: where the library lives, *Check Library* and its result, the import folder and tidy names.</figcaption>
 </figure>
 
 

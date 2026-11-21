@@ -1,6 +1,7 @@
 //! The *Manage Snippets* dialog: built-in snippets (editing one saves your own version) and the
 //! user's, stored by `editor_snippets` in the config folder.
 
+use super::tools_ui::{set_dialog_content, toast_in_dialog};
 use super::*;
 use crate::editor_snippets::{self as snip, Snippet};
 use crate::i18n::tr;
@@ -113,7 +114,7 @@ impl Editor {
         let tb = adw::ToolbarView::new();
         tb.add_top_bar(&header);
         tb.set_content(Some(&col));
-        m.dialog.set_child(Some(&tb));
+        set_dialog_content(&m.dialog, &tb);
         refresh(&m);
         m.dialog.present(Some(&self.w.win));
         MANAGER.with(|c| *c.borrow_mut() = Some(m));
@@ -140,6 +141,26 @@ impl Editor {
             eprintln!(
                 "editor_snippet: expanded={done} text={:?}",
                 buf.text(&s, &e, false)
+            );
+            return true;
+        }
+        if let Some(arg) = c.strip_prefix("snippets-form=") {
+            // `snippets-form=name|trigger|body` opens the form with those values: `editor_snippet_form: trigger_error=…
+            // save=… problem=…`, and no alert dialog
+            let mut it = arg.splitn(3, '|');
+            let s = Snippet {
+                name: it.next().unwrap_or("").to_string(),
+                trigger: it.next().unwrap_or("").to_string(),
+                body: it.next().unwrap_or("").to_string(),
+                applies_to: "any".into(),
+            };
+            self.manage_snippets();
+            if let Some(m) = MANAGER.with(|c| c.borrow().clone()) {
+                edit(&m, Some(s));
+            }
+            eprintln!(
+                "editor_snippet_form: {}",
+                LAST_FORM.with(|l| l.borrow().clone())
             );
             return true;
         }
@@ -186,6 +207,8 @@ impl Editor {
 }
 
 thread_local! {
+    /// The state of the snippet form last validated (read by the dev hook `snippets-form=`).
+    static LAST_FORM: RefCell<String> = const { RefCell::new(String::new()) };
     static MANAGER: RefCell<Option<Rc<Manager>>> = const { RefCell::new(None) };
 }
 
@@ -219,9 +242,51 @@ fn export_file(m: &Rc<Manager>, path: &std::path::Path) {
 }
 
 fn tell(m: &Rc<Manager>, msg: &str) {
-    let d = adw::AlertDialog::new(Some(msg), None);
-    d.add_response("ok", &tr("OK"));
-    d.present(Some(&m.dialog));
+    toast_in_dialog(&m.dialog, msg);
+}
+
+/// A form dialog with Cancel and Save buttons in its header: `col` is the body, `on_save` runs on Save. Returns the
+/// dialog and the Save button (the caller greys it out while the form is not valid).
+fn form_dialog(
+    title: &str,
+    col: &gtk::Box,
+    height: i32,
+    on_save: impl Fn() + 'static,
+) -> (adw::Dialog, gtk::Button) {
+    let d = adw::Dialog::new();
+    d.set_title(title);
+    d.set_content_width(520);
+    d.set_content_height(height);
+    let cancel = gtk::Button::with_label(&tr("Cancel"));
+    let save = gtk::Button::with_label(&tr("Save"));
+    save.add_css_class("suggested-action");
+    let hb = adw::HeaderBar::new();
+    hb.set_show_end_title_buttons(false);
+    hb.set_show_start_title_buttons(false);
+    hb.pack_start(&cancel);
+    hb.pack_end(&save);
+    col.set_margin_all(12);
+    let scroll = gtk::ScrolledWindow::new();
+    scroll.set_vexpand(true);
+    scroll.set_child(Some(col));
+    let tb = adw::ToolbarView::new();
+    tb.add_top_bar(&hb);
+    tb.set_content(Some(&scroll));
+    d.set_child(Some(&tb));
+    {
+        let d = d.clone();
+        cancel.connect_clicked(move |_| {
+            d.close();
+        });
+    }
+    {
+        let d = d.clone();
+        save.connect_clicked(move |_| {
+            on_save();
+            d.close();
+        });
+    }
+    (d, save)
 }
 
 fn applies_label(a: &str) -> &'static str {
@@ -315,11 +380,16 @@ fn refresh(m: &Rc<Manager>) {
 
 /// The add/edit form of a template for new files.
 fn edit_template(m: &Rc<Manager>, existing: Option<crate::editor_state::UserTemplate>) {
-    let name = gtk::Entry::new();
-    name.set_placeholder_text(Some(&tr("Name, for example Chapter")));
+    let name = adw::EntryRow::new();
+    name.set_title(&tr("Name, for example Chapter"));
     crate::ui::audit::label(&name, &tr("Template name"));
-    let kind = gtk::DropDown::from_strings(&["XHTML", "CSS"]);
+    let kind = adw::ComboRow::new();
+    kind.set_title(&tr("File type"));
+    kind.set_model(Some(&gtk::StringList::new(&["XHTML", "CSS"])));
     crate::ui::audit::label(&kind, &tr("Template file type"));
+    let rows = adw::PreferencesGroup::new();
+    rows.add(&name);
+    rows.add(&kind);
     let body = gtk::TextView::new();
     body.set_monospace(true);
     body.set_top_margin(6);
@@ -332,56 +402,70 @@ fn edit_template(m: &Rc<Manager>, existing: Option<crate::editor_state::UserTemp
     let problem = gtk::Label::new(None);
     problem.add_css_class("issue-error");
     problem.set_xalign(0.0);
+    problem.set_wrap(true);
     if let Some(t) = &existing {
         name.set_text(&t.label);
         kind.set_selected(u32::from(t.extension == "css"));
         body.buffer().set_text(&t.body);
     }
     let col = gtk::Box::new(gtk::Orientation::Vertical, 8);
-    col.append(&name);
-    col.append(&kind);
+    col.append(&rows);
     col.append(&bs);
     col.append(&problem);
-    let d = adw::AlertDialog::new(
-        Some(
-            &(if existing.is_some() {
-                tr("Edit Template")
-            } else {
-                tr("New Template")
-            }),
-        ),
-        None,
-    );
-    d.set_extra_child(Some(&col));
-    d.add_responses(&[("cancel", &tr("Cancel")), ("save", &tr("Save"))]);
-    d.set_response_appearance("save", adw::ResponseAppearance::Suggested);
-    d.set_close_response("cancel");
     let m2 = m.clone();
     let old = existing.clone();
-    d.connect_response(None, move |_, r| {
-        if r != "save" {
-            return;
-        }
-        let ext = if kind.selected() == 1 { "css" } else { "xhtml" };
-        let b = body.buffer();
-        let (s, e) = b.bounds();
-        let text = b.text(&s, &e, false).to_string();
-        let Some(dir) = crate::editor_state::templates_dir() else {
-            return;
-        };
-        if let Some(o) = &old {
-            if o.label != name.text().trim() {
-                snip::delete_template(&dir, &o.label, &o.extension);
+    let (name2, kind2, body2) = (name.clone(), kind.clone(), body.clone());
+    let (d, save) = form_dialog(
+        &(if existing.is_some() {
+            tr("Edit Template")
+        } else {
+            tr("New Template")
+        }),
+        &col,
+        560,
+        move || {
+            let ext = if kind2.selected() == 1 {
+                "css"
+            } else {
+                "xhtml"
+            };
+            let b = body2.buffer();
+            let (s, e) = b.bounds();
+            let text = b.text(&s, &e, false).to_string();
+            let Some(dir) = crate::editor_state::templates_dir() else {
+                return;
+            };
+            if let Some(o) = &old {
+                if o.label != name2.text().trim() {
+                    snip::delete_template(&dir, &o.label, &o.extension);
+                }
             }
-        }
-        match snip::save_template(&dir, name.text().trim(), ext, &text) {
-            Ok(()) => refresh(&m2),
-            Err(e) => {
-                problem.set_label(&e);
-                tell(&m2, &e);
+            match snip::save_template(&dir, name2.text().trim(), ext, &text) {
+                Ok(()) => refresh(&m2),
+                Err(e) => tell(&m2, &e),
             }
-        }
-    });
+        },
+    );
+    // a name is needed; the problem shows under the row and the row turns red
+    let check = {
+        let (name, save, problem) = (name.clone(), save.clone(), problem.clone());
+        Rc::new(move || {
+            let empty = name.text().trim().is_empty();
+            save.set_sensitive(!empty);
+            if empty {
+                name.add_css_class("error");
+                problem.set_label(&tr("Give the template a name"));
+            } else {
+                name.remove_css_class("error");
+                problem.set_label("");
+            }
+        })
+    };
+    check();
+    {
+        let c = check.clone();
+        name.connect_changed(move |_| c());
+    }
     d.present(Some(&m.dialog));
 }
 
@@ -394,15 +478,32 @@ fn commit(m: &Rc<Manager>) {
 
 /// The add/edit form. A built-in snippet is edited as a copy that overrides it.
 fn edit(m: &Rc<Manager>, existing: Option<Snippet>) {
-    let name = gtk::Entry::new();
-    name.set_placeholder_text(Some(&tr("Name, for example Footnote")));
-    let trigger = gtk::Entry::new();
-    trigger.set_placeholder_text(Some(&tr("Trigger word, for example fn")));
-    let applies = gtk::DropDown::from_strings(&APPLIES.map(|(_, l)| l));
+    let name = adw::EntryRow::new();
+    name.set_title(&tr("Name, for example Footnote"));
+    let trigger = adw::EntryRow::new();
+    trigger.set_title(&tr("Trigger word, for example fn"));
+    let applies = adw::ComboRow::new();
+    applies.set_title(&tr("Applies to"));
+    applies.set_model(Some(&gtk::StringList::new(
+        &APPLIES
+            .map(|(_, l)| tr(l))
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+    )));
+    let rows = adw::PreferencesGroup::new();
+    for r in [
+        name.upcast_ref::<gtk::Widget>(),
+        trigger.upcast_ref(),
+        applies.upcast_ref(),
+    ] {
+        rows.add(r);
+    }
     let body = gtk::TextView::new();
     body.set_monospace(true);
     body.set_top_margin(6);
     body.set_left_margin(6);
+    crate::ui::audit::label(&body, &tr("Snippet text"));
     let bs = gtk::ScrolledWindow::new();
     bs.set_min_content_height(140);
     bs.set_has_frame(true);
@@ -410,6 +511,7 @@ fn edit(m: &Rc<Manager>, existing: Option<Snippet>) {
     let problem = gtk::Label::new(None);
     problem.add_css_class("issue-error");
     problem.set_xalign(0.0);
+    problem.set_wrap(true);
     let old = existing.clone();
     if let Some(s) = &existing {
         name.set_text(&s.name);
@@ -422,11 +524,8 @@ fn edit(m: &Rc<Manager>, existing: Option<Snippet>) {
         );
         body.buffer().set_text(&s.body);
     }
-    let sample = gtk::Entry::new();
-    sample.set_placeholder_text(Some(&tr(
-        "Selected text to try, for ${2*} stops (optional)",
-    )));
-    crate::ui::audit::label(&sample, &tr("Sample selected text"));
+    let sample = adw::EntryRow::new();
+    sample.set_title(&tr("Selected text to try, for ${2*} stops (optional)"));
     let scratch = sv::View::new();
     scratch.set_monospace(true);
     scratch.set_enable_snippets(true);
@@ -437,33 +536,20 @@ fn edit(m: &Rc<Manager>, existing: Option<Snippet>) {
     scratch_scroll.set_child(Some(&scratch));
     let test = gtk::Button::with_label(&tr("Test"));
     test.set_tooltip_text(Some(&tr("Expand the snippet in the box below")));
+    test.set_halign(gtk::Align::Start);
+    let try_group = adw::PreferencesGroup::new();
+    try_group.add(&sample);
     let col = gtk::Box::new(gtk::Orientation::Vertical, 8);
     for w in [
-        name.upcast_ref::<gtk::Widget>(),
-        trigger.upcast_ref(),
-        applies.upcast_ref(),
+        rows.upcast_ref::<gtk::Widget>(),
         bs.upcast_ref(),
         problem.upcast_ref(),
-        sample.upcast_ref(),
+        try_group.upcast_ref(),
         test.upcast_ref(),
         scratch_scroll.upcast_ref(),
     ] {
         col.append(w);
     }
-    let d = adw::AlertDialog::new(
-        Some(
-            &(if old.is_some() {
-                tr("Edit Snippet")
-            } else {
-                tr("New Snippet")
-            }),
-        ),
-        None,
-    );
-    d.set_extra_child(Some(&col));
-    d.add_responses(&[("cancel", &tr("Cancel")), ("save", &tr("Save"))]);
-    d.set_response_appearance("save", adw::ResponseAppearance::Suggested);
-    d.set_close_response("cancel");
     let build = {
         let (name, trigger, applies, body) =
             (name.clone(), trigger.clone(), applies.clone(), body.clone());
@@ -481,6 +567,33 @@ fn edit(m: &Rc<Manager>, existing: Option<Snippet>) {
         }
     };
     let build = Rc::new(build);
+    let m2 = m.clone();
+    let (d, save) = form_dialog(
+        &(if old.is_some() {
+            tr("Edit Snippet")
+        } else {
+            tr("New Snippet")
+        }),
+        &col,
+        720,
+        {
+            let build = build.clone();
+            let old = old.clone();
+            move || {
+                let new = build();
+                {
+                    let mut u = m2.user.borrow_mut();
+                    // replace the edited one (or the user override of a built-in) by the new version
+                    if let Some(o) = &old {
+                        u.retain(|x| x != o);
+                    }
+                    u.retain(|x| !(x.trigger == new.trigger && x.applies_to == new.applies_to));
+                    u.push(new);
+                }
+                commit(&m2);
+            }
+        },
+    );
     {
         let (build, sample, scratch) = (build.clone(), sample.clone(), scratch.clone());
         test.connect_clicked(move |_| {
@@ -495,12 +608,32 @@ fn edit(m: &Rc<Manager>, existing: Option<Snippet>) {
             completion::expand(&scratch, &region, &s, 0);
         });
     }
+    // the reason shows under the form, and the trigger row turns red when the trigger is the culprit
     let validate = {
-        let (build, problem, d) = (build.clone(), problem.clone(), d.clone());
+        let (build, problem, save, trigger) = (
+            build.clone(),
+            problem.clone(),
+            save.clone(),
+            trigger.clone(),
+        );
         Rc::new(move || {
-            let p = snip::problem(&build());
+            let s = build();
+            let p = snip::problem(&s);
             problem.set_label(p.as_deref().unwrap_or(""));
-            d.set_response_enabled("save", p.is_none());
+            save.set_sensitive(p.is_none());
+            let bad_trigger = s.trigger.trim().is_empty() || !snip::valid_trigger(&s.trigger);
+            if bad_trigger {
+                trigger.add_css_class("error");
+            } else {
+                trigger.remove_css_class("error");
+            }
+            LAST_FORM.with(|l| {
+                *l.borrow_mut() = format!(
+                    "trigger_error={bad_trigger} save={} problem={:?}",
+                    p.is_none(),
+                    p.as_deref().unwrap_or("")
+                )
+            });
         })
     };
     validate();
@@ -512,22 +645,5 @@ fn edit(m: &Rc<Manager>, existing: Option<Snippet>) {
         let v = validate.clone();
         body.buffer().connect_changed(move |_| v());
     }
-    let m2 = m.clone();
-    d.connect_response(None, move |_, r| {
-        if r != "save" {
-            return;
-        }
-        let new = build();
-        {
-            let mut u = m2.user.borrow_mut();
-            // replace the edited one (or the user override of a built-in) by the new version
-            if let Some(o) = &old {
-                u.retain(|x| x != o);
-            }
-            u.retain(|x| !(x.trigger == new.trigger && x.applies_to == new.applies_to));
-            u.push(new);
-        }
-        commit(&m2);
-    });
     d.present(Some(&m.dialog));
 }

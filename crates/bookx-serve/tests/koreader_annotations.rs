@@ -247,3 +247,48 @@ fn the_lua_plugin_logic_against_a_real_server() {
     assert_eq!(live[0].device, "Mock Libra");
     assert_eq!(ann.documents()[0].2, "Live Book");
 }
+
+/// A sidecar of the real shape (every KOReader colour with every drawer) goes through the plugin
+/// logic and the server: each of the 36 records holds exactly the colour and drawer KOReader wrote.
+#[test]
+fn a_real_shaped_sidecar_keeps_every_look_over_the_wire() {
+    if std::env::var("NET").is_ok_and(|v| v == "0") {
+        return;
+    }
+    let Some(lua) = lua() else {
+        eprintln!("lua not installed: plugin test skipped");
+        return;
+    };
+    if Command::new("curl").arg("--version").output().is_err() {
+        eprintln!("curl not installed: plugin test skipped");
+        return;
+    }
+    let (h, ann) = start(true);
+    let api = Api::new(&h);
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../koreader-plugin/tests");
+    let sidecar =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/koreader_all_looks.lua");
+    let out = Command::new(&lua)
+        .arg("replay_sidecar.lua")
+        .arg(&sidecar)
+        .current_dir(&dir)
+        .env("BOOKX_URL", format!("{}/bookx", api.base))
+        .env("BOOKX_USER", "ann")
+        .env("BOOKX_KEY", &api.key)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let recs = ann.records("ann", "0123456789abcdef0123456789abcdef", 0);
+    assert_eq!(recs.len(), 36);
+    for r in recs {
+        let t = &r.annotation.text; // "Quote number N in <colour> with <drawer>"
+        let words: Vec<&str> = t.split(' ').collect();
+        assert_eq!(r.annotation.color, words[4], "{t}");
+        assert_eq!(r.annotation.drawer, words[6], "{t}");
+    }
+}

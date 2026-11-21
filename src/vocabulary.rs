@@ -18,6 +18,19 @@ pub struct VocabHub {
     marks: std::cell::RefCell<crate::vocab_marks::MarkCache>,
 }
 
+/// Whether a selection is a word or a short phrase worth a visible "Add to Vocabulary" button
+/// (up to three words, no sentence ending inside it).
+pub fn is_short_phrase(text: &str) -> bool {
+    let t = text.trim();
+    if t.is_empty() || t.chars().count() > 40 || t.split_whitespace().count() > 3 {
+        return false;
+    }
+    !t.chars()
+        .rev()
+        .skip(1)
+        .any(|c| matches!(c, '.' | '!' | '?' | ';' | '\n'))
+}
+
 impl VocabHub {
     /// Loads the store; a corrupt file is kept aside and an empty vocabulary is started.
     pub fn load(path: Option<PathBuf>) -> VocabHub {
@@ -91,6 +104,12 @@ impl VocabHub {
         r
     }
 
+    /// Brings back an entry that was removed (Undo of a removal).
+    pub fn restore_entry(&mut self, entry: bookx_lookup::vocab::VocabEntry) {
+        self.store.restore_entry(entry);
+        self.save();
+    }
+
     pub fn save(&self) {
         self.rev.set(self.rev.get() + 1);
         if let Some(p) = &self.path {
@@ -147,6 +166,19 @@ impl VocabHub {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn short_phrases_get_the_visible_button() {
+        use super::is_short_phrase;
+        assert!(is_short_phrase("serendipity"));
+        assert!(is_short_phrase("  rolling ball "));
+        assert!(is_short_phrase("à la carte"));
+        assert!(is_short_phrase("end."));
+        assert!(!is_short_phrase(""));
+        assert!(!is_short_phrase("one two three four"));
+        assert!(!is_short_phrase("It ended. Then"));
+        assert!(!is_short_phrase(&"x".repeat(41)));
+    }
+
     use super::*;
     use chrono::{Duration, TimeZone};
 

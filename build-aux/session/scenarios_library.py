@@ -60,8 +60,9 @@ def library_selection_clicks(c):
     c.sb.click_with("Control", *a.center())
     c.sb.right_click(*b.center())
     menu = c.wait_node("menu", timeout=5)
+    # the whole-selection menu has no Read, Properties or Show in Files (9 entries; the single-book menu has 12)
     c.check("a right-click on a selected book opens the menu for the whole selection",
-            menu and len(c.find("menu item")) <= 6 and _selected(c) == "2 Books Selected", _selected(c))
+            menu and len(c.find("menu item")) <= 10 and _selected(c) == "2 Books Selected", _selected(c))
     c.sb.key("Escape")
     c.gone("menu", timeout=3)
     c.sb.click(x, y + 260)
@@ -69,7 +70,7 @@ def library_selection_clicks(c):
     c.sb.right_click(*b.center())
     menu = c.wait_node("menu", timeout=5)
     c.check("a right-click on an unselected book selects only that book",
-            menu and len(c.find("menu item")) >= 8 and _selected(c) == "one", _selected(c))
+            menu and len(c.find("menu item")) >= 11 and _selected(c) == "one", _selected(c))
     c.sb.key("Escape")
     c.gone("menu", timeout=3)
     # Closing a GTK popover does not restore a reliable keyboard focus in the virtual grid; click the
@@ -284,14 +285,14 @@ def _hero_session(c, name, settings):
     time.sleep(5)
     c.shot(f"{name}-cold")
     c.check("a cold start shows the hero with its secondary actions",
-            c.find("button", "Continue") and c.find("button", "Open from start") and c.find("button", "Mark finished"))
+            c.find("button", "Continue") and c.find("button", "Open from Start") and c.find("button", "Mark as Finished"))
     c.sb.double_click(*c.wait_node("table cell", rx="Alice").center(origin))
     c.wait_node("button", rx="^Back", timeout=20)
     time.sleep(2)
     c.sb.key("Escape")
     time.sleep(3)
     c.shot(f"{name}-back")
-    c.check("back from the book: the slim strip with just Continue", c.find("button", "Continue") and not c.find("button", "Open from start"))
+    c.check("back from the book: the slim strip with just Continue", c.find("button", "Continue") and not c.find("button", "Open from Start"))
     c.check("and the books are in view below it", c.find("table cell", rx="Masque"))
 
 
@@ -339,8 +340,8 @@ def _notes_case(c, name, settings, size):
             f"{[s.box for s in search[:1]]} {[f.box for f in filt[:1]]}")
     c.check("the date entries are not on the page (they are in the Filter popover)", not c.find(None, rx="YYYY"))
     _click(c, filt[0], origin)
-    c.check("the Filter popover has the date pickers and Clear filters",
-            c.wait_node("button", "Clear filters", timeout=4) and c.find(None, rx="^From"))
+    c.check("the Filter popover has the date pickers and Clear Filters",
+            c.wait_node("button", "Clear Filters", timeout=4) and c.find(None, rx="^From"))
     c.sb.key("Escape")
     time.sleep(0.5)
 

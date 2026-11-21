@@ -16,7 +16,7 @@ contrast, reduced motion, large text and the keyboard. This page says what works
   text. Orca+toggle (the "focus mode" command) hands the arrow keys back to Bookx.
 - The page text is only what is on screen. Orca does not read ahead into the next page; turn the page, then use your
   screen reader's read-all command or line navigation.
-- Pictures are not described (the alternative text of images is not read yet).
+- **Pictures** that have an alternative text (`alt`) are in the page text as *Image: the description*, in their place between the paragraphs. A picture without one is skipped (a decoration).
 - The entries of the menus that GTK draws as popovers (the right-click menu of a book, the main menu) had no names in the
   accessibility tree in our automated test with GTK 4.24; whether Orca still reads them from their labels was not checked.
 
@@ -41,10 +41,11 @@ The reading area shows a visible focus ring when you use the keyboard.
 
 ## Reading ruler
 
-*Reading Ruler* (main menu of the reader, or the command palette) dims the page except for a band of one to five
+*Reading Ruler* (a check item in the main menu of the reader, or the command palette) dims the page except for a band of one to five
 lines, which keeps your eyes on the line you read. The band follows the pointer; ++alt+up++ and ++alt+down++ move it one
-line at a time (the first press turns it on). *Preferences → Reading → Reading ruler* sets the number of lines and how
-strongly the rest is dimmed (20 to 90 percent) and whether the ruler is on. It is off by default and only draws over the
+line at a time (the first press turns it on). On a touch screen, drag the band with a finger, or tap the page to put the
+band there (the tap still turns the page). *Preferences → Reading → Reading ruler* sets the number of lines and how
+strongly the rest is dimmed (20 to 90 percent) and whether the ruler is on (the two band settings are greyed out while it is off). It is off by default and only draws over the
 page: it does not change the text, the pages or what a screen reader hears.
 
 ## Command palette

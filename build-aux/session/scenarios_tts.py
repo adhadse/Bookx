@@ -22,17 +22,15 @@ def read_aloud_flow(c):
     c.check("the book opens", c.open_book())
     c.go_to_text()
     time.sleep(1.0)
-    btn = c.wait_node("toggle button", rx="^Read aloud")
+    btn = c.wait_node("toggle button", rx="^Read Aloud")
     if not c.check("the reader has a Read aloud button", btn):
         return
     c.click_node(btn)
-    play = c.wait_node("button", "Read aloud from here", timeout=5)
+    play = c.wait_node("button", "Read Aloud from Here", timeout=5)
     if not c.check("the popover opens with a play button", play):
         return
-    for name, role in (("Previous sentence", "button"), ("Next sentence", "button"), ("Stop reading", "button"),
-                       ("Reading speed", "slider"), ("Pitch", "slider")):
-        c.check(f"the popover has {name}", c.find(role, name))
-    c.check("and the sleep timer", c.find(None, "Sleep timer"))
+    for name in ("Voice Settings", "Save Chapter as Audio", "Save Book as Audio"):
+        c.check(f"the popover has {name}", c.find("button", name))
     before = c.image("tts-before")
     c.check("nothing is highlighted before reading", tinted(before) < 30, str(tinted(before)))
     c.click_node(play)
@@ -43,7 +41,7 @@ def read_aloud_flow(c):
     during = c.image("tts-playing")
     c.check("the sentence being read is highlighted on the page", tinted(during) > 300, str(tinted(during)))
     # the player card floats over the page: real clicks on its own buttons
-    nxt = c.wait_node("button", "Next sentence", timeout=5)
+    nxt = c.wait_node("button", "Next Sentence", timeout=5)
     c.check("the player card is on the page after the popover closed", nxt)
     c.click_node(nxt)
     time.sleep(0.8)
@@ -52,13 +50,13 @@ def read_aloud_flow(c):
     c.check("pause turns into resume", c.wait_node("button", "Resume reading", timeout=4))
     c.click_node(c.find("button", "Resume reading")[0])
     c.check("resume reads on", c.wait_node("button", "Pause reading", timeout=4))
-    c.click_node(c.find("button", "Close read aloud")[0])
+    c.click_node(c.find("button", "Close Read Aloud")[0])
     time.sleep(1.0)
     after = c.image("tts-stopped")
     c.check("stopping removes the highlight", tinted(after) < 30, str(tinted(after)))
-    c.check("and the player card", c.gone("button", "Next sentence", timeout=3))
-    c.click_node(c.wait_node("toggle button", rx="^Read aloud"))
-    c.click_node(c.wait_node("button", rx="^Voice settings", timeout=5))
+    c.check("and the player card", c.gone("button", "Next Sentence", timeout=3))
+    c.click_node(c.wait_node("toggle button", rx="^Read Aloud"))
+    c.click_node(c.wait_node("button", "Voice Settings", timeout=5))
     d = c.wait_node("dialog", "Preferences", timeout=8)
     c.check("Voice settings opens Preferences", d)
     c.check("on the Text to Speech page, at the engine row", c.wait_node(None, rx="^Voice engine", timeout=6))
@@ -88,23 +86,23 @@ def tts_player_card_real(c):
     c.go_to_text()
     time.sleep(1.0)
     before = bottom_pixels(c.image("player-before"))
-    c.click_node(c.wait_node("toggle button", rx="^Read aloud"))
-    play = c.wait_node("button", "Read aloud from here", timeout=5)
+    c.click_node(c.wait_node("toggle button", rx="^Read Aloud"))
+    play = c.wait_node("button", "Read Aloud from Here", timeout=5)
     if not c.check("the popover opens", play):
         return
     c.click_node(play)
     c.sb.key("Escape")
-    nxt = c.wait_node("button", "Next sentence", timeout=6)
+    nxt = c.wait_node("button", "Next Sentence", timeout=6)
     if not c.check("the card appears with a next sentence button", nxt):
         return
-    for name, role in (("Previous sentence", "button"), ("Close read aloud", "button")):
+    for name, role in (("Previous Sentence", "button"), ("Close Read Aloud", "button")):
         c.check(f"the small player has {name}", c.find(role, name) or c.find(None, name))
     c.check("and it is small (at most 360 x 120)", _small(c, "Read aloud player"))
     c.click_node(c.wait_node("button", "Show the full player", timeout=4))
     time.sleep(0.4)
-    for name, role in (("Next chapter", "button"), ("Previous chapter", "button"),
+    for name, role in (("Next Chapter", "button"), ("Previous Chapter", "button"),
                        ("Position in the chapter", "slider"), ("Volume", "slider"),
-                       ("Sleep timer", "toggle button"), ("Choose the voice", "toggle button")):
+                       ("Sleep Timer", "toggle button"), ("Choose Voice", "toggle button")):
         c.check(f"the full player has {name}", c.find(role, name) or c.find(None, name))
     time.sleep(0.5)
     during = bottom_pixels(c.image("player-playing"))
@@ -117,16 +115,16 @@ def tts_player_card_real(c):
     c.check("pause shows resume", c.wait_node("button", "Resume reading", timeout=4))
     c.click_node(c.find("button", "Resume reading")[0])
     c.check("resume shows pause", c.wait_node("button", "Pause reading", timeout=4))
-    c.click_node(c.find("button", "Next chapter")[0])
+    c.click_node(c.find("button", "Next Chapter")[0])
     time.sleep(1.2)
     c.check("next chapter keeps the card and the reading", c.find("button", "Pause reading"))
     c.shot("player-chapter-2")
     # a click on the page must not dismiss it
     c.sb.click(640, 300)
     time.sleep(0.5)
-    c.check("a click on the page leaves the card", c.find("button", "Next sentence"))
-    c.click_node(c.find("button", "Close read aloud")[0])
-    c.check("the X stops reading and hides the card", c.gone("button", "Next sentence", timeout=4))
+    c.check("a click on the page leaves the card", c.find("button", "Next Sentence"))
+    c.click_node(c.find("button", "Close Read Aloud")[0])
+    c.check("the X stops reading and hides the card", c.gone("button", "Next Sentence", timeout=4))
     c.check("the app is still alive", c.is_alive())
 
 
@@ -137,7 +135,7 @@ def speed_reading_real(c):
     c.check("the book opens", c.open_book())
     c.go_to_text()
     time.sleep(1.0)
-    c.click_node(c.wait_node("toggle button", rx="^Main menu"))
+    c.click_node(c.wait_node("toggle button", rx="^Main Menu"))
     item = c.wait_node(None, rx="^Speed Reading", timeout=5)
     if not c.check("the main menu has Speed Reading", item):
         return
@@ -218,8 +216,8 @@ def cards_drag_real(c):
     c.check("the book opens", c.open_book())
     c.go_to_text()
     time.sleep(1.5)
-    c.click_node(c.wait_node("toggle button", rx="^Read aloud"))
-    play = c.wait_node("button", "Read aloud from here", timeout=5)
+    c.click_node(c.wait_node("toggle button", rx="^Read Aloud"))
+    play = c.wait_node("button", "Read Aloud from Here", timeout=5)
     if not c.check("the popover opens", play):
         return
     c.click_node(play)
@@ -230,7 +228,7 @@ def cards_drag_real(c):
         c.check("the read aloud card tracks the pointer within 3 px at every step", r[0] <= 3.0, f"{r[0]:.1f}")
         c.check("and the page was not laid out again", r[2] == 0, str(r[2]))
         c.check("and was drawn only a few times (not once per pointer step)", 0 <= r[1] <= 12, str(r[1]))
-    c.click_node(c.wait_node("toggle button", rx="^Main menu"))
+    c.click_node(c.wait_node("toggle button", rx="^Main Menu"))
     item = c.wait_node(None, rx="^Speed Reading", timeout=5)
     if not c.check("the main menu has Speed Reading", item):
         return
@@ -254,8 +252,8 @@ def voice_download_background_real(c):
     c.check("the book opens", c.open_book())
     c.go_to_text()
     time.sleep(1.0)
-    c.click_node(c.wait_node("toggle button", rx="^Read aloud"))
-    play = c.wait_node("button", "Read aloud from here", timeout=5)
+    c.click_node(c.wait_node("toggle button", rx="^Read Aloud"))
+    play = c.wait_node("button", "Read Aloud from Here", timeout=5)
     if not c.check("the popover opens", play):
         return
     c.click_node(play)
@@ -272,7 +270,7 @@ def voice_download_background_real(c):
         return
     c.click_node(back)
     c.check("the library is shown", c.wait_node("table cell", rx="Alice", timeout=8))
-    jobs = c.wait_node("toggle button", rx="^Background jobs", timeout=8)
+    jobs = c.wait_node("toggle button", rx="^Background Jobs", timeout=8)
     if not c.check("the library has the Background jobs button", jobs):
         return
     c.click_node(jobs)
@@ -282,7 +280,7 @@ def voice_download_background_real(c):
     c.shot("voice-job")
     c.sb.key("Escape")
     time.sleep(10)
-    c.click_node(c.wait_node("toggle button", rx="^Background jobs", timeout=5))
+    c.click_node(c.wait_node("toggle button", rx="^Background Jobs", timeout=5))
     done = c.wait_node(None, rx="Downloading the default voice", timeout=5)
     c.check("the job is still in the list after the download ended", done)
     c.check("and it is no longer running (no Cancel button)", not c.find("button", rx="^Cancel Downloading"))
@@ -330,7 +328,7 @@ def _cards_state(c):
         st["sentence"] = lab[0].get_text() if lab else None
         pos = _inside(c.find("label", rx=r"^\d+ / \d+$"), t)
         st["position"] = pos[0].name if pos else None
-        st["tts_play"] = [n.name for n in _inside(c.find("button", rx="reading$|Read aloud from here"), t)]
+        st["tts_play"] = [n.name for n in _inside(c.find("button", rx="reading$|Read Aloud from Here"), t)]
     if r:
         wpm = _inside(c.find("label", rx=r"^\d+ wpm$"), r)
         st["wpm"] = wpm[0].name if wpm else None
@@ -382,26 +380,26 @@ def cards_restore_real(c):
     c.check("the book opens", c.open_book())
     c.go_to_text()
     time.sleep(1.0)
-    c.click_node(c.wait_node("toggle button", rx="^Read aloud"))
-    play = c.wait_node("button", "Read aloud from here", timeout=5)
+    c.click_node(c.wait_node("toggle button", rx="^Read Aloud"))
+    play = c.wait_node("button", "Read Aloud from Here", timeout=5)
     if not c.check("the popover opens", play):
         return
     c.click_node(play)
     c.sb.key("Escape")
-    nxt = c.wait_node("button", "Next sentence", timeout=6)
+    nxt = c.wait_node("button", "Next Sentence", timeout=6)
     if not c.check("the read aloud card appears", nxt):
         return
     c.click_node(c.wait_node("button", "Show the full player", timeout=4))
     time.sleep(0.4)
     for _ in range(3):
-        c.click_node(_inside(c.find("button", "Next sentence"), _group(c, "Read aloud player"))[0])
+        c.click_node(_inside(c.find("button", "Next Sentence"), _group(c, "Read aloud player"))[0])
         time.sleep(0.4)
     c.click_node(_inside(c.find("button", rx="^Pause reading"), _group(c, "Read aloud player"))[0])
     time.sleep(0.4)
     first = _real_drag(c, "Read aloud player", -300, -150)
     c.check("the read aloud card was dragged somewhere else", first is not None)
     # speed reading
-    c.click_node(c.wait_node("toggle button", rx="^Main menu"))
+    c.click_node(c.wait_node("toggle button", rx="^Main Menu"))
     c.click_node(c.wait_node(None, rx="^Speed Reading", timeout=5))
     c.check("the speed reading card appears", c.wait_node("button", "Start", timeout=6))
     time.sleep(0.5)
@@ -448,8 +446,8 @@ def cards_restore_real(c):
 
 
 def _read_aloud_from_popover(c):
-    c.click_node(c.wait_node("toggle button", rx="^Read aloud"))
-    play = c.wait_node("button", "Read aloud from here", timeout=6)
+    c.click_node(c.wait_node("toggle button", rx="^Read Aloud"))
+    play = c.wait_node("button", "Read Aloud from Here", timeout=6)
     if not play:
         return False
     c.click_node(play)
@@ -485,10 +483,10 @@ def tts_two_books_real(c):
     _leave_to_library(c)
     c.check("book A opens again", c.open_book("Alice"))
     time.sleep(2.5)
-    c.check("A's card is back, paused (no autoplay)", c.wait_node("button", rx="^(Resume reading|Read aloud from here)", timeout=6)
+    c.check("A's card is back, paused (no autoplay)", c.wait_node("button", rx="^(Resume reading|Read Aloud from Here)", timeout=6)
             and not c.find("button", rx="^Pause reading"))
     c.check("at A's sentence, not B's", _cards_text(c) == a_pos, f"{_cards_text(c)} vs {a_pos}")
-    c.click_node(c.find("button", rx="^(Resume reading|Read aloud from here)")[0])
+    c.click_node(c.find("button", rx="^(Resume reading|Read Aloud from Here)")[0])
     c.check("playing again in book A", c.wait_node("button", rx="^Pause reading", timeout=8))
     c.check("no error is shown in book A", _no_failure_shown(c))
     # rapid switching: leave at once, another book, read, leave at once, back
@@ -548,7 +546,7 @@ def reader_focus_real(c):
     away_dark = _dark(away, head) + _dark(away, foot)
     c.check("1.5 s after the mouse was let go the header and the footer are gone", away_dark < bars_dark * 0.3,
             f"{away_dark} vs {bars_dark}")
-    c.check("the card is still there", c.find("button", "Next sentence"))
+    c.check("the card is still there", c.find("button", "Next Sentence"))
     c.sb.move_to(640, 20)  # the pointer goes to the top edge
     time.sleep(0.8)
     back = c.image("focus-bars-back")
@@ -588,15 +586,15 @@ def cards_no_overlap_real(c):
     c.check("the book opens", c.open_book())
     c.go_to_text()
     time.sleep(1.0)
-    c.click_node(c.wait_node("toggle button", rx="^Read aloud"))
-    play = c.wait_node("button", "Read aloud from here", timeout=5)
+    c.click_node(c.wait_node("toggle button", rx="^Read Aloud"))
+    play = c.wait_node("button", "Read Aloud from Here", timeout=5)
     if not c.check("the popover opens", play):
         return
     c.click_node(play)
     c.sb.key("Escape")
-    if not c.check("the read aloud card appears", c.wait_node("button", "Next sentence", timeout=6)):
+    if not c.check("the read aloud card appears", c.wait_node("button", "Next Sentence", timeout=6)):
         return
-    c.click_node(c.wait_node("toggle button", rx="^Main menu"))
+    c.click_node(c.wait_node("toggle button", rx="^Main Menu"))
     c.click_node(c.wait_node(None, rx="^Speed Reading", timeout=5))
     if not c.check("the speed reading card appears", c.wait_node("button", "Start", timeout=6)):
         return

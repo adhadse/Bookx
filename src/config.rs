@@ -270,6 +270,13 @@ pub struct Config {
     pub sort_key: SortKey,
     pub sort_ascending: bool,
     pub cover_size: i32,
+    /// The columns of the table view the user picked (titles in English); empty = the ones that fit
+    /// the width (`library_nav::table_columns_for_width`).
+    pub table_columns: Vec<String>,
+    /// The details panel is wanted (its header toggle is on): a selected book then shows it.
+    pub details_pane: bool,
+    /// Sidebar groups the user opened, as `library folder|group` (a closed group is not listed).
+    pub sidebar_open: Vec<String>,
     /// Books that are editions of the same work (same title and author, same ISBN, or linked by
     /// the user) show as one card with an edition list. Off by default: it hides books in the grid.
     pub group_editions: bool,
@@ -363,6 +370,9 @@ impl Default for Config {
             sort_key: SortKey::Title,
             sort_ascending: true,
             cover_size: 150,
+            table_columns: Vec::new(),
+            details_pane: true,
+            sidebar_open: Vec::new(),
             group_editions: false,
             sidebar_view: String::new(),
             favourites: Vec::new(),

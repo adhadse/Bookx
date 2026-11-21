@@ -53,7 +53,8 @@ window.eink .reader-page .reader-side { background-color: #ffffff; color: #00000
 .swatch-black { background: #000000; }
 .swatch-auto { background: linear-gradient(135deg, #ffffff 50%, #1e1e21 50%); }
 
-.hl-swatch { min-width: 26px; min-height: 26px; padding: 0; margin: 0 2px; border-radius: 50%; border: 2px solid alpha(white, .0); }
+.hl-swatch { min-width: 32px; min-height: 32px; padding: 0; margin: 0 2px; border-radius: 50%; border: 2px solid alpha(white, .0); }
+.hl-style { min-width: 32px; min-height: 32px; }
 .hl-swatch:hover { border-color: alpha(currentColor, .4); }
 .hl-yellow { background: #ffd91f; } .hl-purple { background: #b873f2; }
 .hl-blue { background: #408cff; }   .hl-red { background: #ff6152; }
@@ -68,7 +69,7 @@ window.eink .reader-page .reader-side { background-color: #ffffff; color: #00000
 .issue-error { color: @error_color; }
 .issue-warning { color: @warning_color; }
 .issue-info { color: @accent_color; }
-.editor-status { font-size: 9pt; padding: 3px 10px; }
+.editor-status { font-size: 9pt; padding: 3px 10px; color: alpha(@window_fg_color, .85); }
 
 /* ---- reader: chrome that merges into the page ----------------------- */
 .reader-page headerbar button,
@@ -213,6 +214,9 @@ window.touch .bookx-sidebar .row-actions { opacity: 1; }
 .notes-chip { padding: 2px 10px; min-height: 24px; font-size: 12px; }
 .note-card.compact .note-meta { font-size: 12px; }
 .note-row { padding: 4px 8px; }
+/* selection mode: the check box of a note card shows on hover, on focus and while anything is selected */
+.note-check { opacity: 0; background: alpha(@card_bg_color, .9); border-radius: 99px; }
+flowboxchild.hovered .note-check, flowboxchild.selecting .note-check, flowboxchild:focus-within .note-check, .note-check:checked { opacity: 1; }
 
 /* ---- editions of one work: the chip with the count on a cover ---------------------------------------- */
 .edition-badge { min-width: 0; min-height: 0; padding: 2px 8px; border-radius: 99px; background: alpha(black, .65); color: white;
@@ -245,3 +249,13 @@ window.eink .audio-badge { background: #ffffff; color: #000000; border: 2px soli
 
 /* a word you defined yourself, in the vocabulary list */
 .own-badge { font-size: .78em; font-weight: 700; padding: 1px 8px; border-radius: 99px; color: @accent_color; background: alpha(@accent_bg_color, .16); }
+
+/* wave 9 (library): what a drop of files does, the card check box, the empty jobs panel */
+.drop-hint {
+    background-color: alpha(@accent_bg_color, 0.14);
+    border: 2px dashed @accent_bg_color;
+    border-radius: 12px;
+    margin: 12px;
+}
+statuspage.compact { padding: 6px; }
+statuspage.compact > scrolledwindow > viewport > box { margin: 6px; }

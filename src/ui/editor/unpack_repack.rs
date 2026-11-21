@@ -62,6 +62,7 @@ impl Editor {
                     let label = origin.format.label;
                     *self.ext.structure.origin.borrow_mut() = Some(origin);
                     self.install_book(0, book);
+                    self.show_foreign_banner();
                     self.toast(&trf(
                         "Editing a {} book through a temporary EPUB. {}",
                         &[&label, &tr(warn)],
@@ -102,10 +103,10 @@ impl Editor {
         d.add_response("epub", &tr("Save as EPUB"));
         if can_back {
             d.add_response("back", &trf("Convert Back to {}", &[&origin.format.label]));
-            d.set_response_appearance("back", adw::ResponseAppearance::Suggested);
-        } else {
-            d.set_response_appearance("epub", adw::ResponseAppearance::Suggested);
         }
+        // Save as EPUB is the safe default: it never touches the original file
+        d.set_response_appearance("epub", adw::ResponseAppearance::Suggested);
+        d.set_default_response(Some("epub"));
         d.set_close_response("cancel");
         let tx = self.sender.input_sender().clone();
         let win = self.w.win.clone();

@@ -43,7 +43,7 @@ PY
 }
 
 scenario calibre_export 'library:menus,library:export-calibre=@D@/calout,wait:3000,library:export-calibre=@D@/calout,wait:1000,quit' '
-    has "^mainmenu: .*Import Calibre Library \\[lib.calibre\\].*Export as Calibre Library \\[lib.export-calibre\\]"; check "Export as Calibre Library is in the main menu next to the import" $?
+    has "^librarymenu: .*Export as Calibre Library \\[lib.export-calibre\\]"; check "Export as Calibre Library is in the Library menu" $?
     has "^calibre_export: books=2 files=2 covers=[0-9] problems=0 cancelled=false"; check "both books of the library were exported as a background job" $?
     has "^calibre_export: refused .*not empty"; check "a second export into the same folder is refused" $?
     python3 - "$d/calout" <<PY

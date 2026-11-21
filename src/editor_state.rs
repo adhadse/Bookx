@@ -33,6 +33,15 @@ fn write_json<T: Serialize>(path: &Path, value: &T) -> std::io::Result<()> {
 // window preferences
 // ---------------------------------------------------------------------------
 
+/// The title shown in the header: the book title, with a dot in front while there are unsaved changes.
+pub fn header_title(title: &str, dirty: bool) -> String {
+    if dirty {
+        format!("● {title}")
+    } else {
+        title.to_string()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WindowPrefs {
@@ -230,6 +239,28 @@ pub fn undo_target(list: &[(u64, String)]) -> Option<u64> {
         .map(|(id, _)| *id)
 }
 
+/// Whether the checkpoint an Undo toast points to is still there (the list is capped, and the user may have deleted it).
+pub fn snapshot_exists(list: &[(u64, String)], id: u64) -> bool {
+    list.iter().any(|(i, _)| *i == id)
+}
+
+/// Whether "Revert to Before the Last Change" and "Revert to After (Redo)" have something to do: from the checkpoint
+/// list (oldest first) and the redo points made by reverts (newest last).
+pub fn revert_enabled(list: &[(u64, String)], redo: &[u64]) -> (bool, bool) {
+    (
+        undo_target(list).is_some(),
+        redo.last().is_some_and(|r| redo_still_valid(list, *r)),
+    )
+}
+
+/// The items whose id is not in `hidden` (checkpoints that were deleted with an Undo toast still pending).
+pub fn without_hidden<T>(items: Vec<T>, id_of: impl Fn(&T) -> u64, hidden: &[u64]) -> Vec<T> {
+    items
+        .into_iter()
+        .filter(|i| !hidden.contains(&id_of(i)))
+        .collect()
+}
+
 /// A redo point is still usable when nothing but redo guards was recorded after it (any other change in between
 /// starts a new history).
 pub fn redo_still_valid(list: &[(u64, String)], redo_id: u64) -> bool {
@@ -362,6 +393,25 @@ mod tests {
         let d = std::env::temp_dir().join(format!("bookx-estate-{tag}-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&d).unwrap();
         d
+    }
+
+    #[test]
+    fn hidden_checkpoints_are_left_out() {
+        let l = vec![(1u64, "a"), (2, "b"), (3, "c")];
+        assert_eq!(
+            without_hidden(l.clone(), |i| i.0, &[2]),
+            vec![(1, "a"), (3, "c")]
+        );
+        assert_eq!(without_hidden(l.clone(), |i| i.0, &[]).len(), 3);
+        assert!(without_hidden(l, |i| i.0, &[1, 2, 3]).is_empty());
+    }
+
+    #[test]
+    fn undo_toast_needs_its_checkpoint() {
+        let l = vec![(3, "Before: Reformat".to_string()), (4, "x".to_string())];
+        assert!(snapshot_exists(&l, 3));
+        assert!(!snapshot_exists(&l, 9));
+        assert!(!snapshot_exists(&[], 3));
     }
 
     #[test]
@@ -521,5 +571,22 @@ mod tests {
         assert!(save_rule_set_in(&d, &RuleSet::default()).is_err());
         delete_rule_set_in(&d, "Bigger / bolder");
         assert_eq!(list_rule_sets_in(&d).len(), 1);
+    }
+
+    #[test]
+    fn the_header_title_marks_unsaved_changes() {
+        assert_eq!(header_title("Dune", false), "Dune");
+        assert_eq!(header_title("Dune", true), "● Dune");
+    }
+
+    #[test]
+    fn the_revert_items_follow_the_checkpoint_list() {
+        let none: Vec<(u64, String)> = vec![];
+        assert_eq!(revert_enabled(&none, &[]), (false, false));
+        let l = vec![(1, "Before: Fix".to_string())];
+        assert_eq!(revert_enabled(&l, &[]), (true, false));
+        let l = vec![(1, format!("{}Fix", REDO_PREFIX))];
+        assert_eq!(revert_enabled(&l, &[1]), (false, true));
+        assert_eq!(revert_enabled(&l, &[9]), (false, false));
     }
 }

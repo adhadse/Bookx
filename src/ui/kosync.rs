@@ -448,7 +448,7 @@ struct Account {
     server: adw::EntryRow,
     user: adw::EntryRow,
     pass: adw::PasswordEntryRow,
-    register: gtk::Button,
+    register: adw::ButtonRow,
     login: gtk::Button,
     status: adw::ActionRow,
 }
@@ -464,6 +464,16 @@ pub fn server_row() -> Option<adw::EntryRow> {
 
 /// Dev hook `prefs:sync-account…`: `=<user>;<password>[;<server>]` fills the fields, `-register` and
 /// `-login` press the buttons, `-dump` prints what the step shows.
+fn count_buttons(w: &gtk::Widget) -> usize {
+    let mut n = usize::from(w.is::<gtk::Button>());
+    let mut c = w.first_child();
+    while let Some(ch) = c {
+        n += count_buttons(&ch);
+        c = ch.next_sibling();
+    }
+    n
+}
+
 pub fn dev_account(cmd: &str) {
     ACCOUNT.with(|a| {
         let a = a.borrow();
@@ -479,17 +489,21 @@ pub fn dev_account(cmd: &str) {
                 a.server.set_text(s);
             }
         } else if cmd == "-register" {
-            a.register.emit_clicked();
+            a.register.emit_by_name::<()>("activated", &[]);
         } else if cmd == "-login" {
             a.login.emit_clicked();
         } else if cmd == "-dump" {
             eprintln!(
-                "prefs_account: server={:?} user={:?} register={} login={} status={:?}",
+                "prefs_account: server={:?} user={:?} register={} login={} status={:?} register_sensitive={} login_sensitive={} login_tip={:?} status_controls={}",
                 a.server.text(),
                 a.user.text(),
                 a.register.is_visible(),
                 a.login.is_visible(),
-                a.status.subtitle().unwrap_or_default()
+                a.status.subtitle().unwrap_or_default(),
+                a.register.is_sensitive(),
+                a.login.is_sensitive(),
+                a.login.tooltip_text().unwrap_or_default(),
+                count_buttons(a.status.upcast_ref())
             );
         }
     });
@@ -521,17 +535,13 @@ pub fn account_rows(shared: &SharedRef) -> (Vec<gtk::Widget>, adw::EntryRow) {
         "Register creates the account on the server; Log in checks it. The result shows here.",
     ));
     status.set_subtitle_lines(0);
-    let register = gtk::Button::with_label(&tr("Register"));
-    let login = gtk::Button::with_label(&tr("Log in"));
-    for b in [&register, &login] {
-        b.set_valign(gtk::Align::Center);
-        status.add_suffix(b);
-    }
+    status.set_title(&tr("Log in"));
+    let register = adw::ButtonRow::new();
+    register.set_title(&tr("Register"));
     register.add_css_class("suggested-action");
-    super::audit::label(
-        &register,
-        &tr("Register the user name and password on the server"),
-    );
+    let login = gtk::Button::with_label(&tr("Log in"));
+    login.set_valign(gtk::Align::Center);
+    status.add_suffix(&login);
     super::audit::label(&login, &tr("Log in with the user name and password"));
 
     let save = {
@@ -580,7 +590,57 @@ pub fn account_rows(shared: &SharedRef) -> (Vec<gtk::Widget>, adw::EntryRow) {
         let f2 = fill.clone();
         super::share::follow(&status, move || f2(false));
     }
-    for (button, is_register) in [(&register, true), (&login, false)] {
+    // Log in and Register cannot work without a server: insensitive, with the reason as the tooltip
+    let gate = {
+        let (shared, server, register, login) = (
+            shared.clone(),
+            server.clone(),
+            register.clone(),
+            login.clone(),
+        );
+        Rc::new(move || {
+            let own = own_server_url(&shared);
+            let blocked = crate::sync_model::account_block(
+                &server.text(),
+                own.as_deref(),
+                shared.cfg.borrow().share.kosync,
+            )
+            .is_some();
+            let tip = blocked.then(|| tr(crate::sync_model::ACCOUNT_BLOCKED_TIP));
+            for w in [register.upcast_ref::<gtk::Widget>(), login.upcast_ref()] {
+                w.set_sensitive(!blocked);
+                w.set_tooltip_text(tip.as_deref());
+            }
+        })
+    };
+    gate();
+    {
+        let g = gate.clone();
+        server.connect_changed(move |_| g());
+        let g = gate.clone();
+        super::share::follow(&status, move || g());
+    }
+    let handlers: [(Box<dyn Fn(Box<dyn Fn() + 'static>)>, bool); 2] = [
+        (
+            {
+                let r = register.clone();
+                Box::new(move |f| {
+                    r.connect_activated(move |_| f());
+                })
+            },
+            true,
+        ),
+        (
+            {
+                let l = login.clone();
+                Box::new(move |f| {
+                    l.connect_clicked(move |_| f());
+                })
+            },
+            false,
+        ),
+    ];
+    for (connect, is_register) in handlers {
         let (shared, save, status, fill, server) = (
             shared.clone(),
             save.clone(),
@@ -588,7 +648,7 @@ pub fn account_rows(shared: &SharedRef) -> (Vec<gtk::Widget>, adw::EntryRow) {
             fill.clone(),
             server.clone(),
         );
-        button.connect_clicked(move |_| {
+        connect(Box::new(move || {
             fill(false);
             save();
             let text = server.text().trim().to_string();
@@ -626,20 +686,25 @@ pub fn account_rows(shared: &SharedRef) -> (Vec<gtk::Widget>, adw::EntryRow) {
                     }
                 }),
             );
-        });
+        }));
     }
     ACCOUNT.with(|a| {
         *a.borrow_mut() = Some(Account {
             server: server.clone(),
             user: user.clone(),
             pass: pass.clone(),
-            register,
-            login,
+            register: register.clone(),
+            login: login.clone(),
             status: status.clone(),
         })
     });
     (
-        vec![user.upcast::<gtk::Widget>(), pass.upcast(), status.upcast()],
+        vec![
+            user.upcast::<gtk::Widget>(),
+            pass.upcast(),
+            register.upcast(),
+            status.upcast(),
+        ],
         server,
     )
 }

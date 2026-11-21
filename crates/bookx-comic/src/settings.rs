@@ -154,6 +154,13 @@ impl Store {
         self.books.entry(id.to_string()).or_default()
     }
 
+    /// Whether the book has choices of its own (what "Use the defaults for this book" would forget).
+    pub fn has_own(&self, id: u64) -> bool {
+        self.books
+            .get(&id.to_string())
+            .is_some_and(|b| *b != BookView::default())
+    }
+
     /// Forget the per-book choices of a book.
     pub fn forget(&mut self, id: u64) {
         self.books.remove(&id.to_string());
@@ -162,6 +169,18 @@ impl Store {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_book_has_own_choices_only_after_one_is_made() {
+        let mut s = super::Store::default();
+        assert!(!s.has_own(7));
+        s.book_mut(7);
+        assert!(!s.has_own(7), "an empty entry is the defaults");
+        s.book_mut(7).guided = Some(true);
+        assert!(s.has_own(7));
+        s.forget(7);
+        assert!(!s.has_own(7));
+    }
+
     use super::*;
 
     #[test]

@@ -26,10 +26,10 @@ pub struct Proposal {
     pub reason: &'static str,
 }
 
-/// Looks in the library folder and in `extra` folders and pairs what it finds with books that do
-/// not have an audiobook yet.
-pub fn find(lib: &Library, extra: &[PathBuf]) -> Vec<Proposal> {
-    let mut cands: Vec<Candidate> = scan(&lib.root, DEPTH);
+/// The audio on disk under the library folder and the `extra` folders (slow on a big library,
+/// no library data in it, so it can run on a worker thread).
+pub fn scan_candidates(root: &Path, extra: &[PathBuf]) -> Vec<Candidate> {
+    let mut cands: Vec<Candidate> = scan(root, DEPTH);
     for d in extra {
         for c in scan(d, DEPTH) {
             if !cands.iter().any(|x| x.path == c.path) {
@@ -37,6 +37,11 @@ pub fn find(lib: &Library, extra: &[PathBuf]) -> Vec<Proposal> {
             }
         }
     }
+    cands
+}
+
+/// Pairs scanned audio with the books that do not have an audiobook yet.
+pub fn pair_candidates(lib: &Library, cands: &[Candidate]) -> Vec<Proposal> {
     let books: Vec<Book> = lib
         .books
         .iter()
@@ -44,7 +49,7 @@ pub fn find(lib: &Library, extra: &[PathBuf]) -> Vec<Proposal> {
         .cloned()
         .collect();
     let dir_of = |b: &Book| -> Option<PathBuf> { lib.book_dir_of(b).map(|d| lib.root.join(d)) };
-    let pairs: Vec<Pairing> = pair(&books, &cands, &dir_of);
+    let pairs: Vec<Pairing> = pair(&books, cands, &dir_of);
     pairs
         .into_iter()
         .filter_map(|p| {
@@ -57,6 +62,12 @@ pub fn find(lib: &Library, extra: &[PathBuf]) -> Vec<Proposal> {
             })
         })
         .collect()
+}
+
+/// Looks in the library folder and in `extra` folders and pairs what it finds with books that do
+/// not have an audiobook yet.
+pub fn find(lib: &Library, extra: &[PathBuf]) -> Vec<Proposal> {
+    pair_candidates(lib, &scan_candidates(&lib.root, extra))
 }
 
 /// The resource for a path.
@@ -175,6 +186,24 @@ mod tests {
         lib.undo_last().unwrap();
         assert!(
             lib.get(2).unwrap().resources.is_empty() || lib.get(1).unwrap().resources.is_empty()
+        );
+        let _ = std::fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn scanning_on_a_worker_and_pairing_later_gives_what_find_gives() {
+        let (lib, d) = setup();
+        let extra = d.join("audio");
+        std::fs::create_dir_all(&extra).unwrap();
+        std::fs::write(extra.join("Emma.m4b"), vec![0u8; 20]).unwrap();
+        let root = lib.root.clone();
+        let ex = vec![extra.clone()];
+        let cands = std::thread::spawn(move || scan_candidates(&root, &ex))
+            .join()
+            .unwrap();
+        assert_eq!(
+            pair_candidates(&lib, &cands),
+            find(&lib, std::slice::from_ref(&extra))
         );
         let _ = std::fs::remove_dir_all(d);
     }

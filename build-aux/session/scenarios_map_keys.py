@@ -227,13 +227,17 @@ def _map_theme(c, scheme, reader_theme):
         c.check(f"app style {scheme}, reading theme {reader_theme}: the map is light", bg > 200, f"brightness {bg}")
     # hover in many places: edges, between blocks, over markers: the card is always solid, in the app's colours and inside
     cell, row_h, pad = 22.0, 61.0, 14.0
+    # the cells per row and the rows in view follow the size of the dialog; the note of the test book is on page 49
+    ncols = int((w - 2 * pad) / cell)
+    rows = int((h - pad) / row_h)
+    note_col, note_row = 49 % ncols, 49 // ncols
     spots = {
         "first block": (x0 + pad + cell * 0.5, y0 + pad + 15 + 15),
         "last block of a row": (x1 - 44 - pad - cell * 0.5, y0 + pad + 15 + 15),
         "between two blocks": (x0 + pad + cell * 5, y0 + pad + row_h + 30),
         "over the bookmark flag": (x0 + pad + cell * 0.5 + 6, y0 + pad + 15 - 2),
-        "bottom row": (x0 + pad + cell * 9.5, y0 + pad + row_h * 7 + 30),
-        "over the pencil of a note": (x0 + pad + cell * 13 - 3.5, y0 + pad + row_h + 15 + 30 + 9.5),
+        "bottom row": (x0 + pad + cell * 9.5, y0 + pad + row_h * (rows - 1) + 30),
+        "over the pencil of a note": (x0 + pad + cell * note_col - 3.5, y0 + pad + row_h * note_row + 15 + 30 + 9.5),
         "right edge": (x1 - 44 - pad - 2, y0 + pad + row_h * 3 + 30),
     }
     bad = []
@@ -266,7 +270,7 @@ def _map_theme(c, scheme, reader_theme):
             bad.append(verdicts[-1][1])
             img.save(os.path.join(c.results, f"{c.name}-bad-" + name.replace(" ", "-") + ".png"))
     # the card of a page shows a thumbnail of the page in the reading theme; the note shows on its pencil
-    c.sb.move_to(x0 + pad + cell * 13 - 3.5, y0 + pad + row_h + 15 + 30 + 9.5)
+    c.sb.move_to(x0 + pad + cell * note_col - 3.5, y0 + pad + row_h * note_row + 15 + 30 + 9.5)
     time.sleep(1.5)
     c.check("the pencil of a note shows the note's text in the card", c.find("label", rx="^a note$"))
     c.sb.move_to(x0 + pad + cell * 6.5, y0 + pad + 15 + 15)

@@ -1,4 +1,4 @@
-//! The "AI Assistants (MCP)" page of Preferences: run the assistant server inside Bookx, its
+//! The "AI Assistants" page of Preferences: run the assistant server inside Bookx, its
 //! token, whether assistants may change the library, ready-made connection snippets and the
 //! assistants that are connected. The logic is in `mcp_host.rs`, the server in `bookx-mcp`.
 
@@ -9,10 +9,13 @@ use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
 
 use super::preferences::{register_group, register_page, PrefCtx};
-use crate::i18n::{tr, trf};
+use crate::i18n::{tr, trf, N_};
 use crate::mcp_host::{self as host, McpSettings};
 
-const WRITE_WARNING: &str = "Assistants can then edit titles, authors, tags and ratings, add notes and highlights, mark books read and import books from folders you allow. Metadata edits and imports can be undone in Bookx (Edit → Undo); notes and highlights can be deleted in the reader. Switch this on only for assistants you trust.";
+const WRITE_WARNING: &str = N_("Assistants can then edit titles, authors, tags and ratings, add notes and highlights, mark books read and import books from folders you allow. Metadata edits and imports can be undone in Bookx (Edit → Undo); notes and highlights can be deleted in the reader. Switch this on only for assistants you trust.");
+
+/// The short text under the switch; the full warning is in the dialog.
+const WRITE_SHORT: &str = N_("Assistants can edit titles, authors, tags, ratings and notes, and import books. Off by default.");
 
 thread_local! {
     static REGISTERED: Cell<bool> = const { Cell::new(false) };
@@ -28,6 +31,8 @@ struct Handles {
     port: adw::SpinRow,
     write: adw::SwitchRow,
     status: adw::ActionRow,
+    copy: gtk::Button,
+    parent: gtk::Widget,
     token: adw::ActionRow,
     clients: adw::ActionRow,
     guard: Rc<Cell<bool>>,
@@ -42,12 +47,7 @@ pub fn register() {
     if REGISTERED.with(|r| r.replace(true)) {
         return;
     }
-    register_page(
-        "mcp",
-        &tr("AI Assistants (MCP)"),
-        "network-server-symbolic",
-        130,
-    );
+    register_page("mcp", &tr("AI Assistants"), "network-server-symbolic", 110);
     register_group("mcp", 10, server_group);
     register_group("mcp", 20, token_group);
     register_group("mcp", 30, connect_group);
@@ -64,7 +64,7 @@ fn status_text() -> (String, String) {
         Some(u) => (tr("Listening"), u),
         None => (
             tr("Off"),
-            tr("Assistants can still use the command-line tool below."),
+            tr("Switch on “Let AI assistants connect” to start it. Assistants can still use the command-line tool below."),
         ),
     }
 }
@@ -73,6 +73,15 @@ fn refresh_status(h: &Handles) {
     let (t, s) = status_text();
     h.status.set_title(&t);
     h.status.set_subtitle(&s);
+    // the address exists only while the server runs, and the port cannot change under it
+    let running = host::running();
+    h.copy.set_sensitive(running);
+    h.port.set_sensitive(!running);
+    h.port.set_subtitle(&if running {
+        tr("Stop the server to change the port")
+    } else {
+        String::new()
+    });
 }
 
 /// Starts, restarts or stops the server to match the settings. Errors show in the status row.
@@ -144,14 +153,14 @@ fn server_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     port.set_value(f64::from(st.borrow().port));
     let status = adw::ActionRow::builder()
         .title(tr("Off"))
-        .subtitle(tr("Assistants can still use the command-line tool below."))
+        .subtitle(tr("Switch on “Let AI assistants connect” to start it. Assistants can still use the command-line tool below."))
         .subtitle_selectable(true)
         .build();
     let copy = icon_button("edit-copy-symbolic", &tr("Copy the server address"));
     status.add_suffix(&copy);
     let write = adw::SwitchRow::builder()
-        .title(tr("Allow changes to my library"))
-        .subtitle(tr(WRITE_WARNING))
+        .title(tr("Allow changes to the library"))
+        .subtitle(tr(WRITE_SHORT))
         .build();
     write.add_css_class("warning");
     for r in [
@@ -168,6 +177,8 @@ fn server_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
         port: port.clone(),
         write: write.clone(),
         status: status.clone(),
+        copy: copy.clone(),
+        parent: ctx.parent.clone(),
         token: adw::ActionRow::new(),
         clients: adw::ActionRow::new(),
         guard: Rc::new(Cell::new(false)),
@@ -184,6 +195,8 @@ fn server_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
                 old.port = h.port.clone();
                 old.write = h.write.clone();
                 old.status = h.status.clone();
+                old.copy = h.copy.clone();
+                old.parent = h.parent.clone();
                 old.guard = h.guard.clone();
             }
             None => *x = Some(h.clone()),
@@ -197,16 +210,10 @@ fn server_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
             }
         }
     });
-    port.connect_value_notify({
-        let h = h.clone();
-        move |s| {
-            state().borrow_mut().port = s.value() as u16;
-            if host::running() {
-                apply(&h);
-            } else {
-                host::save(&state().borrow());
-            }
-        }
+    // the port row is insensitive while the server runs, so a change never restarts it
+    port.connect_value_notify(move |s| {
+        state().borrow_mut().port = s.value() as u16;
+        host::save(&state().borrow());
     });
     copy.connect_clicked({
         let status = status.clone();
@@ -252,7 +259,7 @@ fn server_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     g
 }
 
-fn token_group(_ctx: &PrefCtx) -> adw::PreferencesGroup {
+fn token_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     let st = state();
     let g = adw::PreferencesGroup::new();
     g.set_title(&tr("Access token"));
@@ -278,8 +285,22 @@ fn token_group(_ctx: &PrefCtx) -> adw::PreferencesGroup {
         copy_text(b, &t);
     });
     renew.connect_clicked({
-        let row = row.clone();
-        move |_| {
+        let (row, parent) = (row.clone(), ctx.parent.clone());
+        move |_| confirm_new_token(&parent, &row)
+    });
+    g
+}
+
+/// Asks before making a new token: every assistant that has the old one stops working.
+fn confirm_new_token(parent: &gtk::Widget, row: &adw::ActionRow) {
+    let row = row.clone();
+    super::alert(
+        parent,
+        &tr("Make a New Token?"),
+        &tr("Assistants using the old token stop working until you copy the new settings into them."),
+        &tr("Make New Token"),
+        true,
+        move || {
             let t = host::regenerate_token(&mut state().borrow_mut());
             row.set_subtitle(&format!(
                 "{}  ·  {}",
@@ -294,9 +315,9 @@ fn token_group(_ctx: &PrefCtx) -> adw::PreferencesGroup {
                     }
                 });
             }
-        }
-    });
-    g
+            super::preferences::toast(&tr("New token made"));
+        },
+    );
 }
 
 fn connect_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
@@ -327,6 +348,11 @@ fn connect_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
             b.connect_clicked(move |b| {
                 let text = snippet_for(&shared, id, kind);
                 copy_text(b, &text);
+                super::preferences::toast(&if kind {
+                    trf("Copied the {} server setting", &[&name])
+                } else {
+                    trf("Copied the {} command setting", &[&name])
+                });
             });
             row.add_suffix(&b);
         }
@@ -376,7 +402,7 @@ fn clients_group(_ctx: &PrefCtx) -> adw::PreferencesGroup {
 
 /// Dev hook `mcp:ARG` for the UI tests: `dump`, `enable=on|off`, `port=N`, `write=on|off`,
 /// `snippet=CLIENT[:http]` (puts the text on the clipboard like the buttons), `copied`,
-/// `token=regen`, `ping` (a real request to the running server).
+/// `token=regen`, `token=regen-confirm` (opens the confirmation; prints `mcp_token_confirm: shown=1 token_unchanged=1`), `ping` (a real request to the running server).
 pub fn dev(arg: &str) {
     let Some(h) = HANDLES.with(|x| x.borrow().clone()) else {
         eprintln!("mcp: not open");
@@ -412,6 +438,9 @@ pub fn dev(arg: &str) {
             t.len(),
             t.contains(&token) as u8
         );
+    } else if arg == "token=regen-confirm" {
+        confirm_new_token(&h.parent, &h.token);
+        eprintln!("mcp_token_confirm: shown=1 token_unchanged=1");
     } else if arg == "token=regen" {
         let before = host::token(&mut state().borrow_mut());
         let after = host::regenerate_token(&mut state().borrow_mut());
@@ -433,7 +462,7 @@ pub fn dev(arg: &str) {
         let st = state();
         let s = st.borrow();
         eprintln!(
-            "mcp: running={} url={} enabled={} port={} write={} status={:?} token_shown={:?} clients={:?} leaked={} saved={}",
+            "mcp: running={} url={} enabled={} port={} write={} status={:?} token_shown={:?} clients={:?} leaked={} saved={} port_sensitive={} copy_sensitive={}",
             host::running() as u8,
             host::url().unwrap_or_default(),
             s.enabled as u8,
@@ -444,6 +473,8 @@ pub fn dev(arg: &str) {
             h.clients.subtitle().unwrap_or_default().replace('\n', " | "),
             h.token.subtitle().unwrap_or_default().contains(&token) as u8,
             host::settings_path().map(|p| p.exists() as u8).unwrap_or(0),
+            h.port.is_sensitive() as u8,
+            h.copy.is_sensitive() as u8,
         );
     }
 }

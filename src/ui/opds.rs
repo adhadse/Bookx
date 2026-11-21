@@ -22,6 +22,14 @@ thread_local! {
     static CURRENT: RefCell<Option<Rc<Ui>>> = const { RefCell::new(None) };
 }
 
+/// What the busy page is waiting for, so Cancel knows how to go back.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Busy {
+    Idle,
+    Search,
+    Page,
+}
+
 struct Ui {
     shared: SharedRef,
     import: Import,
@@ -30,7 +38,11 @@ struct Ui {
     title: adw::WindowTitle,
     back: gtk::Button,
     add_catalog: gtk::Button,
-    search_bar: gtk::SearchEntry,
+    search_bar: gtk::SearchBar,
+    search_entry: gtk::SearchEntry,
+    search_toggle: gtk::ToggleButton,
+    retry: gtk::Button,
+    busy_kind: Cell<Busy>,
     stack: gtk::Stack,
     list: gtk::ListBox,
     status: adw::StatusPage,
@@ -81,10 +93,10 @@ pub fn show(parent: &impl IsA<gtk::Widget>, shared: &SharedRef, import: Import) 
 }
 
 fn build(shared: &SharedRef, import: Import) -> Rc<Ui> {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("Online Catalogues"));
     dialog.set_content_width(640);
-    dialog.set_content_height(720);
+    dialog.set_content_height(560);
 
     let header = adw::HeaderBar::new();
     let title = adw::WindowTitle::new(&tr("Online Catalogues"), "");
@@ -97,16 +109,30 @@ fn build(shared: &SharedRef, import: Import) -> Rc<Ui> {
     add_catalog.set_tooltip_text(Some(&tr("Add a catalogue")));
     add_catalog.update_property(&[gtk::accessible::Property::Label(&tr("Add a catalogue"))]);
     header.pack_end(&add_catalog);
+    let search_toggle = gtk::ToggleButton::new();
+    search_toggle.set_icon_name("system-search-symbolic");
+    search_toggle.set_tooltip_text(Some(&tr("Search This Catalogue")));
+    search_toggle.update_property(&[gtk::accessible::Property::Label(&tr(
+        "Search This Catalogue",
+    ))]);
+    search_toggle.set_visible(false);
+    header.pack_end(&search_toggle);
 
-    let search_bar = gtk::SearchEntry::new();
-    search_bar.set_placeholder_text(Some(&tr("Search this catalogue")));
-    search_bar.set_margin_start(12);
-    search_bar.set_margin_end(12);
-    search_bar.set_margin_bottom(8);
-    search_bar.set_visible(false);
-    search_bar.update_property(&[gtk::accessible::Property::Label(&tr(
+    let search_entry = gtk::SearchEntry::new();
+    search_entry.set_placeholder_text(Some(&tr("Search this catalogue")));
+    search_entry.set_hexpand(true);
+    search_entry.update_property(&[gtk::accessible::Property::Label(&tr(
         "Search this catalogue",
     ))]);
+    let search_bar = gtk::SearchBar::new();
+    search_bar.set_child(Some(&search_entry));
+    search_bar.connect_entry(&search_entry);
+    search_bar.set_show_close_button(false);
+    search_toggle
+        .bind_property("active", &search_bar, "search-mode-enabled")
+        .bidirectional()
+        .sync_create()
+        .build();
 
     let list = gtk::ListBox::new();
     list.add_css_class("boxed-list");
@@ -118,15 +144,30 @@ fn build(shared: &SharedRef, import: Import) -> Rc<Ui> {
     scroll.set_vexpand(true);
     scroll.set_child(Some(&list));
     let status = adw::StatusPage::new();
+    let retry = gtk::Button::with_label(&tr("Try Again"));
+    retry.add_css_class("suggested-action");
+    retry.add_css_class("pill");
+    retry.set_halign(gtk::Align::Center);
+    retry.set_visible(false);
+    status.set_child(Some(&retry));
     let spinner = gtk::Spinner::new();
     spinner.start();
     spinner.set_halign(gtk::Align::Center);
-    spinner.set_valign(gtk::Align::Center);
     spinner.set_size_request(32, 32);
+    let cancel = gtk::Button::with_label(&tr("Cancel"));
+    cancel.add_css_class("pill");
+    cancel.set_halign(gtk::Align::Center);
+    let busy_box = gtk::Box::new(gtk::Orientation::Vertical, 18);
+    busy_box.set_halign(gtk::Align::Center);
+    busy_box.append(&spinner);
+    busy_box.append(&cancel);
+    let busy_page = adw::StatusPage::new();
+    busy_page.set_title(&tr("Loading"));
+    busy_page.set_child(Some(&busy_box));
     let stack = gtk::Stack::new();
     stack.add_named(&scroll, Some("list"));
     stack.add_named(&status, Some("status"));
-    stack.add_named(&spinner, Some("busy"));
+    stack.add_named(&busy_page, Some("busy"));
 
     let body = gtk::Box::new(gtk::Orientation::Vertical, 0);
     body.append(&search_bar);
@@ -147,6 +188,10 @@ fn build(shared: &SharedRef, import: Import) -> Rc<Ui> {
         back: back.clone(),
         add_catalog: add_catalog.clone(),
         search_bar: search_bar.clone(),
+        search_entry: search_entry.clone(),
+        search_toggle: search_toggle.clone(),
+        retry: retry.clone(),
+        busy_kind: Cell::new(Busy::Idle),
         stack,
         list,
         status,
@@ -168,7 +213,32 @@ fn build(shared: &SharedRef, import: Import) -> Rc<Ui> {
     }
     {
         let ui = ui.clone();
-        search_bar.connect_activate(move |e| ui.search(e.text().as_str()));
+        search_entry.connect_activate(move |e| ui.search(e.text().as_str()));
+    }
+    {
+        let ui = ui.clone();
+        cancel.connect_clicked(move |_| ui.cancel_load());
+    }
+    {
+        let ui = ui.clone();
+        retry.connect_clicked(move |_| ui.load_top(false));
+    }
+    {
+        // Ctrl+F opens the search of the catalogue being browsed
+        let (toggle, entry) = (search_toggle.clone(), search_entry.clone());
+        let sc = gtk::ShortcutController::new();
+        sc.set_scope(gtk::ShortcutScope::Local);
+        sc.add_shortcut(gtk::Shortcut::new(
+            gtk::ShortcutTrigger::parse_string("<Control>f"),
+            Some(gtk::CallbackAction::new(move |_, _| {
+                if toggle.is_visible() {
+                    toggle.set_active(true);
+                    entry.grab_focus();
+                }
+                glib::Propagation::Stop
+            })),
+        ));
+        ui.dialog.add_controller(sc);
     }
     ui
 }
@@ -184,7 +254,8 @@ impl Ui {
         }
     }
 
-    fn message(&self, icon: &str, title: &str, text: &str) {
+    fn message(&self, icon: &str, title: &str, text: &str, retry: bool) {
+        self.retry.set_visible(retry);
         self.status.set_icon_name(Some(icon));
         self.status.set_title(title);
         self.status.set_description(Some(text));
@@ -218,7 +289,8 @@ impl Ui {
         self.title.set_subtitle("");
         self.back.set_visible(false);
         self.add_catalog.set_visible(true);
-        self.search_bar.set_visible(false);
+        self.search_toggle.set_active(false);
+        self.search_toggle.set_visible(false);
         self.clear();
         for (c, removable) in self.catalogs() {
             let row = adw::ActionRow::new();
@@ -262,8 +334,9 @@ impl Ui {
         *self.root_feed.borrow_mut() = None;
         self.back.set_visible(true);
         self.add_catalog.set_visible(false);
-        self.search_bar.set_text("");
-        self.search_bar.set_visible(true);
+        self.search_entry.set_text("");
+        self.search_toggle.set_visible(true);
+        self.search_toggle.set_active(true);
         self.load_top(false);
     }
 
@@ -300,7 +373,7 @@ impl Ui {
         let terms = terms.to_string();
         let epoch = self.epoch.get() + 1;
         self.epoch.set(epoch);
-        self.set_busy();
+        self.set_busy(Busy::Search);
         let (tx, rx) = std::sync::mpsc::channel();
         let t2 = terms.clone();
         std::thread::spawn(move || {
@@ -323,9 +396,22 @@ impl Ui {
         });
     }
 
-    fn set_busy(&self) {
+    fn set_busy(&self, kind: Busy) {
         self.busy.set(true);
+        self.busy_kind.set(kind);
         self.stack.set_visible_child_name("busy");
+    }
+
+    /// The Cancel button of the loading page: drops the running request (its answer is ignored)
+    /// and returns to where the user came from.
+    fn cancel_load(self: &Rc<Self>) {
+        self.epoch.set(self.epoch.get() + 1);
+        self.busy.set(false);
+        match self.busy_kind.replace(Busy::Idle) {
+            Busy::Search => self.stack.set_visible_child_name("list"),
+            Busy::Page => self.go_back(),
+            Busy::Idle => {}
+        }
     }
 
     /// Loads the page at the top of the trail.
@@ -344,7 +430,7 @@ impl Ui {
         let epoch = self.epoch.get() + 1;
         self.epoch.set(epoch);
         if !append {
-            self.set_busy();
+            self.set_busy(Busy::Page);
         }
         self.title.set_title(&title);
         self.title.set_subtitle(&c.name);
@@ -367,7 +453,12 @@ impl Ui {
                         ui.stack.set_visible_child_name("list");
                         ui.toast(&e);
                     } else {
-                        ui.message("dialog-error-symbolic", "Could not load this page", &e);
+                        ui.message(
+                            "dialog-error-symbolic",
+                            &tr("Could not Load This Page"),
+                            &e,
+                            true,
+                        );
                     }
                 }
             }
@@ -440,8 +531,9 @@ impl Ui {
         if self.entries.borrow().is_empty() {
             self.message(
                 "edit-find-symbolic",
-                "Nothing here",
-                "This page of the catalogue is empty.",
+                &tr("Nothing Here"),
+                &tr("This page of the catalogue is empty."),
+                false,
             );
         } else {
             self.stack.set_visible_child_name("list");
@@ -453,7 +545,7 @@ impl Ui {
             return;
         };
         button.set_sensitive(false);
-        button.set_label(&tr("Adding…"));
+        button.set_label(&tr("Adding"));
         let dir = directories::ProjectDirs::from("com", "adhadse", "Bookx")
             .map(|d| d.cache_dir().join("opds"))
             .unwrap_or_else(|| std::env::temp_dir().join("bookx-opds"));
@@ -489,19 +581,58 @@ impl Ui {
             r.set_title(title);
             r
         };
-        let name = mk("Name");
-        let url = mk("Address");
-        let user = mk("User name");
+        let name = mk(&tr("Name"));
+        let url = mk(&tr("Address"));
+        let user = mk(&tr("User Name"));
         let pass = adw::PasswordEntryRow::new();
         pass.set_title(&tr("Password"));
         for r in [&name, &url, &user] {
             group.add(r);
         }
         group.add(&pass);
-        d.set_extra_child(Some(&group));
+        let warning = gtk::Label::new(Some(&tr(
+            "This address is not encrypted, so the password would be sent in the clear",
+        )));
+        warning.set_wrap(true);
+        warning.set_xalign(0.0);
+        warning.add_css_class("warning");
+        warning.set_visible(false);
+        let body = gtk::Box::new(gtk::Orientation::Vertical, 8);
+        body.append(&group);
+        body.append(&warning);
+        d.set_extra_child(Some(&body));
         d.add_response("cancel", &tr("Cancel"));
         d.add_response("add", &tr("Add"));
         d.set_response_appearance("add", adw::ResponseAppearance::Suggested);
+        d.set_default_response(Some("add"));
+        d.set_close_response("cancel");
+        d.set_response_enabled("add", can_add(&url.text()));
+        for r in [&name, &url, &user] {
+            r.set_activates_default(true);
+        }
+        pass.set_activates_default(true);
+        let refresh = {
+            let (d, url, pass, warning) = (d.clone(), url.clone(), pass.clone(), warning.clone());
+            move || {
+                d.set_response_enabled("add", can_add(&url.text()));
+                warning.set_visible(cleartext_credentials(&url.text(), &pass.text()));
+            }
+        };
+        {
+            let refresh = refresh.clone();
+            url.connect_changed(move |_| refresh());
+        }
+        pass.connect_changed(move |_| refresh());
+        ADD_DIALOG.with(|c| {
+            *c.borrow_mut() = Some(AddDialog {
+                dialog: d.downgrade(),
+                name: name.clone(),
+                url: url.clone(),
+                user: user.clone(),
+                pass: pass.clone(),
+                warning: warning.clone(),
+            })
+        });
         let ui = self.clone();
         d.connect_response(None, move |_, r| {
             if r != "add" {
@@ -552,12 +683,14 @@ impl Ui {
             })
             .collect();
         eprintln!(
-            "opds_view: title={} | page={} | busy={} | back={} | search={} | rows={}",
+            "opds_view: title={} | page={} | busy={} | back={} | search={} | search_open={} | retry={} | rows={}",
             self.title.title(),
             self.stack.visible_child_name().unwrap_or_default(),
             self.busy.get(),
             self.back.is_visible(),
-            self.search_bar.is_visible(),
+            self.search_toggle.is_visible(),
+            self.search_bar.is_search_mode(),
+            self.retry.is_visible(),
             rows.join(";")
         );
         if self.catalog.borrow().is_none() {
@@ -568,7 +701,66 @@ impl Ui {
 }
 
 /// Test hook (`library:opds=…`): `open`, `dump`, `catalog=NAME`, `go=TITLE`, `back`,
-/// `search=TERMS`, `add=TITLE`, `add-catalog=NAME|URL|USER|PASSWORD`, `more`.
+/// `search=TERMS`, `cancel` (the loading page's Cancel), `add=TITLE`, `add-catalog=NAME|URL|USER|PASSWORD`, `more`.
+/// The *Add a Catalogue* button needs an address.
+pub fn can_add(address: &str) -> bool {
+    !address.trim().is_empty()
+}
+
+/// A password typed for an `http://` address would cross the network in the clear.
+pub fn cleartext_credentials(address: &str, password: &str) -> bool {
+    !password.is_empty()
+        && address
+            .trim_start()
+            .get(..7)
+            .is_some_and(|p| p.eq_ignore_ascii_case("http://"))
+}
+
+/// The fields of the open *Add a Catalogue* dialog (test hook).
+struct AddDialog {
+    dialog: glib::WeakRef<adw::AlertDialog>,
+    name: adw::EntryRow,
+    url: adw::EntryRow,
+    user: adw::EntryRow,
+    pass: adw::PasswordEntryRow,
+    warning: gtk::Label,
+}
+
+thread_local! {
+    static ADD_DIALOG: RefCell<Option<AddDialog>> = const { RefCell::new(None) };
+}
+
+/// `opds:add-dialog` opens the dialog, `opds:add-fill=NAME|ADDRESS|USER|PASSWORD` types into it,
+/// `opds:add-state` prints `opds_add: add_enabled=BOOL warning=BOOL`.
+fn dev_add_dialog(ui: &Rc<Ui>, cmd: &str) -> bool {
+    if cmd == "add-dialog" {
+        ui.add_catalog_dialog();
+    } else if let Some(v) = cmd.strip_prefix("add-fill=") {
+        let mut p = v.splitn(4, '|');
+        ADD_DIALOG.with(|c| {
+            if let Some(a) = c.borrow().as_ref() {
+                a.name.set_text(p.next().unwrap_or(""));
+                a.url.set_text(p.next().unwrap_or(""));
+                a.user.set_text(p.next().unwrap_or(""));
+                a.pass.set_text(p.next().unwrap_or(""));
+            }
+        });
+    } else if cmd != "add-state" {
+        return false;
+    }
+    ADD_DIALOG.with(|c| match c.borrow().as_ref() {
+        Some(a) => eprintln!(
+            "opds_add: add_enabled={} warning={}",
+            a.dialog
+                .upgrade()
+                .is_some_and(|d| d.is_response_enabled("add")),
+            a.warning.is_visible()
+        ),
+        None => eprintln!("opds_add: closed"),
+    });
+    true
+}
+
 pub fn dev(parent: &gtk::Window, shared: &SharedRef, import: Import, cmd: &str) {
     if cmd == "open" {
         show(parent, shared, import);
@@ -580,9 +772,13 @@ pub fn dev(parent: &gtk::Window, shared: &SharedRef, import: Import, cmd: &str) 
     };
     let by_title =
         |t: &str| -> Option<usize> { ui.entries.borrow().iter().position(|e| e.title == t) };
+    if dev_add_dialog(&ui, cmd) {
+        return;
+    }
     match cmd {
         "dump" => ui.dump(),
         "back" => ui.go_back(),
+        "cancel" => ui.cancel_load(),
         "more" => {
             if let (Some(c), Some(next)) = (
                 ui.catalog.borrow().clone(),
@@ -633,5 +829,26 @@ pub fn dev(parent: &gtk::Window, shared: &SharedRef, import: Import, cmd: &str) 
             }
         }
         _ => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn add_needs_an_address() {
+        assert!(!can_add(""));
+        assert!(!can_add("  "));
+        assert!(can_add("https://x/opds"));
+    }
+
+    #[test]
+    fn a_password_for_plain_http_is_flagged() {
+        assert!(cleartext_credentials("http://host:8080/opds", "pw"));
+        assert!(cleartext_credentials(" HTTP://host/opds", "pw"));
+        assert!(!cleartext_credentials("https://host/opds", "pw"));
+        assert!(!cleartext_credentials("http://host/opds", ""));
+        assert!(!cleartext_credentials("héé", "pw"));
     }
 }

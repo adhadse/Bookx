@@ -99,8 +99,8 @@ def _wiki_lib_steps(c):
     click(c, "toggle button", "View options")
     wshot(c, "library-view-options", crop=(972, 80, 1280, 318), pad=0)
     close(c)
-    click(c, "toggle button", "Main menu")
-    items = c.find("button", rx="^(Open Library Folder|Copy Diagnostics|About Bookx|Vocabulary)$")
+    click(c, "toggle button", "Main Menu")
+    items = c.find("button", rx="^(Open Library Folder|About Bookx|Vocabulary)$")
     wshot(c, "library-main-menu", crop=items, pad=22)
     close(c)
     card = c.wait_node("table cell", rx="Moby")
@@ -169,7 +169,7 @@ def dialog_box(before, after, thr=5):
 
 def main_menu(c, name, wait=1.5):
     """Opens the main menu and presses an entry."""
-    if not click(c, "toggle button", "Main menu", pause=0.8):
+    if not click(c, "toggle button", "Main Menu", pause=0.8):
         return None
     return click(c, "button", name, pause=wait)
 
@@ -247,10 +247,10 @@ def popover_shot(c, label, opener, pad=8, wait=1.0, **kw):
 def _wiki_reader_steps(c):
     """Reader popovers and panels: text appearance, menu, search, ruler, bookmark."""
     reader_start(c)
-    popover_shot(c, "reader-text-settings", lambda: click(c, "toggle button", "Text appearance"))
+    popover_shot(c, "reader-text-settings", lambda: click(c, "toggle button", "Text Appearance"))
     ui(c)
     close(c)
-    popover_shot(c, "reader-menu", lambda: click(c, "toggle button", "Main menu"))
+    popover_shot(c, "reader-menu", lambda: click(c, "toggle button", "Main Menu"))
     close(c)
     c.sb.key("f", ("Control",))
     time.sleep(0.6)
@@ -267,7 +267,7 @@ def _wiki_reader_words(c):
     reader_start(c)
     before = snap(c)
     select_word(c)
-    btn = c.wait_node("button", "Look up in a dictionary", timeout=6)
+    btn = c.wait_node("button", "Look Up in Dictionary", timeout=6)
     if btn:
         time.sleep(0.8)
         wshot(c, "reader-selection-popover", crop=popup_box(before, snap(c)), pad=10)
@@ -288,9 +288,12 @@ def _wiki_reader_words(c):
 def _wiki_reader_cards(c):
     """Speed reading card, read-aloud card, goto dialog, bookmarks."""
     reader_start(c)
-    click(c, "toggle button", "Main menu")
+    click(c, "toggle button", "Main Menu")
     before = snap(c)
-    item = c.wait_node(None, rx="^Speed Reading", timeout=5)
+    # GTK gives the entries of the gio::Menu popover no accessible names: Speed Reading is the second one
+    items = c.wait(lambda: sorted([n for n in c.find("menu item") if n.showing and n.box[2] > 0],
+                                  key=lambda n: n.box[1]) or None, 5)
+    item = items[1] if items and len(items) > 1 else None
     if item:
         c.click_node(item)
         time.sleep(1.2)
@@ -354,7 +357,7 @@ def _wiki_lib_jobs(c):
                         "jobs:start=send|Sending to Boox|,jobs:finish=3|The device is not mounted,"
                         "jobs:start=fetch|Fetching metadata for 40 books|cancel,jobs:progress=4|0.2|Dracula")
     time.sleep(2)
-    popover_shot(c, "library-jobs-panel", lambda: click(c, "toggle button", "Background jobs"), pad=6)
+    popover_shot(c, "library-jobs-panel", lambda: click(c, "toggle button", "Background Jobs"), pad=6)
     c.check("jobs shot", True)
 
 
@@ -371,15 +374,18 @@ def _wiki_lib_health(c):
     """The tabs of Library Health."""
     lib_start(c)
     before = snap(c)
-    main_menu(c, "Library Health")
-    time.sleep(1.2)
+    click(c, "list item", "Library Health", pause=1.2)
     c.hbox = dialog_box(before, snap(c))
     wshot(c, "library-health-checks", crop=c.hbox, pad=-6)
     ui(c)
-    for name, label in [("Duplicates", "library-health-duplicates"), ("Editions & Formats", "library-health-editions"),
+    for name, label in [("Duplicates", "library-health-duplicates"), ("Editions", "library-health-editions"),
                         ("Needs Attention", "library-health-attention"), ("Backups", "library-health-backups"),
-                        ("Trash & History", "library-health-trash")]:
+                        ("Trash", "library-health-trash")]:
         health_tab(c, name, label)
+        if name == "Backups":
+            ui(c, labels=True)
+            c.check("the Backups panel explains the catalogue-only scope before a run",
+                    c.find(None, "What is in a backup"))
     c.check("health shot", True)
 
 
@@ -389,15 +395,15 @@ def _wiki_lib_empty(c):
     lib_start(c, books=False)
     time.sleep(1.5)
     wshot(c, "library-welcome", crop=(256, 37, 1280, 800), pad=0)
-    popover_shot(c, "library-add-menu", lambda: click(c, "toggle button", rx="^Add books"))
+    popover_shot(c, "library-add-menu", lambda: click(c, "toggle button", rx="^Add Books"))
     ui(c)
     c.check("empty shot", True)
 
 
 PREFS_PAGES = [("General", "general"), ("Library", "library"), ("Reading", "reading"), ("Sync", "sync"),
                ("Editor", "editor"), ("E-mail", "email"), ("Extensions", "extensions"),
-               ("Patches", "patches"), ("Text to Speech", "tts"), ("Keyboard Shortcuts", "shortcuts"),
-               ("Privacy", "privacy"), ("AI Assistants (MCP)", "mcp")]
+               ("Text to Speech", "tts"), ("Keyboard Shortcuts", "shortcuts"),
+               ("Privacy", "privacy"), ("AI Assistants", "mcp")]
 
 
 @scenario
@@ -418,6 +424,9 @@ def _wiki_prefs_pages(c):
         time.sleep(1.5)
         c.sb.move_to(c.sb.w // 2, 10)
         wshot(c, f"preferences-{slug}", crop=box, pad=-6)
+        if slug == "extensions":
+            # Patches is a section of the same page now (visible below Plugins), so it gets its own picture of it
+            wshot(c, "preferences-patches", crop=box, pad=-6)
     c.check("preferences shot", True)
 
 
@@ -490,14 +499,22 @@ def _wiki_ed_code(c):
 def _wiki_ed_menus(c):
     """Tools, Markup and Book menus, the problems panel, the Contents and Metadata tabs."""
     editor_start(c)
-    for rx, label, box in [("^Tools: fix", "editor-tools-menu", (1000, 76, 1280, 800)),
-                           ("^Markup: matching", "editor-markup-menu", (900, 76, 1280, 340)),
-                           ("^Book menu", "editor-book-menu", None)]:
+    def book_menu():
+        # the library window behind the editor has its own "Main Menu" button: the editor's is the right-most
+        btns = c.find("toggle button", "Main Menu")
+        if btns:
+            c.click_node(max(btns, key=lambda n: n.center()[0]))
+            time.sleep(0.8)
+
+    for rx, label, box in [("^Tools", "editor-tools-menu", (1000, 76, 1280, 800)),
+                           ("^Markup", "editor-markup-menu", (900, 76, 1280, 340)),
+                           ("^Main Menu", "editor-book-menu", None)]:
         if box:
             click(c, "toggle button", rx=rx)
             wshot(c, label, crop=box, pad=0)
         else:
-            popover_shot(c, label, lambda: click(c, "toggle button", rx=rx), pad=6)
+            book_menu()  # the popup box detection also picks up the preview pane here: fixed crop
+            wshot(c, label, crop=(960, 76, 1280, 556), pad=0)
         close(c)
     open_file(c, "h-3.htm")
     c.click_node(c.wait_node("text", "Book source editor"))
@@ -567,8 +584,8 @@ THEME_X = {"light": 1071, "sepia": 1121, "dark": 1171}
 def _theme_scene(name, key):
     def scene(c):
         reader_start(c)
-        click(c, "toggle button", "Main menu")
-        c.sb.click(THEME_X[key], 115)
+        click(c, "toggle button", "Text Appearance")
+        click(c, "toggle button", key.capitalize())
         time.sleep(1.0)
         close(c)
         time.sleep(1.5)
@@ -586,7 +603,7 @@ for _key in ("light", "sepia", "dark"):
 def _wiki_reader_notes(c):
     """The highlight popover with a note (colours, styles) and the notes list in the sidebar."""
     reader_start(c, extra=",reader:demo-highlights,wait:1500,reader:ui-note-popover", settle=6)
-    wiki = c.wait_node("button", "Look up on Wikipedia", timeout=12)
+    wiki = c.wait_node("button", "Look Up on Wikipedia", timeout=12)
     c.sb.move_to(c.sb.w // 2, 10)
     time.sleep(0.6)
     nodes = [n for n in c.find("button") + c.find("toggle button") if n.box[1] > 150 and n.box[1] < 700
@@ -599,16 +616,16 @@ def _wiki_reader_notes(c):
 def _wiki_reader_aloud(c):
     """The read-aloud popover and the player card (a silent mock engine)."""
     reader_start(c)
-    btn = c.wait_node("toggle button", rx="^Read aloud")
+    btn = c.wait_node("toggle button", rx="^Read Aloud")
     popover_shot(c, "read-aloud-menu", lambda: c.click_node(btn), pad=6)
-    play = c.wait_node("button", "Read aloud from here", timeout=5)
+    play = c.wait_node("button", "Read Aloud from Here", timeout=5)
     if play:
         c.click_node(play)
         c.sb.key("Escape")
-        c.wait_node("button", "Next sentence", timeout=6)
+        c.wait_node("button", "Next Sentence", timeout=6)
         time.sleep(2.0)
         ui(c)
-        card = c.find("button", rx="^(Next sentence|Previous sentence|Close read aloud|Pause reading|Next chapter|Previous chapter|Faster|Slower)")
+        card = c.find("button", rx="^(Next Sentence|Previous Sentence|Close Read Aloud|Pause reading|Next Chapter|Previous Chapter|Faster|Slower)")
         wshot(c, "read-aloud-card", crop=card, pad=36, minsize=(540, 160))
     c.check("aloud shot", play)
 
@@ -619,7 +636,7 @@ def _wiki_reader_vocab(c):
     from scenarios import select_word
     reader_start(c)
     select_word(c)
-    btn = c.wait_node("button", "Look up in a dictionary", timeout=6)
+    btn = c.wait_node("button", "Look Up in Dictionary", timeout=6)
     if btn:
         c.click_node(btn)
         c.wait_node("label", rx="Test definition of ", timeout=6)
@@ -702,7 +719,7 @@ def _wiki_lib_menus_misc(c):
 
 @scenario
 def _wiki_lib_device(c):
-    """The Device window with a mounted e-reader (a fake Boox folder)."""
+    """The connected banner and both pages of the Devices window with a mounted e-reader (a fake Boox folder)."""
     import shutil
     mounts = os.path.join(c.dir, "mounts")
     books = os.path.join(mounts, "Boox", "Books")
@@ -711,11 +728,10 @@ def _wiki_lib_device(c):
     shutil.copy(c.books["alice"], os.path.join(books, "Alice in Wonderland.epub"))
     lib_start(c)
     time.sleep(1.5)
-    no = c.find("button", "Not now")
-    if no:
-        wshot(c, "library-device-banner", crop=c.find("button", rx="^E-reader|Not now") + no, pad=40, minsize=(900, 120))
-        c.click_node(no[0])
-        time.sleep(1.0)
+    banner = (c.find(None, "E-reader connected") + c.find("button", "Sync")
+              + c.find("button", rx="^E-reader"))
+    if banner:
+        wshot(c, "library-device-banner", crop=banner, pad=40, minsize=(900, 120))
     dev = c.wait_node("button", rx="^E-reader", timeout=6)
     ui(c)
     if dev:
@@ -723,6 +739,15 @@ def _wiki_lib_device(c):
         time.sleep(2.5)
         ui(c)
         wshot(c, "device-window-detail")
+        settings = (c.find("page tab", "Settings") or c.find("toggle button", "Settings")
+                    or c.find("button", "Settings") or c.find(None, "Settings"))
+        if settings:
+            c.click_node(settings[0])
+            time.sleep(1.2)
+            ui(c)
+            wshot(c, "device-window-settings")
+        else:
+            c.note("no Settings page: the Devices Settings picture was not shot")
     c.check("device shot", dev)
 
 

@@ -300,6 +300,8 @@ impl Editor {
     /// The settings of the editor changed: bring this window in line.
     pub(super) fn apply_prefs(&mut self) {
         let look = ep::look();
+        self.ext.prefs.borrow_mut().restore_state =
+            crate::editor_state::WindowPrefs::load().restore_state;
         apply_view(&self.w.view, &look);
         for b in self.buffers.values() {
             apply_buffer(b);
@@ -468,7 +470,7 @@ fn set_field(l: &mut EditorLook, k: &str, v: &str) {
 
 /// Adds the Editor page to Preferences (called once by its registry).
 pub fn register() {
-    register_page("editor", &tr("Editor"), "document-edit-symbolic", 45);
+    register_page("editor", &tr("Editor"), "document-edit-symbolic", 40);
     for (i, f) in [
         text_group as fn(&PrefCtx) -> adw::PreferencesGroup,
         scheme_group,
@@ -808,6 +810,20 @@ fn typing_group(_: &PrefCtx) -> adw::PreferencesGroup {
         crate::settings_bus::editor().notify();
     });
     g.add(&ent);
+    let restore = adw::SwitchRow::builder()
+        .title(tr("Reopen tabs and cursors"))
+        .subtitle(tr(
+            "Opening a book again shows the tabs and cursor positions it had",
+        ))
+        .active(crate::editor_state::WindowPrefs::load().restore_state)
+        .build();
+    restore.connect_active_notify(|r| {
+        let mut p = crate::editor_state::WindowPrefs::load();
+        p.restore_state = r.is_active();
+        p.save();
+        crate::settings_bus::editor().notify();
+    });
+    g.add(&restore);
     g
 }
 
@@ -836,6 +852,9 @@ fn preview_group(_: &PrefCtx) -> adw::PreferencesGroup {
     ));
     let both = adw::SwitchRow::builder()
         .title(tr("Scrolling the preview scrolls the code"))
+        .subtitle(tr(
+            "On by default. Scrolling the code always scrolls the preview",
+        ))
         .active(file.scroll_both)
         .build();
     both.connect_active_notify(|r| {

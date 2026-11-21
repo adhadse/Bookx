@@ -85,11 +85,14 @@ struct Open {
     scope: adw::ComboRow,
     scopes: Vec<Scope>,
     save: gtk::Button,
+    remove: gtk::Button,
     status: gtk::Label,
 }
 
 thread_local! {
     static OPEN: RefCell<Option<Open>> = const { RefCell::new(None) };
+    /// What the Undo toast of the last "Remove Definition" does (the test hook presses it).
+    static LAST_REMOVE_UNDO: RefCell<Option<Rc<dyn Fn()>>> = const { RefCell::new(None) };
 }
 
 fn scope_label(s: &Scope, ctx: &Ctx) -> String {
@@ -106,6 +109,11 @@ fn scope_label(s: &Scope, ctx: &Ctx) -> String {
     }
 }
 
+/// *Save* is usable when both the term and the definition hold text.
+pub fn can_save(term: &str, definition: &str) -> bool {
+    !term.trim().is_empty() && !definition.trim().is_empty()
+}
+
 /// Opens the dialog over `parent`. `done` runs with the saved term (or `None` when removed).
 pub fn open_dialog(
     parent: &impl IsA<gtk::Widget>,
@@ -113,9 +121,9 @@ pub fn open_dialog(
     done: impl Fn(Option<String>) + 'static,
 ) {
     let done: Rc<dyn Fn(Option<String>)> = Rc::new(done);
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&if ctx.existing {
-        tr("My Definition")
+        tr("Your Definition")
     } else {
         tr("Add to Vocabulary")
     });
@@ -218,7 +226,7 @@ pub fn open_dialog(
     body.append(&details);
     body.append(&context);
     body.append(&status);
-    let remove = gtk::Button::with_label(&tr("Remove My Definition"));
+    let remove = gtk::Button::with_label(&tr("Remove Definition"));
     remove.add_css_class("destructive-action");
     remove.add_css_class("flat");
     remove.set_halign(gtk::Align::Start);
@@ -244,6 +252,20 @@ pub fn open_dialog(
     view.set_content(Some(&scroll));
     dialog.set_child(Some(&view));
     dialog.set_default_widget(Some(&save));
+    {
+        let refresh = {
+            let (save, term, definition) = (save.clone(), term.clone(), definition.clone());
+            move || {
+                let b = definition.buffer();
+                let text = b.text(&b.start_iter(), &b.end_iter(), false);
+                save.set_sensitive(can_save(&term.text(), &text));
+            }
+        };
+        refresh();
+        let r = refresh.clone();
+        term.connect_changed(move |_| r());
+        definition.buffer().connect_changed(move |_| refresh());
+    }
 
     {
         let d = dialog.clone();
@@ -337,17 +359,33 @@ pub fn open_dialog(
         });
     }
     {
-        let (shared, term_text, d, done) = (
+        let (shared, term_text, d, done, parent) = (
             ctx.shared.clone(),
             ctx.term.clone(),
             dialog.clone(),
             done.clone(),
+            parent.clone().upcast::<gtk::Widget>(),
         );
         remove.connect_clicked(move |_| {
+            // reversible, so no confirmation: the definition goes and a toast offers it back
+            let before = shared.vocab.borrow().store.find(&term_text).cloned();
             shared.vocab.borrow_mut().remove_own(&term_text);
             OPEN.with(|o| *o.borrow_mut() = None);
             d.close();
             done(None);
+            if let (Some(entry), Some(overlay)) = (before, super::dialog_toast::overlay_of(&parent))
+            {
+                let (shared, done) = (shared.clone(), done.clone());
+                let stash = Rc::new(RefCell::new(Some(entry)));
+                let undo: Rc<dyn Fn()> = Rc::new(move || {
+                    if let Some(e) = stash.borrow_mut().take() {
+                        shared.vocab.borrow_mut().restore_entry(e);
+                        done(None);
+                    }
+                });
+                LAST_REMOVE_UNDO.with(|u| *u.borrow_mut() = Some(undo.clone()));
+                super::dialog_toast::show_undo(&overlay, &tr("Definition removed"), move || undo());
+            }
         });
     }
     dialog.connect_closed(|_| OPEN.with(|o| *o.borrow_mut() = None));
@@ -360,6 +398,7 @@ pub fn open_dialog(
             scope: scope.clone(),
             scopes,
             save: save.clone(),
+            remove: remove.clone(),
             status: status.clone(),
         })
     });
@@ -373,6 +412,16 @@ pub fn open_dialog(
 
 /// Dev hook (`vocab:dialog=...` and `reader:ui-vocab-*`): drives the open dialog through its widgets.
 pub fn dev(arg: &str) -> String {
+    if arg == "undo-remove" {
+        let undo = LAST_REMOVE_UNDO.with(|u| u.borrow_mut().take());
+        return match undo {
+            Some(u) => {
+                u();
+                "vocab_dialog: remove undone".to_string()
+            }
+            None => "vocab_dialog: nothing to undo".to_string(),
+        };
+    }
     {
         // the handles are copied out first: pressing Save closes the dialog and clears `OPEN`
         let Some(o) = OPEN.with(|o| o.borrow().clone()) else {
@@ -403,6 +452,8 @@ pub fn dev(arg: &str) -> String {
             if let Some(i) = want.and_then(|w| o.scopes.iter().position(|s| *s == w)) {
                 o.scope.set_selected(i as u32);
             }
+        } else if arg == "remove" {
+            o.remove.emit_clicked();
         } else if arg == "save" {
             o.save.emit_clicked();
             if OPEN.with(|o| o.borrow().is_none()) {
@@ -411,7 +462,7 @@ pub fn dev(arg: &str) -> String {
         }
         let b = o.definition.buffer();
         format!(
-            "vocab_dialog: open={} title={:?} term={:?} def={:?} note={:?} scope={:?} status={:?} focus_def={}",
+            "vocab_dialog: open={} title={:?} term={:?} def={:?} note={:?} scope={:?} status={:?} focus_def={} save_enabled={}",
             o.dialog.is_visible() || o.dialog.parent().is_some(),
             o.dialog.title(),
             o.term.text(),
@@ -419,7 +470,8 @@ pub fn dev(arg: &str) -> String {
             o.note.text(),
             o.scope.selected_item().and_downcast::<gtk::StringObject>().map(|s| s.string()),
             if o.status.is_visible() { o.status.label().to_string() } else { String::new() },
-            o.definition.has_focus()
+            o.definition.has_focus(),
+            o.save.is_sensitive()
         )
     }
 }
@@ -462,7 +514,7 @@ impl YourDef {
         note.add_css_class("dim-label");
         note.add_css_class("caption");
         note.set_visible(false);
-        let button = gtk::Button::with_label(&tr("Add my own definition"));
+        let button = gtk::Button::with_label(&tr("Add Your Definition"));
         button.add_css_class("flat");
         button.set_halign(gtk::Align::Start);
         let target: Rc<RefCell<String>> = Rc::default();
@@ -495,9 +547,9 @@ impl YourDef {
         self.note.set_visible(own.is_some() && !note.is_empty());
         self.note.set_label(note);
         self.button.set_label(&if own.is_some() {
-            tr("Edit my definition")
+            tr("Edit Your Definition")
         } else {
-            tr("Add my own definition")
+            tr("Add Your Definition")
         });
         *self.target.borrow_mut() = entry
             .filter(|e| e.own.is_some())
@@ -674,5 +726,17 @@ pub fn dev_mark(arg: &str) -> String {
             _ => {}
         }
         format!("vocab_mark: open={} text={:?}", m.pop.is_visible(), m.text)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::can_save;
+
+    #[test]
+    fn save_needs_a_term_and_a_definition() {
+        assert!(!can_save("", "x"));
+        assert!(!can_save("word", "  \n"));
+        assert!(can_save(" word ", "a meaning"));
     }
 }

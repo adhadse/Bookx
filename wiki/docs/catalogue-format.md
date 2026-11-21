@@ -9,7 +9,7 @@ where everything is, so another tool (or you, with a script) can read it, and ho
 |---|---|
 | `<author>/<title> (id)/…` (or the layout you chose) | The book files (EPUB and the other formats you added) and their `cover.jpg`. They are normal files: open them with any reader. Metadata edits are written **into the EPUB** as well as the catalogue. |
 | `bookx-library.db` | The catalogue (SQLite, WAL mode). See below. |
-| `.bookx-backups/` | Snapshots of the catalogue (SQLite files), see [Backup and restore](backup-and-restore.md). |
+| `.bookx-backups/` | Whole-file snapshots of the catalogue (SQLite files). They hold catalogue data, not the book files or covers; see [Backup and restore](backup-and-restore.md). |
 | `.bookx-trash/` | Deleted books waiting for *Empty Trash*: the files and an `entry.json` with the catalogue record. |
 | `.bookx/` | Small JSON state files: `oplog.json` (the undo log), `layout.json` (where books are filed), `inbox.json` (the watched import folder), `fixity.json` (file checksums), `not-duplicates.json` (pairs you said are different books), `cover-backups/` (covers replaced by a lookup). Safe to delete; you lose the undo history and these memories only. |
 | `.bookx-lock` | Which Bookx has the library open ([read-only mode](library.md#locking-and-read-only)). |

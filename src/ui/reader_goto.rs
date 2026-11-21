@@ -15,11 +15,30 @@ pub fn show(
     check: Rc<dyn Fn(&str) -> Result<String, String>>,
     go: Rc<dyn Fn(String)>,
 ) -> adw::AlertDialog {
+    show_with(
+        parent,
+        &tr("Page, percent, location or chapter"),
+        &tr("Go to page, percent, location or chapter"),
+        hint,
+        check,
+        go,
+    )
+}
+
+/// The same dialog with the field's placeholder and accessible name given (a comic only has pages).
+pub fn show_with(
+    parent: &gtk::Widget,
+    placeholder: &str,
+    name: &str,
+    hint: &str,
+    check: Rc<dyn Fn(&str) -> Result<String, String>>,
+    go: Rc<dyn Fn(String)>,
+) -> adw::AlertDialog {
     let d = adw::AlertDialog::new(Some(&tr("Go to")), Some(hint));
     let entry = gtk::Entry::new();
-    entry.set_placeholder_text(Some(&tr("45, 37%, loc 1200, ch 3")));
+    entry.set_placeholder_text(Some(placeholder));
     entry.set_activates_default(true);
-    super::audit::label(&entry, &tr("Go to page, percent, location or chapter"));
+    super::audit::label(&entry, name);
     let line = gtk::Label::new(None);
     line.set_wrap(true);
     line.set_xalign(0.0);
@@ -41,6 +60,7 @@ pub fn show(
             let text = e.text().to_string();
             if text.trim().is_empty() {
                 line.set_text("");
+                e.remove_css_class("error");
                 d.set_response_enabled("go", false);
                 return;
             }
@@ -48,11 +68,13 @@ pub fn show(
                 Ok(msg) => {
                     line.set_text(&msg);
                     line.remove_css_class("error");
+                    e.remove_css_class("error");
                     d.set_response_enabled("go", true);
                 }
                 Err(msg) => {
                     line.set_text(&msg);
                     line.add_css_class("error");
+                    e.add_css_class("error");
                     d.set_response_enabled("go", false);
                 }
             }

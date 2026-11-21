@@ -56,6 +56,7 @@ PY
 scenario hl_anchor 'library:import-highlights=@D@/imp/My Clippings.txt,wait:3500,library:import-confirm,wait:1500,read:1,wait:3500,reader:hl-paint,quit' '
     has "^import_plan: found=4 new=4 notes=0 already=0 unplaced=1"; check "three quotes are found in the book, the fourth is kept as a note without a place" $?
     has "^import_summary: UI Test Book: 3 highlights added, 1 not found in the book’s text, added as notes without a place"; check "the review says which quotes have no place" $?
+    has "^import_review: label=\"Add 4 Highlights\""; check "the review button says how many highlights it adds" $?
     has "^hl_text_numbering: same=true"; check "the page numbers the chapter text as Doc::reader_text does" $?
     [ "$(grep -c "^hl_paint: .* painted=true same=true unanchored=false" <<<"$OUT")" -eq 3 ]; check "the text painted at the stored range of each imported highlight is the highlight text" $?
     [ "$(grep -c "^hl_paint: .* painted=false same=false unanchored=true" <<<"$OUT")" -eq 1 ]; check "the quote that is nowhere is not painted anywhere" $?

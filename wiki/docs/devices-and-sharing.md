@@ -6,32 +6,32 @@
     cloud folders) has been tested against simulated devices only. Keep a copy of anything important on the device
     before you send to it.
 
-## The Device button
+## The Devices button
 
 <figure markdown="1">
-![The banner that asks about a connected e-reader](assets/library-device-banner-light.png#only-light)
-![The banner that asks about a connected e-reader](assets/library-device-banner-dark.png#only-dark)
-<figcaption markdown="1">Plug in an e-reader and the library asks what to do: *Sync*, *Always* or *Not now*.</figcaption>
+![The connected e-reader banner in the library](assets/library-device-banner-light.png#only-light)
+![The connected e-reader banner in the library](assets/library-device-banner-dark.png#only-dark)
+<figcaption markdown="1">Plug in an e-reader and the library shows *E-reader connected* with a one-shot *Sync* button.</figcaption>
 </figure>
 
 
-While a Kobo, Kindle, other e-reader or a phone is connected, a **Device** button with the device's name appears in
-the library's header bar (it is hidden when nothing is connected). It opens the Device window. The book's right-click
-menu has one device entry, **Send to Device**: it opens the Device window with the books you selected already in its
-*Books to send* list. It is always there; without a device it is greyed out, with the hint “No device connected”.
+While a Kobo, Kindle, other e-reader or a phone is connected, a **Devices** button with the device's name appears in
+the library's header bar (it is hidden when nothing is connected). Its tooltip is **Connected e-reader: sync, send and
+manage books**. It opens the Devices window. The book's right-click menu has one device entry, **Send to Device**: it
+opens the Devices window with the books you selected already in its *Books to send* list. It is always there; without a
+device it is greyed out, with the hint “No device connected”.
 
 <figure markdown="1">
-![A connected device: the Device button and the banner](assets/library-device-light.png#only-light)
-![A connected device: the Device button and the banner](assets/library-device-dark.png#only-dark)
-<figcaption markdown="1">The Device button and the connect banner.</figcaption>
+![A connected device: the Devices button and the banner](assets/library-device-light.png#only-light)
+![A connected device: the Devices button and the banner](assets/library-device-dark.png#only-dark)
+<figcaption markdown="1">The Devices button and the connection banner.</figcaption>
 </figure>
 
-When a device connects, a banner asks **“Kobo Libra connected — Sync reading progress and notes?”** with three
-answers:
-
-- **Sync** shows what will happen, then syncs. Highlights come with the colour and style they have on the device (see *Colours and styles from your e-reader* in [Annotations](annotations.md)).
-- **Always** turns on automatic sync (see below) and syncs now.
-- **Not now** hides the banner until the device is connected again.
+When a device connects, an `adw::Banner` says **“E-reader connected”** and offers **Sync**. Pressing Sync shows what
+will happen, then syncs this once. Highlights come with the colour and style they have on the device (see *Colours and
+styles from your e-reader* in [Annotations](annotations.md)). The banner can be dismissed; there is no **Always** or
+**Not now** answer. To sync every time a device connects, switch on **Always sync when connected** in
+[Devices → Settings](#settings-page) instead.
 
 ## Syncing progress, highlights and notes
 
@@ -54,13 +54,15 @@ the device and is reported in the summary. Highlights go to the device as a KORe
 and only when the device copy has none: **a notes file that is already there is never touched**. The summary says
 how many highlights stay in Bookx for that reason. Reading progress is never written to the device.
 
-*Preferences → Sync → USB device sync* (and the Device window) has **Sync automatically when a device connects**, off by default.
-With it on, syncing starts as soon as a device appears, without asking, and a message tells you what was done.
+**Devices → Settings → Sync → Always sync when connected** is off by default. With it on, syncing starts as soon as a
+device appears, without asking, and a message tells you what was done. The banner's Sync button never turns this on;
+it only syncs once. *Preferences → Sync* still holds the other sync settings.
 
 ## Send to device
 
-Select books in the library, right-click → **Send to Device** (or open the Device window with the Device button). The
-**Books to send** list shows exactly what will happen to each book, before anything is copied:
+Select books in the library, right-click → **Send to Device** (or open the Devices window with the Devices button).
+On the **Books** page, the **Books to send** group shows exactly what will happen to each book, before anything is
+copied:
 
 - the **format** it will have on the device and whether it is converted: *EPUB → KEPUB (converted)*,
   *EPUB (sent as is)*, *EPUB → AZW3 (converted)*;
@@ -68,47 +70,85 @@ Select books in the library, right-click → **Send to Device** (or open the Dev
 - its size, and a **warning** when the book file is missing, is bigger than the free space, or is already on the
   device (sending would add a second copy).
 
-Each row has a check box at the far left. Untick a book to leave it out; a book with a warning starts unticked. Click
-anywhere on a row or tile to tick it, Shift-click ticks a range, *Select All* and *None* are at the top. **Send N
-books** sends only the ticked ones, with the very format decisions the list shows. If a conversion fails, the next
-format the device opens is tried.
+With nothing selected, the group shows one row: **Select books in the library, then choose Send to Device**. There is
+no *Send 0 Books* button and no empty selection popover. With books selected, each row has a check box at the far
+left. Untick a book to leave it out; a book with a warning starts unticked. Click anywhere on a row or tile to tick it
+and Shift-click ticks a range. The button says **Send 1 Book** or **Send N Books** and sends only the ticked ones, with
+the very format decisions the list shows. If a conversion fails, the next format the device opens is tried.
 
 **Your notes go along.** A book that has highlights, notes or bookmarks is sent with them: the copy **on the device**
 gets an extra “My notes” section at the end (readable in any e-reader app), and for EPUB and KEPUB readers a KOReader
 notes file is written next to it, so KOReader lists them too (as bookmarks and notes; KOReader keeps jump targets at
 chapter level, so they jump to the start of the chapter; Bookx never writes a position inside the chapter that it cannot work out, so nothing can end up at the wrong words). Your library copy is not changed. Switch **Add my notes to
-the copy sent to the device** off (Device window or *Preferences → Sync → USB device sync*) to send books without them.
+the copy sent to the device** off under [Devices → Settings → Sending options](#settings-page) to send books without
+them.
 
 This is **one-way, library → device**. The merge in both directions is the sync that runs when a device connects
 (above); sending never reads anything back.
 
-## The Device window
+## The Devices window
+
+Open it with the **Devices** button in the header bar, or main menu → **Devices**. The window has two pages, **Books**
+and **Settings**.
+
+### Books page
 
 <figure markdown="1">
-![The Device window](assets/device-window-detail-light.png#only-light)
-![The Device window](assets/device-window-detail-dark.png#only-dark)
-<figcaption markdown="1">The Device window: the books on the device, what would be sent, and the sync options.</figcaption>
+![The Books page of the Devices window](assets/device-window-light.png#only-light)
+![The Books page of the Devices window](assets/device-window-dark.png#only-dark)
+<figcaption markdown="1">The Books page: books on the device, sync and selection controls, and books to send.</figcaption>
 </figure>
 
 
-Open it with the **Device** button in the header bar, or menu → *Device*:
+With no device connected, the Books page shows a status page: **No Device Connected** — **Connect your e-reader with
+USB, or add a WebDAV folder below**. The Settings page is still available, so you can add a WebDAV folder before a
+device appears.
+
+When a device is connected, it is shown as a row titled **Device**, with its name and free space (main memory is told
+apart from an SD card).
+
+**Books on the device** shows the books with their covers. Covers are taken from the book files (EPUB and KEPUB;
+other formats show a coloured placeholder) and cached, so the next visit is fast. The group has a **Sync Reading
+State** suffix: it shows the summary above, then merges progress, highlights and notes (matching is by title). Its
+other controls are:
+
+- a **Select All / Select None** popover for the books on the device;
+- one view button, **Show as a Grid** or **Show as a List**. It changes only this list, and the choice is remembered;
+- check boxes that appear on hover and stay visible for selected books (tiles: check box top-left; list: check box far
+  left, covers in a fixed slot so everything lines up). Click anywhere on a row or tile to tick it and Shift-click
+  ticks a range.
+
+At the bottom of the group, **Remove from Device** becomes active with a selection and asks **“Remove N Books from
+the Device?”** before deleting. This deletion is not undoable.
+
+**Books to send** is the second group (above). With no library books selected it is just the status row **Select
+books in the library, then choose Send to Device**; with books selected its button says **Send 1 Book** or **Send N
+Books**.
 
 <figure markdown="1">
-![The Device window with covers](assets/device-window-light.png#only-light)
-![The Device window with covers](assets/device-window-dark.png#only-dark)
-<figcaption markdown="1">The Device window, with a simulated e-reader.</figcaption>
+![A detail of the Books page](assets/device-window-detail-light.png#only-light)
+![A detail of the Books page](assets/device-window-detail-dark.png#only-dark)
+<figcaption markdown="1">Books on the device: covers, the grid/list button and the selection controls.</figcaption>
 </figure>
 
-- the books on the device **with their covers**, as a grid or a list (the choice is remembered). Covers are taken
-  from the book files (EPUB and KEPUB; other formats show a coloured placeholder) and cached, so the next visit is
-  fast;
-- free space, with main memory told apart from an SD card;
-- the **Books to send** list (above) and a **Send N books** button; remove books from the device with the check boxes of *Books on the device*, which work like the ones above (tiles: click anywhere, check box top-left; list: check box far left, covers in a fixed slot so everything lines up);
-- the **format** to send. If a conversion fails, the next format the device opens is tried;
-- a **save-path template** such as `{author}/{series}/{title}`;
-- for Kobo, an optional **shelf** for sent books. The Kobo database is backed up before it is changed;
-- **Add my notes to the copy sent to the device** and **Sync automatically when a device connects** (the “?” next to it explains it);
-- **Sync Reading State**: shows the summary above, then merges progress, highlights and notes. Matching is by title.
+### Settings page
+
+<figure markdown="1">
+![The Settings page of the Devices window](assets/device-window-settings-light.png#only-light)
+![The Settings page of the Devices window](assets/device-window-settings-dark.png#only-dark)
+<figcaption markdown="1">The Settings page: sending options, background sync and the WebDAV folder.</figcaption>
+</figure>
+
+
+- **Sending options**: the **Format** to send (if a conversion fails, the next format the device opens is tried), the
+  **Save path** template such as `{author}/{series}/{title}`, and for Kobo an optional **Shelf** for sent books (the
+  Kobo database is backed up before it is changed). **Add notes to the copy sent to the device** adds your
+  highlights and notes to the copy on the device.
+- **Sync**: **Always sync when connected**, off by default. The “?” explains that this syncs in the background every
+  time a device appears; the banner's Sync button stays a one-shot action.
+- **Cloud folder (WebDAV)**: enter the URL, user name and password to use a WebDAV folder as a device. Sending never
+  overwrites an existing file and the password is kept in the system keyring. To keep *backups* in a WebDAV folder,
+  see [Backup and restore](backup-and-restore.md).
 
 Check a mounted device from the terminal with `bookx-cli device-check <mount>` (add `--all` to check every book on
 it, not only the folder Bookx sends to). The check never writes to the device. See [Command line](command-line.md).
@@ -144,8 +184,9 @@ Kobo database handling.
 
 ### Cloud folders (WebDAV)
 
-The Device window has a *Cloud folder (WebDAV)* section: enter the URL, user name and password and the folder
-behaves like a device. Sending never overwrites an existing file. The password is kept in the system keyring. To keep *backups* in a WebDAV folder, see [Backup and restore](backup-and-restore.md).
+The *Cloud folder (WebDAV)* section is under [Devices → Settings](#settings-page): enter the URL, user name and
+password and the folder behaves like a device. Sending never overwrites an existing file. The password is kept in the
+system keyring. To keep *backups* in a WebDAV folder, see [Backup and restore](backup-and-restore.md).
 
 ## Which sync do I need?
 
@@ -172,7 +213,7 @@ further elsewhere.
 **USB device** (cable): Bookx reads the progress and the highlights and notes the device keeps, from the Kobo’s own
 database or from KOReader’s `.sdr` files if KOReader is installed on it, and merges them with the library. Without any
 readable state nothing happens. Progress only moves forward, notes are united, nothing is deleted, and reading progress
-is never written to the device. *Notes sent with a book* (Device window, *Send to Device*) add your highlights and notes
+is never written to the device. *Notes sent with a book* (Devices window, *Send to Device*) add your highlights and notes
 to the copy on the device as a “My notes” section and a KOReader notes file; your library copy is never changed.
 
 **Share books (OPDS)** is the library server: see [Library server](#library-server).
@@ -208,7 +249,7 @@ network; **Preferences → Sync → Library servers (OPDS)** has the same switch
 
 - **OPDS** catalogue and a **web page** to browse and download books. Any OPDS reader app can use it.
 - A **password is required** before other devices can connect. The user name is `bookx`. Under **Advanced** you find
-  *Allow other devices on my network*, the library password, the **port** (allow it in your firewall) and **HTTPS**.
+  *Allow other devices on the network*, the library password, the **port** (allow it in your firewall) and **HTTPS**.
 - **Bookx sync** shares the server: the setup checklist turns on network access for you and makes the library password
   if there is none. See [Bookx sync (extended KOSync)](progress-sync.md).
 - **HTTPS**: use your own certificate and key (PEM files) or let Bookx make a self-signed one. Clients must trust a
@@ -225,7 +266,7 @@ reverse proxy in front of it: [Put Bookx behind a reverse proxy](reverse-proxy.m
     - Writing a Kobo shelf has only been run against generated databases and a copy of a real one.
     - The covers of books on a device are read from the book files; the Kobo's own image cache is not used, and
       books that are not EPUB or KEPUB show a placeholder.
-    - Dragging books onto the Device button is not possible; select them in the library and use *Send to the device*.
+    - Dragging books onto the Devices button is not possible; select them in the library and use *Send to Device*.
     - Kindle's own reading state (binary `.sdr` data) is not read. KOReader on a Kindle works.
     - The Calibre wireless "smart device" protocol is not implemented.
     - MTP works through gvfs only; direct USB MTP is not done.

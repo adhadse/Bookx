@@ -207,45 +207,25 @@ impl Report {
     }
 }
 
-/// KOReader's highlight colour as a stored colour name: a palette colour, or one the palette lacks
-/// (`cyan`, `olive`) kept as written so nothing is lost (the same rule as the USB sync,
-/// `devstyle`); a word that is no colour is yellow.
+/// KOReader's highlight colour as a stored colour name (`devstyle`: a palette colour, one the
+/// palette lacks such as `cyan` or `olive` kept as written, any other word kept as written too).
+/// Only an empty word is yellow.
 pub fn color_in(name: &str) -> String {
-    crate::core::devstyle::koreader_color(name).unwrap_or_else(|| "yellow".into())
+    devstyle::koreader_color(name).unwrap_or_else(|| "yellow".into())
 }
 
 /// Bookx's colour as the KOReader name.
-pub fn color_out(name: &str) -> &'static str {
-    match name {
-        "orange" => "orange",
-        "red" | "pink" => "red",
-        "purple" => "purple",
-        "blue" => "blue",
-        "cyan" => "cyan",
-        "green" => "green",
-        "olive" => "olive",
-        "gray" => "gray",
-        _ => "yellow",
-    }
+pub fn color_out(name: &str) -> String {
+    devstyle::to_koreader_color(name)
 }
 
-/// KOReader's `drawer` as a Bookx highlight style (empty is the default look).
-pub fn style_in(drawer: &str) -> &'static str {
-    match drawer {
-        "underscore" => "underline",
-        "strikeout" => "strikethrough",
-        "invert" => "invert",
-        _ => "",
-    }
+/// KOReader's `drawer` as a stored highlight style (`lighten` is `background`).
+pub fn style_in(drawer: &str) -> String {
+    devstyle::canonical_style(drawer).unwrap_or_else(|| "background".into())
 }
 
-pub fn drawer_out(style: &str) -> &'static str {
-    match style {
-        "underline" | "squiggly" => "underscore",
-        "strikethrough" => "strikeout",
-        "invert" => "invert",
-        _ => "lighten",
-    }
+pub fn drawer_out(style: &str) -> String {
+    devstyle::to_koreader_drawer(style)
 }
 
 /// The look a device annotation asks for. A part the device did not say is `None`; the words are
@@ -255,6 +235,14 @@ fn look_want(a: &Annotation) -> (Option<String>, Option<String>) {
         (!a.color.trim().is_empty()).then_some(a.color.as_str()),
         (!a.drawer.trim().is_empty()).then_some(a.drawer.as_str()),
     )
+}
+
+fn same_style(stored: &str, other: &str) -> bool {
+    devstyle::full_look("", stored).style == devstyle::full_look("", other).style
+}
+
+fn same_color(stored: &str, other: &str) -> bool {
+    devstyle::full_look(stored, "").color == devstyle::full_look(other, "").color
 }
 
 /// The remembered look with the parts of `want` that the device said applied.
@@ -536,13 +524,13 @@ pub fn repair_looks(books: &mut [Book], changes: &[Change], ledger: &mut Ledger)
         }
         let mut changed = false;
         if let Some(color) = &want.0 {
-            if h.color != *color {
+            if !same_color(&h.color, color) {
                 h.color = color.clone();
                 changed = true;
             }
         }
         if let Some(style) = &want.1 {
-            if devstyle::style_from_any(&h.style).unwrap_or("background") != style {
+            if !same_style(&h.style, style) {
                 h.style = style.clone();
                 changed = true;
             }
@@ -614,13 +602,13 @@ fn live(
         }
         if apply_look {
             if let Some(c) = &want.0 {
-                if h.color != *c {
+                if !same_color(&h.color, c) {
                     h.color = c.clone();
                     rep.looks += 1;
                 }
             }
             if let Some(s) = &want.1 {
-                if devstyle::style_from_any(&h.style).unwrap_or("background") != s {
+                if !same_style(&h.style, s) {
                     h.style = s.clone();
                     rep.looks += 1;
                 }
@@ -660,7 +648,7 @@ fn live(
                 h.color = color_in(&a.color);
             }
             if !a.drawer.is_empty() {
-                h.style = style_in(&a.drawer).into();
+                h.style = style_in(&a.drawer);
             }
         }
         e.highlight = Some(h.id.clone());
@@ -696,7 +684,7 @@ fn live(
                 start,
                 end,
                 color: color_in(&a.color),
-                style: style_in(&a.drawer).into(),
+                style: style_in(&a.drawer),
                 note: a.note.trim().to_string(),
                 text: a.text.trim().to_string(),
                 created: if a.created > 0 { when(a.created) } else { now },
@@ -719,7 +707,7 @@ fn live(
                 start,
                 end,
                 color: color_in(&a.color),
-                style: style_in(&a.drawer).into(),
+                style: style_in(&a.drawer),
                 note: a.note.trim().to_string(),
                 text: a.text.trim().to_string(),
                 created: if a.created > 0 { when(a.created) } else { now },
@@ -736,10 +724,14 @@ fn live(
     e
 }
 
+/// What identifies the content of a highlight, to notice a change. The look is compared in its
+/// canonical words, so `""` and `background`, or `Grey` and `gray`, are not a change that goes out
+/// to the device as an update.
 fn fingerprint(h: &Highlight) -> String {
+    let look = devstyle::full_look(&h.color, &h.style);
     format!(
         "{}\u{1f}{}\u{1f}{}\u{1f}{}",
-        h.text, h.note, h.color, h.style
+        h.text, h.note, look.color, look.style
     )
 }
 
@@ -789,8 +781,8 @@ pub fn outgoing(
                 kind: KIND_HIGHLIGHT.into(),
                 text: h.text.clone(),
                 note: h.note.clone(),
-                color: color_out(&h.color).into(),
-                drawer: drawer_out(&h.style).into(),
+                color: color_out(&h.color),
+                drawer: drawer_out(&h.style),
                 created: h.created.timestamp().min(now),
                 updated,
                 ..Annotation::default()
@@ -1573,16 +1565,101 @@ mod tests {
         );
     }
 
+    /// Root cause R1 (docs/highlight-sync-rca.md): the wireless path had its own colour and style
+    /// table. A word it did not know became yellow and plain; here it must arrive as written, and a
+    /// repeat must not count it as a change every time.
+    #[test]
+    fn a_colour_and_drawer_nobody_knows_arrive_as_written_and_a_repeat_changes_nothing() {
+        let (mut books, mut l, loc) = setup();
+        let first = [colored(
+            "a",
+            "Fear is the mind-killer.",
+            "teal",
+            "wavy",
+            100,
+            1,
+        )];
+        merge_incoming(&mut books, &first, &mut l, &loc, now());
+        let h = &books[0].highlights[0];
+        assert_eq!((h.color.as_str(), h.style.as_str()), ("teal", "wavy"));
+        assert_eq!(repair_looks(&mut books, &first, &mut l), 0);
+        let again = [colored(
+            "a",
+            "Fear is the mind-killer.",
+            "teal",
+            "wavy",
+            200,
+            2,
+        )];
+        let r = merge_incoming(&mut books, &again, &mut l, &loc, now());
+        assert_eq!(r.looks, 0, "{r:?}");
+    }
+
+    /// Root cause R2: a highlight made in Bookx went to the server as yellow whenever its colour was
+    /// not one of the eight names (a custom colour, an extra word).
+    #[test]
+    fn what_bookx_sends_carries_the_nearest_koreader_colour_and_drawer() {
+        let (mut books, l, _loc) = setup();
+        for (id, color, style) in [
+            ("c1", "#ff0000", "squiggly"),
+            ("c2", "pink", ""),
+            ("c3", "Grey", "strikethrough"),
+            ("c4", "cyan", "invert"),
+            ("c5", "teal", "wavy"),
+        ] {
+            let mut h = books_hl(id, &format!("A highlight made in Bookx: {id} {color}"));
+            h.color = color.into();
+            h.style = style.into();
+            books[0].highlights.push(h);
+        }
+        let o = outgoing(&books, &l, 1000);
+        for a in &o[0].1 {
+            let want = match a.id.as_str() {
+                "c1" => ("red", "underscore"),
+                "c2" => ("red", "lighten"),
+                "c3" => ("gray", "strikeout"),
+                "c4" => ("cyan", "invert"),
+                _ => ("teal", "wavy"),
+            };
+            assert_eq!((a.color.as_str(), a.drawer.as_str()), want, "{}", a.id);
+        }
+    }
+
+    /// Root cause R3: the change fingerprint compared the raw words, so `""` becoming `background`
+    /// (the same look) was sent to the device as an update.
+    #[test]
+    fn a_spelling_of_the_same_look_is_not_a_change_to_send() {
+        let (mut books, mut l, _loc) = setup();
+        books[0]
+            .highlights
+            .push(books_hl("hl-1", "Something I highlighted here."));
+        let o = outgoing(&books, &l, 1000);
+        commit_outgoing(&mut l, o.into_iter().next().unwrap().2);
+        books[0].highlights[0].style = "background".into();
+        books[0].highlights[0].color = "Yellow".into();
+        assert!(outgoing(&books, &l, 2000).is_empty());
+        books[0].highlights[0].color = "purple".into();
+        assert_eq!(outgoing(&books, &l, 3000)[0].1[0].color, "purple");
+    }
+
     #[test]
     fn colours_and_styles_map_both_ways() {
         // KOReader's olive and cyan are kept as written (they were turned into green and blue)
         assert_eq!(color_in("olive"), "olive");
         assert_eq!(color_in("cyan"), "cyan");
         assert_eq!(color_out("cyan"), "cyan");
-        assert_eq!(color_in("weird"), "yellow");
+        assert_eq!(color_in("weird"), "weird", "a word nobody knows is kept");
+        assert_eq!(color_out("weird"), "weird");
+        assert_eq!(color_in(""), "yellow");
         assert_eq!(color_out("pink"), "red");
-        assert_eq!(style_in("lighten"), "");
+        assert_eq!(style_in("lighten"), "background");
+        assert_eq!(style_in("whatever"), "whatever");
         assert_eq!(drawer_out("strikethrough"), "strikeout");
+        assert_eq!(
+            color_out("#ff0000"),
+            "red",
+            "a custom colour is not sent as yellow"
+        );
     }
 
     #[test]

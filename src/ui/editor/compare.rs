@@ -184,7 +184,7 @@ impl CmpUi {
         crate::ui::audit::label(&context, &tr("Lines of context"));
         let beautify = gtk::ToggleButton::with_label(&tr("Beautify"));
         beautify.set_tooltip_text(Some(
-            "Pretty-print the markup before comparing, so formatting is ignored (line numbers then refer to the pretty-printed text)",
+            &tr("Pretty-print the markup before comparing, so formatting is ignored (line numbers then refer to the pretty-printed text)"),
         ));
         let search = gtk::SearchEntry::new();
         search.set_placeholder_text(Some(&tr("Search in the differences")));
@@ -762,9 +762,9 @@ impl Editor {
         toolbar.add_top_bar(&adw::HeaderBar::new());
         let page = adw::PreferencesPage::new();
         let create = adw::PreferencesGroup::new();
-        create.set_title(&tr("New checkpoint"));
+        create.set_title(&tr("New Checkpoint"));
         create.set_description(Some(
-            "A checkpoint is a copy of the whole book you can compare with or go back to. One is taken automatically before every tool.",
+            &tr("A checkpoint is a copy of the whole book you can compare with or go back to. One is taken automatically before every tool."),
         ));
         let entry = adw::EntryRow::new();
         entry.set_title(&tr("Name"));
@@ -772,11 +772,18 @@ impl Editor {
         create.add(&entry);
         page.add(&create);
         let saved = adw::PreferencesGroup::new();
-        saved.set_title(&tr("Saved states"));
+        saved.set_title(&tr("Saved States"));
         let list = gtk::ListBox::new();
         list.add_css_class("boxed-list");
         list.set_selection_mode(gtk::SelectionMode::None);
         crate::ui::audit::label(&list, &tr("Checkpoints"));
+        let empty = adw::StatusPage::new();
+        empty.set_title(&tr("No Checkpoints Yet"));
+        empty.set_description(Some(&tr(
+            "One is taken before every tool. Create one yourself above.",
+        )));
+        empty.set_icon_name(Some("document-open-recent-symbolic"));
+        list.set_placeholder(Some(&empty));
         saved.add(&list);
         page.add(&saved);
         toolbar.set_content(Some(&page));
@@ -806,91 +813,137 @@ impl Editor {
         while let Some(c) = d.list.first_child() {
             d.list.remove(&c);
         }
-        let infos = self.checkpoints.list();
-        if infos.is_empty() {
-            let l = gtk::Label::new(Some(&tr("No checkpoints yet")));
-            l.add_css_class("dim-label");
-            l.set_margin_all(12);
-            d.list.append(&l);
-        }
+        let infos = self.visible_checkpoints();
         for c in infos.iter().rev() {
             let row = adw::ActionRow::new();
             row.set_title(&glib::markup_escape_text(&c.name));
-            row.set_subtitle(&trf(
+            let base = trf(
                 "{} · {} files · {}",
                 &[
                     &human_time(c.created),
                     &c.file_count,
                     &human_size(c.bytes as u64),
                 ],
-            ));
+            );
+            row.set_subtitle(&glib::markup_escape_text(&cp_subtitle(
+                &base,
+                c.pinned,
+                &tr("Kept"),
+            )));
             let id = c.id;
-            let mk = |icon: &str, tip: &str| {
-                let b = gtk::Button::from_icon_name(icon);
-                b.set_tooltip_text(Some(tip));
-                b.set_valign(gtk::Align::Center);
-                b.add_css_class("flat");
-                crate::ui::audit::label(&b, &format!("{tip}: {}", c.name));
-                b
-            };
-            let pin = gtk::ToggleButton::new();
-            pin.set_icon_name("view-pin-symbolic");
-            pin.set_tooltip_text(Some(&tr("Keep this checkpoint when old ones are removed")));
-            pin.set_valign(gtk::Align::Center);
-            pin.add_css_class("flat");
-            crate::ui::audit::label(&pin, &trf("Keep checkpoint {}", &[&c.name]));
-            pin.set_active(c.pinned);
-            let rename = mk("document-edit-symbolic", &tr("Rename"));
-            let compare = mk("edit-find-symbolic", &tr("Compare with the book"));
-            let revert = mk("edit-undo-symbolic", &tr("Revert the book to this state"));
-            let delete = mk("user-trash-symbolic", &tr("Delete"));
-            let tx = self.sender.input_sender().clone();
-            pin.connect_toggled(move |b| {
-                tx.emit(Input::Pv(PvMsg::CheckpointPin(id, b.is_active())))
-            });
+            let compare = gtk::Button::with_label(&tr("Compare"));
+            compare.set_valign(gtk::Align::Center);
+            compare.add_css_class("flat");
+            compare.set_tooltip_text(Some(&tr("Compare with the book")));
+            crate::ui::audit::label(&compare, &format!("{}: {}", tr("Compare"), c.name));
             let tx = self.sender.input_sender().clone();
             compare.connect_clicked(move |_| tx.emit(Input::Pv(PvMsg::CompareCheckpoint(id))));
+
+            let menu = gio::Menu::new();
+            menu.append(
+                Some(&tr("Revert the Book to This State")),
+                Some("cp.revert"),
+            );
+            menu.append(Some(&tr("Rename")), Some("cp.rename"));
+            menu.append(
+                Some(&if c.pinned {
+                    tr("Stop Keeping")
+                } else {
+                    tr("Keep")
+                }),
+                Some("cp.pin"),
+            );
+            let del = gio::Menu::new();
+            del.append(Some(&tr("Delete")), Some("cp.delete"));
+            menu.append_section(None, &del);
+            let more = gtk::MenuButton::new();
+            more.set_icon_name("view-more-symbolic");
+            more.set_menu_model(Some(&menu));
+            more.set_valign(gtk::Align::Center);
+            more.add_css_class("flat");
+            more.set_tooltip_text(Some(&tr("Checkpoint Actions")));
+            crate::ui::audit::label(&more, &format!("{}: {}", tr("Checkpoint Actions"), c.name));
+
+            let group = gio::SimpleActionGroup::new();
+            let act = |name: &str, f: Box<dyn Fn()>| {
+                let a = gio::SimpleAction::new(name, None);
+                a.connect_activate(move |_, _| f());
+                group.add_action(&a);
+            };
             let tx = self.sender.input_sender().clone();
             let dialog = d.dialog.clone();
-            revert.connect_clicked(move |_| {
-                tx.emit(Input::RestoreCheckpoint(id));
-                dialog.close();
-            });
+            act(
+                "revert",
+                Box::new(move || {
+                    tx.emit(Input::RestoreCheckpoint(id));
+                    dialog.close();
+                }),
+            );
             let tx = self.sender.input_sender().clone();
-            delete.connect_clicked(move |_| tx.emit(Input::Pv(PvMsg::CheckpointDelete(id))));
+            let pinned = c.pinned;
+            act(
+                "pin",
+                Box::new(move || tx.emit(Input::Pv(PvMsg::CheckpointPin(id, !pinned)))),
+            );
+            let tx = self.sender.input_sender().clone();
+            act(
+                "delete",
+                Box::new(move || tx.emit(Input::Pv(PvMsg::CheckpointDelete(id)))),
+            );
             let tx = self.sender.input_sender().clone();
             let name = c.name.clone();
             let parent = d.dialog.clone();
-            rename.connect_clicked(move |_| {
-                let e = gtk::Entry::new();
-                e.set_text(&name);
-                e.set_activates_default(true);
-                crate::ui::audit::label(&e, &tr("New name of the checkpoint"));
-                let a = adw::AlertDialog::new(Some(&tr("Rename Checkpoint")), None);
-                a.set_extra_child(Some(&e));
-                a.add_responses(&[("cancel", &tr("Cancel")), ("ok", &tr("Rename"))]);
-                a.set_response_appearance("ok", adw::ResponseAppearance::Suggested);
-                a.set_default_response(Some("ok"));
-                a.set_close_response("cancel");
-                let tx = tx.clone();
-                a.connect_response(None, move |_, r| {
-                    if r == "ok" {
-                        tx.emit(Input::Pv(PvMsg::CheckpointRename(id, e.text().to_string())));
-                    }
-                });
-                a.present(Some(&parent));
-            });
-            for b in [
-                pin.upcast_ref::<gtk::Widget>(),
-                rename.upcast_ref(),
-                compare.upcast_ref(),
-                revert.upcast_ref(),
-                delete.upcast_ref(),
-            ] {
-                row.add_suffix(b);
-            }
+            act(
+                "rename",
+                Box::new(move || {
+                    let e = gtk::Entry::new();
+                    e.set_text(&name);
+                    e.set_activates_default(true);
+                    crate::ui::audit::label(&e, &tr("New name of the checkpoint"));
+                    let a = adw::AlertDialog::new(Some(&tr("Rename Checkpoint")), None);
+                    a.set_extra_child(Some(&e));
+                    a.add_responses(&[("cancel", &tr("Cancel")), ("ok", &tr("Rename"))]);
+                    a.set_response_appearance("ok", adw::ResponseAppearance::Suggested);
+                    a.set_default_response(Some("ok"));
+                    a.set_close_response("cancel");
+                    let tx = tx.clone();
+                    a.connect_response(None, move |_, r| {
+                        if r == "ok" {
+                            tx.emit(Input::Pv(PvMsg::CheckpointRename(id, e.text().to_string())));
+                        }
+                    });
+                    a.present(Some(&parent));
+                }),
+            );
+            row.insert_action_group("cp", Some(&group));
+            row.add_suffix(&compare);
+            row.add_suffix(&more);
             d.list.append(&row);
         }
+    }
+
+    /// Delete from the dialog: the row and the menu entries go away at once, the checkpoint itself after the Undo
+    /// toast (10 s) is gone.
+    pub(super) fn cp_delete_later(&mut self, id: u64) {
+        if !self.checkpoints.list().iter().any(|c| c.id == id) {
+            return;
+        }
+        let name = self
+            .checkpoints
+            .list()
+            .into_iter()
+            .find(|c| c.id == id)
+            .map(|c| c.name)
+            .unwrap_or_default();
+        self.pv.cp_hidden.borrow_mut().push(id);
+        self.refresh_restore_menu();
+        self.refresh_cp_dialog();
+        let text = trf("Checkpoint “{}” deleted", &[&name]);
+        let toast = self.toast_button(&text, &tr("Undo"), move || {
+            Input::Pv(PvMsg::CheckpointDeleteUndo(id))
+        });
+        let tx = self.sender.input_sender().clone();
+        toast.connect_dismissed(move |_| tx.emit(Input::Pv(PvMsg::CheckpointDeleteCommit(id))));
     }
 
     /// Dev hooks of the compare view and the checkpoints dialog.
@@ -1015,8 +1068,7 @@ impl Editor {
             eprintln!(
                 "editor_cp: dialog={} list={}",
                 self.pv.cp_dialog.borrow().is_some(),
-                self.checkpoints
-                    .list()
+                self.visible_checkpoints()
                     .iter()
                     .map(|c| format!("{}:{}{}", c.id, c.name, if c.pinned { "*" } else { "" }))
                     .collect::<Vec<_>>()
@@ -1031,6 +1083,28 @@ impl Editor {
                 }
                 eprintln!("editor_cp: dialog_rows={n}");
             }
+        } else if c == "cp-controls" {
+            // `editor_cp_rows: rows=N max_controls=M subtitles=a|b` for the open dialog
+            if let Some(d) = self.pv.cp_dialog.borrow().as_ref() {
+                let (mut rows, mut max, mut subs) = (0, 0, Vec::new());
+                let mut ch = d.list.first_child();
+                while let Some(w) = ch {
+                    rows += 1;
+                    max = max.max(count_controls(&w));
+                    if let Some(r) = w.downcast_ref::<adw::ActionRow>() {
+                        subs.push(r.subtitle().map(|s| s.to_string()).unwrap_or_default());
+                    }
+                    ch = w.next_sibling();
+                }
+                eprintln!(
+                    "editor_cp_rows: rows={rows} max_controls={max} subtitles={}",
+                    subs.join("|")
+                );
+            }
+        } else if let Some(id) = c.strip_prefix("cp-delete-undo=") {
+            sender.input(Input::Pv(PvMsg::CheckpointDeleteUndo(
+                id.parse().unwrap_or(0),
+            )));
         } else if let Some(id) = c.strip_prefix("cp-delete=") {
             sender.input(Input::Pv(PvMsg::CheckpointDelete(id.parse().unwrap_or(0))));
         } else if let Some(r) = c.strip_prefix("cp-rename=") {
@@ -1067,4 +1141,47 @@ fn stats_text(d: &CmpData) -> String {
             &files,
         ],
     )
+}
+
+/// Subtitle of a checkpoint row: the details, with "Kept" in front of a pinned one.
+pub(super) fn cp_subtitle(base: &str, pinned: bool, kept: &str) -> String {
+    if pinned {
+        format!("{kept} · {base}")
+    } else {
+        base.to_string()
+    }
+}
+
+/// Buttons and menu buttons under `w` (the button inside a menu button does not count twice).
+fn count_controls(w: &gtk::Widget) -> usize {
+    let mut n = 0;
+    if w.is::<gtk::MenuButton>() {
+        return 1;
+    }
+    if w.is::<gtk::Button>() {
+        n += 1;
+    }
+    let mut ch = w.first_child();
+    while let Some(c) = ch {
+        n += count_controls(&c);
+        ch = c.next_sibling();
+    }
+    n
+}
+
+#[cfg(test)]
+mod cp_tests {
+    use super::cp_subtitle;
+
+    #[test]
+    fn pinned_checkpoint_shows_kept_badge() {
+        assert_eq!(
+            cp_subtitle("12:00 · 3 files", true, "Kept"),
+            "Kept · 12:00 · 3 files"
+        );
+        assert_eq!(
+            cp_subtitle("12:00 · 3 files", false, "Kept"),
+            "12:00 · 3 files"
+        );
+    }
 }

@@ -28,7 +28,7 @@ scenario editor_x_text "edit:1,wait:3000,editor:x:put=OEBPS/chapter-1.xhtml|<htm
     sed -n 6p <<<"$C" | grep -qE "<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\">⏎  <head>.*⏎  </head>⏎  <body>"; check "Beautify indents the block tags" $?
     ! sed -n 6p <<<"$C" | grep -q "plain words.⏎"; check "text inside paragraphs keeps its line" $?
     has "^editor: .*toast=\"Already nicely laid out\""; check "a second Beautify finds nothing to do" $?
-    has "^editor_cps: Before: Smarten Punctuation/Before: Smarten Punctuation/Before: Smarten Punctuation/Before: Fix HTML/Before: Fix HTML/Before: Beautify"; check "every tool took its own checkpoint" $?
+    has "^editor_cps: Before: Smarten Punctuation/Before: Smarten Punctuation/Before: Smarten Punctuation/Before: Fix HTML/Before: Fix HTML/Before: Reformat Markup"; check "every tool took its own checkpoint" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
 scenario editor_x_styles "edit:1,wait:3000,editor:x:put=OEBPS/style.css|p { color: red; font-size: 10px; margin: 0 }\n.unused { color: blue }\nh1 { font-family: Georgia§ serif; font-style: normal }\n,editor:x:styles=change|color|red|green;;scale|2;;italic|Georgia,wait:500,editor:cat=OEBPS/style.css,editor:x:ruleset-save=Mine;;scale|1.5;;remove|margin,editor:x:ruleset-list,editor:x:ruleset-load=Mine,wait:500,editor:cat=OEBPS/style.css,editor:x:unused-css,wait:500,editor:cat=OEBPS/style.css,editor:x:filter-list,editor:x:filter=font-style,wait:500,editor:cat=OEBPS/style.css,editor:x:styles=scale|abc,editor:dump,editor:cps,quit" '

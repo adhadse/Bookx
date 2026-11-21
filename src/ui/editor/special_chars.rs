@@ -263,7 +263,7 @@ impl Editor {
         let cats = gtk::ListBox::new();
         cats.add_css_class("navigation-sidebar");
         cats.update_property(&[gtk::accessible::Property::Label(&tr("Character groups"))]);
-        let names: Vec<String> = ["★ Favourites".to_string(), "Recently used".to_string()]
+        let names: Vec<String> = [tr("★ Favourites"), tr("Recently used")]
             .into_iter()
             .chain(charinfo::BLOCKS.iter().map(|b| b.2.to_string()))
             .collect();
@@ -341,20 +341,59 @@ impl Editor {
         info.set_margin_bottom(6);
         info.set_wrap(true);
 
+        // below 720sp the group list becomes a drop-down above the grid
+        let name_refs: Vec<&str> = names.iter().map(String::as_str).collect();
+        let cat_drop = gtk::DropDown::from_strings(&name_refs);
+        cat_drop.set_visible(false);
+        cat_drop.set_widget_name("chars-drop");
+        cat_scroll.set_widget_name("chars-list");
+        cat_drop.set_margin_start(8);
+        cat_drop.set_margin_end(8);
+        cat_drop.set_margin_top(6);
+        crate::ui::audit::label(&cat_drop, &tr("Character group"));
         let right = gtk::Box::new(gtk::Orientation::Vertical, 4);
+        right.append(&cat_drop);
         right.append(&search);
         right.append(&title);
         right.append(&grid_scroll);
         right.append(&info);
         right.set_hexpand(true);
         let body = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        let cat_sep = gtk::Separator::new(gtk::Orientation::Vertical);
         body.append(&cat_scroll);
-        body.append(&gtk::Separator::new(gtk::Orientation::Vertical));
+        body.append(&cat_sep);
         body.append(&right);
         let tb = adw::ToolbarView::new();
         tb.add_top_bar(&adw::HeaderBar::new());
         tb.set_content(Some(&body));
         window.set_content(Some(&tb));
+        {
+            let bp = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
+                adw::BreakpointConditionLengthType::MaxWidth,
+                720.0,
+                adw::LengthUnit::Sp,
+            ));
+            bp.add_setter(&cat_scroll, "visible", Some(&false.to_value()));
+            bp.add_setter(&cat_sep, "visible", Some(&false.to_value()));
+            bp.add_setter(&cat_drop, "visible", Some(&true.to_value()));
+            window.add_breakpoint(bp);
+            let cats2 = cats.clone();
+            cat_drop.connect_selected_notify(move |d| {
+                if let Some(r) = cats2.row_at_index(d.selected() as i32) {
+                    if !r.is_selected() {
+                        cats2.select_row(Some(&r));
+                    }
+                }
+            });
+            let d2 = cat_drop.clone();
+            cats.connect_row_selected(move |_, row| {
+                if let Some(r) = row {
+                    if d2.selected() != r.index() as u32 {
+                        d2.set_selected(r.index() as u32);
+                    }
+                }
+            });
+        }
 
         let category = Rc::new(Cell::new(if self.chars.prefs.borrow().recent.is_empty() {
             2
@@ -543,6 +582,26 @@ impl Editor {
         };
         if c == "open" {
             self.chars(Msg::Open);
+        } else if let Some(r) = c.strip_prefix("size=") {
+            // `chars:size=<w>x<h>` resizes the window (the breakpoint scenario)
+            self.chars(Msg::Open);
+            if let (Some(w), Some((a, b))) = (&self.chars.win, r.split_once('x')) {
+                w.window
+                    .set_default_size(a.parse().unwrap_or(700), b.parse().unwrap_or(540));
+            }
+        } else if c == "layout" {
+            // `editor_chars_layout: width=W list=yes|no drop=yes|no`
+            if let Some(w) = &self.chars.win {
+                let root = w.window.clone().upcast::<gtk::Widget>();
+                let shown =
+                    |n: &str| super::dev9::find_named(&root, n).is_some_and(|x| x.is_visible());
+                eprintln!(
+                    "editor_chars_layout: width={} list={} drop={}",
+                    w.window.width(),
+                    if shown("chars-list") { "yes" } else { "no" },
+                    if shown("chars-drop") { "yes" } else { "no" },
+                );
+            }
         } else if c == "close" {
             self.chars(Msg::Close);
         } else if let Some(q) = c.strip_prefix("search=") {

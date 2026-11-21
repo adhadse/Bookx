@@ -22,10 +22,21 @@ basic auth), `backup_webdav_wrong_password`, `backup_on_exit`, `secrets_migrate`
 is no keyring.
 
 Dev hooks (`library:health=…`): `backup-add=NAME|PATH[|encrypt][|keep=N]`, `backup-add-dav=NAME|URL|USER|PASSWORD|FOLDER[|encrypt]`,
-`backup-passphrase=…`, `backup-remove1`, `backup-reload`, `backup-restore-remote1`, `backup-pick=N`, `backup-cancel`, `backup-dump`.
+`backup-passphrase=…`, `backup-remove1`, `backup-reload`, `backup-restore-remote1`, `backup-pick=N`, `backup-cancel`, `backup-scope`
+(prints the `backup_scope:` line used by `backup_scope_explanation`), `backup-dump`. The scope hook takes the same pure strings
+the Backups panel shows before a run; it does not take a backup.
 
 ## Decisions
 
+- **Wave 7 backup scope (§7 D8): catalogue only, stated before a run.** The Backups panel and the public wiki now say up
+  front that a backup contains catalogue metadata, tags, collections, reading progress, bookmarks, highlights, notes and
+  the FTS index. It does **not** contain book files or `cover.jpg`, configuration, plugins/secrets, `.bookx/` state, the
+  trash, device copies or caches. Book files and covers need the user's normal document backup; a restore needs the
+  library folder pointed at those files. Do not add book files to `.bookxbackup` in this wave.
+- **Wave 7 copy is whole-file, not incremental.** A Bookx backup is a snapshot of the catalogue file. Bookx skips a place
+  when the snapshot has not changed, skips a copy a place already has, prunes by retention and reads every copy back for
+  a SHA-256 check. The UI must not claim deltas, deduplication or incremental transfer. `backup_scope_explanation`
+  checks the exact copy and `a11y-audit:` checks the scope row is named.
 - **One crate for destinations, one for secrets.** `bookx-backup` depends on `bookx-store` (snapshots, retention)
   and `bookx-serve` (WebDAV client); the CLI and the app share it. `bookx-secrets` is separate so it can be used
   without the backup code and keeps `oo7` (zbus) out of the other crates.

@@ -102,6 +102,18 @@ A timer (4 s, only when the server's `seq` moved) or *Sync now* merges the store
 * Broadway: `koreader_annotations`, `_conflicts`, `_refused`, `_ui` in `build-aux/ui-tests-koannot.sh`: the in-process fake
   KOReader client (`koannot:device=`) makes the plugin's HTTP calls against the built-in server on a random port.
 
+## Colour and style (2026-11-21)
+
+Full analysis: `docs/highlight-sync-rca.md`. In short: `color` and `drawer` travel exactly as KOReader writes them (the plugin sends the
+word verbatim, control characters removed, 32 characters at most: the server refuses a longer value and with it the whole request); Bookx
+stores them through `bookx_core::devstyle`, the one table for the USB path, this path, the exports and the notes file written for KOReader.
+There is no protocol change: the released plugin keeps working against this Bookx, and this plugin against an older Bookx (which would read
+a drawer it does not know as the default). Look tests: `devstyle` (every colour and drawer, both ways, Kobo 0..3 and `kobo-<n>`),
+`annotation_sync::a_colour_and_drawer_nobody_knows_arrive_as_written_and_a_repeat_changes_nothing`,
+`::what_bookx_sends_carries_the_nearest_koreader_colour_and_drawer`, `::a_spelling_of_the_same_look_is_not_a_change_to_send`,
+`device_sync::a_short_quote_inside_a_longer_highlight_does_not_take_its_colour`, `duplicates::merging_keeps_the_colour_and_style_of_the_copy_that_has_them`,
+`import::the_same_look_in_two_spellings_is_one_highlight`, `bookx-serve/tests/highlight_looks.rs`, `look_repair.rs`, the Lua checks of the wire format.
+
 ## Not verified / caveats
 
 * **Never run inside KOReader, on a Kobo, Kindle or any device.** Since 2026-11-20 the KOReader API use was checked by reading the frontend

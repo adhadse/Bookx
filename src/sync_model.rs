@@ -94,7 +94,11 @@ pub fn is_legacy_name(name: &str) -> bool {
 pub const WINDOW_SENTENCE: &str = N_("Sync your Kobo or other KOReader device over Wi-Fi: reading position, highlights, notes and bookmarks. Use USB for devices without KOReader.");
 
 pub const STEP_SERVER: &str = N_("Turn on the Bookx sync server");
-pub const STEP_SERVER_HELP: &str = N_("Starts the server on this computer so the e-reader can reach it over your Wi-Fi or home network.");
+pub const STEP_SERVER_HELP: &str = N_("Starts the Bookx sync server on this computer, opens it to your local network so the e-reader can reach it, and creates a library password if you have none (shown under Advanced).");
+/// The same, shortened for the setup card of the Sync window.
+pub const STEP_SERVER_HINT: &str = N_("Starts the server, opens it to your local network and creates a library password if you have none.");
+/// The persistent banner of the Sync window while the server is open to the network.
+pub const LAN_BANNER: &str = N_("Other devices on your network can reach this server");
 pub const STEP_ACCOUNT: &str = N_("Create your sync account");
 pub const STEP_ACCOUNT_HELP: &str = N_("Choose any user name and password. Copy these into Bookx Sync on the e-reader. This is not the Share Library password. There is no existing KOReader account. If the server is not on yet, switch on step 1 first.");
 pub const STEP_PLUGIN: &str = N_("Install the Bookx plugin on KOReader");
@@ -112,6 +116,26 @@ pub const ACCOUNT_NO_SERVER: &str = N_(
 );
 pub const ACCOUNT_KOSYNC_OFF: &str =
     N_("Turn on the Bookx sync server (step 1) first: the server does not take accounts before.");
+
+/// Why Log in and Register cannot work yet, if they cannot: no address, or the address of this computer's server
+/// while the Bookx sync server is off. `None` when the buttons can be pressed.
+pub fn account_block(
+    address: &str,
+    own: Option<&str>,
+    bookx_sync_on: bool,
+) -> Option<&'static str> {
+    let address = address.trim().trim_end_matches('/');
+    if address.is_empty() {
+        Some(ACCOUNT_NO_SERVER)
+    } else if own.is_some_and(|u| u == address) && !bookx_sync_on {
+        Some(ACCOUNT_KOSYNC_OFF)
+    } else {
+        None
+    }
+}
+
+/// The tooltip of Log in and Register while they cannot be pressed.
+pub const ACCOUNT_BLOCKED_TIP: &str = N_("Turn on the server first");
 
 /// Where the Bookx plugin is in KOReader.
 pub const KOREADER_PATH: &str = N_("In KOReader: open a book → top menu → More tools → Bookx Sync");
@@ -148,6 +172,8 @@ pub struct Snapshot {
     pub account_name: String,
     /// The library server is running.
     pub server_running: bool,
+    /// The server accepts connections from other devices on the network (not only this computer).
+    pub lan: bool,
     /// The server also answers Bookx sync requests.
     pub server_kosync: bool,
     /// Highlights and notes from the KOReader plugin are merged.
@@ -249,6 +275,11 @@ impl Snapshot {
         self.kosync_client || (self.server_running && self.server_kosync)
     }
 
+    /// The server runs and other devices on the network can reach it (the banner of the window).
+    pub fn lan_open(&self) -> bool {
+        self.server_running && self.lan
+    }
+
     pub fn usb_connected(&self) -> bool {
         self.usb_device.is_some()
     }
@@ -294,7 +325,7 @@ impl Snapshot {
                 if c.plugin {
                     tr("Copied")
                 } else {
-                    tr("Not copied yet")
+                    tr("Not checked")
                 },
             ),
             (
@@ -302,7 +333,7 @@ impl Snapshot {
                 if c.tested {
                     tr("A device has synced")
                 } else {
-                    tr("Waiting for a device")
+                    tr("Not checked")
                 },
             ),
         ]
@@ -313,8 +344,17 @@ impl Snapshot {
         if self.readiness() != Readiness::Off && self.checklist().ready() {
             tr("Sync now")
         } else {
-            tr("Set up Bookx sync")
+            match self.first_missing_step() {
+                Some(2) => tr("Create account"),
+                Some(3) => tr("Install the plugin"),
+                _ => tr("Set up Bookx sync"),
+            }
         }
+    }
+
+    /// The first of the four steps that is not done yet (1-4), the one the big button names.
+    pub fn first_missing_step(&self) -> Option<u8> {
+        self.checklist().next()
     }
 
     /// True when the big button syncs (otherwise it opens the setup).
@@ -443,6 +483,7 @@ pub fn snapshot(
         account: !cfg.kosync.user.trim().is_empty() && !cfg.kosync.password.is_empty(),
         account_name: cfg.kosync.user.trim().to_string(),
         server_running,
+        lan: cfg.share.lan,
         server_kosync: cfg.share.kosync,
         annotations: cfg.share.annotations && cfg.share.kosync,
         plugin_copied: cfg.share.plugin_copied,
@@ -575,12 +616,56 @@ mod tests {
     }
 
     #[test]
+    fn the_big_button_names_the_first_missing_step() {
+        assert_eq!(Snapshot::default().primary(), "Set up Bookx sync");
+        assert_eq!(Snapshot::default().first_missing_step(), Some(1));
+        let no_plugin = Snapshot {
+            account: true,
+            ..running()
+        };
+        assert_eq!(no_plugin.first_missing_step(), Some(3));
+        assert_eq!(no_plugin.primary(), "Install the plugin");
+        let no_account = Snapshot {
+            plugin_copied: true,
+            ..running()
+        };
+        assert_eq!(no_account.primary(), "Create account");
+    }
+
+    #[test]
+    fn the_server_step_says_what_the_switch_opens() {
+        let help = STEP_SERVER_HELP.to_lowercase();
+        for word in ["starts", "local network", "password", "advanced"] {
+            assert!(help.contains(word), "{word}");
+        }
+        let hint = STEP_SERVER_HINT.to_lowercase();
+        assert!(hint.contains("local network") && hint.contains("password"));
+    }
+
+    #[test]
+    fn the_network_banner_needs_a_running_server_with_lan_access() {
+        assert!(!Snapshot::default().lan_open());
+        let lan_only = Snapshot {
+            lan: true,
+            ..Default::default()
+        };
+        assert!(!lan_only.lan_open(), "a stopped server reaches nobody");
+        assert!(Snapshot {
+            lan: true,
+            ..running()
+        }
+        .lan_open());
+        assert!(!running().lan_open(), "this computer only");
+    }
+
+    #[test]
     fn a_running_server_is_ready_until_a_device_syncs() {
         let s = running();
         assert_eq!(s.readiness(), Readiness::Ready);
         assert_eq!(s.readiness().headline(), "Bookx sync is ready");
-        // set-up is not finished (no account, no plugin): the big button still sets up
-        assert_eq!(s.primary(), "Set up Bookx sync");
+        // set-up is not finished (no account, no plugin): the big button names the missing step
+        assert_eq!(s.primary(), "Create account");
+        assert_eq!(s.first_missing_step(), Some(2));
         assert_eq!(s.checklist().next(), Some(2));
         let done = Snapshot {
             account: true,
@@ -661,16 +746,36 @@ mod tests {
     }
 
     #[test]
+    fn log_in_waits_for_a_server() {
+        assert_eq!(account_block("", None, false), Some(ACCOUNT_NO_SERVER));
+        assert_eq!(
+            account_block(
+                "http://10.0.0.2:8080/bookx",
+                Some("http://10.0.0.2:8080/bookx"),
+                false
+            ),
+            Some(ACCOUNT_KOSYNC_OFF)
+        );
+        assert_eq!(
+            account_block(
+                "http://10.0.0.2:8080/bookx/",
+                Some("http://10.0.0.2:8080/bookx"),
+                true
+            ),
+            None
+        );
+        assert_eq!(
+            account_block("https://sync.example/bookx", None, false),
+            None
+        );
+    }
+
+    #[test]
     fn the_steps_have_a_state_and_a_short_status() {
         let s = Snapshot::default().step_statuses();
         assert_eq!(
             s.iter().map(|x| x.1.as_str()).collect::<Vec<_>>(),
-            [
-                "Off",
-                "Not created yet",
-                "Not copied yet",
-                "Waiting for a device"
-            ]
+            ["Off", "Not created yet", "Not checked", "Not checked"]
         );
         assert!(s.iter().all(|x| !x.0));
         let done = Snapshot {
@@ -744,6 +849,7 @@ mod tests {
             ACCOUNT_ONE_LINER,
             ACCOUNT_NO_SERVER,
             ACCOUNT_KOSYNC_OFF,
+            ACCOUNT_BLOCKED_TIP,
             STOCK_NOTE,
         ];
         for t in all {

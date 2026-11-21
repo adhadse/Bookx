@@ -160,10 +160,10 @@ def editor_file_drag_reorder(c):
 
 # (group position in the Tools menu after the two one-click entries, entries, dialog titles)
 TOOL_ENTRIES = [
-    (0, 0, "Smarten Punctuation"), (0, 1, "Fix HTML"), (0, 2, "Beautify"),
+    (0, 0, "Smarten Punctuation"), (0, 1, "Fix HTML"), (0, 2, "Reformat Markup in Files"),
     (1, 0, "Transform Styles"), (1, 1, "Remove Unused CSS Rules"), (1, 2, "Filter Style Information"),
     (2, 0, "Delete Unused Media"), (2, 1, "Embed Referenced Fonts"), (2, 2, "Download External Resources"),
-    (3, 0, "Set Semantics"), (3, 1, "Accessibility"),
+    (3, 0, "Set Semantics"), (3, 1, "Check Accessibility"),
     (4, 0, "Check External Links"), (4, 1, "Repair Broken Links"), (4, 2, "Move Files to a Folder"),
 ]
 

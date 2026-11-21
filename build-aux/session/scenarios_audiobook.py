@@ -114,7 +114,7 @@ def audiobook_keys(c):
     c.check("the time stands still while paused", _clock(c) == pos)
 
     # the sleep timer menu with real clicks
-    btn = c.wait_node("toggle button", "Sleep timer") or c.wait_node("button", "Sleep timer")
+    btn = c.wait_node("toggle button", "Sleep Timer") or c.wait_node("button", "Sleep Timer")
     if c.check("the sleep timer button is there", btn):
         c.click_node(btn)
         item = c.wait_node("button", rx="^End of chapter$", timeout=5)
@@ -170,4 +170,4 @@ def audiobook_dark_small(c):
     time.sleep(0.8)
     c.shot("player-dark-900x600")
     c.check("the play button is on screen", c.find("button", rx="^Play$"))
-    c.check("the speed button is on screen", c.find("toggle button", "Playback speed") or c.find("button", "Playback speed"))
+    c.check("the speed button is on screen", c.find("toggle button", "Playback Speed") or c.find("button", "Playback Speed"))

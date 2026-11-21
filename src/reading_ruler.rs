@@ -65,6 +65,18 @@ pub fn step(y: f64, dir: i32, line_h: f64, view_h: f64) -> f64 {
     (y + dir.signum() as f64 * line_h).clamp(0.0, view_h.max(0.0))
 }
 
+/// Whether a touch at `y` is on the clear band `top..bottom` (a little room around it counts, so a
+/// finger does not have to hit the band exactly).
+pub fn hit_band(y: f64, top: f64, bottom: f64, slop: f64) -> bool {
+    y >= top - slop && y <= bottom + slop
+}
+
+/// Where the middle of the band is after the finger moved `dy` from where the drag began (`from` is the
+/// middle when it began), kept inside the view.
+pub fn drag_to(from: f64, dy: f64, view_h: f64) -> f64 {
+    (from + dy).clamp(0.0, view_h.max(0.0))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -113,6 +125,22 @@ mod tests {
         // a tiny view: the band is the whole view
         assert_eq!(band(10.0, 30.0, 20.0, 5), (0.0, 30.0));
         assert_eq!(band(10.0, 0.0, 20.0, 1), (0.0, 0.0));
+    }
+
+    #[test]
+    fn a_finger_near_the_band_grabs_it() {
+        assert!(hit_band(300.0, 280.0, 320.0, 24.0));
+        assert!(hit_band(260.0, 280.0, 320.0, 24.0));
+        assert!(hit_band(340.0, 280.0, 320.0, 24.0));
+        assert!(!hit_band(200.0, 280.0, 320.0, 24.0));
+        assert!(!hit_band(400.0, 280.0, 320.0, 24.0));
+    }
+
+    #[test]
+    fn dragging_moves_the_band_and_stops_at_the_edges() {
+        assert_eq!(drag_to(300.0, 50.0, 600.0), 350.0);
+        assert_eq!(drag_to(300.0, -400.0, 600.0), 0.0);
+        assert_eq!(drag_to(300.0, 900.0, 600.0), 600.0);
     }
 
     #[test]

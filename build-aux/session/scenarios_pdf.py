@@ -70,7 +70,7 @@ def pdf_reading(c):
     x0 = box[0] + 12 + 72 * scale
     y = box[1] + 12 + (792 - 680) * scale - 4 * scale
     c.sb.drag(x0 + 2, y, x0 + 200 * scale, y)
-    btn = c.wait_node("button", "Highlight yellow", timeout=6)
+    btn = c.wait_node("button", "Highlight Yellow", timeout=6)
     c.shot("selected")
     c.check("dragging over a line of the PDF selects text and opens the actions", btn)
     if btn:

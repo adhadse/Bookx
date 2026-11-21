@@ -547,9 +547,7 @@ fn read_notes_in(c: &Connection) -> Result<Vec<(String, DeviceNote)>> {
                 chapter: None,
                 created,
                 updated,
-                color: color
-                    .and_then(bookx_core::devstyle::kobo_color)
-                    .map(str::to_string),
+                color: color.and_then(bookx_core::devstyle::kobo_color),
                 style: None,
                 bookmark: false,
             },

@@ -51,7 +51,10 @@ impl Editor {
         match op {
             TocOp::Delete => {
                 if let Some(i) = sel.filter(|i| *i < self.toc.len()) {
+                    let title = self.toc[i].title.clone();
+                    *self.toc_undo.borrow_mut() = Some((self.toc.clone(), self.toc_selected));
                     toc_ops::delete(&mut self.toc, i, false);
+                    self.toast_toc_undo(&trf("Deleted “{}” from the contents", &[&title]));
                     self.toc_selected = if self.toc.is_empty() {
                         None
                     } else {
@@ -130,6 +133,23 @@ impl Editor {
         self.toc_dirty = true;
         self.rebuild_toc();
         self.update_title();
+    }
+
+    /// The Undo button of the delete toast: the contents as they were.
+    pub(super) fn toc_undo_delete(&mut self) {
+        let Some((toc, sel)) = self.toc_undo.borrow_mut().take() else {
+            return;
+        };
+        self.toc = toc;
+        self.toc_selected = sel;
+        self.toc_dirty = true;
+        self.rebuild_toc();
+        self.update_title();
+        self.toast(&tr("Undone"));
+    }
+
+    fn toast_toc_undo(&self, text: &str) {
+        let _ = self.toast_button(text, &tr("Undo"), || Input::TocUndo);
     }
 
     /// The `id` the cursor of the open page sits in or after, with a title for it.

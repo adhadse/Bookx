@@ -116,6 +116,7 @@ mod reading_ruler;
 mod reading_stats;
 mod readwise_sync;
 mod release_consistency;
+mod remove_undo;
 mod rsvp_view;
 mod saved_searches;
 mod secrets;

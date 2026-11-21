@@ -471,6 +471,16 @@ impl Listening {
         id
     }
 
+    /// Puts a deleted bookmark back at its own position (the Undo of the delete toast).
+    pub fn restore_bookmark(&mut self, position_ms: u64, note: &str, wall: DateTime<Utc>) -> bool {
+        let ok = self
+            .state
+            .add_bookmark(position_ms, note, wall.timestamp())
+            .is_some();
+        self.save_state(wall);
+        ok
+    }
+
     pub fn remove_bookmark(&mut self, id: &str, wall: DateTime<Utc>) -> bool {
         let ok = self.state.remove_bookmark(id);
         self.save_state(wall);

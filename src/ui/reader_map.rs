@@ -746,6 +746,27 @@ impl State {
     }
 
     /// The note whose pencil is at this point of the map.
+    /// The notes of the cell `page` is in, one per line (what the card shows when the cursor is
+    /// moved with the keyboard).
+    fn cell_notes(&self, page: usize) -> Option<String> {
+        let g = self.grid.borrow();
+        let cell = g.cell_of(page);
+        let mut notes: Vec<&(usize, Swatch, String)> = self
+            .data
+            .notes
+            .iter()
+            .filter(|n| g.cell_of(n.0) == cell)
+            .collect();
+        notes.sort_by_key(|n| n.0);
+        let lines: Vec<&str> = notes
+            .iter()
+            .map(|n| n.2.as_str())
+            .filter(|t| !t.trim().is_empty())
+            .take(mapview::MAX_NOTES)
+            .collect();
+        (!lines.is_empty()).then(|| lines.join("\n"))
+    }
+
     fn note_at(&self, at: (f64, f64)) -> Option<String> {
         let g = self.grid.borrow();
         let w = self.area.width() as f64;
@@ -804,7 +825,11 @@ impl State {
             .set_visible(self.data.thumbs.is_none() && !p.text.is_empty());
         self.want_thumb(page);
         // on a pencil: the note
-        let note = at.and_then(|a| self.note_at(a));
+        // (the keys have no pointer: they get the notes of the cell, so the card is not hover only)
+        let note = match at {
+            Some(a) => self.note_at(a),
+            None => self.cell_notes(page),
+        };
         self.note_label.set_text(note.as_deref().unwrap_or(""));
         self.note_label.set_visible(note.is_some());
         self.caption
@@ -1052,24 +1077,24 @@ fn legend_item(kind: &'static str, text: &str) -> gtk::Box {
 
 /// Opens the map over `parent`.
 pub fn show(parent: &gtk::Widget, data: MapData) {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("Book Map"));
-    dialog.set_content_width(880);
-    dialog.set_content_height(640);
+    dialog.set_content_width(760);
+    dialog.set_content_height(560);
     let toolbar = adw::ToolbarView::new();
     let header = adw::HeaderBar::new();
     let title = adw::WindowTitle::new(&data.title, "");
     header.set_title_widget(Some(&title));
     let zoom_out = gtk::Button::from_icon_name("zoom-out-symbolic");
-    zoom_out.set_tooltip_text(Some(&tr("Show more of the book")));
-    super::audit::label(&zoom_out, &tr("Show more of the book"));
+    zoom_out.set_tooltip_text(Some(&tr("Show More of the Book")));
+    super::audit::label(&zoom_out, &tr("Show More of the Book"));
     let zoom_in = gtk::Button::from_icon_name("zoom-in-symbolic");
-    zoom_in.set_tooltip_text(Some(&tr("Show single pages")));
-    super::audit::label(&zoom_in, &tr("Show single pages"));
+    zoom_in.set_tooltip_text(Some(&tr("Show Single Pages")));
+    super::audit::label(&zoom_in, &tr("Show Single Pages"));
     let legend_btn = gtk::ToggleButton::new();
-    legend_btn.set_icon_name("help-about-symbolic");
+    legend_btn.set_icon_name("help-contents-symbolic");
     legend_btn.set_active(true);
-    legend_btn.set_tooltip_text(Some(&tr("Show or hide what the marks mean")));
+    legend_btn.set_tooltip_text(Some(&tr("Show or Hide What the Marks Mean")));
     super::audit::label(&legend_btn, &tr("What the marks mean"));
     header.pack_start(&zoom_out);
     header.pack_start(&zoom_in);
@@ -1426,7 +1451,7 @@ pub fn show(parent: &gtk::Widget, data: MapData) {
 ///
 /// `dump`, `wheel=DY` / `wheel=DY|ctrl`, `key=NAME`, `hover=PAGE` (the pointer rests on a page),
 /// `drag=A|B` (press on page A, drag to page B, release), `zoom=in|out`, `click=FRACTION`
-/// (go to a place of the book), `legend`, `shot=FILE`, `close`.
+/// (go to a place of the book), `focus-note` (keyboard cursor on a note), `legend`, `shot=FILE`, `close`.
 pub fn dev(cmd: &str) -> String {
     let Some(st) = OPEN.with(|o| o.borrow().clone()) else {
         return "closed".into();
@@ -1454,6 +1479,14 @@ pub fn dev(cmd: &str) -> String {
                 return "went".into();
             }
             st.key(arg);
+        }
+        // the keyboard cursor onto the first page that has a note: the card shows the note too
+        "focus-note" => {
+            if let Some(page) = st.data.notes.first().map(|n| n.0) {
+                st.grid.borrow_mut().reveal(page);
+                st.pointer.set(None);
+                st.set_cursor(page, None);
+            }
         }
         "hover" => {
             let page: usize = arg.parse().unwrap_or(0);
@@ -1588,7 +1621,7 @@ pub fn dev(cmd: &str) -> String {
     }
     colours.sort();
     format!(
-        "pages={} level={:?} ppc={} grid={}x{} first_row={} cursor={} current={} chapters={} read={} bookmarks={} highlights={} notes={} history=[{}] colours=[{}] stack={} preview={:?} card={} thumb={}",
+        "pages={} level={:?} ppc={} grid={}x{} first_row={} cursor={} current={} chapters={} read={} bookmarks={} highlights={} notes={} history=[{}] colours=[{}] stack={} preview={:?} card={} thumb={} note={:?}",
         st.data.total,
         g.level,
         g.ppc,
@@ -1611,7 +1644,12 @@ pub fn dev(cmd: &str) -> String {
             .borrow()
             .as_ref()
             .map(|(p, t)| format!("{p}:{}x{}", t.size.0, t.size.1))
-            .unwrap_or_else(|| "none".into())
+            .unwrap_or_else(|| "none".into()),
+        if st.note_label.is_visible() {
+            st.note_label.text().to_string()
+        } else {
+            String::new()
+        }
     )
 }
 

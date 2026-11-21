@@ -22,6 +22,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::core::library::{Book, Highlight};
+use crate::i18n::{ntr, tr};
 
 /// Settings of the sync, kept in the config.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -42,16 +43,33 @@ impl Default for SyncPrefs {
     }
 }
 
-/// Title and subtitle of the "add my notes" switch (Device window and Preferences).
-pub const NOTES_TITLE: &str = crate::i18n::N_("Add my notes to the copy sent to the device");
+/// Title and subtitle of the "add notes" switch (Device window and Preferences).
+pub const NOTES_TITLE: &str = crate::i18n::N_("Add notes to the copy sent to the device");
 pub const NOTES_SUBTITLE: &str = crate::i18n::N_("The copy on the device gets an extra “My notes” section at the end (readable in any e-reader app) and a KOReader notes file, so KOReader lists them too. Your library copy is not changed.");
 
-/// Title and subtitle of the automatic sync switch.
-pub const AUTO_SYNC_TITLE: &str = crate::i18n::N_("Sync automatically when a device connects");
-pub const AUTO_SYNC_SUBTITLE: &str = crate::i18n::N_("For e-readers plugged in with a cable. Bookx reads the progress, highlights and notes the device keeps and merges them with your library: progress only moves forward, notes are united, nothing is deleted.");
+/// Title and subtitle of the persistent automatic sync switch in Devices → Settings.
+pub const AUTO_SYNC_TITLE: &str = crate::i18n::N_("Always sync when connected");
+pub const AUTO_SYNC_SUBTITLE: &str = crate::i18n::N_("For e-readers plugged in with a cable. When this is on, Bookx syncs the reading progress, highlights and notes on every connection without asking. Progress only moves forward, notes are united and nothing is deleted.");
 
 /// The longer explanation behind the "?" button of the automatic sync switch.
-pub const AUTO_SYNC_HELP: &str = crate::i18n::N_("This is about a device plugged in with a USB cable (or mounted in Files).\n\nWhen you plug in a Kobo, Kindle or similar reader, Bookx reads the reading progress and the highlights and notes the device keeps: from the Kobo’s own database, or from KOReader’s “.sdr” files if KOReader is installed on it. It merges them with your library. Progress only moves forward, highlights and notes are united, and nothing is deleted on either side.\n\nA Kobo needs no KOReader for this; its own reading state is read. A Kindle’s own state is not readable, only KOReader’s files. If the device has no readable state, nothing happens. Reading progress is never written to the device; notes go to it only as a new KOReader notes file where there is none.\n\nOff by default: you are asked first, with a summary of what will change.");
+pub const AUTO_SYNC_HELP: &str = crate::i18n::N_("This is about a device plugged in with a USB cable (or mounted in Files).\n\nWhen you plug in a Kobo, Kindle or similar reader, Bookx reads the reading progress and the highlights and notes the device keeps: from the Kobo’s own database, or from KOReader’s “.sdr” files if KOReader is installed on it. It merges them with your library. Progress only moves forward, highlights and notes are united, and nothing is deleted on either side.\n\nA Kobo needs no KOReader for this; its own reading state is read. A Kindle’s own state is not readable, only KOReader’s files. If the device has no readable state, nothing happens. Reading progress is never written to the device; notes go to it only as a new KOReader notes file where there is none.\n\nOff by default: the connection banner offers a one-time Sync. Answering it never changes this setting. Turn the switch on to sync on every connection without asking.");
+
+/// The connection banner: one title, one action and the built-in dismiss button.
+pub const BANNER_TITLE: &str = crate::i18n::N_("E-reader connected");
+pub const BANNER_BUTTON: &str = crate::i18n::N_("Sync");
+
+/// The empty state of the Devices window.
+#[allow(dead_code)] // the Devices window track picks these up in its own change
+pub const NO_DEVICE_TITLE: &str = crate::i18n::N_("No Device Connected");
+#[allow(dead_code)]
+pub const NO_DEVICE_DESCRIPTION: &str =
+    crate::i18n::N_("Connect your e-reader with USB, or add a WebDAV folder below.");
+
+/// Accessible names of the single grid/list toggle.
+#[allow(dead_code)]
+pub const GRID_VIEW_NAME: &str = crate::i18n::N_("Grid view");
+#[allow(dead_code)]
+pub const LIST_VIEW_NAME: &str = crate::i18n::N_("List view");
 
 /// A highlight or note as the device has it.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -462,7 +480,12 @@ pub fn plan(device: &[DeviceReading], library: &[LibraryBook], locator: &dyn Loc
         // colour and style: which library highlight each device row is, what the device changed,
         // and rows that are a second highlight of words the library has in another colour
         let mut claimed = HashSet::new();
-        for n in &reading.notes {
+        // longest first: a passage claims its own library highlight before a shorter quote that is
+        // part of it can (the order of the device's rows says nothing about which of the two the
+        // library has); a stable sort keeps the device's order among rows of the same length
+        let mut ordered: Vec<&DeviceNote> = reading.notes.iter().collect();
+        ordered.sort_by_key(|n| std::cmp::Reverse(syncplan::norm(&n.text).len()));
+        for n in ordered {
             if identity(&n.text).is_empty() {
                 continue;
             }
@@ -913,9 +936,78 @@ pub fn newly_connected(
         .collect()
 }
 
-/// What the banner asks when a device shows up.
-pub fn banner_text(device: &str) -> String {
-    format!("{device} connected — Sync reading progress and notes?")
+/// The title of the `AdwBanner` shown when a device is plugged in.
+pub fn banner_title() -> String {
+    tr(BANNER_TITLE)
+}
+
+/// The banner's only action: a one-shot sync, never a change to the auto-sync setting.
+pub fn banner_button_label() -> String {
+    tr(BANNER_BUTTON)
+}
+
+// The remaining helpers are shared with the Devices window (applied in the corresponding change).
+/// Kept for callers that still want one string; the banner itself has no device name and no
+/// "Always" or "Not now" choice any more.
+#[allow(dead_code)]
+pub fn banner_text(_device: &str) -> String {
+    banner_title()
+}
+
+/// The suggested button under "Books to send" (header caps, LIB-D3).
+#[allow(dead_code)]
+pub fn send_button_label(n: usize) -> String {
+    ntr("Send {} Book", "Send {} Books", n)
+}
+
+/// The destructive button under "Books on the device". The count belongs to the confirmation,
+/// the button itself always names the action.
+#[allow(dead_code)]
+pub fn remove_button_label(_n: usize) -> String {
+    tr("Remove from Device")
+}
+
+/// Confirmation for a removal from the device (it cannot be undone there).
+#[allow(dead_code)]
+pub fn remove_confirmation_title(n: usize) -> String {
+    ntr(
+        "Remove {} Book from the Device?",
+        "Remove {} Books from the Device?",
+        n,
+    )
+}
+
+/// Title and description of the Devices window when nothing is plugged in.
+#[allow(dead_code)]
+pub fn no_device_status_title() -> String {
+    tr(NO_DEVICE_TITLE)
+}
+
+#[allow(dead_code)]
+pub fn no_device_status_description() -> String {
+    tr(NO_DEVICE_DESCRIPTION)
+}
+
+/// An individual device row: the name is the title, the storage line its subtitle.
+#[allow(dead_code)]
+pub fn device_row_text(name: &str, storage: &str) -> (String, String) {
+    (name.to_string(), storage.to_string())
+}
+
+/// `(select all, clear selection, remove)` for the "Books on the device" controls.
+#[allow(dead_code)]
+pub fn selection_controls_state(len: usize, selected: usize) -> (bool, bool, bool) {
+    (len > 0, selected > 0, selected > 0)
+}
+
+/// The single view toggle: `(icon, accessible name)`.
+#[allow(dead_code)]
+pub fn view_toggle_state(is_list: bool) -> (&'static str, String) {
+    if is_list {
+        ("view-list-symbolic", tr(LIST_VIEW_NAME))
+    } else {
+        ("view-grid-symbolic", tr(GRID_VIEW_NAME))
+    }
 }
 
 // -- reading the device and writing to it (glue) ---------------------------------------------
@@ -1340,6 +1432,37 @@ mod tests {
         assert_eq!(bk.highlights.len(), 2);
     }
 
+    /// Root cause R5 (docs/highlight-sync-rca.md): the device rows were matched in file order, so a short
+    /// quote that lies inside a longer highlight (marked in another colour) took the longer
+    /// highlight's place and gave it its colour; the long row then found nothing and was added
+    /// again. The longest row must claim its own highlight first.
+    #[test]
+    fn a_short_quote_inside_a_longer_highlight_does_not_take_its_colour() {
+        let long = "Service discovery is how services find each other at runtime without hard coded addresses";
+        let short = "services find each other at runtime";
+        let lib = [lib_book(1, "Dune", 0.5, vec![hl("a", long, "")])];
+        let mut s = dn(short, "");
+        s.color = Some("purple".into());
+        let mut l = dn(long, "");
+        l.color = Some("yellow".into());
+        l.style = Some("background".into());
+        // the short row comes first in the file
+        let p = plan(
+            &[reading("Dune.epub", 0.5, vec![s, l], true)],
+            &lib,
+            &Fixed(Some((2, 10, 26))),
+        );
+        let mut bk = book(1, "Dune", 0.5, vec![hl("a", long, "")]);
+        let done = apply_book(&mut bk, &p.books[0], Utc::now());
+        let (n, _) = crate::look_sync::apply(&mut bk.highlights, &p.books[0].looks_in);
+        assert_eq!(n, 0, "the long highlight keeps its own colour");
+        assert_eq!(done.highlights, 1, "only the short quote is new");
+        let by = |t: &str| bk.highlights.iter().find(|h| h.text == t).unwrap();
+        assert_eq!(by(long).color, "yellow");
+        assert_eq!(by(short).color, "purple");
+        assert_eq!(bk.highlights.len(), 2);
+    }
+
     #[test]
     fn the_same_id_is_the_same_highlight() {
         let lib = [lib_book(
@@ -1667,9 +1790,52 @@ mod tests {
         assert_eq!(newly_connected(std::slice::from_ref(&kobo), &both).len(), 1);
         assert_eq!(newly_connected(&both, &both).len(), 0);
         assert_eq!(newly_connected(&[], &both).len(), 2);
+        // the banner is an AdwBanner: a fixed title, one action and built-in dismiss
+        assert_eq!(banner_title(), "E-reader connected");
+        assert_eq!(banner_button_label(), "Sync");
+        let banner = banner_text("Kobo Libra");
+        assert_eq!(banner, banner_title());
+        assert!(!banner.contains("Always"), "{banner}");
+        assert!(!banner.contains("Not now"), "{banner}");
+    }
+
+    #[test]
+    fn device_window_labels_and_states() {
+        assert_eq!(AUTO_SYNC_TITLE, "Always sync when connected");
+        assert_eq!(send_button_label(1), "Send 1 Book");
+        assert_eq!(send_button_label(3), "Send 3 Books");
+        assert_eq!(remove_button_label(0), "Remove from Device");
+        assert_eq!(remove_button_label(2), "Remove from Device");
         assert_eq!(
-            banner_text("Kobo Libra"),
-            "Kobo Libra connected — Sync reading progress and notes?"
+            remove_confirmation_title(1),
+            "Remove 1 Book from the Device?"
+        );
+        assert_eq!(
+            remove_confirmation_title(4),
+            "Remove 4 Books from the Device?"
+        );
+        assert_eq!(no_device_status_title(), "No Device Connected");
+        assert_eq!(
+            no_device_status_description(),
+            "Connect your e-reader with USB, or add a WebDAV folder below."
+        );
+        assert_eq!(
+            device_row_text("Kobo Libra", "Main memory · 29.1 GB free of 32.4 GB"),
+            (
+                "Kobo Libra".into(),
+                "Main memory · 29.1 GB free of 32.4 GB".into()
+            )
+        );
+        assert_eq!(selection_controls_state(0, 0), (false, false, false));
+        assert_eq!(selection_controls_state(3, 0), (true, false, false));
+        assert_eq!(selection_controls_state(3, 2), (true, true, true));
+        assert_eq!(
+            view_toggle_state(false),
+            ("view-grid-symbolic", "Grid view".into())
+        );
+        assert_eq!(
+            view_toggle_state(true),
+            ("view-list-symbolic", "List view".into())
         );
     }
 
@@ -1684,6 +1850,9 @@ mod tests {
         ] {
             assert!(AUTO_SYNC_HELP.contains(needle), "{needle}");
         }
+        assert!(AUTO_SYNC_SUBTITLE.contains("on every connection"));
+        assert!(AUTO_SYNC_HELP.contains("never changes this setting"));
+        assert!(!AUTO_SYNC_HELP.contains("you are asked first"));
         assert!(NOTES_SUBTITLE.contains("My notes"));
         // the section title the text promises is the one that is written
         assert_eq!(crate::send_notes::APPENDIX_TITLE, "My notes");

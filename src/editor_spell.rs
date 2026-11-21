@@ -196,6 +196,28 @@ impl SpellState {
         self.cache.borrow_mut().clear();
     }
 
+    /// Takes back [`SpellState::ignore`] (the Undo of the toast).
+    pub fn unignore(&mut self, word: &str) {
+        self.checker.unignore_word(word);
+        self.cache.borrow_mut().clear();
+    }
+
+    /// Takes a word out of the named user dictionary again (the Undo of "Add to Dictionary").
+    pub fn remove_from_named(&mut self, dict: &str, word: &str) -> anyhow::Result<()> {
+        let Some(d) = &self.dicts else {
+            self.checker.remove_user_word(word);
+            self.cache.borrow_mut().clear();
+            return match &self.user_file {
+                Some(p) => Ok(save_words(p, &self.checker.user_words_text())?),
+                None => Ok(()),
+            };
+        };
+        d.remove_word(dict, word)?;
+        self.checker.remove_user_word(word);
+        self.cache.borrow_mut().clear();
+        Ok(())
+    }
+
     /// Ignores several words (the ones remembered for the book).
     pub fn ignore_all<'a>(&mut self, words: impl IntoIterator<Item = &'a String>) {
         for w in words {
@@ -342,6 +364,27 @@ mod tests {
             words.contains(&"quikc".to_string()),
             "ignored words do not persist"
         );
+        let _ = std::fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn undoing_ignore_and_add_reports_the_word_again() {
+        let d = dir();
+        let user = d.join("mine.txt");
+        let mut s = SpellState::new("en", std::slice::from_ref(&d), Some(user.clone()));
+        let found = |s: &SpellState| s.check(DOC).iter().any(|x| x.word == "quikc");
+        s.ignore("quikc");
+        assert!(!found(&s));
+        s.unignore("quikc");
+        assert!(found(&s), "Undo of Ignore");
+        s.add_to_dictionary("quikc").unwrap();
+        assert!(!found(&s));
+        s.remove_from_named(bookx_editing::spell_user::PERSONAL, "quikc")
+            .unwrap();
+        assert!(found(&s), "Undo of Add to Dictionary");
+        assert!(!std::fs::read_to_string(&user)
+            .unwrap_or_default()
+            .contains("quikc"));
         let _ = std::fs::remove_dir_all(d);
     }
 

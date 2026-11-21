@@ -99,9 +99,16 @@ impl Panel {
     ) -> Rc<Panel> {
         let where_group = adw::PreferencesGroup::new();
         where_group.set_title(&tr("Where backups go"));
-        where_group.set_description(Some(
-            "Every backup is a snapshot of the catalogue kept on this computer. Add places to copy it to as well: an external drive, a network share, a cloud drive or a WebDAV server. Backups are one-way copies; Bookx does not sync a library between computers.",
-        ));
+        where_group.set_description(Some(&format!(
+            "{} {}",
+            bk::backup_scope_description(),
+            bk::backup_incremental_note()
+        )));
+        // First row: say what a backup is before the user can run one. It is information only
+        // and is not part of `rows`, so refreshing the places never moves or removes it.
+        let scope = row(&bk::backup_scope_title(), &bk::backup_scope_subtitle());
+        scope.set_selectable(false);
+        where_group.add(&scope);
         let schedule_group = adw::PreferencesGroup::new();
         schedule_group.set_title(&tr("Copies to other places"));
         let cfg = shared.cfg.borrow();
@@ -142,9 +149,9 @@ impl Panel {
 
         let restore_group = adw::PreferencesGroup::new();
         restore_group.set_title(&tr("Restore from another place"));
-        restore_group.set_description(Some(
+        restore_group.set_description(Some(&tr(
             "Pick a destination to see the backups there. Encrypted ones ask for the passphrase if it is not saved. The current catalogue is saved first, so a restore can be undone.",
-        ));
+        )));
         let restore_pick = adw::ComboRow::new();
         restore_pick.set_title(&tr("Destination"));
         restore_group.add(&restore_pick);
@@ -882,9 +889,9 @@ impl Panel {
         folder_group.add(&folder);
         // network
         let net_group = adw::PreferencesGroup::new();
-        net_group.set_description(Some(
+        net_group.set_description(Some(&tr(
             "Enter the address of the share, for example smb://nas/books or sftp://me@server/home/me. It is mounted through GNOME (the same as Files → Other Locations); a password prompt may appear.",
-        ));
+        )));
         let uri = adw::EntryRow::new();
         uri.set_title(&tr("Network address"));
         let connect = button(&tr("Connect"));
@@ -1331,6 +1338,10 @@ impl Panel {
                 self.dump();
                 true
             }
+            "backup-scope" => {
+                self.dump_scope();
+                true
+            }
             "backup-reload" => {
                 self.refresh();
                 true
@@ -1339,7 +1350,20 @@ impl Panel {
         }
     }
 
+    /// One line with the scope copy, for `backup-scope` and `backup-dump`.
+    fn dump_scope(&self) {
+        eprintln!(
+            "backup_scope: title={} description={} included={} excluded={} incremental={}",
+            bk::backup_scope_title(),
+            bk::backup_scope_description(),
+            bk::backup_included_label(),
+            bk::backup_excluded_label(),
+            bk::backup_incremental_note(),
+        );
+    }
+
     fn dump(&self) {
+        self.dump_scope();
         let c = self.shared.cfg.borrow();
         let b = &c.health.backup;
         eprintln!("backup_places: {}", b.destinations.len());

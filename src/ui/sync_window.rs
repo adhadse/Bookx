@@ -27,6 +27,7 @@ struct Win {
     account_hint: gtk::Label,
     stepper: Option<Rc<Stepper>>,
     advanced: adw::ExpanderRow,
+    banner: adw::Banner,
     result: gtk::Label,
     refresh: Rc<dyn Fn()>,
 }
@@ -150,7 +151,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
                 vec![
                     (
                         tr(sync_model::STEP_SERVER),
-                        open_prefs(sync_model::STEP_SERVER_HELP, true),
+                        open_prefs(sync_model::STEP_SERVER_HINT, true),
                     ),
                     (
                         tr(sync_model::STEP_ACCOUNT),
@@ -221,8 +222,11 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
     column.append(&adv_group);
 
     // ---- state ----------------------------------------------------------------------------
+    // persistent state, not an event: the server is open to the local network
+    let banner = adw::Banner::new(&tr(sync_model::LAN_BANNER));
+    banner.set_revealed(snap.lan_open());
     let refresh = {
-        let (shared, headline, primary, cards, wifi_stepper, prefs_row, account_hint) = (
+        let (shared, headline, primary, cards, wifi_stepper, prefs_row, account_hint, banner) = (
             shared.clone(),
             headline.clone(),
             primary.clone(),
@@ -230,6 +234,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
             wifi_stepper.clone(),
             prefs_row.clone(),
             account_hint.clone(),
+            banner.clone(),
         );
         Rc::new(move || {
             let snap: Snapshot = sync_prefs::current(&shared);
@@ -248,6 +253,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
                 &[&(if cfg.port == 0 { 8080 } else { cfg.port })],
             ));
             account_hint.set_visible(!snap.account);
+            banner.set_revealed(snap.lan_open());
         })
     };
     refresh();
@@ -274,7 +280,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
             if sync_prefs::current(&sh).primary_syncs() {
                 let text = match crate::annotation_sync_ui::sync_once(&sh, true) {
                     Some(r) => crate::i18n::trf("Last sync: {}", &[&r.text()]),
-                    None => tr("Nothing to merge yet. Turn on “Sync highlights, notes and bookmarks” in Preferences → Sync. Reading position syncs by itself as you read."),
+                    None => tr("Nothing to merge yet. The Bookx sync server (step 1) and “Sync highlights, notes and bookmarks” must be on in Preferences → Sync. Reading position syncs by itself as you read."),
                 };
                 result.set_label(&text);
                 result.set_visible(true);
@@ -325,6 +331,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
         .build();
     let toolbar = adw::ToolbarView::new();
     toolbar.add_top_bar(&adw::HeaderBar::new());
+    toolbar.add_top_bar(&banner);
     toolbar.set_content(Some(&clamp));
     dialog.set_child(Some(&toolbar));
     WIN.with(|w| {
@@ -337,6 +344,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
             account_hint: account_hint.clone(),
             stepper: wifi_stepper.clone(),
             advanced,
+            banner,
             result,
             refresh: refresh.clone(),
         })
@@ -414,7 +422,7 @@ pub fn dev(arg: &str, shared: &SharedRef) {
                 .map(|(id, b, s)| format!("{id}:{}:{}", b.label().unwrap_or_default(), s.text()))
                 .collect();
             eprintln!(
-                "sync_window: title={} headline={:?} primary={:?} cards={} use_when={} sentence={} kosync_labels={} advanced={} account_hint={} result={:?} stepper=[{}] {}",
+                "sync_window: title={} headline={:?} primary={:?} cards={} use_when={} sentence={} kosync_labels={} advanced={} account_hint={} result={:?} lan_banner={} stepper=[{}] {}",
                 win.dialog.title(),
                 win.headline.text(),
                 win.primary.label().unwrap_or_default(),
@@ -425,6 +433,7 @@ pub fn dev(arg: &str, shared: &SharedRef) {
                 if win.advanced.is_expanded() { "open" } else { "collapsed" },
                 win.account_hint.is_visible(),
                 if win.result.is_visible() { win.result.text().to_string() } else { String::new() },
+                win.banner.is_revealed(),
                 win.stepper.as_ref().map(|s| s.dump()).unwrap_or_default(),
                 sync_prefs::current(shared).dump()
             );

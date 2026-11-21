@@ -164,7 +164,7 @@ How the UI uses them:
 * **Writers.** An enabled writer adds an entry to *Convert To*; the result is saved like any other format.
   Device plugins and the device window can use writer formats too.
 * **Transforms.** An enabled transform is offered in the library (*Convert To → Apply … (new EPUB)* saves a
-  transformed copy) and in the editor (*Tools → … (plugin)*, undoable like every editor tool). In Preferences
+  transformed copy) and in the editor (*Tools → Plugins → …*, undoable like every editor tool). In Preferences
   a switch “Run … in every conversion” adds it, after the built-in steps, to Convert To and Send to. When it
   returns `book_b64` that replaces the book, otherwise it only reports.
 * **Devices.** The plugin has no file system. For `detect` the host lists the top-level names of every

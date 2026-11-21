@@ -3,8 +3,7 @@
 //! Health window. No GTK in here, so it is unit tested; the window is `ui/health.rs` and
 //! `ui/backup.rs`.
 
-use crate::i18n::tr;
-use crate::i18n::trf;
+use crate::i18n::{tr, trf, N_};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
@@ -194,6 +193,60 @@ pub fn summary_line(count: usize, bytes: u64, newest: Option<DateTime<Utc>>) -> 
         ),
         _ => tr("No backups yet"),
     }
+}
+
+// -- what a backup contains (D8) ---------------------------------------------------------------------------
+
+/// Title of the scope row shown before the places, so the limits are clear before a backup is run.
+pub const BACKUP_SCOPE_TITLE: &str = N_("What is in a backup");
+/// Short scope line for that row.
+pub const BACKUP_SCOPE_SUBTITLE: &str =
+    N_("Catalogue only: titles, tags, reading progress and notes. Not book files or covers.");
+/// Full scope: one complete catalogue snapshot, and everything that stays behind.
+pub const BACKUP_SCOPE_DESCRIPTION: &str = N_(
+    "A backup is one complete snapshot of the catalogue: metadata, tags, collections, reading progress, bookmarks, highlights and notes, and the search index. Book files, covers, configuration, plugins and secrets, .bookx state, device copies, trash and caches are not copied.",
+);
+/// The included side of the scope, for the developer hooks.
+pub const BACKUP_INCLUDED_LABEL: &str = N_(
+    "Included: catalogue metadata, collections, tags, reading progress, bookmarks, highlights, notes and the search index.",
+);
+/// The excluded side of the scope, for the developer hooks.
+pub const BACKUP_EXCLUDED_LABEL: &str = N_(
+    "Not included: book files, covers, configuration, plugins and secrets, .bookx state, trash, device copies and caches.",
+);
+/// What "not incremental", "skipped" and "verified" actually mean.
+pub const BACKUP_INCREMENTAL_NOTE: &str = N_(
+    "Not incremental — each copy is a whole file. 'Skipped' means no new snapshot was needed or the place already has that snapshot. 'Verified' means the stored bytes were read back and hashed, not that a restore was tested.",
+);
+
+/// Translated [`BACKUP_SCOPE_TITLE`].
+pub fn backup_scope_title() -> String {
+    tr(BACKUP_SCOPE_TITLE)
+}
+
+/// Translated [`BACKUP_SCOPE_SUBTITLE`].
+pub fn backup_scope_subtitle() -> String {
+    tr(BACKUP_SCOPE_SUBTITLE)
+}
+
+/// Translated [`BACKUP_SCOPE_DESCRIPTION`].
+pub fn backup_scope_description() -> String {
+    tr(BACKUP_SCOPE_DESCRIPTION)
+}
+
+/// Translated [`BACKUP_INCLUDED_LABEL`].
+pub fn backup_included_label() -> String {
+    tr(BACKUP_INCLUDED_LABEL)
+}
+
+/// Translated [`BACKUP_EXCLUDED_LABEL`].
+pub fn backup_excluded_label() -> String {
+    tr(BACKUP_EXCLUDED_LABEL)
+}
+
+/// Translated [`BACKUP_INCREMENTAL_NOTE`].
+pub fn backup_incremental_note() -> String {
+    tr(BACKUP_INCREMENTAL_NOTE)
 }
 
 /// What kind of place a destination is, in words.
@@ -412,6 +465,56 @@ mod tests {
         );
         assert!(out.len() <= 1);
         let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn scope_copy_says_catalogue_only_and_whole_file_not_incremental() {
+        // The constants are the msgids the UI and the developer hooks translate.
+        assert_eq!(BACKUP_SCOPE_TITLE, "What is in a backup");
+        assert_eq!(
+            BACKUP_SCOPE_SUBTITLE,
+            "Catalogue only: titles, tags, reading progress and notes. Not book files or covers."
+        );
+        assert_eq!(
+            BACKUP_INCREMENTAL_NOTE,
+            "Not incremental — each copy is a whole file. 'Skipped' means no new snapshot was needed or the place already has that snapshot. 'Verified' means the stored bytes were read back and hashed, not that a restore was tested."
+        );
+
+        let scope = format!(
+            "{} {} {} {}",
+            backup_scope_title(),
+            backup_scope_subtitle(),
+            backup_scope_description(),
+            backup_included_label(),
+        );
+        let excluded = backup_excluded_label();
+        assert!(scope.to_lowercase().contains("catalogue"), "{scope}");
+        assert!(scope.contains("search index"), "{scope}");
+        assert!(excluded.to_lowercase().contains("book files"), "{excluded}");
+        assert!(excluded.to_lowercase().contains("covers"), "{excluded}");
+        assert!(excluded.contains("Not included"), "{excluded}");
+        assert!(excluded.contains("trash"), "{excluded}");
+
+        let note = backup_incremental_note().to_lowercase();
+        assert!(note.contains("not incremental"), "{note}");
+        assert!(note.contains("whole file"), "{note}");
+        assert!(note.contains("'skipped' means"), "{note}");
+        assert!(note.contains("'verified' means"), "{note}");
+        // Never promise a delta, deduplication or an incremental transfer.
+        for claim in [
+            "delta",
+            "deduplic",
+            "incremental transfer",
+            "incremental copy",
+            "block-level",
+        ] {
+            assert!(!scope.to_lowercase().contains(claim), "{claim} in {scope}");
+            assert!(
+                !excluded.to_lowercase().contains(claim),
+                "{claim} in {excluded}"
+            );
+            assert!(!note.contains(claim), "{claim} in {note}");
+        }
     }
 
     #[test]

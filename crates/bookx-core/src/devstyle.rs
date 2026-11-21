@@ -16,6 +16,11 @@
 //! | orange, red, purple, gray | (nearest: yellow, pink, blue, yellow) | same names |
 //! | olive, cyan (kept as written) | — | olive, cyan |
 //!
+//! Words the tables do not know are **kept verbatim** (a device colour or style from a newer firmware, a
+//! Kobo colour number above 3 as `kobo-<n>`), never turned into the default: a later sync, export or
+//! repair can still hand them back unchanged. Only a value that is not a plausible word at all (empty,
+//! control characters, longer than [`MAX_WORD`]) counts as "the device said nothing".
+//!
 //! | Bookx style | KOReader `drawer` |
 //! |---|---|
 //! | background | lighten |
@@ -37,19 +42,53 @@ pub struct Look {
 pub const EXTRA_COLORS: [(&str, (u8, u8, u8)); 2] =
     [("olive", (0x8a, 0xa6, 0x2b)), ("cyan", (0x2b, 0xc4, 0xd6))];
 
-/// What a Kobo's `Bookmark.Color` number means (`None` for a number it has no meaning for).
-pub fn kobo_color(n: i64) -> Option<&'static str> {
-    Some(match n {
-        0 => "yellow",
-        1 => "pink",
-        2 => "blue",
-        3 => "green",
-        _ => return None,
-    })
+/// Longest colour or style word that is kept as written.
+pub const MAX_WORD: usize = 32;
+
+/// Every colour word KOReader writes in an annotation's `color` (its highlight colour menu).
+pub const KOREADER_COLORS: [&str; 9] = [
+    "red", "orange", "yellow", "green", "olive", "cyan", "blue", "purple", "gray",
+];
+
+/// Every `drawer` word KOReader writes, with the Bookx style each one is.
+pub const KOREADER_DRAWERS: [(&str, &str); 4] = [
+    ("lighten", "background"),
+    ("underscore", "underline"),
+    ("strikeout", "strikethrough"),
+    ("invert", "invert"),
+];
+
+/// The four colours of a Kobo's `Bookmark.Color` (0 to 3).
+pub const KOBO_COLORS: [&str; 4] = ["yellow", "pink", "blue", "green"];
+
+/// A word worth keeping as written: not empty, no control characters, no `|` (the PDF style
+/// separator), at most [`MAX_WORD`] characters.
+fn plausible(word: &str) -> bool {
+    !word.is_empty()
+        && word.chars().count() <= MAX_WORD
+        && !word.chars().any(|c| c.is_control() || c == '|')
 }
 
-/// The Kobo number nearest to a Bookx colour (a Kobo has four).
+/// What a Kobo's `Bookmark.Color` number means: the Bookx colour for 0 to 3, `kobo-<n>` (kept as
+/// written) for another number a newer firmware may use, `None` for a number that cannot be one.
+pub fn kobo_color(n: i64) -> Option<String> {
+    match n {
+        0..=3 => Some(KOBO_COLORS[n as usize].to_string()),
+        4..=255 => Some(format!("kobo-{n}")),
+        _ => None,
+    }
+}
+
+/// The Kobo number nearest to a Bookx colour (a Kobo has four); `kobo-<n>` gives `n` back.
 pub fn to_kobo_color(name: &str) -> i64 {
+    if let Some(n) = name
+        .trim()
+        .strip_prefix("kobo-")
+        .and_then(|n| n.parse::<i64>().ok())
+        .filter(|n| (4..=255).contains(n))
+    {
+        return n;
+    }
     match canonical_color(name).as_deref() {
         Some("pink") | Some("red") => 1,
         Some("blue") | Some("purple") | Some("cyan") => 2,
@@ -59,9 +98,11 @@ pub fn to_kobo_color(name: &str) -> i64 {
 }
 
 /// A colour as a stored name: a palette name, an extra name (kept as written, lower case), a
-/// `#rrggbb` value; `None` for words that are no colour. `grey` is `gray`.
+/// `#rrggbb` value, `grey` as `gray`; any other plausible word is kept **as written** (a colour a
+/// newer device has). `None` only when the value is no word at all (empty, control characters, too long).
 pub fn canonical_color(raw: &str) -> Option<String> {
-    let s = raw.trim().to_ascii_lowercase();
+    let t = raw.trim();
+    let s = t.to_ascii_lowercase();
     if s.is_empty() {
         return None;
     }
@@ -71,10 +112,10 @@ pub fn canonical_color(raw: &str) -> Option<String> {
             None => c.hex(),
         });
     }
-    EXTRA_COLORS
-        .iter()
-        .find(|(n, _)| *n == s)
-        .map(|(n, _)| n.to_string())
+    if let Some((n, _)) = EXTRA_COLORS.iter().find(|(n, _)| *n == s) {
+        return Some(n.to_string());
+    }
+    plausible(t).then(|| t.to_string())
 }
 
 /// The colour a KOReader `color` word means.
@@ -82,17 +123,36 @@ pub fn koreader_color(raw: &str) -> Option<String> {
     canonical_color(raw)
 }
 
-/// The KOReader colour word for a stored colour (KOReader has no pink: red is the nearest).
+/// The KOReader colour word for a stored colour. KOReader has no pink (red is the nearest) and no
+/// custom RGB (the nearest palette name); a word Bookx does not know is handed back as written.
 pub fn to_koreader_color(name: &str) -> String {
     match canonical_color(name).as_deref() {
         Some("pink") => "red".to_string(),
-        Some(c) if c.starts_with('#') => display_color(c)
-            .name()
-            .map_or("yellow", |n| if n == "pink" { "red" } else { n })
-            .to_string(),
+        Some(c) if c.starts_with('#') => nearest_koreader(display_color(c).rgb()).to_string(),
         Some(c) => c.to_string(),
         None => "yellow".to_string(),
     }
+}
+
+/// The KOReader colour word nearest to an RGB value (by the shades Bookx draws them in).
+fn nearest_koreader((r, g, b): (u8, u8, u8)) -> &'static str {
+    let rgb_of = |n: &str| -> (u8, u8, u8) {
+        EXTRA_COLORS
+            .iter()
+            .find(|(e, _)| *e == n)
+            .map(|(_, c)| *c)
+            .or_else(|| HighlightColor::parse(n).map(HighlightColor::rgb))
+            .unwrap_or((0xff, 0xd9, 0x1f))
+    };
+    let d = |a: u8, b: u8| (a as i32 - b as i32).pow(2);
+    KOREADER_COLORS
+        .iter()
+        .copied()
+        .min_by_key(|n| {
+            let (x, y, z) = rgb_of(n);
+            d(x, r) + d(y, g) + d(z, b)
+        })
+        .unwrap_or("yellow")
 }
 
 /// The palette colour to paint a stored colour with: the colour itself, else the nearest.
@@ -117,8 +177,15 @@ pub fn display_rgb(name: &str) -> (f64, f64, f64) {
             return (*r as f64 / 255.0, *g as f64 / 255.0, *b as f64 / 255.0);
         }
     }
-    display_color(name).rgb_f64()
+    // a word that is no colour Bookx knows is painted in the reader's default yellow
+    match canonical_color(name).as_deref().map(HighlightColor::parse) {
+        Some(Some(c)) => c.rgb_f64(),
+        _ => DEFAULT_RGB,
+    }
 }
+
+/// The yellow of the reader's colour picker, used for a colour word nobody knows.
+pub const DEFAULT_RGB: (f64, f64, f64) = (1.0, 0.85, 0.12);
 
 /// The Bookx style a stored or foreign style word means: Bookx's own names, KOReader's `drawer`
 /// words, and the words of the export formats. `None` for words that are no style.
@@ -133,13 +200,24 @@ pub fn style_from_any(raw: &str) -> Option<&'static str> {
     })
 }
 
-/// The KOReader `drawer` word for a Bookx style.
-pub fn to_koreader_drawer(style: &str) -> &'static str {
-    match style_from_any(style).unwrap_or("background") {
-        "underline" | "squiggly" => "underscore",
-        "strikethrough" => "strikeout",
-        "invert" => "invert",
-        _ => "lighten",
+/// A style as a stored word: the Bookx name for every word [`style_from_any`] knows, any other
+/// plausible word as written (a drawer a newer KOReader has), `None` for no word at all.
+pub fn canonical_style(raw: &str) -> Option<String> {
+    let t = raw.trim();
+    if let Some(s) = style_from_any(t) {
+        return Some(s.to_string());
+    }
+    plausible(t).then(|| t.to_string())
+}
+
+/// The KOReader `drawer` word for a stored style; a word Bookx does not know is handed back as written.
+pub fn to_koreader_drawer(style: &str) -> String {
+    match style_from_any(style) {
+        Some("underline") | Some("squiggly") => "underscore".to_string(),
+        Some("strikethrough") => "strikeout".to_string(),
+        Some("invert") => "invert".to_string(),
+        Some(_) => "lighten".to_string(),
+        None => canonical_style(style).unwrap_or_else(|| "lighten".to_string()),
     }
 }
 
@@ -147,21 +225,46 @@ pub fn to_koreader_drawer(style: &str) -> &'static str {
 pub fn look_of(color: Option<&str>, style: Option<&str>) -> (Option<String>, Option<String>) {
     (
         color.and_then(canonical_color),
-        style.and_then(style_from_any).map(str::to_string),
+        style.and_then(canonical_style),
     )
 }
 
 /// Whether a stored look is Bookx's default (what an import used to give to everything).
 pub fn is_default_look(color: &str, style: &str) -> bool {
-    (color.is_empty() || color == "yellow") && (style.is_empty() || style == "background")
+    let c = color.trim();
+    let c_default = c.is_empty() || canonical_color(c).as_deref() == Some("yellow");
+    let st = style.trim();
+    c_default && (st.is_empty() || style_from_any(st) == Some("background"))
 }
 
 /// A look with its missing words filled in with the defaults, for comparing.
 pub fn full_look(color: &str, style: &str) -> Look {
     Look {
         color: canonical_color(color).unwrap_or_else(|| "yellow".into()),
-        style: style_from_any(style).unwrap_or("background").to_string(),
+        style: canonical_style(style).unwrap_or_else(|| "background".to_string()),
     }
+}
+
+/// Gives `color`/`style` the look `other_*` has when they are still Bookx's default and the other is
+/// not: the way two copies of one highlight are united (a duplicate book merge, two devices) so the
+/// copy that kept the device's colour or style is never lost to the one that only has the default.
+/// Returns whether anything changed.
+pub fn take_look_if_default(
+    color: &mut String,
+    style: &mut String,
+    other_color: &str,
+    other_style: &str,
+) -> bool {
+    if !is_default_look(color, style) || is_default_look(other_color, other_style) {
+        return false;
+    }
+    let full = full_look(other_color, other_style);
+    if full_look(color, style) == full {
+        return false;
+    }
+    *color = full.color;
+    *style = full.style;
+    true
 }
 
 /// What each device said the look of a highlight was the last time it was read, kept in
@@ -225,10 +328,14 @@ mod tests {
     #[test]
     fn kobo_numbers_map_both_ways() {
         for (n, name) in [(0, "yellow"), (1, "pink"), (2, "blue"), (3, "green")] {
-            assert_eq!(kobo_color(n), Some(name));
+            assert_eq!(kobo_color(n).as_deref(), Some(name));
             assert_eq!(to_kobo_color(name), n);
         }
-        assert_eq!(kobo_color(9), None);
+        // a number a newer firmware may use is kept, and handed back
+        assert_eq!(kobo_color(9).as_deref(), Some("kobo-9"));
+        assert_eq!(to_kobo_color("kobo-9"), 9);
+        assert_eq!(kobo_color(-1), None);
+        assert_eq!(kobo_color(100_000), None);
         assert_eq!(to_kobo_color("red"), 1);
         assert_eq!(to_kobo_color("purple"), 2);
         assert_eq!(to_kobo_color("olive"), 3);
@@ -247,7 +354,11 @@ mod tests {
         assert_eq!(to_koreader_color("olive"), "olive");
         assert_eq!(to_koreader_color("cyan"), "cyan");
         assert_eq!(to_koreader_color("pink"), "red");
-        assert_eq!(koreader_color("chartreuse"), None);
+        // a word nobody knows is kept as written, never defaulted
+        assert_eq!(koreader_color("chartreuse").as_deref(), Some("chartreuse"));
+        assert_eq!(to_koreader_color("chartreuse"), "chartreuse");
+        assert_eq!(koreader_color("  "), None);
+        assert_eq!(koreader_color("bad\u{7}word"), None);
         for (d, s) in [
             ("lighten", "background"),
             ("underscore", "underline"),
@@ -260,6 +371,83 @@ mod tests {
         assert_eq!(to_koreader_drawer("squiggly"), "underscore");
         assert_eq!(style_from_any("highlight"), Some("background"));
         assert_eq!(style_from_any("wat"), None);
+        assert_eq!(canonical_style("wat").as_deref(), Some("wat"));
+        assert_eq!(to_koreader_drawer("wat"), "wat");
+        assert_eq!(canonical_style("Lighten").as_deref(), Some("background"));
+        assert_eq!(canonical_style(""), None);
+    }
+
+    /// The table: every colour and every drawer KOReader writes comes in, goes out as the same
+    /// word, and a Bookx colour/style goes out and comes back unchanged (pink and squiggly are the
+    /// two Bookx words KOReader has no word for: red and underscore are their nearest).
+    #[test]
+    fn every_koreader_colour_and_drawer_round_trips() {
+        for c in KOREADER_COLORS {
+            let stored = koreader_color(c).unwrap();
+            assert_eq!(stored, c, "{c} is stored as the device wrote it");
+            assert_eq!(to_koreader_color(&stored), c, "{c} goes back unchanged");
+            // case and padding never change the answer
+            assert_eq!(
+                koreader_color(&format!(" {} ", c.to_uppercase())),
+                Some(stored)
+            );
+        }
+        for (d, s) in KOREADER_DRAWERS {
+            let stored = canonical_style(d).unwrap();
+            assert_eq!(stored, s);
+            assert_eq!(to_koreader_drawer(&stored), d);
+        }
+        for name in ["yellow", "orange", "red", "purple", "blue", "green", "gray"] {
+            assert_eq!(to_koreader_color(name), name);
+        }
+        for style in ["background", "underline", "strikethrough", "invert"] {
+            assert_eq!(style_from_any(&to_koreader_drawer(style)), Some(style));
+        }
+        assert_eq!(to_koreader_color("pink"), "red");
+        assert_eq!(to_koreader_drawer("squiggly"), "underscore");
+    }
+
+    #[test]
+    fn every_kobo_colour_round_trips() {
+        for (n, name) in KOBO_COLORS.iter().enumerate() {
+            let stored = kobo_color(n as i64).unwrap();
+            assert_eq!(&stored, name);
+            assert_eq!(to_kobo_color(&stored), n as i64);
+        }
+        // the colours Kobo lacks go to the nearest of its four, and stay what they are in Bookx
+        for (name, kobo) in [
+            ("red", 1),
+            ("orange", 0),
+            ("purple", 2),
+            ("cyan", 2),
+            ("olive", 3),
+            ("gray", 0),
+        ] {
+            assert_eq!(to_kobo_color(name), kobo, "{name}");
+        }
+    }
+
+    #[test]
+    fn a_custom_colour_goes_to_the_nearest_koreader_name_not_to_yellow() {
+        assert_eq!(to_koreader_color("#ff0000"), "red");
+        assert_eq!(to_koreader_color("#0000ff"), "blue");
+        assert_eq!(to_koreader_color("#10c0d0"), "cyan");
+        assert_eq!(to_koreader_color("#808080"), "gray");
+        assert_eq!(to_koreader_color(""), "yellow");
+    }
+
+    #[test]
+    fn taking_the_look_of_the_copy_that_has_one() {
+        let (mut c, mut s) = ("yellow".to_string(), String::new());
+        assert!(take_look_if_default(&mut c, &mut s, "purple", "underscore"));
+        assert_eq!((c.as_str(), s.as_str()), ("purple", "underline"));
+        // a look somebody chose is never replaced, and the default never replaces anything
+        assert!(!take_look_if_default(&mut c, &mut s, "green", "invert"));
+        let (mut c2, mut s2) = ("red".to_string(), "underline".to_string());
+        assert!(!take_look_if_default(&mut c2, &mut s2, "yellow", ""));
+        let (mut c3, mut s3) = ("yellow".to_string(), String::new());
+        assert!(!take_look_if_default(&mut c3, &mut s3, "", ""));
+        assert!(!take_look_if_default(&mut c3, &mut s3, "Yellow", "lighten"));
     }
 
     #[test]
@@ -272,6 +460,10 @@ mod tests {
         assert_eq!(canonical_color("#ffd91f").as_deref(), Some("yellow"));
         let (r, g, b) = display_rgb("olive");
         assert!(g > r && g > b);
+        // a word nobody knows is kept but painted in the default yellow
+        assert_eq!(display_rgb("teal"), DEFAULT_RGB);
+        assert_eq!(display_rgb(""), DEFAULT_RGB);
+        assert_eq!(display_rgb("#ff0000"), (1.0, 0.0, 0.0));
     }
 
     #[test]

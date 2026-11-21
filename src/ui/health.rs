@@ -20,6 +20,7 @@ use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio, glib};
 
 use super::{window_of, SharedRef};
+use crate::backups as bk;
 use crate::i18n::N_;
 use crate::library_health as lh;
 
@@ -99,6 +100,7 @@ struct Ctx {
     found: RefCell<Vec<Finding>>,
     // calibre
     calibre_btn: gtk::Button,
+    calibre_group: adw::PreferencesGroup,
     calibre_copy: adw::SwitchRow,
     calibre_progress: gtk::ProgressBar,
     calibre_report: adw::ActionRow,
@@ -194,10 +196,19 @@ impl Ctx {
     fn refresh_status(&self) {
         self.status.clear();
         let lib = self.shared.lib.borrow();
-        self.status
-            .push(&row(&tr("Location"), &lib.root.display().to_string()));
-        self.status
-            .push(&row(&tr("Books"), &lh::plural(lib.books.len(), "book")));
+        let loc = row(&tr("Location"), &lib.root.display().to_string());
+        let open = button(&tr("Open"));
+        super::audit::label(&open, &tr("Open the library folder"));
+        let root = lib.root.clone();
+        open.connect_clicked(move |b| {
+            gtk::FileLauncher::new(Some(&gio::File::for_path(&root))).launch(
+                window_of(b.upcast_ref::<gtk::Widget>()).as_ref(),
+                gio::Cancellable::NONE,
+                |_| {},
+            );
+        });
+        loc.add_suffix(&open);
+        self.status.push(&loc);
         let g = self.shared.guard.borrow();
         if let Some(note) = lh::read_only_note(&g) {
             let r = row(&tr("Read-only"), &note);
@@ -353,6 +364,15 @@ impl Ctx {
             .set_subtitle(&esc(&lh::check_summary(books, &findings)));
         eprintln!("health: check books={books} findings={}", findings.len());
         self.findings.clear();
+        self.findings.group.set_visible(true);
+        if findings.is_empty() {
+            let r = row(
+                &tr("No Problems Found"),
+                &tr("Everything in the catalogue matches the files."),
+            );
+            r.add_prefix(&gtk::Image::from_icon_name("emblem-ok-symbolic"));
+            self.findings.push(&r);
+        }
         for (i, f) in findings.iter().enumerate().take(60) {
             let r = adw::ActionRow::new();
             r.set_title(&esc(&f.message));
@@ -431,6 +451,7 @@ impl Ctx {
     }
 
     fn import_calibre(self: &Rc<Self>, dir: PathBuf) {
+        self.calibre_group.set_visible(true);
         let store = store_of(&self.shared);
         let root = root_of(&self.shared);
         let copy = self.calibre_copy.is_active();
@@ -772,11 +793,12 @@ impl Ctx {
 
     fn ask_empty_trash(self: &Rc<Self>) {
         let weak = Rc::downgrade(self);
+        let n = self.shared.lib.borrow().trash().len();
         confirm(
             self,
-            &tr("Empty the trash?"),
+            &trash_heading(n),
             &tr("The deleted books and their files are erased for good."),
-            &tr("Empty Trash"),
+            &tr("Delete Permanently"),
             true,
             move || {
                 if let Some(ctx) = weak.upgrade() {
@@ -914,6 +936,20 @@ impl Ctx {
             "health_calibre: {}",
             self.calibre_report.subtitle().unwrap_or_default()
         );
+        eprintln!(
+            "health_ui: problems_visible={} calibre_visible={} check_button={:?} status_titles={}",
+            self.findings.group.is_visible(),
+            self.calibre_group.is_visible(),
+            self.check_btn.label().unwrap_or_default(),
+            self.status
+                .rows
+                .borrow()
+                .iter()
+                .filter_map(|w| w.clone().downcast::<adw::ActionRow>().ok())
+                .map(|r| r.title().to_string())
+                .collect::<Vec<_>>()
+                .join("|")
+        );
         eprintln!("health_auto: {}", self.auto_switch.is_active());
         eprintln!("health_keep: {}", self.keep_spin.value());
         if let Some(p) = self.panel.borrow().clone() {
@@ -975,18 +1011,125 @@ impl Links {
     }
 }
 
+/// The window as a sidebar of destinations and the page of the chosen one (LIB-L1). Narrow windows show the
+/// sidebar as an overlay that a header button opens.
+fn sidebar_layout(dialog: &adw::Dialog, stack: &adw::ViewStack) -> adw::OverlaySplitView {
+    let split = adw::OverlaySplitView::new();
+    split.set_min_sidebar_width(170.0);
+    split.set_max_sidebar_width(230.0);
+    split.set_sidebar_width_fraction(0.26);
+
+    let list = gtk::ListBox::new();
+    list.add_css_class("navigation-sidebar");
+    list.set_selection_mode(gtk::SelectionMode::Single);
+    super::audit::label(&list, &tr("Library Health sections"));
+    let mut rows = Vec::new();
+    for (id, title, icon) in TABS {
+        let b = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+        b.append(&gtk::Image::from_icon_name(icon));
+        let l = gtk::Label::new(Some(&tr(title)));
+        l.set_xalign(0.0);
+        b.append(&l);
+        let row = gtk::ListBoxRow::new();
+        row.set_child(Some(&b));
+        row.set_widget_name(id);
+        super::audit::label(&row, &tr(title));
+        list.append(&row);
+        rows.push(row);
+    }
+    let side_head = adw::HeaderBar::new();
+    side_head.set_show_end_title_buttons(false);
+    side_head.set_title_widget(Some(&adw::WindowTitle::new(&tr("Library Health"), "")));
+    let side = adw::ToolbarView::new();
+    side.add_top_bar(&side_head);
+    side.set_content(Some(
+        &gtk::ScrolledWindow::builder()
+            .child(&list)
+            .vexpand(true)
+            .build(),
+    ));
+    split.set_sidebar(Some(&side));
+
+    let title = adw::WindowTitle::new("", "");
+    let head = adw::HeaderBar::new();
+    head.set_title_widget(Some(&title));
+    let toggle = gtk::ToggleButton::new();
+    toggle.set_icon_name("sidebar-show-symbolic");
+    toggle.set_tooltip_text(Some(&tr("Show Sections")));
+    super::audit::label(&toggle, &tr("Show Sections"));
+    split
+        .bind_property("show-sidebar", &toggle, "active")
+        .bidirectional()
+        .sync_create()
+        .build();
+    split
+        .bind_property("collapsed", &toggle, "visible")
+        .sync_create()
+        .build();
+    head.pack_start(&toggle);
+    let content = adw::ToolbarView::new();
+    content.add_top_bar(&head);
+    content.set_content(Some(stack));
+    split.set_content(Some(&content));
+
+    let bp = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
+        adw::BreakpointConditionLengthType::MaxWidth,
+        620.0,
+        adw::LengthUnit::Sp,
+    ));
+    bp.add_setter(&split, "collapsed", Some(&true.to_value()));
+    dialog.add_breakpoint(bp);
+
+    {
+        let (stack, split) = (stack.clone(), split.clone());
+        list.connect_row_selected(move |_, row| {
+            if let Some(row) = row {
+                stack.set_visible_child_name(&row.widget_name());
+                if split.is_collapsed() {
+                    split.set_show_sidebar(false);
+                }
+            }
+        });
+    }
+    let sync = {
+        let (list, rows, title) = (list.clone(), rows.clone(), title.clone());
+        move |stack: &adw::ViewStack| {
+            let id = stack.visible_child_name().unwrap_or_default();
+            if let Some(i) = TABS.iter().position(|t| t.0 == id) {
+                list.select_row(rows.get(i));
+                title.set_title(&tr(TABS[i].1));
+            }
+        }
+    };
+    sync(stack);
+    stack.connect_visible_child_name_notify(sync);
+    split
+}
+
+/// The heading of the confirmation before the trash is emptied: it names how many books go.
+pub fn trash_heading(n: usize) -> String {
+    if n == 0 {
+        return tr("Empty the Trash?");
+    }
+    crate::i18n::ntr(
+        "Delete {} Book Permanently?",
+        "Delete {} Books Permanently?",
+        n,
+    )
+}
+
 /// The tabs of the window: (id, title, icon).
 pub const TABS: [(&str, &str, &str); 6] = [
     ("health", N_("Health"), "security-high-symbolic"),
     ("duplicates", N_("Duplicates"), "edit-copy-symbolic"),
-    ("editions", N_("Editions & Formats"), "view-dual-symbolic"),
+    ("editions", N_("Editions"), "view-dual-symbolic"),
     (
         "attention",
         N_("Needs Attention"),
         "dialog-warning-symbolic",
     ),
     ("backups", N_("Backups"), "document-save-symbolic"),
-    ("history", N_("Trash & History"), "user-trash-symbolic"),
+    ("history", N_("Trash"), "user-trash-symbolic"),
 ];
 
 pub fn show(parent: &impl IsA<gtk::Widget>, shared: &SharedRef, notify: Notify) {
@@ -1002,16 +1145,20 @@ pub fn show_tab(
 ) {
     let dialog = adw::Dialog::new();
     dialog.set_title(&tr("Library Health"));
-    dialog.set_content_width(720);
-    dialog.set_content_height(780);
+    dialog.set_content_width(860);
+    dialog.set_content_height(560);
+    dialog.set_width_request(360);
+    dialog.set_height_request(400);
 
     let status = Dynamic::new(&tr("Library"), "");
     // backups
     let backups = adw::PreferencesGroup::new();
     backups.set_title(&tr("Backups"));
-    backups.set_description(Some(
-        "Snapshots of the catalogue (titles, tags, reading progress, notes), kept in the library folder. Book files are not copied.",
-    ));
+    backups.set_description(Some(&format!(
+        "{} {}",
+        tr("Catalogue only: book files and covers stay in the library folder."),
+        bk::backup_incremental_note()
+    )));
     let prefs = shared.cfg.borrow().health.clone();
     let auto_switch = switch_row(
         &tr("Automatic backups"),
@@ -1024,6 +1171,7 @@ pub fn show_tab(
     keep_spin.set_value(prefs.keep as f64);
     let backup_row = adw::ActionRow::new();
     backup_row.set_title(&tr("Back up now"));
+    backup_row.set_subtitle(&tr("Catalogue only; book files stay in the library folder"));
     let backup_btn = button(&tr("Back Up"));
     backup_btn.add_css_class("suggested-action");
     backup_row.add_suffix(&backup_btn);
@@ -1033,30 +1181,29 @@ pub fn show_tab(
     let snapshots = Dynamic::new(&tr("Restore from a backup"), "");
     // check
     let check = adw::PreferencesGroup::new();
-    check.set_title(&tr("Check library"));
-    check.set_description(Some(
+    check.set_title(&tr("Check"));
+    check.set_description(Some(&tr(
         "Looks for damage in the database, missing files and covers, and book files nobody lists.",
-    ));
+    )));
     let drift_switch = switch_row(
         &tr("Compare with the book files"),
         &tr("Also finds books whose title, authors or series differ from what the file says (slower)"),
         false,
     );
-    let check_row = adw::ActionRow::new();
-    check_row.set_title(&tr("Check now"));
-    let check_btn = button(&tr("Check Library"));
-    check_row.add_suffix(&check_btn);
-    let check_summary = row(&tr("Result"), &tr("Not checked yet"));
+    let check_summary = row(&tr("Check library"), &tr("Not checked yet"));
+    let check_btn = button(&tr("Check Now"));
+    super::audit::label(&check_btn, &tr("Check library now"));
+    check_summary.add_suffix(&check_btn);
     check.add(&drift_switch);
-    check.add(&check_row);
     check.add(&check_summary);
     let findings = Dynamic::new(&tr("Problems"), "");
+    findings.group.set_visible(false);
     // calibre
     let calibre = adw::PreferencesGroup::new();
     calibre.set_title(&tr("Import from Calibre"));
-    calibre.set_description(Some(
+    calibre.set_description(Some(&tr(
         "Reads the metadata.db of a Calibre library. Your Calibre library is not changed.",
-    ));
+    )));
     let calibre_copy = switch_row(
         &tr("Copy the book files into this library"),
         &tr("Off: the books stay in the Calibre folder and are only listed here"),
@@ -1077,6 +1224,7 @@ pub fn show_tab(
     calibre.add(&calibre_row);
     calibre.add(&calibre_progress);
     calibre.add(&calibre_report);
+    calibre.set_visible(false);
     // import folder
     let inbox_group = adw::PreferencesGroup::new();
     inbox_group.set_title(&tr("Import folder"));
@@ -1097,9 +1245,9 @@ pub fn show_tab(
     // history and trash
     let history_group = adw::PreferencesGroup::new();
     history_group.set_title(&tr("History"));
-    history_group.set_description(Some(
+    history_group.set_description(Some(&tr(
         "Imports, deletions, edits and moves of the library can be taken back, newest first.",
-    ));
+    )));
     let undo_row = adw::ActionRow::new();
     undo_row.set_title(&tr("Undo the last operation"));
     let undo_btn = button(&tr("Undo"));
@@ -1119,9 +1267,9 @@ pub fn show_tab(
     // names
     let names = adw::PreferencesGroup::new();
     names.set_title(&tr("Names and series"));
-    names.set_description(Some(
+    names.set_description(Some(&tr(
         "One spelling for each author and series, and a look at series with numbers missing.",
-    ));
+    )));
     let tidy_summary = row(&tr("Tidy names"), "…");
     let tidy_apply = button(&tr("Tidy Names"));
     tidy_summary.add_suffix(&tidy_apply);
@@ -1145,6 +1293,7 @@ pub fn show_tab(
         findings: findings.clone(),
         found: RefCell::new(Vec::new()),
         calibre_btn: calibre_btn.clone(),
+        calibre_group: calibre.clone(),
         calibre_copy,
         calibre_progress,
         calibre_report,
@@ -1237,8 +1386,10 @@ pub fn show_tab(
     groups.extend(panel_groups.iter().take(2));
     groups.push(&snapshots.group);
     groups.push(&panel_groups[2]);
+    groups.push(&history_group);
+    groups.push(&history.group);
     let page_backups = page_of(&groups);
-    let page_history = page_of(&[&history_group, &history.group, &trash_group, &trash.group]);
+    let page_history = page_of(&[&trash_group, &trash.group]);
 
     let win = parent.root().and_downcast::<gtk::Window>();
     let changed = ctx.notify.clone();
@@ -1274,10 +1425,11 @@ pub fn show_tab(
                     changed.clone(),
                 );
                 let g = adw::PreferencesGroup::new();
-                let r = adw::ActionRow::new();
-                r.set_title(&tr("Look these books up online"));
-                r.add_suffix(&fetch_btn);
-                g.add(&r);
+                g.set_title(&tr("Look Up Online"));
+                g.set_description(Some(&tr(
+                    "Fill in the missing details of these books from online sources",
+                )));
+                g.set_header_suffix(Some(&fetch_btn));
                 page.add(&g);
                 page.upcast()
             }
@@ -1286,14 +1438,7 @@ pub fn show_tab(
         p.set_icon_name(Some(icon));
     }
     stack.set_visible_child_name(tab);
-    let switcher = adw::ViewSwitcherBar::new();
-    switcher.set_stack(Some(&stack));
-    switcher.set_reveal(true);
-    let view = adw::ToolbarView::new();
-    view.add_top_bar(&adw::HeaderBar::new());
-    view.set_content(Some(&stack));
-    view.add_bottom_bar(&switcher);
-    dialog.set_child(Some(&view));
+    dialog.set_child(Some(&sidebar_layout(&dialog, &stack)));
     ctx.tabs.replace(Some(stack.clone()));
     OPEN.with(|o| *o.borrow_mut() = Some(ctx.clone()));
     dialog.connect_closed(move |_| {
@@ -1388,7 +1533,8 @@ pub fn preferences_group(
     let current = shared.lib.borrow().layout().clone();
     combo.set_selected(lh::layout_index(&current));
     let template = adw::EntryRow::new();
-    template.set_title(&tr("Path template, for example {author}/{series}/{title}"));
+    template.set_title(&tr("Path template"));
+    template.set_tooltip_text(Some(&tr("For example {author}/{series}/{title}")));
     if let Layout::Template(t) = &current {
         template.set_text(t);
     } else {
@@ -1398,6 +1544,9 @@ pub fn preferences_group(
     template.set_visible(matches!(current, Layout::Template(_)));
     let health_row = adw::ActionRow::new();
     health_row.set_title(&tr("Backups, check, trash and history"));
+    health_row.set_subtitle(&tr(
+        "Catalogue snapshots and library checks; book files are not copied",
+    ));
     health_row.set_activatable(true);
     health_row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
     group.add(&combo);
@@ -1575,6 +1724,10 @@ pub fn dev(parent: &gtk::Widget, shared: &SharedRef, notify: Notify, cmd: &str) 
             eprintln!("health_tab: {tab}");
             ctx.dump()
         }
+        "trash-heading" => eprintln!(
+            "health_trash_heading: {}",
+            trash_heading(ctx.shared.lib.borrow().trash().len())
+        ),
         "backup" => press(&ctx.backup_btn),
         "check" => press(&ctx.check_btn),
         "drift-on" => ctx.drift_switch.set_active(true),

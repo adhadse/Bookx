@@ -167,10 +167,24 @@ pub fn merge_state(keep: &mut Book, others: &[Book]) {
             keep.position = o.position;
         }
         keep.last_read = keep.last_read.max(o.last_read);
-        let hl: HashSet<String> = keep.highlights.iter().map(|h| h.id.clone()).collect();
         for h in &o.highlights {
-            if !hl.contains(&h.id) {
-                keep.highlights.push(h.clone());
+            // the same highlight (the same id) is one highlight; the
+            // copy that kept the colour or style the device gave it must not lose it to a copy that
+            // only has Bookx's default look, and an empty note takes the other copy's note
+            let twin = keep.highlights.iter_mut().find(|k| k.id == h.id);
+            match twin {
+                Some(k) => {
+                    crate::core::devstyle::take_look_if_default(
+                        &mut k.color,
+                        &mut k.style,
+                        &h.color,
+                        &h.style,
+                    );
+                    if k.note.trim().is_empty() && !h.note.trim().is_empty() {
+                        k.note = h.note.clone();
+                    }
+                }
+                None => keep.highlights.push(h.clone()),
             }
         }
         let bm: HashSet<String> = keep.bookmarks.iter().map(|b| b.id.clone()).collect();
@@ -213,6 +227,25 @@ pub fn merge(lib: &mut Library, ids: &[u64], keep: u64) -> Result<usize> {
     lib.remove(&remove, true)?;
     lib.save()?;
     Ok(remove.len())
+}
+
+/// The newest number of the operation log: remember it before an operation to know later how many
+/// steps the operation wrote.
+pub fn last_seq(lib: &Library) -> u64 {
+    lib.history().iter().map(|o| o.seq).max().unwrap_or(0)
+}
+
+/// Takes back every operation written after `seq` (a merge writes several: the metadata, then the
+/// removal). Returns how many were undone.
+pub fn undo_since(lib: &mut Library, seq: u64) -> Result<usize> {
+    let mut n = 0;
+    while lib.history().iter().any(|o| o.seq > seq && !o.undone) {
+        if lib.undo_last()?.is_none() {
+            break;
+        }
+        n += 1;
+    }
+    Ok(n)
 }
 
 #[cfg(test)]
@@ -440,6 +473,45 @@ mod tests {
         let _ = std::fs::remove_dir_all(d);
     }
 
+    /// Root cause R4: two copies of one highlight (same id) were united by keeping whichever copy
+    /// the kept book had, so a copy that only had Bookx's default look hid the colour and style
+    /// the other copy got from the device.
+    #[test]
+    fn merging_keeps_the_colour_and_style_of_the_copy_that_has_them() {
+        let d = tmp();
+        let mut lib = Library::in_memory(&d.join("lib")).unwrap();
+        let a = add(&mut lib, &epub(&d, "1.epub", "Same", "Ann Author", "one"));
+        let b = add(&mut lib, &epub(&d, "2.epub", "Same", "Ann Author", "two"));
+        let plain = hl("h1");
+        let mut coloured = hl("h1");
+        coloured.color = "purple".into();
+        coloured.style = "underline".into();
+        let mut chosen = hl("h2");
+        chosen.color = "green".into();
+        let mut other_chosen = hl("h2");
+        other_chosen.color = "red".into();
+        lib.get_mut(a).unwrap().highlights = vec![plain, chosen];
+        lib.get_mut(b).unwrap().highlights = vec![coloured, other_chosen];
+        let mut keep = lib.get(a).unwrap().clone();
+        let other = lib.get(b).unwrap().clone();
+        merge_state(&mut keep, &[other]);
+        assert_eq!(keep.highlights.len(), 2);
+        let h1 = keep.highlights.iter().find(|h| h.id == "h1").unwrap();
+        assert_eq!(
+            (h1.color.as_str(), h1.style.as_str()),
+            ("purple", "underline")
+        );
+        let h2 = keep.highlights.iter().find(|h| h.id == "h2").unwrap();
+        assert_eq!(h2.color, "green", "a look somebody chose is not replaced");
+        // and the other way round: the default never replaces a look
+        let mut keep2 = lib.get(b).unwrap().clone();
+        let plain_copy = lib.get(a).unwrap().clone();
+        merge_state(&mut keep2, &[plain_copy]);
+        let h1 = keep2.highlights.iter().find(|h| h.id == "h1").unwrap();
+        assert_eq!(h1.color, "purple");
+        let _ = std::fs::remove_dir_all(d);
+    }
+
     #[test]
     fn merging_removes_the_others_and_their_files_and_keeps_the_state() {
         let d = tmp();
@@ -463,6 +535,27 @@ mod tests {
         assert_eq!(kept.highlights.len(), 1);
         assert!(lib.book_path(kept).exists());
         assert!(find(&lib.books).is_empty(), "no group is left");
+        let _ = std::fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn undoing_a_merge_brings_the_removed_copy_back() {
+        let d = tmp();
+        let mut lib = Library::in_memory(&d.join("lib")).unwrap();
+        let a = add(&mut lib, &epub(&d, "1.epub", "Same", "Ann Author", "one"));
+        let b = add(&mut lib, &epub(&d, "2.epub", "Same", "Ann Author", "two"));
+        let before = last_seq(&lib);
+        merge(&mut lib, &[a, b], a).unwrap();
+        assert!(lib.get(b).is_none());
+        let n = undo_since(&mut lib, before).unwrap();
+        assert!(n >= 1);
+        assert!(lib.get(b).is_some(), "the removed copy is back");
+        assert!(lib.get(a).is_some());
+        assert_eq!(
+            undo_since(&mut lib, before).unwrap(),
+            0,
+            "nothing is left to undo"
+        );
         let _ = std::fs::remove_dir_all(d);
     }
 

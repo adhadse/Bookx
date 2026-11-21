@@ -20,6 +20,45 @@ pub fn label(w: &impl IsA<gtk::Widget>, name: &str) {
     unsafe { w.set_data(KEY, name.to_string()) };
 }
 
+/// Gives every item of the menu a button opens its text as accessible name. GTK 4 leaves the entries of
+/// a `gio::Menu` popover unnamed for assistive technology, so a screen reader would only say "menu item".
+pub fn name_menu_items(btn: &gtk::MenuButton) {
+    if let Some(p) = btn.popover() {
+        name_items_below(p.upcast_ref());
+        p.connect_map(|p| name_items_below(p.upcast_ref()));
+    }
+    btn.connect_active_notify(|b| {
+        if !b.is_active() {
+            return;
+        }
+        if let Some(p) = b.popover() {
+            gtk::glib::idle_add_local_once(move || name_items_below(p.upcast_ref()));
+        }
+    });
+}
+
+fn name_items_below(w: &gtk::Widget) {
+    use gtk::AccessibleRole as R;
+    if matches!(
+        w.accessible_role(),
+        R::MenuItem | R::MenuItemCheckbox | R::MenuItemRadio
+    ) {
+        let t = text_below(w);
+        if !t.trim().is_empty() {
+            // GTK points the item's labelled-by at its inner label, whose role is "presentation", so the
+            // computed name is empty and wins over the label property: drop the relation first
+            w.reset_relation(gtk::AccessibleRelation::LabelledBy);
+            w.update_property(&[gtk::accessible::Property::Label(&t)]);
+        }
+        return;
+    }
+    let mut c = w.first_child();
+    while let Some(child) = c {
+        name_items_below(&child);
+        c = child.next_sibling();
+    }
+}
+
 fn stored(w: &gtk::Widget) -> Option<String> {
     // SAFETY: see `label`; only `String`s are stored under this key.
     unsafe { w.data::<String>(KEY).map(|p| p.as_ref().clone()) }
@@ -243,8 +282,77 @@ pub fn controls() -> Vec<Control> {
     out
 }
 
+/// What fits in what: a dialog (and its default button) inside its window (X6, XC-7).
+pub fn fits_in(dialog: (i32, i32), window: (i32, i32)) -> bool {
+    dialog.0 <= window.0 && dialog.1 <= window.1
+}
+
+/// Whether a box `(x, y, w, h)` lies inside an area of `size`.
+pub fn box_within(b: (f32, f32, f32, f32), size: (i32, i32)) -> bool {
+    b.0 >= -0.5
+        && b.1 >= -0.5
+        && b.0 + b.2 <= size.0 as f32 + 0.5
+        && b.1 + b.3 <= size.1 as f32 + 0.5
+}
+
+/// The labels of the mapped buttons that cut their text (Pango had to ellipsize it).
+fn clipped_buttons(w: &gtk::Widget, out: &mut Vec<String>) {
+    if let Some(b) = w.downcast_ref::<gtk::Button>() {
+        if b.is_mapped() {
+            if let Some(l) = b.child().and_downcast::<gtk::Label>() {
+                if l.layout().is_ellipsized() {
+                    out.push(l.text().to_string());
+                }
+            }
+        }
+    }
+    let mut c = w.first_child();
+    while let Some(x) = c {
+        clipped_buttons(&x, out);
+        c = x.next_sibling();
+    }
+}
+
+/// The `dialog_fit:` line for the dialog that is open over `window`, if any: its size against the
+/// window's, whether its default button is on screen, and how many buttons cut their label.
+pub fn dialog_fit_line(window: &adw::ApplicationWindow) -> Option<String> {
+    let d = window.visible_dialog()?;
+    let content = d.child()?;
+    let size = (content.width(), content.height());
+    let win = (window.width(), window.height());
+    let default_box = d
+        .default_widget()
+        .and_then(|w| w.compute_bounds(&content))
+        .map(|r| (r.x(), r.y(), r.width(), r.height()));
+    let default = d
+        .default_widget()
+        .map(|w| w.is_mapped() && default_box.is_some_and(|b| box_within(b, size)));
+    let mut clipped = Vec::new();
+    clipped_buttons(&content, &mut clipped);
+    Some(format!(
+        "dialog_fit: title={:?} dialog={}x{} window={}x{} fits={} default_visible={} default_box={:?} clipped_buttons={} clipped={:?}",
+        d.title(),
+        size.0,
+        size.1,
+        win.0,
+        win.1,
+        fits_in(size, win),
+        default.map_or("none".to_string(), |v| v.to_string()),
+        default_box,
+        clipped.len(),
+        clipped
+    ))
+}
+
 /// Prints the report the UI scenarios read.
 pub fn report() {
+    for t in gtk::Window::list_toplevels() {
+        if let Some(w) = t.downcast_ref::<adw::ApplicationWindow>() {
+            if let Some(line) = dialog_fit_line(w) {
+                eprintln!("{line}");
+            }
+        }
+    }
     let all = controls();
     let bad: Vec<&Control> = all
         .iter()
@@ -264,5 +372,23 @@ pub fn report() {
             control_problem(c).unwrap_or(""),
             c.path
         );
+    }
+}
+
+#[cfg(test)]
+mod fit_tests {
+    use super::*;
+
+    #[test]
+    fn a_dialog_fits_when_it_is_not_bigger_than_its_window() {
+        assert!(fits_in((640, 560), (900, 600)));
+        assert!(!fits_in((880, 640), (900, 600)));
+    }
+
+    #[test]
+    fn a_button_is_on_screen_only_when_all_of_it_is_inside_the_dialog() {
+        assert!(box_within((500.0, 500.0, 100.0, 40.0), (640, 560)));
+        assert!(!box_within((500.0, 540.0, 100.0, 40.0), (640, 560)));
+        assert!(!box_within((-30.0, 10.0, 100.0, 40.0), (640, 560)));
     }
 }

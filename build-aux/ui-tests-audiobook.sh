@@ -7,7 +7,7 @@
 # libraries of the scenarios hold two books (ids 1 and 2), so the first audiobook is id 3.
 # Dev commands: `audio:add=PATH`, `audio:open=ID`, `audio:close`, `audio:stats`, and for the open player
 # `audio:play|pause|toggle|skip=SECONDS|seek=MS|chapter=N|next|prev|speed=X|volume=X|sleep=MINUTES|sleep=chapter|
-# sleep-secs=N|bookmark=NOTE|gobookmark=N|rmbookmark=N|dump`; `library:audiobadges`.
+# sleep-secs=N|bookmark=NOTE|gobookmark=N|rmbookmark=N|undo|dump`; `library:audiobadges`.
 
 export BOOKX_AUDIO_SINK=null:20
 
@@ -87,6 +87,16 @@ scenario audio_bookmarks "audio:add=$AUD/Tale,audio:open=3,wait:400,audio:seek=5
     S=$(cat "$d"/cfg/bookx/audiobooks/*.state.json 2>/dev/null)
     grep -q "First note" <<<"$S" && grep -q "\"position_ms\": 5000" <<<"$S"; check "the bookmark and its note are saved" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario audio_bookmark_undo "audio:add=$AUD/Tale,audio:open=3,wait:400,audio:seek=5000,audio:bookmark=First note,audio:dump,audio:rmbookmark=0,audio:dump,audio:undo,audio:dump,audio:close,quit" '
+    A=$(grep "^audio: state" <<<"$OUT")
+    sed -n 1p <<<"$A" | grep -q "bookmarks=1"; check "one bookmark with a note" $?
+    sed -n 2p <<<"$A" | grep -q "bookmarks=0"; check "deleting it removes it at once, without a question" $?
+    sed -n 3p <<<"$A" | grep -q "bookmarks=1"; check "Undo of the Bookmark deleted toast puts it back" $?
+    S=$(cat "$d"/cfg/bookx/audiobooks/*.state.json 2>/dev/null)
+    grep -q "First note" <<<"$S" && grep -q "\"position_ms\": 5000" <<<"$S"; check "with its note and position, saved" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
 
 scenario audio_resume "audio:add=$AUD/Tale,audio:open=3,wait:400,audio:seek=33000,audio:speed=1.5,wait:300,audio:close,wait:800,audio:open=3,wait:600,audio:dump,audio:close,quit" '
     A=$(grep "^audio: state" <<<"$OUT")

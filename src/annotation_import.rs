@@ -9,7 +9,7 @@
 //! added, book by book, shown to the user) and [`apply`] (which reuses the device sync's
 //! `apply_book`, so the two paths cannot disagree).
 
-use crate::i18n::tr;
+use crate::i18n::{ntr, tr, trf};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -306,8 +306,72 @@ impl ImportPlan {
         v
     }
 
+    #[cfg(test)]
     pub fn text(&self) -> String {
         self.lines().join("\n")
+    }
+
+    /// One row per book the import changes, for the review dialog: `(title, what is added)`.
+    pub fn review_rows(&self) -> Vec<(String, String)> {
+        self.books
+            .iter()
+            .filter(|b| !b.plan.highlights_in.is_empty() || !b.plan.notes_in.is_empty())
+            .map(|b| {
+                let p = &b.plan;
+                let mut parts = Vec::new();
+                if !p.highlights_in.is_empty() {
+                    parts.push(ntr("{} highlight", "{} highlights", p.highlights_in.len()));
+                }
+                if !p.notes_in.is_empty() {
+                    parts.push(ntr("{} note", "{} notes", p.notes_in.len()));
+                }
+                (p.title.clone(), parts.join(", "))
+            })
+            .collect()
+    }
+
+    /// What the review says is left out, one sentence each (books not in the library, books that
+    /// fit several, bookmarks without a quote).
+    pub fn left_out(&self) -> Vec<String> {
+        let mut v = Vec::new();
+        for (list, what) in [
+            (&self.unmatched, "Not in your library: {}"),
+            (
+                &self.ambiguous,
+                "Match more than one book in your library: {}",
+            ),
+        ] {
+            if !list.is_empty() {
+                let shown: Vec<String> = list
+                    .iter()
+                    .take(5)
+                    .map(|(t, c)| format!("{t} ({c})"))
+                    .collect();
+                let more = list.len().saturating_sub(5);
+                let mut text = shown.join(", ");
+                if more > 0 {
+                    text = trf("{} and {} more", &[&text, &more]);
+                }
+                v.push(trf(what, &[&text]));
+            }
+        }
+        if self.skipped > 0 {
+            v.push(ntr(
+                "{} bookmark or note without a highlighted quote",
+                "{} bookmarks or notes without a highlighted quote",
+                self.skipped,
+            ));
+        }
+        v
+    }
+
+    /// Text of the confirm button: what the import adds in total.
+    pub fn confirm_label(&self) -> String {
+        match (self.new_highlights(), self.notes_added()) {
+            (h, 0) => ntr("Add {} Highlight", "Add {} Highlights", h),
+            (0, n) => ntr("Add {} Note", "Add {} Notes", n),
+            (h, n) => ntr("Add {} Item", "Add {} Items", h + n),
+        }
     }
 }
 
@@ -517,6 +581,41 @@ mod tests {
             text: text.into(),
             created: Utc::now(),
         }
+    }
+
+    #[test]
+    fn the_review_names_each_changed_book_and_the_confirm_button_counts() {
+        let plan = ImportPlan {
+            books: vec![
+                BookImport {
+                    plan: BookPlan {
+                        title: "Dune".into(),
+                        notes_in: vec![("a".into(), "x".into()), ("b".into(), "y".into())],
+                        ..Default::default()
+                    },
+                    already: 0,
+                },
+                BookImport {
+                    plan: BookPlan {
+                        title: "Same".into(),
+                        ..Default::default()
+                    },
+                    already: 3,
+                },
+            ],
+            unmatched: vec![("Ghost".into(), 4)],
+            ambiguous: vec![],
+            skipped: 1,
+        };
+        assert_eq!(
+            plan.review_rows(),
+            vec![("Dune".to_string(), "2 notes".to_string())]
+        );
+        assert_eq!(plan.confirm_label(), "Add 2 Notes");
+        let left = plan.left_out();
+        assert_eq!(left.len(), 2);
+        assert!(left[0].contains("Ghost (4)"));
+        assert!(left[1].starts_with("1 bookmark or note"));
     }
 
     #[test]

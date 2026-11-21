@@ -24,6 +24,47 @@ pub const CONFORMANCE: &[&str] = &[
     "EPUB Accessibility 1.1 - WCAG 2.2 Level AA",
 ];
 
+/// The `accessModeSufficient` values (`"textual"`, `"textual,visual"`) as sets of modes, in the vocabulary's order.
+/// Unknown words are kept so nothing the book says is lost by showing it as check boxes.
+pub fn parse_sufficient_sets(values: &[String]) -> Vec<BTreeSet<String>> {
+    values
+        .iter()
+        .map(|v| {
+            v.split(',')
+                .map(|m| m.trim().to_string())
+                .filter(|m| !m.is_empty())
+                .collect::<BTreeSet<String>>()
+        })
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
+/// The sets back as values: modes in the vocabulary's order (then any other word), empty and repeated sets dropped.
+pub fn sufficient_from_sets(sets: &[BTreeSet<String>]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for set in sets {
+        let mut modes: Vec<&String> = set.iter().collect();
+        modes.sort_by_key(|m| {
+            ACCESS_MODES
+                .iter()
+                .position(|a| a == m)
+                .unwrap_or(ACCESS_MODES.len())
+        });
+        if modes.is_empty() {
+            continue;
+        }
+        let v = modes
+            .into_iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>()
+            .join(",");
+        if !out.contains(&v) {
+            out.push(v);
+        }
+    }
+    out
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct A11yForm {
     pub meta: AccessMeta,
@@ -546,6 +587,21 @@ mod tests {
         let b = make_book(bodies);
         assert!(b.package.is_epub3(), "fixture must be EPUB 3");
         b
+    }
+
+    #[test]
+    fn sufficient_modes_round_trip_through_sets() {
+        let v = vec!["textual".to_string(), "visual, textual".to_string()];
+        let sets = parse_sufficient_sets(&v);
+        assert_eq!(sets.len(), 2);
+        assert!(sets[1].contains("textual") && sets[1].contains("visual"));
+        assert_eq!(
+            sufficient_from_sets(&sets),
+            vec!["textual".to_string(), "textual,visual".to_string()]
+        );
+        assert!(parse_sufficient_sets(&[String::new(), " , ".into()]).is_empty());
+        let twice = vec![sets[0].clone(), sets[0].clone(), BTreeSet::new()];
+        assert_eq!(sufficient_from_sets(&twice), vec!["textual".to_string()]);
     }
 
     #[test]

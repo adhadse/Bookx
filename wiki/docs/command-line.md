@@ -104,6 +104,22 @@ bookx-cli library inbox set ~/Downloads/books   # then: inbox scan | add-all | d
 folder that does not exist yet or is empty (it refuses anything else, and a folder inside the library). It only reads
 your library, prints its progress on standard error and exits with 1 when some files could not be copied.
 
+### highlights
+
+```bash
+bookx-cli highlights repair --from /run/media/me/KOBOeReader   # what would change (nothing is changed)
+bookx-cli highlights repair --from ~/backup/Kobo --apply       # correct colours and styles
+bookx-cli highlights repair --from "Book.sdr/metadata.epub.lua" --json
+```
+
+Corrects the **colour and style** of highlights that are already in the library (for example imports that
+all came in yellow) from what an e-reader says: a mounted e-reader or a copy of its folders (KOReader’s `.sdr`
+sidecars and `.kobo/KoboReader.sqlite`), one KOReader `metadata.*.lua`, or a `KoboReader.sqlite`; the highlights the
+Bookx sync server received and Bookx’s own sync records are always used when they exist (`--config-dir` names
+another settings folder). Highlights are matched by their words; nothing is added or deleted, a colour you chose in
+Bookx is left alone, and `--apply` writes one entry in the library’s history so `library undo` takes it back. Running it
+again changes nothing. See [Colours and styles from your e-reader](annotations.md#colours-and-styles-from-your-e-reader).
+
 ### edit
 
 ```bash

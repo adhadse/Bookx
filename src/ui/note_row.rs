@@ -154,7 +154,7 @@ impl NoteCard {
         menu.set_icon_name("view-more-symbolic");
         menu.add_css_class("flat");
         menu.set_valign(gtk::Align::Center);
-        menu.set_tooltip_text(Some(&tr("Highlight actions")));
+        menu.set_tooltip_text(Some(&tr("Highlight Actions")));
         super::audit::label(&menu, &tr("Highlight actions"));
         foot.append(&menu);
         if compact {
@@ -204,12 +204,12 @@ impl NoteCard {
         acts.append(&delete);
         col.append(&acts);
         if let Some(relocate) = &actions.relocate {
-            let b = gtk::Button::with_label(&tr("Locate again"));
+            let b = gtk::Button::with_label(&tr("Locate Again"));
             b.add_css_class("flat");
             b.set_tooltip_text(Some(&tr(
                 "Search the book for this text again and put the highlight back on the page",
             )));
-            super::audit::label(&b, &tr("Locate again"));
+            super::audit::label(&b, &tr("Locate Again"));
             let (f, p) = (relocate.clone(), close(&pop));
             b.connect_clicked(move |_| {
                 p();

@@ -195,6 +195,7 @@ pub fn show(parent: &impl IsA<gtk::Widget>, entries: Vec<Entry>, on_pick: Rc<dyn
         .follows_content_size(false)
         .child(&content)
         .build();
+    super::dialog_toast::install_close_shortcut(&dialog);
     dialog.set_focus(Some(&entry));
 
     let st = Rc::new(State {

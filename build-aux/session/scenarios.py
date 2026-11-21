@@ -42,7 +42,7 @@ def reader_page_turn(c):
     c.sb.key("Left")
     c.wait(lambda: num() == p0, 5)
     c.check("the Left key goes back", num() == p0, str(c.page_label()))
-    nxt = c.wait_node("button", rx="^Next page")
+    nxt = c.wait_node("button", rx="^Next Page")
     c.click_node(nxt)
     ok = c.wait(lambda: num() != p0, 5)
     c.check("clicking the Next page button turns the page", ok, str(c.page_label()))
@@ -60,12 +60,12 @@ def lookup_dictionary(c):
     c.go_to_text()
     c.shot("page")
     select_word(c)
-    btn = c.wait_node("button", "Look up in a dictionary", timeout=5)
+    btn = c.wait_node("button", "Look Up in Dictionary", timeout=5)
     c.shot("selection")
     if not c.check("a double click on a word opens the action popover with the dictionary button", btn):
         return
     c.check("the popover has the Wikipedia and Highlight buttons",
-            c.find("button", "Look up on Wikipedia") and c.find("button", "Highlight yellow"))
+            c.find("button", "Look Up on Wikipedia") and c.find("button", "Highlight Yellow"))
     c.click_node(btn)
     res = c.wait_node("label", rx="Test definition of ", timeout=6)
     c.shot("dictionary-result")
@@ -86,7 +86,7 @@ def lookup_wikipedia(c):
     c.open_book()
     c.go_to_text()
     select_word(c)
-    btn = c.wait_node("button", "Look up on Wikipedia", timeout=5)
+    btn = c.wait_node("button", "Look Up on Wikipedia", timeout=5)
     if not c.check("a double click on a word opens the action popover with the Wikipedia button", btn):
         return
     c.click_node(btn)
@@ -141,7 +141,7 @@ def highlight_and_note(c):
     p = select_word(c)
     box = (330, 325, 440, 360)
     before = c.count_pixels(c.image(), box, is_yellow)
-    y = c.wait_node("button", "Highlight yellow", timeout=5)
+    y = c.wait_node("button", "Highlight Yellow", timeout=5)
     if not c.check("selecting a word shows the highlight colours", y):
         return
     c.click_node(y)
@@ -150,10 +150,10 @@ def highlight_and_note(c):
     after = c.count_pixels(c.image(), box, is_yellow)
     c.check("clicking Highlight yellow paints the word yellow", after > before + 200, f"{before} -> {after} yellow px")
     # the popover stays open and now offers Remove (the selection is kept on purpose)
-    rem = c.wait_node("button", "Remove highlight", timeout=5)
+    rem = c.wait_node("button", "Remove Highlight", timeout=5)
     c.check("after highlighting, the popover stays and offers Remove highlight", rem)
     c.shot("highlight-popover")
-    note = c.wait_node("button", "Add a note")
+    note = c.wait_node("button", "Add Note")
     if not c.check("the popover offers Add a note", note):
         return
     c.click_node(note)
@@ -168,7 +168,7 @@ def highlight_and_note(c):
         time.sleep(1)
     c.check("saving the note closes the popover", c.gone("button", "Save Note", timeout=4))
     c.sb.click(*p)
-    rem = c.wait_node("button", "Remove highlight", timeout=5)
+    rem = c.wait_node("button", "Remove Highlight", timeout=5)
     c.check("a click on the highlight opens its popover again", rem)
     time.sleep(0.5)
     c.shot("note-saved")
@@ -193,9 +193,9 @@ def theme_change(c):
     for name, test in (("Dark", lambda p: sum(p) < 200),
                        ("Sepia", lambda p: p[0] > p[2] + 15 and sum(p) > 500),
                        ("Light", lambda p: sum(p) > 700)):
-        c.click_node(c.wait_node("toggle button", "Main menu"))
+        c.click_node(c.wait_node("toggle button", "Text Appearance"))
         t = c.wait_node("toggle button", name, timeout=5)
-        if not c.check(f"the main menu has the {name} theme button", t):
+        if not c.check(f"Text Appearance has the {name} theme button", t):
             return
         c.click_node(t)
         time.sleep(0.8)
@@ -217,14 +217,14 @@ def library_context_menu(c):
     if not c.check("a right click on a book opens the context menu", menu):
         return
     items = c.find("menu item")
-    c.check("the menu is short: at most 10 entries at its first level", 5 <= len(items) <= 10, str(len(items)))
+    c.check("the menu is short: at most 12 entries at its first level", 5 <= len(items) <= 12, str(len(items)))
     box = c.screen_box(menu)
-    c.check("the whole menu fits on the screen (Remove does not fall off)", box[3] <= c.sb.h, str(box))
+    c.check("the whole menu fits on the screen (Move to Trash does not fall off)", box[3] <= c.sb.h, str(box))
     text = c.ocr(c.image(), box)
     if text is None:
         c.note("tesseract not installed: entry names not checked")
     else:
-        for want in ("Read", "Edit", "Organise", "Export and Send", "Show in Files", "Remove"):
+        for want in ("Read", "Edit", "Add to Shelf", "Send To", "Convert To", "Show in Files", "Move to Trash"):
             c.check(f"the menu offers {want!r}", want.lower() in text.lower(), text.replace("\n", " | "))
     c.sb.key("Escape")
     c.check("Escape closes the menu", c.gone("menu", timeout=3))
@@ -233,24 +233,25 @@ def library_context_menu(c):
 @scenario
 def header_menus(c):
     c.start()
-    c.click_node(c.wait_node("toggle button", rx="^Main menu"))
+    c.click_node(c.wait_node("toggle button", rx="^Main Menu"))
     for name in ("Library Health", "Preferences", "Keyboard Shortcuts", "About Bookx"):
-        c.check(f"the library main menu has {name}", c.wait_node("button", name, timeout=3))
+        c.check(f"the library main menu has {name}", c.wait_node("menu item", name, timeout=3))
     c.shot("library-menu")
     c.sb.key("Escape")
-    c.check("Escape closes the main menu", c.gone("button", "Preferences", timeout=3))
+    c.check("Escape closes the main menu", c.gone("menu item", "Preferences", timeout=3))
     c.click_node(c.wait_node("toggle button", rx="^Search"))
     c.check("the search button opens the search entry", c.wait_node("search text") or c.wait_node("entry", timeout=3))
     c.shot("library-search")
     c.sb.key("Escape")
     c.open_book()
-    c.click_node(c.wait_node("toggle button", "Main menu"))
-    for name in ("Light", "Sepia", "Dark", "Black", "Footer Stats", "About Bookx"):
-        c.check(f"the reader main menu has {name}", c.wait_node(None, name, timeout=3))
+    c.click_node(c.wait_node("toggle button", "Main Menu"))
+    for name in ("Go to", "Footer Statistics", "Reading Ruler", "Help", "About Bookx"):
+        c.check(f"the reader main menu has {name}", c.wait_node(None, rx=f"^{name}", timeout=3))
     c.shot("reader-menu")
     c.sb.key("Escape")
-    c.click_node(c.wait_node("toggle button", "Text appearance"))
+    c.click_node(c.wait_node("toggle button", "Text Appearance"))
     c.check("Text appearance opens the typography popover", c.wait_node("label", "Line spacing", timeout=3))
+    c.check("with the theme swatches in it", c.wait_node(None, "Light", timeout=3) and c.wait_node(None, "Sepia", timeout=3))
     c.shot("reader-appearance")
     c.sb.key("Escape")
     c.click_node(c.wait_node("toggle button", rx="^Contents"))
@@ -261,11 +262,9 @@ def header_menus(c):
 @scenario
 def news_dialog(c):
     c.start()
-    c.click_node(c.wait_node("toggle button", rx="^Add books"))
-    # the + menu has grown (Add Audiobook is now before News Subscriptions) and its GTK menu items do not
-    # expose a useful accessible name; use the known order of the entries
-    c.wait_node("menu item", timeout=5)
-    c.click_node(c.find("menu item")[4])
+    # the Library menu in the content header: Subscribe to News (menu items carry their text as name)
+    c.click_node(c.wait_node("toggle button", "Library"))
+    c.click_node(c.wait_node("menu item", rx="^Subscribe to News", timeout=5))
     d = c.wait_node("dialog", "News Subscriptions", timeout=5)
     c.shot("news")
     if not c.check("the News Subscriptions dialog opens", d):
@@ -307,14 +306,13 @@ def editor_edit_and_replace(c):
     img = c.image("typed")
     txt = c.ocr(img, (256, 130, 918, 470))
     c.check("the typed text appears in the code view", txt is None or "zzmarker" in txt, txt)
-    c.sb.key("h", ("Control",))
-    c.check("Ctrl+H opens find & replace", c.wait_node("button", "Replace All", timeout=5))
+    c.sb.key("f", ("Control",))
+    c.check("Ctrl+F opens the find bar", c.wait_node("button", "Find All", timeout=5))
     c.sb.type("zzmarker")
-    rep = [n for n in c.find("text") if n.box[1] < 200 and n.box[3] < 60]
-    c.check("the replace entry is there", rep)
-    if rep:
-        c.click_node(rep[0])
-        c.sb.type("REPLACED")
+    c.sb.key("h", ("Control",))  # the replace row: with a search text the caret goes to the replacement
+    c.check("Ctrl+H opens find & replace", c.wait_node("button", "Replace All", timeout=5))
+    time.sleep(0.8)
+    c.sb.type("REPLACED")
     c.click_node(c.wait_node("button", "Replace All"))
     time.sleep(1)
     img = c.image("replaced")
@@ -402,7 +400,7 @@ def editor_search_bar_session(c):
     c.sb.type("<!-- zzone zztwo zztwo -->")
     time.sleep(0.5)
     c.sb.key("f", ("Control",))
-    c.check("Ctrl+F opens the find bar", c.wait_node("button", "Replace All", timeout=5))
+    c.check("Ctrl+F opens the find bar", c.wait_node("button", "Find All", timeout=5))
     c.sb.type("zz")
     c.check("typing in Find shows how many matches the file has",
             c.wait_node("label", rx=r"\d+ in this file|\d+ of \d+ in this file", timeout=6))
@@ -415,8 +413,12 @@ def editor_search_bar_session(c):
     time.sleep(0.5)
     c.check("F3 and Ctrl+G step through the matches",
             c.wait_node("label", rx=r"[12] of 3 in this file", timeout=6))
+    gear = c.wait_node("toggle button", "Search Options", timeout=4) or c.wait_node("button", "Search Options", timeout=2)
+    if gear:
+        c.click_node(gear)
+        time.sleep(0.8)
     combos = [n for n in c.find("combo box") if n.name == "Text" and n.showing]
-    if c.check("the search mode list is in the bar", combos):
+    if c.check("the search mode list is in the options popover", combos):
         c.click_node(combos[0])
         time.sleep(0.6)
         c.sb.key("Down")
@@ -433,17 +435,22 @@ def editor_search_bar_session(c):
         time.sleep(0.8)
         c.check("going back to Text hides it again",
                 not [n for n in c.find("combo box") if n.name.startswith("Title-case") and n.showing])
+        c.sb.key("Escape")
+        time.sleep(0.6)
     fe = c.find("search text")
     if fe:
         c.click_node(fe[0])
         c.sb.key("a", ("Control",))
         c.sb.type("zzone")
-    rep = [n for n in c.find("text") if n.box[1] < 260 and n.box[3] < 60]
-    c.check("the replace entry is there", rep)
-    if rep:
-        c.click_node(rep[-1])
-        c.sb.key("a", ("Control",))
-        c.sb.type("FIRSTDONE")
+    c.sb.key("h", ("Control",))  # the replace row is its own shortcut; with a search text the caret goes to the replacement
+    time.sleep(0.8)
+    rep = c.find("button", "Replace All")
+    c.check("the replace entry is there", rep and rep[0].showing)
+    c.sb.key("a", ("Control",))
+    c.sb.type("FIRSTDONE")
+    fe = c.find("search text")
+    if fe:
+        c.click_node(fe[0])
     c.sb.key("Return")  # Enter in the find entry: next match, selects it
     time.sleep(0.5)
     c.sb.key("]", ("Control",))
@@ -452,10 +459,10 @@ def editor_search_bar_session(c):
         c.click_node(fe[0])
         c.sb.key("a", ("Control",))
         c.sb.type("zztwo")
-    if rep:
-        c.click_node(rep[-1])
-        c.sb.key("a", ("Control",))
-        c.sb.type("SECONDDONE")
+    c.sb.key("h", ("Control",))
+    time.sleep(0.5)
+    c.sb.key("a", ("Control",))
+    c.sb.type("SECONDDONE")
     c.click_node(c.wait_node("button", "Replace All"))
     time.sleep(1)
     c.sb.key("s", ("Control",))

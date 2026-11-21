@@ -7,10 +7,12 @@
 //!   list line up whatever the shape of the covers;
 //! * the title takes one line and is cut with an ellipsis, details follow on dim lines;
 //! * clicking anywhere on a row or a tile toggles it; Shift-click selects the range from the last click;
-//! * a tile shows its check box in the top-left corner and is highlighted while it is selected.
+//! * a tile shows its check box in the top-left corner and is highlighted while it is selected;
+//! * the lists carry the libadwaita `.selection-mode` class: the check boxes stay invisible at rest
+//!   and appear on hover, focus and for selected items (XC-3 / LIB-D5).
 
-use crate::i18n::tr;
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
+use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -35,6 +37,12 @@ pub struct Item {
     pub placeholder_seed: String,
 }
 
+/// Whether a `.selection-mode` check box is shown for one item. It is hidden at rest, and shown
+/// while the pointer or the keyboard is on the row or the item is selected.
+pub fn selection_check_visible(selected: bool, hovered: bool, focused: bool) -> bool {
+    selected || hovered || focused
+}
+
 struct Row {
     row_check: gtk::CheckButton,
     tile_check: gtk::CheckButton,
@@ -42,13 +50,14 @@ struct Row {
     tile: gtk::Box,
     row_pic: gtk::Picture,
     tile_pic: gtk::Picture,
+    hover: Cell<bool>,
+    focus: Cell<bool>,
 }
 
 pub struct PickList {
     pub widget: gtk::Stack,
     list: gtk::ListBox,
     grid: gtk::FlowBox,
-    count: gtk::Label,
     rows: RefCell<Vec<Row>>,
     state: RefCell<Vec<bool>>,
     last: Cell<Option<usize>>,
@@ -61,13 +70,15 @@ impl PickList {
         let list = gtk::ListBox::new();
         list.set_selection_mode(gtk::SelectionMode::None);
         list.add_css_class("boxed-list");
+        list.add_css_class("selection-mode");
         let list_scroll = gtk::ScrolledWindow::new();
         list_scroll.set_child(Some(&list));
-        list_scroll.set_min_content_height(200);
+        list_scroll.set_min_content_height(180);
         list_scroll.set_max_content_height(360);
-        list_scroll.set_propagate_natural_height(true);
+        list_scroll.set_propagate_natural_height(false);
         let grid = gtk::FlowBox::new();
         grid.set_selection_mode(gtk::SelectionMode::None);
+        grid.add_css_class("selection-mode");
         grid.set_homogeneous(true);
         grid.set_max_children_per_line(8);
         grid.set_min_children_per_line(2);
@@ -76,46 +87,24 @@ impl PickList {
         grid.set_valign(gtk::Align::Start);
         let grid_scroll = gtk::ScrolledWindow::new();
         grid_scroll.set_child(Some(&grid));
-        grid_scroll.set_min_content_height(200);
+        grid_scroll.set_min_content_height(180);
         grid_scroll.set_max_content_height(360);
-        grid_scroll.set_propagate_natural_height(true);
+        grid_scroll.set_propagate_natural_height(false);
         let stack = gtk::Stack::new();
         stack.add_named(&grid_scroll, Some("grid"));
         stack.add_named(&list_scroll, Some("list"));
         stack.set_vhomogeneous(false);
         stack.set_visible_child_name("grid");
-        let count = gtk::Label::new(None);
-        count.add_css_class("dim-label");
         Rc::new(PickList {
             widget: stack,
             list,
             grid,
-            count,
             rows: RefCell::default(),
             state: RefCell::default(),
             last: Cell::new(None),
             covers: Cell::new(0),
             on_change,
         })
-    }
-
-    /// Select All / None and the count, for the header of the list's group.
-    pub fn controls(self: &Rc<Self>) -> gtk::Box {
-        let b = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-        b.set_valign(gtk::Align::Center);
-        let all = gtk::Button::with_label(&tr("Select All"));
-        let none = gtk::Button::with_label(&tr("None"));
-        for w in [&all, &none] {
-            w.add_css_class("flat");
-        }
-        let me = self.clone();
-        all.connect_clicked(move |_| me.set_all(true));
-        let me = self.clone();
-        none.connect_clicked(move |_| me.set_all(false));
-        b.append(&self.count);
-        b.append(&all);
-        b.append(&none);
-        b
     }
 
     pub fn set_grid(&self, grid: bool) {
@@ -139,13 +128,35 @@ impl PickList {
         self.covers.get()
     }
 
-    fn refresh_count(&self) {
-        let n = self.len();
-        self.count.set_label(&if n == 0 {
-            String::new()
+    /// `(shown, hidden)` check boxes, for the `devwin:layout` hook.
+    pub fn checkbox_visibility(&self) -> (usize, usize) {
+        let shown = self
+            .rows
+            .borrow()
+            .iter()
+            .filter(|r| r.row_check.opacity() > 0.0)
+            .count();
+        (shown, self.rows.borrow().len() - shown)
+    }
+
+    /// Both views carry the libadwaita selection-mode class (XC-3).
+    pub fn has_selection_mode_class(&self) -> bool {
+        self.list.has_css_class("selection-mode") && self.grid.has_css_class("selection-mode")
+    }
+
+    fn refresh_check(&self, i: usize) {
+        let rows = self.rows.borrow();
+        let Some(r) = rows.get(i) else {
+            return;
+        };
+        let selected = self.state.borrow().get(i).copied().unwrap_or(false);
+        let opacity = if selection_check_visible(selected, r.hover.get(), r.focus.get()) {
+            1.0
         } else {
-            format!("{} of {n} selected", self.selected())
-        });
+            0.0
+        };
+        r.row_check.set_opacity(opacity);
+        r.tile_check.set_opacity(opacity);
     }
 
     fn paint(&self, i: usize) {
@@ -165,6 +176,7 @@ impl PickList {
                 }
             }
         }
+        self.refresh_check(i);
     }
 
     pub fn set_checked(&self, i: usize, on: bool) {
@@ -174,7 +186,6 @@ impl PickList {
             return;
         }
         self.paint(i);
-        self.refresh_count();
         (self.on_change)();
     }
 
@@ -186,7 +197,6 @@ impl PickList {
         for i in 0..n {
             self.paint(i);
         }
-        self.refresh_count();
         (self.on_change)();
     }
 
@@ -202,7 +212,6 @@ impl PickList {
                     }
                     self.paint(k);
                 }
-                self.refresh_count();
                 (self.on_change)();
             }
             _ => self.set_checked(i, now),
@@ -250,7 +259,6 @@ impl PickList {
                 self.set_cover(i, p);
             }
         }
-        self.refresh_count();
         self.widget.set_visible(!items.is_empty());
     }
 
@@ -276,6 +284,8 @@ impl PickList {
         let check = || {
             let c = gtk::CheckButton::new();
             c.set_can_target(false);
+            c.set_opacity(0.0);
+            super::audit::label(&c, &crate::i18n::trf("Select {}", &[&it.title]));
             c
         };
 
@@ -335,8 +345,10 @@ impl PickList {
         let row = gtk::ListBoxRow::new();
         row.set_activatable(false);
         row.set_selectable(false);
+        row.set_focusable(true);
         row.set_child(Some(&inner));
         row.add_css_class("pick-row");
+        row.add_css_class("selection-mode");
         self.list.append(&row);
         self.attach_click(&row, i);
 
@@ -362,7 +374,9 @@ impl PickList {
         tile.set_margin_bottom(6);
         tile.set_margin_start(6);
         tile.set_margin_end(6);
+        tile.set_focusable(true);
         tile.add_css_class("pick-tile");
+        tile.add_css_class("selection-mode");
         tile.set_tooltip_text(Some(
             &std::iter::once(it.title.clone())
                 .chain(it.lines.iter().cloned())
@@ -387,6 +401,8 @@ impl PickList {
             tile,
             row_pic,
             tile_pic,
+            hover: Cell::new(false),
+            focus: Cell::new(false),
         }
     }
 
@@ -403,6 +419,38 @@ impl PickList {
             }
         });
         w.add_controller(g);
+
+        let motion = gtk::EventControllerMotion::new();
+        let weak = Rc::downgrade(self);
+        motion.connect_enter(move |_, _, _| {
+            if let Some(me) = weak.upgrade() {
+                if let Some(r) = me.rows.borrow().get(i) {
+                    r.hover.set(true);
+                }
+                me.refresh_check(i);
+            }
+        });
+        let weak = Rc::downgrade(self);
+        motion.connect_leave(move |_| {
+            if let Some(me) = weak.upgrade() {
+                if let Some(r) = me.rows.borrow().get(i) {
+                    r.hover.set(false);
+                }
+                me.refresh_check(i);
+            }
+        });
+        w.add_controller(motion);
+
+        let widget = w.clone().upcast::<gtk::Widget>();
+        let weak = Rc::downgrade(self);
+        w.connect_has_focus_notify(move |_| {
+            if let Some(me) = weak.upgrade() {
+                if let Some(r) = me.rows.borrow().get(i) {
+                    r.focus.set(widget.has_focus());
+                }
+                me.refresh_check(i);
+            }
+        });
     }
 
     /// For the UI tests: for every row of the list view `(check x, cover slot x, cover slot width,
@@ -437,5 +485,27 @@ impl PickList {
             .visible_child_name()
             .map(|s| s.to_string())
             .unwrap_or_default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::selection_check_visible;
+
+    #[test]
+    fn checkboxes_are_hidden_at_rest() {
+        assert!(!selection_check_visible(false, false, false));
+        assert!(
+            selection_check_visible(false, true, false),
+            "hover shows it"
+        );
+        assert!(
+            selection_check_visible(false, false, true),
+            "focus shows it"
+        );
+        assert!(
+            selection_check_visible(true, false, false),
+            "a selected item keeps it"
+        );
     }
 }

@@ -136,6 +136,20 @@ pub fn misspelled_per_line(text: &str, spots: &[(usize, usize)]) -> HashMap<u32,
     m
 }
 
+/// What a screen reader is told about the code view: the status line, the problems and the changed lines.
+/// Nothing is said about zero problems or changes.
+pub fn view_description(status: &str, findings: usize, changed: usize) -> String {
+    use crate::i18n::ntr;
+    let mut parts = vec![status.to_string()];
+    if findings > 0 {
+        parts.push(ntr("{} problem", "{} problems", findings));
+    }
+    if changed > 0 {
+        parts.push(ntr("{} changed line", "{} changed lines", changed));
+    }
+    parts.join(", ")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -191,5 +205,18 @@ mod tests {
         assert_eq!(m.get(&1), Some(&1));
         assert_eq!(m.get(&2), None);
         assert_eq!(m.get(&3), Some(&1));
+    }
+
+    #[test]
+    fn the_view_description_counts_problems_and_changes() {
+        assert_eq!(view_description("Ln 1", 0, 0), "Ln 1");
+        assert_eq!(
+            view_description("Ln 1", 3, 2),
+            "Ln 1, 3 problems, 2 changed lines"
+        );
+        assert_eq!(
+            view_description("Ln 1", 1, 1),
+            "Ln 1, 1 problem, 1 changed line"
+        );
     }
 }

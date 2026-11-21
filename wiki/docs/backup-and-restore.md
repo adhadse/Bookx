@@ -1,12 +1,25 @@
 # Backup and restore
 
-A **backup** in Bookx is a snapshot of your *catalogue*: titles, authors, tags, series, reading progress, notes and
-highlights. Menu → **Library Health** shows where backups go and lets you restore them.
+A **backup** in Bookx is a snapshot of your *catalogue*, not of your book files. Menu → **Library Health** shows what
+is included, where backups go and lets you restore them.
 
-!!! important "Book files are not in the backup"
-    The snapshot is the catalogue (a database), not the books themselves. Your book files stay in the library folder;
-    back that folder up with whatever you already use for your documents. Without the catalogue the books are still
-    there, but the metadata, progress and notes are only in the backups.
+!!! important "What a backup contains"
+    | Included | Not included |
+    |---|---|
+    | Catalogue metadata: titles, authors, tags, series, collections and identifiers | Book files and their `cover.jpg` files |
+    | Reading progress, bookmarks, highlights and notes | Configuration, plugins and saved passwords |
+    | The full-text search (FTS) index | `.bookx/` state, the trash, copies on devices and caches |
+
+    Your book files stay in the library folder. Back that folder up with whatever you already use for your documents;
+    Bookx backups cannot bring the books back. Restore a catalogue backup and point the library folder at your book
+    files to put the two together again.
+
+### Not incremental
+
+A Bookx backup is a **whole-file snapshot** of the catalogue. Bookx does not store incremental changes or deduplicate
+parts of the database. It skips a place when the snapshot has not changed and skips a copy a place already has; when
+retention removes older snapshots it deletes whole files. Every copy is read back and checked with SHA-256 after it is
+written.
 
 !!! note "Backups are one-way snapshots, not sync"
     A backup is a copy at one moment. Nothing flows back by itself, and two computers cannot use one library through
@@ -104,8 +117,9 @@ can read them: Bookx shows a note under every off-site place that is not encrypt
   `.bookxbackup` file you copied yourself, for example on a new computer.
 
 Before anything changes, Bookx checks the backup for damage and saves the **current** catalogue as a *Before a
-restore* snapshot, so a restore can be undone by restoring that one. Restoring a new computer: install Bookx, open
-*Library Health*, add the place again (or choose the file) and restore. Then point the library folder at your book files.
+restore* snapshot, so a restore can be undone by restoring that one. Restoring on a new computer: install Bookx, open
+*Library Health*, add the place again (or choose the file) and restore. Then point the library folder at the folder
+that holds your book files; those files are not in the backup.
 
 ## Command line
 

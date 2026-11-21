@@ -255,6 +255,7 @@ impl Editor {
         );
         *self.gutter_marks.borrow_mut() = m;
         self.w.marks_renderer.queue_draw();
+        self.describe_view();
     }
 
     /// Remembers the findings of a book check as marks that follow the text.

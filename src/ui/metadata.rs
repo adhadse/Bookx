@@ -135,9 +135,9 @@ impl MetadataForm {
         let remove = gtk::Button::with_label(&tr("Remove Cover"));
         remove.add_css_class("destructive-action");
         let fetch_btn = gtk::Button::with_label(&tr("Fetch Metadata"));
-        fetch_btn.set_tooltip_text(Some(
+        fetch_btn.set_tooltip_text(Some(&tr(
             "Look the book up on Open Library, Google Books and Wikidata",
-        ));
+        )));
         let replace_chk = gtk::CheckButton::with_label(&tr("Replace existing values"));
         btns.append(&fetch_btn);
         btns.append(&replace_chk);
@@ -219,9 +219,9 @@ impl MetadataForm {
         basic.add(&series);
         basic.add(&series_index);
         let series_text = entry(&tr("Series number, your way (3, 03, III, Book Three)"), "");
-        series_text.set_tooltip_text(Some(
+        series_text.set_tooltip_text(Some(&tr(
             "Type the number as it is written on the book; it is turned into the number above",
-        ));
+        )));
         let series_hint = adw::ActionRow::new();
         series_hint.set_visible(false);
         series_hint.add_css_class("dim-label");
@@ -563,7 +563,7 @@ pub fn edit_dialog(
     cover: Option<Vec<u8>>,
     on_save: impl Fn(Metadata, CoverChange) + 'static,
 ) {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("Edit Metadata"));
     dialog.set_content_width(620);
     dialog.set_content_height(760);
@@ -707,7 +707,7 @@ pub fn bulk_dialog(
     count: usize,
     on_apply: impl Fn(BulkEdit) + 'static,
 ) {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&trf("Edit {} Books", &[&count]));
     dialog.set_content_width(520);
     dialog.set_content_height(560);

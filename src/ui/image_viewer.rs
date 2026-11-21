@@ -109,10 +109,10 @@ pub fn show(parent: &gtk::Widget, title: &str, bytes: Vec<u8>, src: &str) -> boo
     let Ok(texture) = gdk::Texture::from_bytes(&glib::Bytes::from(&bytes)) else {
         return false;
     };
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(title);
     dialog.set_content_width(900);
-    dialog.set_content_height(650);
+    dialog.set_content_height(560);
 
     let picture = gtk::Picture::for_paintable(&texture);
     picture.set_can_shrink(false);

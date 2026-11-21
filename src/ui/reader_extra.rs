@@ -36,6 +36,20 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     g
 }
 
+/// The buttons of the selection popover must not take the keyboard focus when they are clicked: the popover stays open
+/// (it is not modal) and the focus would sit in it, where Ctrl+F, the arrows and the other page keys do not reach the
+/// reader. Tab still reaches them.
+pub fn keep_focus_on_page(root: &impl IsA<gtk::Widget>) {
+    let mut c = root.as_ref().first_child();
+    while let Some(w) = c {
+        if let Some(b) = w.downcast_ref::<gtk::Button>() {
+            b.set_focus_on_click(false);
+        }
+        keep_focus_on_page(&w);
+        c = w.next_sibling();
+    }
+}
+
 /// Remembers where the pointer last went down on the page, to point the popup at it.
 pub fn track_clicks(area: &impl IsA<gtk::Widget>) {
     let g = gtk::GestureClick::new();

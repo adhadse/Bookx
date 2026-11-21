@@ -54,7 +54,13 @@ local function pos_text(p)
     return tostring(p or "")
 end
 
-local drawers = { lighten = true, underscore = true, strikeout = true, invert = true }
+-- The look is sent as KOReader wrote it. A word this version does not know (a newer KOReader adds colours
+-- and drawers) is passed on verbatim, so Bookx keeps it instead of a default; only control characters are
+-- dropped and the length is limited to what the server accepts (32), so one odd value cannot refuse a request.
+local function word(v)
+    if type(v) ~= "string" then return "" end
+    return (v:gsub("%c", ""):sub(1, 32))
+end
 
 --- One KOReader annotation (an entry of `ui.annotation.annotations`) as a wire annotation.
 function M.to_wire(item, now)
@@ -69,8 +75,8 @@ function M.to_wire(item, now)
         kind = kind,
         text = tostring(item.text or ""),
         note = tostring(item.note or ""),
-        color = tostring(item.color or ""),
-        drawer = drawers[item.drawer] and item.drawer or "",
+        color = word(item.color),
+        drawer = word(item.drawer),
         chapter = tostring(item.chapter or ""),
         pos0 = pos0,
         pos1 = pos1,

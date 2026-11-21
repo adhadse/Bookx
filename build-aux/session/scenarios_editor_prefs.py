@@ -19,7 +19,7 @@ def editor_rebind_real_keys(c):
     cfg = os.path.join(os.environ["XDG_CONFIG_HOME"], "bookx")
     os.makedirs(cfg, exist_ok=True)
     with open(os.path.join(cfg, "shortcuts.json"), "w") as f:
-        json.dump({"version": 1, "bindings": {"editor.find": ["<Control><Alt>f"], "editor.go-to-line": ["F4"]}}, f)
+        json.dump({"version": 1, "bindings": {"editor.find": ["<Control><Alt>f"], "editor.go-to-line": ["F4"], "editor.replace-bar": []}}, f)
     c.start()
     if not c.check("Edit Book opens the editor window", open_editor(c)):
         return

@@ -248,16 +248,67 @@ pub fn upsert(items: &mut Vec<SavedSearch>, name: &str, query: &str) -> Result<(
     Ok(())
 }
 
-/// Removes a saved search; other searches that refer to it stop working, which `expand` reports.
-pub fn remove(items: &mut Vec<SavedSearch>, name: &str) -> bool {
-    let before = items.len();
-    items.retain(|s| !s.name.eq_ignore_ascii_case(name));
-    items.len() != before
+/// Removes a saved search and returns it with its position, for an undo.
+pub fn take(items: &mut Vec<SavedSearch>, name: &str) -> Option<(usize, SavedSearch)> {
+    let at = items
+        .iter()
+        .position(|s| s.name.eq_ignore_ascii_case(name))?;
+    Some((at, items.remove(at)))
+}
+
+/// Puts a search taken with `take` back where it was (at the end when the list got shorter).
+/// Does nothing when a search of that name exists again.
+pub fn restore(items: &mut Vec<SavedSearch>, at: usize, item: SavedSearch) {
+    if items
+        .iter()
+        .any(|s| s.name.eq_ignore_ascii_case(&item.name))
+    {
+        return;
+    }
+    items.insert(at.min(items.len()), item);
+}
+
+/// Whether the *Save Search* button is usable: both fields hold text.
+pub fn can_save(name: &str, query: &str) -> bool {
+    !name.trim().is_empty() && !query.trim().is_empty()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn delete_then_undo_puts_the_search_back_in_place() {
+        let mut v = vec![
+            SavedSearch {
+                name: "a".into(),
+                query: "tag:a".into(),
+            },
+            SavedSearch {
+                name: "b".into(),
+                query: "tag:b".into(),
+            },
+            SavedSearch {
+                name: "c".into(),
+                query: "tag:c".into(),
+            },
+        ];
+        let (at, item) = take(&mut v, "B").unwrap();
+        assert_eq!((at, v.len()), (1, 2));
+        restore(&mut v, at, item.clone());
+        assert_eq!(v[1], item);
+        // a second undo (or a new search with the name) does not duplicate
+        restore(&mut v, at, item);
+        assert_eq!(v.len(), 3);
+        assert!(take(&mut v, "zzz").is_none());
+    }
+
+    #[test]
+    fn save_needs_a_name_and_a_query() {
+        assert!(!can_save("", "tag:a"));
+        assert!(!can_save("x", "  "));
+        assert!(can_save(" x ", "tag:a"));
+    }
 
     fn s(name: &str, query: &str) -> SavedSearch {
         SavedSearch {
@@ -359,8 +410,8 @@ mod tests {
         assert!(upsert(&mut v, "loop", "search:loop").is_err());
         upsert(&mut v, "two", "search:fantasy").unwrap();
         assert!(upsert(&mut v, "Fantasy", "search:two").is_err());
-        assert!(remove(&mut v, "TWO"));
-        assert!(!remove(&mut v, "two"));
+        assert!(take(&mut v, "TWO").is_some());
+        assert!(take(&mut v, "two").is_none());
     }
 
     #[test]

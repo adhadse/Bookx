@@ -127,6 +127,22 @@ impl HtmlRuleKind {
         Self::ALL.into_iter().find(|k| k.id() == id)
     }
 
+    /// A short verb phrase for a combo row (at most 26 characters); [`HtmlRuleKind::label`] is the sentence.
+    pub fn short_label(self) -> &'static str {
+        match self {
+            Self::RenameTag => "Rename tag",
+            Self::Unwrap => "Unwrap tag",
+            Self::Remove => "Remove element",
+            Self::SetAttr => "Set attribute",
+            Self::RemoveAttr => "Remove attribute",
+            Self::ReplaceAttr => "Replace in attribute",
+            Self::Wrap => "Wrap in element",
+            Self::AddClass => "Add class",
+            Self::RemoveClass => "Remove class",
+            Self::ReplaceClass => "Change class",
+        }
+    }
+
     pub fn label(self) -> &'static str {
         match self {
             Self::RenameTag => "Rename the tag",
@@ -850,5 +866,16 @@ mod tests {
             .contains("<strong>x</strong>"));
         let r = transform_book(&mut b, &rules, &[], false);
         assert_eq!(r.total(), 0, "a second run finds nothing");
+    }
+
+    #[test]
+    fn short_labels_are_short_and_different() {
+        let mut seen = Vec::new();
+        for k in HtmlRuleKind::ALL {
+            assert!(k.short_label().chars().count() <= 26, "{}", k.short_label());
+            assert!(k.label().len() >= k.short_label().len());
+            assert!(!seen.contains(&k.short_label()));
+            seen.push(k.short_label());
+        }
     }
 }

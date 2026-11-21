@@ -317,7 +317,7 @@ impl Side {
                 let del = gtk::Button::from_icon_name("user-trash-symbolic");
                 del.add_css_class("flat");
                 del.set_valign(gtk::Align::Center);
-                del.set_tooltip_text(Some(&tr("Remove bookmark")));
+                del.set_tooltip_text(Some(&tr("Remove Bookmark")));
                 row.append(&del);
                 li.set_child(Some(&row));
                 let cur = Rc::new(RefCell::new(String::new()));
@@ -386,7 +386,7 @@ impl Side {
         bar.append(&search);
         let filter_btn = gtk::MenuButton::new();
         filter_btn.set_label(&tr("Filter"));
-        filter_btn.set_tooltip_text(Some(&tr("Filter by colour, style or notes")));
+        filter_btn.set_tooltip_text(Some(&tr("Filter by Colour, Style or Notes")));
         bar.append(&filter_btn);
         notes_page.append(&bar);
         let summary = gtk::Label::new(None);
@@ -507,13 +507,13 @@ impl Side {
             l
         };
         b.append(&heading(&tr("Colour")));
-        let colors = gtk::Box::new(gtk::Orientation::Horizontal, 2);
+        let colors = gtk::Box::new(gtk::Orientation::Horizontal, 6);
         let mut color_btns: Vec<(String, gtk::ToggleButton)> = Vec::new();
         for (name, _) in HIGHLIGHT_COLORS {
             let t = gtk::ToggleButton::new();
             t.add_css_class("hl-swatch");
             t.add_css_class(&format!("hl-{name}"));
-            t.set_size_request(26, 26);
+            t.set_size_request(32, 32);
             t.set_tooltip_text(Some(&side_notes::colour_label(name)));
             super::audit::label(&t, &side_notes::colour_label(name));
             colors.append(&t);

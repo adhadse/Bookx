@@ -23,6 +23,21 @@ pub struct PageText {
     pub segments: Vec<(i32, usize, usize)>,
 }
 
+/// Where the paragraphs of pictures sit in "chapter chars": nowhere (far below zero), so a position in
+/// the description of a picture never stands for a place in the text.
+pub const IMAGE_CHAR_BASE: i32 = i32::MIN / 2;
+
+/// The line a screen reader gets for a picture: "Image: <alt>"; nothing for a picture with no description
+/// (a decoration).
+pub fn image_paragraph(alt: &str) -> Option<String> {
+    let a = alt.split_whitespace().collect::<Vec<_>>().join(" ");
+    if a.is_empty() {
+        None
+    } else {
+        Some(crate::i18n::trf("Image: {}", &[&a]))
+    }
+}
+
 fn is_word(c: char) -> bool {
     c.is_alphanumeric() || c == '\'' || c == '’'
 }
@@ -326,6 +341,34 @@ mod tests {
             ("Hello world. This is it!".into(), vec![0, 13], 100),
             ("Second paragraph.".into(), vec![0], 125),
         ])
+    }
+
+    #[test]
+    fn a_picture_with_a_description_is_part_of_the_page_text() {
+        assert_eq!(
+            image_paragraph("  A red\n door "),
+            Some("Image: A red door".to_string())
+        );
+        assert_eq!(image_paragraph("   "), None);
+        let paras = vec![
+            ("First paragraph.".to_string(), vec![0], 0),
+            (
+                image_paragraph("A red door").unwrap(),
+                vec![0],
+                IMAGE_CHAR_BASE,
+            ),
+            ("Second paragraph.".to_string(), vec![0], 17),
+        ];
+        let p = PageText::from_paragraphs(&paras);
+        assert_eq!(
+            p.text,
+            "First paragraph.\nImage: A red door\nSecond paragraph."
+        );
+        // a place in the text never lands in the description of the picture
+        assert_eq!(
+            p.page_offset(20),
+            Some(16 + 1 + "Image: A red door".len() + 1 + 3)
+        );
     }
 
     #[test]

@@ -20,12 +20,18 @@ pub struct State {
     pub monitors: RefCell<Vec<gio::FileMonitor>>,
     /// The buttons and preview text of the tool dialog opened last (the dev hooks click them).
     pub last_dialog: RefCell<Option<(gtk::Button, gtk::Button, gtk::Label)>>,
+    /// Heading and body of the last delete confirmation (read by the dev hook `delete-ask=`).
+    pub last_alert: RefCell<String>,
     /// A file changed by another program that waits for the user's answer (path in the book, temporary file).
     pub pending_external: Rc<RefCell<Option<(String, std::path::PathBuf)>>>,
     /// The tab a context menu was opened on.
     pub menu_page: Rc<RefCell<Option<adw::TabPage>>>,
     /// The structure tools (`struct_hub.rs`).
     pub structure: Rc<super::struct_hub::State>,
+    /// The preview was hidden by the spelling pane in a narrow window (it comes back when the pane closes).
+    pub spell_hid_preview: Cell<bool>,
+    /// The `ext` action group (the dev hooks read the enabled state of its actions).
+    pub group: RefCell<Option<gio::SimpleActionGroup>>,
 }
 
 impl State {
@@ -35,9 +41,12 @@ impl State {
             redo: RefCell::new(Vec::new()),
             monitors: RefCell::new(Vec::new()),
             last_dialog: RefCell::new(None),
+            last_alert: RefCell::new(String::new()),
             pending_external: Rc::new(RefCell::new(None)),
             menu_page: Rc::new(RefCell::new(None)),
             structure: Rc::new(super::struct_hub::State::default()),
+            group: RefCell::new(None),
+            spell_hid_preview: Cell::new(false),
         }
     }
 }
@@ -65,7 +74,9 @@ fn toggle_action(
     act
 }
 
-fn book_menu() -> gio::Menu {
+/// The labels and action targets of the Book menu's top level, in order (sections separated by `None`); the unit
+/// test below keeps the count within the 12 entries the audit allows.
+pub(super) fn book_menu() -> gio::Menu {
     let m = gio::Menu::new();
     let item = |label: &str, id: &str| menu_item(label, "ext.win", id);
     let file = gio::Menu::new();
@@ -74,40 +85,62 @@ fn book_menu() -> gio::Menu {
     m.append_section(None, &file);
     let books = gio::Menu::new();
     books.append_item(&item(&tr("Open Another Book"), "open-book"));
-    books.append_item(&item(&tr("Open an Unzipped Folder"), "open-folder"));
-    books.append_item(&menu_item(
+    books.append_item(&item(&tr("New Book"), "new-book"));
+    let more = gio::Menu::new();
+    more.append_item(&item(&tr("Open an Unzipped Folder"), "open-folder"));
+    more.append_item(&menu_item(
         &tr("Open a Book of Another Format to Edit"),
         "ext.tool",
         "open-foreign",
     ));
-    books.append_item(&item(&tr("New Book"), "new-book"));
-    books.append_item(&item(
-        &tr("Import HTML, DOCX or Text as a New Book"),
-        "import-file",
-    ));
+    more.append_item(&item(&tr("Import as New Book"), "import-file"));
+    books.append_submenu(Some(&tr("More Ways to Open")), &more);
     m.append_section(None, &books);
     let hist = gio::Menu::new();
-    hist.append_item(&item(
-        &tr("Revert to Before the Last Change"),
-        "undo-checkpoint",
-    ));
-    hist.append_item(&item(&tr("Revert to After (Redo)"), "redo-checkpoint"));
+    hist.append(
+        Some(&tr("Revert to Before the Last Change")),
+        Some("ext.undo-checkpoint"),
+    );
+    hist.append(
+        Some(&tr("Revert to After (Redo)")),
+        Some("ext.redo-checkpoint"),
+    );
     m.append_section(None, &hist);
-    let tabs = gio::Menu::new();
-    tabs.append_item(&item(&tr("Close Other Tabs"), "close-others"));
-    tabs.append_item(&item(&tr("Close Tabs to the Right"), "close-right"));
-    m.append_section(None, &tabs);
     let view = gio::Menu::new();
     view.append(Some(&tr("Wrap Long Lines")), Some("ext.wrap"));
-    view.append(
-        Some(&tr("Reopen Tabs and Cursors Next Time")),
-        Some("ext.restore"),
-    );
     m.append_section(None, &view);
-    let help = gio::Menu::new();
-    help.append_item(&item(&tr("Help on Editing"), "help"));
-    m.append_section(None, &help);
+    let app = gio::Menu::new();
+    app.append(Some(&tr("Preferences")), Some("app.preferences"));
+    app.append(Some(&tr("Keyboard Shortcuts")), Some("app.shortcuts"));
+    app.append_item(&item(&tr("Help"), "help"));
+    app.append(Some(&tr("About Bookx")), Some("app.about"));
+    m.append_section(None, &app);
     m
+}
+
+/// The labels of the top level of `menu` (items of all sections, submenus counted once).
+pub(super) fn top_level_labels(menu: &gio::MenuModel) -> Vec<String> {
+    let mut out = Vec::new();
+    for i in 0..menu.n_items() {
+        if let Some(s) = menu.item_link(i, "section") {
+            out.extend(top_level_labels(&s));
+        } else if let Some(v) = menu.item_attribute_value(i, "label", Some(glib::VariantTy::STRING))
+        {
+            out.push(v.str().unwrap_or_default().to_string());
+        }
+    }
+    out
+}
+
+/// The main menu button of the header: the Book menu (the primary menu, so F10 opens it).
+pub(super) fn book_button() -> gtk::MenuButton {
+    let btn = gtk::MenuButton::new();
+    btn.set_icon_name("open-menu-symbolic");
+    btn.set_primary(true);
+    btn.set_tooltip_text(Some(&tr("Main Menu")));
+    crate::ui::audit::label(&btn, &tr("Main Menu"));
+    btn.set_menu_model(Some(&book_menu()));
+    btn
 }
 
 impl Editor {
@@ -130,51 +163,34 @@ impl Editor {
             });
             group.add_action(&a);
         }
+        for id in ["undo-checkpoint", "redo-checkpoint"] {
+            let a = gio::SimpleAction::new(id, None);
+            let t = tx.clone();
+            a.connect_activate(move |_, _| t.emit(Input::Ext(Cmd::Win(id.to_string()))));
+            group.add_action(&a);
+        }
         let prefs = self.ext.prefs.borrow().clone();
         group.add_action(&toggle_action("wrap", prefs.wrap_lines, &tx, |on| {
             Cmd::Win(format!("wrap:{on}"))
-        }));
-        group.add_action(&toggle_action("restore", prefs.restore_state, &tx, |on| {
-            Cmd::Win(format!("restore:{on}"))
         }));
         group.add_action(&toggle_action("full-paths", prefs.full_paths, &tx, |_| {
             Cmd::Files("full-paths".into())
         }));
         self.w.win.insert_action_group("ext", Some(&group));
+        *self.ext.group.borrow_mut() = Some(group.clone());
         self.struct_install();
 
-        if let Some(m) = find_menu(self, "Tools") {
-            extend_tools_menu(&m);
-        }
         if let Some(m) = find_menu(self, "Files") {
             files_extra::extend_files_menu(&m);
         }
-        self.install_book_menu();
         self.install_tab_menu();
         self.install_shortcuts();
+        self.refresh_revert_actions();
         self.apply_wrap(prefs.wrap_lines);
         let t = tx.clone();
         glib::timeout_add_local_once(std::time::Duration::from_millis(250), move || {
             t.emit(Input::Ext(Cmd::Win("restore-state".into())));
         });
-    }
-
-    fn install_book_menu(&self) {
-        let btn = gtk::MenuButton::new();
-        btn.set_icon_name("open-menu-symbolic");
-        btn.set_tooltip_text(Some(
-            "Book: save a copy, open another book, revert, tabs, help",
-        ));
-        crate::ui::audit::label(&btn, &tr("Book menu"));
-        btn.set_menu_model(Some(&book_menu()));
-        if let Some(header) = self
-            .w
-            .title
-            .ancestor(adw::HeaderBar::static_type())
-            .and_downcast::<adw::HeaderBar>()
-        {
-            header.pack_start(&btn);
-        }
     }
 
     fn install_tab_menu(&self) {
@@ -211,7 +227,7 @@ impl Editor {
                 ));
             }
         };
-        add("<Control><Alt>s", "save-copy");
+        add("<Control><Shift>s", "save-copy");
         add("<Control><Alt><Shift>s", "save-copy-edit");
         add("<Control>o", "open-book");
         add("<Control><Alt>z", "undo-checkpoint");
@@ -241,12 +257,6 @@ impl Editor {
                 p.save();
             }
             self.apply_wrap(on);
-            return;
-        }
-        if let Some(on) = id.strip_prefix("restore:") {
-            let mut p = self.ext.prefs.borrow_mut();
-            p.restore_state = on == "true";
-            p.save();
             return;
         }
         if let Some(rest) = id.strip_prefix("open-book:") {
@@ -435,6 +445,7 @@ impl Editor {
         self.structure_dirty = false;
         self.refresh_restore_menu();
         self.update_title();
+        self.w.banner.set_revealed(false);
         // after the selection changes the rebuilt list has queued
         self.sender
             .input(Input::Ext(Cmd::Win("restore-state".into())));
@@ -610,6 +621,19 @@ impl Editor {
             .collect()
     }
 
+    /// Greys out the two revert items while there is nothing to revert or redo.
+    pub(super) fn refresh_revert_actions(&self) {
+        let (undo, redo) =
+            editor_state::revert_enabled(&self.checkpoint_names(), &self.ext.redo.borrow());
+        if let Some(g) = self.ext.group.borrow().as_ref() {
+            for (id, on) in [("undo-checkpoint", undo), ("redo-checkpoint", redo)] {
+                if let Some(a) = g.lookup_action(id).and_downcast::<gio::SimpleAction>() {
+                    a.set_enabled(on);
+                }
+            }
+        }
+    }
+
     pub(super) fn revert_before(&mut self) {
         self.flush();
         let Some(target) = editor_state::undo_target(&self.checkpoint_names()) else {
@@ -634,7 +658,11 @@ impl Editor {
                 self.ext.redo.borrow_mut().push(redo);
                 self.after_archive_changed();
                 self.refresh_restore_menu();
-                self.toast(&trf("Reverted to before “{}”", &[&label]));
+                let _ = self.toast_button(
+                    &trf("Reverted to before “{}”", &[&label]),
+                    &tr("Redo"),
+                    || Input::Ext(Cmd::Win("redo-checkpoint".into())),
+                );
             }
             Err(e) => {
                 let _ = self.checkpoints.delete(redo);
@@ -663,7 +691,9 @@ impl Editor {
                 self.ext.redo.borrow_mut().pop();
                 self.after_archive_changed();
                 self.refresh_restore_menu();
-                self.toast(&tr("Reverted to after the change"));
+                let _ = self.toast_button(&tr("Reverted to after the change"), &tr("Undo"), || {
+                    Input::Ext(Cmd::Win("undo-checkpoint".into()))
+                });
             }
             Err(e) => self.toast(&trf("Could not redo: {}", &[&e])),
         }
@@ -804,5 +834,25 @@ impl Editor {
                 self.toast(&trf("“{}” is not in {}", &[&text, &file_name(&p)]));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod menu_tests {
+    use super::*;
+
+    #[test]
+    fn the_main_menu_stays_within_twelve_entries_and_ends_with_the_standard_group() {
+        let top = top_level_labels(book_menu().upcast_ref());
+        assert!(top.len() <= 12, "{top:?}");
+        assert_eq!(
+            top[top.len() - 4..],
+            ["Preferences", "Keyboard Shortcuts", "Help", "About Bookx"]
+        );
+        let mut sorted = top.clone();
+        sorted.sort();
+        sorted.dedup();
+        assert_eq!(sorted.len(), top.len(), "a label is repeated: {top:?}");
+        assert!(!top.iter().any(|l| l.starts_with("Close")));
     }
 }

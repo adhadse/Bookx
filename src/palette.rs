@@ -648,9 +648,9 @@ pub const EDITOR_COMMANDS: &[(&str, &str, &str, &str)] = &[
     ("preview", N_("Toggle Preview"), "", "live render"),
     (
         "beautify",
-        N_("Beautify File"),
+        N_("Reformat Markup"),
         "",
-        "format pretty indent reformat",
+        "beautify format pretty indent reformat",
     ),
     (
         "mark",

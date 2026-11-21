@@ -4,9 +4,19 @@ use super::*;
 use crate::i18n::{tr, trf};
 
 impl Editor {
+    /// The checkpoints the user can see: those whose deletion is not waiting on an Undo toast.
+    pub(super) fn visible_checkpoints(&self) -> Vec<bookx_editing::checkpoints::CheckpointInfo> {
+        crate::editor_state::without_hidden(
+            self.checkpoints.list(),
+            |c| c.id,
+            &self.pv.cp_hidden.borrow(),
+        )
+    }
+
     pub(super) fn refresh_restore_menu(&self) {
+        self.refresh_revert_actions();
         self.w.compare_menu.remove_all();
-        for c in self.checkpoints.list().iter().rev() {
+        for c in self.visible_checkpoints().iter().rev() {
             let item = gio::MenuItem::new(Some(&c.name), None);
             item.set_action_and_target_value(
                 Some("tools.compare"),
@@ -15,7 +25,7 @@ impl Editor {
             self.w.compare_menu.append_item(&item);
         }
         self.w.restore_menu.remove_all();
-        for c in self.checkpoints.list().iter().rev() {
+        for c in self.visible_checkpoints().iter().rev() {
             let when = chrono::DateTime::from_timestamp(c.created, 0)
                 .map(|d| {
                     d.with_timezone(&chrono::Local)
@@ -118,10 +128,7 @@ impl Editor {
                     if !rows.is_empty() {
                         self.show_results(&o.summary, rows);
                     }
-                    self.toast(&trf(
-                        "{} — save to keep your changes, or restore the checkpoint to undo",
-                        &[&o.summary],
-                    ));
+                    self.toast_undo(&o.summary, snapshot);
                 } else {
                     // nothing changed: the snapshot is not needed
                     let _ = self.checkpoints.delete(snapshot);
@@ -223,10 +230,38 @@ impl Editor {
         self.toast(&title);
     }
 
+    /// The Undo button of a toast: restores the checkpoint taken before the operation and removes it, so the
+    /// history looks as if the operation never ran.
+    pub(super) fn undo_snapshot(&mut self, id: u64) {
+        let names: Vec<(u64, String)> = self
+            .checkpoints
+            .list()
+            .into_iter()
+            .map(|c| (c.id, c.name))
+            .collect();
+        if !crate::editor_state::snapshot_exists(&names, id) {
+            self.toast(&tr("Nothing to undo"));
+            return;
+        }
+        self.flush();
+        let res = self
+            .checkpoints
+            .restore_into(id, &mut self.book.borrow_mut().archive);
+        match res {
+            Ok(()) => {
+                let _ = self.checkpoints.delete(id);
+                self.after_archive_changed();
+                self.refresh_restore_menu();
+                self.toast(&tr("Undone"));
+            }
+            Err(e) => self.toast(&trf("Could not undo: {}", &[&e])),
+        }
+    }
+
     pub(super) fn restore_checkpoint(&mut self, id: u64) {
         self.flush();
         // the state before restoring is kept too, so a restore can be undone
-        self.create_checkpoint("Before: Restore Checkpoint");
+        let before = self.create_checkpoint("Before: Restore Checkpoint");
         let name = self
             .checkpoints
             .list()
@@ -240,7 +275,7 @@ impl Editor {
         match res {
             Ok(()) => {
                 self.after_archive_changed();
-                self.toast(&trf("Restored “{}”", &[&name]));
+                self.toast_undo(&trf("Restored “{}”", &[&name]), before);
             }
             Err(e) => self.toast(&trf("Could not restore: {}", &[&e])),
         }
@@ -299,6 +334,7 @@ impl Editor {
             row.set_title_lines(1);
             self.w.results.append(&row);
         }
+        self.w.problems.root.set_reveal_child(false);
         self.w.results_rev.set_reveal_child(true);
     }
 

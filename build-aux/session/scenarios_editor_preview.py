@@ -45,7 +45,7 @@ def editor_split_at_cursor(c):
     c.start()
     if not c.check("Edit Book opens the editor window", open_editor(c)):
         return
-    rows = [n for n in c.find(None, rx=r"^404022732.*htm\.xhtml") if n.showing]
+    rows = [n for n in c.find(None, rx=r"^(\.\.\.|…)\d+\.htm\.xhtml") if n.showing]
     if c.check("the Files list shows chapters", len(rows) > 3):
         c.click_node(rows[3])
         time.sleep(1.5)
@@ -56,7 +56,7 @@ def editor_split_at_cursor(c):
         c.sb.key("Down")
     time.sleep(0.5)
     c.note(f"caret at {status_line(c)}")
-    btn = [n for n in c.find("toggle button") + c.find("button") if n.name.startswith("Markup:")]
+    btn = [n for n in c.find("toggle button") + c.find("button") if n.name.startswith("Markup")]
     if not c.check("the Markup menu button exists", btn):
         return
     c.click_node(btn[0])
@@ -87,7 +87,7 @@ def editor_split_at_cursor(c):
 def markup_menu_pages(c, size):
     """Opens the Markup menu and each of its submenus; returns [(page, rows, lowest row bottom)] and the window box."""
     out = []
-    btn = [n for n in c.find("toggle button") + c.find("button") if n.name.startswith("Markup:")]
+    btn = [n for n in c.find("toggle button") + c.find("button") if n.name.startswith("Markup")]
     if not btn:
         return out, None
     fr = frame_box(c)
@@ -152,7 +152,7 @@ def editor_scroll_sync_wheel(c):
     c.start()
     if not c.check("Edit Book… opens the editor window", open_editor(c)):
         return
-    rows = [n for n in c.find(None, rx=r"^404022732.*htm\.xhtml") if n.showing]
+    rows = [n for n in c.find(None, rx=r"^(\.\.\.|…)\d+\.htm\.xhtml") if n.showing]
     if c.check("the Files list shows chapters", len(rows) > 3):
         c.click_node(rows[3])
         time.sleep(2)

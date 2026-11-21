@@ -116,6 +116,44 @@ pub fn group(title: &str) -> adw::PreferencesGroup {
     g
 }
 
+/// Puts `content` into `dialog` inside a toast overlay, so [`toast_in_dialog`] has somewhere to show (a toast of
+/// the window would sit behind the dialog).
+pub fn set_dialog_content(dialog: &adw::Dialog, content: &impl IsA<gtk::Widget>) {
+    let toasts = adw::ToastOverlay::new();
+    toasts.set_child(Some(content));
+    dialog.set_child(Some(&toasts));
+}
+
+/// A toast on top of `dialog` (a plain text, markup off). Does nothing for a dialog that was not filled with
+/// [`set_dialog_content`].
+pub fn toast_in_dialog(dialog: &adw::Dialog, text: &str) {
+    if let Some(t) = dialog.child().and_downcast::<adw::ToastOverlay>() {
+        let toast = adw::Toast::new(text);
+        toast.set_use_markup(false);
+        toast.set_priority(adw::ToastPriority::High);
+        t.add_toast(toast);
+    }
+}
+
+/// The placeholder row of an empty rule list: what to do, and a button that moves to the form below the list.
+pub fn empty_rules_row(list: &gtk::ListBox) -> adw::ActionRow {
+    let row = adw::ActionRow::new();
+    row.set_title(&tr("No Rules Yet"));
+    row.set_subtitle(&tr("Add a rule, or load a saved set"));
+    row.set_activatable(false);
+    let go = gtk::Button::with_label(&tr("Add a Rule"));
+    go.set_valign(gtk::Align::Center);
+    go.set_widget_name("rules-add-first");
+    let list = list.clone();
+    go.connect_clicked(move |_| {
+        if let Some(form) = list.parent().and_then(|p| p.next_sibling()) {
+            form.child_focus(gtk::DirectionType::TabForward);
+        }
+    });
+    row.add_suffix(&go);
+    row
+}
+
 /// A scrolling list of rows with a height limit.
 pub fn scrolled(child: &impl IsA<gtk::Widget>, height: i32) -> gtk::ScrolledWindow {
     let s = gtk::ScrolledWindow::new();
@@ -140,66 +178,148 @@ pub fn menu_item(label: &str, action: &str, target: &str) -> gio::MenuItem {
     it
 }
 
-/// The tools of the dialogs, grouped for the Tools menu: (submenu title, [(label, id)]).
-pub const TOOL_GROUPS: &[(&str, &[(&str, &str)])] = &[
+/// One entry of a Tools submenu.
+#[derive(Clone, Copy)]
+pub enum Item {
+    /// A tool with a dialog (`ext.tool`, id).
+    Dialog(&'static str, &'static str),
+    /// A one-click tool of `editor_tools`.
+    One(Tool),
+    /// A plain action of the `tools` group.
+    Act(&'static str, &'static str),
+}
+
+/// The submenus of the Tools menu, in order: (title, sections of entries). Every capability appears once, under
+/// one name (EDT-E4); the top level of the menu is these submenus plus the entries around them.
+pub const TOOL_SUBMENUS: &[(&str, &[&[Item]])] = &[
     (
-        N_("Text"),
+        N_("Fix & Clean"),
         &[
-            (N_("Smarten Punctuation"), "smarten"),
-            (N_("Fix HTML"), "fix-html"),
-            (N_("Beautify"), "beautify"),
+            &[
+                Item::Act(N_("Reformat Markup"), "tools.reformat"),
+                Item::Dialog(N_("Reformat Markup in Files"), "beautify"),
+            ],
+            &[
+                Item::Dialog(N_("Smarten Punctuation"), "smarten"),
+                Item::Dialog(N_("Fix HTML"), "fix-html"),
+                Item::One(Tool::UpgradeToEpub3),
+            ],
         ],
     ),
     (
         N_("Styles"),
-        &[
-            (N_("Transform Styles"), "styles"),
-            (N_("Transform HTML"), "transform-html"),
-            (N_("Remove Unused CSS Rules"), "unused-css"),
-            (N_("Filter Style Information"), "filter"),
-        ],
+        &[&[
+            Item::Dialog(N_("Transform Styles"), "styles"),
+            Item::Dialog(N_("Transform HTML"), "transform-html"),
+            Item::Dialog(N_("Remove Unused CSS Rules"), "unused-css"),
+            Item::Dialog(N_("Filter Style Information"), "filter"),
+        ]],
     ),
     (
         N_("Media and Fonts"),
         &[
-            (N_("Delete Unused Media"), "unused-media"),
-            (N_("Manage Fonts"), "fonts"),
-            (N_("Set Cover"), "cover"),
-            (N_("Embed Referenced Fonts"), "embed-fonts"),
-            (N_("Download External Resources"), "download"),
+            &[
+                Item::Dialog(N_("Delete Unused Media"), "unused-media"),
+                Item::One(Tool::CompressImages),
+                Item::Dialog(N_("Set Cover"), "cover"),
+                Item::Dialog(N_("Download External Resources"), "download"),
+            ],
+            &[
+                Item::Dialog(N_("Manage Fonts"), "fonts"),
+                Item::Dialog(N_("Embed Referenced Fonts"), "embed-fonts"),
+                Item::One(Tool::SubsetFonts),
+            ],
         ],
     ),
     (
-        N_("Structure and Accessibility"),
+        N_("Structure"),
         &[
-            (N_("Set Semantics"), "semantics"),
-            (N_("Accessibility"), "accessibility"),
-            (N_("Accessibility Metadata"), "a11y-form"),
-            (N_("Book Jacket"), "jacket"),
+            &[
+                Item::Act(N_("Split File at Chapter Headings"), "tools.split"),
+                Item::Act(N_("Merge with Next File"), "tools.merge"),
+                Item::One(Tool::ArrangeFiles),
+            ],
+            &[
+                Item::One(Tool::AddInlineToc),
+                Item::One(Tool::RemoveInlineToc),
+                Item::Dialog(N_("Set Semantics"), "semantics"),
+                Item::Dialog(N_("Book Jacket"), "jacket"),
+            ],
         ],
+    ),
+    (
+        N_("Accessibility"),
+        &[&[
+            Item::One(Tool::MakeAccessible),
+            Item::Dialog(N_("Check Accessibility"), "accessibility"),
+            Item::Dialog(N_("Accessibility Metadata"), "a11y-form"),
+        ]],
     ),
     (
         N_("Links"),
-        &[
-            (N_("Check External Links"), "check-links"),
-            (N_("Repair Broken Links"), "repair-links"),
-            (N_("Move Files to a Folder"), "move-files"),
-        ],
+        &[&[
+            Item::Dialog(N_("Check External Links"), "check-links"),
+            Item::Dialog(N_("Repair Broken Links"), "repair-links"),
+            Item::Dialog(N_("Move Files to a Folder"), "move-files"),
+        ]],
     ),
 ];
 
-/// Adds the grouped tool submenus to the Tools menu.
-pub fn extend_tools_menu(menu: &gio::Menu) {
-    let sec = gio::Menu::new();
-    for (title, items) in TOOL_GROUPS {
-        let sub = gio::Menu::new();
-        for (label, id) in *items {
-            sub.append_item(&menu_item(&tr(label), "ext.tool", id));
+fn tool_item(it: Item) -> gio::MenuItem {
+    match it {
+        Item::Dialog(label, id) => menu_item(&tr(label), "ext.tool", id),
+        Item::One(t) => menu_item(&tr(t.label()), "tools.run", t.id()),
+        Item::Act(label, action) => {
+            let m = gio::MenuItem::new(Some(&tr(label)), None);
+            m.set_action_and_target_value(Some(action), None);
+            m
         }
-        sec.append_submenu(Some(&tr(title)), &sub);
     }
-    // after the one-click tools, before reports and checkpoints
-    menu.insert_section(1, Some("Dialogs"), &sec);
+}
+
+/// The Tools menu: Check Book and Fix Problems, the submenus of [`TOOL_SUBMENUS`], Check Spelling and Reports,
+/// then Checkpoints and Plugins. At most 12 top-level entries.
+pub fn build_tools_menu(
+    restore: &gio::Menu,
+    compare: &gio::Menu,
+    plugins: Option<&gio::Menu>,
+) -> (gio::Menu, gio::Menu) {
+    let menu = gio::Menu::new();
+    let first = gio::Menu::new();
+    first.append(Some(&tr("Check Book")), Some("tools.check"));
+    first.append_item(&tool_item(Item::One(Tool::FixProblems)));
+    menu.append_section(None, &first);
+    let subs = gio::Menu::new();
+    for (title, sections) in TOOL_SUBMENUS {
+        let sub = gio::Menu::new();
+        for items in *sections {
+            let sec = gio::Menu::new();
+            for it in *items {
+                sec.append_item(&tool_item(*it));
+            }
+            sub.append_section(None, &sec);
+        }
+        if *title == N_("Media and Fonts") {
+            sub.append_section(None, &narration::menu_section());
+        }
+        subs.append_submenu(Some(&tr(title)), &sub);
+    }
+    menu.append_section(None, &subs);
+    let info = gio::Menu::new();
+    info.append(Some(&tr("Check Spelling")), Some("tools.spelling"));
+    info.append(Some(&tr("Reports")), Some("tools.report"));
+    menu.append_section(None, &info);
+    let last = gio::Menu::new();
+    let cp = gio::Menu::new();
+    cp.append(Some(&tr("Create Checkpoint")), Some("tools.checkpoint"));
+    cp.append_submenu(Some(&tr("Restore Checkpoint")), restore);
+    cp.append_submenu(Some(&tr("Compare with Checkpoint")), compare);
+    last.append_submenu(Some(&tr("Checkpoints")), &cp);
+    if let Some(p) = plugins {
+        last.append_submenu(Some(&tr("Plugins")), p);
+    }
+    menu.append_section(None, &last);
+    (menu, cp)
 }
 
 pub fn actions(tx: &relm4::Sender<Input>) -> gio::SimpleActionGroup {
@@ -284,13 +404,28 @@ impl Editor {
         body.set_margin_bottom(12);
         body.set_margin_start(16);
         body.set_margin_end(16);
-        let intro = gtk::Label::new(Some(&tr(&spec.intro)));
+        let (first, rest) = editor_tools::split_intro(&tr(&spec.intro));
+        let intro = gtk::Label::new(Some(&first));
         intro.set_wrap(true);
         intro.set_xalign(0.0);
         intro.add_css_class("dim-label");
         body.append(&intro);
         if let Some(o) = &options {
+            match (rest.is_empty(), o.downcast_ref::<adw::PreferencesGroup>()) {
+                (true, _) => {}
+                (false, Some(g)) => g.set_description(Some(&glib::markup_escape_text(&rest))),
+                (false, None) => {
+                    let more = gtk::Label::new(Some(&rest));
+                    more.set_wrap(true);
+                    more.set_xalign(0.0);
+                    more.add_css_class("dim-label");
+                    more.add_css_class("caption");
+                    body.append(&more);
+                }
+            }
             body.append(o);
+        } else if !rest.is_empty() {
+            intro.set_label(&format!("{first} {rest}"));
         }
         let pg = group(&tr("What will change"));
         let preview = gtk::Label::new(Some(&tr("Press Preview to see what this would do.")));
@@ -304,7 +439,12 @@ impl Editor {
         card.add_css_class("card");
         card.append(&preview);
         pg.add(&card);
-        body.append(&pg);
+        // the card stays folded until Preview (or the tool's own button) is pressed
+        let pg_rev = gtk::Revealer::new();
+        pg_rev.set_widget_name("tool-change-card");
+        pg_rev.set_child(Some(&pg));
+        pg_rev.set_reveal_child(spec.auto_preview);
+        body.append(&pg_rev);
         let scroll = gtk::ScrolledWindow::new();
         scroll.set_vexpand(true);
         scroll.set_child(Some(&body));
@@ -352,7 +492,15 @@ impl Editor {
         };
         {
             let p = do_preview.clone();
-            preview_btn.connect_clicked(move |_| p());
+            let rev = pg_rev.clone();
+            preview_btn.connect_clicked(move |_| {
+                rev.set_reveal_child(true);
+                p()
+            });
+        }
+        {
+            let rev = pg_rev.clone();
+            apply.connect_clicked(move |_| rev.set_reveal_child(true));
         }
         match custom_apply {
             Some(custom) => {
@@ -526,16 +674,16 @@ impl Editor {
                 vec![cur.clone().ok_or("Open a file first")?]
             };
             Ok((
-                "Beautify".to_string(),
+                "Reformat Markup".to_string(),
                 Rc::new(move |b: &mut OpenBook, _: Option<&str>| editor_tools::beautify(b, &paths))
                     as Op,
             ))
         });
         self.tool_dialog(
             Spec::new(
-                crate::i18n::N_("Beautify"),
+                crate::i18n::N_("Reformat Markup in Files"),
                 crate::i18n::N_("Tidies the layout of the files. Only the white space between block-level tags changes, so the pages look exactly the same."),
-                crate::i18n::N_("Beautify"),
+                crate::i18n::N_("Reformat"),
             ),
             Some(g.upcast()),
             make,
@@ -1069,9 +1217,9 @@ impl Editor {
         } else {
             let s = adw::StatusPage::new();
             s.set_title(&tr("Needs EPUB 3"));
-            s.set_description(Some(
+            s.set_description(Some(&tr(
                 "Accessibility metadata is part of EPUB 3. Use Tools → Upgrade to EPUB 3 first.",
-            ));
+            )));
             s.set_icon_name(Some("dialog-information-symbolic"));
             mp.append(&s);
         }
@@ -1130,7 +1278,7 @@ impl Editor {
                 meta: new_meta.filter(|m| *m != orig_meta),
             };
             Ok((
-                "Accessibility".to_string(),
+                "Check Accessibility".to_string(),
                 Rc::new(move |b: &mut OpenBook, _: Option<&str>| {
                     editor_tools::accessibility(b, &edits)
                 }) as Op,
@@ -1140,7 +1288,7 @@ impl Editor {
             Spec {
                 height: 700,
                 ..Spec::new(
-                    crate::i18n::N_("Accessibility"),
+                    crate::i18n::N_("Check Accessibility"),
                     crate::i18n::N_("Language, image descriptions and the accessibility metadata that stores and shops show."),
                     crate::i18n::N_("Apply"),
                 )
@@ -1253,6 +1401,25 @@ impl Editor {
             Rc::new(move |ui: &ToolUi| {
                 ui.apply.set_sensitive(false);
                 ui.preview.set_text(&trf("Checking 0 of {}…", &[&n]));
+                let progress = gtk::ProgressBar::new();
+                progress.set_widget_name("links-progress");
+                progress.set_margin_all(12);
+                crate::ui::audit::label(&progress, &tr("Progress of the link check"));
+                if let Some(card) = ui.preview.parent().and_downcast::<gtk::Box>() {
+                    card.append(&progress);
+                }
+                let stop = gtk::Button::with_label(&tr("Cancel"));
+                stop.set_widget_name("links-cancel");
+                if let Some(bar) = ui.apply.parent().and_downcast::<gtk::Box>() {
+                    bar.insert_child_after(&stop, None::<&gtk::Widget>);
+                }
+                {
+                    let c = cancel.clone();
+                    stop.connect_clicked(move |b| {
+                        c.store(true, Ordering::Relaxed);
+                        b.set_sensitive(false);
+                    });
+                }
                 let (tx, rx) = mpsc::channel::<Result<(usize, usize), Vec<(String, LinkStatus)>>>();
                 let urls = urls.clone();
                 let c = cancel.clone();
@@ -1277,10 +1444,16 @@ impl Editor {
                 let dialog = ui.dialog.clone();
                 let tx_ui = tx_ui.clone();
                 let book = book.clone();
+                let (progress, stop) = (progress.clone(), stop.clone());
                 glib::timeout_add_local(std::time::Duration::from_millis(80), move || loop {
                     match rx.try_recv() {
-                        Ok(Ok((d, t))) => label.set_text(&trf("Checking {} of {}…", &[&d, &t])),
+                        Ok(Ok((d, t))) => {
+                            label.set_text(&trf("Checking {} of {}…", &[&d, &t]));
+                            progress.set_fraction(if t == 0 { 0.0 } else { d as f64 / t as f64 });
+                        }
                         Ok(Err(done)) => {
+                            progress.set_visible(false);
+                            stop.set_visible(false);
                             let checker = editor_tools::Gathered(done.iter().cloned().collect());
                             let res = links::check_external_links(&book.borrow(), &checker);
                             let (broken, ok, lines) = editor_tools::link_report(&res);
@@ -1435,5 +1608,70 @@ impl Editor {
         self.result_kind = ResultKind::Check;
         self.show_results(&title, rows);
         self.toast(&title);
+    }
+}
+
+#[cfg(test)]
+mod menu_tests {
+    use super::*;
+
+    fn labels(m: &gio::MenuModel, out: &mut Vec<String>) {
+        for i in 0..m.n_items() {
+            if let Some(v) = m.item_attribute_value(i, "label", Some(glib::VariantTy::STRING)) {
+                out.push(v.str().unwrap_or_default().to_string());
+            }
+            for link in ["section", "submenu"] {
+                if let Some(s) = m.item_link(i, link) {
+                    labels(&s, out);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_tools_menu_has_at_most_twelve_top_level_entries_and_no_repeated_label() {
+        let plugins = gio::Menu::new();
+        plugins.append(Some("A plugin"), Some("tools.run"));
+        let (menu, _) = build_tools_menu(&gio::Menu::new(), &gio::Menu::new(), Some(&plugins));
+        let top = super::super::window_features::top_level_labels(menu.upcast_ref());
+        assert!(top.len() <= 12, "{top:?}");
+        let mut all = Vec::new();
+        labels(menu.upcast_ref(), &mut all);
+        let mut seen = std::collections::HashSet::new();
+        for l in &all {
+            assert!(seen.insert(l.clone()), "{l} appears twice");
+            assert!(!l.ends_with("(plugin)"));
+        }
+        assert!(top.contains(&"Check Book".to_string()));
+    }
+
+    #[test]
+    fn every_tool_dialog_is_reachable_from_the_menu_once() {
+        let ids: Vec<&str> = TOOL_SUBMENUS
+            .iter()
+            .flat_map(|(_, secs)| secs.iter().flat_map(|s| s.iter()))
+            .filter_map(|i| match i {
+                Item::Dialog(_, id) => Some(*id),
+                _ => None,
+            })
+            .collect();
+        for id in [
+            "smarten",
+            "fix-html",
+            "beautify",
+            "styles",
+            "unused-css",
+            "filter",
+            "unused-media",
+            "embed-fonts",
+            "download",
+            "semantics",
+            "accessibility",
+            "check-links",
+            "repair-links",
+            "move-files",
+        ] {
+            assert_eq!(ids.iter().filter(|i| **i == id).count(), 1, "{id}");
+        }
     }
 }

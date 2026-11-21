@@ -16,31 +16,34 @@ become part of that conversation. Use a local model if that matters to you.
 | How it works | The assistant starts `bookx-cli mcp` itself | Bookx runs a small local server while it is open |
 | Bookx has to be open | No | Yes |
 | Can change the library | Only with `--allow-write`, and not while Bookx is open | If you switch it on in Preferences |
-| Where to set it up | Your assistant's configuration | Preferences → AI Assistants (MCP) |
+| Where to set it up | Your assistant's configuration | Preferences → AI Assistants |
 
 The **command** way is the simplest: it is read-only and works whether Bookx is open or not.
 
 ## Setting up from Preferences
 
 <figure markdown="1">
-![Preferences, AI Assistants (MCP)](assets/preferences-mcp-light.png#only-light)
-![Preferences, AI Assistants (MCP)](assets/preferences-mcp-dark.png#only-dark)
+![Preferences, AI Assistants](assets/preferences-mcp-light.png#only-light)
+![Preferences, AI Assistants](assets/preferences-mcp-dark.png#only-dark)
 <figcaption markdown="1">Preferences → AI Assistants: the switch, the port, the token and the write permission.</figcaption>
 </figure>
 
 
-Open **Preferences → AI Assistants (MCP)**.
+Open **Preferences → AI Assistants**.
 
 1. **Server inside Bookx** (off by default). Switch on *Let AI assistants connect* to start a server on
-   this computer. It listens on `127.0.0.1` only, on the port shown (8765 unless you change it), and every
-   request needs the **access token**.
+   this computer. It listens on `127.0.0.1` only, on the port shown (8765 unless you change it; the port cannot be
+   changed while the server runs, stop it first), and every request needs the **access token**. The address can be
+   copied once the server runs.
 2. **Access token.** Bookx makes a random token the first time and keeps it in the system keyring (the
    page says so; without a keyring it is kept in Bookx's settings file). *Copy* puts it on the clipboard,
-   *Make a new token* replaces it (the server restarts; update your assistants).
-3. **Allow changes to my library** (off by default). See [What assistants can change](#what-assistants-can-change).
+   *Make a new token* asks first, because every assistant that has the old token stops working until you paste the new
+   settings into it; then it replaces the token (the server restarts) and says *New token made*.
+3. **Allow changes to the library** (off by default). See [What assistants can change](#what-assistants-can-change).
 4. **Connect an assistant.** For Claude Desktop, Claude Code, Cursor and opencode there are two buttons:
    *Command* copies the configuration that starts `bookx-cli`, *Server* copies the configuration for the
-   server inside Bookx, token included. Paste it where the assistant keeps its MCP settings.
+   server inside Bookx, token included. Paste it where the assistant keeps its MCP settings; Bookx confirms with
+   *Copied the Claude Code command setting* (or *server setting*).
 5. **Connected assistants** shows which assistants talked to Bookx recently and how often.
 
 ### Claude Code

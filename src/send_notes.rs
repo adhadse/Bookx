@@ -221,7 +221,7 @@ pub fn koreader_sidecar(title: &str, chapters: &[String], notes: &Notes) -> Stri
         note: String,
         when: String,
         /// KOReader's `color` and `drawer` words; none for a bookmark.
-        look: Option<(String, &'static str)>,
+        look: Option<(String, String)>,
     }
     let fmt = |d: &chrono::DateTime<chrono::Utc>| d.format("%Y-%m-%d %H:%M:%S").to_string();
     let mut entries: Vec<Entry> = Vec::new();

@@ -6,7 +6,7 @@
 use std::collections::BTreeSet;
 
 use crate::editor_structure as es;
-use crate::i18n::tr;
+use crate::i18n::{tr, trf};
 use bookx_editing::a11y_meta::{self, A11yForm, Severity};
 use bookx_editing::book_tools::{AccessMeta, ACCESS_FEATURES, ACCESS_HAZARDS, ACCESS_MODES};
 
@@ -38,6 +38,142 @@ fn checks(
         cs.push((v.to_string(), c));
     }
     (ex, cs)
+}
+
+/// The sufficient modes as check boxes: one block of four rows per set of modes that is enough to read the book
+/// ("textual", or "textual and visual"), plus a button for one more set. The text entry stays the value; toggling a
+/// box rewrites it, and typing in it redraws the boxes.
+struct SufficientSets {
+    expander: adw::ExpanderRow,
+}
+
+impl SufficientSets {
+    fn new(entry: &adw::EntryRow, changed: &Rc<dyn Fn()>) -> SufficientSets {
+        let expander = adw::ExpanderRow::new();
+        expander.set_title(&tr("Sufficient modes"));
+        expander.set_subtitle(&tr("Ways to read the whole book: one set of modes each"));
+        expander.set_expanded(true);
+        let rows: Rc<RefCell<Vec<adw::ActionRow>>> = Rc::default();
+        let sets: Rc<RefCell<Vec<Vec<(String, gtk::CheckButton)>>>> = Rc::default();
+        let guard = Rc::new(Cell::new(false));
+        let add = gtk::Button::with_label(&tr("Add Alternative Set"));
+        add.set_valign(gtk::Align::Center);
+        let add_row = adw::ActionRow::new();
+        add_row.set_title(&tr("Another way to read the book"));
+        add_row.add_suffix(&add);
+        expander.add_row(&add_row);
+
+        // writes the boxes back into the entry
+        let write_back: Rc<dyn Fn()> = {
+            let (sets, entry, guard, changed) =
+                (sets.clone(), entry.clone(), guard.clone(), changed.clone());
+            Rc::new(move || {
+                let all: Vec<BTreeSet<String>> = sets
+                    .borrow()
+                    .iter()
+                    .map(|set| {
+                        set.iter()
+                            .filter(|(_, c)| c.is_active())
+                            .map(|(m, _)| m.clone())
+                            .collect()
+                    })
+                    .collect();
+                guard.set(true);
+                entry.set_text(&a11y_meta::sufficient_from_sets(&all).join("; "));
+                guard.set(false);
+                changed();
+            })
+        };
+        let add_set: Rc<dyn Fn(&BTreeSet<String>)> = {
+            let (expander, rows, sets, add_row, write_back) = (
+                expander.clone(),
+                rows.clone(),
+                sets.clone(),
+                add_row.clone(),
+                write_back.clone(),
+            );
+            Rc::new(move |on: &BTreeSet<String>| {
+                let n = sets.borrow().len() + 1;
+                let head = adw::ActionRow::new();
+                head.set_title(&trf("Set {}", &[&n]));
+                head.add_css_class("heading");
+                expander.add_row(&head);
+                rows.borrow_mut().push(head);
+                let mut set = Vec::new();
+                for m in ACCESS_MODES {
+                    let r = adw::ActionRow::new();
+                    r.set_title(&mode_label(m));
+                    let c = gtk::CheckButton::new();
+                    c.set_active(on.contains(*m));
+                    c.set_widget_name(&format!("suff-{n}-{m}"));
+                    crate::ui::audit::label(&c, &trf("Set {}: {}", &[&n, &mode_label(m)]));
+                    r.add_prefix(&c);
+                    r.set_activatable_widget(Some(&c));
+                    let wb = write_back.clone();
+                    c.connect_toggled(move |_| wb());
+                    expander.add_row(&r);
+                    rows.borrow_mut().push(r);
+                    set.push((m.to_string(), c));
+                }
+                sets.borrow_mut().push(set);
+                // the button row stays last
+                expander.remove(&add_row);
+                expander.add_row(&add_row);
+            })
+        };
+        let redraw: Rc<dyn Fn()> = {
+            let (expander, rows, sets, entry, add_set) = (
+                expander.clone(),
+                rows.clone(),
+                sets.clone(),
+                entry.clone(),
+                add_set.clone(),
+            );
+            Rc::new(move || {
+                for r in rows.borrow_mut().drain(..) {
+                    expander.remove(&r);
+                }
+                sets.borrow_mut().clear();
+                let values: Vec<String> = entry
+                    .text()
+                    .split(';')
+                    .map(|s| s.trim().to_string())
+                    .collect();
+                let mut parsed = a11y_meta::parse_sufficient_sets(&values);
+                if parsed.is_empty() {
+                    parsed.push(BTreeSet::new());
+                }
+                for set in &parsed {
+                    add_set(set);
+                }
+            })
+        };
+        redraw();
+        {
+            let (redraw, guard) = (redraw.clone(), guard.clone());
+            entry.connect_changed(move |_| {
+                if !guard.get() {
+                    redraw();
+                }
+            });
+        }
+        {
+            let add_set = add_set.clone();
+            add.connect_clicked(move |_| add_set(&BTreeSet::new()));
+        }
+        SufficientSets { expander }
+    }
+}
+
+/// The names shown next to the check boxes.
+fn mode_label(mode: &str) -> String {
+    match mode {
+        "textual" => tr("Textual"),
+        "visual" => tr("Visual"),
+        "auditory" => tr("Auditory"),
+        "tactile" => tr("Tactile"),
+        other => other.to_string(),
+    }
 }
 
 struct Widgets {
@@ -206,9 +342,11 @@ impl Editor {
             .unwrap_or(0);
         let conforms = combo_row(&tr("Conforms to"), &refs, sel);
         let sufficient = entry_row(
-            &tr("Sufficient modes, sets separated by ; (for example textual; textual,visual)"),
+            &tr("Sufficient modes as text, sets separated by ; (for example textual; textual,visual)"),
             &form0.meta.sufficient_modes.join("; "),
         );
+        sufficient.set_widget_name("suff-entry");
+        let sets_ui = SufficientSets::new(&sufficient, &changed);
         let (modes_ex, modes) = checks(
             &tr("Access modes"),
             ACCESS_MODES,
@@ -309,9 +447,14 @@ impl Editor {
         g1.add(&preset_row);
         g1.add(&suggest_row);
         let g2 = group("");
+        let advanced = adw::ExpanderRow::new();
+        advanced.set_title(&tr("Advanced"));
+        advanced.set_subtitle(&tr("Edit the sufficient modes as text"));
+        advanced.add_row(&sufficient);
         for r in [
             summary.upcast_ref::<gtk::Widget>(),
-            sufficient.upcast_ref(),
+            sets_ui.expander.upcast_ref(),
+            advanced.upcast_ref(),
             conforms.upcast_ref(),
             modes_ex.upcast_ref(),
             feat_ex.upcast_ref(),

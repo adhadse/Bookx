@@ -585,6 +585,20 @@ pub fn parse_koreader_markdown(text: &str) -> Vec<Imported> {
     out
 }
 
+/// A colour or style word with the aliases of the devices folded together (the same table as
+/// `bookx_core::devstyle`, which this crate does not depend on).
+fn look_word(w: &str) -> String {
+    let w = w.trim().to_ascii_lowercase();
+    match w.as_str() {
+        "lighten" | "highlight" | "highlighted" => "background".into(),
+        "underscore" | "underlined" => "underline".into(),
+        "strikeout" | "strike" | "strikeout-through" => "strikethrough".into(),
+        "inverted" => "invert".into(),
+        "grey" => "gray".into(),
+        _ => w,
+    }
+}
+
 /// Removes repeats from a list of imported notes: the same quote (ignoring case, spacing and
 /// punctuation) of the same book is one entry; when one quote contains the other (12 characters or
 /// more), the longer wins, as when a Kindle highlight is extended and the old one stays in the file.
@@ -599,7 +613,10 @@ pub fn dedupe(items: Vec<Imported>) -> Vec<Imported> {
             }
             // the same words in another colour or style are another highlight
             let differ = |a: &Option<String>, b: &Option<String>| matches!((a, b), (Some(x), Some(y)) if !x.eq_ignore_ascii_case(y));
-            if differ(&o.color, &it.color) || differ(&o.style, &it.style) {
+            // the words of two sources for one look are the same look: KOReader's `lighten` and
+            // Bookx's `background`, `underscore` and `underline`, `grey` and `gray`
+            let differ_look = |a: &Option<String>, b: &Option<String>| matches!((a, b), (Some(x), Some(y)) if look_word(x) != look_word(y));
+            if differ_look(&o.color, &it.color) || differ_look(&o.style, &it.style) {
                 return false;
             }
             // the same words in two different chapters are two highlights (a word or term that is
@@ -681,6 +698,34 @@ mod tests {
         );
         let (t, a) = title_and_author("No Author Here");
         assert_eq!((t.as_str(), a), ("No Author Here", None));
+    }
+
+    /// Root cause R7: the same highlight from two sources (KOReader's `lighten`, Bookx's
+    /// `background`) was told apart by the spelling of its style and imported twice.
+    #[test]
+    fn the_same_look_in_two_spellings_is_one_highlight() {
+        let mk = |color: &str, style: &str| Imported {
+            book_title: "B".into(),
+            book_author: None,
+            text: "Some highlighted words that are long enough".into(),
+            note: String::new(),
+            location: None,
+            chapter: None,
+            created: None,
+            bookmark: false,
+            color: Some(color.into()),
+            style: Some(style.into()),
+        };
+        let out = dedupe(vec![
+            mk("grey", "lighten"),
+            mk("gray", "background"),
+            mk("gray", "underscore"),
+        ]);
+        assert_eq!(
+            out.len(),
+            2,
+            "lighten == background, underscore is another look"
+        );
     }
 
     #[test]

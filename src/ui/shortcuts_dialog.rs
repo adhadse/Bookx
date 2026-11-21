@@ -54,9 +54,10 @@ pub fn register() {
         "shortcuts",
         &tr("Keyboard Shortcuts"),
         "input-keyboard-symbolic",
-        120,
+        100,
     );
     register_group("shortcuts", 10, tools_group);
+    register_group("shortcuts", 15, share_group);
     for (i, g) in [
         Group::Application,
         Group::Library,
@@ -161,7 +162,34 @@ pub fn accel_of(key: gdk::Key, mods: gdk::ModifierType) -> Option<String> {
 
 // ---- the page ----
 
-fn tools_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
+fn share_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
+    let g = adw::PreferencesGroup::builder()
+        .title(tr("Share and Reset"))
+        .description(tr(
+            "Save your shortcuts to a file, load them from one, or go back to the defaults",
+        ))
+        .build();
+    let export = adw::ButtonRow::new();
+    export.set_title(&tr("Export Shortcuts"));
+    let import = adw::ButtonRow::new();
+    import.set_title(&tr("Import Shortcuts"));
+    let reset_all = adw::ButtonRow::new();
+    reset_all.set_title(&tr("Reset All Shortcuts"));
+    reset_all.add_css_class("destructive-action");
+    let parent = ctx.parent.clone();
+    {
+        let parent = parent.clone();
+        export.connect_activated(move |_| export_dialog(&parent));
+    }
+    import.connect_activated(move |_| import_dialog(&parent));
+    reset_all.connect_activated(|_| reset_all_now());
+    g.add(&export);
+    g.add(&import);
+    g.add(&reset_all);
+    g
+}
+
+fn tools_group(_ctx: &PrefCtx) -> adw::PreferencesGroup {
     let g = adw::PreferencesGroup::builder()
         .title(tr("Keyboard Shortcuts"))
         .description(tr(
@@ -177,30 +205,6 @@ fn tools_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     });
     g.add(&search);
 
-    let buttons = adw::ActionRow::builder().title(tr("Backup")).build();
-    let export = gtk::Button::with_label(&tr("Export"));
-    let import = gtk::Button::with_label(&tr("Import"));
-    let reset_all = gtk::Button::with_label(&tr("Reset All"));
-    reset_all.add_css_class("destructive-action");
-    for b in [&export, &import, &reset_all] {
-        b.set_valign(gtk::Align::Center);
-        buttons.add_suffix(b);
-    }
-    // a subtitle here is squeezed into a narrow column by the three buttons (German at 900 px): tooltip instead
-    buttons.set_tooltip_text(Some(&tr(
-        "Save your shortcuts to a file or load them from one",
-    )));
-    let parent = ctx.parent.clone();
-    {
-        let parent = parent.clone();
-        export.connect_clicked(move |_| export_dialog(&parent));
-    }
-    {
-        let parent = parent.clone();
-        import.connect_clicked(move |_| import_dialog(&parent));
-    }
-    reset_all.connect_clicked(|_| reset_all_now());
-    g.add(&buttons);
     ROWS.with(|r| r.borrow_mut().clear());
     g
 }
@@ -209,6 +213,11 @@ fn actions_group(ctx: &PrefCtx, group: Group) -> adw::PreferencesGroup {
     let g = adw::PreferencesGroup::builder()
         .title(group.label())
         .build();
+    if group == Group::Reader {
+        g.set_description(Some(&tr(
+            "Ctrl+D (bookmark) and Ctrl+L (Go to) work next to the older Ctrl+B and Ctrl+G. The letters that act on a selection (D, W, T, H, N, V) never act while you type in a field.",
+        )));
+    }
     let cur = shortcuts::current();
     for a in shortcuts::registry()
         .into_iter()
@@ -300,7 +309,7 @@ fn paint_row(
     row.set_subtitle(&if !custom {
         String::new()
     } else if default.is_empty() {
-        "Changed (no default)".to_string()
+        tr("Changed (no default)")
     } else {
         trf("Changed (default {})", &[&default])
     });
@@ -361,11 +370,19 @@ pub fn capture_dialog(parent: &gtk::Widget, action: &str) {
     let d = adw::AlertDialog::new(
         Some(&trf("Shortcut for “{}”", &[&title])),
         Some(&tr(
-            "Press the new keys. Esc cancels, Backspace removes the shortcut.",
+            "Press the new keys. Esc cancels, Backspace or Clear Shortcut removes the shortcut.",
         )),
     );
     d.add_response("cancel", &tr("Cancel"));
+    d.add_response("clear", &tr("Clear Shortcut"));
+    d.set_response_appearance("clear", adw::ResponseAppearance::Destructive);
     d.set_close_response("cancel");
+    {
+        let action = action.to_string();
+        d.connect_response(Some("clear"), move |_, _| {
+            shortcuts::update(|s| s.clear(&action));
+        });
+    }
     let keys = gtk::EventControllerKey::new();
     keys.set_propagation_phase(gtk::PropagationPhase::Capture);
     {
@@ -386,6 +403,10 @@ pub fn capture_dialog(parent: &gtk::Widget, action: &str) {
             let Some(accel) = accel_of(key, mods) else {
                 return glib::Propagation::Stop; // a modifier on its own: wait for the key
             };
+            if shortcuts::canonical(&accel).is_some_and(|c| needs_modifier(&action, &c)) {
+                warn_modifier();
+                return glib::Propagation::Stop; // the dialog stays open for another try
+            }
             d.close();
             request(&parent, &action, &accel);
             glib::Propagation::Stop
@@ -395,6 +416,21 @@ pub fn capture_dialog(parent: &gtk::Widget, action: &str) {
     d.present(Some(parent));
 }
 
+/// A plain letter or digit would stop you typing in search fields; only the reader may use one.
+fn needs_modifier(action: &str, accel: &str) -> bool {
+    let group = shortcuts::registry()
+        .into_iter()
+        .find(|a| a.action == action)
+        .map(|a| a.group);
+    group != Some(Group::Reader) && shortcuts::is_bare_text_key(accel)
+}
+
+fn warn_modifier() {
+    super::preferences::toast(&tr(
+        "Add Ctrl or Alt: a plain letter would stop you typing in search fields",
+    ));
+}
+
 /// Gives an action a key: binds it, or explains and offers to settle a conflict. This is what the
 /// dialog does after the key press, and what the dev hook `keys:press=` runs.
 pub fn request(parent: &gtk::Widget, action: &str, accel: &str) {
@@ -402,18 +438,9 @@ pub fn request(parent: &gtk::Widget, action: &str, accel: &str) {
         say("invalid");
         return;
     };
-    let group = shortcuts::registry()
-        .into_iter()
-        .find(|a| a.action == action)
-        .map(|a| a.group);
-    if group != Some(Group::Reader) && shortcuts::is_bare_text_key(&accel) {
+    if needs_modifier(action, &accel) {
         say("needs-modifier");
-        let d = adw::AlertDialog::new(
-            Some(&tr("Add Ctrl or Alt")),
-            Some(&tr("A plain letter or digit would stop you typing in search fields. Combine it with Ctrl or Alt.")),
-        );
-        d.add_response("ok", &tr("OK"));
-        d.present(Some(parent));
+        warn_modifier();
         return;
     }
     let result = shortcuts::update(|s| s.bind(action, &accel));
@@ -439,7 +466,6 @@ pub fn request(parent: &gtk::Widget, action: &str, accel: &str) {
             d.add_response("cancel", &tr("Cancel"));
             d.add_response("take", &tr("Take It Away"));
             d.add_response("swap", &tr("Swap"));
-            d.set_response_appearance("take", adw::ResponseAppearance::Destructive);
             d.set_response_appearance("swap", adw::ResponseAppearance::Suggested);
             d.set_default_response(Some("swap"));
             d.set_close_response("cancel");
@@ -484,8 +510,15 @@ fn say(what: &str) {
 }
 
 fn reset_all_now() {
+    let before = shortcuts::current();
     shortcuts::update(|s| s.reset_all());
     say("reset-all");
+    undo_toast(&tr("Shortcuts reset"), before);
+}
+
+/// A toast that puts the shortcuts back the way they were.
+fn undo_toast(text: &str, before: Shortcuts) {
+    super::preferences::toast_undo(text, 8, move || shortcuts::replace(before.clone()), || {});
 }
 
 // ---- export and import ----
@@ -523,14 +556,13 @@ fn export_dialog(parent: &gtk::Widget) {
         .initial_name("bookx-shortcuts.json")
         .build();
     let win = parent.root().and_downcast::<gtk::Window>();
-    let parent = parent.clone();
     dlg.save(win.as_ref(), gio::Cancellable::NONE, move |res| {
         if let Some(path) = res.ok().and_then(|f| f.path()) {
             let msg = match export_to(&path) {
                 Ok(()) => trf("Saved to {}.", &[&path.display()]),
                 Err(e) => trf("Could not save: {}", &[&e]),
             };
-            info(&parent, "Export Shortcuts", &msg);
+            super::preferences::toast(&msg);
         }
     });
 }
@@ -543,8 +575,15 @@ fn import_dialog(parent: &gtk::Widget) {
     let parent = parent.clone();
     dlg.open(win.as_ref(), gio::Cancellable::NONE, move |res| {
         if let Some(path) = res.ok().and_then(|f| f.path()) {
-            let msg = import_from(&path).unwrap_or_else(|e| trf("Not a shortcuts file: {}", &[&e]));
-            info(&parent, "Import Shortcuts", &msg);
+            let before = shortcuts::current();
+            match import_from(&path) {
+                Ok(msg) => undo_toast(&msg, before),
+                Err(e) => info(
+                    &parent,
+                    &tr("Import Shortcuts"),
+                    &trf("Not a shortcuts file: {}", &[&e]),
+                ),
+            }
         }
     });
 }
@@ -605,7 +644,21 @@ pub fn dev(cmd: &str) {
         }
         "clear" => shortcuts::update(|s| s.clear(arg)),
         "reset" => shortcuts::update(|s| s.reset(arg)),
-        "resetall" => reset_all_now(),
+        "resetall" => {
+            reset_all_now();
+            eprintln!(
+                "keys: resetall -> {} customised={}",
+                LAST.with(|l| l.borrow().clone()),
+                shortcuts::current().any_customised()
+            );
+        }
+        "undo" => {
+            let pressed = super::preferences::press_undo();
+            eprintln!(
+                "keys: undo pressed={pressed} customised={}",
+                shortcuts::current().any_customised()
+            );
+        }
         "export" => eprintln!(
             "keys: export {:?}",
             export_to(std::path::Path::new(arg)).is_ok()
@@ -647,6 +700,18 @@ mod tests {
         assert!(row_matches("next page", ""));
         assert!(!row_matches("next page", "next chapter"));
         assert!(row_matches("toggle bookmark ctrl+b", "CTRL+B"));
+    }
+
+    #[test]
+    fn a_snapshot_restores_the_shortcuts_after_reset_all() {
+        let mut s = Shortcuts::default();
+        assert!(s.bind("reader.reload", "<Control><Alt>j").is_ok());
+        let before = s.clone();
+        s.reset_all();
+        assert_ne!(s, before);
+        s = before.clone();
+        assert_eq!(s, before);
+        assert!(s.is_customised("reader.reload"));
     }
 
     #[test]

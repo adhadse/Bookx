@@ -28,8 +28,8 @@ scenario vocab_own_term_marked 'read:1,wait:2500,reader:select-text=functionalit
 
 scenario vocab_own_in_lookup 'read:1,wait:2500,reader:select-text=functionality,wait:500,reader:ui-dict,wait:900,reader:vocab-dump,reader:ui-vocab-def-btn,wait:800,reader:ui-vocab-dialog=def=A word I made up,reader:ui-vocab-dialog=save,wait:600,reader:select-text=functionality,wait:400,reader:ui-dict,wait:900,reader:vocab-dump,reader:ui-vocab-def-btn,wait:800,reader:ui-vocab-dialog=,reader:ui-vocab-dialog=def=An edited meaning,reader:ui-vocab-dialog=save,wait:600,reader:select-text=functionality,wait:400,reader:ui-dict,wait:700,reader:vocab-dump,quit' '
     F=$(grep "^vocab_def:" <<<"$OUT")
-    sed -n 1p <<<"$F" | grep -q "visible=true definition=\"\" note=\"\" button=\"Add my own definition\""; check "the look-up popover offers Add my own definition when you have none" $?
-    sed -n 2p <<<"$F" | grep -q "definition=\"A word I made up\".*button=\"Edit my definition\""; check "after saving, your definition is shown first, labelled, with Edit my definition" $?
+    sed -n 1p <<<"$F" | grep -q "visible=true definition=\"\" note=\"\" button=\"Add Your Definition\""; check "the look-up popover offers Add Your Definition when you have none" $?
+    sed -n 2p <<<"$F" | grep -q "definition=\"A word I made up\".*button=\"Edit Your Definition\""; check "after saving, your definition is shown first, labelled, with Edit Your Definition" $?
     sed -n 3p <<<"$F" | grep -q "definition=\"An edited meaning\""; check "editing replaces it" $?
     D=$(grep "^vocab_dialog:" <<<"$OUT" | sed -n 2p)
     grep -q "term=\"functionality\" def=\"A word I made up\"" <<<"$D"; check "Edit opens the dialog with the saved definition" $?
@@ -72,7 +72,7 @@ scenario vocab_glossary_io "vocab:own=zorb|old meaning,vocab:show-words,wait:700
     ! has "nodef"; check "a line without a definition is skipped" $?
     has "zorbling=a small rolling thing@All"; check "a CSV file term;definition is imported" $?
     has "quoted, term=a \"tricky\" line@All"; check "(with quoted fields)" $?
-    has "vocab_list: .*status=\"3 terms added, 0 updated.\""; check "the import reports what it did" $?
+    has "vocab_list: .*status=\"3 terms added, 0 updated\""; check "the import reports what it did" $?
     head -1 "$d/mine.csv" | grep -q "^term;definition;note;tags$" && grep -q "^zorb;old meaning" "$d/mine.csv"; check "the CSV export holds the definitions" $?
     python3 -c "import json,sys; e=json.load(open(sys.argv[1]))[\"entries\"]; sys.exit(0 if any(x[\"word\"]==\"zorb\" and x[\"own\"]==\"old meaning\" for x in e) else 1)" "$d/mine.json"; check "the JSON export holds them" $?
     ls "$d"/sd/my-vocabulary.ifo "$d"/sd/my-vocabulary.dict "$d"/sd/my-vocabulary.idx >/dev/null 2>&1; check "the StarDict export writes a dictionary" $?
@@ -88,11 +88,11 @@ scenario vocab_a11y 'vocab:own=functionality|a made up word,read:1,wait:2500,rea
     ! has "^a11y-problem:"; check "every control of them has an accessible name" $?'
 
 
-scenario vocab_palette_and_prefs 'vocab:own=zorb|a rolling ball,read:1,wait:2500,palette:open,wait:600,palette:type=add to vocab,wait:300,palette:dump,palette:type=terms in this,wait:300,palette:dump,palette:close,prefs:,wait:900,prefs:search=My Vocabulary,wait:300,prefs:dump,prefs:search=Mark my vocabulary terms,wait:300,prefs:dump,quit' '
+scenario vocab_palette_and_prefs 'vocab:own=zorb|a rolling ball,read:1,wait:2500,palette:open,wait:600,palette:type=add to vocab,wait:300,palette:dump,palette:type=terms in this,wait:300,palette:dump,palette:close,prefs:,wait:900,prefs:search=Your vocabulary,wait:300,prefs:dump,prefs:search=Mark vocabulary terms,wait:300,prefs:dump,quit' '
     P=$(grep "^palette: query" <<<"$OUT")
     sed -n 1p <<<"$P" | grep -q "results=Command|Add to Vocabulary"; check "the command palette finds Add to Vocabulary in the reader" $?
     sed -n 2p <<<"$P" | grep -q "results=Command|Terms in this Book"; check "and Terms in this Book" $?
     Q=$(grep "^prefs: query" <<<"$OUT")
-    sed -n 1p <<<"$Q" | grep -qE "hits=[1-9]"; check "Preferences has the My Vocabulary row among the dictionaries" $?
+    sed -n 1p <<<"$Q" | grep -qE "hits=[1-9]"; check "Preferences has the Your vocabulary row among the dictionaries" $?
     sed -n 2p <<<"$Q" | grep -qE "hits=[1-9]"; check "and the setting to mark the terms in the text" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'

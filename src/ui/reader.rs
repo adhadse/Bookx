@@ -1,6 +1,7 @@
 //! The EPUB reader page.
 
-use crate::i18n::{tr, trf};
+use crate::i18n::{tr, trf, N_};
+use crate::side_notes;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -83,6 +84,8 @@ pub enum Input {
     SaveNote(String),
     HlStyle(HighlightStyle),
     RemoveHighlight,
+    /// Undo of a removal: the items are back in the library, show them again.
+    Restored,
     Copy,
     PopClosed,
     Wiki,
@@ -153,6 +156,8 @@ pub enum Input {
     GotoText(String),
     ShowTab(&'static str),
     Quit,
+    /// The Escape key: the first thing that can be put away (see `esc_action`).
+    Escape,
     /// Shift+arrows: extend the keyboard selection by a step.
     KeySelect(crate::a11y::Step, bool),
     /// A reader key that works on the selection: commit, dict, wiki, translate, highlight, note, copy, clear.
@@ -164,6 +169,8 @@ pub enum Input {
 pub enum Output {
     Close,
     Toast(String),
+    /// A message with an Undo button (a highlight or bookmark was removed).
+    ToastUndo(String, crate::app::UndoFn),
     Reload,
     OpenFile,
     /// Preferences on the row with this title.
@@ -190,9 +197,9 @@ struct W {
     search_btn: gtk::MenuButton,
     search_list: gtk::ListBox,
     search_status: gtk::Label,
+    search_empty: adw::StatusPage,
     slider: gtk::Scale,
     slider_row: gtk::Box,
-    footer_pop: gtk::Popover,
     handles: super::sel_handles::Handles,
     left_label: gtk::Label,
     mid_label: gtk::Label,
@@ -228,17 +235,28 @@ struct W {
     theme_btns: Vec<(ReaderTheme, gtk::ToggleButton)>,
     themes_ui: Rc<super::reader_theme_row::ThemeRow>,
     colors: super::colors::ColorControls,
-    layout_btns: Vec<(LayoutMode, gtk::CheckButton)>,
+    more_dialog: adw::Dialog,
+    /// "Opening Book" over the page while the first chapter of a big book is laid out.
+    opening: adw::StatusPage,
+    primary: gtk::MenuButton,
+    header: adw::HeaderBar,
+    text_pop: gtk::Popover,
+    ruler_action: gio::SimpleAction,
+    narrow: Rc<Cell<bool>>,
+    _ruler_sub: Option<crate::settings_bus::Subscription>,
     /// Columns and hyphenation in the text appearance popover.
     columns_dd: gtk::DropDown,
-    hyphen_sw: gtk::Switch,
+    hyphen_sw: adw::SwitchRow,
     zoom_label: gtk::Label,
     wiki_text: gtk::Label,
     dict_text: gtk::Label,
+    /// The symbol above "No definition found".
+    dict_empty: gtk::Image,
     dict_prompt: DictPromptUi,
     /// "Your definition" above the dictionary text, and the button that adds the selection to the vocabulary.
     vocab_def: super::vocab_own::YourDef,
     vocab_btn: gtk::Button,
+    vocab_row: gtk::Button,
     wiki_spin: gtk::Spinner,
     wiki_img: (gtk::Box, gtk::Stack, gtk::Picture),
     wiki_url: Rc<RefCell<String>>,
@@ -286,6 +304,10 @@ pub struct Reader {
     rsvp: Rc<super::rsvp::RsvpCtl>,
     /// Fixed-layout (pre-paginated) book.
     fixed: bool,
+    /// The first chapter has not been laid out yet (a big one shows "Opening Book" first).
+    first_layout_pending: bool,
+    /// "Opening Book" was shown (test hook).
+    opening_shown: bool,
     /// (reading speed in words per minute, seconds read today) from the statistics, for the footer.
     live: Cell<(Option<f64>, u64)>,
     /// When this book was opened (the footer's session time).
@@ -435,6 +457,42 @@ fn trace_frames(page: &adw::NavigationPage, open: bool, t0: std::time::Instant) 
 }
 
 impl Reader {
+    /// The toast "Highlight removed" / "Bookmark removed" with an Undo that puts the item back.
+    fn offer_undo(&self, r: crate::remove_undo::Removed, sender: &ComponentSender<Self>) {
+        let text = crate::remove_undo::message(&r);
+        let stash = Rc::new(RefCell::new(Some(r)));
+        let (shared, id, tx) = (
+            self.shared.clone(),
+            self.book_id,
+            sender.input_sender().clone(),
+        );
+        let undo = crate::app::UndoFn::new(move || {
+            let Some(r) = stash.borrow_mut().take() else {
+                return;
+            };
+            {
+                let mut lib = shared.lib.borrow_mut();
+                if let Some(b) = lib.get_mut(id) {
+                    crate::remove_undo::restore(&mut b.highlights, &mut b.bookmarks, r);
+                }
+                let _ = lib.save();
+            }
+            tx.emit(Input::Restored);
+        });
+        let _ = sender.output(Output::ToastUndo(text, undo));
+    }
+
+    /// What Escape would find open now.
+    fn esc_state(&self) -> EscState {
+        EscState {
+            popover_open: self.w.sel_pop.is_visible(),
+            dragging: self.w.handles.is_dragging(),
+            selection: self.canvas.has_selection() || self.selection.is_some(),
+            sidebar_over_page: self.w.split.shows_sidebar() && self.w.split.is_collapsed(),
+            fullscreen: window_of(&self.w.page).is_some_and(|w| w.is_fullscreen()),
+        }
+    }
+
     fn chapter_title(&self, idx: usize) -> String {
         let path = self.spine.get(idx).cloned().unwrap_or_default();
         let matches = |t: &&FlatToc| t.href.split('#').next() == Some(path.as_str());
@@ -1027,6 +1085,8 @@ impl Reader {
             "properties" => sender.input(Input::Properties),
             "footer-own" => self.set_footer_scope(arg != "off"),
             "footer-open" => sender.input(Input::FooterConfigure),
+            // `reader:footer-dialog=dump|toggle=KEY|up=KEY|down=KEY` drives the real widgets of the open dialog
+            "footer-dialog" => eprintln!("{}", super::reader_footer::dev_dialog(arg)),
             "footer-tick" => {
                 self.refresh_live();
                 self.update_position_ui();
@@ -1134,9 +1194,9 @@ impl Reader {
         });
         self.w.bookmark_btn.set_tooltip_text(Some(
             &(if has {
-                tr("Remove bookmark (Ctrl+B)")
+                tr("Remove Bookmark (Ctrl+D)")
             } else {
-                tr("Add bookmark (Ctrl+B)")
+                tr("Add Bookmark (Ctrl+D)")
             }),
         ));
     }
@@ -1235,11 +1295,6 @@ impl Reader {
         if self.w.hyphen_sw.is_active() != prefs.hyphenate {
             self.w.hyphen_sw.set_active(prefs.hyphenate);
         }
-        for (m, b) in &self.w.layout_btns {
-            if *m == prefs.layout && !b.is_active() {
-                b.set_active(true);
-            }
-        }
         self.w
             .zoom_label
             .set_label(&format!("{:.0}%", prefs.font_size / 14.0 * 100.0));
@@ -1273,6 +1328,9 @@ impl Reader {
             .set_pointing_to(Some(&gdk::Rectangle::new(x, y, w.max(1), h.max(1))));
         self.w.sel_stack.set_visible_child_name("actions");
         self.w.sel_remove.set_visible(info.highlight.is_some());
+        self.w
+            .vocab_row
+            .set_visible(crate::vocabulary::is_short_phrase(&info.text));
         let c = info
             .highlight
             .as_ref()
@@ -1363,6 +1421,7 @@ impl Reader {
             super::dict_service::last_failure(&lang),
         );
         self.show_dict_prompt(&prompt);
+        let mut empty_lookup = false;
         let text = if loaded.set.names().is_empty() {
             if prompt.visible() {
                 String::new()
@@ -1371,6 +1430,7 @@ impl Reader {
             }
         } else {
             let lookup = loaded.set.lookup_all(term);
+            empty_lookup = lookup.results.is_empty();
             let mut t = crate::dictionaries::render(term, &lookup);
             let definition = lookup
                 .results
@@ -1392,18 +1452,21 @@ impl Reader {
                     now,
                 );
                 if matches!(added, Ok(true)) {
-                    t.push_str("\n\n<small>Saved to your vocabulary.</small>");
+                    t.push_str(&format!(
+                        "\n\n<small>{}</small>",
+                        glib::markup_escape_text(&tr("Saved to your vocabulary."))
+                    ));
                 }
             }
             for (d, e) in &loaded.failed {
                 t.push_str(&format!(
-                    "\n\n<small>{} could not be opened: {}</small>",
-                    glib::markup_escape_text(d),
-                    glib::markup_escape_text(e)
+                    "\n\n<small>{}</small>",
+                    glib::markup_escape_text(&trf("{} could not be opened: {}", &[d, e]))
                 ));
             }
             t
         };
+        self.w.dict_empty.set_visible(empty_lookup);
         self.w.dict_text.set_markup(&text);
     }
 
@@ -1573,7 +1636,6 @@ impl Reader {
                 if let Some(e) = self.tts.engine.as_deref_mut() {
                     e.set_speed(prefs.speed);
                 }
-                self.w.tts.show_speed(prefs.speed);
                 self.tts_restart();
                 self.tts_sync_player();
             }
@@ -2837,12 +2899,8 @@ impl Reader {
         }
     }
 
-    fn goto_dialog(&self) {
-        let hint = crate::goto::hint(&self.goto_book());
-        let (tx, tx2) = (
-            self.sender.input_sender().clone(),
-            self.sender.input_sender().clone(),
-        );
+    /// What the Go to field says under it for a typed text (or why it does not lead anywhere).
+    fn goto_checker(&self) -> Rc<dyn Fn(&str) -> Result<String, String>> {
         // the checks run in the dialog's own closure, on a copy of what they need
         let weights = self.weights.clone();
         let chapters: Vec<String> = self.toc.iter().map(|t| t.title.clone()).collect();
@@ -2851,30 +2909,42 @@ impl Reader {
         let spine_titles: Vec<String> = (0..self.spine.len())
             .map(|i| self.chapter_title(i))
             .collect();
-        let check = Rc::new(move |text: &str| {
+        Rc::new(move |text: &str| {
             let book = crate::goto::Book {
                 layout_pages,
                 weights: &weights,
                 chapters: chapters.len(),
                 page_list: page_map.as_ref(),
             };
-            let dest = crate::goto::resolve(&crate::goto::parse(text)?, &book)?;
+            let target = crate::goto::parse(text)?;
+            let dest = crate::goto::resolve(&target, &book)?;
+            let live = crate::goto::describe(&target, &book);
             Ok(match dest {
-                crate::goto::Dest::Fraction(f) => format!(
-                    "{:.0}% of the book · location {}",
-                    f * 100.0,
-                    crate::goto::location_at(&book, f)
+                crate::goto::Dest::Fraction(f) => match target {
+                    crate::goto::Target::Location(_) => live,
+                    _ => format!(
+                        "{live} · {}",
+                        trf("Location {}", &[&crate::goto::location_at(&book, f)])
+                    ),
+                },
+                crate::goto::Dest::Spine(i, _) => format!(
+                    "{live} · {}",
+                    trf(
+                        "In “{}”",
+                        &[&spine_titles.get(i).map_or("", String::as_str)]
+                    )
                 ),
-                crate::goto::Dest::Spine(i, _) => {
-                    format!("In “{}”", spine_titles.get(i).map_or("", String::as_str))
+                crate::goto::Dest::Chapter(n) => {
+                    format!("{live} · {}", chapters.get(n).map_or("", String::as_str))
                 }
-                crate::goto::Dest::Chapter(n) => trf(
-                    "Chapter: {}",
-                    &[&(chapters.get(n).map_or("", String::as_str))],
-                ),
             })
-        });
-        let _ = tx2;
+        })
+    }
+
+    fn goto_dialog(&self) {
+        let hint = crate::goto::hint(&self.goto_book());
+        let tx = self.sender.input_sender().clone();
+        let check = self.goto_checker();
         super::reader_goto::show(
             self.w.page.upcast_ref(),
             &hint,
@@ -3111,6 +3181,52 @@ fn popover_event_stops_here(t: gdk::EventType) -> bool {
     )
 }
 
+/// What the reader has open when Escape is pressed.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct EscState {
+    pub popover_open: bool,
+    pub dragging: bool,
+    pub selection: bool,
+    pub sidebar_over_page: bool,
+    pub fullscreen: bool,
+}
+
+/// What Escape puts away first.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EscAction {
+    ClosePopover,
+    CancelDrag,
+    ClearSelection,
+    CloseSidebar,
+    ExitFullscreen,
+    Leave,
+}
+
+/// The order of Escape: a popover, then a drag in progress, then the selection, then the sidebar over the
+/// page, then full screen, and only then the book itself.
+pub fn esc_action(s: EscState) -> EscAction {
+    if s.popover_open {
+        EscAction::ClosePopover
+    } else if s.dragging {
+        EscAction::CancelDrag
+    } else if s.selection {
+        EscAction::ClearSelection
+    } else if s.sidebar_over_page {
+        EscAction::CloseSidebar
+    } else if s.fullscreen {
+        EscAction::ExitFullscreen
+    } else {
+        EscAction::Leave
+    }
+}
+
+/// A chapter this big (bytes of markup) is laid out for long enough that the page says "Opening Book".
+const OPENING_PAGE_BYTES: f64 = 100_000.0;
+
+fn opening_page_needed(chapter_bytes: f64) -> bool {
+    chapter_bytes >= OPENING_PAGE_BYTES
+}
+
 fn icon_button(icon: &str, tip: &str) -> gtk::Button {
     let b = gtk::Button::from_icon_name(icon);
     b.set_tooltip_text(Some(tip));
@@ -3191,33 +3307,44 @@ impl SimpleComponent for Reader {
         sel_stack.set_hhomogeneous(false);
         sel_stack.set_vhomogeneous(false);
         sel_stack.set_interpolate_size(false);
-        let actions = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+        // swatches and actions wrap instead of making the popover wider than a narrow window
+        let swatch_row = adw::WrapBox::new();
+        swatch_row.set_child_spacing(8);
+        swatch_row.set_line_spacing(4);
+        swatch_row.set_natural_line_length(340);
+        let actions = adw::WrapBox::new();
+        actions.set_child_spacing(4);
+        actions.set_line_spacing(4);
+        actions.set_natural_line_length(340);
         let mut swatches: Vec<gtk::Button> = Vec::new();
         for (name, _) in HIGHLIGHT_COLORS {
             let b = gtk::Button::new();
             b.add_css_class("hl-swatch");
-            b.set_size_request(26, 26);
+            b.set_size_request(32, 32);
             b.set_halign(gtk::Align::Center);
             b.set_valign(gtk::Align::Center);
             b.set_hexpand(false);
             b.set_vexpand(false);
             b.add_css_class(&format!("hl-{name}"));
-            b.set_tooltip_text(Some(&trf("Highlight {}", &[&name])));
+            b.set_tooltip_text(Some(&trf(
+                "Highlight {}",
+                &[&side_notes::colour_label(name)],
+            )));
+            super::audit::label(&b, &trf("Highlight {}", &[&side_notes::colour_label(name)]));
             let tx = sender.input_sender().clone();
             b.connect_clicked(move |_| tx.emit(Input::Highlight(name.to_string())));
-            actions.append(&b);
+            swatch_row.append(&b);
             swatches.push(b);
         }
-        actions.append(&gtk::Separator::new(gtk::Orientation::Vertical));
-        let note_btn = icon_button("document-edit-symbolic", &tr("Add a note"));
+        let note_btn = icon_button("document-edit-symbolic", &tr("Add Note"));
         let copy_btn = icon_button("edit-copy-symbolic", &tr("Copy"));
         let dict_btn = icon_button(
             "accessories-dictionary-symbolic",
-            &tr("Look up in a dictionary"),
+            &tr("Look Up in Dictionary"),
         );
-        let wiki_btn = icon_button("wikipedia-symbolic", &tr("Look up on Wikipedia"));
+        let wiki_btn = icon_button("wikipedia-symbolic", &tr("Look Up on Wikipedia"));
         let tr_btn = icon_button("translate-symbolic", &tr("Translate"));
-        let sel_remove = icon_button("user-trash-symbolic", &tr("Remove highlight"));
+        let sel_remove = icon_button("user-trash-symbolic", &tr("Remove Highlight"));
         let vocab_btn = icon_button("list-add-symbolic", &tr("Add to Vocabulary"));
         for b in [
             &note_btn,
@@ -3251,7 +3378,7 @@ impl SimpleComponent for Reader {
         note_preview.add_css_class("flat");
         note_preview.add_css_class("note-preview");
         note_preview.set_visible(false);
-        note_preview.set_tooltip_text(Some(&tr("Edit note")));
+        note_preview.set_tooltip_text(Some(&tr("Edit Note")));
         let note_label = gtk::Label::new(None);
         note_label.set_wrap(true);
         note_label.set_max_width_chars(42);
@@ -3269,14 +3396,18 @@ impl SimpleComponent for Reader {
             (
                 HighlightStyle::Background,
                 "<span background=\"#f6d32d\" foreground=\"#241f31\"> A </span>",
-                "Highlight with a background",
+                N_("Highlight with a Background"),
             ),
-            (HighlightStyle::Underline, "<u>A</u>", "Underline"),
-            (HighlightStyle::Strikethrough, "<s>A</s>", "Strike through"),
+            (HighlightStyle::Underline, "<u>A</u>", N_("Underline")),
+            (
+                HighlightStyle::Strikethrough,
+                "<s>A</s>",
+                N_("Strike Through"),
+            ),
             (
                 HighlightStyle::Squiggly,
                 "<span underline=\"error\">A</span>",
-                "Squiggly underline",
+                N_("Squiggly Underline"),
             ),
         ] {
             let b = gtk::ToggleButton::new();
@@ -3285,16 +3416,29 @@ impl SimpleComponent for Reader {
             b.set_child(Some(&l));
             b.add_css_class("flat");
             b.add_css_class("hl-style");
-            b.set_tooltip_text(Some(tip));
+            b.set_tooltip_text(Some(&tr(tip)));
             b.set_active(st == HighlightStyle::Background);
             let tx = sender.input_sender().clone();
             b.connect_clicked(move |_| tx.emit(Input::HlStyle(st)));
             style_row.append(&b);
             style_btns.push((st, b));
         }
+        // the words of the plus button, where the selection is a word or a short phrase
+        let vocab_row = gtk::Button::with_label(&tr("Add to Vocabulary"));
+        vocab_row.add_css_class("flat");
+        vocab_row.set_visible(false);
+        if let Some(l) = vocab_row.child().and_downcast::<gtk::Label>() {
+            l.set_xalign(0.0);
+        }
+        {
+            let tx = sender.input_sender().clone();
+            vocab_row.connect_clicked(move |_| tx.emit(Input::VocabAdd));
+        }
         let actions_page = gtk::Box::new(gtk::Orientation::Vertical, 4);
         actions_page.append(&note_preview);
+        actions_page.append(&swatch_row);
         actions_page.append(&actions);
+        actions_page.append(&vocab_row);
         actions_page.append(&style_row);
         sel_stack.add_named(&actions_page, Some("actions"));
         let note_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
@@ -3312,7 +3456,7 @@ impl SimpleComponent for Reader {
         let note_actions = gtk::Box::new(gtk::Orientation::Horizontal, 6);
         let note_back = gtk::Button::from_icon_name("go-previous-symbolic");
         note_back.add_css_class("flat");
-        note_back.set_tooltip_text(Some(&tr("Back to the actions")));
+        note_back.set_tooltip_text(Some(&tr("Back to Actions")));
         let note_save = gtk::Button::with_label(&tr("Save Note"));
         note_save.add_css_class("suggested-action");
         note_save.set_hexpand(true);
@@ -3368,7 +3512,7 @@ impl SimpleComponent for Reader {
             });
             // keyboard only: Tab leaves the box for the buttons, Ctrl+Enter saves
             note_view.set_accepts_tab(false);
-            note_save.set_tooltip_text(Some(&tr("Save the note (Ctrl+Enter)")));
+            note_save.set_tooltip_text(Some(&tr("Save Note (Ctrl+Enter)")));
             let keys = gtk::EventControllerKey::new();
             let save = note_save.clone();
             keys.connect_key_pressed(move |_, key, _, mods| {
@@ -3388,7 +3532,7 @@ impl SimpleComponent for Reader {
             let head = gtk::Box::new(gtk::Orientation::Horizontal, 6);
             let back = gtk::Button::from_icon_name("go-previous-symbolic");
             back.add_css_class("flat");
-            back.set_tooltip_text(Some(&tr("Back to the actions")));
+            back.set_tooltip_text(Some(&tr("Back to Actions")));
             let s = sel_stack.clone();
             back.connect_clicked(move |_| s.set_visible_child_name("actions"));
             head.append(&back);
@@ -3421,8 +3565,15 @@ impl SimpleComponent for Reader {
             page.append(&scroll);
             (page, head, spin, text)
         };
-        let (dict_page, _dict_head, _dict_spin, dict_text) = lookup_page("Dictionary", 210);
+        let (dict_page, _dict_head, _dict_spin, dict_text) = lookup_page(&tr("Dictionary"), 210);
         dict_text.set_use_markup(true);
+        let dict_empty = gtk::Image::from_icon_name("system-search-symbolic");
+        dict_empty.set_pixel_size(32);
+        dict_empty.add_css_class("dim-label");
+        dict_empty.set_halign(gtk::Align::Start);
+        dict_empty.set_margin_start(8);
+        dict_empty.set_visible(false);
+        dict_empty.set_accessible_role(gtk::AccessibleRole::Presentation);
         // "No dictionary for German yet": the offer to download one, above the text, inside the scroll
         // area of a fixed height (the popover never changes size when the state changes)
         let vocab_def = {
@@ -3473,6 +3624,7 @@ impl SimpleComponent for Reader {
                 let body_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
                 body_box.append(&vocab_def.root);
                 body_box.append(&root);
+                body_box.append(&dict_empty);
                 body_box.append(&dict_text);
                 scroll.set_child(Some(&body_box));
             }
@@ -3505,7 +3657,7 @@ impl SimpleComponent for Reader {
             dict_page.append(&foot);
         }
         sel_stack.add_named(&dict_page, Some("dict"));
-        let (wiki_page, _wiki_head, wiki_spin, wiki_text) = lookup_page("Wikipedia", 250);
+        let (wiki_page, _wiki_head, wiki_spin, wiki_text) = lookup_page(&tr("Wikipedia"), 250);
         let wiki_url = Rc::new(RefCell::new(String::new()));
         // the lead picture of the article above its text: a frame of a fixed size (a placeholder
         // until the picture arrives), inside the scroll area, so the popover never changes size
@@ -3556,7 +3708,7 @@ impl SimpleComponent for Reader {
             wiki_page.append(&foot);
         }
         sel_stack.add_named(&wiki_page, Some("wiki"));
-        let (tr_page, tr_head, tr_spin, tr_text) = lookup_page("Translate", 170);
+        let (tr_page, tr_head, tr_spin, tr_text) = lookup_page(&tr("Translate"), 170);
         let tr_dd = {
             let names: Vec<&str> = web::LANGUAGES.iter().map(|(_, n)| *n).collect();
             let dd = gtk::DropDown::from_strings(&names);
@@ -3600,6 +3752,7 @@ impl SimpleComponent for Reader {
         });
         sel_pop.add_controller(shield);
         sel_pop.set_child(Some(&sel_stack));
+        super::reader_extra::keep_focus_on_page(&sel_stack);
 
         // ---- sidebar ----------------------------------------------------------
         let side = {
@@ -3635,9 +3788,9 @@ impl SimpleComponent for Reader {
         // Search lives in its own dropdown (header button). The query and the results are
         // kept when it closes, so reopening it shows the previous search.
         let search_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
-        search_box.set_size_request(380, 460);
+        search_box.set_size_request(380, 330);
         let search_entry = gtk::SearchEntry::new();
-        search_entry.set_placeholder_text(Some(&tr("Search in book")));
+        search_entry.set_placeholder_text(Some(&tr("Search in Book")));
         search_entry.set_margin_all(8);
         let search_status = gtk::Label::new(None);
         search_status.add_css_class("dim-label");
@@ -3650,11 +3803,16 @@ impl SimpleComponent for Reader {
         search_box.append(&search_entry);
         search_box.append(&search_status);
         search_box.append(&search_scroll);
+        let search_empty = super::reader_search::empty_page();
         let search_pop = gtk::Popover::new();
         search_pop.set_child(Some(&search_box));
+        {
+            let b = search_box.clone();
+            search_pop.connect_show(move |_| super::reader_search::fit(&b));
+        }
         let search_btn = gtk::MenuButton::new();
         search_btn.set_icon_name("system-search-symbolic");
-        search_btn.set_tooltip_text(Some(&tr("Search in book (Ctrl+F)")));
+        search_btn.set_tooltip_text(Some(&tr("Search in Book (Ctrl+F)")));
         search_btn.set_popover(Some(&search_pop));
         {
             let e = search_entry.clone();
@@ -3726,17 +3884,17 @@ impl SimpleComponent for Reader {
         let prev_btn = icon_button(
             "go-previous-symbolic",
             &(if rtl {
-                tr("Previous page (→)")
+                tr("Previous Page (→)")
             } else {
-                tr("Previous page (←)")
+                tr("Previous Page (←)")
             }),
         );
         let next_btn = icon_button(
             "go-next-symbolic",
             &(if rtl {
-                tr("Next page (←)")
+                tr("Next Page (←)")
             } else {
-                tr("Next page (→)")
+                tr("Next Page (→)")
             }),
         );
         for b in [&prev_btn, &next_btn] {
@@ -3777,54 +3935,17 @@ impl SimpleComponent for Reader {
             set_direction_deep(bottom.upcast_ref(), gtk::TextDirection::Rtl);
         }
 
-        // right click on the footer (or the menu entry) configures the statistics it shows
-        let footer_pop = {
-            let pop = gtk::Popover::new();
-            pop.set_parent(&bottom);
-            pop.set_position(gtk::PositionType::Top);
-            let col = gtk::Box::new(gtk::Orientation::Vertical, 8);
-            col.set_margin_all(10);
-            let title = gtk::Label::new(Some(&tr("Footer Stats")));
-            title.add_css_class("heading");
-            title.set_xalign(0.0);
-            col.append(&title);
-            let tx = sender.input_sender().clone();
-            let editor = super::reader_footer::editor(
-                shared.cfg.borrow().footer_for(book_id),
-                Rc::new(move |c| tx.emit(Input::Footer(c))),
-            );
-            let scroll = gtk::ScrolledWindow::new();
-            scroll.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
-            scroll.set_min_content_height(380);
-            scroll.set_max_content_height(380);
-            scroll.set_min_content_width(380);
-            scroll.set_propagate_natural_width(true);
-            scroll.set_child(Some(&editor));
-            col.append(&scroll);
-            let own_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-            let own_label = gtk::Label::new(Some(&tr("Only for this book")));
-            own_label.set_xalign(0.0);
-            own_label.set_hexpand(true);
-            let own = gtk::Switch::new();
-            own.set_valign(gtk::Align::Center);
-            super::audit::label(&own, &tr("Only for this book"));
-            own.set_active(shared.cfg.borrow().footer_books.contains_key(&book_id));
-            let tx = sender.input_sender().clone();
-            own.connect_active_notify(move |r| tx.emit(Input::FooterScope(r.is_active())));
-            own_row.append(&own_label);
-            own_row.append(&own);
-            col.append(&own_row);
-            pop.set_child(Some(&col));
+        // right click on the footer (or the menu entry) opens the Footer Statistics dialog
+        {
             let click = gtk::GestureClick::new();
             click.set_button(3);
-            let p = pop.clone();
+            let tx = sender.input_sender().clone();
             click.connect_pressed(move |g, _, _, _| {
                 g.set_state(gtk::EventSequenceState::Claimed);
-                p.popup();
+                tx.emit(Input::FooterConfigure);
             });
             bottom.add_controller(click);
-            pop
-        };
+        }
 
         let split = adw::OverlaySplitView::new();
         split.set_sidebar(Some(&side.root));
@@ -3850,12 +3971,15 @@ impl SimpleComponent for Reader {
         }
 
         // ---- header -------------------------------------------------------------
+        // a window narrower than 600 sp: the header gives up Fullscreen and Read Aloud (they move into the menu)
+        let bin = adw::BreakpointBin::new();
+        bin.set_size_request(360, 294);
         let header = adw::HeaderBar::new();
         let title = adw::WindowTitle::new(&title_text, "");
         header.set_title_widget(Some(&title));
         let sidebar_btn = gtk::ToggleButton::new();
         sidebar_btn.set_icon_name("sidebar-show-symbolic");
-        sidebar_btn.set_tooltip_text(Some(&tr("Contents, bookmarks and notes (F9)")));
+        sidebar_btn.set_tooltip_text(Some(&tr("Contents, Bookmarks and Notes (F9)")));
         split
             .bind_property("show-sidebar", &sidebar_btn, "active")
             .bidirectional()
@@ -3866,25 +3990,24 @@ impl SimpleComponent for Reader {
         } else {
             header.pack_start(&sidebar_btn);
         }
-        let back_btn = icon_button("go-previous-symbolic", &tr("Back to previous position"));
-        back_btn.set_label(&tr("Back"));
-        back_btn.set_icon_name("edit-undo-symbolic");
+        let back_btn = icon_button(
+            "go-jump-symbolic",
+            &tr("Return to Previous Position (Alt+Left)"),
+        );
         back_btn.set_visible(false);
         header.pack_start(&back_btn);
-        let forward_btn = icon_button(
-            "go-next-symbolic",
-            &tr("Forward to the place you came back from (Alt+Right)"),
-        );
-        forward_btn.set_label(&tr("Forward"));
+        let forward_btn = icon_button("go-next-symbolic", &tr("Go to Next Position (Alt+Right)"));
         forward_btn.set_visible(false);
         header.pack_start(&forward_btn);
-        let bookmark_btn = icon_button("bookmark-new-symbolic", &tr("Add bookmark (Ctrl+B)"));
+        super::reader_menu::jump_style(&back_btn, Some(&forward_btn), false);
+        let bookmark_btn = icon_button("bookmark-new-symbolic", &tr("Add Bookmark (Ctrl+D)"));
         header.pack_start(&bookmark_btn);
 
         let primary = gtk::MenuButton::new();
         primary.set_icon_name("open-menu-symbolic");
         primary.set_primary(true);
-        primary.set_tooltip_text(Some(&tr("Main menu")));
+        primary.set_tooltip_text(Some(&tr("Main Menu")));
+        super::audit::label(&primary, &tr("Main Menu"));
         header.pack_end(&primary);
         let fullscreen_btn = icon_button("view-fullscreen-symbolic", &tr("Fullscreen (F11)"));
         header.pack_end(&fullscreen_btn);
@@ -3914,18 +4037,18 @@ impl SimpleComponent for Reader {
             Rc::new(move || tx.emit(Input::Prefs(cur.borrow().clone())))
         };
 
-        // ---- main menu: theme, zoom, book actions, layout, app actions -----------
-        let mpop = gtk::Popover::new();
-        let mstack = gtk::Stack::new();
-        mstack.set_transition_type(gtk::StackTransitionType::SlideLeftRight);
-        mstack.set_vhomogeneous(false);
-        let main = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        main.set_margin_all(10);
-        main.set_width_request(280);
+        // ---- Text appearance popover: theme, size, font, spacing, margins, columns, justify ----
+        let appearance = gtk::MenuButton::new();
+        appearance.set_icon_name("format-text-rich-symbolic");
+        appearance.set_tooltip_text(Some(&tr("Text Appearance")));
+        super::audit::label(&appearance, &tr("Text Appearance"));
+        let pop = gtk::Popover::new();
+        let ab = gtk::Box::new(gtk::Orientation::Vertical, 10);
+        ab.set_margin_all(14);
+        ab.set_width_request(320);
 
         let theme_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
         theme_box.set_halign(gtk::Align::Center);
-        theme_box.set_margin_bottom(6);
         let mut first_theme: Option<gtk::ToggleButton> = None;
         let mut theme_btns = Vec::new();
         for t in ReaderTheme::ALL {
@@ -3939,6 +4062,7 @@ impl SimpleComponent for Reader {
                 b.add_css_class("swatch-auto");
             }
             b.set_tooltip_text(Some(t.label()));
+            super::audit::label(&b, t.label());
             b.set_active(t == prefs0.theme);
             if let Some(f) = &first_theme {
                 b.set_group(Some(f));
@@ -3962,30 +4086,26 @@ impl SimpleComponent for Reader {
             theme_box.append(&b);
             theme_btns.push((t, b));
         }
-        main.append(&theme_box);
+        ab.append(&theme_box);
         let themes_ui = super::reader_theme_row::ThemeRow::new(
             shared.clone(),
             cur_prefs.clone(),
             emit_prefs.clone(),
             first_theme.clone().expect("theme swatches"),
             {
-                let (tx, pop) = (sender.input_sender().clone(), mpop.clone());
+                let (tx, pop) = (sender.input_sender().clone(), pop.clone());
                 Rc::new(move |name| {
                     pop.popdown();
                     tx.emit(Input::ThemeEditor(name));
                 })
             },
         );
-        main.append(&themes_ui.root);
         let colors = super::colors::ColorControls::new(cur_prefs.clone(), emit_prefs.clone());
-        colors.root.set_margin_bottom(6);
-        main.append(&colors.root);
 
         let size_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        size_row.set_margin_bottom(6);
-        let minus = icon_button("list-remove-symbolic", &tr("Smaller text (Ctrl+−)"));
-        let plus = icon_button("list-add-symbolic", &tr("Larger text (Ctrl++)"));
-        let reset = icon_button("zoom-original-symbolic", &tr("Reset text size"));
+        let minus = icon_button("list-remove-symbolic", &tr("Smaller Text (Ctrl+−)"));
+        let plus = icon_button("list-add-symbolic", &tr("Larger Text (Ctrl++)"));
+        let reset = icon_button("zoom-original-symbolic", &tr("Reset Text Size"));
         let zoom_label = gtk::Label::new(Some(&format!("{:.0}%", prefs0.font_size / 14.0 * 100.0)));
         zoom_label.set_hexpand(true);
         zoom_label.add_css_class("heading");
@@ -4015,158 +4135,9 @@ impl SimpleComponent for Reader {
                 emit();
             });
         }
-        main.append(&size_row);
-        main.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
+        ab.append(&size_row);
 
-        let item = |label: &str, accel: &str, chevron: bool| -> gtk::Button {
-            let b = gtk::Button::new();
-            b.add_css_class("flat");
-            b.add_css_class("menu-item");
-            let bx = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-            let l = gtk::Label::new(Some(label));
-            l.set_xalign(0.0);
-            l.set_hexpand(true);
-            bx.append(&l);
-            if !accel.is_empty() {
-                let a = gtk::Label::new(Some(&crate::shortcuts::display(accel, "")));
-                a.add_css_class("dim-label");
-                a.add_css_class("caption");
-                bx.append(&a);
-                let (weak, action) = (a.downgrade(), accel.to_string());
-                crate::shortcuts::on_change(move || {
-                    if let Some(l) = weak.upgrade() {
-                        l.set_text(&crate::shortcuts::display(&action, ""));
-                    }
-                });
-            }
-            if chevron {
-                bx.append(&gtk::Image::from_icon_name("go-next-symbolic"));
-            }
-            b.set_child(Some(&bx));
-            b
-        };
-        let open_b = item(&tr("Open Book"), "", false);
-        let reload_b = item(&tr("Reload"), "reader.reload", false);
-        let goto_b = item(&tr("Go to"), "reader.goto", false);
-        let layout_b = item(&tr("Layout"), "", true);
-        let rsvp_b = item(&tr("Speed Reading"), "", false);
-        let map_b = item(&tr("Book Map"), "reader.map", false);
-        let terms_b = item(&tr("Terms in this Book"), "reader.vocab-terms", false);
-        let ruler_b = item(&tr("Reading Ruler"), "reader.ruler", false);
-        let footer_b = item(&tr("Footer Stats"), "", false);
-        let prefs_b = item(&tr("Preferences"), "app.preferences", false);
-        let keys_b = item(&tr("Keyboard Shortcuts"), "app.shortcuts", false);
-        let about_b = item(&tr("About Bookx"), "", false);
-        for b in [&open_b, &reload_b, &goto_b] {
-            main.append(b);
-        }
-        goto_b.set_action_name(Some("reader.goto"));
-        {
-            let pop = mpop.clone();
-            goto_b.connect_clicked(move |_| pop.popdown());
-        }
-        main.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
-        main.append(&layout_b);
-        main.append(&rsvp_b);
-        main.append(&map_b);
-        main.append(&terms_b);
-        main.append(&ruler_b);
-        main.append(&footer_b);
-        main.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
-        for b in [&prefs_b, &keys_b, &about_b] {
-            main.append(b);
-        }
-        prefs_b.set_action_name(Some("app.preferences"));
-        keys_b.set_action_name(Some("app.shortcuts"));
-        about_b.set_action_name(Some("app.about"));
-        for b in [&prefs_b, &keys_b, &about_b] {
-            let pop = mpop.clone();
-            b.connect_clicked(move |_| pop.popdown());
-        }
-        mstack.add_named(&main, Some("main"));
-
-        let layout_page = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        layout_page.set_margin_all(10);
-        let lhead = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-        let lback = gtk::Button::from_icon_name("go-previous-symbolic");
-        lback.add_css_class("flat");
-        lback.set_tooltip_text(Some(&tr("Back to the menu")));
-        let ltitle = gtk::Label::new(Some(&tr("Layout")));
-        ltitle.add_css_class("heading");
-        lhead.append(&lback);
-        lhead.append(&ltitle);
-        layout_page.append(&lhead);
-        let mut first_layout: Option<gtk::CheckButton> = None;
-        let mut layout_btns = Vec::new();
-        for (mode, label) in [
-            (LayoutMode::TwoColumns, "Two Columns"),
-            (LayoutMode::SingleColumn, "Single Column"),
-            (LayoutMode::Scroll, "Scroll"),
-        ] {
-            let c = gtk::CheckButton::with_label(label);
-            c.set_active(prefs0.layout == mode);
-            if let Some(f) = &first_layout {
-                c.set_group(Some(f));
-            } else {
-                first_layout = Some(c.clone());
-            }
-            let cur = cur_prefs.clone();
-            let emit = emit_prefs.clone();
-            let pop = mpop.clone();
-            c.connect_toggled(move |c| {
-                if c.is_active() && cur.borrow().layout != mode {
-                    cur.borrow_mut().layout = mode;
-                    emit();
-                    pop.popdown();
-                }
-            });
-            layout_page.append(&c);
-            layout_btns.push((mode, c));
-        }
-        mstack.add_named(&layout_page, Some("layout"));
-        {
-            let s = mstack.clone();
-            layout_b.connect_clicked(move |_| s.set_visible_child_name("layout"));
-            let s = mstack.clone();
-            lback.connect_clicked(move |_| s.set_visible_child_name("main"));
-            let s = mstack.clone();
-            mpop.connect_closed(move |_| s.set_visible_child_name("main"));
-        }
-        mpop.set_child(Some(&mstack));
-        primary.set_popover(Some(&mpop));
-        {
-            let wire = |b: &gtk::Button, make: fn() -> Input| {
-                let pop = mpop.clone();
-                let tx = sender.input_sender().clone();
-                b.connect_clicked(move |_| {
-                    pop.popdown();
-                    tx.emit(make());
-                });
-            };
-            wire(&open_b, || Input::OpenBook);
-            wire(&reload_b, || Input::Reload);
-            wire(&rsvp_b, || Input::Rsvp);
-            wire(&map_b, || Input::BookMap);
-            wire(&terms_b, || Input::VocabTerms);
-            wire(&footer_b, || Input::FooterConfigure);
-        }
-
-        // ---- text popover: font, spacing, margins, justification -----------------
-        let appearance = gtk::MenuButton::new();
-        appearance.set_icon_name("format-text-rich-symbolic");
-        appearance.set_tooltip_text(Some(&tr("Text appearance")));
-        let pop = gtk::Popover::new();
-        let ab = gtk::Box::new(gtk::Orientation::Vertical, 12);
-        ab.set_margin_all(14);
-        ab.set_width_request(340);
-        let heading = |text: &str| {
-            let l = gtk::Label::new(Some(text));
-            l.add_css_class("heading");
-            l.set_xalign(0.0);
-            l.set_accessible_role(gtk::AccessibleRole::Heading);
-            l
-        };
-        // the style tweaks live here too: one place for everything about how the text looks
+        // the style tweaks live in the "More Text Options" dialog
         let tweaks_ui = {
             let book = book_id;
             let get: Rc<dyn Fn() -> crate::tweaks::StyleTweaks> = {
@@ -4179,7 +4150,7 @@ impl SimpleComponent for Reader {
             super::reader_style::TweaksUi::build(get, change)
         };
 
-        let fonts = [
+        let all_fonts = [
             "Serif",
             "Sans",
             "Cantarell",
@@ -4190,6 +4161,11 @@ impl SimpleComponent for Reader {
             "OpenDyslexic",
             "Monospace",
         ];
+        let fonts = super::reader_fonts::installed_fonts(
+            &all_fonts,
+            &super::reader_fonts::system_families(),
+            &prefs0.font_family,
+        );
         let font_dd = gtk::DropDown::from_strings(&fonts);
         super::audit::label(&font_dd, &tr("Font"));
         font_dd.set_selected(
@@ -4215,11 +4191,10 @@ impl SimpleComponent for Reader {
         fl.set_xalign(0.0);
         font_row.append(&fl);
         font_row.append(&font_dd);
-        ab.append(&heading(&tr("Text")));
         ab.append(&font_row);
-        ab.append(&tweaks_ui.text_group);
-        ab.append(&heading(&tr("Layout")));
-        let columns_dd = gtk::DropDown::from_strings(&["Two columns", "Single column", "Scroll"]);
+
+        let columns_dd =
+            gtk::DropDown::from_strings(&[&tr("Two columns"), &tr("Single column"), &tr("Scroll")]);
         super::audit::label(&columns_dd, &tr("Columns"));
         let mode_at = |m: LayoutMode| match m {
             LayoutMode::TwoColumns => 0,
@@ -4250,10 +4225,12 @@ impl SimpleComponent for Reader {
         col_row.append(&columns_dd);
         ab.append(&col_row);
 
+        // a slider with its value written next to it
         let scale_row = |label: &str,
                          min: f64,
                          max: f64,
                          step: f64,
+                         digits: i32,
                          val: f64,
                          f: Box<dyn Fn(&mut ReaderPrefs, f64)>| {
             let b = gtk::Box::new(gtk::Orientation::Vertical, 2);
@@ -4261,8 +4238,10 @@ impl SimpleComponent for Reader {
             l.set_xalign(0.0);
             let s = gtk::Scale::with_range(gtk::Orientation::Horizontal, min, max, step);
             super::audit::label(&s, label);
+            s.set_digits(digits);
             s.set_value(val);
-            s.set_draw_value(false);
+            s.set_draw_value(true);
+            s.set_value_pos(gtk::PositionType::Right);
             let cur = cur_prefs.clone();
             let emit = emit_prefs.clone();
             s.connect_value_changed(move |s| {
@@ -4274,18 +4253,20 @@ impl SimpleComponent for Reader {
             b
         };
         ab.append(&scale_row(
-            "Line spacing",
+            &tr("Line spacing"),
             1.0,
             2.0,
             0.05,
+            2,
             prefs0.line_spacing,
             Box::new(|p, v| p.line_spacing = v),
         ));
         ab.append(&scale_row(
-            "Margins",
+            &tr("Margins"),
             8.0,
             160.0,
             4.0,
+            0,
             prefs0.margin,
             Box::new(|p, v| p.margin = v),
         ));
@@ -4311,10 +4292,11 @@ impl SimpleComponent for Reader {
         jr.append(&jl);
         jr.append(&just);
         ab.append(&jr);
-        let hyphen_sw = gtk::Switch::new();
-        super::audit::label(&hyphen_sw, &tr("Hyphenate words"));
+
+        // ---- "More Text Options": colours, hyphenation, advanced tweaks, defaults ------------
+        let hyphen_sw = adw::SwitchRow::new();
+        hyphen_sw.set_title(&tr("Hyphenate words"));
         hyphen_sw.set_active(prefs0.hyphenate);
-        hyphen_sw.set_valign(gtk::Align::Center);
         {
             let cur = cur_prefs.clone();
             let emit = emit_prefs.clone();
@@ -4325,51 +4307,115 @@ impl SimpleComponent for Reader {
                 }
             });
         }
-        let hr = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        let hl = gtk::Label::new(Some(&tr("Hyphenate words")));
-        hl.set_hexpand(true);
-        hl.set_xalign(0.0);
-        hr.append(&hl);
-        hr.append(&hyphen_sw);
-        ab.append(&hr);
-        ab.append(&tweaks_ui.advanced_group);
-        ab.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
-        let look_row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-        look_row.set_homogeneous(true);
-        let default_b = gtk::Button::with_label(&tr("Use as default for new books"));
-        let reset_b = gtk::Button::with_label(&tr("Reset this book to defaults"));
-        default_b.set_tooltip_text(Some(&tr(
-            "Every change you make is kept for this book. This makes the current look the starting point of books you have not changed yet.",
-        )));
-        reset_b.set_tooltip_text(Some(&tr(
-            "Forget this book's own look and use the defaults again",
-        )));
-        for (b, input) in [
-            (&default_b, (|| Input::UseAsDefault) as fn() -> Input),
-            (&reset_b, || Input::ResetLook),
-        ] {
-            if let Some(l) = b.child().and_downcast::<gtk::Label>() {
-                l.set_wrap(true);
-                l.set_justify(gtk::Justification::Center);
+        let more_dialog = adw::Dialog::new();
+        more_dialog.set_title(&tr("More Text Options"));
+        more_dialog.set_content_width(480);
+        more_dialog.set_content_height(560);
+        {
+            let page = adw::PreferencesPage::new();
+            let look = adw::PreferencesGroup::new();
+            look.set_title(&tr("Colours"));
+            look.add(&themes_ui.root);
+            look.add(&colors.root);
+            page.add(&look);
+            let text = adw::PreferencesGroup::new();
+            text.set_title(&tr("Text"));
+            text.add(&hyphen_sw);
+            page.add(&text);
+            page.add(&tweaks_ui.text_group);
+            page.add(&tweaks_ui.advanced_group);
+            let book_group = adw::PreferencesGroup::new();
+            book_group.set_title(&tr("This Book"));
+            for (title, sub, input) in [
+                (
+                    tr("Use as Default for New Books"),
+                    tr("Every change is kept for this book. This makes the current look the starting point of books you have not changed yet."),
+                    (|| Input::UseAsDefault) as fn() -> Input,
+                ),
+                (
+                    tr("Reset This Book to Defaults"),
+                    tr("Forget the own look of this book and use the defaults again."),
+                    || Input::ResetLook,
+                ),
+            ] {
+                let row = adw::ActionRow::new();
+                row.set_title(&title);
+                row.set_subtitle(&sub);
+                row.set_activatable(true);
+                row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
+                let (tx, d) = (sender.input_sender().clone(), more_dialog.clone());
+                row.connect_activated(move |_| {
+                    d.close();
+                    tx.emit(input());
+                });
+                book_group.add(&row);
             }
-            let (tx, pop) = (sender.input_sender().clone(), pop.clone());
-            b.connect_clicked(move |_| {
-                pop.popdown();
-                tx.emit(input());
-            });
-            look_row.append(b);
+            page.add(&book_group);
+            let tb = adw::ToolbarView::new();
+            tb.add_top_bar(&adw::HeaderBar::new());
+            tb.set_content(Some(&page));
+            more_dialog.set_child(Some(&tb));
         }
-        ab.append(&look_row);
+        let more_btn = gtk::Button::with_label(&tr("More Text Options"));
+        {
+            let (d, pop) = (more_dialog.clone(), pop.clone());
+            let page_weak = root.downgrade();
+            more_btn.connect_clicked(move |_| {
+                pop.popdown();
+                if let Some(page) = page_weak.upgrade() {
+                    d.present(Some(&page));
+                }
+            });
+        }
+        ab.append(&more_btn);
         // never taller than the window: it scrolls
         let scroller = gtk::ScrolledWindow::new();
         scroller.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
         scroller.set_propagate_natural_height(true);
-        scroller.set_max_content_height(540);
-        scroller.set_min_content_width(340);
+        scroller.set_max_content_height(480);
+        scroller.set_min_content_width(320);
         scroller.set_child(Some(&ab));
         pop.set_child(Some(&scroller));
         appearance.set_popover(Some(&pop));
         header.pack_end(&appearance);
+
+        // ---- main menu (RDR-R3): a menu model, the same builder for every reader ---------------
+        let wide_menu = super::reader_menu::build(&super::reader_menu::EPUB_MENU);
+        let narrow_menu = super::reader_menu::build(&super::reader_menu::narrow_entries(
+            &super::reader_menu::EPUB_MENU,
+            &super::reader_menu::NARROW_ENTRIES,
+        ));
+        primary.set_menu_model(Some(&wide_menu));
+        super::audit::name_menu_items(&primary);
+        let narrow = Rc::new(Cell::new(false));
+        {
+            let narrow_flag = narrow.clone();
+            let (primary, fs, tts_btn) = (
+                primary.clone(),
+                fullscreen_btn.clone(),
+                tts_ui.button.clone(),
+            );
+            let (back, fwd) = (back_btn.clone(), forward_btn.clone());
+            let (appearance, text_pop) = (appearance.clone(), pop.clone());
+            super::reader_menu::install_narrow(&bin, move |is_narrow| {
+                narrow_flag.set(is_narrow);
+                fs.set_visible(!is_narrow);
+                tts_btn.set_visible(!is_narrow);
+                appearance.set_visible(!is_narrow);
+                // the text popover is opened from the menu: it hangs from the menu button then
+                if is_narrow {
+                    appearance.set_popover(None::<&gtk::Popover>);
+                    text_pop.set_parent(&primary);
+                } else {
+                    if text_pop.parent().is_some() {
+                        text_pop.unparent();
+                    }
+                    appearance.set_popover(Some(&text_pop));
+                }
+                primary.set_menu_model(Some(if is_narrow { &narrow_menu } else { &wide_menu }));
+                super::reader_menu::jump_style(&back, Some(&fwd), is_narrow);
+            });
+        }
 
         header.pack_end(&search_btn);
 
@@ -4411,8 +4457,19 @@ impl SimpleComponent for Reader {
                     && d.contains("icon=media-playback-start")
             });
         }
+        let opening = adw::StatusPage::new();
+        opening.set_title(&tr("Opening Book"));
+        opening.add_css_class("opening-page");
+        opening.set_visible(false);
+        opening.set_can_target(true);
+        {
+            let spinner = adw::Spinner::new();
+            spinner.set_size_request(48, 48);
+            opening.set_child(Some(&spinner));
+        }
         let page_overlay = gtk::Overlay::new();
         page_overlay.set_child(Some(&split));
+        page_overlay.add_overlay(&opening);
         page_overlay.add_overlay(&tts_ui.player.widget);
         page_overlay.add_overlay(&rsvp_ctl.widget);
         super::card_drag::install(
@@ -4432,7 +4489,8 @@ impl SimpleComponent for Reader {
         );
         toolbar.set_content(Some(&page_overlay));
         toolbar.add_bottom_bar(&bottom);
-        root.set_child(Some(&toolbar));
+        bin.set_child(Some(&toolbar));
+        root.set_child(Some(&bin));
         root.set_title(&title_text);
         root.add_css_class("reader-page");
 
@@ -4704,6 +4762,10 @@ impl SimpleComponent for Reader {
                         return glib::Propagation::Stop;
                     }
                 }
+                if key == Key::Escape && !ctrl && !alt && !shift {
+                    tx.emit(Input::Escape);
+                    return glib::Propagation::Stop;
+                }
                 if has_sel && !ctrl {
                     let act = match key {
                         Key::Return | Key::KP_Enter => Some("commit"),
@@ -4713,7 +4775,6 @@ impl SimpleComponent for Reader {
                         Key::t => Some("translate"),
                         Key::h => Some("highlight"),
                         Key::n => Some("note"),
-                        Key::Escape => Some("clear"),
                         _ => None,
                     };
                     if let Some(a) = act {
@@ -4743,7 +4804,6 @@ impl SimpleComponent for Reader {
                     Key::Home => tx.emit(Input::Seek(0.0)),
                     Key::End => tx.emit(Input::Seek(1.0)),
                     Key::F11 => tx.emit(Input::Fullscreen),
-                    Key::Escape => tx.emit(Input::Quit),
                     Key::b if ctrl => tx.emit(Input::ToggleBookmark),
                     Key::r if ctrl => tx.emit(Input::Reload),
                     Key::f if ctrl => tx.emit(Input::ShowTab("search")),
@@ -4784,6 +4844,8 @@ impl SimpleComponent for Reader {
         }
 
         // the actions of the command palette: the same things the keys and buttons do
+        let ruler_sub_slot;
+        let ruler_action_slot;
         {
             let group = gio::SimpleActionGroup::new();
             let add = |name: &str, input: Rc<dyn Fn() -> Input>| {
@@ -4815,9 +4877,38 @@ impl SimpleComponent for Reader {
             add("reload", Rc::new(|| Input::Reload));
             add("properties", Rc::new(|| Input::Properties));
             add("rsvp", Rc::new(|| Input::Rsvp));
-            for (name, dir) in [("ruler", 0), ("ruler-up", -1), ("ruler-down", 1)] {
+            // the ruler is a setting: a check item whose state follows it
+            let ruler_action = gio::SimpleAction::new_stateful(
+                "ruler",
+                None,
+                &shared.cfg.borrow().ruler.enabled.to_variant(),
+            );
+            ruler_action.connect_activate(move |_, _| super::reading_ruler::act(0));
+            group.add_action(&ruler_action);
+            ruler_action_slot = Some(ruler_action.clone());
+            ruler_sub_slot = Some({
+                let (a, sh) = (ruler_action.clone(), shared.clone());
+                super::reading_ruler::subscribe(move || {
+                    a.set_state(&sh.cfg.borrow().ruler.enabled.to_variant());
+                })
+            });
+            for (name, dir) in [("ruler-up", -1), ("ruler-down", 1)] {
                 let a = gio::SimpleAction::new(name, None);
                 a.connect_activate(move |_, _| super::reading_ruler::act(dir));
+                group.add_action(&a);
+            }
+            add("footer", Rc::new(|| Input::FooterConfigure));
+            {
+                // the narrow menu's "Text Appearance": the popover opens once the menu has closed
+                let a = gio::SimpleAction::new("text-appearance", None);
+                let p = pop.clone();
+                a.connect_activate(move |_, _| {
+                    let p = p.clone();
+                    glib::timeout_add_local_once(
+                        std::time::Duration::from_millis(120),
+                        move || p.popup(),
+                    );
+                });
                 group.add_action(&a);
             }
             add("back", Rc::new(|| Input::Quit));
@@ -4904,8 +4995,7 @@ impl SimpleComponent for Reader {
             })
         };
 
-        let (sel_pop_guard, footer_pop_guard, area_guard) =
-            (sel_pop.clone(), footer_pop.clone(), canvas.area.clone());
+        let (sel_pop_guard, area_guard) = (sel_pop.clone(), canvas.area.clone());
         let w = W {
             page: root.clone(),
             title,
@@ -4916,9 +5006,9 @@ impl SimpleComponent for Reader {
             search_btn,
             search_list,
             search_status,
+            search_empty,
             slider,
             slider_row: slider_row.clone(),
-            footer_pop,
             handles,
             left_label,
             mid_label,
@@ -4950,15 +5040,24 @@ impl SimpleComponent for Reader {
             theme_btns,
             themes_ui,
             colors,
-            layout_btns,
+            more_dialog,
+            opening,
+            primary: primary.clone(),
+            header: header.clone(),
+            text_pop: pop.clone(),
+            ruler_action: ruler_action_slot.expect("ruler action"),
+            narrow,
+            _ruler_sub: ruler_sub_slot,
             columns_dd,
             hyphen_sw,
             zoom_label,
             wiki_text,
             dict_text,
+            dict_empty,
             dict_prompt,
             vocab_def,
             vocab_btn,
+            vocab_row,
             wiki_spin,
             wiki_img,
             wiki_url,
@@ -5008,22 +5107,22 @@ impl SimpleComponent for Reader {
             hl_style: HighlightStyle::default(),
             tweaks_ui: Rc::new(RefCell::new(Some(tweaks_ui))),
             fixed,
+            first_layout_pending: true,
+            opening_shown: false,
             live: Cell::new((None, 0)),
             opened: std::time::Instant::now(),
             footer_timer: None,
             overlay_guard: {
                 let (pop, area) = (sel_pop_guard.clone(), area_guard.clone());
                 let pop2 = pop.clone();
-                let g = super::overlay_guard::OverlayGuard::install(
+                super::overlay_guard::OverlayGuard::install(
                     &root,
                     move || {
                         pop.popdown();
                         super::overlay_guard::drop_tooltip(&area);
                     },
                     move || pop2.is_autohide(),
-                );
-                g.watch_popover(&footer_pop_guard);
-                g
+                )
             },
             _dict_sub: Some({
                 let tx = sender.input_sender().clone();
@@ -5145,7 +5244,21 @@ impl SimpleComponent for Reader {
                     }
                 }
             },
-            Input::GoSpine(i, f, a) => self.load_chapter(i, f, a, false),
+            Input::GoSpine(i, f, a) => {
+                // a big first chapter takes a while to lay out: the page says so first, and the layout
+                // starts after the frame that shows it
+                if std::mem::take(&mut self.first_layout_pending)
+                    && opening_page_needed(self.weights.get(i).copied().unwrap_or(0.0))
+                {
+                    self.w.opening.set_visible(true);
+                    self.opening_shown = true;
+                    let tx = sender.input_sender().clone();
+                    glib::idle_add_local_once(move || tx.emit(Input::GoSpine(i, f, a)));
+                    return;
+                }
+                self.load_chapter(i, f, a, false);
+                self.w.opening.set_visible(false);
+            }
             Input::GoHref(h) => {
                 if let Some((i, frag)) = self.book.locate(&h) {
                     self.note_jump();
@@ -5419,15 +5532,24 @@ impl SimpleComponent for Reader {
                 }
             }
             Input::DeleteHighlight(id) => {
-                {
+                let removed = {
                     let mut lib = self.shared.lib.borrow_mut();
-                    if let Some(b) = lib.get_mut(self.book_id) {
-                        b.highlights.retain(|h| h.id != id);
-                    }
+                    let r = lib
+                        .get_mut(self.book_id)
+                        .and_then(|b| crate::remove_undo::take_highlight(&mut b.highlights, &id));
                     let _ = lib.save();
-                }
+                    r
+                };
                 self.refresh_highlights();
                 self.rebuild_lists();
+                if let Some(r) = removed {
+                    self.offer_undo(r, &sender);
+                }
+            }
+            Input::Restored => {
+                self.refresh_highlights();
+                self.rebuild_lists();
+                self.update_bookmark_button();
             }
             Input::GoHighlight(id) => {
                 let target = self.shared.lib.borrow().get(self.book_id).and_then(|b| {
@@ -5713,7 +5835,23 @@ impl SimpleComponent for Reader {
                 }
             }
             Input::FooterChanged => self.update_position_ui(),
-            Input::FooterConfigure => self.w.footer_pop.popup(),
+            Input::FooterConfigure => {
+                let (tx1, tx2) = (sender.input_sender().clone(), sender.input_sender().clone());
+                let (config, own) = {
+                    let c = self.shared.cfg.borrow();
+                    (
+                        c.footer_for(self.book_id),
+                        c.footer_books.contains_key(&self.book_id),
+                    )
+                };
+                let d = super::reader_footer::dialog(
+                    config,
+                    own,
+                    Rc::new(move |c| tx1.emit(Input::Footer(c))),
+                    Rc::new(move |o| tx2.emit(Input::FooterScope(o))),
+                );
+                d.present(Some(&self.w.page));
+            }
             Input::HandlesDone => {
                 self.canvas.commit_selection();
             }
@@ -5828,6 +5966,7 @@ impl SimpleComponent for Reader {
                 }
             }
             Input::ToggleBookmark => {
+                let mut removed = None;
                 {
                     let mut lib = self.shared.lib.borrow_mut();
                     if let Some(b) = lib.get_mut(self.book_id) {
@@ -5836,7 +5975,8 @@ impl SimpleComponent for Reader {
                         });
                         match near {
                             Some(i) => {
-                                b.bookmarks.remove(i);
+                                let id = b.bookmarks[i].id.clone();
+                                removed = crate::remove_undo::take_bookmark(&mut b.bookmarks, &id);
                             }
                             None => b.bookmarks.push(Bookmark {
                                 id: uuid::Uuid::new_v4().to_string(),
@@ -5851,6 +5991,9 @@ impl SimpleComponent for Reader {
                 }
                 self.update_bookmark_button();
                 self.rebuild_lists();
+                if let Some(r) = removed {
+                    self.offer_undo(r, &sender);
+                }
             }
             Input::GoBookmark(id) => {
                 let target = self.shared.lib.borrow().get(self.book_id).and_then(|b| {
@@ -5865,15 +6008,19 @@ impl SimpleComponent for Reader {
                 }
             }
             Input::RemoveBookmark(id) => {
-                {
+                let removed = {
                     let mut lib = self.shared.lib.borrow_mut();
-                    if let Some(b) = lib.get_mut(self.book_id) {
-                        b.bookmarks.retain(|m| m.id != id);
-                    }
+                    let r = lib
+                        .get_mut(self.book_id)
+                        .and_then(|b| crate::remove_undo::take_bookmark(&mut b.bookmarks, &id));
                     let _ = lib.save();
-                }
+                    r
+                };
                 self.rebuild_lists();
                 self.update_bookmark_button();
+                if let Some(r) = removed {
+                    self.offer_undo(r, &sender);
+                }
             }
             Input::ShowTab(t) => {
                 if t == "toc" {
@@ -5988,15 +6135,14 @@ impl SimpleComponent for Reader {
                     self.search_hits.push((*spine, *nth));
                 }
                 let n = self.search_hits.len();
-                self.w.search_status.set_label(&if finished && n == 0 {
-                    "No results".to_string()
-                } else if n > 400 {
-                    "More than 400 results".to_string()
-                } else if finished {
-                    format!("{n} results")
-                } else {
-                    format!("{n} results so far…")
-                });
+                self.w
+                    .search_status
+                    .set_label(&super::reader_search::search_status(n, finished));
+                super::reader_search::set_empty_state(
+                    &self.w.search_list,
+                    &self.w.search_empty,
+                    finished && n == 0,
+                );
             }
             Input::SearchResult(i) => {
                 if let Some((spine, nth)) = self.search_hits.get(i).copied() {
@@ -6074,6 +6220,13 @@ impl SimpleComponent for Reader {
                         self.dev_side(c, &sender);
                         return;
                     }
+                    r if r.starts_with("search=") => {
+                        let q = r["search=".len()..].to_string();
+                        self.w.search_entry.set_text(&q);
+                        sender.input(Input::Search(q));
+                        self.w.search_btn.popup();
+                        return;
+                    }
                     r if r.starts_with("rsvp-") => {
                         use super::rsvp::Cmd;
                         let step = crate::rsvp_view::STEP_WPM as i32;
@@ -6131,6 +6284,14 @@ impl SimpleComponent for Reader {
                     }
                     l if l.starts_with("link=") => {
                         sender.input(Input::Link(l[5..].to_string()));
+                        return;
+                    }
+                    // `reader:goto-hint=TEXT` prints what the Go to field would say under TEXT
+                    g if g.starts_with("goto-hint=") => {
+                        match (self.goto_checker())(&g[10..]) {
+                            Ok(l) => eprintln!("goto_hint: ok {l}"),
+                            Err(e) => eprintln!("goto_hint: error {e}"),
+                        }
                         return;
                     }
                     g if g.starts_with("goto=") => {
@@ -6315,6 +6476,20 @@ impl SimpleComponent for Reader {
                         eprintln!("idle: {}", self.w.page.has_css_class("chrome-idle"));
                         eprintln!("search_status: {}", self.w.search_status.label());
                         eprintln!("search_query: {}", self.w.search_entry.text());
+                        eprintln!(
+                            "search_empty: {} width={} height={}",
+                            self.w.search_empty.parent().is_some(),
+                            self.w
+                                .search_btn
+                                .popover()
+                                .and_then(|p| p.child())
+                                .map_or(0, |c| c.width_request()),
+                            self.w
+                                .search_btn
+                                .popover()
+                                .and_then(|p| p.child())
+                                .map_or(0, |c| c.height_request())
+                        );
                         eprintln!("autohide: {}", self.w.sel_pop.is_autohide());
                         eprintln!("popover: {}", self.w.sel_pop.is_visible());
                         let (shy, canon) = self.canvas.dev_hyphen_stats();
@@ -6669,6 +6844,237 @@ impl SimpleComponent for Reader {
                     }
                     k if k.starts_with("map-") => {
                         eprintln!("book_map: {}", super::reader_map::dev(&k[4..]));
+                        return;
+                    }
+                    // `reader:hl-count` prints `marks: highlights=N notes=N bookmarks=N`;
+                    // `reader:remove-highlight` presses the Remove Highlight button of the open selection popover
+                    "hl-count" => {
+                        let lib = self.shared.lib.borrow();
+                        let (h, n, b) = lib.get(self.book_id).map_or((0, 0, 0), |bk| {
+                            (
+                                bk.highlights.len(),
+                                bk.highlights.iter().filter(|h| !h.note.is_empty()).count(),
+                                bk.bookmarks.len(),
+                            )
+                        });
+                        let last = lib
+                            .get(self.book_id)
+                            .and_then(|bk| bk.highlights.last())
+                            .map(|h| h.text.clone())
+                            .unwrap_or_default();
+                        eprintln!("marks: highlights={h} notes={n} bookmarks={b} last={last:?}");
+                        return;
+                    }
+                    // `reader:sel-dump` prints the size of the selection popover: `sel_pop: width=W height=H window=W swatch=WxH
+                    // vocab_row=B first_swatch_buttons_mapped=N`
+                    "sel-dump" => {
+                        let (w, h) = self
+                            .w
+                            .sel_pop
+                            .child()
+                            .map(|c| {
+                                let (_, nw, _, _) = c.measure(gtk::Orientation::Horizontal, -1);
+                                let (_, nh, _, _) = c.measure(gtk::Orientation::Vertical, nw);
+                                (nw, nh)
+                            })
+                            .unwrap_or((0, 0));
+                        let sw = self.w.swatches.first();
+                        eprintln!(
+                            "sel_pop: width={w} height={h} window={} swatch={}x{} vocab_row={} swatches={}",
+                            self.w.page.width(),
+                            sw.map_or(0, |b| b.width()),
+                            sw.map_or(0, |b| b.height()),
+                            self.w.vocab_row.is_visible(),
+                            self.w.swatches.len()
+                        );
+                        return;
+                    }
+                    "bookmark-toggle" => {
+                        sender.input(Input::ToggleBookmark);
+                        return;
+                    }
+                    "remove-highlight" => {
+                        if self
+                            .selection
+                            .as_ref()
+                            .is_none_or(|s| s.highlight.is_none())
+                        {
+                            let first = self
+                                .shared
+                                .lib
+                                .borrow()
+                                .get(self.book_id)
+                                .and_then(|b| b.highlights.first().cloned());
+                            if let Some(h) = first {
+                                self.selection = Some(SelectionInfo {
+                                    text: h.text.clone(),
+                                    start: h.start,
+                                    end: h.end,
+                                    rect: (200, 200, 20, 20),
+                                    highlight: Some(h.id),
+                                });
+                            }
+                        }
+                        self.w.sel_remove.emit_clicked();
+                        return;
+                    }
+                    // `reader:esc` presses Escape and prints what it will put away: `esc: ClearSelection`
+                    "esc" => {
+                        eprintln!("esc: {:?}", esc_action(self.esc_state()));
+                        sender.input(Input::Escape);
+                        return;
+                    }
+                    // `reader:opening-state` prints whether "Opening Book" is on the page and whether it was shown;
+                    // `reader:opening-demo` shows it for 1.5 s
+                    "opening-state" => {
+                        eprintln!(
+                            "opening: visible={} shown_once={}",
+                            self.w.opening.is_visible(),
+                            self.opening_shown
+                        );
+                        return;
+                    }
+                    "opening-demo" => {
+                        self.w.opening.set_visible(true);
+                        self.opening_shown = true;
+                        let o = self.w.opening.clone();
+                        glib::timeout_add_local_once(
+                            std::time::Duration::from_millis(1500),
+                            move || o.set_visible(false),
+                        );
+                        return;
+                    }
+                    // `reader:menu-dump` prints the Main Menu: `reader_menu: entries=N sections=N submenus=N narrow=B | Label [action] | ...`
+                    "menu-dump" => {
+                        let (mut n, mut sections, mut subs) = (0, 0, 0);
+                        let mut list = Vec::new();
+                        if let Some(m) = self.w.primary.menu_model() {
+                            for i in 0..m.n_items() {
+                                match m.item_link(i, "section") {
+                                    Some(sec) => {
+                                        sections += 1;
+                                        for j in 0..sec.n_items() {
+                                            n += 1;
+                                            if sec.item_link(j, "submenu").is_some() {
+                                                subs += 1;
+                                            }
+                                            let l = sec
+                                                .item_attribute_value(j, "label", None)
+                                                .and_then(|v| v.str().map(String::from))
+                                                .unwrap_or_default();
+                                            let a = sec
+                                                .item_attribute_value(j, "action", None)
+                                                .and_then(|v| v.str().map(String::from))
+                                                .unwrap_or_default();
+                                            list.push(format!("{} [{a}]", l.replace('_', "")));
+                                        }
+                                    }
+                                    None => n += 1,
+                                }
+                            }
+                        }
+                        eprintln!(
+                            "reader_menu: entries={n} sections={sections} submenus={subs} narrow={} | {}",
+                            self.w.narrow.get(),
+                            list.join(" | ")
+                        );
+                        return;
+                    }
+                    "menu-popup" => {
+                        self.w.primary.popup();
+                        return;
+                    }
+                    "menu-popdown" => {
+                        self.w.primary.popdown();
+                        return;
+                    }
+                    // `reader:ruler-state` prints the state of the `reader.ruler` check item and the setting
+                    "ruler-state" => {
+                        let st = self.w.ruler_action.state().and_then(|v| v.get::<bool>());
+                        eprintln!(
+                            "ruler_state: action={:?} setting={}",
+                            st,
+                            super::reading_ruler::is_on(&self.shared)
+                        );
+                        return;
+                    }
+                    // `reader:text-dump` prints the size of the Text Appearance popover and whether More Text Options is open
+                    "text-dump" => {
+                        let content = self
+                            .w
+                            .text_pop
+                            .child()
+                            .and_downcast::<gtk::ScrolledWindow>()
+                            .and_then(|s| s.child());
+                        let nat = content
+                            .map(|c| c.measure(gtk::Orientation::Vertical, 348).1)
+                            .unwrap_or(0);
+                        eprintln!(
+                            "text_pop: natural_height={nat} window_height={} hyphenate={} more_open={}",
+                            self.w.page.height(),
+                            self.w.hyphen_sw.is_active(),
+                            self.w.more_dialog.is_mapped()
+                        );
+                        return;
+                    }
+                    "text-more=open" => {
+                        self.w.more_dialog.present(Some(&self.w.page));
+                        return;
+                    }
+                    "text-more=close" => {
+                        self.w.more_dialog.close();
+                        return;
+                    }
+                    k if k.starts_with("text-hyphen=") => {
+                        self.w.hyphen_sw.set_active(&k[12..] != "off");
+                        return;
+                    }
+                    // `reader:header-dump` prints the width of the title and how many header controls stick out
+                    "header-dump" => {
+                        let hw = self.w.header.width() as f64;
+                        let (mut shown, mut clipped) = (0, 0);
+                        fn walk(
+                            w: &gtk::Widget,
+                            header: &gtk::Widget,
+                            hw: f64,
+                            shown: &mut i32,
+                            clipped: &mut i32,
+                        ) {
+                            let is_button = w.is::<gtk::Button>()
+                                || w.is::<gtk::MenuButton>()
+                                || w.is::<gtk::ToggleButton>();
+                            if is_button && w.is_mapped() {
+                                *shown += 1;
+                                if let Some(b) = w.compute_bounds(header) {
+                                    if b.x() < -1.0 || (b.x() + b.width()) as f64 > hw + 1.0 {
+                                        *clipped += 1;
+                                    }
+                                }
+                                return;
+                            }
+                            let mut c = w.first_child();
+                            while let Some(x) = c {
+                                walk(&x, header, hw, shown, clipped);
+                                c = x.next_sibling();
+                            }
+                        }
+                        walk(
+                            self.w.header.upcast_ref(),
+                            self.w.header.upcast_ref(),
+                            hw,
+                            &mut shown,
+                            &mut clipped,
+                        );
+                        eprintln!(
+                            "reader_header: width={hw:.0} title={} buttons={shown} clipped={clipped} fullscreen={} read_aloud={} back={} narrow={} min_header={} min_page={}",
+                            self.w.title.width(),
+                            self.w.fullscreen_btn.is_visible(),
+                            self.w.tts.button.is_visible(),
+                            self.w.back_btn.label().unwrap_or_default(),
+                            self.w.narrow.get(),
+                            self.w.header.measure(gtk::Orientation::Horizontal, -1).0,
+                            self.w.page.measure(gtk::Orientation::Horizontal, -1).0
+                        );
                         return;
                     }
                     "goto-dialog" => {
@@ -7035,6 +7441,11 @@ impl SimpleComponent for Reader {
                 self.apply_prefs();
             }
             Input::KeySelect(step, fwd) => {
+                // the selection is being changed: what was committed before (and its popover) is out of date,
+                // the next Enter or action key commits the new one
+                if self.selection.take().is_some() {
+                    self.w.sel_pop.popdown();
+                }
                 self.canvas.key_select(step, fwd);
                 let said = match self.canvas.selected_text() {
                     Some(t) => {
@@ -7070,6 +7481,14 @@ impl SimpleComponent for Reader {
                     _ => {}
                 }
             }
+            Input::Escape => match esc_action(self.esc_state()) {
+                EscAction::ClosePopover => self.w.sel_pop.popdown(),
+                EscAction::CancelDrag => self.w.handles.end(),
+                EscAction::ClearSelection => sender.input(Input::SelectionKey("clear")),
+                EscAction::CloseSidebar | EscAction::ExitFullscreen | EscAction::Leave => {
+                    sender.input(Input::Quit)
+                }
+            },
             Input::Quit => {
                 // Escape first puts the sidebar away, then the full screen, then leaves the book
                 if self.w.split.shows_sidebar() && self.w.split.is_collapsed() {
@@ -7123,9 +7542,6 @@ impl SimpleComponent for Reader {
         if let Some(t) = self.footer_timer.take() {
             t.remove();
         }
-        if self.w.footer_pop.parent().is_some() {
-            self.w.footer_pop.unparent();
-        }
         // leaving the book does not cancel a voice download (it is the application's job)
         self.tts.prep = None;
         self.tts_stop();
@@ -7152,6 +7568,47 @@ fn next_theme(t: ReaderTheme) -> ReaderTheme {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn escape_puts_things_away_in_order() {
+        let all = EscState {
+            popover_open: true,
+            dragging: true,
+            selection: true,
+            sidebar_over_page: true,
+            fullscreen: true,
+        };
+        assert_eq!(esc_action(all), EscAction::ClosePopover);
+        let s = EscState {
+            popover_open: false,
+            ..all
+        };
+        assert_eq!(esc_action(s), EscAction::CancelDrag);
+        let s = EscState {
+            dragging: false,
+            ..s
+        };
+        assert_eq!(esc_action(s), EscAction::ClearSelection);
+        let s = EscState {
+            selection: false,
+            ..s
+        };
+        assert_eq!(esc_action(s), EscAction::CloseSidebar);
+        let s = EscState {
+            sidebar_over_page: false,
+            ..s
+        };
+        assert_eq!(esc_action(s), EscAction::ExitFullscreen);
+        assert_eq!(esc_action(EscState::default()), EscAction::Leave);
+    }
+
+    #[test]
+    fn only_a_big_first_chapter_shows_the_opening_page() {
+        assert!(!opening_page_needed(5_000.0));
+        assert!(!opening_page_needed(99_999.0));
+        assert!(opening_page_needed(100_000.0));
+        assert!(opening_page_needed(450_000.0));
+    }
 
     #[test]
     fn t_cycles_through_the_themes() {

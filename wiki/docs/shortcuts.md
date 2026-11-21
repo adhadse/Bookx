@@ -10,6 +10,7 @@ see [Changing shortcuts](#changing-shortcuts).
 | Command palette (every command, book and setting) | ++ctrl+k++ or ++ctrl+shift+p++ |
 | Preferences | ++ctrl+comma++ |
 | Keyboard shortcuts | ++ctrl+question++ |
+| Open the main menu | ++f10++ |
 | Online help | ++f1++ |
 | Quit | ++ctrl+q++ |
 
@@ -27,7 +28,7 @@ Preferences. See [Accessibility](accessibility.md#command-palette) for the detai
 | Edit book | ++ctrl+shift+e++ |
 | Book properties | ++ctrl+i++ |
 | Select all books | ++ctrl+a++ |
-| Clear the selection | ++escape++ |
+| Clear the selection (also the header's Cancel button) | ++escape++ |
 | Add the selected books to Favourites (or remove them) | ++ctrl+d++ |
 | Remove selected books | ++delete++ |
 | Preferences | ++ctrl+comma++ |
@@ -50,14 +51,14 @@ Preferences. See [Accessibility](accessibility.md#command-palette) for the detai
 | Dictionary / Wikipedia / translate the selection | ++d++ / ++w++ / ++t++ |
 | Add the selection to your vocabulary with your own definition (++ctrl+enter++ saves) | ++v++, or ++ctrl+shift+v++ |
 | Highlight / add a note / copy the selection | ++h++ / ++n++ / ++ctrl+c++ |
-| Clear the selection | ++escape++ |
+| Put away the first thing open (popover, handle drag, selection, sidebar, full screen), then leave the book | ++escape++ |
 | Search in book | ++ctrl+f++ |
 | Open or close the sidebar (contents, bookmarks, notes) | ++f9++ or ++ctrl+t++ (++escape++ also closes it) |
 | Actions of a highlight in the sidebar list | ++menu++ or ++shift+f10++ |
-| Toggle bookmark | ++ctrl+b++ |
+| Toggle bookmark | ++ctrl+d++ or ++ctrl+b++ |
 | Bookmarks and highlights list | ++ctrl+shift+b++ or ++ctrl+h++ |
-| Go to a page, percent, location or chapter | ++ctrl+g++ |
-| Back to the previous place / forward again | ++alt+left++ / ++alt+right++ |
+| Go to a page, percent, location or chapter | ++ctrl+l++ or ++ctrl+g++ |
+| Previous position / next position (after a jump) | ++alt+left++ / ++alt+right++ |
 | Book map | ++m++ |
 | Move the reading ruler up / down (turns it on) | ++alt+up++ / ++alt+down++ |
 | Next theme (light, sepia, dark, black) | ++t++ (with text selected, ++t++ translates) |
@@ -113,7 +114,7 @@ These are the defaults; every one of them can be changed under [Changing shortcu
 | Copy the selection of the preview | ++ctrl+alt+c++ |
 | Close tab | ++ctrl+w++ |
 | Close other tabs / tabs to the right | ++ctrl+shift+w++ / ++alt+shift+w++ |
-| Save a copy / save a copy and edit it | ++ctrl+alt+s++ / ++ctrl+alt+shift+s++ |
+| Save a copy / save a copy and edit it | ++ctrl+shift+s++ / ++ctrl+alt+shift+s++ |
 | Open another book | ++ctrl+o++ |
 | Revert to before / after the last change | ++ctrl+alt+z++ / ++ctrl+alt+shift+z++ |
 | Help on editing | ++f1++ |
@@ -166,12 +167,12 @@ is listed with its keys.
 - The book editor has its own section, **Editor**: its keys only work in the editor window, so they may repeat keys of
   the library or the reader, but two editor actions cannot share a key. Changes apply to every open editor window at
   once and to the shortcut shown in the editor's command palette.
-- A plain letter or digit is refused for the library (it would stop you typing in the search field). In the reader a
-  plain key is allowed.
-- The arrow button on a row **resets** that action; the eraser button **removes** its shortcut; **Reset All** brings
-  every default back.
-- **Export** and **Import** save your shortcuts to a JSON file and read them back, to move them to another computer.
-  An import replaces your shortcuts; unknown actions and invalid keys in the file are skipped and reported, and keys
+- A plain letter or digit is refused for the library (it would stop you typing in the search field): a message says to
+  add Ctrl or Alt and the window stays open for another try. In the reader a plain key is allowed.
+- The arrow button on a row **resets** that action; the eraser button **removes** its shortcut. Under **Share and
+  Reset**, *Reset All Shortcuts* brings every default back and shows a toast with **Undo**.
+- **Export Shortcuts** and **Import Shortcuts** save your shortcuts to a JSON file and read them back, to move them to
+  another computer. An import (also with an **Undo** toast) replaces your shortcuts; unknown actions and invalid keys in the file are skipped and reported, and keys
   that end up on two actions in the same window are flagged.
 
 Changes apply at once to the menus, the [command palette](accessibility.md#command-palette) and the *Keyboard Shortcuts*

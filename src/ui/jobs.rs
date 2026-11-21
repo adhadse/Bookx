@@ -6,7 +6,7 @@ use crate::i18n::{tr, trf};
 use std::cell::RefCell;
 use std::collections::HashSet;
 
-use relm4::adw::prelude::*;
+use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
 
 use relm4::RelmWidgetExt;
@@ -19,6 +19,26 @@ thread_local! {
     static OPEN_ROWS: RefCell<HashSet<u64>> = RefCell::new(HashSet::new());
     /// The rings of the rows now in the panel, for the tests.
     static ROW_RINGS: RefCell<Vec<(u64, ProgressRing)>> = const { RefCell::new(Vec::new()) };
+}
+
+/// The icon of the header button: only the jobs use it (Shelves has `bookmark-new-symbolic`, the table
+/// view `view-list-symbolic`).
+pub const JOBS_ICON: &str = "emblem-synchronizing-symbolic";
+
+/// The icons the Jobs button may take, the first the theme has (not every theme ships the first).
+pub const JOBS_ICONS: [&str; 3] = [
+    JOBS_ICON,
+    "process-working-symbolic",
+    "view-refresh-symbolic",
+];
+
+/// The Jobs icon this theme has.
+pub fn jobs_icon() -> &'static str {
+    let theme = gtk::gdk::Display::default().map(|d| gtk::IconTheme::for_display(&d));
+    JOBS_ICONS
+        .into_iter()
+        .find(|n| theme.as_ref().is_some_and(|t| t.has_icon(n)))
+        .unwrap_or(JOBS_ICONS[2])
 }
 
 /// The width of the popover (bounded by the window when that is narrower).
@@ -43,13 +63,13 @@ pub fn build() -> gtk::MenuButton {
     let ring = ProgressRing::new(18);
     ring.widget.set_visible(false);
     content.append(&ring.widget);
-    content.append(&gtk::Image::from_icon_name("view-list-symbolic"));
+    content.append(&gtk::Image::from_icon_name(jobs_icon()));
     let badge = gtk::Label::new(None);
     badge.add_css_class("jobs-badge");
     badge.set_visible(false);
     content.append(&badge);
     button.set_child(Some(&content));
-    super::audit::label(&button, &tr("Background jobs"));
+    super::audit::label(&button, &tr("Background Jobs"));
 
     let pop = gtk::Popover::new();
     let body = gtk::Box::new(gtk::Orientation::Vertical, 8);
@@ -159,7 +179,7 @@ fn refresh() {
         Some(f) => format!("{summary} ({:.0}%)", f * 100.0),
         None => summary,
     };
-    button.set_tooltip_text(Some(&trf("Background jobs: {}", &[&summary])));
+    button.set_tooltip_text(Some(&trf("Background Jobs: {}", &[&summary])));
     if !pop.is_visible() {
         return;
     }
@@ -168,13 +188,15 @@ fn refresh() {
     }
     ROW_RINGS.with(|r| r.borrow_mut().clear());
     if jobs_now.is_empty() {
-        let empty = gtk::Label::new(Some(&tr(
-            "Nothing is running. Imports, conversions, sends and downloads show up here.",
-        )));
-        empty.set_wrap(true);
-        empty.set_max_width_chars(40);
-        empty.set_xalign(0.0);
-        empty.add_css_class("dim-label");
+        let empty = adw::StatusPage::builder()
+            .icon_name("object-select-symbolic")
+            .title(tr("No Background Jobs"))
+            .description(tr(
+                "Imports, conversions, sends and downloads show up here.",
+            ))
+            .build();
+        empty.add_css_class("compact");
+        empty.set_widget_name("jobs-empty");
         list.append(&empty);
         return;
     }
@@ -289,6 +311,17 @@ fn job_row(job: &Job) -> gtk::Widget {
         });
         row.append(&retry);
     }
+    if let State::Failed(reason) = &job.state {
+        let copy = gtk::Button::from_icon_name("edit-copy-symbolic");
+        copy.add_css_class("flat");
+        copy.add_css_class("circular");
+        copy.set_valign(gtk::Align::Center);
+        copy.set_tooltip_text(Some(&tr("Copy Error")));
+        super::audit::label(&copy, &trf("Copy Error of {}", &[&job.title]));
+        let text = error_text(&job.title, reason, &job.log);
+        copy.connect_clicked(move |b| b.clipboard().set_text(&text));
+        row.append(&copy);
+    }
     outer.append(&row);
 
     // the log, shown by a click on the row
@@ -330,6 +363,16 @@ fn job_row(job: &Job) -> gtk::Widget {
     }
     row.add_controller(click);
     outer.upcast()
+}
+
+/// What *Copy Error* puts on the clipboard: the job, the reason and its log.
+fn error_text(title: &str, reason: &str, log: &[String]) -> String {
+    let mut t = format!("{title}\n{reason}");
+    if !log.is_empty() {
+        t.push_str("\n\n");
+        t.push_str(&log.join("\n"));
+    }
+    t
 }
 
 fn gdk_primary() -> u32 {
@@ -415,6 +458,16 @@ pub fn dev(cmd: &str) -> String {
             if let Some(list) = list {
                 collect_rows(list.upcast_ref(), &mut out);
             }
+            if out.is_empty() {
+                let empty = PANEL
+                    .with(|p| p.borrow().as_ref().and_then(|p| p.list.upgrade()))
+                    .and_then(|l| l.first_child())
+                    .filter(|c| c.widget_name() == "jobs-empty")
+                    .and_then(|c| c.downcast::<adw::StatusPage>().ok());
+                if let Some(e) = empty {
+                    return format!("rows empty={}", e.title());
+                }
+            }
             format!("rows {}", out.join(" ; "))
         }
         // the width of what the panel shows against the width of the popover: no sideways scrolling
@@ -467,6 +520,28 @@ pub fn dev(cmd: &str) -> String {
             let id: u64 = arg.parse().unwrap_or(0);
             format!("retry {id} ran={}", jobs::retry(id))
         }
+        "copy-error" => {
+            let id: u64 = arg.parse().unwrap_or(0);
+            let text = jobs::with(|h| {
+                h.jobs()
+                    .iter()
+                    .find(|j| j.id == id)
+                    .and_then(|j| match &j.state {
+                        State::Failed(r) => Some(error_text(&j.title, r.as_str(), &j.log)),
+                        _ => None,
+                    })
+            });
+            match text {
+                Some(t) => {
+                    if let Some(d) = gtk::gdk::Display::default() {
+                        d.clipboard().set_text(&t);
+                    }
+                    format!("copy-error {id} {}", t.replace('\n', " / "))
+                }
+                None => format!("copy-error {id} not failed"),
+            }
+        }
+        "icon" => format!("icon {}", jobs_icon()),
         "dump" => {
             let lines: Vec<String> = jobs::with(|h| {
                 h.jobs()
@@ -527,4 +602,25 @@ fn find_class(w: &gtk::Widget, class: &str) -> Option<gtk::Widget> {
         c = child.next_sibling();
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_error_text_has_the_job_the_reason_and_the_log() {
+        assert_eq!(error_text("Send", "disk full", &[]), "Send\ndisk full");
+        let log = vec!["a".to_string(), "b".to_string()];
+        assert_eq!(error_text("Send", "x", &log), "Send\nx\n\na\nb");
+    }
+
+    #[test]
+    fn the_jobs_icon_is_its_own() {
+        for icon in JOBS_ICONS {
+            assert_ne!(icon, "view-list-symbolic");
+            assert_ne!(icon, "bookmark-new-symbolic");
+            assert_ne!(icon, "view-dual-symbolic");
+        }
+    }
 }

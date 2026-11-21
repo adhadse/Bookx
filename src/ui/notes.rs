@@ -2,7 +2,7 @@
 //! book, month, colour or tag, searchable, filterable, editable and exportable. A click opens the
 //! book at the passage. The query is `bookx_lookup::notes_query`, the glue `crate::notes_view`.
 
-use crate::i18n::trf;
+use crate::i18n::{ntr, trf};
 use crate::i18n::{tr, N_};
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
@@ -28,6 +28,8 @@ thread_local! {
     static JUMP: RefCell<Option<(u64, String)>> = const { RefCell::new(None) };
     /// The open window's test commands.
     static DEV: RefCell<Option<Rc<dyn Fn(&str)>>> = const { RefCell::new(None) };
+    /// The Edit Note dialog that is open: its text, what saving does and the dialog (test commands).
+    static EDIT: RefCell<Option<(gtk::TextView, Rc<dyn Fn()>, adw::Dialog)>> = const { RefCell::new(None) };
 }
 
 /// Remembers that the reader of `book` should go to `highlight` when it opens.
@@ -74,13 +76,42 @@ struct State {
     /// The colours of the shown highlights, each with its swatch and count (click one in the
     /// Colour filter to narrow the list).
     legend: gtk::Label,
-    sel_label: gtk::Label,
+    export_btn: gtk::MenuButton,
+    copy_btn: gtk::Button,
+    del_btn: gtk::Button,
+    /// Told how many highlights are selected (the library shows it in its header).
+    on_selection: RefCell<Option<Rc<dyn Fn(usize)>>>,
     /// The visible matches, in display order.
     shown: RefCell<Vec<usize>>,
     colors: gtk::DropDown,
     books: gtk::DropDown,
     book_ids: RefCell<Vec<u64>>,
     color_names: RefCell<Vec<String>>,
+    /// Search, Filter and View: one row.
+    toolbar: gtk::Box,
+}
+
+/// How many entries a menu shows at its first level (sections are flattened).
+fn menu_top_count(m: &gio::MenuModel) -> usize {
+    (0..m.n_items())
+        .map(|i| m.item_link(i, "section").map_or(1, |s| menu_top_count(&s)))
+        .sum()
+}
+
+/// Every label of a menu, sections and submenus included.
+fn menu_labels(m: &gio::MenuModel, out: &mut Vec<String>) {
+    for i in 0..m.n_items() {
+        if let Some(l) = m
+            .item_attribute_value(i, "label", None)
+            .and_then(|v| v.str().map(String::from))
+        {
+            out.push(l);
+        }
+        let links = m.iterate_item_links(i);
+        while let Some((_, sub)) = links.next() {
+            menu_labels(&sub, out);
+        }
+    }
 }
 
 fn key_of(r: &NoteRow) -> Key {
@@ -252,11 +283,123 @@ impl State {
             .collect();
         self.legend.set_markup(&legend.join("   "));
         self.legend.set_visible(!legend.is_empty());
-        self.sel_label
-            .set_label(&match self.selected.borrow().len() {
-                0 => tr("Nothing selected: exports use everything shown"),
-                n => format!("{n} selected"),
-            });
+        drop(rows);
+        self.selection_changed();
+    }
+
+    /// The bar, the Export menu and the owner of the header follow the selection.
+    fn selection_changed(self: &Rc<Self>) {
+        let n = self.selected.borrow().len();
+        self.copy_btn.set_visible(n > 0);
+        self.del_btn.set_visible(n > 0);
+        self.export_btn.set_menu_model(Some(&export_menu(n)));
+        self.export_btn.set_tooltip_text(Some(&export_heading(n)));
+        // the check boxes are shown on every card while something is selected
+        let mut c = self.list.first_child();
+        while let Some(w) = c {
+            if let Some(flow) = w.downcast_ref::<gtk::FlowBox>() {
+                let mut ch = flow.first_child();
+                while let Some(card) = ch {
+                    if n > 0 {
+                        card.add_css_class("selecting");
+                    } else {
+                        card.remove_css_class("selecting");
+                    }
+                    ch = card.next_sibling();
+                }
+            }
+            c = w.next_sibling();
+        }
+        let cb = self.on_selection.borrow().clone();
+        if let Some(cb) = cb {
+            cb(n);
+        }
+    }
+
+    /// How many cards are in "selection mode" (their check box is shown).
+    /// The least width the toolbar needs.
+    fn toolbar_min(&self) -> i32 {
+        self.toolbar.measure(gtk::Orientation::Horizontal, -1).0
+    }
+
+    fn selecting_cards(&self) -> usize {
+        let mut n = 0;
+        let mut c = self.list.first_child();
+        while let Some(w) = c {
+            if let Some(flow) = w.downcast_ref::<gtk::FlowBox>() {
+                let mut ch = flow.first_child();
+                while let Some(card) = ch {
+                    if card.has_css_class("selecting") {
+                        n += 1;
+                    }
+                    ch = card.next_sibling();
+                }
+            }
+            c = w.next_sibling();
+        }
+        n
+    }
+
+    fn select_all(self: &Rc<Self>) {
+        let keys: Vec<Key> = {
+            let rows = self.rows.borrow();
+            self.shown
+                .borrow()
+                .iter()
+                .map(|&i| key_of(&rows[i]))
+                .collect()
+        };
+        self.selected.borrow_mut().extend(keys);
+        self.refresh();
+    }
+
+    fn clear_selection(self: &Rc<Self>) {
+        if !self.selected.borrow().is_empty() {
+            self.selected.borrow_mut().clear();
+            self.refresh();
+        }
+    }
+
+    /// The selected highlights as text: quote, then the note, one blank line between.
+    fn copy_selection(self: &Rc<Self>) {
+        let rows = self.targets();
+        let text = copy_text(&rows);
+        self.host.clipboard().set_text(&text);
+        (self.toast)(ntr(
+            "Copied {} highlight",
+            "Copied {} highlights",
+            rows.len(),
+        ));
+    }
+
+    fn confirm_delete_selected(self: &Rc<Self>) {
+        let keys: Vec<Key> = self.selected.borrow().iter().cloned().collect();
+        if keys.is_empty() {
+            return;
+        }
+        let st = self.clone();
+        super::alert(
+            &self.host,
+            &ntr(
+                "Delete {} Highlight?",
+                "Delete {} Highlights?",
+                keys.len(),
+            ),
+            &tr("The highlights and their notes are removed from their books. This cannot be undone."),
+            &tr("Delete"),
+            true,
+            move || {
+                {
+                    let mut lib = st.shared.lib.borrow_mut();
+                    for k in &keys {
+                        nv::delete(&mut lib.books, k.0, &k.1);
+                    }
+                    let _ = lib.save();
+                }
+                st.selected.borrow_mut().clear();
+                st.reload();
+            },
+        );
     }
 
     /// One highlight: a check box for export, the shared card (quote in its colour and style,
@@ -323,33 +466,50 @@ impl State {
         row.set_widget_name(&format!("{}\t{}", k.0, k.1));
         row.set_size_request(360, -1);
         row.set_hexpand(true);
-        let line = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        let line = gtk::Overlay::new();
         let check = gtk::CheckButton::new();
-        check.set_valign(gtk::Align::Center);
+        check.add_css_class("selection-mode");
+        check.add_css_class("note-check");
+        check.set_halign(gtk::Align::Start);
+        check.set_valign(gtk::Align::Start);
+        check.set_margin_start(10);
+        check.set_margin_top(10);
         check.set_active(self.selected.borrow().contains(&k));
         super::audit::label(&check, &tr("Select this highlight"));
         {
             let (st, k) = (self.clone(), k.clone());
             check.connect_toggled(move |c| {
+                let was = st.selected.borrow().len();
                 if c.is_active() {
                     st.selected.borrow_mut().insert(k.clone());
                 } else {
                     st.selected.borrow_mut().remove(&k);
                 }
-                let n = st.selected.borrow().len();
-                st.sel_label.set_label(&if n == 0 {
-                    tr("Nothing selected: exports use everything shown")
-                } else {
-                    format!("{n} selected")
-                });
+                let now = st.selected.borrow().len();
+                if (was == 0) != (now == 0) {
+                    st.selection_changed();
+                } else if let Some(cb) = st.on_selection.borrow().clone() {
+                    cb(now);
+                }
             });
         }
         card.root.set_hexpand(true);
-        line.append(&check);
-        line.append(&card.root);
-        // the card is as tall as its content even when its neighbour in the row is taller
+        line.set_child(Some(&card.root));
+        line.add_overlay(&check);
+        // no check boxes at rest: they appear on hover, on focus and while something is selected
         line.add_css_class("note-row");
         line.set_valign(gtk::Align::Start);
+        {
+            let motion = gtk::EventControllerMotion::new();
+            let c = row.clone();
+            motion.connect_enter(move |_, _, _| c.add_css_class("hovered"));
+            let c = row.clone();
+            motion.connect_leave(move |_| c.remove_css_class("hovered"));
+            row.add_controller(motion);
+        }
+        if !self.selected.borrow().is_empty() {
+            row.add_css_class("selecting");
+        }
         row.set_child(Some(&line));
         row
     }
@@ -526,22 +686,64 @@ impl State {
         super::audit::label(&tv, &tr("Note"));
         let sw = gtk::ScrolledWindow::new();
         sw.set_child(Some(&tv));
-        sw.set_min_content_height(120);
+        sw.set_min_content_height(160);
+        sw.set_vexpand(true);
+        sw.set_margin_all(12);
         sw.add_css_class("card");
-        let d = adw::AlertDialog::new(Some(&tr("Edit Note")), None);
-        d.set_extra_child(Some(&sw));
-        d.add_responses(&[("cancel", &tr("Cancel")), ("ok", &tr("Save"))]);
-        d.set_response_appearance("ok", adw::ResponseAppearance::Suggested);
-        d.set_close_response("cancel");
-        let (st, k) = (self.clone(), k.clone());
-        d.connect_response(None, move |_, resp| {
-            if resp == "ok" {
+
+        let d = super::dialog_toast::new_dialog();
+        d.set_title(&tr("Edit Note"));
+        d.set_content_width(480);
+        d.set_follows_content_size(false);
+        let cancel = gtk::Button::with_label(&tr("Cancel"));
+        let save = gtk::Button::with_label(&tr("Save"));
+        save.add_css_class("suggested-action");
+        let header = adw::HeaderBar::new();
+        header.set_show_start_title_buttons(false);
+        header.set_show_end_title_buttons(false);
+        header.pack_start(&cancel);
+        header.pack_end(&save);
+        let view = adw::ToolbarView::new();
+        view.add_top_bar(&header);
+        view.set_content(Some(&sw));
+        d.set_child(Some(&view));
+        d.set_default_widget(Some(&save));
+        {
+            let d = d.clone();
+            cancel.connect_clicked(move |_| {
+                d.close();
+            });
+        }
+        let do_save = {
+            let (st, k, tv, d) = (self.clone(), k.clone(), tv.clone(), d.clone());
+            Rc::new(move || {
                 let b = tv.buffer();
                 let text = b.text(&b.start_iter(), &b.end_iter(), false);
+                d.close();
                 st.apply_note(&k, text.as_str());
-            }
-        });
+            })
+        };
+        {
+            let f = do_save.clone();
+            save.connect_clicked(move |_| f());
+        }
+        // Ctrl+Enter saves from inside the text
+        let sc = gtk::ShortcutController::new();
+        sc.set_scope(gtk::ShortcutScope::Local);
+        {
+            let f = do_save.clone();
+            sc.add_shortcut(gtk::Shortcut::new(
+                gtk::ShortcutTrigger::parse_string("<Control>Return|<Control>KP_Enter"),
+                Some(gtk::CallbackAction::new(move |_, _| {
+                    f();
+                    glib::Propagation::Stop
+                })),
+            ));
+        }
+        tv.add_controller(sc);
+        EDIT.with(|e| *e.borrow_mut() = Some((tv.clone(), do_save, d.clone())));
         d.present(Some(&self.host));
+        tv.grab_focus();
     }
 
     fn confirm_delete(self: &Rc<Self>, k: &Key) {
@@ -656,6 +858,52 @@ impl State {
         });
     }
 
+    // ---- Anki -------------------------------------------------------------------------------
+
+    /// Asks what the cards are made of, then exports.
+    fn anki_dialog(self: &Rc<Self>, file: &str) {
+        let list = gtk::ListBox::new();
+        list.add_css_class("boxed-list");
+        list.set_selection_mode(gtk::SelectionMode::None);
+        let kind = adw::ComboRow::new();
+        kind.set_title(&tr("Card type"));
+        kind.set_model(Some(&gtk::StringList::new(&[
+            &tr("Front and back"),
+            &tr("Cloze deletion"),
+        ])));
+        let from = adw::ComboRow::new();
+        from.set_title(&tr("Cards from"));
+        from.set_model(Some(&gtk::StringList::new(&[
+            &tr("Highlights"),
+            &tr("Vocabulary"),
+        ])));
+        list.append(&kind);
+        list.append(&from);
+        let d = adw::AlertDialog::new(
+            Some(&tr("Export Anki Flashcards")),
+            Some(&match file {
+                "apkg" => tr("An Anki package with the cards and their deck."),
+                "tsv" => tr("A text file Anki can import, tab separated."),
+                _ => tr("A CSV file Anki can import."),
+            }),
+        );
+        d.set_widget_name("anki-dialog");
+        d.set_extra_child(Some(&list));
+        d.add_responses(&[("cancel", &tr("Cancel")), ("ok", &tr("Export"))]);
+        d.set_response_appearance("ok", adw::ResponseAppearance::Suggested);
+        d.set_default_response(Some("ok"));
+        d.set_close_response("cancel");
+        let (st, file) = (self.clone(), file.to_string());
+        d.connect_response(None, move |_, resp| {
+            if resp == "ok" {
+                if let Some(id) = anki_id(&file, kind.selected() == 1, from.selected() == 1) {
+                    st.export_dialog(&id);
+                }
+            }
+        });
+        d.present(Some(&self.host));
+    }
+
     // ---- Readwise ---------------------------------------------------------------------------
 
     fn ask_token(self: &Rc<Self>, then: impl Fn(&Rc<State>) + 'static) {
@@ -708,28 +956,20 @@ impl State {
         let url = rw::endpoint();
         let ledger_file = rw::ledger_path();
 
-        let bar = gtk::ProgressBar::new();
-        bar.set_show_text(true);
-        bar.set_text(Some(&tr("Sending…")));
-        let prog = adw::AlertDialog::new(Some(&tr("Sending to Readwise")), None);
-        prog.set_extra_child(Some(&bar));
-        prog.add_response("cancel", &tr("Cancel"));
-        prog.set_close_response("cancel");
-        let cancel_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-        {
-            let f = cancel_flag.clone();
-            prog.connect_response(None, move |_, _| {
-                f.store(true, std::sync::atomic::Ordering::SeqCst)
-            });
-        }
-        prog.present(Some(&self.host));
+        // the Jobs panel is the one place for background work: progress, Cancel and the log
+        let (job, cancel) = crate::jobs::start(
+            crate::jobs::Kind::Send,
+            &tr("Send Highlights to Readwise"),
+            true,
+        );
+        crate::jobs::log(job, &trf("{} highlights to send", &[&items.len()]));
 
         enum Msg {
             Progress(usize, usize),
             Done(Result<rw::Outcome, String>),
         }
         let (tx, rx) = std::sync::mpsc::channel();
-        let flag = cancel_flag.clone();
+        let flag = cancel.clone();
         std::thread::spawn(move || {
             let mut ledger = ledger_file
                 .as_deref()
@@ -746,7 +986,7 @@ impl State {
                 &mut |d, t| {
                     let _ = tx2.send(Msg::Progress(d, t));
                 },
-                &|| flag.load(std::sync::atomic::Ordering::SeqCst),
+                &|| flag.is_cancelled(),
             )
             .map_err(|e| format!("{e:#}"));
             let _ = tx.send(Msg::Done(r));
@@ -755,15 +995,19 @@ impl State {
         glib::timeout_add_local(std::time::Duration::from_millis(60), move || loop {
             match rx.try_recv() {
                 Ok(Msg::Progress(d, t)) => {
-                    bar.set_fraction(d as f64 / t.max(1) as f64);
-                    bar.set_text(Some(&format!("{d} / {t}")));
+                    crate::jobs::progress(
+                        job,
+                        Some(d as f64 / t.max(1) as f64),
+                        &format!("{d} of {t}"),
+                    );
                 }
                 Ok(Msg::Done(r)) => {
-                    prog.force_close();
-                    let msg = match r {
-                        Ok(o) => rw::summary(&o),
-                        Err(e) => e,
+                    let msg = match &r {
+                        Ok(o) => rw::summary(o),
+                        Err(e) => e.clone(),
                     };
+                    crate::jobs::log(job, &msg);
+                    crate::jobs::finish(job, r.map(|_| ()));
                     eprintln!("readwise: {msg}");
                     toast(msg);
                     return glib::ControlFlow::Break;
@@ -773,6 +1017,73 @@ impl State {
             }
         });
     }
+}
+
+/// The export id of an Anki file: `file` is `apkg`, `tsv` or `csv`; the cards are front/back or
+/// cloze, made from the highlights or from the vocabulary.
+pub fn anki_id(file: &str, cloze: bool, vocab: bool) -> Option<String> {
+    if !matches!(file, "apkg" | "tsv" | "csv") {
+        return None;
+    }
+    Some(format!(
+        "{}-{file}-{}",
+        if vocab { "vocab" } else { "anki" },
+        if cloze { "cloze" } else { "basic" }
+    ))
+}
+
+/// What Export covers: the selection, or everything shown while nothing is selected.
+pub fn export_heading(selected: usize) -> String {
+    if selected == 0 {
+        tr("Export Everything Shown")
+    } else {
+        ntr("Export {} Selected", "Export {} Selected", selected)
+    }
+}
+
+/// The Export menu: the first section names what is exported.
+fn export_menu(selected: usize) -> gio::Menu {
+    let menu = gio::Menu::new();
+    let fm = gio::Menu::new();
+    // the Readwise body is what *Send to Readwise* sends: not a file to keep
+    for f in export::FORMATS.iter().filter(|f| f.id != "readwise") {
+        let it = gio::MenuItem::new(Some(f.label), None);
+        it.set_action_and_target_value(Some("notes.export"), Some(&f.id.to_variant()));
+        fm.append_item(&it);
+    }
+    menu.append_section(Some(&export_heading(selected)), &fm);
+    // three entries; what the cards are made of is asked in a small dialog
+    let am = gio::Menu::new();
+    for (id, label) in [
+        ("apkg", N_("Anki Package")),
+        ("tsv", N_("Anki Text File")),
+        ("csv", N_("Anki CSV")),
+    ] {
+        let it = gio::MenuItem::new(Some(&tr(label)), None);
+        it.set_action_and_target_value(Some("notes.anki"), Some(&id.to_variant()));
+        am.append_item(&it);
+    }
+    menu.append_section(Some(&tr("Anki Flashcards")), &am);
+    let rm = gio::Menu::new();
+    rm.append(Some(&tr("Send to Readwise")), Some("notes.readwise"));
+    rm.append(Some(&tr("Readwise Access Token")), Some("notes.token"));
+    menu.append_section(Some(&tr("Readwise")), &rm);
+    menu
+}
+
+/// The text copied from the selection: each quote, then its note, a blank line between highlights.
+fn copy_text(rows: &[NoteRow]) -> String {
+    rows.iter()
+        .map(|r| {
+            let note = r.note.trim();
+            if note.is_empty() {
+                r.text.trim().to_string()
+            } else {
+                format!("{}\n{}", r.text.trim(), note)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n")
 }
 
 fn capitalise(s: &str) -> String {
@@ -803,6 +1114,10 @@ pub struct View {
     pub search: gtk::SearchEntry,
     /// Reads the highlights again (call when the view is shown).
     pub reload: Rc<dyn Fn()>,
+    /// Called with the number of selected highlights whenever it changes.
+    pub on_selection: Rc<dyn Fn(Rc<dyn Fn(usize)>)>,
+    pub select_all: Rc<dyn Fn()>,
+    pub clear_selection: Rc<dyn Fn()>,
 }
 
 /// Builds the view of every highlight of the library, with search, filters and export. `open`
@@ -840,7 +1155,7 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
     let from = gtk::Entry::new();
     let to = gtk::Entry::new();
 
-    // ---- one compact toolbar: search, Filter (with a count), Sort, Group ----------------------
+    // ---- one compact toolbar: search, Filter (with a count), View (order and grouping) -----------
     let badge = gtk::Label::new(None);
     badge.add_css_class("notes-badge");
     badge.set_visible(false);
@@ -873,7 +1188,7 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
         col.append(&field(&tr("Notes"), has_note.upcast_ref()));
         col.append(&date_picker(&tr("From"), &from));
         col.append(&date_picker(&tr("To"), &to));
-        let clear = gtk::Button::with_label(&tr("Clear filters"));
+        let clear = gtk::Button::with_label(&tr("Clear Filters"));
         clear.set_margin_top(4);
         {
             let (c, b, h, f, t) = (
@@ -896,21 +1211,14 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
         pop.set_child(Some(&col));
         filter_btn.set_popover(Some(&pop));
     }
-    let sort_btn = choice_button(
-        "view-sort-descending-symbolic",
-        &tr("Sort"),
-        &sort,
-        &sort_labels,
-    );
-    let group_btn = choice_button("view-list-symbolic", &tr("Group"), &group, &group_labels);
+    let view_btn = view_button(&sort, &sort_labels, &group, &group_labels);
     let toolbar = gtk::Box::new(gtk::Orientation::Horizontal, 6);
     toolbar.set_margin_start(12);
     toolbar.set_margin_end(12);
     toolbar.set_margin_top(10);
     toolbar.append(&search);
     toolbar.append(&filter_btn);
-    toolbar.append(&sort_btn);
-    toolbar.append(&group_btn);
+    toolbar.append(&view_btn);
 
     let chips = adw::WrapBox::new();
     chips.set_child_spacing(6);
@@ -954,59 +1262,39 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
         .title(tr("No highlights"))
         .description(tr("Highlights and notes you make while reading appear here, with the books they come from."))
         .build();
+    {
+        let row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+        row.set_halign(gtk::Align::Center);
+        let open = gtk::Button::with_label(&tr("Open Library"));
+        open.add_css_class("pill");
+        open.set_action_name(Some("lib.view-home"));
+        let import = gtk::Button::with_label(&tr("Import Highlights"));
+        import.add_css_class("pill");
+        import.set_action_name(Some("lib.import-highlights"));
+        row.append(&open);
+        row.append(&import);
+        empty.set_child(Some(&row));
+    }
     let stack = gtk::Stack::new();
     stack.add_named(&sw, Some("list"));
     stack.add_named(&empty, Some("empty"));
 
-    let sel_label = gtk::Label::new(None);
-    sel_label.add_css_class("dim-label");
-    sel_label.set_hexpand(true);
-    sel_label.set_xalign(0.0);
-    let sel_all = gtk::Button::with_label(&tr("Select All"));
-    let sel_none = gtk::Button::with_label(&tr("Clear"));
+    let copy_btn = gtk::Button::with_label(&tr("Copy"));
+    copy_btn.set_visible(false);
+    copy_btn.set_tooltip_text(Some(&tr("Copy the Selected Highlights")));
+    let del_btn = gtk::Button::with_label(&tr("Delete"));
+    del_btn.add_css_class("destructive-action");
+    del_btn.set_visible(false);
     let export_btn = gtk::MenuButton::new();
     export_btn.set_label(&tr("Export"));
     export_btn.add_css_class("suggested-action");
     super::audit::label(&export_btn, &tr("Export or send the highlights"));
-
-    let menu = gio::Menu::new();
-    let fm = gio::Menu::new();
-    for f in export::FORMATS {
-        let it = gio::MenuItem::new(Some(f.label), None);
-        it.set_action_and_target_value(Some("notes.export"), Some(&f.id.to_variant()));
-        fm.append_item(&it);
-    }
-    menu.append_section(Some(&tr("Files")), &fm);
-    let am = gio::Menu::new();
-    for (id, label) in [
-        ("anki-apkg-basic", N_("Anki package, front/back (.apkg)")),
-        ("anki-apkg-cloze", N_("Anki package, cloze (.apkg)")),
-        ("anki-tsv-basic", N_("Anki text file, front/back")),
-        ("anki-tsv-cloze", N_("Anki text file, cloze")),
-        ("anki-csv-basic", N_("Anki CSV, front/back")),
-        ("vocab-apkg-basic", N_("Vocabulary as Anki package (.apkg)")),
-        (
-            "vocab-apkg-cloze",
-            N_("Vocabulary as Anki cloze package (.apkg)"),
-        ),
-        ("vocab-tsv-basic", N_("Vocabulary as Anki text file")),
-    ] {
-        let it = gio::MenuItem::new(Some(&tr(label)), None);
-        it.set_action_and_target_value(Some("notes.export"), Some(&id.to_variant()));
-        am.append_item(&it);
-    }
-    menu.append_section(Some(&tr("Anki flashcards")), &am);
-    let rm = gio::Menu::new();
-    rm.append(Some(&tr("Send to Readwise")), Some("notes.readwise"));
-    rm.append(Some(&tr("Readwise Access Token")), Some("notes.token"));
-    menu.append_section(Some(&tr("Readwise")), &rm);
-    export_btn.set_menu_model(Some(&menu));
+    export_btn.set_menu_model(Some(&export_menu(0)));
 
     let bar = gtk::ActionBar::new();
-    bar.pack_start(&sel_all);
-    bar.pack_start(&sel_none);
-    bar.set_center_widget(Some(&sel_label));
+    bar.pack_start(&copy_btn);
     bar.pack_end(&export_btn);
+    bar.pack_end(&del_btn);
 
     let body = gtk::Box::new(gtk::Orientation::Vertical, 0);
     body.add_css_class("notes-view");
@@ -1042,12 +1330,16 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
         stack,
         summary,
         legend: legend.clone(),
-        sel_label,
+        export_btn: export_btn.clone(),
+        copy_btn: copy_btn.clone(),
+        del_btn: del_btn.clone(),
+        on_selection: RefCell::new(None),
         shown: RefCell::new(Vec::new()),
         colors: colors.clone(),
         books: books.clone(),
         book_ids: RefCell::new(Vec::new()),
         color_names: RefCell::new(Vec::new()),
+        toolbar: toolbar.clone(),
     });
 
     let changed = |st: &Rc<State>| {
@@ -1139,23 +1431,9 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
     }
     {
         let st2 = st.clone();
-        sel_all.connect_clicked(move |_| {
-            let keys: Vec<Key> = {
-                let rows = st2.rows.borrow();
-                st2.shown
-                    .borrow()
-                    .iter()
-                    .map(|&i| key_of(&rows[i]))
-                    .collect()
-            };
-            st2.selected.borrow_mut().extend(keys);
-            st2.refresh();
-        });
+        copy_btn.connect_clicked(move |_| st2.copy_selection());
         let st2 = st.clone();
-        sel_none.connect_clicked(move |_| {
-            st2.selected.borrow_mut().clear();
-            st2.refresh();
-        });
+        del_btn.connect_clicked(move |_| st2.confirm_delete_selected());
     }
 
     let actions = gio::SimpleActionGroup::new();
@@ -1165,6 +1443,14 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
         a.connect_activate(move |_, p| {
             if let Some(id) = p.and_then(|v| v.str()) {
                 s1.export_dialog(id);
+            }
+        });
+        actions.add_action(&a);
+        let a = gio::SimpleAction::new("anki", Some(glib::VariantTy::STRING));
+        let s1 = st.clone();
+        a.connect_activate(move |_, p| {
+            if let Some(file) = p.and_then(|v| v.str()) {
+                s1.anki_dialog(file);
             }
         });
         actions.add_action(&a);
@@ -1224,18 +1510,7 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
                     _ => 0,
                 }),
                 "from" => from.set_text(arg),
-                "select-all" => {
-                    let keys: Vec<Key> = {
-                        let rows = st.rows.borrow();
-                        st.shown
-                            .borrow()
-                            .iter()
-                            .map(|&i| key_of(&rows[i]))
-                            .collect()
-                    };
-                    st.selected.borrow_mut().extend(keys);
-                    st.refresh();
-                }
+                "select-all" => st.select_all(),
                 "select-first" => {
                     let k = st
                         .shown
@@ -1254,10 +1529,7 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
                         st.refresh();
                     }
                 }
-                "clear" => {
-                    st.selected.borrow_mut().clear();
-                    st.refresh();
-                }
+                "clear" => st.clear_selection(),
                 "open-first" => {
                     let k = st
                         .shown
@@ -1299,6 +1571,91 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
                     c.save();
                 }
                 "readwise" => st.readwise(),
+                // the Edit Note dialog of the first note: open, type, press Ctrl+Enter, cancel
+                "edit-dialog" => {
+                    let k = st
+                        .shown
+                        .borrow()
+                        .first()
+                        .map(|&i| key_of(&st.rows.borrow()[i]));
+                    if let Some(k) = k {
+                        st.edit_note(&k);
+                    }
+                }
+                "edit-type" => EDIT.with(|e| {
+                    if let Some((tv, _, _)) = e.borrow().as_ref() {
+                        tv.buffer().set_text(arg);
+                    }
+                }),
+                "edit-save" => {
+                    let f = EDIT.with(|e| e.borrow().as_ref().map(|(_, f, _)| f.clone()));
+                    if let Some(f) = f {
+                        f();
+                    }
+                }
+                "edit-cancel" => EDIT.with(|e| {
+                    if let Some((_, _, d)) = e.borrow_mut().take() {
+                        d.close();
+                    }
+                }),
+                // the keys that save the note from inside the text
+                "edit-keys" => EDIT.with(|e| {
+                    if let Some((tv, _, _)) = e.borrow().as_ref() {
+                        let list = tv.observe_controllers();
+                        let keys: Vec<String> = (0..list.n_items())
+                            .filter_map(|i| list.item(i).and_downcast::<gtk::ShortcutController>())
+                            .flat_map(|c| {
+                                (0..c.n_items())
+                                    .filter_map(|j| c.item(j).and_downcast::<gtk::Shortcut>())
+                                    .filter_map(|s| s.trigger().map(|t| t.to_str().to_string()))
+                                    .collect::<Vec<_>>()
+                            })
+                            .collect();
+                        eprintln!("notes_editdialog_keys: {}", keys.join(" "));
+                    }
+                }),
+                "edit-state" => EDIT.with(|e| {
+                    let open = e.borrow().as_ref().map(|(tv, _, d)| {
+                        let b = tv.buffer();
+                        (
+                            d.is_mapped(),
+                            b.text(&b.start_iter(), &b.end_iter(), false).to_string(),
+                        )
+                    });
+                    eprintln!("notes_editdialog: {open:?}");
+                }),
+                // the Anki options dialog of a file type, and the export id of a choice
+                "anki-dialog" => st.anki_dialog(if arg.is_empty() { "apkg" } else { arg }),
+                "anki-id" => {
+                    let mut p = arg.split(':');
+                    let (file, cloze, vocab) = (
+                        p.next().unwrap_or(""),
+                        p.next() == Some("cloze"),
+                        p.next() == Some("vocab"),
+                    );
+                    eprintln!("notes_anki: id={:?}", anki_id(file, cloze, vocab));
+                }
+                // the Export menu as the labels of its entries
+                "export-menu" => {
+                    let m = export_menu(0);
+                    let mut labels = Vec::new();
+                    menu_labels(m.upcast_ref(), &mut labels);
+                    eprintln!(
+                        "notes_menu: top={} anki={} labels={}",
+                        menu_top_count(m.upcast_ref()),
+                        labels
+                            .iter()
+                            .filter(|l| l.starts_with("Anki ") && **l != tr("Anki Flashcards"))
+                            .count(),
+                        labels.join("|")
+                    );
+                }
+                // the toolbar at the width it has: the least it needs, and what it has
+                "toolbar" => eprintln!(
+                    "notes_toolbar: min={} width={}",
+                    st.toolbar_min(),
+                    st.host.width()
+                ),
                 "dump" => {
                     let rows = st.rows.borrow();
                     let shown = st.shown.borrow();
@@ -1320,17 +1677,30 @@ pub fn build(shared: &SharedRef, open: Rc<dyn Fn(u64)>, toast: Rc<dyn Fn(String)
                         first
                     );
                 }
+                "selbar" => eprintln!(
+                    "notes_bar: selected={} copy={} delete={} export_tip={:?} selecting_cards={}",
+                    st.selected.borrow().len(),
+                    st.copy_btn.is_visible(),
+                    st.del_btn.is_visible(),
+                    st.export_btn.tooltip_text().unwrap_or_default(),
+                    st.selecting_cards()
+                ),
+                "copy-selected" => st.copy_selection(),
+                "delete-selected" => st.confirm_delete_selected(),
                 "close" => {}
                 other => eprintln!("notes: unknown command {other}"),
             }
         });
         DEV.with(|d| *d.borrow_mut() = Some(cmd));
     }
-    let st2 = st.clone();
+    let (st2, st3, st4, st5) = (st.clone(), st.clone(), st.clone(), st.clone());
     View {
         widget: root.upcast(),
         search,
         reload: Rc::new(move || st2.reload()),
+        on_selection: Rc::new(move |f| *st3.on_selection.borrow_mut() = Some(f)),
+        select_all: Rc::new(move || st4.select_all()),
+        clear_selection: Rc::new(move || st5.clear_selection()),
     }
 }
 
@@ -1399,50 +1769,99 @@ fn date_picker(label: &str, entry: &gtk::Entry) -> gtk::Box {
     row
 }
 
-/// A menu button that shows the current choice of a drop-down (kept as the model, not shown) and
-/// offers the choices as radio buttons in a popover.
-fn choice_button(icon: &str, tip: &str, dd: &gtk::DropDown, labels: &[String]) -> gtk::MenuButton {
-    let btn = gtk::MenuButton::new();
-    let row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-    row.append(&gtk::Image::from_icon_name(icon));
-    let cur = gtk::Label::new(None);
-    row.append(&cur);
-    btn.set_child(Some(&row));
-    btn.set_tooltip_text(Some(tip));
-    super::audit::label(&btn, tip);
+/// One choice of a drop-down as a column of radio buttons (the drop-down stays the model and is not
+/// shown). Returns the column and a function that shows the drop-down's choice.
+fn radio_column(dd: &gtk::DropDown, labels: &[String]) -> (gtk::Box, Rc<dyn Fn(&gtk::DropDown)>) {
     let col = gtk::Box::new(gtk::Orientation::Vertical, 2);
-    col.set_margin_all(6);
-    let pop = gtk::Popover::new();
     let mut radios: Vec<gtk::CheckButton> = Vec::new();
     for (i, l) in labels.iter().enumerate() {
         let r = gtk::CheckButton::with_label(l);
         if let Some(first) = radios.first() {
             r.set_group(Some(first));
         }
-        let (dd, p) = (dd.clone(), pop.clone());
+        let dd = dd.clone();
         r.connect_toggled(move |r| {
             if r.is_active() {
                 dd.set_selected(i as u32);
-                p.popdown();
             }
         });
         col.append(&r);
         radios.push(r);
     }
-    pop.set_child(Some(&col));
-    btn.set_popover(Some(&pop));
-    let labels = labels.to_vec();
-    let sync = {
-        let (cur, radios) = (cur.clone(), radios.clone());
-        move |d: &gtk::DropDown| {
-            let i = d.selected() as usize;
-            cur.set_label(labels.get(i).map(String::as_str).unwrap_or(""));
-            if let Some(r) = radios.get(i) {
-                r.set_active(true);
-            }
+    let sync: Rc<dyn Fn(&gtk::DropDown)> = Rc::new(move |d: &gtk::DropDown| {
+        if let Some(r) = radios.get(d.selected() as usize) {
+            r.set_active(true);
         }
-    };
+    });
     sync(dd);
-    dd.connect_selected_notify(sync);
+    (col, sync)
+}
+
+/// The View button of the toolbar: one popover with the order and the grouping.
+fn view_button(
+    sort: &gtk::DropDown,
+    sort_labels: &[String],
+    group: &gtk::DropDown,
+    group_labels: &[String],
+) -> gtk::MenuButton {
+    let btn = gtk::MenuButton::new();
+    btn.set_icon_name("view-sort-descending-symbolic");
+    btn.set_tooltip_text(Some(&tr("View")));
+    super::audit::label(&btn, &tr("View options of the highlights"));
+    let body = gtk::Box::new(gtk::Orientation::Vertical, 6);
+    body.set_margin_all(12);
+    for (title, dd, labels) in [
+        (tr("Order"), sort, sort_labels),
+        (tr("Group by"), group, group_labels),
+    ] {
+        let head = gtk::Label::new(Some(&title));
+        head.add_css_class("heading");
+        head.set_xalign(0.0);
+        body.append(&head);
+        let (col, sync) = radio_column(dd, labels);
+        body.append(&col);
+        dd.connect_selected_notify(move |d| sync(d));
+    }
+    let pop = gtk::Popover::new();
+    pop.set_child(Some(&body));
+    btn.set_popover(Some(&pop));
     btn
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+
+    fn row(text: &str, note: &str) -> NoteRow {
+        NoteRow {
+            book_id: 1,
+            highlight_id: "h".into(),
+            book_title: "B".into(),
+            book_author: None,
+            book_tags: vec![],
+            spine: 0,
+            chapter: None,
+            text: text.into(),
+            note: note.into(),
+            color: "yellow".into(),
+            style: bookx_lookup::export::HighlightStyle::Highlight,
+            created: Utc::now(),
+            page: None,
+            unplaced: false,
+        }
+    }
+
+    #[test]
+    fn export_says_what_it_covers() {
+        assert_eq!(export_heading(0), "Export Everything Shown");
+        assert_eq!(export_heading(3), "Export 3 Selected");
+    }
+
+    #[test]
+    fn copied_text_has_the_quote_then_its_note() {
+        let t = copy_text(&[row(" one ", ""), row("two", " mine ")]);
+        assert_eq!(t, "one\n\ntwo\nmine");
+        assert_eq!(copy_text(&[]), "");
+    }
 }

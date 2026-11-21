@@ -15,7 +15,7 @@ use relm4::typed_view::grid::{RelmGridItem, TypedGridView};
 
 use super::covers;
 use super::metadata::{self, CoverChange};
-use super::{alert, window_of, SharedRef};
+use super::{window_of, SharedRef};
 use crate::config::ViewMode;
 use crate::core::convert::{export_book, ExportFormat};
 use crate::core::library::{AddOutcome, Book, Category, Prepared, SortKey};
@@ -36,6 +36,9 @@ thread_local! {
 }
 
 /// What an import reports for a file it skipped because the job was cancelled.
+#[path = "library_extra.rs"]
+mod extra;
+
 const IMPORT_CANCELLED: &str = "cancelled";
 
 pub struct BookItem {
@@ -49,6 +52,8 @@ pub struct BookItem {
     editions: usize,
     /// The book has audio you can play: the cover shows a headphones badge.
     audio: bool,
+    /// What assistive technology hears after the title (`library_nav::card_description`).
+    description: String,
     size: Rc<Cell<i32>>,
     tx: relm4::Sender<Input>,
 }
@@ -70,11 +75,17 @@ pub struct ItemWidgets {
     last_class: RefCell<Option<String>>,
 }
 
+thread_local! {
+    /// Selecting is under way (a check box or a long press began it): a plain click on a card then
+    /// toggles that book instead of choosing it alone. Ends when nothing is selected.
+    static SELECTING: Cell<bool> = const { Cell::new(false) };
+}
+
 impl RelmGridItem for BookItem {
     type Root = gtk::Box;
     type Widgets = ItemWidgets;
 
-    fn setup(_item: &gtk::ListItem) -> (gtk::Box, ItemWidgets) {
+    fn setup(item: &gtk::ListItem) -> (gtk::Box, ItemWidgets) {
         let root = gtk::Box::new(gtk::Orientation::Vertical, 6);
         root.set_margin_all(10);
         root.set_halign(gtk::Align::Center);
@@ -140,6 +151,18 @@ impl RelmGridItem for BookItem {
         overlay.add_overlay(&badge);
         let audio = super::audiobook_player::cover_badge();
         overlay.add_overlay(&audio);
+        // the selection check box: on hover and focus, and while the book is selected
+        let check = gtk::CheckButton::new();
+        check.add_css_class("selection-mode");
+        check.set_widget_name("select-check");
+        check.set_halign(gtk::Align::Start);
+        check.set_valign(gtk::Align::End);
+        check.set_margin_start(6);
+        check.set_margin_bottom(6);
+        check.set_visible(false);
+        check.set_focus_on_click(false);
+        super::audit::label(&check, &tr("Select book"));
+        overlay.add_overlay(&check);
 
         let title = gtk::Label::new(None);
         title.set_ellipsize(gtk::pango::EllipsizeMode::End);
@@ -207,11 +230,103 @@ impl RelmGridItem for BookItem {
             long.connect_pressed(move |g, _, _| {
                 if let Some((id, tx)) = ctx.borrow().as_ref() {
                     g.set_state(gtk::EventSequenceState::Claimed);
+                    SELECTING.with(|s| s.set(true));
                     tx.emit(Input::Pick(*id, nav::Pick::Ctrl));
                 }
             });
         }
         root.add_controller(long);
+
+        // the check box and the selected state follow the selection of the list
+        let updating = Rc::new(Cell::new(false));
+        {
+            let (check, root_w, updating) = (check.clone(), root.clone(), updating.clone());
+            let hovered = Rc::new(Cell::new(false));
+            let sync = {
+                let (check, root_w, updating, hovered) = (
+                    check.clone(),
+                    root_w.clone(),
+                    updating.clone(),
+                    hovered.clone(),
+                );
+                Rc::new(move |selected: bool| {
+                    updating.set(true);
+                    check.set_active(selected);
+                    updating.set(false);
+                    check.set_visible(selected || hovered.get());
+                    root_w.update_state(&[gtk::accessible::State::Selected(Some(selected))]);
+                })
+            };
+            let s2 = sync.clone();
+            item.connect_selected_notify(move |i| s2(i.is_selected()));
+            let motion = gtk::EventControllerMotion::new();
+            {
+                let (h, i, s) = (hovered.clone(), item.clone(), sync.clone());
+                motion.connect_enter(move |_, _, _| {
+                    h.set(true);
+                    s(i.is_selected());
+                });
+                let (h, i, s) = (hovered.clone(), item.clone(), sync.clone());
+                motion.connect_leave(move |_| {
+                    h.set(false);
+                    s(i.is_selected());
+                });
+            }
+            root.add_controller(motion);
+            // keyboard focus on the card shows it too
+            let focus = gtk::EventControllerFocus::new();
+            {
+                let (h, i, s) = (hovered.clone(), item.clone(), sync.clone());
+                focus.connect_enter(move |_| {
+                    h.set(true);
+                    s(i.is_selected());
+                });
+                let (h, i, s) = (hovered.clone(), item.clone(), sync.clone());
+                focus.connect_leave(move |_| {
+                    h.set(false);
+                    s(i.is_selected());
+                });
+            }
+            root.add_controller(focus);
+            let ctx2 = ctx.clone();
+            check.connect_toggled(move |_| {
+                if updating.get() {
+                    return;
+                }
+                if let Some((id, tx)) = ctx2.borrow().as_ref() {
+                    SELECTING.with(|s| s.set(true));
+                    tx.emit(Input::Pick(*id, nav::Pick::Ctrl));
+                }
+            });
+        }
+        // once selecting has begun a plain click on the card toggles it
+        let toggle = gtk::GestureClick::new();
+        toggle.set_button(1);
+        toggle.set_propagation_phase(gtk::PropagationPhase::Capture);
+        {
+            let ctx = ctx.clone();
+            let root_w = root.clone();
+            toggle.connect_pressed(move |g, _, x, y| {
+                if !SELECTING.with(|s| s.get()) {
+                    return;
+                }
+                let mut w = root_w.pick(x, y, gtk::PickFlags::DEFAULT);
+                while let Some(cur) = w {
+                    if cur == *root_w.upcast_ref::<gtk::Widget>() {
+                        break;
+                    }
+                    if cur.is::<gtk::Button>() || cur.is::<gtk::CheckButton>() {
+                        return;
+                    }
+                    w = cur.parent();
+                }
+                if let Some((id, tx)) = ctx.borrow().as_ref() {
+                    g.set_state(gtk::EventSequenceState::Claimed);
+                    tx.emit(Input::Pick(*id, nav::Pick::Ctrl));
+                }
+            });
+        }
+        root.add_controller(toggle);
 
         (
             root,
@@ -276,6 +391,10 @@ impl RelmGridItem for BookItem {
         w.fav.set_visible(self.favourite);
         super::library_works::set_badge(&w.badge, self.editions);
         w.audio.set_visible(self.audio);
+        root.update_property(&[
+            gtk::accessible::Property::Label(&self.title),
+            gtk::accessible::Property::Description(&self.description),
+        ]);
         *w.ctx.borrow_mut() = Some((self.id, self.tx.clone()));
     }
 
@@ -301,6 +420,12 @@ pub struct BookRow {
     progress: u32,
     fav: bool,
     editions: u32,
+    /// What the library sorts by, so that a click on a column header gives the order of the
+    /// View options menu (`library_nav::sort_for_column`).
+    title_sort: String,
+    author_sort: String,
+    series_key: String,
+    added_ts: i64,
 }
 
 impl BookRow {
@@ -326,12 +451,20 @@ impl BookRow {
             rating: b.meta.rating,
             tags: b.meta.tags.join(", "),
             progress: (b.progress * 100.0).round() as u32,
+            title_sort: b.meta.title_sort.to_lowercase(),
+            author_sort: b.meta.author_sort.to_lowercase(),
+            series_key: format!(
+                "{}\u{0}{:012.3}",
+                b.meta.series.to_lowercase(),
+                b.meta.series_index.max(0.0)
+            ),
+            added_ts: b.added.timestamp_millis(),
         }
     }
 }
 
 macro_rules! column {
-    ($name:ident, $label:expr, $ty:ty, $expand:expr, $width:expr, |$i:ident| $val:expr $(, fmt = |$v:ident| $fmt:expr)?) => {
+    ($name:ident, $label:expr, $ty:ty, $expand:expr, $width:expr, |$i:ident| $val:expr $(, fmt = |$v:ident| $fmt:expr)? $(, sort = $sort:expr)?) => {
         struct $name;
         impl RelmColumn for $name {
             type Root = gtk::Label;
@@ -339,6 +472,9 @@ macro_rules! column {
             type Item = BookRow;
             const COLUMN_NAME: &'static str = $label;
             const ENABLE_RESIZE: bool = true;
+            fn header_title() -> String {
+                tr($label)
+            }
             const ENABLE_EXPAND: bool = $expand;
             fn setup(_: &gtk::ListItem) -> (gtk::Label, ()) {
                 let l = gtk::Label::new(None);
@@ -363,14 +499,18 @@ macro_rules! column {
             fn sort_fn() -> relm4::typed_view::OrdFn<BookRow> {
                 Some(Box::new(|a: &BookRow, b: &BookRow| {
                     let ($i, ) = (a, );
-                    let va: $ty = $val;
+                    let va = column!(@sort $ty, $val $(, $sort)?);
                     let ($i, ) = (b, );
-                    let vb: $ty = $val;
-                    va.partial_cmp(&vb).unwrap_or(std::cmp::Ordering::Equal)
+                    let vb = column!(@sort $ty, $val $(, $sort)?);
+                    va.partial_cmp(&vb)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                        .then_with(|| a.title_sort.cmp(&b.title_sort))
                 }))
             }
         }
     };
+    (@sort $ty:ty, $val:expr) => {{ let v: $ty = $val; v }};
+    (@sort $ty:ty, $val:expr, $sort:expr) => {{ $sort }};
     (@fmt $value:ident) => { $value.to_string() };
     (@fmt $value:ident, $v:ident, $fmt:expr) => {{
         let $v = &$value;
@@ -391,7 +531,15 @@ column!(
         String::new()
     }
 );
-column!(ColTitle, "Title", String, true, 34, |r| r.title.clone());
+column!(
+    ColTitle,
+    "Title",
+    String,
+    true,
+    34,
+    |r| r.title.clone(),
+    sort = r.title_sort.clone()
+);
 column!(
     ColEditions,
     "Editions",
@@ -401,14 +549,36 @@ column!(
     |r| r.editions,
     fmt = |v| if *v > 1 { v.to_string() } else { String::new() }
 );
-column!(ColAuthors, "Author(s)", String, true, 18, |r| r
-    .authors
-    .clone());
-column!(ColSeries, "Series", String, false, 14, |r| r.series.clone());
+column!(
+    ColAuthors,
+    "Author(s)",
+    String,
+    true,
+    18,
+    |r| r.authors.clone(),
+    sort = r.author_sort.clone()
+);
+column!(
+    ColSeries,
+    "Series",
+    String,
+    false,
+    14,
+    |r| r.series.clone(),
+    sort = r.series_key.clone()
+);
 column!(ColPublished, "Published", String, false, 10, |r| r
     .published
     .clone());
-column!(ColAdded, "Added", String, false, 10, |r| r.added.clone());
+column!(
+    ColAdded,
+    "Added",
+    String,
+    false,
+    10,
+    |r| r.added.clone(),
+    sort = r.added_ts
+);
 column!(
     ColSize,
     "Size",
@@ -467,6 +637,8 @@ pub enum Act {
     MarkRead(bool),
     /// Export the annotations of the selected books (`crate::annotation_export::FORMATS` id).
     ExportAnn(String),
+    /// Copy the citation (APA text) of the selected books to the clipboard.
+    CopyCitation,
     /// Import Highlights… (Kindle clippings, KOReader, Kobo, calibre).
     ImportAnn,
     /// Export All Annotations… (one file per book).
@@ -521,6 +693,7 @@ impl Act {
             Act::MarkRead(_)
                 | Act::Favourite
                 | Act::ExportAnn(_)
+                | Act::CopyCitation
                 | Act::Convert(_)
                 | Act::ConvertTo(_)
                 | Act::ConvertToGo(_)
@@ -566,6 +739,10 @@ pub enum Input {
     },
     /// The Continue Reading banner changed size class or setting.
     BannerLayout,
+    /// The window crossed the compact width (the bar's extra actions go into More).
+    Compact(bool),
+    /// How many highlights are selected in the notes view.
+    NotesSelection(usize),
     /// A button of the banner.
     BannerAct(u64, super::library_banner::BannerAct),
     /// A click on a book with Ctrl or Shift held.
@@ -579,6 +756,8 @@ pub enum Input {
     /// Library Health window; `true` starts the Calibre import right away.
     Health(bool),
     AddWebDialog,
+    /// Text pasted on the library (Ctrl+V): an address opens Add from the Web with it.
+    PasteUrl(String),
     AddWeb(String),
     NewsDialog,
     /// Download these subscriptions now (queued, one at a time).
@@ -609,6 +788,18 @@ pub enum Input {
     Prepared(Result<Prepared, String>),
     Act(Act),
     Toast(String),
+    /// A message with an Undo button, shown in the library window itself.
+    ToastUndo(String, crate::app::UndoFn),
+    /// The user opened or closed the details panel with its header toggle.
+    DetailsPref(bool),
+    /// Keep the search in the box under this name (Search Tips → Save This Search).
+    SaveSearch(String),
+    /// A click on a column header of the table: the sort it means (key, ascending).
+    TableSorted(SortKey, bool),
+    /// A column of the table switched on or off in View options.
+    TableColumn(&'static str, bool),
+    /// Back to the columns that fit.
+    TableColumnsAuto,
     FocusSearch,
     SelectAll,
     /// The next piece of a book list that is being filled in idle steps (the number of the fill).
@@ -632,6 +823,9 @@ pub enum Output {
 }
 
 struct W {
+    /// Undo toasts of the library window (removing books, deleting a shelf).
+    toasts: adw::ToastOverlay,
+    last_undo: RefCell<Option<crate::app::UndoFn>>,
     stack: gtk::Stack,
     /// The books (`stack`) or the notes view.
     content: gtk::Stack,
@@ -640,6 +834,18 @@ struct W {
     top_counts: Vec<gtk::Label>,
     health_badge: gtk::Label,
     sel_details: gtk::Button,
+    sel_del: gtk::Button,
+    details_toggle: gtk::ToggleButton,
+    table_scroll: gtk::ScrolledWindow,
+    /// The table's columns by their (English) title.
+    table_cols: Vec<(&'static str, gtk::ColumnViewColumn)>,
+    /// Set while the program moves the sort arrow of the table (the header handler then stays quiet).
+    table_sync: Rc<Cell<bool>>,
+    grid_clamp: adw::Clamp,
+    drop_hint: gtk::Box,
+    cols_box: gtk::Box,
+    sort_dd: gtk::DropDown,
+    apply_cols: Rc<dyn Fn()>,
     search: gtk::SearchEntry,
     details: gtk::Box,
     tags: gtk::Box,
@@ -649,17 +855,29 @@ struct W {
     split_details: adw::OverlaySplitView,
     spinner: gtk::Spinner,
     toolbar: adw::ToolbarView,
-    sel_label: gtk::Label,
+    /// The header title: the view title, or "N selected" while books are selected.
+    title_stack: gtk::Stack,
+    sel_title: adw::WindowTitle,
+    cancel_btn: gtk::Button,
     sel_read: gtk::Button,
+    sel_edit: gtk::Button,
+    sel_shelf: gtk::MenuButton,
+    sel_send: gtk::Button,
+    sel_convert: gtk::MenuButton,
+    sel_more: gtk::MenuButton,
+    add_menu: gio::Menu,
     banner: gtk::Revealer,
     banner_ctl: Rc<super::library_banner::BannerCtl>,
     order_btn: gtk::Button,
+    view_btn: gtk::MenuButton,
+    grid_only: Vec<gtk::Widget>,
     send_action: gio::SimpleAction,
     header: adw::HeaderBar,
     empty_btns: gtk::FlowBox,
     device_btn: gtk::Button,
-    device_banner: gtk::Revealer,
-    banner_label: gtk::Label,
+    /// The fallback shown in the view-options popover when the header is compact.
+    device_more: gtk::Button,
+    device_banner: adw::Banner,
 }
 
 /// The books still to go into the model, by view.
@@ -711,6 +929,8 @@ pub struct LibraryView {
     anchor: Option<u64>,
     /// What this run has shown of the banner (hero on a cold start, strip on later visits).
     hero: RefCell<nav::HeroSession>,
+    compact: bool,
+    notes_sel: usize,
     /// The colours of the banner for the last cover, by file.
     banner_colors: RefCell<Option<(PathBuf, bool, Option<crate::cover_color::BannerColors>)>>,
     /// Set while an edit of the details panel itself redraws the list (the panel keeps its focus).
@@ -738,12 +958,11 @@ pub struct LibraryView {
     device_scan: Rc<Cell<bool>>,
 }
 
-/// The answers of the "device connected" banner.
+/// The answers of the "device connected" banner: a one-shot sync or built-in dismiss.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeviceChoice {
     Sync,
-    Always,
-    NotNow,
+    Dismiss,
 }
 
 /// The news subscriptions and what the downloader is doing.
@@ -1355,9 +1574,25 @@ impl LibraryView {
                 .map(|b| (*b, *b, 1, favs.contains(&b.id)))
                 .collect()
         };
+        // the shelves of every book, for what a card tells assistive technology
+        let mut on_shelves: HashMap<u64, Vec<String>> = HashMap::new();
+        if self.shared.cfg.borrow().view_mode == ViewMode::Grid {
+            let store = self.shared.guard.borrow().store.clone();
+            for c in super::shelves::list(&self.shared) {
+                for id in store.collection_books(c.id) {
+                    on_shelves.entry(id).or_default().push(c.name.clone());
+                }
+            }
+        }
         let items: Vec<BookItem> = shown
             .iter()
             .map(|(b, prog, n, fav)| BookItem {
+                description: nav::card_description(
+                    &b.meta.authors.join(" & "),
+                    (prog.progress * 100.0).round() as u32,
+                    *fav,
+                    on_shelves.get(&b.id).map_or(&[][..], |v| v.as_slice()),
+                ),
                 id: b.id,
                 title: b.meta.title.clone(),
                 authors: b.meta.authors.join(" & "),
@@ -1594,6 +1829,8 @@ impl LibraryView {
                 Rc::new(move |m| t2.emit(Input::Toast(m))),
             );
             self.w.content.add_named(&v.widget, Some("notes"));
+            let tx = self.sender.input_sender().clone();
+            (v.on_selection)(Rc::new(move |n| tx.emit(Input::NotesSelection(n))));
             *slot = Some(v);
         }
         if let Some(v) = slot.as_ref() {
@@ -1638,7 +1875,8 @@ impl LibraryView {
     fn follow_selection(&self) {
         let split = &self.w.split_details;
         let want = nav::details_for(self.selected.len()) != nav::Details::Hidden
-            && self.view != View::Notes;
+            && self.view != View::Notes
+            && self.shared.cfg.borrow().details_pane;
         if want && split.is_collapsed() {
             return;
         }
@@ -1647,7 +1885,8 @@ impl LibraryView {
         }
     }
 
-    /// The header button, the banner and the automatic sync follow the connected devices.
+    /// The header button, the banner and the persistent automatic-sync setting follow the
+    /// connected devices. Answering the banner never changes that setting.
     fn devices_changed(&mut self, list: Vec<bookx_core::contracts::DeviceInfo>) {
         let fresh = crate::device_sync::newly_connected(&self.devices, &list);
         let gone: Vec<String> = self
@@ -1661,29 +1900,29 @@ impl LibraryView {
         }
         self.devices = list;
         self.w.send_action.set_enabled(!self.devices.is_empty());
-        match crate::device_sync::button_label(&self.devices) {
-            Some(label) => {
-                if let Some(c) = self
-                    .w
-                    .device_btn
-                    .child()
-                    .and_downcast::<adw::ButtonContent>()
-                {
-                    c.set_label(&label);
-                }
-                self.w.device_btn.set_visible(true);
+        let label = crate::device_sync::button_label(&self.devices);
+        if let Some(label) = &label {
+            if let Some(c) = self
+                .w
+                .device_btn
+                .child()
+                .and_downcast::<adw::ButtonContent>()
+            {
+                c.set_label(label);
             }
-            None => self.w.device_btn.set_visible(false),
+            // the narrow fallback shows the device too, never a generic "Connected device"
+            self.w.device_more.set_label(label);
         }
+        self.w.device_btn.set_visible(label.is_some());
         if let Some(b) = &self.banner_device {
             if !self.devices.iter().any(|d| d.id == b.id) {
                 self.banner_device = None;
-                self.w.device_banner.set_reveal_child(false);
+                self.w.device_banner.set_revealed(false);
             }
         }
         if self.shared.cfg.borrow().device_sync.auto_sync {
             self.banner_device = None;
-            self.w.device_banner.set_reveal_child(false);
+            self.w.device_banner.set_revealed(false);
             for d in fresh {
                 self.sync_device(d, true);
             }
@@ -1693,11 +1932,15 @@ impl LibraryView {
             return;
         };
         if !self.declined.contains(&first.id) {
-            self.w
-                .banner_label
-                .set_label(&crate::device_sync::banner_text(&first.name));
             self.banner_device = Some(first);
-            self.w.device_banner.set_reveal_child(true);
+            // an AdwBanner keeps the same title and button for every device
+            self.w
+                .device_banner
+                .set_title(&crate::device_sync::banner_title());
+            self.w
+                .device_banner
+                .set_button_label(Some(&crate::device_sync::banner_button_label()));
+            self.w.device_banner.set_revealed(true);
         }
     }
 
@@ -1705,20 +1948,12 @@ impl LibraryView {
         let Some(device) = self.banner_device.take() else {
             return;
         };
-        self.w.device_banner.set_reveal_child(false);
+        self.w.device_banner.set_revealed(false);
         match choice {
-            DeviceChoice::NotNow => {
+            DeviceChoice::Dismiss => {
                 self.declined.insert(device.id);
             }
             DeviceChoice::Sync => self.sync_device(device, false),
-            DeviceChoice::Always => {
-                {
-                    let mut c = self.shared.cfg.borrow_mut();
-                    c.device_sync.auto_sync = true;
-                    c.save();
-                }
-                self.sync_device(device, true);
-            }
         }
     }
 
@@ -1745,17 +1980,121 @@ impl LibraryView {
         );
     }
 
+    /// The sort key and direction are one state: the View options menu and the arrow of the table
+    /// header show the same thing.
+    fn sync_sort_controls(&self) {
+        let (key, asc) = {
+            let c = self.shared.cfg.borrow();
+            (c.sort_key, c.sort_ascending)
+        };
+        let w = &self.w;
+        w.table_sync.set(true);
+        if let Some(pos) = SortKey::ALL.iter().position(|k| *k == key) {
+            w.sort_dd.set_selected(pos as u32);
+        }
+        super::audit::label(&w.order_btn, &order_label(asc));
+        w.order_btn.set_icon_name(if asc {
+            "view-sort-ascending-symbolic"
+        } else {
+            "view-sort-descending-symbolic"
+        });
+        let col = nav::column_for_sort(key)
+            .and_then(|n| w.table_cols.iter().find(|(c, _)| *c == n))
+            .map(|(_, c)| c);
+        self.table.view.sort_by_column(
+            col,
+            if asc {
+                gtk::SortType::Ascending
+            } else {
+                gtk::SortType::Descending
+            },
+        );
+        w.table_sync.set(false);
+    }
+
+    /// Add from the Web, with `url` already in the box (a pasted address).
+    fn add_web_dialog(&self, url: &str) {
+        let Some(win) = window_of(&self.root) else {
+            return;
+        };
+        let d = adw::AlertDialog::new(
+            Some(&tr("Add from the Web")),
+            Some(&tr("Paste the address of an article to read later, or of a news feed (RSS, Atom, JSON Feed) to make a book of its latest articles.")),
+        );
+        let entry = gtk::Entry::new();
+        entry.set_placeholder_text(Some(&tr("https://example.com/article")));
+        entry.set_text(url);
+        entry.set_widget_name("add-web-url");
+        crate::ui::audit::label(&entry, &tr("Address"));
+        entry.set_activates_default(true);
+        d.set_extra_child(Some(&entry));
+        d.add_responses(&[("cancel", &tr("Cancel")), ("add", &tr("Add"))]);
+        d.set_response_appearance("add", adw::ResponseAppearance::Suggested);
+        d.set_default_response(Some("add"));
+        let tx = self.sender.input_sender().clone();
+        d.connect_response(None, move |_, r| {
+            if r == "add" {
+                tx.emit(Input::AddWeb(entry.text().to_string()));
+            }
+        });
+        d.present(Some(&win));
+    }
+
     fn update_bottom_bar(&self) {
-        let n = self.selected.len();
+        let in_notes = self.view == View::Notes;
+        let n = if in_notes { 0 } else { self.selected.len() };
+        if n == 0 {
+            SELECTING.with(|s| s.set(false));
+        }
         // a single click just selects (the details panel shows the actions); the bar is for acting
         // on several books, and in a narrow window it also has the button that opens the panel
         let narrow = self.w.split_details.is_collapsed();
+        let compact = self.compact;
         self.w
             .toolbar
             .set_reveal_bottom_bars(n >= 2 || (n == 1 && narrow));
-        self.w.sel_label.set_label(&trf("{} selected", &[&n]));
-        self.w.sel_read.set_visible(n == 1);
+        let hs = nav::header_state(if in_notes { self.notes_sel } else { n });
+        self.w
+            .sel_title
+            .set_title(&trf("{} selected", &[&hs.selected]));
+        self.w
+            .title_stack
+            .set_visible_child_name(if hs.selecting { "selection" } else { "title" });
+        self.w.cancel_btn.set_visible(hs.selecting);
         self.w.sel_details.set_visible(narrow);
+        // a long label ("In den Papierkorb verschieben") would push the bar wider than a 360 px window
+        if compact {
+            self.w.sel_del.set_icon_name("user-trash-symbolic");
+        } else {
+            self.w.sel_del.set_label(&tr("Move to Trash"));
+        }
+        let (inline, more) = nav::split_bulk(n, compact);
+        let has = |a: nav::BulkAction| inline.contains(&a);
+        self.w.sel_read.set_visible(has(nav::BulkAction::Read));
+        self.w
+            .sel_edit
+            .set_visible(has(nav::BulkAction::EditMetadata));
+        self.w
+            .sel_shelf
+            .set_visible(has(nav::BulkAction::AddToShelf));
+        self.w
+            .sel_send
+            .set_visible(has(nav::BulkAction::SendToDevice));
+        self.w
+            .sel_convert
+            .set_visible(has(nav::BulkAction::Convert));
+        self.w.sel_more.set_visible(!more.is_empty());
+        if n >= 2 {
+            self.w
+                .sel_shelf
+                .set_menu_model(Some(&super::shelves::add_to_shelf_menu(&self.shared)));
+            self.w
+                .sel_convert
+                .set_menu_model(Some(&self.convert_menu()));
+        }
+        if !more.is_empty() {
+            self.w.sel_more.set_menu_model(Some(&self.more_menu(&more)));
+        }
     }
 
     /// Redraws the books and the sidebar after an edit; the details panel stays as it is when the
@@ -1945,7 +2284,8 @@ impl LibraryView {
 
     /// What the shelves section and its dialogs need from this window.
     fn shelf_ctx(&self) -> super::shelves::Ctx {
-        let (t1, t2) = (
+        let (t1, t2, t3) = (
+            self.sender.input_sender().clone(),
             self.sender.input_sender().clone(),
             self.sender.input_sender().clone(),
         );
@@ -1956,6 +2296,7 @@ impl LibraryView {
             parent: self.root.clone().upcast(),
             refresh: Rc::new(move || t1.emit(Input::Refresh)),
             toast: Rc::new(move |m| t2.emit(Input::Toast(m))),
+            undo: Rc::new(move |m, u| t3.emit(Input::ToastUndo(m, u))),
         }
     }
 
@@ -1969,7 +2310,8 @@ impl LibraryView {
     /// The counts next to Home, Recent, Favourites and Notes & Highlights.
     fn update_top_counts(&self) {
         let lib = self.shared.lib.borrow();
-        let notes: usize = lib.books.iter().map(|b| b.highlights.len()).sum();
+        // the same rows the Notes & Highlights view lists, so the count never disagrees with it
+        let notes: usize = crate::notes_view::rows(&lib).len();
         let counts = [
             lib.books.len(),
             lib.books.len().min(nav::RECENT_LIMIT),
@@ -2018,14 +2360,26 @@ impl LibraryView {
             let c = self.shared.cfg.borrow();
             (c.saved_searches.clone(), c.virtual_library.clone())
         };
-        if !saved.is_empty() {
+        {
             let exp = adw::ExpanderRow::builder()
                 .title(tr("Saved Searches"))
                 .build();
+            exp.set_widget_name("saved-searches");
             exp.add_suffix(&count_label(saved.len()));
             exp.add_prefix(&gtk::Image::from_icon_name("system-search-symbolic"));
+            let manage = gtk::Button::from_icon_name("view-more-symbolic");
+            manage.add_css_class("flat");
+            manage.add_css_class("row-actions");
+            manage.set_valign(gtk::Align::Center);
+            manage.set_tooltip_text(Some(&tr("Manage Saved Searches")));
+            super::audit::label(&manage, &tr("Manage Saved Searches"));
+            {
+                let tx = self.sender.input_sender().clone();
+                manage.connect_clicked(move |_| tx.emit(Input::SavedSearches));
+            }
+            exp.add_suffix(&manage);
             exp.set_expanded(true);
-            for s in saved {
+            for s in saved.iter().cloned() {
                 let is_vl = active_vl
                     .as_deref()
                     .is_some_and(|a| a.eq_ignore_ascii_case(&s.name));
@@ -2035,11 +2389,19 @@ impl LibraryView {
                     .build();
                 if is_vl {
                     row.add_suffix(&gtk::Image::from_icon_name("view-pin-symbolic"));
-                    row.set_tooltip_text(Some(&tr("Virtual library")));
+                    row.set_tooltip_text(Some(&tr("Virtual Library")));
                 }
                 let (go, q) = (go.clone(), crate::saved_searches::reference_for(&s.name));
                 row.connect_activated(move |_| go(q.clone()));
                 exp.add_row(&row);
+            }
+            if saved.is_empty() {
+                let hint = adw::ActionRow::builder()
+                    .title(tr("No saved searches yet"))
+                    .subtitle(tr("Use the search tips in the search bar to save one"))
+                    .build();
+                hint.add_css_class("placeholder-row");
+                exp.add_row(&hint);
             }
             list.append(&exp);
         }
@@ -2066,17 +2428,33 @@ impl LibraryView {
                     .collect();
             }
             let exp = adw::ExpanderRow::builder().title(tr(cat.label())).build();
+            exp.set_widget_name(&format!("group-{}", cat.label()));
             exp.add_suffix(&count_label(items.len()));
             exp.add_prefix(&gtk::Image::from_icon_name(cat.icon()));
-            exp.set_expanded(self.expanded.borrow().contains(&ci));
+            let library_key = lib.root.to_string_lossy().to_string();
+            exp.set_expanded(
+                self.expanded.borrow().contains(&ci)
+                    || nav::is_open(
+                        &self.shared.cfg.borrow().sidebar_open,
+                        &library_key,
+                        cat.label(),
+                    ),
+            );
             {
                 let set = self.expanded.clone();
+                let shared = self.shared.clone();
+                let (library_key, group) = (library_key.clone(), cat.label());
                 exp.connect_expanded_notify(move |e| {
                     if e.is_expanded() {
                         set.borrow_mut().insert(ci);
                     } else {
                         set.borrow_mut().remove(&ci);
                     }
+                    let mut c = shared.cfg.borrow_mut();
+                    let mut open = std::mem::take(&mut c.sidebar_open);
+                    nav::set_open(&mut open, &library_key, group, e.is_expanded());
+                    c.sidebar_open = open;
+                    c.save();
                 });
             }
             let overview = match cat {
@@ -2095,7 +2473,14 @@ impl LibraryView {
                 b.connect_clicked(move |_| tx.emit(Input::Organize(which)));
                 exp.add_suffix(&b);
             }
-            for (name, count) in items.into_iter().take(400) {
+            // the most used entries; the rest are behind "Show All"
+            let all_items = items.clone();
+            let (items, hidden) = if matches!(cat, Category::Ratings | Category::Status) {
+                (items, 0)
+            } else {
+                nav::top_n(items, nav::SIDEBAR_TOP)
+            };
+            for (name, count) in items.into_iter() {
                 let shown = if *cat == Category::Ratings && !name.contains('★') {
                     tr("Unrated")
                 } else {
@@ -2109,6 +2494,15 @@ impl LibraryView {
                 let (go, q) = (go.clone(), cat.search_for(&name));
                 row.connect_activated(move |_| go(q.clone()));
                 exp.add_row(&row);
+            }
+            if hidden > 0 {
+                let cat = *cat;
+                exp.add_row(&extra::show_all_row(
+                    all_items,
+                    hidden,
+                    go.clone(),
+                    Rc::new(move |n: &str| cat.search_for(n)),
+                ));
             }
             list.append(&exp);
         }
@@ -2236,7 +2630,7 @@ impl LibraryView {
                 let props = gtk::Button::with_label(&tr("Properties"));
                 props.add_css_class("flat");
                 props.set_halign(gtk::Align::Center);
-                props.set_tooltip_text(Some(&tr("Every detail of this book")));
+                props.set_tooltip_text(Some(&tr("Every Detail of This Book")));
                 let tx = self.sender.input_sender().clone();
                 props.connect_clicked(move |_| tx.emit(Input::Act(Act::Properties)));
                 d.append(&props);
@@ -2346,7 +2740,7 @@ impl LibraryView {
                         "book.mark-unread",
                     ),
                     (tr("Send by E-mail"), "mail-send-symbolic", "book.email"),
-                    (tr("Remove"), "user-trash-symbolic", "book.delete"),
+                    (tr("Move to Trash"), "user-trash-symbolic", "book.delete"),
                 ] {
                     let r = adw::ActionRow::builder()
                         .title(&label)
@@ -2354,9 +2748,6 @@ impl LibraryView {
                         .action_name(action)
                         .build();
                     r.add_prefix(&gtk::Image::from_icon_name(icon));
-                    if action == "book.delete" {
-                        r.add_css_class("error");
-                    }
                     group.add(&r);
                 }
                 d.append(&group);
@@ -2576,11 +2967,7 @@ impl LibraryView {
         let parent = window_of(&self.root);
         if folder {
             let dialog = gtk::FileDialog::builder()
-                .title(if recursive {
-                    tr("Add Books from Folder (recursive)")
-                } else {
-                    tr("Add Books from Folder")
-                })
+                .title(tr("Add Books from Folder"))
                 .build();
             dialog.select_folder(parent.as_ref(), gio::Cancellable::NONE, move |res| {
                 if let Ok(f) = res {
@@ -2718,6 +3105,30 @@ impl LibraryView {
                     "works: popover for {id} rows={}",
                     self.groups.get(&id).map_or(0, |c| c.members.len())
                 );
+            }
+            // an edition row activated (Enter on it): `activate:first`, or the edition with that id
+            ("activate", a) => {
+                let want = format!("edition-{a}");
+                // the edition list hangs on the grid
+                let found = extra::find_named_by(self.grid.view.upcast_ref(), &|n| {
+                    if a == "first" {
+                        n.starts_with("edition-")
+                    } else {
+                        n == want
+                    }
+                })
+                .and_then(|w| w.downcast::<gtk::ListBoxRow>().ok());
+                match found {
+                    Some(row) => {
+                        eprintln!(
+                            "works: row {} activatable={}",
+                            row.widget_name(),
+                            row.is_activatable()
+                        );
+                        row.activate();
+                    }
+                    None => eprintln!("works: no row for {a}"),
+                }
             }
             ("cards", _) => {
                 let mut g: Vec<String> = self
@@ -2919,44 +3330,43 @@ impl LibraryView {
                 self.sender.input(Input::Requery);
             }
             Act::Delete => {
-                let Some(parent) = parent else { return };
-                let (heading, body) = if ids.len() == 1 {
-                    let t = self
-                        .shared
-                        .lib
-                        .borrow()
-                        .get(first)
-                        .map(|b| b.meta.title.clone())
-                        .unwrap_or_default();
-                    (
-                        "Remove Book?".to_string(),
-                        trf("“{}” and its bookmarks and highlights will be removed from the library. The book file is deleted from the library folder.", &[&t]),
-                    )
-                } else {
-                    (
-                        "Remove Books?".to_string(),
-                        format!("{} books with their bookmarks and highlights will be removed from the library.", ids.len()),
-                    )
-                };
-                let shared = self.shared.clone();
-                let tx = self.sender.input_sender().clone();
-                alert(&parent, &heading, &body, "Remove", true, move || {
-                    let n = ids.len();
-                    let res = shared.lib.borrow_mut().remove(&ids, true);
-                    covers::clear();
-                    match res {
-                        Ok(()) => {
-                            tx.emit(Input::Selection(Vec::new()));
+                // reversible: the books go to the Trash and the toast brings them back (no confirmation)
+                let n = ids.len();
+                let res = self.shared.lib.borrow_mut().remove(&ids, true);
+                covers::clear();
+                match res {
+                    Ok(()) => {
+                        let entries: Vec<(String, u64, i64)> = self
+                            .shared
+                            .lib
+                            .borrow()
+                            .trash()
+                            .iter()
+                            .map(|e| (e.name.clone(), e.book.id, e.at.timestamp_millis()))
+                            .collect();
+                        let names = nav::newest_trash_names(&entries, &ids);
+                        let (shared, tx) =
+                            (self.shared.clone(), self.sender.input_sender().clone());
+                        let undo = crate::app::UndoFn::new(move || {
+                            let mut lib = shared.lib.borrow_mut();
+                            let back = names
+                                .iter()
+                                .filter(|n| lib.restore_from_trash(n).is_ok())
+                                .count();
+                            drop(lib);
+                            covers::clear();
                             tx.emit(Input::Refresh);
-                            tx.emit(Input::Toast(if n == 1 {
-                                "Book removed".into()
-                            } else {
-                                format!("{n} books removed")
-                            }));
-                        }
-                        Err(e) => tx.emit(Input::Toast(trf("Could not remove: {}", &[&e]))),
+                            tx.emit(Input::Toast(nav::restored_text(back)));
+                        });
+                        self.sender.input(Input::Selection(Vec::new()));
+                        self.sender.input(Input::Refresh);
+                        self.sender
+                            .input(Input::ToastUndo(nav::moved_to_trash_text(n), undo));
                     }
-                });
+                    Err(e) => self
+                        .sender
+                        .input(Input::Toast(trf("Could not move to Trash: {}", &[&e]))),
+                }
             }
             Act::ShowFolder => {
                 let lib = self.shared.lib.borrow();
@@ -2989,6 +3399,23 @@ impl LibraryView {
                         }
                     }
                 });
+            }
+            Act::CopyCitation => {
+                let text = {
+                    let lib = self.shared.lib.borrow();
+                    let books = lib.books_for(&ids);
+                    bookx_sources::citation::render_books(
+                        &books,
+                        bookx_sources::citation::Style::Apa,
+                    )
+                };
+                self.root.display().clipboard().set_text(&text);
+                eprintln!("citation: {}", text.replace('\n', " / "));
+                self.sender.input(Input::Toast(ntr(
+                    "{} citation copied",
+                    "{} citations copied",
+                    ids.len(),
+                )));
             }
             Act::ExportAnn(fmt) => self.export_many(ids, parent, move |lib, id| {
                 let b = lib.get(id)?;
@@ -3428,9 +3855,69 @@ impl LibraryView {
         popover.popup();
     }
 
-    /// The right-click menu: only what concerns the selected book(s), nothing about devices. Short
-    /// groups with submenus so that it fits a normal window:
-    /// Read · Favourite · Edit ▸ · Organise ▸ · Export and Send ▸ · Show in Files · Remove.
+    /// The "Convert To" formats: devices, plugin tools and text formats.
+    fn convert_menu(&self) -> gio::Menu {
+        let conv = gio::Menu::new();
+        let devices = gio::Menu::new();
+        for t in crate::export::TARGETS
+            .iter()
+            .chain(crate::plugins::writer_targets())
+        {
+            let item = gio::MenuItem::new(Some(&nav::plain_label(t.label)), None);
+            item.set_action_and_target_value(Some("book.convert-to"), Some(&t.id.to_variant()));
+            devices.append_item(&item);
+        }
+        conv.append_section(None, &devices);
+        let plugin_tools = gio::Menu::new();
+        for t in crate::plugins::tool_targets() {
+            let item = gio::MenuItem::new(Some(&nav::plain_label(t.label)), None);
+            item.set_action_and_target_value(Some("book.convert-to"), Some(&t.id.to_variant()));
+            plugin_tools.append_item(&item);
+        }
+        if plugin_tools.n_items() > 0 {
+            conv.append_section(None, &plugin_tools);
+        }
+        let text = gio::Menu::new();
+        for f in ExportFormat::ALL {
+            let item = gio::MenuItem::new(Some(f.label()), None);
+            item.set_action_and_target_value(
+                Some("book.convert"),
+                Some(&f.extension().to_variant()),
+            );
+            text.append_item(&item);
+        }
+        conv.append_section(None, &text);
+        conv
+    }
+
+    /// The overflow of the selection bar in a narrow window.
+    fn more_menu(&self, actions: &[nav::BulkAction]) -> gio::Menu {
+        let menu = gio::Menu::new();
+        for a in actions {
+            match a {
+                nav::BulkAction::EditMetadata => {
+                    menu.append(Some(&tr("Edit Metadata")), Some("book.edit-meta"))
+                }
+                nav::BulkAction::AddToShelf => menu.append_submenu(
+                    Some(&tr("Add to Shelf")),
+                    &super::shelves::add_to_shelf_menu(&self.shared),
+                ),
+                nav::BulkAction::SendToDevice => {
+                    menu.append(Some(&tr("Send to Device")), Some("book.send-device"))
+                }
+                nav::BulkAction::Convert => {
+                    menu.append_submenu(Some(&tr("Convert To")), &self.convert_menu())
+                }
+                _ => {}
+            }
+        }
+        menu
+    }
+
+    /// The right-click menu: only what concerns the selected book(s), nothing about devices. At most
+    /// 12 entries at the first level and no submenu inside a submenu:
+    /// Read · Favourite · Edit ▸ · Add to Shelf ▸ · Reading Status ▸ · Send To ▸ · Convert To ▸ ·
+    /// Export Annotations ▸ · Editions ▸ · Properties · Show in Files · Move to Trash.
     fn book_menu(&self, multi: bool) -> gio::Menu {
         let menu = gio::Menu::new();
         if !multi {
@@ -3474,96 +3961,51 @@ impl LibraryView {
         edit.append(Some(&tr("Fetch Metadata")), Some("book.fetch-meta"));
         s.append_submenu(Some(&tr("Edit")), &edit);
 
-        let org = gio::Menu::new();
-        let reading = gio::Menu::new();
-        reading.append(Some(&tr("Mark as Read")), Some("book.mark-read"));
-        reading.append(Some(&tr("Mark as Unread")), Some("book.mark-unread"));
-        org.append_section(None, &reading);
-        let shelves = gio::Menu::new();
-        shelves.append_submenu(
-            Some(&tr("Add to Shelf")),
-            &super::shelves::add_to_shelf_menu(&self.shared),
-        );
-        if super::shelves::current_shelf(&self.query).is_some() {
-            shelves.append(
+        // the shelves, and on a shelf also what only applies to it
+        let on_shelf = super::shelves::current_shelf(&self.query).is_some();
+        let shelf_menu = if on_shelf {
+            let m = gio::Menu::new();
+            m.append_section(
+                Some(&tr("Add to Shelf")),
+                &super::shelves::add_to_shelf_menu(&self.shared),
+            );
+            let here = gio::Menu::new();
+            here.append(
                 Some(&tr("Remove from This Shelf")),
                 Some("book.shelf-remove"),
             );
             if !multi {
-                shelves.append(
+                here.append(
                     Some(&tr("Move Earlier on This Shelf")),
                     Some("book.shelf-earlier"),
                 );
-                shelves.append(
+                here.append(
                     Some(&tr("Move Later on This Shelf")),
                     Some("book.shelf-later"),
                 );
             }
-        }
-        org.append_section(None, &shelves);
-        if multi {
-            let m = gio::Menu::new();
-            m.append(
-                Some(&tr("Merge as Formats of One Book")),
-                Some("book.merge-formats"),
-            );
-            m.append(Some(&tr("Link as Editions")), Some("book.link-editions"));
-            org.append_section(None, &m);
-        }
-        if self.selected.iter().any(|id| self.groups.contains_key(id)) {
-            let m = gio::Menu::new();
-            if !multi {
-                m.append(Some(&tr("Show Editions")), Some("book.show-editions"));
-            }
-            m.append(
-                Some(&tr("Unlink All Editions")),
-                Some("book.unlink-editions"),
-            );
-            org.append_section(None, &m);
-        }
-        s.append_submenu(Some(&tr("Organise")), &org);
+            m.append_section(Some(&tr("This Shelf")), &here);
+            m
+        } else {
+            super::shelves::add_to_shelf_menu(&self.shared)
+        };
+        s.append_submenu(
+            Some(
+                &(if on_shelf {
+                    tr("Shelves")
+                } else {
+                    tr("Add to Shelf")
+                }),
+            ),
+            &shelf_menu,
+        );
 
-        let exp = gio::Menu::new();
-        let ann = gio::Menu::new();
-        for f in crate::annotation_export::FORMATS {
-            let item = gio::MenuItem::new(Some(f.label), None);
-            item.set_action_and_target_value(Some("book.export-ann"), Some(&f.id.to_variant()));
-            ann.append_item(&item);
-        }
-        let conv = gio::Menu::new();
-        let devices = gio::Menu::new();
-        for t in crate::export::TARGETS
-            .iter()
-            .chain(crate::plugins::writer_targets())
-        {
-            let item = gio::MenuItem::new(Some(&nav::plain_label(t.label)), None);
-            item.set_action_and_target_value(Some("book.convert-to"), Some(&t.id.to_variant()));
-            devices.append_item(&item);
-        }
-        conv.append_section(None, &devices);
-        let plugin_tools = gio::Menu::new();
-        for t in crate::plugins::tool_targets() {
-            let item = gio::MenuItem::new(Some(&nav::plain_label(t.label)), None);
-            item.set_action_and_target_value(Some("book.convert-to"), Some(&t.id.to_variant()));
-            plugin_tools.append_item(&item);
-        }
-        if plugin_tools.n_items() > 0 {
-            conv.append_section(None, &plugin_tools);
-        }
-        let text = gio::Menu::new();
-        for f in ExportFormat::ALL {
-            let item = gio::MenuItem::new(Some(f.label()), None);
-            item.set_action_and_target_value(
-                Some("book.convert"),
-                Some(&f.extension().to_variant()),
-            );
-            text.append_item(&item);
-        }
-        conv.append_section(None, &text);
+        let reading = gio::Menu::new();
+        reading.append(Some(&tr("Mark as Read")), Some("book.mark-read"));
+        reading.append(Some(&tr("Mark as Unread")), Some("book.mark-unread"));
+        s.append_submenu(Some(&tr("Reading Status")), &reading);
+
         let send = gio::Menu::new();
-        send.append_submenu(Some(&tr("Convert To")), &conv);
-        send.append(Some(&tr("Send by E-mail")), Some("book.email"));
-        send.append(Some(&tr("Check Before Sending")), Some("book.preflight"));
         // always there; usable while a device is connected
         let dev = gio::MenuItem::new(Some(&tr("Send to Device")), Some("book.send-device"));
         dev.set_attribute_value(
@@ -3578,15 +4020,46 @@ impl LibraryView {
             ),
         );
         send.append_item(&dev);
-        exp.append_section(None, &send);
-        let files = gio::Menu::new();
+        send.append(Some(&tr("Send by E-mail")), Some("book.email"));
+        send.append(Some(&tr("Check Before Sending")), Some("book.preflight"));
+        send.append(Some(&tr("Copy Citation")), Some("book.copy-citation"));
         if !multi {
-            files.append(Some(&tr("Save a Copy")), Some("book.save-copy"));
+            send.append(Some(&tr("Save a Copy")), Some("book.save-copy"));
         }
-        files.append_submenu(Some(&tr("Export Annotations")), &ann);
-        files.append(Some(&tr("Import Highlights")), Some("book.import-ann"));
-        exp.append_section(None, &files);
-        s.append_submenu(Some(&tr("Export and Send")), &exp);
+        s.append_submenu(Some(&tr("Send To")), &send);
+        s.append_submenu(Some(&tr("Convert To")), &self.convert_menu());
+
+        let ann = gio::Menu::new();
+        for f in crate::annotation_export::FORMATS
+            .iter()
+            .filter(|f| f.id != "readwise")
+        {
+            let item = gio::MenuItem::new(Some(f.label), None);
+            item.set_action_and_target_value(Some("book.export-ann"), Some(&f.id.to_variant()));
+            ann.append_item(&item);
+        }
+        s.append_submenu(Some(&tr("Export Annotations")), &ann);
+
+        if multi || self.selected.iter().any(|id| self.groups.contains_key(id)) {
+            let eds = gio::Menu::new();
+            if multi {
+                eds.append(
+                    Some(&tr("Merge as Formats of One Book")),
+                    Some("book.merge-formats"),
+                );
+                eds.append(Some(&tr("Link as Editions")), Some("book.link-editions"));
+            }
+            if self.selected.iter().any(|id| self.groups.contains_key(id)) {
+                if !multi {
+                    eds.append(Some(&tr("Show Editions")), Some("book.show-editions"));
+                }
+                eds.append(
+                    Some(&tr("Unlink All Editions")),
+                    Some("book.unlink-editions"),
+                );
+            }
+            s.append_submenu(Some(&tr("Editions")), &eds);
+        }
         menu.append_section(None, &s);
 
         if !multi {
@@ -3596,7 +4069,7 @@ impl LibraryView {
             menu.append_section(None, &s);
         }
         let s = gio::Menu::new();
-        s.append(Some(&tr("Remove")), Some("book.delete"));
+        s.append(Some(&tr("Move to Trash")), Some("book.delete"));
         menu.append_section(None, &s);
         menu
     }
@@ -3617,34 +4090,70 @@ const _CATEGORY_NAMES: [&str; 7] = [
 ];
 use crate::i18n::{tr, trf};
 
-/// The entries of the main (hamburger) menu below the view options; an empty entry is a
-/// separator between groups. Series, Notes & Highlights, News Subscriptions, Duplicates, Editions
-/// & Formats and Needs Attention are in the sidebar, the + menu and Library Health.
-const MAIN_MENU: [(&str, &str); 23] = [
+/// The entries of the main (hamburger) menu; an empty entry is a separator between groups. Eight
+/// entries (Saved Searches live in the sidebar and in the search tips): the destinations (Reading Statistics, Vocabulary, ...) are in `LIBRARY_MENU`, imports in
+/// the + menu, Copy Diagnostics in About.
+const MAIN_MENU: [(&str, &str); 11] = [
     (N_("Open Library Folder"), "lib.open-folder"),
-    (N_("Saved Searches"), "lib.saved"),
-    (N_("Online Catalogues"), "lib.opds"),
     ("", ""),
-    (N_("Reading Statistics"), "app.stats"),
-    (N_("Vocabulary"), "app.vocab"),
-    (N_("Reading Trackers"), "lib.trackers"),
-    (N_("Audiobooks"), "lib.audiobooks"),
-    ("", ""),
-    (N_("Import Calibre Library"), "lib.calibre"),
-    (N_("Export as Calibre Library"), "lib.export-calibre"),
-    (N_("Import Highlights"), "lib.import-highlights"),
-    (N_("Export All Annotations"), "lib.export-annotations"),
-    (N_("Export Citations"), "lib.citations"),
     (N_("Sync"), "app.sync"),
-    (N_("Device"), "app.devices"),
+    (N_("Devices"), "app.devices"),
     ("", ""),
     (N_("Library Health"), "lib.health"),
     ("", ""),
     (N_("Preferences"), "app.preferences"),
     (N_("Keyboard Shortcuts"), "app.shortcuts"),
-    (N_("Copy Diagnostics"), "app.copy-diagnostics"),
+    (N_("Help"), "app.help"),
     (N_("About Bookx"), "app.about"),
 ];
+
+/// The secondary Library menu in the content header: where to look, and the library-wide exports.
+const LIBRARY_MENU: [(&str, &str); 9] = [
+    (N_("Reading Statistics"), "app.stats"),
+    (N_("Vocabulary"), "app.vocab"),
+    (N_("Reading Trackers"), "lib.trackers"),
+    (N_("Audiobooks"), "lib.audiobooks"),
+    (N_("Online Catalogues"), "lib.opds"),
+    (N_("Subscribe to News"), "lib.news"),
+    ("", ""),
+    (N_("Export as Calibre Library"), "lib.export-calibre"),
+    (N_("Export Citations"), "lib.citations"),
+];
+
+/// A menu model from entries like `MAIN_MENU`: groups become sections, labels are translated and get
+/// access keys that are unique inside the menu.
+fn build_entry_menu(entries: &[(&str, &str)]) -> gio::Menu {
+    let items: Vec<&(&str, &str)> = entries.iter().filter(|(l, _)| !l.is_empty()).collect();
+    let labels: Vec<String> = items.iter().map(|(l, _)| tr(l)).collect();
+    let keyed = nav::access_keys(&labels);
+    let menu = gio::Menu::new();
+    let mut section = gio::Menu::new();
+    let mut i = 0;
+    for (label, _) in entries {
+        if label.is_empty() {
+            if section.n_items() > 0 {
+                menu.append_section(None, &section);
+                section = gio::Menu::new();
+            }
+            continue;
+        }
+        section.append(Some(&keyed[i]), Some(items[i].1));
+        i += 1;
+    }
+    if section.n_items() > 0 {
+        menu.append_section(None, &section);
+    }
+    menu
+}
+
+/// The accessible name of the reverse-order button: it says which way the list is sorted now.
+fn order_label(ascending: bool) -> String {
+    if ascending {
+        tr("Reverse order (now ascending)")
+    } else {
+        tr("Reverse order (now descending)")
+    }
+}
 
 /// The attribute of the item with this label, searching submenus and sections.
 fn menu_attr(m: &gio::MenuModel, label: &str, attr: &str) -> Option<String> {
@@ -3678,6 +4187,41 @@ fn menu_top_count(m: &gio::MenuModel) -> usize {
         }
     }
     n
+}
+
+/// How deep submenus nest: 0 for a flat menu, 1 when it has submenus, 2 when a submenu has one.
+fn menu_submenu_depth(m: &gio::MenuModel) -> usize {
+    let mut depth = 0;
+    for i in 0..m.n_items() {
+        if let Some(sec) = m.item_link(i, "section") {
+            depth = depth.max(menu_submenu_depth(&sec));
+        }
+        if let Some(sub) = m.item_link(i, "submenu") {
+            depth = depth.max(1 + menu_submenu_depth(&sub));
+        }
+    }
+    depth
+}
+
+/// `Label=N` for every submenu of a menu (its entries, sections flattened).
+fn menu_submenu_sizes(m: &gio::MenuModel) -> String {
+    let mut out = Vec::new();
+    fn walk(m: &gio::MenuModel, out: &mut Vec<String>) {
+        for i in 0..m.n_items() {
+            if let Some(sec) = m.item_link(i, "section") {
+                walk(&sec, out);
+            }
+            if let Some(sub) = m.item_link(i, "submenu") {
+                let label = m
+                    .item_attribute_value(i, "label", None)
+                    .and_then(|v| v.str().map(String::from))
+                    .unwrap_or_default();
+                out.push(format!("{label}={}", menu_top_count(&sub)));
+            }
+        }
+    }
+    walk(m, &mut out);
+    out.join(",")
 }
 
 /// Every label of a menu, submenus included (for the UI tests).
@@ -3750,6 +4294,36 @@ impl SimpleComponent for LibraryView {
         table.append_column::<ColTags>();
         table.view.set_show_row_separators(true);
         table.view.set_enable_rubberband(true);
+        let table_cols: Vec<(&'static str, gtk::ColumnViewColumn)> = nav::TABLE_COLUMNS
+            .iter()
+            .filter_map(|(n, _, _)| table.get_columns().get(n).map(|c| (*n, c.clone())))
+            .collect();
+        let table_sync = Rc::new(Cell::new(false));
+        // a click on a column header is a sort: the View options menu follows
+        if let Some(cs) = table.view.sorter().and_downcast::<gtk::ColumnViewSorter>() {
+            let (tx, cols, guard) = (
+                sender.input_sender().clone(),
+                table_cols.clone(),
+                table_sync.clone(),
+            );
+            cs.connect_changed(move |s, _| {
+                if guard.get() {
+                    return;
+                }
+                let Some(col) = s.primary_sort_column() else {
+                    return;
+                };
+                let Some(name) = cols.iter().find(|(_, c)| *c == col).map(|(n, _)| *n) else {
+                    return;
+                };
+                if let Some(k) = nav::sort_for_column(name) {
+                    tx.emit(Input::TableSorted(
+                        k,
+                        s.primary_sort_order() == gtk::SortType::Ascending,
+                    ));
+                }
+            });
+        }
 
         {
             let tx = sender.input_sender().clone();
@@ -3800,7 +4374,13 @@ impl SimpleComponent for LibraryView {
         let banner = banner_ctl.reveal.clone();
         let grid_page = gtk::Box::new(gtk::Orientation::Vertical, 0);
         grid_page.append(&banner_ctl.holder);
-        grid_page.append(&grid_scroll);
+        // on a very wide window the covers stop spreading
+        let grid_clamp = adw::Clamp::new();
+        grid_clamp.set_maximum_size(nav::GRID_MAX_WIDTH);
+        grid_clamp.set_tightening_threshold(nav::GRID_MAX_WIDTH);
+        grid_clamp.set_vexpand(true);
+        grid_clamp.set_child(Some(&grid_scroll));
+        grid_page.append(&grid_clamp);
         {
             let sh = shared.clone();
             banner_ctl.connect(
@@ -3888,7 +4468,40 @@ impl SimpleComponent for LibraryView {
                 false
             });
         }
+        // while files are dragged over the window the books say what a drop does
+        let drop_hint = gtk::Box::new(gtk::Orientation::Vertical, 8);
+        drop_hint.add_css_class("drop-hint");
+        drop_hint.set_widget_name("drop-hint");
+        drop_hint.set_halign(gtk::Align::Fill);
+        drop_hint.set_valign(gtk::Align::Fill);
+        drop_hint.set_can_target(false);
+        drop_hint.set_visible(false);
+        {
+            let inner = gtk::Box::new(gtk::Orientation::Vertical, 8);
+            inner.set_halign(gtk::Align::Center);
+            inner.set_valign(gtk::Align::Center);
+            inner.set_vexpand(true);
+            let icon = gtk::Image::from_icon_name("folder-download-symbolic");
+            icon.set_pixel_size(48);
+            let text = gtk::Label::new(Some(&tr("Drop to Add")));
+            text.add_css_class("title-2");
+            inner.append(&icon);
+            inner.append(&text);
+            drop_hint.append(&inner);
+        }
+        {
+            let hint = drop_hint.clone();
+            drop.connect_current_drop_notify(move |t| hint.set_visible(t.current_drop().is_some()));
+            let hint = drop_hint.clone();
+            drop.connect_drop(move |_, _, _, _| {
+                hint.set_visible(false);
+                false
+            });
+        }
         stack.add_controller(drop);
+        let stack_overlay = gtk::Overlay::new();
+        stack_overlay.set_child(Some(&stack));
+        stack_overlay.add_overlay(&drop_hint);
 
         // ---- sidebars ---------------------------------------------------------
         // left: Home, Recent, Favourites, Notes & Highlights, shelves and browse groups, Library
@@ -3966,7 +4579,7 @@ impl SimpleComponent for LibraryView {
 
         let content = gtk::Stack::new();
         content.set_transition_type(gtk::StackTransitionType::None);
-        content.add_named(&stack, Some("books"));
+        content.add_named(&stack_overlay, Some("books"));
 
         let split_details = adw::OverlaySplitView::new();
         split_details.set_sidebar_position(gtk::PackType::End);
@@ -4026,22 +4639,39 @@ impl SimpleComponent for LibraryView {
         let header = adw::HeaderBar::new();
         header.set_show_start_title_buttons(false);
         let title = adw::WindowTitle::new(&tr("Home"), "");
-        header.set_title_widget(Some(&title));
+        let sel_title = adw::WindowTitle::new(&trf("{} selected", &[&0]), "");
+        let title_stack = gtk::Stack::new();
+        title_stack.add_named(&title, Some("title"));
+        title_stack.add_named(&sel_title, Some("selection"));
+        title_stack.set_hhomogeneous(false);
+        title_stack.set_transition_type(gtk::StackTransitionType::None);
+        header.set_title_widget(Some(&title_stack));
+        let cancel_btn = gtk::Button::with_label(&tr("Cancel"));
+        cancel_btn.set_visible(false);
+        cancel_btn.set_tooltip_text(Some(&tr("Cancel Selection (Esc)")));
+        {
+            let tx = sender.input_sender().clone();
+            cancel_btn.connect_clicked(move |_| tx.emit(Input::ClearSelection));
+        }
+        header.pack_start(&cancel_btn);
 
         let add_menu = gio::Menu::new();
         add_menu.append(Some(&tr("Add Books")), Some("lib.add-books"));
         add_menu.append(Some(&tr("Add from the Web")), Some("lib.add-web"));
         add_menu.append(Some(&tr("Add Folder")), Some("lib.add-folder"));
         add_menu.append(Some(&tr("Add Audiobook")), Some("lib.add-audiobook"));
-        add_menu.append(Some(&tr("News Subscriptions")), Some("lib.news"));
-        add_menu.append(
-            Some(&tr("Add Folder Recursively")),
-            Some("lib.add-folder-recursive"),
+        let imports = gio::Menu::new();
+        imports.append(Some(&tr("Import Calibre Library")), Some("lib.calibre"));
+        imports.append(
+            Some(&tr("Import Highlights")),
+            Some("lib.import-highlights"),
         );
+        add_menu.append_section(None, &imports);
         let add_btn = gtk::MenuButton::new();
         add_btn.set_icon_name("list-add-symbolic");
         add_btn.set_menu_model(Some(&add_menu));
-        add_btn.set_tooltip_text(Some(&tr("Add books (Ctrl+O)")));
+        super::audit::name_menu_items(&add_btn);
+        add_btn.set_tooltip_text(Some(&tr("Add Books (Ctrl+O)")));
         sidebar_header.pack_start(&add_btn);
 
         // the sidebar is always there; in a narrow window it is an overlay and this button opens it
@@ -4078,14 +4708,21 @@ impl SimpleComponent for LibraryView {
 
         let search = gtk::SearchEntry::new();
         search.set_hexpand(true);
-        search.set_placeholder_text(Some(
-            "Search books — or try author:le guin tag:sci-fi text:\"inside the book\"",
-        ));
+        search.set_placeholder_text(Some(&tr("Search books")));
         search.set_tooltip_text(Some(&tr("Calibre-style search:\n  title: author: tag: series: publisher: language: rating: status: format: identifier:\n  = exact, >= <= comparison, - to exclude, OR to combine\n  text:word searches the contents of the books")));
         let search_clamp = adw::Clamp::new();
         search_clamp.set_maximum_size(560);
         search_clamp.set_tightening_threshold(360);
-        search_clamp.set_child(Some(&search));
+        let search_row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        search_row.append(&search);
+        {
+            let tx = sender.input_sender().clone();
+            search_row.append(&extra::search_tips(
+                &search,
+                Rc::new(move |name| tx.emit(Input::SaveSearch(name))),
+            ));
+        }
+        search_clamp.set_child(Some(&search_row));
         let search_bar = gtk::SearchBar::new();
         search_bar.set_child(Some(&search_clamp));
         search_bar.connect_entry(&search);
@@ -4121,7 +4758,7 @@ impl SimpleComponent for LibraryView {
         view_box.set_halign(gtk::Align::Center);
         let view_grid = gtk::ToggleButton::new();
         view_grid.set_icon_name("view-grid-symbolic");
-        view_grid.set_tooltip_text(Some(&tr("Cover grid")));
+        view_grid.set_tooltip_text(Some(&tr("Cover Grid")));
         let view_table = gtk::ToggleButton::new();
         view_table.set_icon_name("view-list-symbolic");
         view_table.set_tooltip_text(Some(&tr("Table")));
@@ -4161,7 +4798,11 @@ impl SimpleComponent for LibraryView {
         );
         {
             let tx = sender.input_sender().clone();
+            let guard = table_sync.clone();
             sort_dd.connect_selected_notify(move |d| {
+                if guard.get() {
+                    return;
+                }
                 if let Some(k) = SortKey::ALL.get(d.selected() as usize) {
                     tx.emit(Input::Sort(*k));
                 }
@@ -4172,7 +4813,8 @@ impl SimpleComponent for LibraryView {
         } else {
             "view-sort-descending-symbolic"
         });
-        order_btn.set_tooltip_text(Some(&tr("Reverse order")));
+        order_btn.set_tooltip_text(Some(&tr("Reverse Order")));
+        super::audit::label(&order_btn, &order_label(cfg.sort_ascending));
         {
             let tx = sender.input_sender().clone();
             order_btn.connect_clicked(move |_| tx.emit(Input::ToggleOrder));
@@ -4204,42 +4846,120 @@ impl SimpleComponent for LibraryView {
             group_check.connect_toggled(move |c| tx.emit(Input::GroupEditions(c.is_active())));
         }
         opts.append(&group_check);
+        for w in [
+            zoom_lbl.upcast_ref::<gtk::Widget>(),
+            zoom.upcast_ref(),
+            group_check.upcast_ref(),
+        ] {
+            w.set_visible(nav::grid_only_options_visible(
+                cfg.view_mode == ViewMode::Table,
+            ));
+        }
+        // table only: which columns show (by default the ones that fit)
+        let cols_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
+        let cols_lbl = gtk::Label::new(Some(&tr("Columns")));
+        cols_lbl.set_xalign(0.0);
+        cols_lbl.add_css_class("heading");
+        cols_box.append(&cols_lbl);
+        let mut col_checks: Vec<(&'static str, gtk::CheckButton)> = Vec::new();
+        for (name, _, optional) in nav::TABLE_COLUMNS {
+            if !optional {
+                continue;
+            }
+            let c = gtk::CheckButton::with_label(&tr(name));
+            let (tx, name_s) = (sender.input_sender().clone(), name);
+            let guard = table_sync.clone();
+            c.connect_toggled(move |c| {
+                if !guard.get() {
+                    tx.emit(Input::TableColumn(name_s, c.is_active()));
+                }
+            });
+            cols_box.append(&c);
+            col_checks.push((name, c));
+        }
+        let cols_auto = gtk::Button::with_label(&tr("Fit to Window"));
+        cols_auto.set_tooltip_text(Some(&tr("Show the columns that fit the width")));
+        cols_auto.add_css_class("flat");
+        cols_auto.set_halign(gtk::Align::Start);
+        {
+            let tx = sender.input_sender().clone();
+            cols_auto.connect_clicked(move |_| tx.emit(Input::TableColumnsAuto));
+        }
+        cols_box.append(&cols_auto);
+        cols_box.set_visible(cfg.view_mode == ViewMode::Table);
+        opts.append(&cols_box);
+        let apply_cols: Rc<dyn Fn()> = {
+            let (shared, scroll, cols, checks, guard) = (
+                shared.clone(),
+                table_scroll.clone(),
+                table_cols.clone(),
+                col_checks.clone(),
+                table_sync.clone(),
+            );
+            let last = Rc::new(RefCell::new(Vec::<&'static str>::new()));
+            Rc::new(move || {
+                let want = nav::effective_columns(
+                    &shared.cfg.borrow().table_columns,
+                    scroll.width().max(1),
+                );
+                if *last.borrow() == want {
+                    return;
+                }
+                for (n, c) in &cols {
+                    c.set_visible(want.contains(n));
+                }
+                guard.set(true);
+                for (n, c) in &checks {
+                    c.set_active(want.contains(n));
+                }
+                guard.set(false);
+                *last.borrow_mut() = want;
+            })
+        };
+        {
+            let f = apply_cols.clone();
+            table_scroll.add_tick_callback(move |_, _| {
+                f();
+                glib::ControlFlow::Continue
+            });
+        }
         let view_pop = gtk::Popover::new();
         view_pop.set_child(Some(&opts));
         let view_btn = gtk::MenuButton::new();
-        view_btn.set_icon_name("view-grid-symbolic");
-        view_btn.set_tooltip_text(Some(&tr("View options")));
+        view_btn.set_icon_name(nav::view_button_icon(cfg.view_mode == ViewMode::Table));
+        view_btn.set_tooltip_text(Some(&tr("View Options")));
         super::audit::label(&view_btn, &tr("View options"));
         view_btn.set_popover(Some(&view_pop));
-        header.pack_end(&view_btn);
-        let main_list = gtk::Box::new(gtk::Orientation::Vertical, 2);
-        main_list.set_margin_all(6);
-        main_list.set_width_request(240);
-        let pop = gtk::Popover::new();
-        let item = |label: &str, action: &str| {
-            let b = gtk::Button::with_label(label);
-            b.add_css_class("flat");
-            b.set_action_name(Some(action));
-            if let Some(l) = b.child().and_downcast::<gtk::Label>() {
-                l.set_xalign(0.0);
-            }
-            let p = pop.clone();
-            b.connect_clicked(move |_| p.popdown());
-            b
-        };
-        for (label, action) in MAIN_MENU {
-            if label.is_empty() {
-                main_list.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
-            } else {
-                main_list.append(&item(&crate::i18n::tr(label), action));
-            }
+        let details_toggle = gtk::ToggleButton::new();
+        details_toggle.set_icon_name("sidebar-show-right-symbolic");
+        details_toggle.set_tooltip_text(Some(&tr("Details (Shift+F9)")));
+        super::audit::label(&details_toggle, &tr("Details"));
+        split_details
+            .bind_property("show-sidebar", &details_toggle, "active")
+            .bidirectional()
+            .sync_create()
+            .build();
+        {
+            // a click of the user is remembered; the panel following the selection is not
+            let tx = sender.input_sender().clone();
+            details_toggle.connect_clicked(move |b| tx.emit(Input::DetailsPref(b.is_active())));
         }
-        pop.set_child(Some(&main_list));
+        header.pack_end(&details_toggle);
+        header.pack_end(&view_btn);
         let menu_btn = gtk::MenuButton::new();
         menu_btn.set_icon_name("open-menu-symbolic");
-        menu_btn.set_tooltip_text(Some(&tr("Main menu")));
-        menu_btn.set_popover(Some(&pop));
+        menu_btn.set_tooltip_text(Some(&tr("Main Menu")));
+        super::audit::label(&menu_btn, &tr("Main Menu"));
+        menu_btn.set_menu_model(Some(&build_entry_menu(&MAIN_MENU)));
         menu_btn.set_primary(true);
+        super::audit::name_menu_items(&menu_btn);
+        let library_btn = gtk::MenuButton::new();
+        library_btn.set_icon_name("view-more-horizontal-symbolic");
+        library_btn.set_tooltip_text(Some(&tr("Library")));
+        super::audit::label(&library_btn, &tr("Library"));
+        library_btn.set_menu_model(Some(&build_entry_menu(&LIBRARY_MENU)));
+        super::audit::name_menu_items(&library_btn);
+        header.pack_end(&library_btn);
         sidebar_header.pack_end(&menu_btn);
         sidebar_header.pack_end(&search_toggle);
         let device_btn = gtk::Button::new();
@@ -4250,15 +4970,14 @@ impl SimpleComponent for LibraryView {
             content.set_icon_name("drive-removable-media-symbolic");
             device_btn.set_child(Some(&content));
         }
-        device_btn.set_tooltip_text(Some(
-            "A device is connected: its books, sending books, syncing reading progress and notes",
-        ));
+        device_btn.set_tooltip_text(Some(&tr("Connected e-reader: sync, send and manage books")));
         device_btn.set_action_name(Some("lib.device"));
         // in a very narrow header the device button moves into the view options popover
         let device_slot = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         device_slot.append(&device_btn);
         header.pack_end(&device_slot);
-        let device_more = gtk::Button::with_label(&tr("Connected device"));
+        let device_more = gtk::Button::new();
+        device_more.set_tooltip_text(Some(&tr("Connected e-reader: sync, send and manage books")));
         device_more.add_css_class("flat");
         device_more.set_action_name(Some("lib.device"));
         device_more.set_visible(false);
@@ -4277,69 +4996,74 @@ impl SimpleComponent for LibraryView {
         small.add_setter(&split_details, "collapsed", Some(&true.to_value()));
         small.add_setter(&device_slot, "visible", Some(&false.to_value()));
 
-        // asks what to do when a device shows up
-        let device_banner = gtk::Revealer::new();
-        device_banner.set_transition_type(gtk::RevealerTransitionType::SlideDown);
-        let banner_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        banner_row.add_css_class("device-banner");
-        let banner_label = gtk::Label::new(None);
-        banner_label.set_hexpand(true);
-        banner_label.set_xalign(0.0);
-        banner_label.set_wrap(true);
-        banner_row.append(&banner_label);
-        for (label, choice, suggested) in [
-            ("Sync", DeviceChoice::Sync, true),
-            ("Always", DeviceChoice::Always, false),
-            ("Not now", DeviceChoice::NotNow, false),
-        ] {
-            let b = gtk::Button::with_label(label);
-            if suggested {
-                b.add_css_class("suggested-action");
-            }
+        // one-shot sync; the built-in dismiss button hides the banner without changing settings
+        let device_banner = adw::Banner::builder()
+            .title(crate::device_sync::banner_title())
+            .button_label(crate::device_sync::banner_button_label())
+            .revealed(false)
+            .build();
+        {
             let tx = sender.input_sender().clone();
-            b.connect_clicked(move |_| tx.emit(Input::DeviceBanner(choice)));
-            banner_row.append(&b);
+            device_banner.connect_button_clicked(move |_| {
+                tx.emit(Input::DeviceBanner(DeviceChoice::Sync));
+            });
         }
-        device_banner.set_child(Some(&banner_row));
+        {
+            // AdwBanner's own close button sets `revealed` to false; keep the model in step
+            let tx = sender.input_sender().clone();
+            device_banner.connect_revealed_notify(move |banner| {
+                if !banner.is_revealed() {
+                    tx.emit(Input::DeviceBanner(DeviceChoice::Dismiss));
+                }
+            });
+        }
 
         // ---- bottom (selection) bar --------------------------------------------
         let bar = gtk::ActionBar::new();
-        let sel_label = gtk::Label::new(None);
-        sel_label.add_css_class("heading");
-        bar.pack_start(&sel_label);
         let sel_read = gtk::Button::with_label(&tr("Read"));
         sel_read.add_css_class("suggested-action");
         sel_read.set_action_name(Some("book.read"));
         let sel_edit = gtk::Button::with_label(&tr("Edit Metadata"));
         sel_edit.set_action_name(Some("book.edit-meta"));
-        let sel_del = gtk::Button::with_label(&tr("Remove"));
-        sel_del.add_css_class("destructive-action");
+        let sel_shelf = gtk::MenuButton::new();
+        sel_shelf.set_label(&tr("Add to Shelf"));
+        sel_shelf.set_always_show_arrow(true);
+        let sel_send = gtk::Button::with_label(&tr("Send to Device"));
+        sel_send.set_action_name(Some("book.send-device"));
+        let sel_convert = gtk::MenuButton::new();
+        sel_convert.set_label(&tr("Convert"));
+        sel_convert.set_always_show_arrow(true);
+        let sel_more = gtk::MenuButton::new();
+        sel_more.set_icon_name("view-more-symbolic");
+        sel_more.set_tooltip_text(Some(&tr("More Actions")));
+        super::audit::label(&sel_more, &tr("More actions"));
+        sel_more.set_visible(false);
+        let sel_del = gtk::Button::with_label(&tr("Move to Trash"));
         sel_del.set_action_name(Some("book.delete"));
+        sel_del.set_tooltip_text(Some(&tr("Move to Trash")));
+        super::audit::label(&sel_del, &tr("Move to Trash"));
         let sel_details = gtk::Button::with_label(&tr("Details"));
         sel_details.set_visible(false);
         {
             let split = split_details.clone();
             sel_details.connect_clicked(move |_| split.set_show_sidebar(true));
         }
-        let sel_clear = gtk::Button::from_icon_name("edit-clear-symbolic");
-        sel_clear.set_tooltip_text(Some(&tr("Clear selection")));
-        {
-            let g = grid.selection_model.clone();
-            let t = table.selection_model.clone();
-            sel_clear.connect_clicked(move |_| {
-                g.unselect_all();
-                t.unselect_all();
-            });
-        }
-        bar.pack_end(&sel_clear);
+        bar.pack_start(&sel_edit);
+        bar.pack_start(&sel_shelf);
+        bar.pack_start(&sel_send);
+        bar.pack_start(&sel_convert);
+        bar.pack_start(&sel_more);
         bar.pack_end(&sel_del);
-        bar.pack_end(&sel_edit);
         bar.pack_end(&sel_details);
         bar.pack_end(&sel_read);
 
-        // in the smallest window the selection bar keeps Read, Remove, Details and Clear
-        small.add_setter(&sel_label, "visible", Some(&false.to_value()));
-        small.add_setter(&sel_edit, "visible", Some(&false.to_value()));
+        {
+            // at 600 sp and below the extra actions of the bar move into "More"
+            let tx = sender.input_sender().clone();
+            small.connect_apply(move |_| tx.emit(Input::Compact(true)));
+            let tx = sender.input_sender().clone();
+            small.connect_unapply(move |_| tx.emit(Input::Compact(false)));
+        }
         split_bin.add_breakpoint(small);
 
         let toolbar = adw::ToolbarView::new();
@@ -4350,7 +5074,8 @@ impl SimpleComponent for LibraryView {
         toolbar.add_bottom_bar(&bar);
         toolbar.set_reveal_bottom_bars(false);
         split_tags.set_content(Some(&toolbar));
-        root.set_child(Some(&split_bin));
+        let toasts = super::dialog_toast::overlay(&split_bin);
+        root.set_child(Some(&toasts));
 
         // ---- actions ----------------------------------------------------------
         let lib_actions = gio::SimpleActionGroup::new();
@@ -4436,7 +5161,7 @@ impl SimpleComponent for LibraryView {
             let tx = sender.input_sender().clone();
             add(
                 "add-folder",
-                Box::new(move || tx.emit(Input::AddFolder(false))),
+                Box::new(move || tx.emit(Input::AddFolder(true))),
             );
             let tx = sender.input_sender().clone();
             let win_root = root.clone();
@@ -4520,6 +5245,7 @@ impl SimpleComponent for LibraryView {
             });
             book_actions.add_action(&a);
             simple("import-ann", Act::ImportAnn);
+            simple("copy-citation", Act::CopyCitation);
             let a = gio::SimpleAction::new("email", None);
             let tx = sender.input_sender().clone();
             a.connect_activate(move |_, _| tx.emit(Input::Act(Act::Email)));
@@ -4581,6 +5307,47 @@ impl SimpleComponent for LibraryView {
             crate::shortcuts::on_change(move || install());
         }
 
+        // Ctrl+V on Home: a pasted address opens Add from the Web with it (an entry that has the
+        // focus takes the paste itself)
+        {
+            let tx = sender.input_sender().clone();
+            let sc = gtk::ShortcutController::new();
+            sc.set_scope(gtk::ShortcutScope::Local);
+            sc.set_propagation_phase(gtk::PropagationPhase::Bubble);
+            let root_w = root.clone();
+            sc.add_shortcut(gtk::Shortcut::new(
+                gtk::ShortcutTrigger::parse_string("<Control>v"),
+                Some(gtk::CallbackAction::new(move |_, _| {
+                    let tx = tx.clone();
+                    root_w.display().clipboard().read_text_async(
+                        gio::Cancellable::NONE,
+                        move |res| {
+                            if let Ok(Some(t)) = res {
+                                tx.emit(Input::PasteUrl(t.to_string()));
+                            }
+                        },
+                    );
+                    glib::Propagation::Proceed
+                })),
+            ));
+            root.add_controller(sc);
+        }
+
+        // Shift+F9 shows or hides the details panel
+        {
+            let sc = gtk::ShortcutController::new();
+            sc.set_scope(gtk::ShortcutScope::Local);
+            let toggle = details_toggle.clone();
+            sc.add_shortcut(gtk::Shortcut::new(
+                gtk::ShortcutTrigger::parse_string("<Shift>F9"),
+                Some(gtk::CallbackAction::new(move |_, _| {
+                    toggle.activate();
+                    glib::Propagation::Stop
+                })),
+            ));
+            root.add_controller(sc);
+        }
+
         // Escape clears the selection (the search bar and menus have taken it before when open)
         {
             let tx = sender.input_sender().clone();
@@ -4605,12 +5372,20 @@ impl SimpleComponent for LibraryView {
             table,
             cover_size,
             w: W {
+                toasts,
+                last_undo: RefCell::new(None),
                 stack,
                 content,
                 top,
                 top_counts,
                 health_badge,
                 sel_details,
+                sel_del,
+                details_toggle,
+                table_scroll,
+                table_cols,
+                table_sync: table_sync.clone(),
+                grid_clamp,
                 search,
                 details,
                 tags,
@@ -4620,17 +5395,35 @@ impl SimpleComponent for LibraryView {
                 split_details,
                 spinner,
                 toolbar,
-                sel_label,
+                title_stack,
+                sel_title,
+                cancel_btn,
                 sel_read,
+                sel_edit,
+                sel_shelf,
+                sel_send,
+                sel_convert,
+                sel_more,
+                add_menu: add_menu.clone(),
                 banner,
                 banner_ctl,
                 order_btn,
+                view_btn: view_btn.clone(),
+                drop_hint,
+                cols_box: cols_box.clone(),
+                sort_dd: sort_dd.clone(),
+                apply_cols,
+                grid_only: vec![
+                    zoom_lbl.clone().upcast(),
+                    zoom.clone().upcast(),
+                    group_check.clone().upcast(),
+                ],
                 send_action,
                 header: header.clone(),
                 empty_btns,
                 device_btn,
+                device_more,
                 device_banner,
-                banner_label,
             },
             selected: Vec::new(),
             groups: HashMap::new(),
@@ -4638,6 +5431,8 @@ impl SimpleComponent for LibraryView {
             card_ids: Vec::new(),
             anchor: None,
             hero: RefCell::new(nav::HeroSession::default()),
+            compact: false,
+            notes_sel: 0,
             banner_colors: RefCell::new(None),
             skip_details: Cell::new(false),
             requeries: 0,
@@ -4666,6 +5461,7 @@ impl SimpleComponent for LibraryView {
             declined: HashSet::new(),
             device_scan: Rc::new(Cell::new(false)),
         };
+        model.sync_sort_controls();
         sender.input(Input::Refresh);
         sender.input(Input::SetNav(model.view));
         {
@@ -4782,6 +5578,14 @@ impl SimpleComponent for LibraryView {
                 }
             }
             Input::BannerLayout => self.update_banner(),
+            Input::NotesSelection(n) => {
+                self.notes_sel = n;
+                self.update_bottom_bar();
+            }
+            Input::Compact(on) => {
+                self.compact = on;
+                self.update_bottom_bar();
+            }
             Input::BannerAct(id, what) => {
                 use super::library_banner::BannerAct;
                 match what {
@@ -4824,6 +5628,12 @@ impl SimpleComponent for LibraryView {
                 }
             }
             Input::ClearSelection => {
+                if self.view == View::Notes {
+                    if let Some(v) = self.notes.borrow().as_ref() {
+                        (v.clear_selection)();
+                    }
+                    return;
+                }
                 let sel = nav::empty_click(&self.selected);
                 if !self.selected.is_empty() {
                     self.selected = sel;
@@ -4845,26 +5655,13 @@ impl SimpleComponent for LibraryView {
                 self.update_details();
                 self.update_bottom_bar();
             }
-            Input::AddWebDialog => {
-                if let Some(win) = window_of(&self.root) {
-                    let d = adw::AlertDialog::new(
-                        Some(&tr("Add from the Web")),
-                        Some(&tr("Paste the address of an article to read later, or of a news feed (RSS, Atom, JSON Feed) to make a book of its latest articles.")),
-                    );
-                    let entry = gtk::Entry::new();
-                    entry.set_placeholder_text(Some("https://example.com/article"));
-                    entry.set_activates_default(true);
-                    d.set_extra_child(Some(&entry));
-                    d.add_responses(&[("cancel", &tr("Cancel")), ("add", &tr("Add"))]);
-                    d.set_response_appearance("add", adw::ResponseAppearance::Suggested);
-                    d.set_default_response(Some("add"));
-                    let tx = self.sender.input_sender().clone();
-                    d.connect_response(None, move |_, r| {
-                        if r == "add" {
-                            tx.emit(Input::AddWeb(entry.text().to_string()));
-                        }
-                    });
-                    d.present(Some(&win));
+            Input::AddWebDialog => self.add_web_dialog(""),
+            Input::PasteUrl(text) => {
+                // pasting an address on Home asks to add it
+                if self.view == View::Home {
+                    if let Some(url) = nav::pasted_url(&text) {
+                        self.add_web_dialog(&url);
+                    }
                 }
             }
             Input::AddWeb(url) => {
@@ -5011,6 +5808,7 @@ impl SimpleComponent for LibraryView {
             Input::Sort(k) => {
                 self.shared.cfg.borrow_mut().sort_key = k;
                 self.shared.cfg.borrow().save();
+                self.sync_sort_controls();
                 self.requery();
             }
             Input::ToggleOrder => {
@@ -5020,11 +5818,13 @@ impl SimpleComponent for LibraryView {
                     c.save();
                     c.sort_ascending
                 };
+                super::audit::label(&self.w.order_btn, &order_label(asc));
                 self.w.order_btn.set_icon_name(if asc {
                     "view-sort-ascending-symbolic"
                 } else {
                     "view-sort-descending-symbolic"
                 });
+                self.sync_sort_controls();
                 self.requery();
             }
             Input::SetView(m) => {
@@ -5036,6 +5836,12 @@ impl SimpleComponent for LibraryView {
                     c.view_mode = m;
                     c.save();
                 }
+                let table = m == ViewMode::Table;
+                self.w.view_btn.set_icon_name(nav::view_button_icon(table));
+                for w in &self.w.grid_only {
+                    w.set_visible(nav::grid_only_options_visible(table));
+                }
+                self.w.cols_box.set_visible(table);
                 self.requery();
             }
             Input::Zoom(z) => {
@@ -5268,6 +6074,59 @@ impl SimpleComponent for LibraryView {
                 }
             }
             Input::Act(a) => self.do_act(a),
+            Input::TableColumn(name, on) => {
+                let shown = nav::effective_columns(
+                    &self.shared.cfg.borrow().table_columns,
+                    self.w.table_scroll.width().max(1),
+                );
+                {
+                    let mut c = self.shared.cfg.borrow_mut();
+                    c.table_columns = nav::toggle_column(&shown, name, on);
+                    c.save();
+                }
+                (self.w.apply_cols)();
+            }
+            Input::TableColumnsAuto => {
+                {
+                    let mut c = self.shared.cfg.borrow_mut();
+                    c.table_columns.clear();
+                    c.save();
+                }
+                (self.w.apply_cols)();
+            }
+            Input::SaveSearch(name) => {
+                let q = self.w.search.text().to_string();
+                match crate::ui::saved::save(&self.shared, &name, &q) {
+                    Ok(()) => {
+                        self.rebuild_tags();
+                        sender.input(Input::Toast(trf("Saved search “{}”", &[&name])));
+                    }
+                    Err(e) => sender.input(Input::Toast(e)),
+                }
+            }
+            Input::DetailsPref(on) => {
+                let mut c = self.shared.cfg.borrow_mut();
+                c.details_pane = on;
+                c.save();
+            }
+            Input::TableSorted(k, asc) => {
+                {
+                    let mut c = self.shared.cfg.borrow_mut();
+                    if c.sort_key == k && c.sort_ascending == asc {
+                        return;
+                    }
+                    c.sort_key = k;
+                    c.sort_ascending = asc;
+                    c.save();
+                }
+                self.sync_sort_controls();
+                self.requery();
+            }
+            Input::ToastUndo(t, undo) => {
+                *self.w.last_undo.borrow_mut() = Some(undo.clone());
+                eprintln!("toast: {t} [undo]");
+                super::dialog_toast::show_undo(&self.w.toasts, &t, move || (undo.0)());
+            }
             Input::Toast(t) => {
                 let _ = sender.output(Output::Toast(t));
             }
@@ -5276,6 +6135,9 @@ impl SimpleComponent for LibraryView {
                 self.w.search.grab_focus();
             }
             Input::Dev(c) => {
+                if self.dev_wave9(&c, &sender) {
+                    return;
+                }
                 match c.as_str() {
                     "table" => sender.input(Input::SetView(ViewMode::Table)),
                     "grid" => sender.input(Input::SetView(ViewMode::Grid)),
@@ -5641,6 +6503,59 @@ impl SimpleComponent for LibraryView {
                         }
                     }
                     // the selected books and the panel, for the tests
+                    // `selhdr`: the header and the bar while books are selected
+                    "selhdr" => {
+                        let w = &self.w;
+                        let mut bar: Vec<String> = Vec::new();
+                        for (name, shown) in [
+                            ("read", w.sel_read.is_visible()),
+                            ("edit", w.sel_edit.is_visible()),
+                            ("shelf", w.sel_shelf.is_visible()),
+                            ("send", w.sel_send.is_visible()),
+                            ("convert", w.sel_convert.is_visible()),
+                            ("more", w.sel_more.is_visible()),
+                        ] {
+                            if shown {
+                                bar.push(name.to_string());
+                            }
+                        }
+                        let mut more = Vec::new();
+                        if let Some(m) = w.sel_more.menu_model() {
+                            for i in 0..m.n_items() {
+                                if let Some(l) = m
+                                    .item_attribute_value(i, "label", None)
+                                    .and_then(|v| v.str().map(String::from))
+                                {
+                                    more.push(l);
+                                }
+                            }
+                        }
+                        eprintln!(
+                            "selhdr: mode={} title={:?} cancel={} bar={} buttons={} more=[{}]",
+                            w.title_stack.visible_child_name().unwrap_or_default(),
+                            if w.title_stack.visible_child_name().as_deref() == Some("selection") {
+                                w.sel_title.title().to_string()
+                            } else {
+                                w.title.title().to_string()
+                            },
+                            w.cancel_btn.is_visible(),
+                            w.toolbar.reveals_bottom_bars(),
+                            bar.join(","),
+                            more.join("|")
+                        );
+                    }
+                    "viewopts" => eprintln!(
+                        "viewopts: icon={} grid_only_visible={} order={:?}",
+                        self.w.view_btn.icon_name().unwrap_or_default(),
+                        self.w.grid_only.iter().any(|w| w.property::<bool>("visible")),
+                        order_label(self.shared.cfg.borrow().sort_ascending)
+                    ),
+                    "searchph" => eprintln!(
+                        "searchph: placeholder={:?}",
+                        self.w.search.placeholder_text().unwrap_or_default()
+                    ),
+                    "cancel-selection" => self.w.cancel_btn.emit_clicked(),
+                    "compact" | "regular" => sender.input(Input::Compact(c == "compact")),
                     "selection" => {
                         let shown = self.visible_ids();
                         let pos: Vec<usize> = self
@@ -5701,6 +6616,23 @@ impl SimpleComponent for LibraryView {
                             .map(|(l, a)| format!("{l} [{a}]"))
                             .collect();
                         eprintln!("mainmenu: {}", items.join(" | "));
+                        let lib: Vec<String> = LIBRARY_MENU
+                            .iter()
+                            .filter(|(l, _)| !l.is_empty())
+                            .map(|(l, a)| format!("{l} [{a}]"))
+                            .collect();
+                        eprintln!("librarymenu: {}", lib.join(" | "));
+                        eprintln!(
+                            "menu_counts: main={} library={} add={} main_keys={}",
+                            MAIN_MENU.iter().filter(|(l, _)| !l.is_empty()).count(),
+                            LIBRARY_MENU.iter().filter(|(l, _)| !l.is_empty()).count(),
+                            menu_top_count(self.w.add_menu.upcast_ref::<gio::MenuModel>()),
+                            {
+                                let mut l = Vec::new();
+                                menu_labels(build_entry_menu(&MAIN_MENU).upcast_ref(), &mut l);
+                                l.join("|")
+                            }
+                        );
                         let mut welcome = Vec::new();
                         let mut c = self.w.empty_btns.first_child();
                         while let Some(w) = c {
@@ -5796,6 +6728,16 @@ impl SimpleComponent for LibraryView {
                                 .unwrap_or_default()
                         );
                         eprintln!("ctxmenu_top: {}", menu_top_count(menu.upcast_ref()));
+                        // the fullest variant: several books, on a shelf
+                        let busiest = self.book_menu(true);
+                        eprintln!(
+                            "ctxmenu_shape: single_top={} multi_top={} depth={} {}",
+                            menu_top_count(menu.upcast_ref()),
+                            menu_top_count(busiest.upcast_ref()),
+                            menu_submenu_depth(menu.upcast_ref())
+                                .max(menu_submenu_depth(busiest.upcast_ref())),
+                            menu_submenu_sizes(menu.upcast_ref())
+                        );
                     }
                     "unselect" => {
                         let _ = self.active_model().unselect_all();
@@ -5819,8 +6761,11 @@ impl SimpleComponent for LibraryView {
                         self.devices_changed(list);
                     }
                     "device-banner=sync" => self.device_banner_answer(DeviceChoice::Sync),
-                    "device-banner=always" => self.device_banner_answer(DeviceChoice::Always),
-                    "device-banner=later" => self.device_banner_answer(DeviceChoice::NotNow),
+                    "device-banner=dismiss" => self.device_banner_answer(DeviceChoice::Dismiss),
+                    // old hook names stay as aliases; neither changes the auto-sync setting
+                    "device-banner=always" | "device-banner=later" => {
+                        self.device_banner_answer(DeviceChoice::Dismiss)
+                    }
                     "device-button" => {
                         if let Some(app) = gio::Application::default() {
                             gio::prelude::ActionGroupExt::activate_action(&app, "devices", None);
@@ -5839,9 +6784,10 @@ impl SimpleComponent for LibraryView {
                             self.w.device_btn.is_visible()
                         );
                         eprintln!(
-                            "device_banner: revealed={} text={}",
-                            self.w.device_banner.reveals_child(),
-                            self.w.banner_label.label()
+                            "device_banner: widget=AdwBanner title={} button={} dismiss=true revealed={}",
+                            self.w.device_banner.title(),
+                            self.w.device_banner.button_label().unwrap_or_default(),
+                            self.w.device_banner.is_revealed()
                         );
                         eprintln!(
                             "details_auto: {} | auto_sync: {} | include_notes: {}",
@@ -6337,6 +7283,13 @@ impl SimpleComponent for LibraryView {
                     }
                     "editmeta" => self.do_act(Act::EditMeta),
                     "delete" => self.do_act(Act::Delete),
+                    "undo-last" => {
+                        let u = self.w.last_undo.borrow_mut().take();
+                        match u {
+                            Some(u) => (u.0)(),
+                            None => eprintln!("undo-last: nothing"),
+                        }
+                    }
                     "selectall" => {
                         self.finish_fill();
                         self.active_model().select_all();
@@ -6395,6 +7348,7 @@ impl SimpleComponent for LibraryView {
                     "menus-tr" => {
                         let items: Vec<String> = MAIN_MENU
                             .iter()
+                            .chain(LIBRARY_MENU.iter())
                             .filter(|(l, _)| !l.is_empty())
                             .map(|(l, _)| crate::i18n::tr(l))
                             .collect();
@@ -6446,6 +7400,12 @@ impl SimpleComponent for LibraryView {
                 }
             }
             Input::SelectAll => {
+                if self.view == View::Notes {
+                    if let Some(v) = self.notes.borrow().as_ref() {
+                        (v.select_all)();
+                    }
+                    return;
+                }
                 self.finish_fill();
                 self.active_model().select_all();
             }
@@ -6637,6 +7597,50 @@ fn header_report(header: &adw::HeaderBar) -> String {
 }
 
 #[cfg(test)]
+mod main_menu_tests {
+    use super::{LIBRARY_MENU, MAIN_MENU};
+
+    fn count(m: &[(&str, &str)]) -> usize {
+        m.iter().filter(|(l, _)| !l.is_empty()).count()
+    }
+
+    #[test]
+    fn the_main_menu_is_short_and_ends_with_the_standard_group() {
+        assert_eq!(count(&MAIN_MENU), 8);
+        assert!(count(&MAIN_MENU) <= 12 && count(&LIBRARY_MENU) <= 12);
+        let labels: Vec<&str> = MAIN_MENU
+            .iter()
+            .map(|(l, _)| *l)
+            .filter(|l| !l.is_empty())
+            .collect();
+        let n = labels.len();
+        assert_eq!(
+            &labels[n - 4..],
+            ["Preferences", "Keyboard Shortcuts", "Help", "About Bookx"]
+        );
+        assert!(MAIN_MENU.contains(&("Help", "app.help")));
+        assert!(!MAIN_MENU.iter().any(|(l, _)| *l == "Copy Diagnostics"));
+        // Saved Searches moved to the sidebar (its action stays for the palette)
+        assert!(!MAIN_MENU.iter().any(|(l, _)| *l == "Saved Searches"));
+    }
+
+    #[test]
+    fn every_old_destination_is_still_in_a_menu() {
+        for old in [
+            "app.stats",
+            "app.vocab",
+            "lib.trackers",
+            "lib.audiobooks",
+            "lib.opds",
+            "lib.export-calibre",
+            "lib.citations",
+        ] {
+            assert!(LIBRARY_MENU.iter().any(|(_, a)| *a == old), "{old}");
+        }
+    }
+}
+
+#[cfg(test)]
 mod sync_menu_tests {
     use super::MAIN_MENU;
 
@@ -6645,8 +7649,9 @@ mod sync_menu_tests {
         assert_eq!(MAIN_MENU.iter().filter(|(l, _)| *l == "Sync").count(), 1);
         assert!(MAIN_MENU.contains(&("Sync", "app.sync")));
         assert!(!MAIN_MENU.iter().any(|(l, _)| *l == "Share Library"));
-        // the USB window stays next to it
+        // the USB window stays next to it, and several devices are named in the plural
         let i = MAIN_MENU.iter().position(|(l, _)| *l == "Sync").unwrap();
-        assert_eq!(MAIN_MENU[i + 1].1, "app.devices");
+        assert_eq!(MAIN_MENU[i + 1], ("Devices", "app.devices"));
+        assert!(!MAIN_MENU.iter().any(|(l, _)| *l == "Device"));
     }
 }

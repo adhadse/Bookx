@@ -141,8 +141,20 @@ impl Editor {
             true,
         );
         let g = group("");
+        let remove = gtk::Button::with_label(&tr("Remove Cover"));
+        remove.add_css_class("destructive-action");
+        remove.set_valign(gtk::Align::Center);
+        remove.set_sensitive(current.is_some());
+        let current_row = adw::ActionRow::new();
+        current_row.set_title(&tr("Current cover"));
+        current_row.set_subtitle(&match &current {
+            Some(c) => c.rsplit('/').next().unwrap_or(c).to_string(),
+            None => tr("The book has no cover"),
+        });
+        current_row.add_suffix(&remove);
         for r in [
-            pick.upcast_ref::<gtk::Widget>(),
+            current_row.upcast_ref::<gtk::Widget>(),
+            pick.upcast_ref(),
             src_row.upcast_ref(),
             crop.upcast_ref(),
             size.upcast_ref(),
@@ -159,8 +171,6 @@ impl Editor {
         let apply = gtk::Button::with_label(&tr("Set Cover"));
         apply.add_css_class("suggested-action");
         apply.set_sensitive(false);
-        let remove = gtk::Button::with_label(&tr("Remove Cover"));
-        remove.set_sensitive(current.is_some());
 
         // shows the image as it will be stored
         let refresh: Rc<dyn Fn()> = {
@@ -350,7 +360,14 @@ impl Editor {
         let bar = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         bar.set_margin_all(12);
         bar.set_halign(gtk::Align::End);
-        bar.append(&remove);
+        let close = gtk::Button::with_label(&tr("Close"));
+        {
+            let d = dialog.clone();
+            close.connect_clicked(move |_| {
+                d.close();
+            });
+        }
+        bar.append(&close);
         bar.append(&apply);
         let view = adw::ToolbarView::new();
         view.add_top_bar(&adw::HeaderBar::new());

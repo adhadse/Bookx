@@ -32,6 +32,38 @@ pub struct App {
     editors: Rc<RefCell<Vec<(u64, Controller<editor::Editor>)>>>,
     /// The audiobook player, while one is open.
     audio: Option<crate::ui::audiobook_player::Page>,
+    /// The page shown while a book opens (it turns into the error page when opening fails).
+    loading_page: Option<adw::NavigationPage>,
+    /// The Undo of the toast shown last (`app:toast-undo-press` runs it in tests).
+    last_undo: Option<UndoFn>,
+    /// Dev hook `app:fail-open`: the next book fails to open, to show the error page.
+    dev_fail_open: bool,
+}
+
+/// What an Undo button of a toast does. Cloneable and `Debug` so it can travel in a message.
+#[derive(Clone)]
+pub struct UndoFn(pub Rc<dyn Fn()>);
+
+impl UndoFn {
+    pub fn new(f: impl Fn() + 'static) -> Self {
+        UndoFn(Rc::new(f))
+    }
+}
+
+impl std::fmt::Debug for UndoFn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("UndoFn")
+    }
+}
+
+/// The title and the text of the page that replaces the opening page when a book cannot be opened.
+pub fn open_error_texts(pdf: bool, error: &str) -> (String, String) {
+    let title = if pdf {
+        tr("Could not open the PDF")
+    } else {
+        tr("Could not open the book")
+    };
+    (title, error.trim().to_string())
 }
 
 /// An EPUB opened on a worker thread.
@@ -68,6 +100,8 @@ pub enum Msg {
     EditorSaved,
     EditorClosed(u64),
     Toast(String),
+    /// A message with an Undo button (XC-1): what was removed can be brought back for ten seconds.
+    ToastUndo(String, UndoFn),
     LibraryChanged,
     Prefs(PrefChange),
     ShowPrefs,
@@ -387,6 +421,9 @@ impl SimpleComponent for App {
             pending_read: None,
             editors: Rc::new(RefCell::new(Vec::new())),
             audio: None,
+            loading_page: None,
+            last_undo: None,
+            dev_fail_open: false,
         };
         model.apply_touch_ui();
         model.apply_eink();
@@ -462,6 +499,7 @@ impl SimpleComponent for App {
                 tb.set_content(Some(&status));
                 page.set_child(Some(&tb));
                 self.nav.push(&page);
+                self.loading_page = Some(page);
 
                 if let Some(pdf_path) = pdf_file {
                     let (tx_done, rx) = std::sync::mpsc::channel();
@@ -484,14 +522,19 @@ impl SimpleComponent for App {
                     return;
                 }
 
+                let fail = std::mem::take(&mut self.dev_fail_open);
                 let (tx_done, rx) = std::sync::mpsc::channel();
                 std::thread::spawn(move || {
-                    let res = crate::core::book::OpenBook::open(&path)
-                        .map(|mut b| {
-                            crate::plugins::patch_on_open(&mut b.archive);
-                            LoadedBook(b)
-                        })
-                        .map_err(|e| e.to_string());
+                    let res = if fail {
+                        Err("The file is damaged (test)".to_string())
+                    } else {
+                        crate::core::book::OpenBook::open(&path)
+                            .map(|mut b| {
+                                crate::plugins::patch_on_open(&mut b.archive);
+                                LoadedBook(b)
+                            })
+                            .map_err(|e| e.to_string())
+                    };
                     let _ = tx_done.send(res);
                 });
                 let tx = sender.input_sender().clone();
@@ -546,6 +589,7 @@ impl SimpleComponent for App {
                             .forward(sender.input_sender(), |out| match out {
                                 reader::Output::Close => Msg::CloseReader,
                                 reader::Output::Toast(t) => Msg::Toast(t),
+                                reader::Output::ToastUndo(t, u) => Msg::ToastUndo(t, u),
                                 reader::Output::Reload => Msg::ReloadReader,
                                 reader::Output::OpenFile => Msg::OpenFileDialog,
                                 reader::Output::OpenPreferences(t) => Msg::ShowPrefsAt(t),
@@ -559,9 +603,8 @@ impl SimpleComponent for App {
                         self.reader_id = Some(id);
                     }
                     Err(e) => {
-                        self.nav.pop();
                         self.restore_window();
-                        sender.input(Msg::Toast(trf("Could not open the book: {}", &[&e])));
+                        self.show_open_error(false, &e);
                     }
                 }
             }
@@ -577,6 +620,7 @@ impl SimpleComponent for App {
                             .forward(sender.input_sender(), move |out| match out {
                                 reader_pdf::Output::Close => Msg::CloseReader,
                                 reader_pdf::Output::Toast(t) => Msg::Toast(t),
+                                reader_pdf::Output::ToastUndo(t, u) => Msg::ToastUndo(t, u),
                                 reader_pdf::Output::Reflow => Msg::ReadReflow(id),
                             });
                         self.nav
@@ -588,9 +632,8 @@ impl SimpleComponent for App {
                         self.reader_id = Some(id);
                     }
                     Err(e) => {
-                        self.nav.pop();
                         self.restore_window();
-                        sender.input(Msg::Toast(trf("Could not open the PDF: {}", &[&e])));
+                        self.show_open_error(true, &e);
                     }
                 }
             }
@@ -751,7 +794,13 @@ impl SimpleComponent for App {
                 glib::idle_add_local_once(move || editors.borrow_mut().retain(|(i, _)| *i != id));
             }
             Msg::Toast(t) => {
-                self.toasts.add_toast(adw::Toast::new(&t));
+                let toast = adw::Toast::new(&t);
+                toast.set_use_markup(false);
+                self.toasts.add_toast(toast);
+            }
+            Msg::ToastUndo(text, undo) => {
+                self.last_undo = Some(undo.clone());
+                crate::ui::dialog_toast::show_undo(&self.toasts, &text, move || (undo.0)());
             }
             Msg::LibraryChanged => {
                 self.shared.start_indexing();
@@ -909,6 +958,62 @@ impl SimpleComponent for App {
                         }
                     }
                     "close" => sender.input(Msg::CloseReader),
+                    // `app:toast-undo-test` shows an undo toast that prints `toast_undo: pressed` when its button
+                    // is used; `app:toast-undo-press` presses it; `app:fail-open` makes the next book fail to open;
+                    // `app:open-error` prints `open_error: shown=B title="..." button="..."`
+                    "app" => match arg {
+                        "toast-undo-test" => sender.input(Msg::ToastUndo(
+                            tr("Test item removed"),
+                            UndoFn::new(|| eprintln!("toast_undo: pressed")),
+                        )),
+                        "toast-undo-press" => match self.last_undo.take() {
+                            Some(u) => (u.0)(),
+                            None => eprintln!("toast_undo: none"),
+                        },
+                        "fail-open" => self.dev_fail_open = true,
+                        // `app:win-size=WxH` resizes the window (it leaves the maximised state);
+                        // `app:win-dump` prints `window: WxH`
+                        a if a.starts_with("win-size=") => {
+                            if let Some((w, h)) = a[9..].split_once('x') {
+                                self.window.unmaximize();
+                                self.window.set_default_size(
+                                    w.parse().unwrap_or(900),
+                                    h.parse().unwrap_or(600),
+                                );
+                            }
+                        }
+                        "win-dump" => eprintln!(
+                            "window: {}x{} maximized={}",
+                            self.window.width(),
+                            self.window.height(),
+                            self.window.is_maximized()
+                        ),
+                        "open-error" => {
+                            let found = self.nav.visible_page().and_then(|p| {
+                                p.child()
+                                    .and_downcast::<adw::ToolbarView>()
+                                    .and_then(|t| t.content())
+                                    .and_downcast::<adw::StatusPage>()
+                            });
+                            match found.filter(|s| s.widget_name() == "open-error") {
+                                Some(s) => {
+                                    let button = s
+                                        .child()
+                                        .and_downcast::<gtk::Button>()
+                                        .and_then(|b| b.label())
+                                        .unwrap_or_default();
+                                    eprintln!(
+                                        "open_error: shown=true title=\"{}\" description=\"{}\" button=\"{}\"",
+                                        s.title(),
+                                        s.description().unwrap_or_default(),
+                                        button
+                                    );
+                                }
+                                None => eprintln!("open_error: shown=false"),
+                            }
+                        }
+                        _ => {}
+                    },
                     // `audio:add=PATH` imports an audiobook, `audio:open=ID` plays it, the rest drives the
                     // player (see ui/audiobook_player.rs `dev`): `audio:dump` prints its state
                     "audio" => {
@@ -1323,6 +1428,16 @@ impl SimpleComponent for App {
                     "stats" => match arg {
                         "show" => sender.input(Msg::ShowStats),
                         "dump" => self.dump_stats(),
+                        // `stats:state` prints `stats: empty=BOOL` (nothing read yet)
+                        "state" => {
+                            let hub = self.shared.stats.borrow();
+                            let sum = crate::reading_stats::summarize(
+                                &hub.store,
+                                self.shared.now(),
+                                &chrono::Local,
+                            );
+                            eprintln!("stats: empty={}", crate::ui::stats::is_empty(&sum));
+                        }
                         a if a.starts_with("goal:") => {
                             crate::ui::stats::dev_goals(&self.shared, &a[5..])
                         }
@@ -1341,6 +1456,10 @@ impl SimpleComponent for App {
                             if let Some(d) = self.window.visible_dialog() {
                                 d.close();
                             }
+                        }
+                        // `dialog:ctrlw` runs the Ctrl+W shortcut action of the visible dialog (X9)
+                        if arg == "ctrlw" {
+                            crate::ui::dialog_toast::dev_ctrl_w(&self.window);
                         }
                         eprintln!("dialog: open={}", self.window.visible_dialog().is_some());
                     }
@@ -1451,6 +1570,7 @@ impl SimpleComponent for App {
                     .license_type(gtk::License::Gpl30)
                     .copyright("© 2023–2026 Anurag Dhadse")
                     .developers(vec!["Anurag Dhadse".to_string()])
+                    .translator_credits(translator_credits(&tr("translator-credits")))
                     .debug_info(crate::diagnostics::report(
                         &self.shared.cfg.borrow(),
                         self.shared.lib.borrow().books.len(),
@@ -1460,6 +1580,16 @@ impl SimpleComponent for App {
                 d.present(Some(&self.window));
             }
         }
+    }
+}
+
+/// The translators line of the About dialog: empty (hidden) while a language has not translated
+/// the `translator-credits` marker, as the gettext convention goes.
+fn translator_credits(translated: &str) -> String {
+    if translated == "translator-credits" {
+        String::new()
+    } else {
+        translated.to_string()
     }
 }
 
@@ -1533,6 +1663,34 @@ impl App {
         for (k, v) in crate::goals::review_lines(&review) {
             eprintln!("stats_review: {k} = {v}");
         }
+    }
+
+    /// The opening page turns into a page that says why the book did not open, with a way back.
+    fn show_open_error(&mut self, pdf: bool, error: &str) {
+        let Some(page) = self.loading_page.take() else {
+            self.nav.pop();
+            return;
+        };
+        let (title, text) = open_error_texts(pdf, error);
+        let status = adw::StatusPage::builder()
+            .icon_name("dialog-error-symbolic")
+            .title(title)
+            .description(glib::markup_escape_text(&text))
+            .build();
+        status.set_widget_name("open-error");
+        let back = gtk::Button::with_label(&tr("Back to Library"));
+        back.add_css_class("pill");
+        back.add_css_class("suggested-action");
+        back.set_halign(gtk::Align::Center);
+        let nav = self.nav.clone();
+        back.connect_clicked(move |_| {
+            nav.pop();
+        });
+        status.set_child(Some(&back));
+        if let Some(tb) = page.child().and_downcast::<adw::ToolbarView>() {
+            tb.set_content(Some(&status));
+        }
+        page.set_title(&tr("Could not open"));
     }
 
     fn restore_window(&mut self) {
@@ -1700,4 +1858,18 @@ fn show_shortcuts(parent: &adw::ApplicationWindow) {
         ],
     ));
     dialog.present(Some(parent));
+}
+
+#[cfg(test)]
+mod about_tests {
+    use super::translator_credits;
+
+    #[test]
+    fn untranslated_credits_are_hidden() {
+        assert_eq!(translator_credits("translator-credits"), "");
+        assert_eq!(
+            translator_credits("Ana <ana@example.org>"),
+            "Ana <ana@example.org>"
+        );
+    }
 }

@@ -158,7 +158,7 @@ def a11y_keyboard_only(c):
     c.shot("kb-selected")
     c.check("Ctrl+Shift+Right selects words and the selection is exposed to AT-SPI", sel and len(sel.split()) == 3, repr(sel))
     c.sb.key("Return")
-    btn = c.wait_node("button", "Look up in a dictionary", timeout=5)
+    btn = c.wait_node("button", "Look Up in Dictionary", timeout=5)
     c.check("Enter opens the actions for the selection", btn)
     c.sb.key("d")
     res = c.wait_node("label", rx="Test definition of ", timeout=6)
@@ -175,7 +175,7 @@ def a11y_keyboard_only(c):
         c.sb.key("Right", ("Control", "Shift"))
     time.sleep(0.4)
     c.sb.key("Return")
-    c.wait_node("button", "Highlight yellow", timeout=5)
+    c.wait_node("button", "Highlight Yellow", timeout=5)
     c.sb.key("h")
     time.sleep(0.9)
     img = c.image("kb-highlight")
@@ -260,11 +260,11 @@ def reader_read_aloud_stays(c):
     c.start(extra_env={"BOOKX_TTS_MOCK": "300"})
     c.check("the book opens", c.open_book())
     time.sleep(1.0)
-    btn = c.wait_node("toggle button", rx="^Read aloud")
+    btn = c.wait_node("toggle button", rx="^Read Aloud")
     if not c.check("the reader has a Read aloud button", btn):
         return
     c.click_node(btn)
-    speed = c.wait_node("slider", "Reading speed", timeout=5)
+    speed = c.wait_node("button", "Read Aloud from Here", timeout=5)
     if not c.check("the read-aloud popover opens", speed):
         return
     sx, sy = speed.center(atspi.ORIGIN)
@@ -276,11 +276,11 @@ def reader_read_aloud_stays(c):
     pop = (pop[0] - 20, pop[1] - 60, pop[2] + 20, pop[3] + 90)
     time.sleep(7.0)
     after = c.image("read-aloud-after-7s")
-    c.check("the popover is still open after longer than the auto-hide timeout", c.find("slider", "Reading speed"))
+    c.check("the popover is still open after longer than the auto-hide timeout", c.find("button", "Read Aloud from Here"))
     c.check("the header did not fade", region_diff(before, after, header) < 40, str(region_diff(before, after, header)))
     c.check("the popover did not fade", region_diff(before, after, pop) < 40, str(region_diff(before, after, pop)))
     c.sb.key("Escape")
-    c.check("Escape closes the popover", c.gone("slider", "Reading speed", timeout=4))
+    c.check("Escape closes the popover", c.gone("button", "Read Aloud from Here", timeout=4))
     c.sb.move_to(640, 420)
     time.sleep(1.0)
     shown = c.image()
@@ -309,7 +309,9 @@ def editor_palette_keys(c):
     time.sleep(0.6)
     c.shot("editor-palette")
     c.check("it lists the editor's Tools menu", c.wait_node(None, rx="^Split File at Chapter Headings", timeout=4))
-    c.check("and not the library's commands", not c.find(None, rx="^Add Books"))
+    # the library window behind keeps its own header buttons; only palette rows count
+    c.check("and not the library's commands",
+            not [n for n in c.find(None, rx="^Add Books") if n.role not in ("button", "toggle button")])
     c.sb.key("Escape")
     c.check("Escape closes it", c.gone(None, "Command palette search", timeout=4))
 
@@ -377,7 +379,7 @@ def a11y_names(c):
     c.check("the tree has the library's buttons to look at", len(total) >= 5, str(len(total)))
     c.check("library: every button, switch and entry has a name", not bad, describe(bad))
     # the main menu and the sort/zoom popover
-    c.click_node(c.wait_node("toggle button", rx="^Main menu"))
+    c.click_node(c.wait_node("toggle button", rx="^Main Menu"))
     time.sleep(0.6)
     bad = unnamed(c)
     c.check("library main menu: every control has a name", not bad, describe(bad))
@@ -387,7 +389,7 @@ def a11y_names(c):
     bad = unnamed(c)
     c.check("reader: every control has a name", not bad, describe(bad))
     c.shot("names-reader")
-    for label in ("Text appearance", "Main menu"):
+    for label in ("Text Appearance", "Main Menu"):
         c.click_node(c.wait_node("toggle button", rx=f"^{label}"))
         time.sleep(0.7)
         bad = unnamed(c)
@@ -496,37 +498,201 @@ def a11y_orca(c):
     c.check("Orca's caret navigation (Down) reads a line of the page text", len(hits) >= 1, spoken[-300:])
 
 
+def fake_device(c):
+    """A mounted Boox with two EPUBs, before `c.start()` (the harness points BOOKX_DEVICE_ROOTS at c.dir/mounts)."""
+    import shutil
+    books = os.path.join(c.dir, "mounts", "Boox", "Books")
+    os.makedirs(books, exist_ok=True)
+    shutil.copy(c.books["tiny"], os.path.join(books, "Tiny Book.epub"))
+    shutil.copy(c.books["alice"], os.path.join(books, "Alice in Wonderland.epub"))
+
+
+def open_devices(c):
+    """Opens the Devices window with real input; falls back to the palette if the menu entry moved."""
+    menu = c.wait_node("toggle button", rx="^Main Menu", timeout=3)
+    if not menu:
+        # at 900 px the sidebar is an overlay and the Main Menu hangs in its header: open it first
+        side = c.find("toggle button", "Sidebar")
+        if side:
+            c.click_node(side[0])
+            time.sleep(0.8)
+            menu = c.wait_node("toggle button", rx="^Main Menu", timeout=4)
+    if menu:
+        c.click_node(menu)
+        time.sleep(0.7)
+        item = c.wait_node("menu item", "Devices", timeout=5)
+        if item:
+            c.click_node(item)
+            time.sleep(1.6)
+            return c.wait_node("dialog", rx="Devices", timeout=6) or c.wait_node("frame", rx="Devices", timeout=2)
+    c.sb.key("k", ("Control",))
+    entry = c.wait_node(None, "Command palette search", timeout=5)
+    if entry:
+        c.sb.type("Devices")
+        time.sleep(0.7)
+        c.sb.key("Return")
+        time.sleep(1.6)
+    return c.wait_node("dialog", rx="Devices", timeout=6) or c.wait_node("frame", rx="Devices", timeout=2)
+
+
+def show_devices_page(c, name):
+    """Clicks the Books/Settings page switcher of the Devices window."""
+    tab = (c.find("page tab", name) or c.find("toggle button", name) or c.find("button", name) or c.find(None, name))
+    if tab:
+        c.click_node(tab[0])
+        time.sleep(1.0)
+    return bool(tab)
+
+
+@scenario
+def device_banner_a11y(c):
+    """The connection banner is an AdwBanner with one-shot Sync and built-in dismiss. There are no Always or
+    Not now buttons, and pressing Sync never turns on persistent auto-sync."""
+    fake_device(c)
+    c.start(books=("alice", "tiny"), extra_env={"BOOKX_DEV_SCRIPT": "wait:4000,library:dump"})
+    banner = c.wait_node(None, "E-reader connected", timeout=10)
+    c.check("a connected reader shows the E-reader connected banner", banner)
+    c.check("the banner offers one Sync button", c.find("button", "Sync"))
+    c.check("the banner has no Always answer", not c.find("button", "Always"))
+    c.check("the banner has no Not now answer", not c.find("button", "Not now"))
+    def banner_dump():
+        log = open(os.path.join(c.dir, "app.log"), errors="replace").read()
+        return re.search(r"device_banner: widget=AdwBanner title=E-reader connected button=Sync dismiss=true revealed=true", log)
+    m = c.wait(banner_dump, 10)  # the dev script dumps after its 4 s wait
+    c.check("the dump reports an AdwBanner with a Sync button and dismiss", m, m and m.group(0))
+
+    btn = c.wait_node("button", rx="^E-reader", timeout=6)
+    if btn:
+        x, y = btn.center()
+        c.sb.move_to(x, y)
+        time.sleep(1.3)
+        ocr = c.ocr(c.image("device-tooltip"))
+        if ocr is None:
+            c.note("tesseract not installed: the header tooltip was not read from the screen")
+        else:
+            c.check("the Devices button has the exact header tooltip",
+                    "Connected e-reader: sync, send and manage books" in ocr, ocr[-240:])
+        c.sb.move_to(c.sb.w // 2, 10)
+        time.sleep(0.4)
+
+    sync = c.wait_node("button", "Sync", timeout=5)
+    if sync:
+        c.click_node(sync)
+        time.sleep(1.4)
+        dialog = c.find("dialog")
+        applog = open(os.path.join(c.dir, "app.log"), errors="replace").read()
+        # the fake reader has nothing to exchange: the plan is empty and the answer is the "already up to date"
+        # toast, never an apply (a plan with changes opens the review dialog first)
+        up_to_date = "sync_summary: Everything is already up to date" in applog and "sync_done:" not in applog
+        c.check("one-shot Sync opens a review (or says up to date) before changing anything", dialog or up_to_date)
+        if dialog:
+            c.sb.key("Escape")
+            time.sleep(0.6)
+            c.check("Escape closes the review", c.gone("dialog", timeout=4))
+
+    win = open_devices(c)
+    c.check("the Devices window opens from the header/menu", win)
+    if win and show_devices_page(c, "Settings"):
+        sw = c.wait_node("switch", "Always sync when connected", timeout=5) or \
+            c.wait_node(None, "Always sync when connected", timeout=2)
+        c.check("the persistent sync switch is on the Settings page", sw)
+        if sw:
+            c.check("a one-shot banner Sync did not switch auto-sync on", not sw.checked)
+    c.check("the app is alive", c.is_alive())
+
+
+@scenario
+def device_window_a11y(c):
+    """The Devices window: named Books and Settings pages, no unnamed controls, and the decided labels and states."""
+    fake_device(c)
+    c.start(books=("alice", "tiny"), size="900x600")
+    win = open_devices(c)
+    c.check("the window is named Devices", win)
+    if not win:
+        c.note(c.tree().dump()[-2500:])
+        return
+
+    names = [n.name for n in c.tree().nodes]
+    for page in ("Books", "Settings"):
+        c.check(f"the {page} page is exposed to a screen reader", page in names, page)
+    bad = unnamed(c)
+    c.check("Books page: every control has an accessible name", not bad, describe(bad))
+
+    c.check("an individual device row is titled Device", "Device" in names)
+    for label in ("Books on the device", "Sync Reading State", "Books to send", "Remove from Device",
+                  "Select books in the library, then choose Send to Device"):
+        c.check(f"Books page has {label!r}", label in names, label)
+    view = [n.name for n in c.tree().nodes if n.name in ("Show as a Grid", "Show as a List")]
+    c.check("there is one view toggle, named for the mode it switches to", len(view) == 1, str(view))
+    remove = c.wait_node("button", "Remove from Device", timeout=5)
+    if remove:
+        c.check("Remove from Device starts insensitive", not remove.sensitive)
+    c.check("the old destructive button label is gone", "Remove Selected" not in names)
+
+    select_names = set()
+    opener = c.find("toggle button", "Selection options")
+    if opener:
+        c.click_node(opener[0])
+        time.sleep(0.8)
+        select_names.update(n.name for n in c.find("menu item", rx="^Select (All|None)$"))
+        c.sb.key("Escape")
+        time.sleep(0.4)
+    c.check("Select All and Select None are in the selection popover",
+            {"Select All", "Select None"}.issubset(select_names), str(select_names))
+
+    tile = c.wait_node(None, rx="Alice in Wonderland|Tiny Book", timeout=5)
+    if tile:
+        c.sb.move_to(*tile.center())
+        time.sleep(0.7)
+        c.check("hovering a device book exposes its checkbox", c.find("check box"))
+        c.sb.click(*tile.center())
+        time.sleep(0.7)
+        c.check("the checkbox stays visible for a selected book", c.find("check box"))
+    c.check("a selection enables Remove from Device",
+            any(n.sensitive for n in c.find("button", "Remove from Device")))
+
+    show_devices_page(c, "Settings")
+    names = [n.name for n in c.tree().nodes]
+    for label in ("Sending options", "Sync", "Cloud folder (WebDAV)", "Always sync when connected"):
+        c.check(f"Settings page has {label!r}", label in names, label)
+    sw = c.wait_node("switch", "Always sync when connected", timeout=5) or \
+        c.wait_node(None, "Always sync when connected", timeout=2)
+    c.check("Always sync when connected is a switch", sw and sw.role == "switch", sw and sw.role)
+    if sw:
+        c.check("Always sync when connected is off by default", not sw.checked)
+    c.check("the old banner choices are not in the dialog",
+            not c.find("button", "Not now") and not c.find("button", "Always"))
+    bad = unnamed(c)
+    c.check("Settings page: every control has an accessible name", not bad, describe(bad))
+    c.sb.key("Escape")
+    c.check("the app is alive", c.is_alive())
+
+
 # ---- screenshots for the public wiki (build-aux/wiki-screenshots.sh; the leading "_" keeps it out of the normal run)
 
 @scenario
 def _wiki_shots(c):
-    """One session that opens the library, the Device window, Preferences, the palette, the reader and the editor
+    """One session that opens the library, the Devices window and its Settings page, Preferences, the palette, the reader and the editor
     of a sandbox (public-domain test books, a fake Boox, a mock reader engine) and takes the screenshots of the wiki."""
-    mounts = os.path.join(c.dir, "mounts")
-    books = os.path.join(mounts, "Boox", "Books")
-    os.makedirs(books, exist_ok=True)
-    import shutil
-    shutil.copy(c.books["tiny"], os.path.join(books, "Tiny Book.epub"))
-    shutil.copy(c.books["alice"], os.path.join(books, "Alice in Wonderland.epub"))
+    fake_device(c)
     from scenarios_wiki import no_rings, settings, wshot
     no_rings()
     c.start(books=("alice", "tiny"), settings=settings(), extra_env={"BOOKX_TTS_MOCK": "300"})
     time.sleep(2.0)
-    wshot(c, "library-device")  # the banner that asks about the connected device
+    wshot(c, "library-device")  # the banner with one-shot Sync and the built-in dismiss
     dev = c.wait_node("button", rx="^E-reader", timeout=6)
-    no = c.find("button", "Not now")
-    if no:
-        c.click_node(no[0])
-        time.sleep(1.0)
-        c.sb.move_to(640, 700)
     if dev:
         c.click_node(dev)
         time.sleep(2.5)
         wshot(c, "device-window")
+        if show_devices_page(c, "Settings"):
+            wshot(c, "device-window-settings")
+        else:
+            c.note("no Settings page: the Devices Settings picture was not shot")
         c.sb.key("Escape")
         time.sleep(0.8)
     else:
-        c.note("no Device button: the device window was not shot")
+        c.note("no Devices button: the Devices window was not shot")
     c.sb.key(",", ("Control",))
     if c.wait_node("dialog", "Preferences", timeout=6):
         time.sleep(0.8)
@@ -562,17 +728,25 @@ def _wiki_shots(c):
     # the editor
     c.sb.key("Escape")
     time.sleep(1.0)
-    back = c.find("button", rx="^Back to library|^Library")
+    # Escape already closes the reader; the library's own "Library" button opens a menu, so only click a back
+    # button while the reader is still showing
+    back = c.find("button", rx="^Back to library") if c.find("slider") else None
     if back:
         c.click_node(back[0])
     time.sleep(1.5)
     card = c.wait_node("table cell", rx="Alice")
-    if card:
+    if not card:
+        c.note("no Alice card: the editor pictures were not shot")
+    else:
         c.sb.right_click(*card.center())
-        if c.wait_node("menu", timeout=5):
+        if not c.wait_node("menu", timeout=5):
+            c.note("no book context menu: the editor pictures were not shot")
+        else:
             c.edit_book_from_menu()  # Edit ▸ Edit Book
             ed = c.wait(lambda: [n for n in c.find("frame") if n.name.startswith("Edit Book")], 20)
-            if ed:
+            if not ed:
+                c.note("the editor did not open: the editor pictures were not shot")
+            else:
                 time.sleep(3.0)
                 wshot(c, "editor")
                 c.sb.key("f", ("Control",))

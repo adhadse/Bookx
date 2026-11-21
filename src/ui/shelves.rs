@@ -35,7 +35,12 @@ pub struct Ctx {
     /// Re-draws the library and its browse panel.
     pub refresh: Rc<dyn Fn()>,
     pub toast: Rc<dyn Fn(String)>,
+    /// A message with an Undo button.
+    pub undo: Rc<dyn Fn(String, crate::app::UndoFn)>,
 }
+
+/// The icon of a shelf and of the Shelves group (Jobs and the table view have their own).
+pub const SHELVES_ICON: &str = "bookmark-new-symbolic";
 
 fn library_key(shared: &SharedRef) -> String {
     shared.lib.borrow().root.to_string_lossy().to_string()
@@ -275,7 +280,7 @@ pub fn section(ctx: &Ctx) -> adw::ExpanderRow {
     let shelves_list = list(&ctx.shared);
     let smart = ctx.shared.cfg.borrow().saved_searches.clone();
     let exp = adw::ExpanderRow::builder().title(tr("Shelves")).build();
-    exp.add_prefix(&gtk::Image::from_icon_name("view-list-symbolic"));
+    exp.add_prefix(&gtk::Image::from_icon_name(SHELVES_ICON));
     exp.set_expanded(true);
 
     let add = gtk::Button::from_icon_name("list-add-symbolic");
@@ -323,12 +328,17 @@ pub fn section(ctx: &Ctx) -> adw::ExpanderRow {
         exp.add_row(&row);
     }
     if shelves_list.is_empty() {
+        // the empty list is the way to the first shelf
         let hint = adw::ActionRow::builder()
-            .title(tr("No shelves yet"))
-            .tooltip_text(tr("Use + to make one, then drag books onto it"))
-            .sensitive(false)
+            .title(tr("New Shelf"))
+            .subtitle(tr("No shelves yet. Drag books onto a shelf to fill it."))
+            .activatable(true)
             .build();
+        hint.set_widget_name("new-shelf-row");
+        hint.add_prefix(&gtk::Image::from_icon_name("list-add-symbolic"));
         hint.add_css_class("placeholder-row");
+        let ctx = ctx.clone();
+        hint.connect_activated(move |_| new_shelf_dialog(&ctx));
         exp.add_row(&hint);
     }
     exp
@@ -339,7 +349,7 @@ fn shelf_row(ctx: &Ctx, c: &Collection) -> adw::ActionRow {
         .title(glib::markup_escape_text(&c.name))
         .activatable(true)
         .build();
-    row.add_prefix(&gtk::Image::from_icon_name("bookmark-new-symbolic"));
+    row.add_prefix(&gtk::Image::from_icon_name(SHELVES_ICON));
     row.add_suffix(&super::library::count_label(c.books));
 
     let menu = gtk::MenuButton::new();
@@ -388,7 +398,10 @@ fn shelf_row(ctx: &Ctx, c: &Collection) -> adw::ActionRow {
     }
     {
         let (ctx, name) = (ctx.clone(), name.clone());
-        entry(&tr("Delete"), Box::new(move || delete_dialog(&ctx, &name)));
+        entry(
+            &tr("Delete"),
+            Box::new(move || delete_with_undo(&ctx, &name)),
+        );
     }
     pop.set_child(Some(&col));
     menu.set_popover(Some(&pop));
@@ -502,26 +515,57 @@ fn rename_dialog(ctx: &Ctx, old: &str) {
     );
 }
 
-fn delete_dialog(ctx: &Ctx, name: &str) {
-    let d = adw::AlertDialog::new(
-        Some(&trf("Delete the shelf “{}”?", &[&name])),
-        Some(&tr("The books stay in the library; only the shelf goes.")),
-    );
-    d.add_response("cancel", &tr("Cancel"));
-    d.add_response("delete", &tr("Delete"));
-    d.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
-    d.set_close_response("cancel");
-    let (ctx2, name) = (ctx.clone(), name.to_string());
-    d.connect_response(None, move |_, r| {
-        if r == "delete" {
-            delete(&ctx2.shared, &name);
-            if ctx2.search.text().as_str() == shelves::reference_for(&name) {
-                ctx2.search.set_text("");
-            }
-            (ctx2.refresh)();
-        }
+/// What a deleted shelf needs to come back: its name, books and place in the user's order.
+#[derive(Clone)]
+struct Snapshot {
+    name: String,
+    books: Vec<u64>,
+    position: Option<usize>,
+    book_order: Option<Vec<u64>>,
+}
+
+fn snapshot(shared: &SharedRef, name: &str) -> Option<Snapshot> {
+    let c = find(shared, name)?;
+    let order = user_order(shared);
+    Some(Snapshot {
+        books: members(shared, &c.name).unwrap_or_default(),
+        position: order.position(&c.name),
+        book_order: order.books.get(&c.name).cloned(),
+        name: c.name,
+    })
+}
+
+fn restore(shared: &SharedRef, snap: &Snapshot) -> bool {
+    if create(shared, &snap.name).is_err() {
+        return false;
+    }
+    add_books(shared, &snap.name, &snap.books);
+    edit_order(shared, |l| {
+        l.restore(&snap.name, snap.position, snap.book_order.clone())
     });
-    d.present(Some(&ctx.parent));
+    true
+}
+
+/// Deletes a shelf at once; the toast brings it back (the books were never touched).
+pub fn delete_with_undo(ctx: &Ctx, name: &str) {
+    let Some(snap) = snapshot(&ctx.shared, name) else {
+        return;
+    };
+    if !delete(&ctx.shared, name) {
+        return;
+    }
+    if ctx.search.text().as_str() == shelves::reference_for(name) {
+        ctx.search.set_text("");
+    }
+    (ctx.refresh)();
+    let c = ctx.clone();
+    (ctx.undo)(
+        trf("Shelf “{}” deleted", &[&snap.name]),
+        crate::app::UndoFn::new(move || {
+            restore(&c.shared, &snap);
+            (c.refresh)();
+        }),
+    );
 }
 
 // ---- book menu ----
@@ -583,6 +627,15 @@ pub fn dev(ctx: &Ctx, selected: &[u64], cmd: &str) -> String {
             let ok = delete(&ctx.shared, arg);
             (ctx.refresh)();
             format!("deleted {ok}")
+        }
+        // the Delete of a shelf row: no dialog, a toast with Undo (`library:undo-last` presses it)
+        "delete-undo" => {
+            let before = list(&ctx.shared).len();
+            delete_with_undo(ctx, arg);
+            format!(
+                "delete-undo shelves {before} -> {}",
+                list(&ctx.shared).len()
+            )
         }
         "add" => {
             let (n, l) = arg.split_once('|').unwrap_or((arg, ""));

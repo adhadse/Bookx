@@ -10,7 +10,7 @@ from harness import scenario
 
 DARK = "[org/gnome/desktop/interface]\ncolor-scheme='prefer-dark'\n"
 
-MENU = "Main menu|Hauptmenü"
+MENU = "Main Menu|Hauptmenü"
 SYNC_ENTRY = "^(Sync|Synchronisieren)$"
 INTERACTIVE = ("push button", "toggle button", "check box", "radio button", "switch", "combo box", "spin button",
                "slider", "text", "entry", "menu button", "link")
@@ -80,7 +80,7 @@ def sync_case(c, size, dark, lang):
     # the device banner has a "Sync" button too: the menu entry is the lower one, inside the popover
     entry = None
     for _ in range(10):
-        found = [n for n in (c.find("button", rx=SYNC_ENTRY) or []) if n.showing and n.box[2] > 0]
+        found = [n for n in (c.find("menu item", rx=SYNC_ENTRY) or []) if n.showing and n.box[2] > 0]
         entry = max(found, key=lambda n: n.box[1]) if found else None
         if entry and (len(found) == 1 and entry.box[1] > 100 or len(found) > 1):
             break

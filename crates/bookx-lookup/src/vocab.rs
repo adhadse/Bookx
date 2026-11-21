@@ -413,6 +413,13 @@ impl VocabStore {
         Ok(())
     }
 
+    /// Puts back an entry that was removed (Undo): it replaces an entry of the same word.
+    pub fn restore_entry(&mut self, entry: VocabEntry) {
+        let k = key(&entry.word);
+        self.entries.retain(|e| key(&e.word) != k);
+        self.entries.push(entry);
+    }
+
     pub fn remove(&mut self, word: &str) -> bool {
         let k = key(word);
         let before = self.entries.len();
@@ -682,6 +689,22 @@ mod tests {
 
     fn t0() -> DateTime<Utc> {
         Utc.with_ymd_and_hms(2026, 1, 1, 12, 0, 0).unwrap()
+    }
+
+    #[test]
+    fn a_removed_entry_comes_back_with_its_definition() {
+        let mut v = VocabStore::new();
+        v.add("zorb", None, None, t0()).unwrap();
+        v.set_definition("zorb", "a rolling ball").unwrap();
+        let e = v.find("zorb").unwrap().clone();
+        assert!(v.remove("zorb"));
+        assert!(v.find("zorb").is_none());
+        v.restore_entry(e);
+        assert_eq!(
+            v.find("zorb").and_then(|e| e.definition.as_deref()),
+            Some("a rolling ball")
+        );
+        assert_eq!(v.len(), 1);
     }
 
     #[test]

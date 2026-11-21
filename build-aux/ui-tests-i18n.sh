@@ -5,7 +5,7 @@
 scenario i18n_french_hindi 'library:language=fr,wait:400,library:menus-tr,ntr:1,ntr:3,library:language=hi,wait:400,library:menus-tr,ntr:1,ntr:3,library:language=xx,wait:400,ntr:2,quit' '
     N=$(grep "^ntr:" <<<"$OUT")
     has "^mainmenu_tr: .*Ouvrir le dossier de la bibliothèque"; check "the French main menu is translated" $?
-    has "^mainmenu_tr: .*Copier les informations de diagnostic"; check "the diagnostics entry is in the menu and translated" $?
+    has "^mainmenu_tr: .*Aide"; check "the Help entry is in the menu and translated" $?
     sed -n 1p <<<"$N" | grep -q "^ntr: 1 livre | 1[^0-9]234[^0-9]567"; check "French: one book, thousands separated by narrow spaces" $?
     sed -n 2p <<<"$N" | grep -q "^ntr: 3 livres "; check "French: three books" $?
     has "^mainmenu_tr: .*लाइब्रेरी फ़ोल्डर खोलें"; check "the Hindi main menu is translated" $?

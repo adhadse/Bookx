@@ -7,8 +7,8 @@
 //! byte budget. While a page is being rendered at a new zoom the last rendering of it is drawn
 //! scaled.
 
-use crate::i18n::N_;
-use crate::i18n::{tr, trf};
+use crate::i18n::{tr, trf, N_};
+use crate::side_notes;
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::ops::Range;
@@ -21,7 +21,7 @@ use bookx_pdf::{
 use bookx_text::highlight::HighlightStyle;
 use chrono::Utc;
 use relm4::adw::{self, prelude::*};
-use relm4::gtk::{self, cairo, gdk, glib};
+use relm4::gtk::{self, cairo, gdk, gio, glib};
 use relm4::prelude::*;
 
 use super::reader::HIGHLIGHT_COLORS;
@@ -114,6 +114,8 @@ pub enum Input {
     HlStyle(HighlightStyle),
     SaveNote(String),
     RemoveHighlight,
+    /// Undo of a removal: the items are back in the library, show them again.
+    Restored,
     PopClosed,
     Copy,
     Dict,
@@ -145,6 +147,8 @@ pub enum Input {
 pub enum Output {
     Close,
     Toast(String),
+    /// A message with an Undo button (a highlight or bookmark was removed).
+    ToastUndo(String, crate::app::UndoFn),
     /// Open the reflowed text of this book in the EPUB reader.
     Reflow,
 }
@@ -167,8 +171,13 @@ struct W {
     search_btn: gtk::MenuButton,
     search_list: gtk::ListBox,
     search_status: gtk::Label,
+    search_empty: adw::StatusPage,
     slider: gtk::Scale,
     page_entry: gtk::Entry,
+    primary: gtk::MenuButton,
+    header: adw::HeaderBar,
+    narrow: Rc<Cell<bool>>,
+    fullscreen_btn: gtk::Button,
     page_total: gtk::Label,
     caption: gtk::Label,
     bookmark_btn: gtk::Button,
@@ -668,6 +677,31 @@ impl ReaderPdf {
         self.w.area.queue_draw();
     }
 
+    /// The toast "Highlight removed" / "Bookmark removed" with an Undo that puts the item back.
+    fn offer_undo(&self, r: crate::remove_undo::Removed, sender: &ComponentSender<Self>) {
+        let text = crate::remove_undo::message(&r);
+        let stash = Rc::new(RefCell::new(Some(r)));
+        let (shared, id, tx) = (
+            self.shared.clone(),
+            self.book_id,
+            sender.input_sender().clone(),
+        );
+        let undo = crate::app::UndoFn::new(move || {
+            let Some(r) = stash.borrow_mut().take() else {
+                return;
+            };
+            {
+                let mut lib = shared.lib.borrow_mut();
+                if let Some(b) = lib.get_mut(id) {
+                    crate::remove_undo::restore(&mut b.highlights, &mut b.bookmarks, r);
+                }
+                let _ = lib.save();
+            }
+            tx.emit(Input::Restored);
+        });
+        let _ = sender.output(Output::ToastUndo(text, undo));
+    }
+
     fn rebuild_lists(&self) {
         // contents
         clear_list(&self.w.toc_list);
@@ -727,7 +761,7 @@ impl ReaderPdf {
                 .subtitle(glib::markup_escape_text(&m.label))
                 .activatable(true)
                 .build();
-            let del = icon_button("user-trash-symbolic", &tr("Remove bookmark"));
+            let del = icon_button("user-trash-symbolic", &tr("Remove Bookmark"));
             del.add_css_class("flat");
             del.set_valign(gtk::Align::Center);
             let (tx, id) = (self.sender.input_sender().clone(), m.id.clone());
@@ -761,7 +795,7 @@ impl ReaderPdf {
                 .subtitle_lines(4)
                 .activatable(true)
                 .build();
-            let del = icon_button("user-trash-symbolic", &tr("Delete highlight"));
+            let del = icon_button("user-trash-symbolic", &tr("Delete Highlight"));
             del.add_css_class("flat");
             del.set_valign(gtk::Align::Center);
             let (tx, id) = (self.sender.input_sender().clone(), h.id.clone());
@@ -1241,14 +1275,17 @@ impl ReaderPdf {
         let n = self.search_rows.len();
         let t = if self.search_id == 0 {
             String::new()
-        } else if n == 0 && self.search_done {
-            "No matches".to_string()
         } else if self.search_done {
-            format!("{n} match{}", if n == 1 { "" } else { "es" })
+            super::reader_search::search_status(n, true)
         } else {
             trf("Searching… {} so far", &[&n])
         };
         self.w.search_status.set_label(&t);
+        super::reader_search::set_empty_state(
+            &self.w.search_list,
+            &self.w.search_empty,
+            self.search_id != 0 && self.search_done && n == 0,
+        );
     }
 
     fn activate_hit(&mut self, idx: usize, close: bool) {
@@ -1771,32 +1808,42 @@ impl SimpleComponent for ReaderPdf {
         let sel_stack = gtk::Stack::new();
         sel_stack.set_hhomogeneous(false);
         sel_stack.set_vhomogeneous(false);
-        let actions = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+        // swatches and actions wrap instead of making the popover wider than a narrow window
+        let swatch_row = adw::WrapBox::new();
+        swatch_row.set_child_spacing(8);
+        swatch_row.set_line_spacing(4);
+        swatch_row.set_natural_line_length(340);
+        let actions = adw::WrapBox::new();
+        actions.set_child_spacing(4);
+        actions.set_line_spacing(4);
+        actions.set_natural_line_length(340);
         let mut swatches = Vec::new();
         for (name, _) in HIGHLIGHT_COLORS {
             let b = gtk::Button::new();
             b.add_css_class("hl-swatch");
             b.add_css_class(&format!("hl-{name}"));
-            b.set_size_request(26, 26);
+            b.set_size_request(32, 32);
             b.set_halign(gtk::Align::Center);
             b.set_valign(gtk::Align::Center);
-            super::audit::label(&b, &trf("Highlight {}", &[&name]));
-            b.set_tooltip_text(Some(&trf("Highlight {}", &[&name])));
+            super::audit::label(&b, &trf("Highlight {}", &[&side_notes::colour_label(name)]));
+            b.set_tooltip_text(Some(&trf(
+                "Highlight {}",
+                &[&side_notes::colour_label(name)],
+            )));
             let tx = sender.input_sender().clone();
             b.connect_clicked(move |_| tx.emit(Input::Highlight(name.to_string())));
-            actions.append(&b);
+            swatch_row.append(&b);
             swatches.push(b);
         }
-        actions.append(&gtk::Separator::new(gtk::Orientation::Vertical));
-        let note_btn = icon_button("document-edit-symbolic", &tr("Add a note"));
+        let note_btn = icon_button("document-edit-symbolic", &tr("Add Note"));
         let copy_btn = icon_button("edit-copy-symbolic", &tr("Copy"));
         let dict_btn = icon_button(
             "accessories-dictionary-symbolic",
-            &tr("Look up in a dictionary"),
+            &tr("Look Up in Dictionary"),
         );
-        let wiki_btn = icon_button("wikipedia-symbolic", &tr("Look up on Wikipedia"));
+        let wiki_btn = icon_button("wikipedia-symbolic", &tr("Look Up on Wikipedia"));
         let tr_btn = icon_button("translate-symbolic", &tr("Translate"));
-        let sel_remove = icon_button("user-trash-symbolic", &tr("Remove highlight"));
+        let sel_remove = icon_button("user-trash-symbolic", &tr("Remove Highlight"));
         for b in [
             &note_btn,
             &copy_btn,
@@ -1825,7 +1872,7 @@ impl SimpleComponent for ReaderPdf {
         note_preview.add_css_class("flat");
         note_preview.add_css_class("note-preview");
         note_preview.set_visible(false);
-        note_preview.set_tooltip_text(Some(&tr("Edit note")));
+        note_preview.set_tooltip_text(Some(&tr("Edit Note")));
         let note_label = gtk::Label::new(None);
         note_label.set_wrap(true);
         note_label.set_max_width_chars(42);
@@ -1842,14 +1889,18 @@ impl SimpleComponent for ReaderPdf {
             (
                 HighlightStyle::Background,
                 "<span background=\"#f6d32d\" foreground=\"#241f31\"> A </span>",
-                "Highlight with a background",
+                N_("Highlight with a Background"),
             ),
-            (HighlightStyle::Underline, "<u>A</u>", "Underline"),
-            (HighlightStyle::Strikethrough, "<s>A</s>", "Strike through"),
+            (HighlightStyle::Underline, "<u>A</u>", N_("Underline")),
+            (
+                HighlightStyle::Strikethrough,
+                "<s>A</s>",
+                N_("Strike Through"),
+            ),
             (
                 HighlightStyle::Squiggly,
                 "<span underline=\"error\">A</span>",
-                "Squiggly underline",
+                N_("Squiggly Underline"),
             ),
         ] {
             let b = gtk::ToggleButton::new();
@@ -1857,8 +1908,8 @@ impl SimpleComponent for ReaderPdf {
             l.set_markup(markup);
             b.set_child(Some(&l));
             b.add_css_class("flat");
-            super::audit::label(&b, tip);
-            b.set_tooltip_text(Some(tip));
+            super::audit::label(&b, &tr(tip));
+            b.set_tooltip_text(Some(&tr(tip)));
             b.set_active(st == HighlightStyle::Background);
             let tx = sender.input_sender().clone();
             b.connect_clicked(move |_| tx.emit(Input::HlStyle(st)));
@@ -1867,6 +1918,7 @@ impl SimpleComponent for ReaderPdf {
         }
         let actions_page = gtk::Box::new(gtk::Orientation::Vertical, 4);
         actions_page.append(&note_preview);
+        actions_page.append(&swatch_row);
         actions_page.append(&actions);
         actions_page.append(&style_row);
         sel_stack.add_named(&actions_page, Some("actions"));
@@ -1883,7 +1935,7 @@ impl SimpleComponent for ReaderPdf {
         note_scroll.set_child(Some(&note_view));
         note_scroll.add_css_class("card");
         let note_actions = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-        let note_back = icon_button("go-previous-symbolic", &tr("Back to the actions"));
+        let note_back = icon_button("go-previous-symbolic", &tr("Back to Actions"));
         note_back.add_css_class("flat");
         let note_save = gtk::Button::with_label(&tr("Save Note"));
         note_save.add_css_class("suggested-action");
@@ -1946,7 +1998,7 @@ impl SimpleComponent for ReaderPdf {
             let page = gtk::Box::new(gtk::Orientation::Vertical, 8);
             page.set_size_request(340, -1);
             let head = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-            let back = icon_button("go-previous-symbolic", &tr("Back to the actions"));
+            let back = icon_button("go-previous-symbolic", &tr("Back to Actions"));
             back.add_css_class("flat");
             let s = sel_stack.clone();
             back.connect_clicked(move |_| s.set_visible_child_name("actions"));
@@ -1976,10 +2028,10 @@ impl SimpleComponent for ReaderPdf {
             page.append(&scroll);
             (page, head, spin, text)
         };
-        let (dict_page, _h, _s, dict_text) = lookup_page("Dictionary");
+        let (dict_page, _h, _s, dict_text) = lookup_page(&tr("Dictionary"));
         dict_text.set_use_markup(true);
         sel_stack.add_named(&dict_page, Some("dict"));
-        let (wiki_page, _h, wiki_spin, wiki_text) = lookup_page("Wikipedia");
+        let (wiki_page, _h, wiki_spin, wiki_text) = lookup_page(&tr("Wikipedia"));
         let wiki_url = Rc::new(RefCell::new(String::new()));
         {
             let foot = gtk::Box::new(gtk::Orientation::Horizontal, 6);
@@ -1993,7 +2045,7 @@ impl SimpleComponent for ReaderPdf {
             wiki_page.append(&foot);
         }
         sel_stack.add_named(&wiki_page, Some("wiki"));
-        let (tr_page, tr_head, tr_spin, tr_text) = lookup_page("Translate");
+        let (tr_page, tr_head, tr_spin, tr_text) = lookup_page(&tr("Translate"));
         let tr_dd = {
             let names: Vec<&str> = web::LANGUAGES.iter().map(|(_, n)| *n).collect();
             let dd = gtk::DropDown::from_strings(&names);
@@ -2030,6 +2082,7 @@ impl SimpleComponent for ReaderPdf {
         });
         sel_pop.add_controller(shield);
         sel_pop.set_child(Some(&sel_stack));
+        super::reader_extra::keep_focus_on_page(&sel_stack);
 
         // ---- sidebar: pages, contents, bookmarks, notes ----------------------------------
         let stack = adw::ViewStack::new();
@@ -2039,7 +2092,7 @@ impl SimpleComponent for ReaderPdf {
             Rc::new(RefCell::new(HashMap::new()));
         let thumbs = gtk::ListView::new(None::<gtk::SingleSelection>, None::<gtk::ListItemFactory>);
         thumbs.add_css_class("navigation-sidebar");
-        super::audit::label(&thumbs, &tr("Page thumbnails"));
+        super::audit::label(&thumbs, &tr("Page Thumbnails"));
         {
             let factory = gtk::SignalListItemFactory::new();
             factory.connect_setup(|_, item| {
@@ -2190,8 +2243,8 @@ impl SimpleComponent for ReaderPdf {
         slider.set_draw_value(false);
         slider.set_hexpand(true);
         slider.add_css_class("reader-slider");
-        let prev_btn = icon_button("go-previous-symbolic", &tr("Previous page (Page Up)"));
-        let next_btn = icon_button("go-next-symbolic", &tr("Next page (Page Down)"));
+        let prev_btn = icon_button("go-previous-symbolic", &tr("Previous Page (Page Up)"));
+        let next_btn = icon_button("go-next-symbolic", &tr("Next Page (Page Down)"));
         for b in [&prev_btn, &next_btn] {
             b.add_css_class("flat");
             b.add_css_class("circular");
@@ -2200,8 +2253,8 @@ impl SimpleComponent for ReaderPdf {
         page_entry.set_width_chars(5);
         page_entry.set_max_width_chars(8);
         gtk::prelude::EditableExt::set_alignment(&page_entry, 1.0);
-        super::audit::label(&page_entry, &tr("Go to page"));
-        page_entry.set_tooltip_text(Some(&tr("Go to page (Ctrl+G); a number or a page label")));
+        super::audit::label(&page_entry, &tr("Go to Page"));
+        page_entry.set_tooltip_text(Some(&tr("Go to Page (Ctrl+G); a number or a page label")));
         let page_total = gtk::Label::new(None);
         page_total.add_css_class("dim-label");
         let nav = gtk::Box::new(gtk::Orientation::Horizontal, 8);
@@ -2234,7 +2287,7 @@ impl SimpleComponent for ReaderPdf {
         header.set_title_widget(Some(&title));
         let sidebar_btn = gtk::ToggleButton::new();
         sidebar_btn.set_icon_name("sidebar-show-symbolic");
-        sidebar_btn.set_tooltip_text(Some(&tr("Pages, contents, bookmarks and notes (F9)")));
+        sidebar_btn.set_tooltip_text(Some(&tr("Pages, Contents, Bookmarks and Notes (F9)")));
         super::audit::label(&sidebar_btn, &tr("Sidebar"));
         split
             .bind_property("show-sidebar", &sidebar_btn, "active")
@@ -2242,9 +2295,12 @@ impl SimpleComponent for ReaderPdf {
             .sync_create()
             .build();
         header.pack_start(&sidebar_btn);
-        let back_btn = icon_button("edit-undo-symbolic", &tr("Back to previous position"));
-        back_btn.set_label(&tr("Back"));
+        let back_btn = icon_button(
+            "go-jump-symbolic",
+            &tr("Return to Previous Position (Alt+Left)"),
+        );
         back_btn.set_visible(false);
+        super::reader_menu::jump_style(&back_btn, None, false);
         header.pack_start(&back_btn);
         let bookmark_btn = icon_button(
             "bookmark-new-symbolic",
@@ -2255,15 +2311,17 @@ impl SimpleComponent for ReaderPdf {
         let primary = gtk::MenuButton::new();
         primary.set_icon_name("open-menu-symbolic");
         primary.set_primary(true);
-        primary.set_tooltip_text(Some(&tr("Main menu")));
-        super::audit::label(&primary, &tr("Main menu"));
+        primary.set_tooltip_text(Some(&tr("Main Menu")));
+        let bin = adw::BreakpointBin::new();
+        bin.set_size_request(360, 294);
+        super::audit::label(&primary, &tr("Main Menu"));
         header.pack_end(&primary);
         let fullscreen_btn = icon_button("view-fullscreen-symbolic", &tr("Fullscreen (F11)"));
         header.pack_end(&fullscreen_btn);
 
         // search
         let search_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
-        search_box.set_size_request(380, 460);
+        search_box.set_size_request(380, 330);
         let search_entry = gtk::SearchEntry::new();
         search_entry.set_placeholder_text(Some(&tr("Search in the PDF")));
         search_entry.set_margin_start(8);
@@ -2282,8 +2340,13 @@ impl SimpleComponent for ReaderPdf {
         search_box.append(&search_entry);
         search_box.append(&search_status);
         search_box.append(&search_scroll);
+        let search_empty = super::reader_search::empty_page();
         let search_pop = gtk::Popover::new();
         search_pop.set_child(Some(&search_box));
+        {
+            let b = search_box.clone();
+            search_pop.connect_show(move |_| super::reader_search::fit(&b));
+        }
         let search_btn = gtk::MenuButton::new();
         search_btn.set_icon_name("system-search-symbolic");
         search_btn.set_tooltip_text(Some(&tr("Search in the PDF (Ctrl+F)")));
@@ -2318,8 +2381,8 @@ impl SimpleComponent for ReaderPdf {
         vbox.set_margin_bottom(12);
         vbox.set_width_request(260);
         let zoom_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        let minus = icon_button("zoom-out-symbolic", &tr("Zoom out (Ctrl+−)"));
-        let plus = icon_button("zoom-in-symbolic", &tr("Zoom in (Ctrl++)"));
+        let minus = icon_button("zoom-out-symbolic", &tr("Zoom Out (Ctrl+−)"));
+        let plus = icon_button("zoom-in-symbolic", &tr("Zoom In (Ctrl++)"));
         let zoom_label = gtk::Label::new(Some("100%"));
         zoom_label.set_hexpand(true);
         zoom_label.add_css_class("heading");
@@ -2339,11 +2402,11 @@ impl SimpleComponent for ReaderPdf {
         let mut zoom_btns: Vec<(String, gtk::CheckButton)> = Vec::new();
         let mut first_z: Option<gtk::CheckButton> = None;
         for (name, label) in [
-            ("width", "Fit width"),
-            ("page", "Fit page"),
-            ("100", "100%"),
+            ("width", N_("Fit width")),
+            ("page", N_("Fit page")),
+            ("100", N_("100%")),
         ] {
-            let c = gtk::CheckButton::with_label(label);
+            let c = gtk::CheckButton::with_label(&tr(label));
             if let Some(f) = &first_z {
                 c.set_group(Some(f));
             } else {
@@ -2364,10 +2427,10 @@ impl SimpleComponent for ReaderPdf {
         let mut view_btns = Vec::new();
         let mut first_v: Option<gtk::CheckButton> = None;
         for (mode, label) in [
-            (ViewMode::Continuous, "Continuous scroll"),
-            (ViewMode::Single, "One page at a time"),
+            (ViewMode::Continuous, N_("Continuous scroll")),
+            (ViewMode::Single, N_("One page at a time")),
         ] {
-            let c = gtk::CheckButton::with_label(label);
+            let c = gtk::CheckButton::with_label(&tr(label));
             if let Some(f) = &first_v {
                 c.set_group(Some(f));
             } else {
@@ -2424,7 +2487,7 @@ impl SimpleComponent for ReaderPdf {
         };
         let reflow_b = item(&tr("Reflow as text (experimental)"));
         reflow_b.set_tooltip_text(Some(
-            "Opens the text of the PDF in the e-book reader. Experimental: columns, tables and formulas may come out wrong.",
+            &tr("Opens the text of the PDF in the e-book reader. Experimental: columns, tables and formulas may come out wrong."),
         ));
         let props_b = item(&tr("Properties"));
         vbox.append(&reflow_b);
@@ -2443,38 +2506,52 @@ impl SimpleComponent for ReaderPdf {
         }
         view_pop.set_child(Some(&vbox));
         let view_btn = gtk::MenuButton::new();
-        view_btn.set_icon_name("view-reveal-symbolic");
+        view_btn.set_icon_name("preferences-desktop-display-symbolic");
         view_btn.set_tooltip_text(Some(&tr("View: zoom, layout, margins, colours")));
         super::audit::label(&view_btn, &tr("View options"));
         view_btn.set_popover(Some(&view_pop));
         header.pack_end(&view_btn);
 
-        // main menu
-        let mpop = gtk::Popover::new();
-        let main = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        main.set_margin_start(10);
-        main.set_margin_end(10);
-        main.set_margin_top(10);
-        main.set_margin_bottom(10);
-        for (label, action) in [
-            (N_("Preferences"), "app.preferences"),
-            (N_("Keyboard Shortcuts"), "app.shortcuts"),
-            (N_("About Bookx"), "app.about"),
-        ] {
-            let b = item(&tr(label));
-            b.set_action_name(Some(&tr(action)));
-            let pop = mpop.clone();
-            b.connect_clicked(move |_| pop.popdown());
-            main.append(&b);
+        // main menu: the same builder as the e-book reader
+        let wide_menu = super::reader_menu::build(&super::reader_menu::PDF_MENU);
+        let narrow_menu = super::reader_menu::build(&super::reader_menu::narrow_entries(
+            &super::reader_menu::PDF_MENU,
+            &super::reader_menu::NARROW_PDF,
+        ));
+        primary.set_menu_model(Some(&wide_menu));
+        super::audit::name_menu_items(&primary);
+        let narrow = Rc::new(Cell::new(false));
+        {
+            let narrow_flag = narrow.clone();
+            let (primary, fs, back) = (primary.clone(), fullscreen_btn.clone(), back_btn.clone());
+            super::reader_menu::install_narrow(&bin, move |is_narrow| {
+                narrow_flag.set(is_narrow);
+                fs.set_visible(!is_narrow);
+                primary.set_menu_model(Some(if is_narrow { &narrow_menu } else { &wide_menu }));
+                super::reader_menu::jump_style(&back, None, is_narrow);
+            });
         }
-        mpop.set_child(Some(&main));
-        primary.set_popover(Some(&mpop));
+        {
+            let group = gio::SimpleActionGroup::new();
+            let add = |name: &str, input: fn() -> Input| {
+                let a = gio::SimpleAction::new(name, None);
+                let tx = sender.input_sender().clone();
+                a.connect_activate(move |_, _| tx.emit(input()));
+                group.add_action(&a);
+            };
+            add("goto", || Input::ShowTab("goto"));
+            add("reflow", || Input::Reflow);
+            add("properties", || Input::Properties);
+            add("fullscreen", || Input::Fullscreen);
+            root.insert_action_group("reader", Some(&group));
+        }
 
         let toolbar = adw::ToolbarView::new();
         toolbar.add_top_bar(&header);
         toolbar.set_content(Some(&split));
         toolbar.add_bottom_bar(&bottom);
-        root.set_child(Some(&toolbar));
+        bin.set_child(Some(&toolbar));
+        root.set_child(Some(&bin));
         root.set_title(&title_text);
         root.add_css_class("reader-page");
         root.add_css_class("pdf-reader");
@@ -2589,8 +2666,13 @@ impl SimpleComponent for ReaderPdf {
             search_btn,
             search_list,
             search_status,
+            search_empty,
             slider,
             page_entry,
+            primary: primary.clone(),
+            header: header.clone(),
+            narrow,
+            fullscreen_btn: fullscreen_btn.clone(),
             page_total,
             caption,
             bookmark_btn,
@@ -2985,15 +3067,24 @@ impl SimpleComponent for ReaderPdf {
                 self.set_selection(None);
             }
             Input::DeleteHighlight(id) => {
-                {
+                let removed = {
                     let mut lib = self.shared.lib.borrow_mut();
-                    if let Some(b) = lib.get_mut(self.book_id) {
-                        b.highlights.retain(|h| h.id != id);
-                    }
+                    let r = lib
+                        .get_mut(self.book_id)
+                        .and_then(|b| crate::remove_undo::take_highlight(&mut b.highlights, &id));
                     let _ = lib.save();
-                }
+                    r
+                };
                 self.refresh_highlights();
                 self.rebuild_lists();
+                if let Some(r) = removed {
+                    self.offer_undo(r, &sender);
+                }
+            }
+            Input::Restored => {
+                self.refresh_highlights();
+                self.rebuild_lists();
+                self.update_bookmark_button();
             }
             Input::PopClosed => {
                 if self.w.sel_stack.visible_child_name().as_deref() == Some("note") {
@@ -3250,11 +3341,13 @@ impl SimpleComponent for ReaderPdf {
                         .and_then(|t| t.lines.first().map(|l| t.text_for(l.start..l.end)))
                         .unwrap_or_default()
                 };
+                let mut removed = None;
                 {
                     let mut lib = self.shared.lib.borrow_mut();
                     if let Some(b) = lib.get_mut(self.book_id) {
                         if let Some(i) = b.bookmarks.iter().position(|m| m.spine == cur) {
-                            b.bookmarks.remove(i);
+                            let id = b.bookmarks[i].id.clone();
+                            removed = crate::remove_undo::take_bookmark(&mut b.bookmarks, &id);
                         } else {
                             b.bookmarks.push(Bookmark {
                                 id: uuid::Uuid::new_v4().to_string(),
@@ -3269,6 +3362,9 @@ impl SimpleComponent for ReaderPdf {
                 }
                 self.update_bookmark_button();
                 self.rebuild_lists();
+                if let Some(r) = removed {
+                    self.offer_undo(r, &sender);
+                }
             }
             Input::GoBookmark(id) => {
                 let page = self
@@ -3282,15 +3378,19 @@ impl SimpleComponent for ReaderPdf {
                 }
             }
             Input::RemoveBookmark(id) => {
-                {
+                let removed = {
                     let mut lib = self.shared.lib.borrow_mut();
-                    if let Some(b) = lib.get_mut(self.book_id) {
-                        b.bookmarks.retain(|m| m.id != id);
-                    }
+                    let r = lib
+                        .get_mut(self.book_id)
+                        .and_then(|b| crate::remove_undo::take_bookmark(&mut b.bookmarks, &id));
                     let _ = lib.save();
-                }
+                    r
+                };
                 self.update_bookmark_button();
                 self.rebuild_lists();
+                if let Some(r) = removed {
+                    self.offer_undo(r, &sender);
+                }
             }
             Input::GoHighlight(id) => {
                 let page = self.shared.lib.borrow().get(self.book_id).and_then(|b| {
@@ -3591,6 +3691,52 @@ impl ReaderPdf {
             }
             "pdf-back" => sender.input(Input::Back),
             "pdf-password" => sender.input(Input::Password(Some(arg.to_string()))),
+            // `reader:menu-dump` and `reader:header-dump` as in the e-book reader
+            "menu-dump" => {
+                let mut list = Vec::new();
+                let (mut n, mut sections) = (0, 0);
+                if let Some(m) = self.w.primary.menu_model() {
+                    for i in 0..m.n_items() {
+                        if let Some(sec) = m.item_link(i, "section") {
+                            sections += 1;
+                            for j in 0..sec.n_items() {
+                                n += 1;
+                                let l = sec
+                                    .item_attribute_value(j, "label", None)
+                                    .and_then(|v| v.str().map(String::from))
+                                    .unwrap_or_default();
+                                let a = sec
+                                    .item_attribute_value(j, "action", None)
+                                    .and_then(|v| v.str().map(String::from))
+                                    .unwrap_or_default();
+                                list.push(format!("{} [{a}]", l.replace('_', "")));
+                            }
+                        }
+                    }
+                }
+                eprintln!(
+                    "reader_menu: entries={n} sections={sections} submenus=0 narrow={} | {}",
+                    self.w.narrow.get(),
+                    list.join(" | ")
+                );
+            }
+            "header-dump" => {
+                let hw = self.w.header.width() as f64;
+                let (mut shown, mut clipped) = (0, 0);
+                super::reader_comic::header_buttons(
+                    self.w.header.upcast_ref(),
+                    self.w.header.upcast_ref(),
+                    hw,
+                    &mut shown,
+                    &mut clipped,
+                );
+                eprintln!(
+                    "reader_header: width={hw:.0} title={} buttons={shown} clipped={clipped} fullscreen={} narrow={}",
+                    self.w.title.width(),
+                    self.w.fullscreen_btn.is_visible(),
+                    self.w.narrow.get()
+                );
+            }
             "pdf-reflow" => sender.input(Input::Reflow),
             "pdf-fullscreen" => sender.input(Input::Fullscreen),
             "pdf-thumbs" => {

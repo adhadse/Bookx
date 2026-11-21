@@ -99,6 +99,8 @@ const MORE_DEFAULTS: &[(&str, &[&str])] = &[
     ("reader.next-page", &["space", "Page_Down"]),
     ("reader.prev-page", &["<Shift>space", "Page_Up"]),
     ("reader.contents", &["<Control>t"]),
+    ("reader.bookmark", &["<Control>d"]),
+    ("reader.goto", &["<Control>l"]),
     ("reader.notes", &["<Control>h"]),
     ("reader.back", &["<Control>w"]),
     ("reader.larger", &["<Control>equal"]),
@@ -694,7 +696,7 @@ mod tests {
         let mut c = s();
         assert!(c.bind_settled("reader.reload", "<Control>b", Settle::TakeAway));
         assert_eq!(c.effective("reader.reload"), vec!["<Control>b"]);
-        assert!(c.effective("reader.bookmark").is_empty());
+        assert_eq!(c.effective("reader.bookmark"), vec!["<Control>d"]);
         assert!(c.is_customised("reader.bookmark"));
         assert!(c.all_conflicts().is_empty());
     }
@@ -704,7 +706,10 @@ mod tests {
         let mut c = s();
         assert!(c.bind_settled("reader.reload", "<Control>b", Settle::Swap));
         assert_eq!(c.effective("reader.reload"), vec!["<Control>b"]);
-        assert_eq!(c.effective("reader.bookmark"), vec!["<Control>r"]);
+        assert_eq!(
+            c.effective("reader.bookmark"),
+            vec!["<Control>d", "<Control>r"]
+        );
         assert!(c.all_conflicts().is_empty());
     }
 
@@ -870,12 +875,12 @@ mod tests {
             ("reader.search", &["<Control>f"]),
             ("reader.fullscreen", &["F11"]),
             ("reader.contents", &["F9", "<Control>t"]),
-            ("reader.bookmark", &["<Control>b"]),
+            ("reader.bookmark", &["<Control>b", "<Control>d"]),
             ("reader.notes", &["<Control><Shift>b", "<Control>h"]),
             ("reader.larger", &["<Control>plus", "<Control>equal"]),
             ("reader.smaller", &["<Control>minus"]),
             ("reader.reset-size", &["<Control>0"]),
-            ("reader.goto", &["<Control>g"]),
+            ("reader.goto", &["<Control>g", "<Control>l"]),
             ("reader.jump-back", &["<Alt>Left"]),
             ("reader.jump-forward", &["<Alt>Right"]),
             ("reader.start", &["Home"]),

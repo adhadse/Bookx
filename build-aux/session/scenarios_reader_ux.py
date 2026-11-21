@@ -39,7 +39,7 @@ def reader_sidebar_toggle(c):
     if not c.check("the big book opens in the reader", c.wait_node("slider", timeout=25)):
         return
     time.sleep(7)
-    toggle = c.wait_node("toggle button", rx="^Contents, bookmarks")
+    toggle = c.wait_node("toggle button", rx="^Contents, Bookmarks")
     if not c.check("the reader has a sidebar toggle", toggle):
         return
     seen = []
@@ -133,7 +133,7 @@ def reader_selection_handles(c):
     c.go_to_text()
     select_word(c)
     time.sleep(1.2)
-    c.check("the action popover shows", c.wait_node("button", "Look up in a dictionary", timeout=5))
+    c.check("the action popover shows", c.wait_node("button", "Look Up in Dictionary", timeout=5))
     img = c.image("handles-word")
     blobs = _handle_blobs(img)
     if not c.check("two handle balls are drawn at the ends of the selected word", len(blobs) >= 2, str(blobs)):
@@ -148,7 +148,7 @@ def reader_selection_handles(c):
     c.shot("handles-extended")
     c.check("dragging the end handle with the pointer extends the selection to more words",
             after and before and len(after) > len(before) and after.startswith(before[:3]), f"{before!r} -> {after!r}")
-    c.check("the action popover is back after the drag", c.wait_node("button", "Look up in a dictionary", timeout=5))
+    c.check("the action popover is back after the drag", c.wait_node("button", "Look Up in Dictionary", timeout=5))
     img = c.image("handles-after")
     c.check("the handles are drawn at the new ends", len(_handle_blobs(img)) >= 2)
     first = _handle_blobs(img)[0]
@@ -157,9 +157,13 @@ def reader_selection_handles(c):
     shorter = _selection_text(c)
     c.check("dragging the start handle shortens the selection from the front",
             shorter and after and len(shorter) < len(after), f"{after!r} -> {shorter!r}")
+    c.sb.key("Escape")  # the first Escape puts the popover away, the selection stays (EscAction order)
+    c.check("the first Escape closes the action popover", c.gone("button", "Look Up in Dictionary", timeout=4))
+    c.check("and keeps the selection", _selection_text(c))
     c.sb.key("Escape")
     time.sleep(1.0)
-    c.check("Escape clears the selection and the handles go", not _handle_blobs(c.image()) and not _selection_text(c))
+    c.check("the second Escape clears the selection and the handles go",
+            not _handle_blobs(c.image()) and not _selection_text(c))
     c.check("the app is alive", c.is_alive())
 
 
@@ -194,7 +198,7 @@ def lookup_wikipedia_image(c):
     c.open_book()
     c.go_to_text()
     select_word(c)
-    btn = c.wait_node("button", "Look up on Wikipedia", timeout=5)
+    btn = c.wait_node("button", "Look Up on Wikipedia", timeout=5)
     if not c.check("the action popover has the Wikipedia button", btn):
         return
     c.click_node(btn)
@@ -217,7 +221,7 @@ def lookup_wikipedia_image_net(c):
     c.open_book()
     c.go_to_text()
     select_word(c)
-    btn = c.wait_node("button", "Look up on Wikipedia", timeout=5)
+    btn = c.wait_node("button", "Look Up on Wikipedia", timeout=5)
     if not c.check("the action popover has the Wikipedia button", btn):
         return
     c.click_node(btn)
@@ -241,7 +245,7 @@ def reader_footer_popover(c):
     box = c.wait_node("slider")
     x, y = box.center()
     c.sb.right_click(int(x), int(y) + 34)
-    head = c.wait_node("label", "Footer Stats", timeout=5)
+    head = c.wait_node("label", "Footer Statistics", timeout=5)
     c.shot("footer-popover")
     if not c.check("a right click on the footer opens its settings", head):
         return
@@ -298,7 +302,7 @@ def _wiki_reader_ux(c):
     select_word(c)
     time.sleep(1.0)
     wshot(c, "reader-handles")
-    btn = c.wait_node("button", "Look up on Wikipedia", timeout=5)
+    btn = c.wait_node("button", "Look Up on Wikipedia", timeout=5)
     if btn:
         c.click_node(btn)
         c.wait_node(None, "Picture from Wikipedia", timeout=8)
@@ -309,7 +313,7 @@ def _wiki_reader_ux(c):
     box = c.wait_node("slider")
     x, y = box.center()
     c.sb.right_click(int(x), int(y) + 34)
-    if c.wait_node("label", "Footer Stats", timeout=5):
+    if c.wait_node("label", "Footer Statistics", timeout=5):
         time.sleep(0.8)
         wshot(c, "reader-footer-settings")
     c.check("the screenshots were taken", c.is_alive())
@@ -352,21 +356,21 @@ def _sidebar_theme(c, scheme, reader_theme, dark_sidebar):
     more = c.wait_node(None, "Highlight actions", timeout=5)
     if c.check("a highlight row has its menu button", more):
         c.click_node(more)
-        edit = c.wait_node(None, "Edit note", timeout=5)
+        edit = c.wait_node(None, rx="(?i)^Edit note$", timeout=5)
         c.check("the menu has the Edit note, Copy text and Delete icon buttons",
-                edit and c.find(None, "Copy text") and c.find(None, "Delete"))
+                edit and c.find(None, rx="(?i)^Copy text$") and c.find(None, "Delete"))
         c.check("and a colour and a style choice", c.find(None, rx="^Change colour to") and c.find(None, "Underline"))
         c.check("the colour of the highlight is marked", [n for n in c.find(None, rx="^Change colour to") if "pressed" in str(getattr(n, "states", "")).lower()] or True)
         time.sleep(2.0)
-        c.check("the menu is still open 2 s later", c.find(None, "Edit note"))
+        c.check("the menu is still open 2 s later", c.find(None, rx="(?i)^Edit note$"))
         c.sb.key("Right")
         c.sb.key("Right")
         time.sleep(0.5)
         c.shot(f"sidebar-{scheme.lower()}-menu")
-        c.check("the menu survives arrow keys", c.find(None, "Edit note"))
+        c.check("the menu survives arrow keys", c.find(None, rx="(?i)^Edit note$"))
         c.sb.key("Escape")
         time.sleep(0.6)
-        c.check("Escape closes the menu", c.gone(None, "Edit note", timeout=4))
+        c.check("Escape closes the menu", c.gone(None, rx="(?i)^Edit note$", timeout=4))
     c.check("the app is alive", c.is_alive())
 
 
@@ -390,14 +394,14 @@ def reader_selection_popover_under_dialog(c):
     c.go_to_text()
     select_word(c)
     time.sleep(1.0)
-    c.check("the action popover shows for the selection", c.wait_node("button", "Look up in a dictionary", timeout=5))
+    c.check("the action popover shows for the selection", c.wait_node("button", "Look Up in Dictionary", timeout=5))
     c.sb.key(",", ("Control",))
     prefs = c.wait_node(None, "Settings sections", timeout=8)
     time.sleep(1.2)
     c.shot("prefs-over-selection")
     if not c.check("Preferences opens over the reader", prefs):
         return
-    visible = [n for n in c.find("button", "Look up in a dictionary") if n.showing]
+    visible = [n for n in c.find("button", "Look Up in Dictionary") if n.showing]
     c.check("the selection popover is not on screen over Preferences", not visible)
     img = c.image()
     # the popover's coloured highlight swatches must not be drawn anywhere over the dialog
@@ -409,7 +413,7 @@ def reader_selection_popover_under_dialog(c):
     c.wait(lambda: not c.find(None, "Settings sections"), 6)
     time.sleep(1.0)
     c.check("after Preferences closes the popover stays closed (the selection is still there)",
-            not [n for n in c.find("button", "Look up in a dictionary") if n.showing] and _selection_text(c))
+            not [n for n in c.find("button", "Look Up in Dictionary") if n.showing] and _selection_text(c))
     c.check("the app is alive", c.is_alive())
 
 
@@ -444,7 +448,7 @@ def lookup_dictionary_download(c):
         c.open_book()
         c.go_to_text()
         select_word(c)
-        btn = c.wait_node("button", "Look up in a dictionary", timeout=5)
+        btn = c.wait_node("button", "Look Up in Dictionary", timeout=5)
         if not c.check("the action popover shows", btn):
             return
         c.click_node(btn)

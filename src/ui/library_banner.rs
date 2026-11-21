@@ -15,7 +15,6 @@ use std::rc::Rc;
 
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gdk, glib};
-use relm4::RelmWidgetExt;
 
 use crate::cover_color::{hex, BannerColors};
 use crate::i18n::{tr, trf};
@@ -555,25 +554,21 @@ fn more_menu(act: &Rc<dyn Fn(u64, BannerAct)>, id: u64) -> gtk::MenuButton {
     let tip = tr("More");
     m.set_tooltip_text(Some(&tip));
     super::audit::label(&m, &tip);
-    let col = gtk::Box::new(gtk::Orientation::Vertical, 2);
-    col.set_margin_all(6);
-    let pop = gtk::Popover::new();
-    for (label, what) in [
-        (tr("Details"), BannerAct::Details),
-        (tr("Open from start"), BannerAct::FromStart),
-        (tr("Mark finished"), BannerAct::Finish),
+    let group = gtk::gio::SimpleActionGroup::new();
+    let menu = gtk::gio::Menu::new();
+    for (name, label, what) in [
+        ("details", tr("Details"), BannerAct::Details),
+        ("from-start", tr("Open from Start"), BannerAct::FromStart),
+        ("finish", tr("Mark as Finished"), BannerAct::Finish),
     ] {
-        let b = gtk::Button::with_label(&label);
-        b.add_css_class("flat");
-        let (act, pop) = (act.clone(), pop.clone());
-        b.connect_clicked(move |_| {
-            pop.popdown();
-            act(id, what);
-        });
-        col.append(&b);
+        let a = gtk::gio::SimpleAction::new(name, None);
+        let act = act.clone();
+        a.connect_activate(move |_, _| act(id, what));
+        group.add_action(&a);
+        menu.append(Some(&label), Some(&format!("more.{name}")));
     }
-    pop.set_child(Some(&col));
-    m.set_popover(Some(&pop));
+    m.insert_action_group("more", Some(&group));
+    m.set_menu_model(Some(&menu));
     m
 }
 
@@ -666,8 +661,8 @@ fn page(
             if wide {
                 for (l, w) in [
                     (tr("Details"), BannerAct::Details),
-                    (tr("Open from start"), BannerAct::FromStart),
-                    (tr("Mark finished"), BannerAct::Finish),
+                    (tr("Open from Start"), BannerAct::FromStart),
+                    (tr("Mark as Finished"), BannerAct::Finish),
                 ] {
                     let b = button(&l, "banner-secondary", act, d.id, w);
                     b.add_css_class("pill");

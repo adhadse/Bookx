@@ -51,10 +51,17 @@ Stock Kobo and Kindle firmware has no wireless sync with Bookx; those readers sy
   book. A quote it cannot find is kept as a note *without a place*: it appears in **Notes & Highlights** as “Could not be located
   in the book” (you can try to locate it again), and is never painted on the wrong page.
 - A quote you already have in Bookx is not added twice; its note is filled in only if you had none.
+- **Colours and styles come along.** Every KOReader highlight colour (red, orange, yellow, green, olive, cyan, blue,
+  purple, gray) and style (highlight, underline, strikethrough, invert) arrives as you set it, and a colour you change in
+  KOReader later reaches Bookx at the next sync. A colour you chose yourself in Bookx is not reset by the device unless you
+  change it on the device again. A colour or style Bookx does not know (a newer KOReader may add some) is kept as written and
+  handed back unchanged. Highlights Bookx already had in the default yellow are given the device’s colour when the device sends
+  them; see [Colours and styles from your e-reader](annotations.md#colours-and-styles-from-your-e-reader).
 - In **Notes & Highlights** a highlight that came from the device shows “KOReader (device name)”.
 - If the same note was changed in both places, Bookx keeps yours and counts it in the sync line of the window.
-- Highlights you make in Bookx are sent for the books the device has synced at least once (not for other books). On the
-  device, **Bookx Sync → Notes from Bookx for this book** lists them. KOReader does not paint them on the page.
+- Highlights you make in Bookx are sent for the books the device has synced at least once (not for other books), with their colour
+  and style in KOReader’s words (pink goes as red, a custom colour as the nearest KOReader colour). On the device,
+  **Bookx Sync → Notes from Bookx for this book** lists them. KOReader does not paint them on the page.
 - Bookmarks are received and counted, but not added to the library (KOReader describes a bookmark as a place in its own layout).
 - Syncing the same thing twice never duplicates anything. If the connection fails, nothing is lost: the next sync repeats it.
 

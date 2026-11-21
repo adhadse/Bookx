@@ -4,7 +4,7 @@
 //! Every change is the open book's own (it is part of the book's automatic look, see
 //! `crate::reading_profiles`); the values live in [`crate::tweaks`].
 
-use crate::i18n::tr;
+use crate::i18n::{tr, N_};
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -44,15 +44,15 @@ pub struct TweaksUi {
 
 fn expander(title: &str, subtitle: &str) -> adw::ExpanderRow {
     let r = adw::ExpanderRow::new();
-    r.set_title(title);
-    r.set_subtitle(subtitle);
+    r.set_title(&tr(title));
+    r.set_subtitle(&tr(subtitle));
     r.set_show_enable_switch(true);
     r
 }
 
 fn spin(title: &str, lo: f64, hi: f64, step: f64, digits: u32, value: f64) -> adw::SpinRow {
     let r = adw::SpinRow::with_range(lo, hi, step);
-    r.set_title(title);
+    r.set_title(&tr(title));
     r.set_digits(digits);
     r.set_value(value);
     r
@@ -80,26 +80,26 @@ fn name_enable_switches(w: &gtk::Widget) {
 
 impl TweaksUi {
     pub fn build(get: Get, change: Change) -> TweaksUi {
-        let line_height = expander("Line height", "Space between lines");
-        let line_height_v = spin("Multiple of the font size", 1.0, 3.0, 0.05, 2, 1.4);
+        let line_height = expander(N_("Line height"), N_("Space between lines"));
+        let line_height_v = spin(N_("Multiple of the font size"), 1.0, 3.0, 0.05, 2, 1.4);
         line_height.add_row(&line_height_v);
-        let margin = expander("Margins", "Space around the page");
-        let margin_v = spin("Pixels", 0.0, 200.0, 4.0, 0, 56.0);
+        let margin = expander(N_("Margins"), N_("Space around the page"));
+        let margin_v = spin(N_("Pixels"), 0.0, 200.0, 4.0, 0, 56.0);
         margin.add_row(&margin_v);
-        let spacing = expander("Paragraph spacing", "Space after each paragraph");
-        let spacing_v = spin("Em", 0.0, 3.0, 0.1, 1, 0.65);
+        let spacing = expander(N_("Paragraph spacing"), N_("Space after each paragraph"));
+        let spacing_v = spin(N_("Em"), 0.0, 3.0, 0.1, 1, 0.65);
         spacing.add_row(&spacing_v);
-        let font = expander("Font", "Replaces the font chosen above");
+        let font = expander(N_("Font"), N_("Replaces the font chosen above"));
         let font_v = adw::EntryRow::new();
         font_v.set_title(&tr("Font family"));
         font.add_row(&font_v);
-        let justify = expander("Justification", "Force the alignment of paragraphs");
+        let justify = expander(N_("Justification"), N_("Force the alignment of paragraphs"));
         let justify_v = adw::SwitchRow::new();
         justify_v.set_title(&tr("Justify text"));
         justify.add_row(&justify_v);
         let optimal = expander(
-            "Optimal line breaking",
-            "Knuth-Plass breaks in justified text; off uses the basic breaking",
+            N_("Optimal line breaking"),
+            N_("Knuth-Plass breaks in justified text; off uses the basic breaking"),
         );
         let optimal_v = adw::SwitchRow::new();
         optimal_v.set_title(&tr("Use optimal line breaking"));

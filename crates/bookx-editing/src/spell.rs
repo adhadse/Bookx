@@ -218,6 +218,11 @@ impl SpellChecker {
         self.ignored.insert(normalize(word));
     }
 
+    /// Takes a word back off the session ignore list (the undo of [`SpellChecker::ignore_word`]). True when it was there.
+    pub fn unignore_word(&mut self, word: &str) -> bool {
+        self.ignored.remove(&normalize(word))
+    }
+
     pub fn clear_ignored(&mut self) {
         self.ignored.clear();
     }
@@ -591,6 +596,10 @@ pub(crate) mod tests {
         assert!(!c.remove_user_word("Bookx"));
         c.ignore_word("zork");
         assert_eq!(c.check_word("en", "zork"), Some(true));
+        assert!(c.unignore_word("zork"));
+        assert!(!c.unignore_word("zork"));
+        assert_eq!(c.check_word("en", "zork"), Some(false));
+        c.ignore_word("zork");
         c.clear_ignored();
         assert_eq!(c.check_word("en", "zork"), Some(false));
         c.load_user_words("# comment\nalpha\n\n beta \n");

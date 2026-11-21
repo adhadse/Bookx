@@ -2,6 +2,7 @@
 //! Favourites, Notes & Highlights), the favourites list, the right-hand details panel following the
 //! selection, and how a click or right-click changes the selection (bug 8).
 
+use crate::core::library::SortKey;
 use std::collections::HashSet;
 
 /// The values of the Continue Reading banner setting (`""` is automatic).
@@ -483,6 +484,363 @@ pub fn plain_label(label: &str) -> String {
     body.trim_end().to_string()
 }
 
+/// Header capitalization (the rule for buttons, menu items, tooltips and dialog headings): every
+/// word starts with a capital letter, except the small words in the middle ("to", "of", "as").
+/// Words with digits, `{}` placeholders, access keys and `Ctrl+O`-style hints are left alone.
+#[cfg(test)]
+pub fn is_header_caps(label: &str) -> bool {
+    const SMALL: [&str; 17] = [
+        "a", "an", "the", "of", "to", "for", "in", "on", "and", "or", "as", "from", "with", "by",
+        "at", "per", "into",
+    ];
+    let words: Vec<&str> = label.split_whitespace().collect();
+    words.iter().enumerate().all(|(i, w)| {
+        let w = w.trim_matches(|c: char| !c.is_alphanumeric());
+        let Some(first) = w.chars().next() else {
+            return true;
+        };
+        if !first.is_alphabetic() || w.chars().any(|c| c.is_ascii_digit()) {
+            return true;
+        }
+        if i > 0 && SMALL.contains(&w) {
+            return true;
+        }
+        first.is_uppercase()
+    })
+}
+
+/// What the content header shows: with at least one book selected the title becomes "N selected"
+/// and a Cancel button appears at the start.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HeaderState {
+    pub selecting: bool,
+    pub selected: usize,
+}
+
+pub fn header_state(selected: usize) -> HeaderState {
+    HeaderState {
+        selecting: selected >= 1,
+        selected,
+    }
+}
+
+/// The actions of the selection bar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BulkAction {
+    Read,
+    EditMetadata,
+    AddToShelf,
+    SendToDevice,
+    Convert,
+    Remove,
+}
+
+/// The actions the bar offers for this many selected books: Read only for one book, the bulk
+/// actions only for several.
+pub fn bulk_actions(count: usize) -> Vec<BulkAction> {
+    use BulkAction::*;
+    match count {
+        0 => Vec::new(),
+        1 => vec![Read, EditMetadata, Remove],
+        _ => vec![EditMetadata, AddToShelf, SendToDevice, Convert, Remove],
+    }
+}
+
+/// `(inline, overflow)`: in a narrow window only Read and Remove stay as buttons and everything else
+/// moves into the "More" menu, so no action is ever unreachable.
+pub fn split_bulk(count: usize, narrow: bool) -> (Vec<BulkAction>, Vec<BulkAction>) {
+    let all = bulk_actions(count);
+    if !narrow {
+        return (all, Vec::new());
+    }
+    all.into_iter()
+        .partition(|a| matches!(a, BulkAction::Read | BulkAction::Remove))
+}
+
+/// Gives every label of one menu its own access key: the first letter (word initials first) not yet
+/// taken by an earlier label gets the underscore of GTK mnemonics; a label that already has an
+/// underscore keeps it written as `__`. Labels with no free letter stay as they are.
+pub fn access_keys(labels: &[String]) -> Vec<String> {
+    let mut taken: Vec<char> = Vec::new();
+    labels
+        .iter()
+        .map(|l| {
+            let chars: Vec<char> = l.chars().collect();
+            let initials = chars.iter().enumerate().filter(|(i, c)| {
+                c.is_alphanumeric() && (*i == 0 || !chars[*i - 1].is_alphanumeric())
+            });
+            let others = chars
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c.is_alphanumeric());
+            let pick = initials
+                .chain(others)
+                .find(|(_, c)| !taken.contains(&c.to_lowercase().next().unwrap_or(**c)));
+            let escaped = |from: usize, to: usize| -> String {
+                chars[from..to]
+                    .iter()
+                    .map(|c| {
+                        if *c == '_' {
+                            "__".to_string()
+                        } else {
+                            c.to_string()
+                        }
+                    })
+                    .collect()
+            };
+            match pick {
+                Some((at, c)) => {
+                    taken.push(c.to_lowercase().next().unwrap_or(*c));
+                    format!("{}_{}", escaped(0, at), escaped(at, chars.len()))
+                }
+                None => escaped(0, chars.len()),
+            }
+        })
+        .collect()
+}
+
+/// The Trash folders to bring back for these books: for each book the newest entry. `entries` are
+/// `(folder name, book id, time of deletion)`.
+pub fn newest_trash_names(entries: &[(String, u64, i64)], ids: &[u64]) -> Vec<String> {
+    ids.iter()
+        .filter_map(|id| {
+            entries
+                .iter()
+                .filter(|(_, b, _)| b == id)
+                .max_by_key(|(_, _, at)| *at)
+                .map(|(n, _, _)| n.clone())
+        })
+        .collect()
+}
+
+/// The toast after Move to Trash (it has an Undo button).
+pub fn moved_to_trash_text(n: usize) -> String {
+    crate::i18n::ntr("{} book moved to Trash", "{} books moved to Trash", n)
+}
+
+/// The toast after Undo.
+pub fn restored_text(n: usize) -> String {
+    crate::i18n::ntr("{} book restored", "{} books restored", n)
+}
+
+/// The table's columns (their titles in English, as the table names them), the room each needs in
+/// pixels and whether the width may hide it. In the order of the table.
+pub const TABLE_COLUMNS: [(&str, i32, bool); 11] = [
+    ("★", 30, false),
+    ("Title", 280, false),
+    ("Editions", 50, true),
+    ("Author(s)", 160, false),
+    ("Series", 140, true),
+    ("Rating", 80, true),
+    ("Read", 56, true),
+    ("Published", 100, true),
+    ("Added", 100, true),
+    ("Size", 80, true),
+    ("Tags", 150, true),
+];
+
+/// What each column costs on top of its own width (header arrow, separator).
+pub const COLUMN_PAD: i32 = 14;
+
+/// Which optional columns win the room first, the first one is the last to go.
+const COLUMN_PRIORITY: [&str; 8] = [
+    "Read",
+    "Added",
+    "Size",
+    "Series",
+    "Tags",
+    "Rating",
+    "Published",
+    "Editions",
+];
+
+/// The columns that fit `px` pixels of table: the always-visible ones, then the others in priority
+/// order while they fit. The result is in table order.
+pub fn table_columns_for_width(px: i32) -> Vec<&'static str> {
+    let mut used: i32 = TABLE_COLUMNS
+        .iter()
+        .filter(|(_, _, optional)| !optional)
+        .map(|(_, w, _)| *w + COLUMN_PAD)
+        .sum();
+    let mut keep: Vec<&str> = Vec::new();
+    for name in COLUMN_PRIORITY {
+        let w = TABLE_COLUMNS
+            .iter()
+            .find(|(n, _, _)| *n == name)
+            .map_or(0, |(_, w, _)| *w);
+        if used + w + COLUMN_PAD > px {
+            break;
+        }
+        used += w + COLUMN_PAD;
+        keep.push(name);
+    }
+    TABLE_COLUMNS
+        .iter()
+        .filter(|(n, _, optional)| !optional || keep.contains(n))
+        .map(|(n, _, _)| *n)
+        .collect()
+}
+
+/// The columns shown: the ones the user picked (always with the required ones), else those that fit.
+pub fn effective_columns(chosen: &[String], px: i32) -> Vec<&'static str> {
+    if chosen.is_empty() {
+        return table_columns_for_width(px);
+    }
+    TABLE_COLUMNS
+        .iter()
+        .filter(|(n, _, optional)| !optional || chosen.iter().any(|c| c == n))
+        .map(|(n, _, _)| *n)
+        .collect()
+}
+
+/// The saved choice after switching one column on or off (a required column cannot go).
+pub fn toggle_column(shown: &[&str], name: &str, on: bool) -> Vec<String> {
+    let optional = TABLE_COLUMNS
+        .iter()
+        .any(|(n, _, optional)| *n == name && *optional);
+    TABLE_COLUMNS
+        .iter()
+        .filter(|(n, _, o)| {
+            *o && if *n == name {
+                on && optional
+            } else {
+                shown.contains(n)
+            }
+        })
+        .map(|(n, _, _)| n.to_string())
+        .collect()
+}
+
+/// The table column that shows a sort key (`None`: the key has no column, such as Last read).
+pub fn column_for_sort(key: SortKey) -> Option<&'static str> {
+    Some(match key {
+        SortKey::Title => "Title",
+        SortKey::Author => "Author(s)",
+        SortKey::DateAdded => "Added",
+        SortKey::LastRead => return None,
+        SortKey::Published => "Published",
+        SortKey::Rating => "Rating",
+        SortKey::Series => "Series",
+        SortKey::Size => "Size",
+        SortKey::Progress => "Read",
+    })
+}
+
+/// The sort key a click on this column header means.
+pub fn sort_for_column(name: &str) -> Option<SortKey> {
+    SortKey::ALL
+        .into_iter()
+        .find(|k| column_for_sort(*k) == Some(name))
+}
+
+/// How many entries of a sidebar group show before "Show All".
+pub const SIDEBAR_TOP: usize = 8;
+
+/// The most used `n` entries of a sidebar group (by count, then name), still in the order they came
+/// in, and how many are left out. A group that has at most `n + 1` entries shows all of them: one
+/// hidden row is no saving.
+pub fn top_n(items: Vec<(String, usize)>, n: usize) -> (Vec<(String, usize)>, usize) {
+    if items.len() <= n + 1 {
+        return (items, 0);
+    }
+    let mut ranked: Vec<usize> = (0..items.len()).collect();
+    ranked.sort_by(|a, b| {
+        items[*b]
+            .1
+            .cmp(&items[*a].1)
+            .then_with(|| items[*a].0.cmp(&items[*b].0))
+    });
+    let mut keep: Vec<usize> = ranked.into_iter().take(n).collect();
+    keep.sort_unstable();
+    let hidden = items.len() - keep.len();
+    let kept = keep.into_iter().map(|i| items[i].clone()).collect();
+    (kept, hidden)
+}
+
+/// The name a saved search gets when the user does not type one: its first words.
+pub fn default_search_name(query: &str) -> String {
+    let q = query.split_whitespace().collect::<Vec<_>>().join(" ");
+    let mut name: String = q.chars().take(30).collect();
+    if q.chars().count() > 30 {
+        name.push('…');
+    }
+    name
+}
+
+/// The key of a sidebar group in `Config::sidebar_open`.
+pub fn open_key(library: &str, group: &str) -> String {
+    format!("{library}|{group}")
+}
+
+/// Whether a group was left open in this library.
+pub fn is_open(open: &[String], library: &str, group: &str) -> bool {
+    open.contains(&open_key(library, group))
+}
+
+/// The saved list after a group was opened or closed.
+pub fn set_open(open: &mut Vec<String>, library: &str, group: &str, on: bool) {
+    let k = open_key(library, group);
+    open.retain(|o| *o != k);
+    if on {
+        open.push(k);
+    }
+}
+
+/// Past this width the cover grid stops growing (one row would hold too many covers).
+pub const GRID_MAX_WIDTH: i32 = 1800;
+
+/// The description a card gives to assistive technology: author, progress, favourite and shelves.
+pub fn card_description(
+    authors: &str,
+    progress_pct: u32,
+    favourite: bool,
+    shelves: &[String],
+) -> String {
+    use crate::i18n::{tr, trf};
+    let mut parts: Vec<String> = Vec::new();
+    if !authors.is_empty() {
+        parts.push(authors.to_string());
+    }
+    if progress_pct >= 100 {
+        parts.push(tr("finished"));
+    } else if progress_pct > 0 {
+        parts.push(trf("{}% read", &[&progress_pct]));
+    }
+    if favourite {
+        parts.push(tr("favourite"));
+    }
+    if !shelves.is_empty() {
+        parts.push(trf("on shelves {}", &[&shelves.join(", ")]));
+    }
+    parts.join(", ")
+}
+
+/// The address in pasted text: one `http(s)` link and nothing else (pasting a sentence does nothing).
+pub fn pasted_url(text: &str) -> Option<String> {
+    let t = text.trim();
+    let rest = t
+        .strip_prefix("https://")
+        .or_else(|| t.strip_prefix("http://"))?;
+    if rest.is_empty() || t.chars().any(char::is_whitespace) || !rest.contains('.') {
+        return None;
+    }
+    Some(t.to_string())
+}
+
+/// The icon of the View options button follows the active view.
+pub fn view_button_icon(table: bool) -> &'static str {
+    if table {
+        "view-list-symbolic"
+    } else {
+        "view-grid-symbolic"
+    }
+}
+
+/// The cover size slider and the "group editions" check box only act on the cover grid.
+pub fn grid_only_options_visible(table: bool) -> bool {
+    !table
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -770,6 +1128,252 @@ mod tests {
     }
 
     #[test]
+    fn undo_brings_back_the_newest_trash_entry_of_each_book() {
+        let e = vec![
+            ("1-7".to_string(), 7, 1),
+            ("9-7".to_string(), 7, 9),
+            ("5-8".to_string(), 8, 5),
+            ("6-9".to_string(), 9, 6),
+        ];
+        assert_eq!(newest_trash_names(&e, &[7, 8]), vec!["9-7", "5-8"]);
+        assert!(newest_trash_names(&e, &[1]).is_empty());
+        assert_eq!(moved_to_trash_text(1), "1 book moved to Trash");
+        assert_eq!(moved_to_trash_text(3), "3 books moved to Trash");
+        assert_eq!(restored_text(2), "2 books restored");
+    }
+
+    #[test]
+    fn the_table_hides_the_low_value_columns_first_as_it_narrows() {
+        let wide = table_columns_for_width(1600);
+        assert_eq!(wide.len(), TABLE_COLUMNS.len());
+        let at_650 = table_columns_for_width(650);
+        assert!(
+            at_650.contains(&"Title") && at_650.contains(&"Author(s)") && at_650.contains(&"★")
+        );
+        assert!(at_650.contains(&"Read"));
+        for gone in ["Series", "Rating", "Published", "Tags", "Size"] {
+            assert!(!at_650.contains(&gone), "{gone} fits 650 px");
+        }
+        // the required ones never go
+        assert_eq!(
+            table_columns_for_width(100),
+            vec!["★", "Title", "Author(s)"]
+        );
+        // each step keeps what the narrower one had
+        let mut last: Vec<&str> = Vec::new();
+        for w in (400..1700).step_by(50) {
+            let now = table_columns_for_width(w);
+            assert!(
+                last.iter().all(|c| now.contains(c)),
+                "{w}: {now:?} lost {last:?}"
+            );
+            last = now;
+        }
+        // the width that is in the table never exceeds the room (when the required ones fit)
+        for w in (520..1700).step_by(37) {
+            let used: i32 = table_columns_for_width(w)
+                .iter()
+                .map(|n| TABLE_COLUMNS.iter().find(|c| c.0 == *n).unwrap().1 + COLUMN_PAD)
+                .sum();
+            assert!(used <= w, "{used} > {w}");
+        }
+    }
+
+    #[test]
+    fn the_columns_the_user_picks_win_over_the_width() {
+        assert_eq!(effective_columns(&[], 650), table_columns_for_width(650));
+        let picked = vec!["Tags".to_string()];
+        let shown = effective_columns(&picked, 650);
+        assert!(shown.contains(&"Tags") && !shown.contains(&"Read"));
+        assert!(shown.contains(&"Title"));
+        let after = toggle_column(&shown, "Series", true);
+        assert_eq!(after, vec!["Series", "Tags"]);
+        assert_eq!(toggle_column(&shown, "Tags", false), Vec::<String>::new());
+        // Title is not optional: asking for it changes nothing
+        assert_eq!(toggle_column(&shown, "Title", false), vec!["Tags"]);
+    }
+
+    #[test]
+    fn a_header_click_and_the_sort_menu_name_the_same_order() {
+        for k in SortKey::ALL {
+            match column_for_sort(k) {
+                Some(c) => assert_eq!(sort_for_column(c), Some(k), "{c}"),
+                None => assert_eq!(k, SortKey::LastRead),
+            }
+        }
+        assert_eq!(sort_for_column("Author(s)"), Some(SortKey::Author));
+        assert_eq!(sort_for_column("Tags"), None);
+        assert_eq!(sort_for_column("★"), None);
+        // every sortable column is a real column of the table
+        for k in SortKey::ALL {
+            if let Some(c) = column_for_sort(k) {
+                assert!(TABLE_COLUMNS.iter().any(|t| t.0 == c), "{c}");
+            }
+        }
+    }
+
+    #[test]
+    fn a_long_sidebar_group_shows_its_top_entries_and_counts_the_rest() {
+        let items: Vec<(String, usize)> = (0..30).map(|i| (format!("A{i:02}"), i)).collect();
+        let (top, hidden) = top_n(items, SIDEBAR_TOP);
+        assert_eq!(top.len(), 8);
+        assert_eq!(hidden, 22);
+        // the top entries keep the order they came in
+        assert_eq!(top[0], ("A22".to_string(), 22));
+        assert_eq!(top[7], ("A29".to_string(), 29));
+        // equal counts go by name
+        let (top, hidden) = top_n((0..20).map(|i| (format!("B{i:02}"), 1)).collect(), 3);
+        assert_eq!(hidden, 17);
+        assert_eq!(
+            top.iter().map(|t| t.0.as_str()).collect::<Vec<_>>(),
+            ["B00", "B01", "B02"]
+        );
+        // nine entries with a cap of eight: one hidden row is no saving, so all show
+        let (all, hidden) = top_n((0..9).map(|i| (i.to_string(), i)).collect(), 8);
+        assert_eq!((all.len(), hidden), (9, 0));
+        let (all, hidden) = top_n(Vec::new(), 8);
+        assert_eq!((all.len(), hidden), (0, 0));
+    }
+
+    #[test]
+    fn a_saved_search_without_a_name_gets_its_first_words() {
+        assert_eq!(
+            default_search_name("  author:herbert   tag:sf "),
+            "author:herbert tag:sf"
+        );
+        assert_eq!(default_search_name(""), "");
+        let long = "x".repeat(50);
+        let n = default_search_name(&long);
+        assert_eq!(n.chars().count(), 31);
+        assert!(n.ends_with('…'));
+    }
+
+    #[test]
+    fn only_a_single_link_counts_as_a_pasted_address() {
+        assert_eq!(
+            pasted_url("  https://example.com/a?b=1 \n").as_deref(),
+            Some("https://example.com/a?b=1")
+        );
+        assert_eq!(pasted_url("http://x.org").as_deref(), Some("http://x.org"));
+        for no in [
+            "",
+            "hello world",
+            "see https://example.com now",
+            "https://",
+            "ftp://example.com",
+            "https://localhost",
+            "example.com",
+        ] {
+            assert_eq!(pasted_url(no), None, "{no}");
+        }
+    }
+
+    #[test]
+    fn opened_groups_are_remembered_per_library() {
+        let mut open = Vec::new();
+        set_open(&mut open, "/a", "Authors", true);
+        set_open(&mut open, "/b", "Authors", true);
+        assert!(is_open(&open, "/a", "Authors") && is_open(&open, "/b", "Authors"));
+        set_open(&mut open, "/a", "Authors", false);
+        assert!(!is_open(&open, "/a", "Authors") && is_open(&open, "/b", "Authors"));
+        set_open(&mut open, "/b", "Authors", true);
+        assert_eq!(open.len(), 1);
+    }
+
+    #[test]
+    fn a_card_describes_author_progress_favourite_and_shelves() {
+        let shelves = vec!["To read".to_string(), "Sci-fi".to_string()];
+        assert_eq!(
+            card_description("A. Author", 40, true, &shelves),
+            "A. Author, 40% read, favourite, on shelves To read, Sci-fi"
+        );
+        assert_eq!(card_description("", 0, false, &[]), "");
+        assert_eq!(card_description("X", 100, false, &[]), "X, finished");
+    }
+
+    #[test]
+    fn header_caps_means_capitals_except_small_words() {
+        for ok in [
+            "Open Library Folder",
+            "Add to Shelf",
+            "Subscribe to News",
+            "Mark as Finished",
+            "Open from Start",
+            "Move to Trash",
+            "Send {} Books",
+            "Save This Search",
+            "Ctrl+O",
+            "Export as Calibre Library",
+        ] {
+            assert!(is_header_caps(ok), "{ok}");
+        }
+        for bad in [
+            "Open from start",
+            "Mark finished",
+            "Clear finished",
+            "Add to shelf",
+        ] {
+            assert!(!is_header_caps(bad), "{bad}");
+        }
+    }
+
+    /// K7: the buttons, menu entries and tooltips of the library windows follow the rule (the
+    /// sentence-like ones are listed here on purpose).
+    #[test]
+    #[allow(clippy::nonminimal_bool)]
+    fn library_buttons_and_menu_entries_use_header_caps() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/ui");
+        let sentence_like = [
+            "Nothing is running",
+            "Select book",
+            "Shelf actions",
+            "Show the columns that fit the width",
+            "Any time",
+        ];
+        let mut bad = Vec::new();
+        for f in [
+            "library.rs",
+            "library_extra.rs",
+            "library_banner.rs",
+            "notes.rs",
+            "note_row.rs",
+            "jobs.rs",
+            "shelves.rs",
+        ] {
+            let text = std::fs::read_to_string(dir.join(f)).unwrap();
+            for call in [
+                "Button::with_label(&tr(\"",
+                "menu.append(Some(&tr(\"",
+                "append(Some(&tr(\"",
+                "append_submenu(Some(&tr(\"",
+                "set_tooltip_text(Some(&tr(\"",
+            ] {
+                let mut rest = text.as_str();
+                while let Some(i) = rest.find(call) {
+                    let start = i + call.len();
+                    let tail = &rest[start..];
+                    let lit = &tail[..tail.find('"').unwrap_or(0)];
+                    let before = rest[..i].chars().last().unwrap_or(' ');
+                    let tooltip_sentence = call.starts_with("set_tooltip") && lit.contains(' ');
+                    if !before.is_alphanumeric()
+                        && before != '_'
+                        && !lit.contains('\\')
+                        && !sentence_like.contains(&lit)
+                        && !(tooltip_sentence && lit.split_whitespace().count() > 5)
+                        && !is_header_caps(lit)
+                    {
+                        bad.push(format!("{f}: {lit}"));
+                    }
+                    rest = &rest[start..];
+                }
+            }
+        }
+        bad.sort();
+        bad.dedup();
+        assert!(bad.is_empty(), "labels not in header caps: {bad:#?}");
+    }
+
+    #[test]
     fn labels_lose_their_ellipsis_but_progress_keeps_it() {
         assert_eq!(plain_label("Add Books…"), "Add Books");
         assert_eq!(plain_label("Go to..."), "Go to");
@@ -870,5 +1474,80 @@ mod tests {
         }
         // an empty filter is no filter
         assert!(!search_for(NavTarget::Filter("  ")).open);
+    }
+
+    #[test]
+    fn the_header_follows_the_selection() {
+        assert_eq!(
+            header_state(0),
+            HeaderState {
+                selecting: false,
+                selected: 0
+            }
+        );
+        assert!(header_state(1).selecting && header_state(2).selected == 2);
+    }
+
+    #[test]
+    fn the_bar_offers_bulk_actions_for_several_books_and_read_for_one() {
+        use BulkAction::*;
+        assert!(bulk_actions(0).is_empty());
+        assert_eq!(bulk_actions(1), vec![Read, EditMetadata, Remove]);
+        let many = bulk_actions(5);
+        assert!(!many.contains(&Read));
+        assert_eq!(many.len(), 5);
+        for a in [EditMetadata, AddToShelf, SendToDevice, Convert, Remove] {
+            assert!(many.contains(&a));
+        }
+    }
+
+    #[test]
+    fn a_narrow_window_moves_the_extra_actions_into_more_and_loses_none() {
+        for n in [1, 2, 7] {
+            let (inline, more) = split_bulk(n, true);
+            let mut both = inline.clone();
+            both.extend(more.clone());
+            let mut want = bulk_actions(n);
+            both.sort_by_key(|a| *a as u8);
+            want.sort_by_key(|a| *a as u8);
+            assert_eq!(both, want);
+            assert!(inline.contains(&BulkAction::Remove));
+            assert!(!more.contains(&BulkAction::Remove));
+        }
+        assert!(split_bulk(3, false).1.is_empty());
+    }
+
+    #[test]
+    fn access_keys_are_unique_and_prefer_word_initials() {
+        let l: Vec<String> = ["Sync", "Saved Searches", "Open Library Folder", "Help"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let k = access_keys(&l);
+        assert_eq!(k[0], "_Sync");
+        assert_eq!(k[1], "S_aved Searches");
+        assert_eq!(k[2], "_Open Library Folder");
+        assert_eq!(k[3], "_Help");
+        let mut keys: Vec<char> = k
+            .iter()
+            .filter_map(|s| s.split_once('_').and_then(|(_, r)| r.chars().next()))
+            .map(|c| c.to_ascii_lowercase())
+            .collect();
+        keys.sort();
+        keys.dedup();
+        assert_eq!(keys.len(), 4);
+        // an existing underscore is escaped, and a label with no free letter is left alone
+        assert_eq!(access_keys(&["a_b".to_string()]), vec!["_a__b".to_string()]);
+        assert_eq!(
+            access_keys(&["x".to_string(), "x".to_string()]),
+            vec!["_x".to_string(), "x".to_string()]
+        );
+    }
+
+    #[test]
+    fn the_view_button_and_options_follow_the_mode() {
+        assert_eq!(view_button_icon(false), "view-grid-symbolic");
+        assert_eq!(view_button_icon(true), "view-list-symbolic");
+        assert!(grid_only_options_visible(false) && !grid_only_options_visible(true));
     }
 }

@@ -13,7 +13,7 @@ use relm4::gtk::{self, gio};
 use super::SharedRef;
 use crate::core::library::Book;
 use crate::core::query::Query;
-use crate::i18n::{tr, trf};
+use crate::i18n::{ntr, tr, trf};
 
 type Notify = Rc<dyn Fn(String)>;
 
@@ -44,12 +44,23 @@ fn preview(text: &str) -> String {
     s
 }
 
+/// Copy and Save need at least one reference.
+pub fn export_enabled(references: usize) -> bool {
+    references > 0
+}
+
+type Controls = (gtk::Button, gtk::Button, gtk::Label);
+
+thread_local! {
+    static WINDOW: RefCell<Option<Controls>> = const { RefCell::new(None) };
+}
+
 /// The window. `query` is the search the library shows now (empty: none).
 pub fn show(parent: &gtk::Window, shared: &SharedRef, query: &str, notify: Notify) {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("Export Citations"));
     dialog.set_content_width(640);
-    dialog.set_content_height(620);
+    dialog.set_content_height(560);
     let page = adw::PreferencesPage::new();
 
     let group = adw::PreferencesGroup::new();
@@ -103,13 +114,11 @@ pub fn show(parent: &gtk::Window, shared: &SharedRef, query: &str, notify: Notif
     count.set_xalign(0.0);
     count.add_css_class("dim-label");
 
-    let copy = gtk::Button::with_label(&tr("Copy"));
+    let copy = gtk::Button::from_icon_name("edit-copy-symbolic");
+    copy.set_tooltip_text(Some(&tr("Copy to Clipboard")));
+    super::audit::label(&copy, &tr("Copy to Clipboard"));
     let save = gtk::Button::with_label(&tr("Save"));
     save.add_css_class("suggested-action");
-    let buttons = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-    buttons.set_halign(gtk::Align::End);
-    buttons.append(&copy);
-    buttons.append(&save);
 
     let body = gtk::Box::new(gtk::Orientation::Vertical, 12);
     body.set_margin_start(12);
@@ -117,11 +126,10 @@ pub fn show(parent: &gtk::Window, shared: &SharedRef, query: &str, notify: Notif
     body.set_margin_bottom(12);
     body.append(&scroll);
     body.append(&count);
-    body.append(&buttons);
 
     let chosen = Rc::new(RefCell::new((Style::BibTeX, String::new())));
     let refresh = {
-        let (shared, format, scope, out, count, chosen, query) = (
+        let (shared, format, scope, out, count, chosen, query, copy, save) = (
             shared.clone(),
             format.clone(),
             scope.clone(),
@@ -129,6 +137,8 @@ pub fn show(parent: &gtk::Window, shared: &SharedRef, query: &str, notify: Notif
             count.clone(),
             chosen.clone(),
             query.to_string(),
+            copy.clone(),
+            save.clone(),
         );
         Rc::new(move || {
             let style = Style::ALL
@@ -138,7 +148,9 @@ pub fn show(parent: &gtk::Window, shared: &SharedRef, query: &str, notify: Notif
             let q = if scope.selected() == 1 { &query } else { "" };
             let (text, n) = render(&shared, q, style);
             out.buffer().set_text(&preview(&text));
-            count.set_text(&trf("{} references", &[&n]));
+            count.set_text(&ntr("{} reference", "{} references", n));
+            copy.set_sensitive(export_enabled(n));
+            save.set_sensitive(export_enabled(n));
             *chosen.borrow_mut() = (style, text);
         })
     };
@@ -154,7 +166,7 @@ pub fn show(parent: &gtk::Window, shared: &SharedRef, query: &str, notify: Notif
         let (chosen, notify, copy_btn) = (chosen.clone(), notify.clone(), copy.clone());
         copy.connect_clicked(move |_| {
             copy_btn.clipboard().set_text(&chosen.borrow().1);
-            notify(tr("Copied the bibliography"));
+            notify(tr("Copied to Clipboard"));
         });
     }
     {
@@ -178,12 +190,19 @@ pub fn show(parent: &gtk::Window, shared: &SharedRef, query: &str, notify: Notif
     }
 
     let view = adw::ToolbarView::new();
-    view.add_top_bar(&adw::HeaderBar::new());
+    let header = adw::HeaderBar::new();
+    header.pack_end(&save);
+    header.pack_end(&copy);
+    view.add_top_bar(&header);
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
     page.set_vexpand(false);
     content.append(&page);
     content.append(&body);
-    view.set_content(Some(&content));
+    let outer = gtk::ScrolledWindow::new();
+    outer.set_hscrollbar_policy(gtk::PolicyType::Never);
+    outer.set_child(Some(&content));
+    view.set_content(Some(&outer));
+    WINDOW.with(|w| *w.borrow_mut() = Some((save.clone(), copy.clone(), count.clone())));
     dialog.set_child(Some(&view));
     dialog.present(Some(parent));
 }
@@ -193,6 +212,22 @@ pub fn show(parent: &gtk::Window, shared: &SharedRef, query: &str, notify: Notif
 pub fn dev(parent: &gtk::Window, shared: &SharedRef, notify: Notify, cmd: &str) {
     if cmd == "open" {
         show(parent, shared, "", notify);
+        return;
+    }
+    // `state`: `citations_window: save_mapped=BOOL save_sensitive=BOOL copy_sensitive=BOOL refs=TEXT`
+    if cmd == "state" {
+        WINDOW.with(|w| match w.borrow().as_ref() {
+            Some((save, copy, count)) => {
+                eprintln!(
+                    "citations_window: save_mapped={} save_sensitive={} copy_sensitive={} refs={}",
+                    save.is_mapped(),
+                    save.is_sensitive(),
+                    copy.is_sensitive(),
+                    count.text()
+                )
+            }
+            None => eprintln!("citations_window: closed"),
+        });
         return;
     }
     if let Some(arg) = cmd.strip_prefix("write=") {
@@ -217,6 +252,12 @@ pub fn dev(parent: &gtk::Window, shared: &SharedRef, notify: Notify, cmd: &str) 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn export_needs_references() {
+        assert!(!export_enabled(0));
+        assert!(export_enabled(1));
+    }
 
     #[test]
     fn preview_cuts_long_text() {

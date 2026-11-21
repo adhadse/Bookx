@@ -323,6 +323,11 @@ mod tests {
             !EditorPrefs::load_from(&f).scroll_both,
             "saved false round trips"
         );
+        std::fs::write(&f, "{\"scroll_both\": true}").unwrap();
+        assert!(
+            EditorPrefs::load_from(&f).scroll_both,
+            "explicit true is kept"
+        );
         let _ = std::fs::remove_dir_all(dir);
     }
 

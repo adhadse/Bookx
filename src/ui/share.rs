@@ -325,7 +325,7 @@ pub fn opds_rows(shared: &SharedRef) -> Vec<gtk::Widget> {
 pub fn advanced_rows(parent: &gtk::Widget, shared: &SharedRef) -> Vec<gtk::Widget> {
     let cfg = shared.cfg.borrow().share.clone();
     let lan = adw::SwitchRow::builder()
-        .title(tr("Allow other devices on my network"))
+        .title(tr("Allow other devices on the network"))
         .subtitle(trf(
             "Needs a password. Only on networks you trust. {}",
             &[&crate::secrets::caption_now()],

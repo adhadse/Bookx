@@ -27,18 +27,26 @@ pub fn show(
     search: Search,
     notify: Notify,
 ) {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("Saved Searches"));
     dialog.set_content_width(560);
-    dialog.set_content_height(640);
+    dialog.set_content_height(560);
     let page = adw::PreferencesPage::new();
 
     let list = adw::PreferencesGroup::new();
-    list.set_title(&tr("Your Searches"));
+    list.set_title(&tr("Saved Searches"));
     list.set_description(Some(&tr(
-        "Run one from here, or type search:name in the search bar. A virtual library narrows every view of the library until you switch it off.",
+        "Run one from here, or type search:name in the search bar.",
     )));
     page.add(&list);
+    let empty = adw::PreferencesGroup::new();
+    let empty_page = adw::StatusPage::new();
+    empty_page.set_icon_name(Some("system-search-symbolic"));
+    empty_page.set_title(&tr("No Saved Searches"));
+    empty_page.set_description(Some(&tr("Type a search below and save it")));
+    empty_page.add_css_class("compact");
+    empty.add(&empty_page);
+    page.add(&empty);
 
     let form = adw::PreferencesGroup::new();
     form.set_title(&tr("New Search"));
@@ -49,6 +57,7 @@ pub fn show(
     query.set_text(current_query);
     let add = gtk::Button::with_label(&tr("Save Search"));
     add.add_css_class("suggested-action");
+    add.set_sensitive(ss::can_save(&name.text(), &query.text()));
     add.set_halign(gtk::Align::End);
     add.set_margin_top(6);
     let message = gtk::Label::new(None);
@@ -56,6 +65,14 @@ pub fn show(
     message.set_wrap(true);
     message.add_css_class("error");
     message.set_visible(false);
+    for row in [&name, &query] {
+        let add = add.clone();
+        let (name, query) = (name.clone(), query.clone());
+        row.connect_changed(move |_| add.set_sensitive(ss::can_save(&name.text(), &query.text())));
+    }
+    for row in [&name, &query] {
+        row.set_activates_default(true);
+    }
     form.add(&name);
     form.add(&query);
     let tail = gtk::Box::new(gtk::Orientation::Vertical, 4);
@@ -64,12 +81,19 @@ pub fn show(
     form.add(&tail);
     page.add(&form);
 
+    let view = adw::ToolbarView::new();
+    view.add_top_bar(&adw::HeaderBar::new());
+    view.set_content(Some(&page));
+    let toasts = super::dialog_toast::overlay(&view);
+
     let rows: Rc<std::cell::RefCell<Vec<adw::ActionRow>>> = Default::default();
     let rebuild: Rc<std::cell::RefCell<Option<Rc<dyn Fn()>>>> = Default::default();
     let build = {
-        let (shared, list, rows, rebuild, dialog) = (
+        let (shared, list, empty, toasts, rows, rebuild, dialog) = (
             shared.clone(),
             list.clone(),
+            empty.clone(),
+            toasts.clone(),
             rows.clone(),
             rebuild.clone(),
             dialog.clone(),
@@ -83,6 +107,8 @@ pub fn show(
                 let c = shared.cfg.borrow();
                 (c.saved_searches.clone(), c.virtual_library.clone())
             };
+            list.set_visible(!items.is_empty());
+            empty.set_visible(items.is_empty());
             for s in items {
                 let row = adw::ActionRow::new();
                 row.set_title(&esc(&s.name));
@@ -96,7 +122,9 @@ pub fn show(
                 vl.set_valign(gtk::Align::Center);
                 vl.add_css_class("flat");
                 vl.set_active(is_vl);
-                vl.set_tooltip_text(Some(&tr("Use as virtual library")));
+                vl.set_tooltip_text(Some(&tr(
+                    "Use as Virtual Library: narrows every view until switched off",
+                )));
                 vl.update_property(&[gtk::accessible::Property::Label(&trf(
                     "Use {} as virtual library",
                     &[&s.name],
@@ -123,7 +151,7 @@ pub fn show(
                         notify(if b.is_active() {
                             trf("Virtual library: {}", &[&n])
                         } else {
-                            "Virtual library off".into()
+                            tr("Virtual library off")
                         });
                         if let Some(f) = rebuild.borrow().clone() {
                             glib::idle_add_local_once(move || f());
@@ -131,15 +159,28 @@ pub fn show(
                     });
                 }
                 {
-                    let (shared, notify, rebuild, n) = (
+                    let (shared, toasts, rebuild, n) = (
                         shared.clone(),
-                        notify.clone(),
+                        toasts.clone(),
                         rebuild.clone(),
                         s.name.clone(),
                     );
                     del.connect_clicked(move |_| {
-                        delete(&shared, &n);
-                        notify(trf("Deleted “{}”", &[&n]));
+                        let taken = delete(&shared, &n);
+                        let undo_shared = shared.clone();
+                        let undo_rebuild = rebuild.clone();
+                        super::dialog_toast::show_undo(
+                            &toasts,
+                            &trf("Deleted “{}”", &[&n]),
+                            move || {
+                                if let Some(t) = taken.clone() {
+                                    undo_delete(&undo_shared, t);
+                                }
+                                if let Some(f) = undo_rebuild.borrow().clone() {
+                                    f();
+                                }
+                            },
+                        );
                         if let Some(f) = rebuild.borrow().clone() {
                             glib::idle_add_local_once(move || f());
                         }
@@ -185,10 +226,8 @@ pub fn show(
         });
     }
 
-    let view = adw::ToolbarView::new();
-    view.add_top_bar(&adw::HeaderBar::new());
-    view.set_content(Some(&page));
-    dialog.set_child(Some(&view));
+    dialog.set_default_widget(Some(&add));
+    dialog.set_child(Some(&toasts));
     dialog.present(Some(parent));
 }
 
@@ -202,14 +241,32 @@ pub fn save(shared: &SharedRef, name: &str, query: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn delete(shared: &SharedRef, name: &str) {
+/// Removes a saved search; the result is what `undo_delete` needs (position, search, whether it
+/// was the virtual library).
+pub fn delete(shared: &SharedRef, name: &str) -> Option<Deleted> {
     let mut c = shared.cfg.borrow_mut();
-    ss::remove(&mut c.saved_searches, name);
-    if c.virtual_library
+    let (at, item) = ss::take(&mut c.saved_searches, name)?;
+    let was_vl = c
+        .virtual_library
         .as_deref()
-        .is_some_and(|v| v.eq_ignore_ascii_case(name))
-    {
+        .is_some_and(|v| v.eq_ignore_ascii_case(name));
+    if was_vl {
         c.virtual_library = None;
+    }
+    c.save();
+    Some((at, item, was_vl))
+}
+
+/// What `delete` removed: position, the search, and whether it was the virtual library.
+pub type Deleted = (usize, ss::SavedSearch, bool);
+
+/// Puts a deleted search back (and the virtual library with it).
+pub fn undo_delete(shared: &SharedRef, (at, item, was_vl): Deleted) {
+    let mut c = shared.cfg.borrow_mut();
+    let name = item.name.clone();
+    ss::restore(&mut c.saved_searches, at, item);
+    if was_vl {
+        c.virtual_library = Some(name);
     }
     c.save();
 }
@@ -264,6 +321,17 @@ pub fn dev(
         c if c.starts_with("delete=") => {
             delete(shared, &c[7..]);
             notify(tr("Deleted"));
+        }
+        // `undo-delete=Name|query|index`: puts a deleted search back, as the toast's Undo does
+        c if c.starts_with("undo-delete=") => {
+            let mut p = c[12..].splitn(3, '|');
+            let (n, q) = (p.next().unwrap_or(""), p.next().unwrap_or(""));
+            let at = p.next().and_then(|v| v.parse().ok()).unwrap_or(usize::MAX);
+            let item = ss::SavedSearch {
+                name: n.into(),
+                query: q.into(),
+            };
+            undo_delete(shared, (at, item, false));
         }
         c if c.starts_with("vl=") => {
             set_virtual(shared, &c[3..], true);

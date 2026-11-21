@@ -14,6 +14,7 @@ pub mod httpc;
 pub mod kobo;
 pub mod kosync;
 pub mod kosync_client;
+pub mod look_repair;
 pub mod lua;
 pub mod mail;
 pub mod mtp;

@@ -14,7 +14,7 @@ use super::SharedRef;
 pub fn start(parent: &gtk::Window, shared: &SharedRef, toast: Rc<dyn Fn(String)>) {
     let shared = shared.clone();
     gtk::FileDialog::builder()
-        .title(tr("Choose an empty folder for the Calibre library"))
+        .title(tr("Choose an Empty Folder for the Calibre Library"))
         .accept_label(tr("Export"))
         .build()
         .select_folder(Some(parent), gio::Cancellable::NONE, move |res| {
@@ -83,7 +83,16 @@ pub fn run(shared: &SharedRef, dir: PathBuf, toast: Rc<dyn Fn(String)>) {
                     r.cancelled
                 );
                 crate::jobs::finish(job, Ok(()));
-                toast(msg);
+                // the folder can be opened from the toast; a cancelled export has nothing to open
+                match super::dialog_toast::app_overlay().filter(|_| !r.cancelled) {
+                    Some(o) => {
+                        let dir = dir.clone();
+                        super::dialog_toast::show_action(&o, &msg, &tr("Open Folder"), move || {
+                            super::open_uri(&gio::File::for_path(&dir).uri())
+                        });
+                    }
+                    None => toast(msg),
+                }
                 glib::ControlFlow::Break
             }
             Ok(Err(e)) => {

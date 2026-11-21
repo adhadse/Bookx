@@ -161,7 +161,7 @@ def _wiki_reading(c):
     if not c.check("the book opens", c.wait_node("slider", timeout=25)):
         return
     time.sleep(6)
-    wiki = c.wait_node("button", "Look up on Wikipedia", timeout=12)
+    wiki = c.wait_node("button", "Look Up on Wikipedia", timeout=12)
     if not c.check("the selection popover of the highlighted passage is open", wiki):
         return
     c.check("its note is shown in the popover", c.wait_node(None, rx="Where the story really starts", timeout=5))
@@ -284,25 +284,25 @@ def _wiki_tts(c):
     c.check("the book opens", c.open_book())
     c.go_to_text()
     time.sleep(1.0)
-    btn = c.wait_node("toggle button", rx="^Read aloud")
+    btn = c.wait_node("toggle button", rx="^Read Aloud")
     if not c.check("the reader has a Read aloud button", btn):
         return
     c.click_node(btn)
-    play = c.wait_node("button", "Read aloud from here", timeout=5)
+    play = c.wait_node("button", "Read Aloud from Here", timeout=5)
     if not c.check("the popover opens", play):
         return
     time.sleep(0.6)
     wshot(c, "read-aloud-popover")
     c.click_node(play)
     c.sb.key("Escape")
-    c.wait_node("button", "Next sentence", timeout=6)
+    c.wait_node("button", "Next Sentence", timeout=6)
     time.sleep(1.8)
     c.sb.move_to(1270, 790)
     wshot(c, "read-aloud-reading")
-    c.click_node(c.find("button", "Close read aloud")[0])
+    c.click_node(c.find("button", "Close Read Aloud")[0])
     time.sleep(0.8)
-    c.click_node(c.wait_node("toggle button", rx="^Read aloud"))
-    c.click_node(c.wait_node("button", rx="^Voice settings", timeout=5))
+    c.click_node(c.wait_node("toggle button", rx="^Read Aloud"))
+    c.click_node(c.wait_node("button", rx="(?i)^Voice settings", timeout=5))
     if c.wait_node("dialog", "Preferences", timeout=8):
         c.wait_node(None, rx="^Voice engine", timeout=6)
         time.sleep(1.0)
@@ -330,7 +330,7 @@ def _wiki_editor(c):
     time.sleep(1.0)
     c.sb.move_to(1270, 790)
     wshot(c, "editor-preview")
-    btn = [n for n in c.find("toggle button") + c.find("button") if n.name.startswith("Markup:")]
+    btn = [n for n in c.find("toggle button") + c.find("button") if n.name.startswith("Markup")]
     if btn:
         c.click_node(btn[0])
         time.sleep(1.0)

@@ -1,8 +1,8 @@
 //! The "Read aloud" button of the reader (roadmap R10): play/pause, stop, speed and voice.
 //! The reading itself is [`crate::tts`].
 
-use crate::i18n::tr;
 use crate::i18n::trf;
+use crate::i18n::{tr, N_};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -44,12 +44,12 @@ pub enum Cmd {
 
 /// The entries of the sleep timer: label and minutes (`None`: end of the chapter, 0: off).
 pub const SLEEP: [(&str, Option<u32>); 6] = [
-    ("Off", Some(0)),
-    ("After 15 minutes", Some(15)),
-    ("After 30 minutes", Some(30)),
-    ("After 45 minutes", Some(45)),
-    ("After 60 minutes", Some(60)),
-    ("At the end of the chapter", None),
+    (N_("Off"), Some(0)),
+    (N_("After 15 minutes"), Some(15)),
+    (N_("After 30 minutes"), Some(30)),
+    (N_("After 45 minutes"), Some(45)),
+    (N_("After 60 minutes"), Some(60)),
+    (N_("At the end of the chapter"), None),
 ];
 
 /// The timer an entry of the dropdown stands for.
@@ -66,128 +66,65 @@ pub struct TtsUi {
     /// The floating player over the page (enhancement 11).
     pub player: Rc<super::tts_player::PlayerCard>,
     play: gtk::Button,
-    speed: gtk::Scale,
-    pitch: gtk::Scale,
-    sleep: gtk::DropDown,
     engine: gtk::Label,
-    voice: gtk::DropDown,
-    model: gtk::StringList,
     names: Rc<RefCell<Vec<String>>>,
-    quiet: Rc<std::cell::Cell<bool>>,
+    on_cmd: Rc<dyn Fn(Cmd)>,
 }
 
 impl TtsUi {
-    pub fn build(prefs: &TtsPrefs, on_cmd: impl Fn(Cmd) + Clone + 'static) -> TtsUi {
+    /// The button of the header and its popover: play and pause, and three rows (voice settings, save
+    /// the chapter, save the book). Speed, voice, sleep timer and volume are on the player card.
+    pub fn build(_prefs: &TtsPrefs, on_cmd: impl Fn(Cmd) + Clone + 'static) -> TtsUi {
         let button = gtk::MenuButton::new();
         button.set_icon_name("audio-speakers-symbolic");
-        button.set_tooltip_text(Some(&tr("Read aloud")));
+        button.set_tooltip_text(Some(&tr("Read Aloud")));
+        super::audit::label(&button, &tr("Read Aloud"));
         let pop = gtk::Popover::new();
-        let bx = gtk::Box::new(gtk::Orientation::Vertical, 10);
-        bx.set_margin_top(12);
-        bx.set_margin_bottom(12);
-        bx.set_margin_start(12);
-        bx.set_margin_end(12);
-        bx.set_width_request(280);
+        let bx = gtk::Box::new(gtk::Orientation::Vertical, 6);
+        bx.set_margin_top(10);
+        bx.set_margin_bottom(10);
+        bx.set_margin_start(10);
+        bx.set_margin_end(10);
+        bx.set_width_request(240);
 
-        let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        row.set_halign(gtk::Align::Center);
-        let prev = gtk::Button::from_icon_name("media-skip-backward-symbolic");
-        prev.add_css_class("circular");
-        prev.set_tooltip_text(Some(&tr("Previous sentence")));
-        super::audit::label(&prev, &tr("Previous sentence"));
         let play = gtk::Button::from_icon_name("media-playback-start-symbolic");
-        play.add_css_class("suggested-action");
+        play.add_css_class("flat");
         play.add_css_class("circular");
-        play.set_tooltip_text(Some(&tr("Read aloud from here")));
-        super::audit::label(&play, &tr("Read aloud from here"));
-        let stop = gtk::Button::from_icon_name("media-playback-stop-symbolic");
-        stop.add_css_class("circular");
-        stop.set_tooltip_text(Some(&tr("Stop reading")));
-        super::audit::label(&stop, &tr("Stop reading"));
-        let next = gtk::Button::from_icon_name("media-skip-forward-symbolic");
-        next.add_css_class("circular");
-        next.set_tooltip_text(Some(&tr("Next sentence")));
-        super::audit::label(&next, &tr("Next sentence"));
-        row.append(&prev);
-        row.append(&play);
-        row.append(&stop);
-        row.append(&next);
-        bx.append(&row);
+        play.set_halign(gtk::Align::Center);
+        play.set_tooltip_text(Some(&tr("Read Aloud from Here")));
+        super::audit::label(&play, &tr("Read Aloud from Here"));
+        bx.append(&play);
 
         let engine = gtk::Label::new(None);
         engine.set_xalign(0.5);
         engine.set_wrap(true);
-        engine.set_max_width_chars(36);
+        engine.set_max_width_chars(32);
         engine.add_css_class("dim-label");
         engine.add_css_class("caption");
         engine.set_visible(false);
         bx.append(&engine);
+        bx.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
 
-        let speed_l = gtk::Label::new(Some(&tr("Speed")));
-        speed_l.set_xalign(0.0);
-        speed_l.add_css_class("heading");
-        bx.append(&speed_l);
-        let speed = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.5, 2.5, 0.1);
-        super::audit::label(&speed, &tr("Reading speed"));
-        speed.set_value(prefs.speed);
-        speed.set_draw_value(true);
-        speed.set_value_pos(gtk::PositionType::Right);
-        speed.add_mark(1.0, gtk::PositionType::Bottom, None);
-        bx.append(&speed);
-
-        let pitch_l = gtk::Label::new(Some(&tr("Pitch")));
-        pitch_l.set_xalign(0.0);
-        pitch_l.add_css_class("heading");
-        bx.append(&pitch_l);
-        let pitch = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.8, 1.25, 0.05);
-        super::audit::label(&pitch, &tr("Pitch"));
-        pitch.set_value(prefs.pitch);
-        pitch.set_draw_value(true);
-        pitch.set_value_pos(gtk::PositionType::Right);
-        pitch.add_mark(1.0, gtk::PositionType::Bottom, None);
-        bx.append(&pitch);
-
-        let voice_l = gtk::Label::new(Some(&tr("Voice")));
-        voice_l.set_xalign(0.0);
-        voice_l.add_css_class("heading");
-        bx.append(&voice_l);
-        let model = gtk::StringList::new(&["Default voice"]);
-        let voice = gtk::DropDown::new(Some(model.clone()), gtk::Expression::NONE);
-        super::audit::label(&voice, &tr("Voice"));
-        bx.append(&voice);
-
-        let sleep_l = gtk::Label::new(Some(&tr("Sleep timer")));
-        sleep_l.set_xalign(0.0);
-        sleep_l.add_css_class("heading");
-        bx.append(&sleep_l);
-        let sleep = gtk::DropDown::from_strings(&SLEEP.map(|e| e.0));
-        super::audit::label(&sleep, &tr("Sleep timer"));
-        bx.append(&sleep);
-
-        let save_ch = gtk::Button::with_label(&tr("Save Chapter as Audio"));
-        save_ch.add_css_class("flat");
-        bx.append(&save_ch);
-        let save_bk = gtk::Button::with_label(&tr("Save Book as Audio"));
-        save_bk.add_css_class("flat");
-        bx.append(&save_bk);
-        let settings = gtk::Button::with_label(&tr("Voice settings"));
-        settings.add_css_class("flat");
-        bx.append(&settings);
+        let row = |label: &str| {
+            let b = gtk::Button::with_label(label);
+            b.add_css_class("flat");
+            if let Some(l) = b.child().and_downcast::<gtk::Label>() {
+                l.set_xalign(0.0);
+            }
+            bx.append(&b);
+            b
+        };
+        let settings = row(&tr("Voice Settings"));
+        let save_ch = row(&tr("Save Chapter as Audio"));
+        let save_bk = row(&tr("Save Book as Audio"));
         pop.set_child(Some(&bx));
         button.set_popover(Some(&pop));
 
-        let quiet = Rc::new(std::cell::Cell::new(false));
         let names = Rc::new(RefCell::new(vec![String::new()]));
-        let on_cmd2 = on_cmd.clone();
+        let on_cmd: Rc<dyn Fn(Cmd)> = Rc::new(on_cmd);
         {
             let f = on_cmd.clone();
             play.connect_clicked(move |_| f(Cmd::PlayPause));
-            let f = on_cmd.clone();
-            stop.connect_clicked(move |_| f(Cmd::Stop));
-            let f = on_cmd.clone();
-            prev.connect_clicked(move |_| f(Cmd::Skip(-1)));
-            let f = on_cmd.clone();
-            next.connect_clicked(move |_| f(Cmd::Skip(1)));
             for (b, whole) in [(&save_ch, false), (&save_bk, true)] {
                 let (f, p2) = (on_cmd.clone(), pop.clone());
                 b.connect_clicked(move |_| {
@@ -200,70 +137,25 @@ impl TtsUi {
                 p2.popdown();
                 f(Cmd::Settings)
             });
-            let (f, q) = (on_cmd.clone(), quiet.clone());
-            pitch.connect_value_changed(move |s| {
-                if !q.get() {
-                    f(Cmd::Pitch((s.value() * 100.0).round() / 100.0));
-                }
-            });
-            let (f, q) = (on_cmd.clone(), quiet.clone());
-            sleep.connect_selected_notify(move |d| {
-                if !q.get() {
-                    f(Cmd::Sleep(sleep_of(d.selected() as usize)));
-                }
-            });
             let f = on_cmd.clone();
             pop.connect_show(move |_| f(Cmd::Opened));
-            let (f, q) = (on_cmd.clone(), quiet.clone());
-            speed.connect_value_changed(move |s| {
-                if !q.get() {
-                    f(Cmd::Speed((s.value() * 10.0).round() / 10.0));
-                }
-            });
-            let (f, q, n) = (on_cmd, quiet.clone(), names.clone());
-            voice.connect_selected_notify(move |d| {
-                if q.get() {
-                    return;
-                }
-                if let Some(name) = n.borrow().get(d.selected() as usize) {
-                    f(Cmd::Voice(name.clone()));
-                }
-            });
         }
-        let player = super::tts_player::PlayerCard::new(Rc::new(on_cmd2));
+        let player = super::tts_player::PlayerCard::new(on_cmd.clone());
         TtsUi {
             button,
             player,
             play,
-            speed,
-            pitch,
-            sleep,
             engine,
-            voice,
-            model,
             names,
-            quiet,
+            on_cmd,
         }
     }
 
     /// Shows the voices (the default first) and selects `current`.
     pub fn set_voices(&self, voices: &[Voice], current: &str) {
-        self.quiet.set(true);
-        let n = self.model.n_items();
-        self.model.splice(1, n.saturating_sub(1), &[]);
         let mut names = vec![String::new()];
-        for v in voices {
-            self.model.append(&if v.language.is_empty() {
-                v.name.clone()
-            } else {
-                format!("{} ({})", v.name, v.language)
-            });
-            names.push(v.name.clone());
-        }
-        let at = names.iter().position(|n| n == current).unwrap_or(0);
+        names.extend(voices.iter().map(|v| v.name.clone()));
         *self.names.borrow_mut() = names;
-        self.voice.set_selected(at as u32);
-        self.quiet.set(false);
         self.player.set_voices(voices, current);
     }
 
@@ -276,18 +168,8 @@ impl TtsUi {
         self.engine.set_visible(true);
     }
 
-    /// Shows `v` on the speed slider without sending a command.
-    pub fn show_speed(&self, v: f64) {
-        self.quiet.set(true);
-        self.speed.set_value(v);
-        self.quiet.set(false);
-    }
-
     /// The sleep timer ran out or was reset: show "Off".
     pub fn set_sleep_off(&self) {
-        self.quiet.set(true);
-        self.sleep.set_selected(0);
-        self.quiet.set(false);
         self.player.set_sleep_off();
     }
 
@@ -298,12 +180,12 @@ impl TtsUi {
             "media-playback-start-symbolic"
         });
         let tip = if playing {
-            "Pause reading"
+            tr("Pause Reading")
         } else {
-            "Read aloud from here"
+            tr("Read Aloud from Here")
         };
-        self.play.set_tooltip_text(Some(tip));
-        super::audit::label(&self.play, tip);
+        self.play.set_tooltip_text(Some(&tip));
+        super::audit::label(&self.play, &tip);
         self.button.set_icon_name(if playing {
             "media-playback-start-symbolic"
         } else {
@@ -316,26 +198,26 @@ impl TtsUi {
         self.names.borrow().clone()
     }
 
-    /// Test helper: picks a voice by name through the dropdown.
+    /// Test helper: picks a voice by name the way the card's voice list does.
     pub fn dev_pick_voice(&self, name: &str) {
-        if let Some(i) = self.names.borrow().iter().position(|n| n == name) {
-            self.voice.set_selected(i as u32);
+        if self.names.borrow().iter().any(|n| n == name) {
+            (self.on_cmd)(Cmd::Voice(name.to_string()));
         }
     }
 
-    /// Test helper: moves the speed slider.
+    /// Test helper: sets the speed the way the player card's buttons do.
     pub fn dev_set_speed(&self, v: f64) {
-        self.speed.set_value(v);
+        (self.on_cmd)(Cmd::Speed((v * 10.0).round() / 10.0));
     }
 
-    /// Test helper: moves the pitch slider.
+    /// Test helper: sets the pitch (it is set in Preferences → Text to Speech).
     pub fn dev_set_pitch(&self, v: f64) {
-        self.pitch.set_value(v);
+        (self.on_cmd)(Cmd::Pitch((v * 100.0).round() / 100.0));
     }
 
-    /// Test helper: picks an entry of the sleep timer.
+    /// Test helper: picks an entry of the sleep timer the way the card's menu does.
     pub fn dev_pick_sleep(&self, entry: u32) {
-        self.sleep.set_selected(entry);
+        (self.on_cmd)(Cmd::Sleep(sleep_of(entry as usize)));
     }
 
     /// Test helper: the line about the engine.

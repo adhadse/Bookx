@@ -48,7 +48,7 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     let row = adw::ComboRow::new();
     row.set_title(&tr("Interface language"));
     row.set_subtitle(&tr(
-        "Windows opened from now on use it; restart Bookx to change everything.",
+        "Open windows keep their language. Restart Bookx to change everything.",
     ));
     row.set_model(Some(&gtk::StringList::new(&names)));
     let current = ctx.shared.cfg.borrow().language.clone();
@@ -63,6 +63,7 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
         i18n::set_language(code);
         apply_direction();
         changed();
+        super::preferences::toast(&tr("Language changed"));
     });
     g.add(&row);
     g

@@ -48,6 +48,20 @@ impl RuleKind {
         }
     }
 
+    /// The short verb phrase for the combo row; [`RuleKind::label`] is the longer sentence shown beneath it.
+    pub fn short_label(self) -> &'static str {
+        match self {
+            RuleKind::ChangeValue => "Change property value",
+            RuleKind::SetProperty => "Set property",
+            RuleKind::RemoveProperty => "Remove property",
+            RuleKind::RemoveWhenValue => "Remove property by value",
+            RuleKind::ScaleFonts => "Scale font sizes",
+            RuleKind::FamilyItalic => "Italicise family",
+            RuleKind::RenameFamily => "Rename family",
+            RuleKind::ReplaceColor => "Replace colour",
+        }
+    }
+
     pub fn id(self) -> &'static str {
         match self {
             RuleKind::ChangeValue => "change",
@@ -275,5 +289,18 @@ mod tests {
             Ok(CssTransform::ChangeValue { .. })
         ));
         assert!(parse_rule("nope|1").is_err());
+    }
+
+    #[test]
+    fn the_short_labels_fit_a_combo_row_and_differ() {
+        let shorts: Vec<&str> = RuleKind::ALL.iter().map(|k| k.short_label()).collect();
+        assert!(shorts.iter().all(|s| s.chars().count() <= 26), "{shorts:?}");
+        let mut sorted = shorts.clone();
+        sorted.sort();
+        sorted.dedup();
+        assert_eq!(sorted.len(), shorts.len());
+        assert!(RuleKind::ALL
+            .iter()
+            .all(|k| k.label().len() > k.short_label().len()));
     }
 }

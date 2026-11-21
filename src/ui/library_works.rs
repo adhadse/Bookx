@@ -167,7 +167,9 @@ fn edition_row(
     done: Rc<dyn Fn()>,
 ) -> gtk::ListBoxRow {
     let row = gtk::ListBoxRow::new();
-    row.set_activatable(false);
+    // the row itself opens the edition (Enter, a click); its buttons do the other things
+    row.set_activatable(true);
+    row.set_widget_name(&format!("edition-{}", info.id));
     let line = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     line.set_margin_top(6);
     line.set_margin_bottom(6);
@@ -285,6 +287,19 @@ fn rows_list(
     list.add_css_class("boxed-list");
     list.set_selection_mode(gtk::SelectionMode::None);
     super::audit::label(&list, &tr("Editions"));
+    {
+        let (read, done) = (acts.read.clone(), done.clone());
+        list.connect_row_activated(move |_, row| {
+            if let Some(id) = row
+                .widget_name()
+                .strip_prefix("edition-")
+                .and_then(|n| n.parse::<u64>().ok())
+            {
+                done();
+                read(id);
+            }
+        });
+    }
     for id in &card.members {
         let Some(b) = lib.get(*id) else { continue };
         let info = EditionInfo::of(b, card);

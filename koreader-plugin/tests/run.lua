@@ -72,6 +72,31 @@ do
     check(future.updated <= NOW, "times are not in the future")
 end
 
+-- the look goes to the server exactly as KOReader wrote it: every colour and drawer, an unknown word
+-- verbatim (it used to be dropped to ""), nothing that could make the server refuse the request
+do
+    for _, c in ipairs({ "red", "orange", "yellow", "green", "olive", "cyan", "blue", "purple", "gray" }) do
+        for _, d in ipairs({ "lighten", "underscore", "strikeout", "invert" }) do
+            local it = item("2024-05-17 20:15:03", "t", "", "/p")
+            it.color = c; it.drawer = d
+            local a = Sync.to_wire(it, NOW)
+            eq(a.color, c, "colour " .. c); eq(a.drawer, d, "drawer " .. d)
+        end
+    end
+    local it = item("2024-05-17 20:15:03", "t", "", "/p")
+    it.color = "teal"; it.drawer = "wavy"
+    local a = Sync.to_wire(it, NOW)
+    eq(a.color, "teal", "an unknown colour is passed on"); eq(a.drawer, "wavy", "an unknown drawer is passed on")
+    it.color = string.rep("x", 100) .. "\n"; it.drawer = nil
+    a = Sync.to_wire(it, NOW)
+    check(#a.color <= 32 and not a.color:find("%c"), "a long or control-character colour cannot refuse the request")
+    eq(a.drawer, "", "no drawer says nothing")
+    local changed = item("2024-05-17 20:15:03", "t", "", "/p")
+    local other = item("2024-05-17 20:15:03", "t", "", "/p")
+    other.color = "purple"
+    check(Sync.fingerprint(Sync.to_wire(changed, NOW)) ~= Sync.fingerprint(Sync.to_wire(other, NOW)), "a colour change is a change")
+end
+
 -- PDF positions are tables: the id must not depend on a table address
 do
     local pdf = function(x) return { datetime = "2024-05-17 20:15:03", page = 5, pageno = 5, text = "pdf quote text",

@@ -2,6 +2,7 @@
 //! the bar, and run one or several in sequence (Count or Replace All).
 
 use super::search_bar::SearchAct;
+use super::tools_ui::{set_dialog_content, toast_in_dialog};
 use super::*;
 use crate::editor_search::Scope;
 use crate::editor_search_modes::Mode;
@@ -89,7 +90,7 @@ impl Editor {
         let tb = adw::ToolbarView::new();
         tb.add_top_bar(&hb);
         tb.set_content(Some(&col));
-        m.dialog.set_child(Some(&tb));
+        set_dialog_content(&m.dialog, &tb);
 
         let selected = {
             let m = m.clone();
@@ -184,14 +185,13 @@ impl Editor {
                             saved::merge_imported(&mut m3.items.borrow_mut(), list);
                             changed(&m3);
                         }
-                        Err(e) => {
-                            let a = adw::AlertDialog::new(
-                                Some(&tr("Could not import")),
-                                Some(&trf("That file is not a list of saved searches: {}", &[&e])),
-                            );
-                            a.add_response("ok", &tr("OK"));
-                            a.present(Some(&m3.dialog));
-                        }
+                        Err(e) => toast_in_dialog(
+                            &m3.dialog,
+                            &trf(
+                                "Could not import: that file is not a list of saved searches ({})",
+                                &[&e],
+                            ),
+                        ),
                     }
                 });
             });

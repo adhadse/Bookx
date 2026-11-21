@@ -345,11 +345,10 @@ pub(super) fn parse_action_target(id: &str) -> Option<(&str, &str)> {
 }
 
 /// The Tools → Plugins section: one submenu per group ("Plugins" when the action has none).
-pub(super) fn menu_section(loaded: &crate::plugins::Loaded) -> Option<gio::Menu> {
+pub(super) fn menu_items(loaded: &crate::plugins::Loaded) -> Option<gio::Menu> {
     if loaded.editor_actions.is_empty() {
         return None;
     }
-    let section = gio::Menu::new();
     let plugins = gio::Menu::new();
     for e in loaded.editor_actions.iter() {
         let it = gio::MenuItem::new(Some(&e.action.label), None);
@@ -359,8 +358,7 @@ pub(super) fn menu_section(loaded: &crate::plugins::Loaded) -> Option<gio::Menu>
         );
         plugins.append_item(&it);
     }
-    section.append_submenu(Some(&tr("Plugins")), &plugins);
-    Some(section)
+    Some(plugins)
 }
 
 #[cfg(test)]

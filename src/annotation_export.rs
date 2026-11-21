@@ -66,11 +66,12 @@ pub fn style_of(s: &str) -> HighlightStyle {
     let s = crate::pdf::parse_pdf_style(s)
         .map(|x| x.0)
         .unwrap_or_else(|| s.to_string());
-    match s.as_str() {
-        "underline" => HighlightStyle::Underline,
-        "strikethrough" => HighlightStyle::Strikeout,
-        "squiggly" => HighlightStyle::Squiggly,
-        "invert" => HighlightStyle::Invert,
+    // the device words too (`underscore`, `strikeout`): one table for every path (`devstyle`)
+    match crate::core::devstyle::style_from_any(&s) {
+        Some("underline") => HighlightStyle::Underline,
+        Some("strikethrough") => HighlightStyle::Strikeout,
+        Some("squiggly") => HighlightStyle::Squiggly,
+        Some("invert") => HighlightStyle::Invert,
         _ => HighlightStyle::Highlight,
     }
 }
@@ -179,6 +180,23 @@ fn format_ext(id: &str) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_style_words_of_every_source_export_as_the_same_style() {
+        for (word, want) in [
+            ("underline", HighlightStyle::Underline),
+            ("underscore", HighlightStyle::Underline),
+            ("strikethrough", HighlightStyle::Strikeout),
+            ("strikeout", HighlightStyle::Strikeout),
+            ("invert", HighlightStyle::Invert),
+            ("squiggly", HighlightStyle::Squiggly),
+            ("lighten", HighlightStyle::Highlight),
+            ("", HighlightStyle::Highlight),
+        ] {
+            assert_eq!(style_of(word), want, "{word}");
+        }
+    }
+
     use crate::core::library::{Bookmark, Highlight};
     use chrono::TimeZone;
 

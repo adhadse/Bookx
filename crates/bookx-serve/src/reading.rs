@@ -131,6 +131,22 @@ pub fn parse_sidecar(text: &str) -> Sidecar {
         })
     };
     let mut notes = Vec::new();
+    // KOReader before 2024 kept the look of a highlight (`drawer`, `color`) in `highlight` (page ->
+    // list of highlights) and only the text and note in `bookmarks`; the two belong together by
+    // their `datetime`
+    let mut legacy: std::collections::HashMap<&str, (Option<&str>, Option<&str>)> =
+        std::collections::HashMap::new();
+    if let Some(pages) = root.get("highlight") {
+        for page in pages.items() {
+            for h in page.items() {
+                if let Some(when) = h.str("datetime") {
+                    legacy
+                        .entry(when)
+                        .or_insert((h.str("color"), h.str("drawer")));
+                }
+            }
+        }
+    }
     // current format (`annotations`), and the one older KOReader and Bookx itself write (`bookmarks`)
     for key in ["annotations", "bookmarks"] {
         if let Some(list) = root.get(key) {
@@ -147,6 +163,7 @@ pub fn parse_sidecar(text: &str) -> Sidecar {
                     && a.get("pos1").is_none()
                     && a.str("drawer").is_none()
                     && a.get("page").is_some();
+                let old = a.str("datetime").and_then(|d| legacy.get(d)).copied();
                 notes.push(DeviceNote {
                     bookmark,
                     text: text.to_string(),
@@ -156,11 +173,12 @@ pub fn parse_sidecar(text: &str) -> Sidecar {
                     updated: a.str("datetime_updated").map(str::to_string),
                     color: a
                         .str("color")
+                        .or(old.and_then(|o| o.0))
                         .and_then(bookx_core::devstyle::koreader_color),
                     style: a
                         .str("drawer")
-                        .and_then(bookx_core::devstyle::style_from_any)
-                        .map(str::to_string),
+                        .or(old.and_then(|o| o.1))
+                        .and_then(bookx_core::devstyle::canonical_style),
                 });
             }
             break;

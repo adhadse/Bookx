@@ -45,7 +45,26 @@ struct Rows {
 }
 
 thread_local! {
+    static EINK: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     static ROWS: RefCell<Option<Rows>> = const { RefCell::new(None) };
+}
+
+/// E-ink mode forces grey pages and no animation: the two rows show on and cannot be changed (PRF-D8).
+pub fn set_eink(on: bool) {
+    EINK.with(|e| e.set(on));
+    ROWS.with(|r| {
+        if let Some(rows) = r.borrow().as_ref() {
+            apply_eink(rows, on);
+        }
+    });
+}
+
+fn apply_eink(rows: &Rows, on: bool) {
+    let s = crate::comic::load().global;
+    for (row, stored) in [(&rows.grey, s.grey), (&rows.animate, s.animate)] {
+        row.set_sensitive(!on);
+        row.set_active(on || stored);
+    }
 }
 
 /// Dev hook `prefs:comic-layout=single|spread|webtoon`, `comic-fit=page|width|height|original`,
@@ -78,14 +97,16 @@ pub fn dev(arg: &str) {
             _ => {}
         }
         eprintln!(
-            "comic_prefs: layout={} fit={} cover={} wide={} guided={} grey={} animate={}",
+            "comic_prefs: layout={} fit={} cover={} wide={} guided={} grey={} animate={} grey_sensitive={} animate_sensitive={}",
             MODES[(rows.mode.selected() as usize).min(2)].name(),
             FITS[(rows.fit.selected() as usize).min(3)].name(),
             rows.cover.is_active(),
             rows.wide.is_active(),
             rows.guided.is_active(),
             rows.grey.is_active(),
-            rows.animate.is_active()
+            rows.animate.is_active(),
+            rows.grey.is_sensitive(),
+            rows.animate.is_sensitive()
         );
     });
 }
@@ -93,7 +114,8 @@ pub fn dev(arg: &str) {
 const MODES: [Mode; 3] = [Mode::Single, Mode::Spread, Mode::Webtoon];
 const FITS: [Fit; 4] = [Fit::Page, Fit::Width, Fit::Height, Fit::Original];
 
-fn group(_ctx: &PrefCtx) -> adw::PreferencesGroup {
+fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
+    EINK.with(|e| e.set(ctx.shared.cfg.borrow().eink));
     let g = adw::PreferencesGroup::new();
     g.set_title(&tr("Comics"));
     g.set_description(Some(&tr(
@@ -113,7 +135,7 @@ fn group(_ctx: &PrefCtx) -> adw::PreferencesGroup {
     mode.set_widget_name("comic-layout");
     let fit = combo(
         &tr("Fit"),
-        &tr("How large a page is shown"),
+        &tr("Page, width, height or original size"),
         &[
             tr("Fit page"),
             tr("Fit width"),
@@ -139,7 +161,7 @@ fn group(_ctx: &PrefCtx) -> adw::PreferencesGroup {
     );
     let grey = switch(
         &tr("Grey pages"),
-        &tr("Show pages in grey (always on in e-ink mode)"),
+        &tr("Show pages in grey. Always on in e-ink mode."),
         s.grey,
     );
     let animate = switch(
@@ -164,8 +186,10 @@ fn group(_ctx: &PrefCtx) -> adw::PreferencesGroup {
             store.global.cover_alone = cover.is_active();
             store.global.wide_alone = wide.is_active();
             store.global.guided = guided.is_active();
-            store.global.grey = grey.is_active();
-            store.global.animate = animate.is_active();
+            if !EINK.with(|e| e.get()) {
+                store.global.grey = grey.is_active();
+                store.global.animate = animate.is_active();
+            }
             crate::comic::save(&store);
         })
     };
@@ -186,16 +210,16 @@ fn group(_ctx: &PrefCtx) -> adw::PreferencesGroup {
     g.add(&guided);
     g.add(&grey);
     g.add(&animate);
-    ROWS.with(|r| {
-        *r.borrow_mut() = Some(Rows {
-            mode,
-            fit,
-            cover,
-            wide,
-            guided,
-            grey,
-            animate,
-        })
-    });
+    let rows = Rows {
+        mode,
+        fit,
+        cover,
+        wide,
+        guided,
+        grey,
+        animate,
+    };
+    apply_eink(&rows, EINK.with(|e| e.get()));
+    ROWS.with(|r| *r.borrow_mut() = Some(rows));
     g
 }

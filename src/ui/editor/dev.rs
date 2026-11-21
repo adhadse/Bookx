@@ -18,6 +18,9 @@ impl Editor {
         if self.pv_dev(&c, sender) {
             return;
         }
+        if self.dev9(&c, sender) {
+            return;
+        }
         if let Some(x) = c.strip_prefix("x:") {
             self.ext_dev(x);
         } else if let Some(x) = c.strip_prefix("mo:") {
@@ -527,6 +530,38 @@ impl Editor {
         } else if c == "compare=last" {
             if let Some(id) = self.checkpoints.list().last().map(|c| c.id) {
                 self.compare_checkpoint(id);
+            }
+        } else if let Some(paths) = c.strip_prefix("delete-ask=") {
+            // `delete-ask=<path>|<path>` runs the delete command of the file list without pressing the alert:
+            // `editor_delete: confirm=yes|no alert=<heading>|<body>` (`-` when deleted at once)
+            self.ext.last_alert.borrow_mut().clear();
+            self.ask_delete_files(paths.split('|').map(String::from).collect());
+            let a = self.ext.last_alert.borrow().clone();
+            eprintln!(
+                "editor_delete: confirm={} alert={}",
+                if a.is_empty() { "no" } else { "yes" },
+                if a.is_empty() { "-" } else { &a }
+            );
+        } else if c == "toast-info" {
+            // `editor_toast: text="…" button=<label|-> checkpoints=N` for the last toast
+            eprintln!(
+                "editor_toast: text={:?} button={} checkpoints={}",
+                self.last_toast.borrow(),
+                self.last_press
+                    .borrow()
+                    .as_ref()
+                    .map_or("-".to_string(), |(l, _)| l.clone()),
+                self.checkpoints.len()
+            );
+        } else if c == "toast-action" {
+            // presses the button of the last toast: `editor_toast_action: pressed=<label|none>`
+            let press = self.last_press.borrow().clone();
+            match press {
+                Some((label, f)) => {
+                    f();
+                    eprintln!("editor_toast_action: pressed={label}");
+                }
+                None => eprintln!("editor_toast_action: pressed=none"),
             }
         } else if let Some(i) = c.strip_prefix("restore=") {
             // `restore=last` restores the newest checkpoint (the state before the last tool)

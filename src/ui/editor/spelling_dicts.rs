@@ -26,7 +26,7 @@ impl Editor {
         let installed = adw::PreferencesGroup::new();
         installed.set_title(&tr("Hunspell dictionaries"));
         installed.set_description(Some(
-            "Found on this computer and in your own folder. Import a .dic and .aff pair, or a LibreOffice extension (.oxt).",
+            &tr("Found on this computer and in your own folder. Import a .dic and .aff pair, or a LibreOffice extension (.oxt)."),
         ));
         let imp_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
         let b_pair = gtk::Button::with_label(&tr("Import .dic"));
@@ -42,7 +42,7 @@ impl Editor {
         let mine = adw::PreferencesGroup::new();
         mine.set_title(&tr("Your dictionaries"));
         mine.set_description(Some(
-            "Words you added. Choose which ones are used; the Personal dictionary cannot be deleted.",
+            &tr("Words you added. Choose which ones are used; the Personal dictionary cannot be deleted."),
         ));
         let mine_list = gtk::ListBox::new();
         mine_list.add_css_class("boxed-list");

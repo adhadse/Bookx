@@ -62,10 +62,10 @@ pub fn show(
     go: Option<Rc<dyn Fn()>>,
     notify: Notify,
 ) {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("Check Before Sending"));
     dialog.set_content_width(640);
-    dialog.set_content_height(640);
+    dialog.set_content_height(560);
     let page = adw::PreferencesPage::new();
     let group = adw::PreferencesGroup::new();
     let summary = gtk::Label::new(Some(&tr("Checking…")));
@@ -98,7 +98,7 @@ pub fn show(
     let fix_btn = gtk::Button::with_label(&tr("Fix All"));
     fix_btn.set_sensitive(false);
     fix_btn.set_tooltip_text(Some(
-        "Repair what can be repaired automatically. The original of each book is kept in the library's .bookx folder.",
+        &tr("Repair what can be repaired automatically. The original of each book is kept in the library's .bookx folder."),
     ));
     let go_btn = gtk::Button::with_label(&tr("Continue"));
     go_btn.add_css_class("suggested-action");

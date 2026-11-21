@@ -39,6 +39,7 @@ mod cover_dialog;
 mod css_transform_ui;
 mod ctrl_hover;
 mod dev;
+mod dev9;
 mod ext_dev;
 mod files;
 mod files_extra;
@@ -104,9 +105,13 @@ pub enum Input {
     SaveAndClose,
     ForceClose,
     CloseRequested,
+    /// The Undo button of a toast: back to this checkpoint, which is then removed.
+    UndoSnapshot(u64),
     Undo,
     Redo,
     ToggleFind,
+    /// Open the find bar with the replace row (Ctrl+H).
+    ToggleReplace,
     FindNext(bool),
     Replace(bool),
     ReplaceAll,
@@ -139,6 +144,8 @@ pub enum Input {
     TocGo(usize),
     TocTitle(usize, String),
     Toc(TocOp),
+    /// The Undo button of the "deleted from the contents" toast.
+    TocUndo,
     EditMetadata,
     ApplyMetadata(crate::core::opf::Metadata, CoverChange),
     ResultActivated(usize),
@@ -175,6 +182,8 @@ pub enum Input {
     /// Code-editing helpers: format, insert, jump, rename class (`format_actions.rs`).
     Code(format_actions::CodeMsg),
     DeleteFiles(Vec<String>),
+    /// Delete after asking when the rules of `editor_tools::delete_needs_confirmation` say so.
+    AskDeleteFiles(Vec<String>),
     MergeFiles(Vec<String>),
     BulkRename(String, u32),
     NewFile(String, String, bool),
@@ -235,6 +244,7 @@ struct W {
     results_title: gtk::Label,
     problems: check_panel::Widgets,
     find_rev: gtk::Revealer,
+    replace_rev: gtk::Revealer,
     find_entry: gtk::SearchEntry,
     replace_entry: gtk::Entry,
     sx: search_bar::Extras,
@@ -250,6 +260,10 @@ struct W {
     redo_btn: gtk::Button,
     save_btn: gtk::Button,
     toasts: adw::ToastOverlay,
+    banner: adw::Banner,
+    split: adw::OverlaySplitView,
+    sidebar_btn: gtk::ToggleButton,
+    paned: gtk::Paned,
     restore_menu: gio::Menu,
     compare_menu: gio::Menu,
     /// The menus the command palette lists: (name, model).
@@ -285,6 +299,8 @@ pub struct Editor {
     modified: HashSet<String>,
     current: Option<String>,
     toc: Vec<FlatToc>,
+    /// The contents before the last Delete entry (for its Undo toast) and the selected row.
+    toc_undo: RefCell<Option<(Vec<FlatToc>, Option<usize>)>>,
     toc_dirty: bool,
     structure_dirty: bool,
     results: Vec<ResultRow>,
@@ -298,10 +314,17 @@ pub struct Editor {
     /// Snapshots of the book taken before each tool and on request.
     checkpoints: Checkpoints,
     last_toast: RefCell<String>,
+    /// Label and action of the button of the last toast (`None`: it had no button); the dev hook presses it.
+    last_press: RefCell<Option<(String, Rc<dyn Fn()>)>>,
     tabs_guard: Rc<Cell<bool>>,
     pv: preview::PvState,
     ext: window_features::State,
     hints: Rc<markup_hints::Hints>,
+}
+
+/// Ctrl+H: with nothing to find yet the caret goes to Find, otherwise to the replacement.
+fn replace_focus_on_find(find_text: &str) -> bool {
+    find_text.is_empty()
 }
 
 fn is_text_path(path: &str) -> bool {
@@ -381,14 +404,24 @@ impl Editor {
 
     fn update_title(&self) {
         let t = self.book_title();
+        let dirty = self.is_dirty();
         self.w
             .title
-            .set_title(&format!("{}{}", if self.is_dirty() { "● " } else { "" }, t));
+            .set_title(&crate::editor_state::header_title(&t, dirty));
         self.w
             .title
-            .set_subtitle(self.current.as_deref().unwrap_or("Edit book"));
-        self.w.save_btn.set_sensitive(self.is_dirty());
+            .set_subtitle(&self.current.clone().unwrap_or_else(|| tr("Edit Book")));
+        self.w.save_btn.set_sensitive(dirty);
         self.w.win.set_title(Some(&trf("Edit Book — {}", &[&t])));
+        let desc = if dirty {
+            tr("Unsaved changes")
+        } else {
+            String::new()
+        };
+        self.w
+            .win
+            .upcast_ref::<gtk::Widget>()
+            .update_property(&[gtk::accessible::Property::Description(&desc)]);
     }
 
     fn buffer_for(&mut self, path: &str) -> sv::Buffer {
@@ -564,6 +597,7 @@ impl Editor {
         self.refresh_find_status();
         self.schedule_live();
         self.update_cursor_status();
+        self.describe_view();
         self.refresh_preview_now();
     }
 
@@ -592,9 +626,82 @@ impl Editor {
         self.w.redo_btn.set_sensitive(buf.can_redo());
     }
 
+    /// The accessible description of the code view (set on status refreshes, not while typing).
+    fn describe_view(&self) {
+        let marks = self.gutter_marks.borrow();
+        let text = crate::editor_marks::view_description(
+            &self.current.clone().unwrap_or_default(),
+            marks.finding_count(),
+            marks.changed_count(),
+        );
+        self.w
+            .view
+            .upcast_ref::<gtk::Widget>()
+            .update_property(&[gtk::accessible::Property::Description(&text)]);
+    }
+
+    /// A failed save stays on screen with a button that tries again (a toast would disappear while the book
+    /// stays unsaved).
+    fn save_failed(&self, why: &str) {
+        let b = &self.w.banner;
+        b.set_title(&trf("Could not save the book: {}", &[&why]));
+        b.set_button_label(Some(&tr("Try Again")));
+        b.set_revealed(true);
+    }
+
+    /// For a book of another format: a banner that says Save asks where to write; otherwise the banner is hidden.
+    pub(super) fn show_foreign_banner(&self) {
+        let b = &self.w.banner;
+        let name = self
+            .ext
+            .structure
+            .origin
+            .borrow()
+            .as_ref()
+            .and_then(|o| o.path.file_name().map(|n| n.to_string_lossy().to_string()));
+        match name {
+            Some(n) => {
+                b.set_title(&trf(
+                    "Editing a copy of {}. Save asks where to write",
+                    &[&n],
+                ));
+                b.set_button_label(None);
+                b.set_revealed(true);
+            }
+            None => b.set_revealed(false),
+        }
+    }
+
     fn toast(&self, t: &str) {
         *self.last_toast.borrow_mut() = t.to_string();
-        self.w.toasts.add_toast(adw::Toast::new(t));
+        *self.last_press.borrow_mut() = None;
+        let toast = adw::Toast::new(t);
+        toast.set_use_markup(false);
+        self.w.toasts.add_toast(toast);
+    }
+
+    /// A toast with one button (about 10 s) that sends the input `make` builds.
+    fn toast_button(&self, t: &str, label: &str, make: impl Fn() -> Input + 'static) -> adw::Toast {
+        *self.last_toast.borrow_mut() = t.to_string();
+        let tx = self.sender.input_sender().clone();
+        let make = Rc::new(make);
+        let press: Rc<dyn Fn()> = Rc::new(move || {
+            let _ = tx.send(make());
+        });
+        *self.last_press.borrow_mut() = Some((label.to_string(), press.clone()));
+        let toast = adw::Toast::new(t);
+        toast.set_use_markup(false);
+        toast.set_timeout(10);
+        toast.set_button_label(Some(label));
+        toast.connect_button_clicked(move |_| press());
+        self.w.toasts.add_toast(toast.clone());
+        toast
+    }
+
+    /// A toast with an Undo button that returns the book to the checkpoint `snapshot` (the state before the
+    /// operation) and drops that checkpoint again.
+    fn toast_undo(&self, t: &str, snapshot: u64) {
+        let _ = self.toast_button(t, &tr("Undo"), move || Input::UndoSnapshot(snapshot));
     }
 
     /// After a tool changed the archive: the package is read again, every open buffer is rebuilt
@@ -676,11 +783,12 @@ impl Editor {
                 let _ = self.book.borrow_mut().reload_package();
                 self.update_title();
                 self.toast(&tr("Book saved"));
+                self.show_foreign_banner();
                 let _ = self.sender.output(Output::Saved);
                 true
             }
             Err(e) => {
-                self.toast(&trf("Could not save: {}", &[&e]));
+                self.save_failed(&e.to_string());
                 false
             }
         }
@@ -907,6 +1015,7 @@ impl SimpleComponent for Editor {
         replace_entry.set_hexpand(true);
         let case_btn = gtk::ToggleButton::with_label(&tr("Aa"));
         case_btn.set_tooltip_text(Some(&tr("Match case")));
+        crate::ui::audit::label(&case_btn, &tr("Match case"));
         let dotall_btn = gtk::ToggleButton::with_label(&tr(".\u{23ce}"));
         dotall_btn.set_tooltip_text(Some(&tr("Dot also matches line breaks")));
         crate::ui::audit::label(&dotall_btn, &tr("Dot matches line breaks"));
@@ -924,6 +1033,34 @@ impl SimpleComponent for Editor {
         find_status.add_css_class("caption");
         let find_close = icon_button("window-close-symbolic", &tr("Close"));
         find_close.add_css_class("flat");
+        let options_btn = gtk::MenuButton::new();
+        options_btn.set_icon_name("emblem-system-symbolic");
+        options_btn.set_tooltip_text(Some(&tr("Search options: mode, case, whole words, scope")));
+        crate::ui::audit::label(&options_btn, &tr("Search Options"));
+        options_btn.add_css_class("flat");
+        {
+            let opts = adw::WrapBox::new();
+            opts.set_child_spacing(6);
+            opts.set_line_spacing(6);
+            opts.set_natural_line_length(520);
+            for w in [
+                sx.mode.upcast_ref::<gtk::Widget>(),
+                case_btn.upcast_ref(),
+                sx.word_btn.upcast_ref(),
+                dotall_btn.upcast_ref(),
+                sx.markup_btn.upcast_ref(),
+                scope.upcast_ref(),
+                sx.fn_dd.upcast_ref(),
+                sx.special.upcast_ref(),
+                sx.more.upcast_ref(),
+            ] {
+                opts.append(w);
+            }
+            opts.set_margin_all(10);
+            let pop = gtk::Popover::new();
+            pop.set_child(Some(&opts));
+            options_btn.set_popover(Some(&pop));
+        }
         let row1 = gtk::Box::new(gtk::Orientation::Horizontal, 6);
         for w in [
             find_entry.upcast_ref::<gtk::Widget>(),
@@ -932,22 +1069,10 @@ impl SimpleComponent for Editor {
             next.upcast_ref(),
             find_all.upcast_ref(),
             sx.count_btn.upcast_ref(),
+            find_status.upcast_ref(),
+            options_btn.upcast_ref(),
         ] {
             row1.append(w);
-        }
-        let row_opts = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-        for w in [
-            sx.mode.upcast_ref::<gtk::Widget>(),
-            case_btn.upcast_ref(),
-            sx.word_btn.upcast_ref(),
-            dotall_btn.upcast_ref(),
-            sx.markup_btn.upcast_ref(),
-            scope.upcast_ref(),
-            sx.fn_dd.upcast_ref(),
-            sx.special.upcast_ref(),
-            sx.more.upcast_ref(),
-        ] {
-            row_opts.append(w);
         }
         let row2 = gtk::Box::new(gtk::Orientation::Horizontal, 6);
         for w in [
@@ -955,17 +1080,21 @@ impl SimpleComponent for Editor {
             sx.repl_hist.upcast_ref(),
             repl.upcast_ref(),
             repl_all.upcast_ref(),
-            find_status.upcast_ref(),
         ] {
             row2.append(w);
         }
-        let find_col = gtk::Box::new(gtk::Orientation::Vertical, 6);
+        let replace_rev = gtk::Revealer::new();
+        replace_rev.set_child(Some(&row2));
+        replace_rev.set_margin_top(6);
+        let find_col = gtk::Box::new(gtk::Orientation::Vertical, 0);
         find_col.append(&row1);
-        find_col.append(&row_opts);
-        find_col.append(&row2);
+        find_col.append(&replace_rev);
         find_col.set_hexpand(true);
         let find_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-        find_box.set_margin_all(8);
+        find_box.set_margin_top(4);
+        find_box.set_margin_bottom(4);
+        find_box.set_margin_start(8);
+        find_box.set_margin_end(8);
         find_box.append(&find_col);
         find_box.append(&find_close);
         find_box.set_valign(gtk::Align::Start);
@@ -1037,7 +1166,6 @@ impl SimpleComponent for Editor {
 
         let status = gtk::Label::new(None);
         status.add_css_class("editor-status");
-        status.add_css_class("dim-label");
         status.set_xalign(0.0);
 
         // ---- sidebar ---------------------------------------------------------------
@@ -1103,17 +1231,11 @@ impl SimpleComponent for Editor {
             b
         };
         let add_b = mk("list-add-symbolic", &tr("Add files"));
-        let ren_b = mk("document-edit-symbolic", &tr("Rename file"));
-        let del_b = mk("user-trash-symbolic", &tr("Delete file"));
         let up_b = mk("go-up-symbolic", &tr("Move up in reading order"));
         let down_b = mk("go-down-symbolic", &tr("Move down in reading order"));
         {
             let tx = sender.input_sender().clone();
             add_b.connect_clicked(move |_| tx.emit(Input::AddFiles));
-            let tx = sender.input_sender().clone();
-            ren_b.connect_clicked(move |_| tx.emit(Input::RenameFile));
-            let tx = sender.input_sender().clone();
-            del_b.connect_clicked(move |_| tx.emit(Input::DeleteFile));
             let tx = sender.input_sender().clone();
             up_b.connect_clicked(move |_| tx.emit(Input::MoveFile(true)));
             let tx = sender.input_sender().clone();
@@ -1139,7 +1261,7 @@ impl SimpleComponent for Editor {
         let files_more = gtk::MenuButton::new();
         files_more.set_icon_name("view-more-symbolic");
         files_more.set_tooltip_text(Some(&tr(
-            "More file actions: merge, bulk rename, link stylesheets, export",
+            "More file actions: rename, delete, merge, bulk rename, link stylesheets, export",
         )));
         files_more.set_menu_model(Some(&files_menu));
         files_more.add_css_class("flat");
@@ -1169,7 +1291,7 @@ impl SimpleComponent for Editor {
             });
             files.add_controller(click);
         }
-        for b in [&add_b, &ren_b, &del_b, &up_b, &down_b] {
+        for b in [&add_b, &up_b, &down_b] {
             files_bar.append(b);
         }
         files_bar.append(&files_more);
@@ -1188,34 +1310,64 @@ impl SimpleComponent for Editor {
         for (icon, tip, op) in [
             (
                 "list-add-symbolic",
-                "Add entry for the current file",
+                crate::i18n::N_("Add entry for the current file"),
                 TocOp::Add,
             ),
-            ("user-trash-symbolic", "Delete entry", TocOp::Delete),
-            ("go-up-symbolic", "Move up", TocOp::Up),
-            ("go-down-symbolic", "Move down", TocOp::Down),
             (
-                "format-indent-more-symbolic",
-                "Indent (make a sub-entry)",
-                TocOp::Indent,
+                "user-trash-symbolic",
+                crate::i18n::N_("Delete entry"),
+                TocOp::Delete,
             ),
-            ("format-indent-less-symbolic", "Outdent", TocOp::Outdent),
             (
                 "insert-link-symbolic",
-                "Point entry at the current file",
+                crate::i18n::N_("Point entry at the current file"),
                 TocOp::LinkCurrent,
             ),
         ] {
-            let b = icon_button(icon, tip);
+            let b = icon_button(icon, &tr(tip));
             b.add_css_class("flat");
             let tx = sender.input_sender().clone();
             b.connect_clicked(move |_| tx.emit(Input::Toc(op)));
             toc_bar.append(&b);
         }
+        {
+            // Up, Down, Indent and Outdent share one menu (Alt+arrows and drag and drop stay)
+            let move_menu = gio::Menu::new();
+            for (label, id) in [
+                (tr("Move Up"), "up"),
+                (tr("Move Down"), "down"),
+                (tr("Indent (Make a Sub-Entry)"), "indent"),
+                (tr("Outdent"), "outdent"),
+            ] {
+                move_menu.append_item(&tools_ui::menu_item(&label, "toc.move", id));
+            }
+            let group = gio::SimpleActionGroup::new();
+            let act = gio::SimpleAction::new("move", Some(glib::VariantTy::STRING));
+            let tx = sender.input_sender().clone();
+            act.connect_activate(move |_, p| {
+                let op = match p.and_then(|v| v.str()) {
+                    Some("up") => TocOp::Up,
+                    Some("down") => TocOp::Down,
+                    Some("indent") => TocOp::Indent,
+                    Some("outdent") => TocOp::Outdent,
+                    _ => return,
+                };
+                tx.emit(Input::Toc(op));
+            });
+            group.add_action(&act);
+            toc_bar.insert_action_group("toc", Some(&group));
+            let mb = gtk::MenuButton::new();
+            mb.set_icon_name("view-more-symbolic");
+            mb.set_tooltip_text(Some(&tr("Move the entry: up, down, in, out")));
+            crate::ui::audit::label(&mb, &tr("Move entry"));
+            mb.add_css_class("flat");
+            mb.set_menu_model(Some(&move_menu));
+            toc_bar.append(&mb);
+        }
         let gen = gtk::Button::with_label(&tr("Generate"));
-        gen.set_tooltip_text(Some(
+        gen.set_tooltip_text(Some(&tr(
             "Build the table of contents: from headings, links or files",
-        ));
+        )));
         gen.add_css_class("flat");
         {
             let tx = sender.input_sender().clone();
@@ -1248,14 +1400,19 @@ impl SimpleComponent for Editor {
             &tr("Metadata"),
             "document-properties-symbolic",
         );
-        let switcher = adw::ViewSwitcherBar::new();
-        switcher.set_stack(Some(&sidebar_stack));
-        switcher.set_reveal(true);
+        // the sidebar is 250-340 px wide: icons only, the titles are the tooltips and accessible names
+        let switcher_inner = adw::ViewSwitcher::new();
+        switcher_inner.set_stack(Some(&sidebar_stack));
+        switcher_inner.set_policy(adw::ViewSwitcherPolicy::Narrow);
+        switcher_inner.set_hexpand(true);
+        let switcher = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        switcher.add_css_class("toolbar");
+        switcher.append(&switcher_inner);
 
         let side_header = adw::HeaderBar::new();
         side_header.set_show_end_title_buttons(false);
         side_header.set_show_start_title_buttons(false);
-        side_header.set_title_widget(Some(&adw::WindowTitle::new(&tr("Book"), "")));
+        side_header.set_title_widget(Some(&gtk::Box::new(gtk::Orientation::Horizontal, 0)));
         let side_tb = adw::ToolbarView::new();
         side_tb.add_top_bar(&side_header);
         side_tb.set_content(Some(&sidebar_stack));
@@ -1272,65 +1429,30 @@ impl SimpleComponent for Editor {
         let redo_btn = icon_button("edit-redo-symbolic", &tr("Redo (Ctrl+Shift+Z)"));
         let find_btn = gtk::ToggleButton::new();
         find_btn.set_icon_name("edit-find-replace-symbolic");
-        find_btn.set_tooltip_text(Some(&tr("Find & replace (Ctrl+H)")));
-        let check_btn = icon_button("emblem-important-symbolic", &tr("Check book (F7)"));
-        let beautify_btn = icon_button(
-            "format-justify-left-symbolic",
-            &tr("Reformat the XML (pretty-print)"),
-        );
+        find_btn.set_tooltip_text(Some(&tr("Find (Ctrl+F), Replace (Ctrl+H)")));
         let preview_btn = gtk::ToggleButton::new();
-        preview_btn.set_icon_name("view-dual-symbolic");
-        preview_btn.set_tooltip_text(Some(&tr("Show preview")));
+        preview_btn.set_icon_name("sidebar-show-right-symbolic");
+        preview_btn.set_tooltip_text(Some(&tr("Hide Preview")));
+        crate::ui::audit::label(&preview_btn, &tr("Preview"));
         preview_btn.set_active(true);
+        {
+            preview_btn.connect_active_notify(|b| {
+                b.set_tooltip_text(Some(&if b.is_active() {
+                    tr("Hide Preview")
+                } else {
+                    tr("Show Preview")
+                }));
+            });
+        }
         header.pack_start(&save_btn);
         header.pack_start(&undo_btn);
         header.pack_start(&redo_btn);
         // ---- tools menu: one-click operations of `bookx-editing`, each snapshotted first ----
         let restore_menu = gio::Menu::new();
         let compare_menu = gio::Menu::new();
-        let tools_menu = gio::Menu::new();
+        let loaded = crate::plugins::current();
+        let plugin_menu = gio::Menu::new();
         {
-            let simple = |label: &str, tool: Tool| {
-                let it = gio::MenuItem::new(Some(label), None);
-                it.set_action_and_target_value(Some("tools.run"), Some(&tool.id().to_variant()));
-                it
-            };
-            let fixes = gio::Menu::new();
-            for t in [Tool::FixProblems, Tool::UpgradeToEpub3] {
-                fixes.append_item(&simple(&tr(t.label()), t));
-            }
-            tools_menu.append_section(None, &fixes);
-            let content = gio::Menu::new();
-            for t in [
-                Tool::AddInlineToc,
-                Tool::RemoveInlineToc,
-                Tool::MakeAccessible,
-            ] {
-                content.append_item(&simple(&tr(t.label()), t));
-            }
-            tools_menu.append_section(None, &content);
-            let size = gio::Menu::new();
-            for t in [Tool::CompressImages, Tool::SubsetFonts, Tool::ArrangeFiles] {
-                size.append_item(&simple(&tr(t.label()), t));
-            }
-            tools_menu.append_section(None, &size);
-            let info = gio::Menu::new();
-            let structure = gio::Menu::new();
-            structure.append(
-                Some(&tr("Split File at Chapter Headings")),
-                Some("tools.split"),
-            );
-            structure.append(Some(&tr("Merge with Next File")), Some("tools.merge"));
-            tools_menu.append_section(None, &structure);
-            info.append(Some(&tr("Next Problem")), Some("tools.next-problem"));
-            info.append(
-                Some(&tr("Previous Problem")),
-                Some("tools.previous-problem"),
-            );
-            info.append(Some(&tr("Check Spelling")), Some("tools.spelling"));
-            info.append(Some(&tr("Reports")), Some("tools.report"));
-            tools_menu.append_section(None, &info);
-            let loaded = crate::plugins::current();
             let plugin_tools = gio::Menu::new();
             for t in loaded.transforms.iter() {
                 let name = loaded
@@ -1338,7 +1460,7 @@ impl SimpleComponent for Editor {
                     .get(t.id())
                     .cloned()
                     .unwrap_or_else(|| t.id().to_string());
-                let it = gio::MenuItem::new(Some(&trf("{} (plugin)", &[&name])), None);
+                let it = gio::MenuItem::new(Some(&name), None);
                 it.set_action_and_target_value(
                     Some("tools.run"),
                     Some(&format!("plugin:{}", t.id()).to_variant()),
@@ -1346,23 +1468,23 @@ impl SimpleComponent for Editor {
                 plugin_tools.append_item(&it);
             }
             if plugin_tools.n_items() > 0 {
-                tools_menu.append_section(None, &plugin_tools);
+                plugin_menu.append_section(None, &plugin_tools);
             }
-            tools_menu.append_section(None, &narration::menu_section());
-            if let Some(section) = plugin_host::menu_section(&loaded) {
-                tools_menu.append_section(None, &section);
+            if let Some(section) = plugin_host::menu_items(&loaded) {
+                plugin_menu.append_section(None, &section);
             }
-            let cp = gio::Menu::new();
-            cp.append(Some(&tr("Create Checkpoint")), Some("tools.checkpoint"));
-            cp.append_submenu(Some(&tr("Restore Checkpoint")), &restore_menu);
-            cp.append_submenu(Some(&tr("Compare with Checkpoint")), &compare_menu);
-            tools_menu.append_section(None, &cp);
         }
+        let (tools_menu, cp_menu) = tools_ui::build_tools_menu(
+            &restore_menu,
+            &compare_menu,
+            (plugin_menu.n_items() > 0).then_some(&plugin_menu),
+        );
         let tools_btn = gtk::MenuButton::new();
         tools_btn.set_icon_name("applications-engineering-symbolic");
         tools_btn.set_tooltip_text(Some(&tr(
-            "Tools: fix, upgrade, compress, report, checkpoints",
+            "Tools: check, fix, upgrade, compress, report, checkpoints",
         )));
+        crate::ui::audit::label(&tools_btn, &tr("Tools"));
         tools_btn.set_menu_model(Some(&tools_menu));
         let markup_built = markup_menu::build();
         let edit_menu = markup_built.root.clone();
@@ -1372,11 +1494,12 @@ impl SimpleComponent for Editor {
             "Markup: matching tags, wrap, rename, headings, case",
         )));
         edit_btn.set_menu_model(Some(&edit_menu));
-        header.pack_end(&preview_btn);
+        crate::ui::audit::label(&edit_btn, &tr("Markup"));
+        let book_btn = window_features::book_button();
+        header.pack_end(&book_btn);
         header.pack_end(&edit_btn);
         header.pack_end(&tools_btn);
-        header.pack_end(&beautify_btn);
-        header.pack_end(&check_btn);
+        header.pack_end(&preview_btn);
         header.pack_end(&find_btn);
         {
             let tx = sender.input_sender().clone();
@@ -1387,10 +1510,6 @@ impl SimpleComponent for Editor {
             redo_btn.connect_clicked(move |_| tx.emit(Input::Redo));
             let tx = sender.input_sender().clone();
             find_btn.connect_clicked(move |_| tx.emit(Input::ToggleFind));
-            let tx = sender.input_sender().clone();
-            check_btn.connect_clicked(move |_| tx.emit(Input::Check));
-            let tx = sender.input_sender().clone();
-            beautify_btn.connect_clicked(move |_| tx.emit(Input::Reformat));
             let tx = sender.input_sender().clone();
             preview_btn.connect_toggled(move |_| tx.emit(Input::TogglePreview));
         }
@@ -1452,9 +1571,57 @@ impl SimpleComponent for Editor {
         split.set_max_sidebar_width(340.0);
         split.set_sidebar_width_fraction(0.2);
 
+        let sidebar_btn = gtk::ToggleButton::new();
+        sidebar_btn.set_icon_name("sidebar-show-symbolic");
+        sidebar_btn.set_tooltip_text(Some(&tr("Show Sidebar")));
+        crate::ui::audit::label(&sidebar_btn, &tr("Sidebar"));
+        sidebar_btn.set_visible(false);
+        split
+            .bind_property("show-sidebar", &sidebar_btn, "active")
+            .bidirectional()
+            .sync_create()
+            .build();
+        split
+            .bind_property("collapsed", &sidebar_btn, "visible")
+            .sync_create()
+            .build();
+        header.pack_start(&sidebar_btn);
+        win.set_width_request(360);
+        win.set_height_request(294);
+        {
+            // 900x600 and narrower: the file sidebar slides over the code, the minimap goes, and below 700sp the
+            // preview sits under the code instead of beside it
+            let wide = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
+                adw::BreakpointConditionLengthType::MaxWidth,
+                1000.0,
+                adw::LengthUnit::Sp,
+            ));
+            wide.add_setter(&split, "collapsed", Some(&true.to_value()));
+            wide.add_setter(&split, "show-sidebar", Some(&false.to_value()));
+            wide.add_setter(&map, "visible", Some(&false.to_value()));
+            wide.add_setter(&preview_pane, "width-request", Some(&280i32.to_value()));
+            win.add_breakpoint(wide);
+            let narrow = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
+                adw::BreakpointConditionLengthType::MaxWidth,
+                700.0,
+                adw::LengthUnit::Sp,
+            ));
+            narrow.add_setter(
+                &paned,
+                "orientation",
+                Some(&gtk::Orientation::Vertical.to_value()),
+            );
+            win.add_breakpoint(narrow);
+        }
         let toolbar = adw::ToolbarView::new();
         toolbar.add_top_bar(&header);
         toolbar.set_content(Some(&split));
+        let banner = adw::Banner::new("");
+        {
+            let tx = sender.input_sender().clone();
+            banner.connect_button_clicked(move |_| tx.emit(Input::Save));
+        }
+        toolbar.add_top_bar(&banner);
         let toasts = adw::ToastOverlay::new();
         toasts.set_child(Some(&toolbar));
         {
@@ -1472,6 +1639,15 @@ impl SimpleComponent for Editor {
                 }
             });
             tools.add_action(&run);
+            for (name, make) in [
+                ("check", (|| Input::Check) as fn() -> Input),
+                ("reformat", || Input::Reformat),
+            ] {
+                let act = gio::SimpleAction::new(name, None);
+                let tx = sender.input_sender().clone();
+                act.connect_activate(move |_, _| tx.emit(make()));
+                tools.add_action(&act);
+            }
             let report = gio::SimpleAction::new("report", None);
             let tx = sender.input_sender().clone();
             report.connect_activate(move |_, _| tx.emit(Input::ShowReport));
@@ -1628,7 +1804,7 @@ impl SimpleComponent for Editor {
             preview: &preview,
             preview_head: &preview_head,
             win: &win,
-            tools_menu: &tools_menu,
+            cp_menu: &cp_menu,
             edit_menu: &markup_built.structure,
             sidebar_stack: &sidebar_stack,
             center: &center,
@@ -1659,6 +1835,7 @@ impl SimpleComponent for Editor {
             results_title,
             problems: problems_w,
             find_rev,
+            replace_rev,
             find_entry,
             replace_entry,
             sx,
@@ -1674,6 +1851,10 @@ impl SimpleComponent for Editor {
             redo_btn,
             save_btn,
             toasts,
+            banner,
+            split: split.clone(),
+            sidebar_btn: sidebar_btn.clone(),
+            paned: paned.clone(),
             restore_menu,
             compare_menu,
             menus: vec![
@@ -1744,6 +1925,8 @@ impl SimpleComponent for Editor {
             toc_selected: None,
             checkpoints: Checkpoints::new(25),
             last_toast: RefCell::new(String::new()),
+            last_press: RefCell::new(None),
+            toc_undo: RefCell::new(None),
             tabs_guard,
             pv,
             ext: ext_state,
@@ -1886,6 +2069,9 @@ impl SimpleComponent for Editor {
                 }
                 let show = !self.w.find_rev.reveals_child();
                 self.w.find_rev.set_reveal_child(show);
+                if !show {
+                    self.w.replace_rev.set_reveal_child(false);
+                }
                 if show {
                     // prefill with the selection
                     let b = self.w.view.buffer();
@@ -1898,6 +2084,15 @@ impl SimpleComponent for Editor {
                     self.w.find_entry.grab_focus();
                 } else {
                     self.w.view.grab_focus();
+                }
+            }
+            Input::ToggleReplace => {
+                self.w.find_rev.set_reveal_child(true);
+                self.w.replace_rev.set_reveal_child(true);
+                if replace_focus_on_find(&self.w.find_entry.text()) {
+                    self.w.find_entry.grab_focus();
+                } else {
+                    self.w.replace_entry.grab_focus();
                 }
             }
             Input::FindNext(f) => self.find_next(f),
@@ -1958,6 +2153,7 @@ impl SimpleComponent for Editor {
                 self.toast(&tr("Checkpoint created"));
             }
             Input::RestoreCheckpoint(id) => self.restore_checkpoint(id),
+            Input::UndoSnapshot(id) => self.undo_snapshot(id),
             Input::CompareCheckpoint(id) => self.compare_checkpoint(id),
             Input::Reformat => {
                 if let Some(p) = self.current.clone() {
@@ -2028,25 +2224,9 @@ impl SimpleComponent for Editor {
             Input::AddPaths(p) => self.add_paths(p),
             Input::DeleteFile => {
                 let paths = self.selected_paths();
-                if !paths.is_empty() {
-                    let tx = sender.input_sender().clone();
-                    let what = if paths.len() == 1 {
-                        format!("“{}”", file_name(&paths[0]))
-                    } else {
-                        format!("{} files", paths.len())
-                    };
-                    alert(
-                        &self.w.win,
-                        "Delete Files?",
-                        &format!(
-                            "{what} will be removed from the book. Links to them are not updated; a checkpoint is taken first."
-                        ),
-                        "Delete",
-                        true,
-                        move || tx.emit(Input::DeleteFiles(paths.clone())),
-                    );
-                }
+                self.ask_delete_files(paths);
             }
+            Input::AskDeleteFiles(paths) => self.ask_delete_files(paths),
             Input::DeleteFiles(p) => self.delete_files(p),
             Input::MergeFiles(p) => self.merge_files(p),
             Input::BulkRename(prefix, start) => self.bulk_rename(&prefix, start),
@@ -2129,6 +2309,7 @@ impl SimpleComponent for Editor {
                 }
             }
             Input::Toc(op) => self.toc_op(op),
+            Input::TocUndo => self.toc_undo_delete(),
             Input::EditMetadata => {
                 self.flush();
                 let (md, cover) = {
@@ -2177,5 +2358,16 @@ impl SimpleComponent for Editor {
             }
             Input::Dev(c) => self.dev(c, &sender),
         }
+    }
+}
+
+#[cfg(test)]
+mod replace_focus_tests {
+    use super::replace_focus_on_find;
+
+    #[test]
+    fn ctrl_h_starts_in_find_until_there_is_something_to_find() {
+        assert!(replace_focus_on_find(""));
+        assert!(!replace_focus_on_find("zz"));
     }
 }

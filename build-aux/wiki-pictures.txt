@@ -7,7 +7,7 @@ ai-assistants.md: preferences-mcp
 annotations.md: library-export-annotations library-import-highlights
 backup-and-restore.md: library-health-backups library-health-trash
 contributing.md: library-details
-devices-and-sharing.md: library-device device-window library-device-banner device-window-detail library-share preferences-email
+devices-and-sharing.md: library-device device-window device-window-settings library-device-banner device-window-detail library-share preferences-email
 editing.md: editor editor-palette editor-find editor-preview editor-split-menu editor-code editor-completion editor-swatches editor-spelling editor-tools-menu editor-markup-menu editor-book-menu editor-problems editor-contents-tab editor-metadata-tab editor-set-cover editor-manage-fonts editor-transform-html editor-jacket editor-a11y-form editor-insert-link editor-snippets editor-preferences editor-rename-tag editor-bulk-rename editor-special-chars editor-checkpoints
 getting-started.md: library-welcome library-add-menu
 index.md: library-banner-hero library-details reader editor-preview read-aloud-reading library-notes device-window

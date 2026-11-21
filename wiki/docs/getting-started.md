@@ -25,7 +25,7 @@ the command palette (++ctrl+k++) finds every command, book and setting; see [Acc
 </figure>
 
 
-- Click **+** in the header, then *Add Books* (++ctrl+o++), *Add Folder* or *Add Folder Recursively*.
+- Click **+** in the header, then *Add Books* (++ctrl+o++), *Add Folder* (it also adds the books in the subfolders).
 - Or drag files and folders onto the window.
 
 Bookx reads the metadata and cover from every file. Formats other than EPUB are converted to EPUB on the way in,
@@ -41,7 +41,7 @@ Two more ways to get books in:
 
 ## Importing a Calibre library
 
-Menu → *Library Health* → *Import Calibre Library*. Pick the Calibre folder (the one that contains
+The **+** menu → *Import Calibre Library*. Pick the Calibre folder (the one that contains
 `metadata.db`). You choose between **copying** the files into the Bookx library and **keeping them in the Calibre
 folder**. A progress view runs, and at the end a report lists what was imported, what was skipped and what was
 already there. The same is available on the command line:
@@ -50,7 +50,7 @@ already there. The same is available on the command line:
 bookx-cli library import-calibre ~/Calibre\ Library --copy
 ```
 
-You can also go back: *Export as Calibre Library* in the main menu writes a Calibre library that Calibre opens
+You can also go back: *Export as Calibre Library* in the Library menu writes a Calibre library that Calibre opens
 ([details](library.md#exporting-as-a-calibre-library)).
 
 ## Opening a book

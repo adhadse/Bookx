@@ -187,10 +187,10 @@ fn group_row(
 /// The Authors window.
 pub fn show(parent: &gtk::Window, shared: &SharedRef, search: Search, notify: Notify) {
     let page = adw::PreferencesPage::new();
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("Authors"));
     dialog.set_content_width(640);
-    dialog.set_content_height(700);
+    dialog.set_content_height(560);
     let header = adw::HeaderBar::new();
     let view = adw::ToolbarView::new();
     view.add_top_bar(&header);
@@ -221,9 +221,9 @@ pub fn show(parent: &gtk::Window, shared: &SharedRef, search: Search, notify: No
     if !suggestions.is_empty() {
         let g = adw::PreferencesGroup::new();
         g.set_title(&tr("Probably the same person"));
-        g.set_description(Some(
+        g.set_description(Some(&tr(
             "Initials against full names. Nothing changes until you press Merge.",
-        ));
+        )));
         for (from, to) in suggestions.iter().take(50) {
             let r = adw::ActionRow::new();
             r.set_title(&esc(&format!("{from}  →  {to}")));
@@ -263,9 +263,9 @@ pub fn show(parent: &gtk::Window, shared: &SharedRef, search: Search, notify: No
     }
     let g = adw::PreferencesGroup::new();
     g.set_title(&trf("{} authors", &[&groups.len()]));
-    g.set_description(Some(
+    g.set_description(Some(&tr(
         "Grouped by person: spellings and pen names you merged count as one.",
-    ));
+    )));
     if groups.is_empty() {
         let r = adw::ActionRow::new();
         r.set_title(&tr("No authors yet"));

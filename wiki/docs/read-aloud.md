@@ -94,19 +94,23 @@ work too: Bookx shows up as a media player named *Bookx* while it reads.
 <figure markdown="1">
 ![The read-aloud popover](assets/read-aloud-menu-light.png#only-light)
 ![The read-aloud popover](assets/read-aloud-menu-dark.png#only-dark)
-<figcaption markdown="1">The speaker button: play, stop, speed, pitch, voice, a sleep timer, saving audio and the voice settings.</figcaption>
+<figcaption markdown="1">The speaker button: play or pause, *Voice Settings*, *Save Chapter as Audio* and *Save Book as Audio*.</figcaption>
 </figure>
 
 
 ![The read aloud popover](assets/read-aloud-popover-light.png#only-light){ align=right width="260" }
 ![The read aloud popover](assets/read-aloud-popover-dark.png#only-dark){ align=right width="260" }
 
-* **Play, pause, stop**, and **previous / next sentence**. Reading starts at your selection, or at the top of the page.
-* **Speed** from 0.5 to 2.5 times; **pitch** from 0.8 to 1.25.
-* **Voice**: the voices that speak the language of the book. Your choice is remembered per engine and language.
-* **Sleep timer**: stop after 15, 30, 45 or 60 minutes, or at the end of the chapter.
-* **Save Chapter as Audio… / Save Book as Audio** write WAV files with the voice you chose (see below).
-* **Voice settings** opens the settings page.
+The speaker button is small on purpose: the controls are on the [player card](#the-player-card), which stays over the page.
+
+* **Play / pause** reads from your selection, or from the top of the page.
+* **Voice Settings** opens the settings page; **pitch** is set there.
+* **Save Chapter as Audio** / **Save Book as Audio** write WAV files with the voice you chose (see below).
+
+On the card: **previous / next sentence** (the double arrows), **previous / next chapter** (the arrows with a bar),
+**speed** from 0.5 to 2.5 times, the **voice** (the voices that speak the language of the book; your choice is remembered
+per engine and language), the **sleep timer** (the alarm clock: stop after 15, 30, 45 or 60 minutes, or at the end of the
+chapter) and **volume**. *Try again* shows only after an error.
 
 Changing speed, pitch or voice while reading continues from the beginning of the current sentence.
 
@@ -165,8 +169,8 @@ takes a few times longer than listening on a slow computer.
   (not downloaded, `espeak-ng` missing, language not supported) the line under the choice says what reads instead.
 * **Kokoro model**: *Small* (92 MB) or *Full precision* (326 MB). They run at the same speed here; the small one can
   sound a little rougher on some voices.
-* **Keep audio of read sentences**: a size-capped cache (off by default). Going back over a page is then instant and
-  costs no computing. The oldest audio is deleted first. *Clear* empties it.
+* **Audio cache size** (in megabytes): a size-capped cache of read sentences (off by default). Going back over a page is then instant and
+  costs no computing. The oldest audio is deleted first. *Clear* empties it (a message says *Audio cache cleared*; the audio is made again when needed).
 * **Download the default voice without asking**: the *Always do this* of the first-time dialog.
 * **Test the voice** reads a sentence with the current settings.
 * **Voices and models**: download and remove, with the licence of each.

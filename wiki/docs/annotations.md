@@ -14,7 +14,8 @@ KOReader, on a Kobo or in calibre, and take yours out as Markdown, HTML, JSON, a
 - **Click a row** to open the book at that passage. For a PDF the row shows the page (`page 12`), for other books
   the chapter.
 - The pencil button edits the note; the bin deletes the highlight (after asking). Both change the book.
-- Tick the check boxes to choose highlights, or leave nothing ticked to use everything shown. The **Export**
+- Hover a card and tick its check box (or press ++ctrl+a++) to choose highlights; with nothing ticked **Export** uses
+  everything shown. The **Export**
   button then offers every format below, Anki flashcards and Readwise.
 - The list shows the first 200 matches; *Show more* adds the next ones.
 
@@ -40,16 +41,19 @@ A highlight keeps the colour and style it had on the device, and a re-import or 
 | green | colour 3 | green | green |
 | red, orange, purple, gray | (nearest of the four) | the same names | the same names |
 | olive, cyan | — | olive, cyan | **kept as written**, drawn in a nearby shade (green, blue) |
+| any other colour word or number | a colour number above 3 | a colour a newer KOReader adds | **kept as written**, drawn in yellow, handed back unchanged |
 | highlight (background) | — | lighten | background |
 | underline | — | underscore | underline |
 | strikethrough | — | strikeout | strikethrough |
 | invert | — | invert | invert |
 
-Kindle’s *My Clippings.txt* has no colours: those highlights come in yellow. A colour Bookx has no swatch for is stored as the device wrote it, so a later export or a note file written for KOReader gives it back unchanged.
+Kindle’s *My Clippings.txt* has no colours: those highlights come in yellow. A colour Bookx has no swatch for is stored as the device wrote it, so a later export or a note file written for KOReader gives it back unchanged. Going the other way, Bookx’s pink is sent to KOReader as red, a squiggly underline as underline, and a custom colour as the nearest KOReader colour. KOReader files from before 2024 (which keep the style in a separate list) are read too.
 
 - **Two highlights of the same words in different colours stay two highlights.**
 - **What you change in Bookx stays.** Bookx remembers what the device said about each highlight. A re-import that says the same changes nothing; if the device changed the colour since, the device’s colour is taken.
-- **Older imports are corrected.** Highlights imported by an earlier version were all yellow; the next time Bookx reads the device (sync or *Import Highlights*) it gives them the device’s colour and style, as **one undoable step** in the library’s history. A highlight whose colour you chose yourself is not touched.
+- **Older imports are corrected.** Highlights imported by an earlier version were all yellow. Bookx corrects them **once, by itself, the next time you open the library** when it can learn the truth: from the e-reader if it is connected, from the highlights the Bookx sync server received from KOReader, or from Bookx’s own sync records. Otherwise it is done the next time Bookx reads the device (sync or *Import Highlights*). It matches by the words of the highlight and changes **only colour and style** (nothing is added or deleted), as **one undoable step** in the library’s history. A highlight whose colour you chose yourself is not touched, and two highlights of the same words that the device’s data cannot tell apart are left as they are.
+- **Fix them by hand with the command line.** `bookx-cli highlights repair --from /path/to/e-reader` shows what would change; add `--apply` to do it (see [the command line](command-line.md#highlights)). It works with a mounted e-reader, a copy of its folders, one KOReader `metadata.*.lua` file or a `KoboReader.sqlite`.
+- **Merging two copies of a book keeps the colours.** When duplicate books are merged, a highlight that exists in both keeps the colour and style of the copy that has one rather than falling back to the default.
 - *Notes & Highlights* shows a **colour legend** (each colour with its count) and the **Colour** filter and *Group by colour* narrow the list; exports keep colour and style (JSON, HTML, Markdown/Obsidian callouts).
 
 ## Import Highlights
@@ -61,13 +65,13 @@ Kindle’s *My Clippings.txt* has no colours: those highlights come in yellow. A
 </figure>
 
 
-*Main menu → **Import Highlights*** (also in the right-click menu of a book). Choose **Files** or
-**Folder or Device**; Bookx reads what it finds and shows a **review before anything is added**:
+*Main menu → **Import Highlights*** (also in the right-click menu of a book). Press **Choose Files** or
+**Choose Folder** (a folder can be a Kindle or a KOReader device); Bookx reads what it finds and shows a **review before anything is added**:
 
-> **Add 3 highlights to your library?**
-> UI Test Book: 3 highlights added, 1 not found in the book’s text, added as notes without a place
-> Left out, not in your library: Some Other Book (1)
-> Nothing is deleted, nothing you already have is changed, no quote is added twice.
+> **Import Highlights** (a window with *Cancel* at the start and **Add 3 Highlights** at the end)
+> *Books*: UI Test Book, 3 highlights
+> *Left Out*: Not in your library: Some Other Book (1)
+> Nothing is deleted, nothing you already have is changed, and no quote is added twice.
 
 What it reads:
 
@@ -130,7 +134,7 @@ from calibre’s or KOReader’s; Bookx reads all of them.
 
 ### Anki flashcards
 
-In Notes & Highlights, **Export → Anki flashcards** makes cards from the highlights shown or ticked, or from
+In Notes & Highlights, **Export → Anki Package / Anki Text File / Anki CSV** asks for the card type (front and back, or cloze) and the source (highlights or vocabulary) and makes cards from the highlights shown or ticked, or from
 your [vocabulary](reading.md) list.
 
 | Choice | What you get |
@@ -160,7 +164,7 @@ Bookmarks and highlights without text are not sent.
 
 ### Kindle
 
-With a Kindle connected, *Import Highlights → Folder or Device* reads `documents/My Clippings.txt` from it. Nothing
+With a Kindle connected, *Import Highlights → Choose Folder* reads `documents/My Clippings.txt` from it. Nothing
 on the Kindle is changed. The Kindle’s own per-book annotation files (`.sdr` folders with `.azw3r` or `.mbp` files)
 are a binary format that Bookx does not read; the clippings file has the same highlights and notes.
 

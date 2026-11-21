@@ -50,7 +50,7 @@ def _flow(c, label, settings="", window=None):
         c.shot(f"{label}-no-button")
         return
     c.check("the popover also has the dictionary, Wikipedia and note buttons",
-            c.find("button", "Look up in a dictionary") and c.find("button", "Add a note"))
+            c.find("button", "Look Up in Dictionary") and c.find("button", "Add Note"))
     c.shot(f"{label}-popover")
     c.click_node(add)
     save = c.wait_node("button", "Save", timeout=6)
@@ -133,15 +133,15 @@ def vocab_own_keyboard(c):
 
 @scenario
 def vocab_own_in_lookup(c):
-    """The look-up popover: Add my own definition, then Your definition above the dictionary result."""
+    """The look-up popover: Add Your Definition, then Your definition above the dictionary result."""
     _start(c, "", None)
     c.sb.double_click(*_word_point(c))
-    btn = c.wait_node("button", "Look up in a dictionary", timeout=6)
+    btn = c.wait_node("button", "Look Up in Dictionary", timeout=6)
     if not c.check("the action popover opens", btn):
         return
     c.click_node(btn)
-    add = c.wait_node("button", "Add my own definition", timeout=6)
-    c.check("the look-up popover offers Add my own definition", add)
+    add = c.wait_node("button", "Add Your Definition", timeout=6)
+    c.check("the look-up popover offers Add Your Definition", add)
     c.check("the dictionary result is shown too", c.wait_node("label", rx="Test definition of ", timeout=5))
     c.shot("vocab_lookup-before")
     if not add:
@@ -154,11 +154,11 @@ def vocab_own_in_lookup(c):
     c.gone("button", "Save", timeout=5)
     time.sleep(0.8)
     c.sb.double_click(*_word_point(c))
-    btn = c.wait_node("button", "Look up in a dictionary", timeout=6)
+    btn = c.wait_node("button", "Look Up in Dictionary", timeout=6)
     if btn:
         c.click_node(btn)
     c.check("Your definition is shown in the look-up popover", c.wait_node("label", "mine first", timeout=6))
-    c.check("with Edit my definition", c.find("button", "Edit my definition"))
+    c.check("with Edit Your Definition", c.find("button", "Edit Your Definition"))
     c.shot("vocab_lookup-after")
 
 

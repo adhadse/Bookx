@@ -22,8 +22,6 @@ thread_local! {
     static PENDING_IMPORT: RefCell<Option<Rc<dyn Fn()>>> = const { RefCell::new(None) };
 }
 
-const INTRO: &str = "Adds highlights and notes made elsewhere to the books in your library: a Kindle’s “My Clippings.txt”, KOReader’s notes (the “.sdr” files, or its JSON and Markdown export), the Kobo’s database (or a copy of KoboReader.sqlite), a calibre annotation export, or an export from Bookx. You see what will be added before anything happens. Books are matched by title and author; a quote you already have is not added twice, and nothing is deleted.";
-
 fn poll<T: 'static>(rx: std::sync::mpsc::Receiver<T>, done: impl FnOnce(T) + 'static) {
     let done = RefCell::new(Some(done));
     glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
@@ -60,6 +58,12 @@ pub fn chapter_titles(lib: &crate::core::library::Library, id: u64) -> Vec<Strin
         .unwrap_or_default()
 }
 
+/// One sentence: what can be chosen (files, or a folder, which may be a connected e-reader) and that
+/// nothing is added before the review.
+pub const IMPORT_INTRO: &str = crate::i18n::N_(
+    "Choose files, or a folder or e-reader, with notes from Kindle, KOReader, Kobo, calibre or Bookx; you review them before anything is added.",
+);
+
 /// The first step: asks where the highlights are (files or a folder), then reads them.
 pub fn start_import(
     parent: &gtk::Window,
@@ -67,11 +71,12 @@ pub fn start_import(
     toast: Rc<dyn Fn(String)>,
     changed: Rc<dyn Fn()>,
 ) {
-    let d = adw::AlertDialog::new(Some(&tr("Import Highlights")), Some(INTRO));
+    let d = adw::AlertDialog::new(Some(&tr("Import Highlights")), Some(&tr(IMPORT_INTRO)));
+    d.set_widget_name("import-highlights");
     d.add_responses(&[
         ("cancel", &tr("Cancel")),
-        ("folder", &tr("Folder or Device")),
-        ("files", &tr("Files")),
+        ("folder", &tr("Choose Folder")),
+        ("files", &tr("Choose Files")),
     ]);
     d.set_response_appearance("files", adw::ResponseAppearance::Suggested);
     d.set_default_response(Some("files"));
@@ -155,7 +160,7 @@ pub fn run(
         if found == 0 {
             toast(match problems.first() {
                 Some(p) => trf("Nothing to import: {}", &[&p]),
-                None => "No highlights were found there".to_string(),
+                None => tr("No highlights were found there"),
             });
             return;
         }
@@ -166,24 +171,6 @@ pub fn run(
             ));
             return;
         }
-        let mut body = plan.text();
-        for p in &problems {
-            body.push_str(&format!("\nNot read: {p}"));
-        }
-        let heading = trf(
-            "Add {} to your library?",
-            &[&(match (plan.new_highlights(), plan.notes_added()) {
-                (h, 0) => ntr("{} highlight", "{} highlights", h),
-                (0, n) => ntr("{} note", "{} notes", n),
-                (h, n) => trf(
-                    "{} and {}",
-                    &[
-                        &ntr("{} highlight", "{} highlights", h),
-                        &ntr("{} note", "{} notes", n),
-                    ],
-                ),
-            })],
-        );
         let plan = Rc::new(plan);
         let apply: Rc<dyn Fn()> = {
             let (shared, toast, changed, plan) =
@@ -212,15 +199,93 @@ pub fn run(
             })
         };
         PENDING_IMPORT.with(|p| *p.borrow_mut() = Some(apply.clone()));
-        super::alert(&parent, &heading, &body, "Import", false, move || {
-            PENDING_IMPORT.with(|p| p.borrow_mut().take());
-            apply()
-        });
+        review_dialog(&parent, &plan, &problems, apply);
     });
+}
+
+/// The review: header Cancel and "Add N Highlights", one row per book with what it gets, and what
+/// is left out. Nothing is written until the button is pressed.
+fn review_dialog(
+    parent: &gtk::Window,
+    plan: &import::ImportPlan,
+    problems: &[String],
+    apply: Rc<dyn Fn()>,
+) {
+    let dialog = super::dialog_toast::new_dialog();
+    dialog.set_title(&tr("Import Highlights"));
+    dialog.set_content_width(520);
+    dialog.set_content_height(520);
+    let cancel = gtk::Button::with_label(&tr("Cancel"));
+    let add = gtk::Button::with_label(&plan.confirm_label());
+    add.add_css_class("suggested-action");
+    let header = adw::HeaderBar::new();
+    header.set_show_start_title_buttons(false);
+    header.set_show_end_title_buttons(false);
+    header.pack_start(&cancel);
+    header.pack_end(&add);
+    dialog.set_default_widget(Some(&add));
+    let page = adw::PreferencesPage::new();
+    let books = adw::PreferencesGroup::new();
+    books.set_title(&tr("Books"));
+    books.set_description(Some(&tr(
+        "Nothing is deleted, nothing you already have is changed, and no quote is added twice.",
+    )));
+    for (title, what) in plan.review_rows() {
+        let r = adw::ActionRow::new();
+        r.set_title(&glib::markup_escape_text(&title));
+        r.set_subtitle(&what);
+        books.add(&r);
+    }
+    page.add(&books);
+    let mut left = plan.left_out();
+    left.extend(problems.iter().map(|p| trf("Not read: {}", &[p])));
+    if !left.is_empty() {
+        let g = adw::PreferencesGroup::new();
+        g.set_title(&tr("Left Out"));
+        for l in left {
+            let r = adw::ActionRow::new();
+            r.set_title(&glib::markup_escape_text(&l));
+            r.set_title_lines(0);
+            g.add(&r);
+        }
+        page.add(&g);
+    }
+    let view = adw::ToolbarView::new();
+    view.add_top_bar(&header);
+    view.set_content(Some(&page));
+    dialog.set_child(Some(&view));
+    {
+        let dialog = dialog.clone();
+        cancel.connect_clicked(move |_| {
+            dialog.close();
+        });
+    }
+    {
+        let dialog = dialog.clone();
+        add.connect_clicked(move |_| {
+            PENDING_IMPORT.with(|p| p.borrow_mut().take());
+            apply();
+            dialog.close();
+        });
+    }
+    dialog.connect_closed(|_| {
+        PENDING_IMPORT.with(|p| p.borrow_mut().take());
+    });
+    REVIEW_LABEL.with(|l| *l.borrow_mut() = plan.confirm_label());
+    dialog.present(Some(parent));
+}
+
+thread_local! {
+    /// The confirm label of the last review dialog (the UI tests read it back).
+    static REVIEW_LABEL: RefCell<String> = const { RefCell::new(String::new()) };
 }
 
 /// Test hook: confirms the open review dialog.
 pub fn confirm_pending() {
+    eprintln!(
+        "import_review: label=\"{}\"",
+        REVIEW_LABEL.with(|l| l.borrow().clone())
+    );
     match PENDING_IMPORT.with(|p| p.borrow_mut().take()) {
         Some(f) => f(),
         None => eprintln!("import_summary: no dialog"),
@@ -246,13 +311,22 @@ pub fn start_export_all(parent: &gtk::Window, shared: &SharedRef, toast: Rc<dyn 
             return;
         }
         let id = export::FORMATS[drop.selected() as usize].id;
-        let (shared, toast) = (shared.clone(), toast.clone());
+        let (shared, toast, parent3) = (shared.clone(), toast.clone(), parent2.clone());
         gtk::FileDialog::builder()
             .title(tr("Choose a folder for the exported files"))
             .build()
             .select_folder(Some(&parent2), gio::Cancellable::NONE, move |res| {
                 if let Some(dir) = res.ok().and_then(|f| f.path()) {
-                    toast(export_all_to(&shared, id, &dir));
+                    let (text, written) = export_all(&shared, id, &dir);
+                    match super::dialog_toast::find_overlay(&parent3).filter(|_| written > 0) {
+                        Some(o) => super::dialog_toast::show_action(
+                            &o,
+                            &text,
+                            &tr("Open Folder"),
+                            move || super::open_uri(&gio::File::for_path(&dir).uri()),
+                        ),
+                        None => toast(text),
+                    }
                 }
             });
     });
@@ -261,6 +335,11 @@ pub fn start_export_all(parent: &gtk::Window, shared: &SharedRef, toast: Rc<dyn 
 
 /// Writes the files of [`export::library_files`] into `dir`; returns the message to show.
 pub fn export_all_to(shared: &SharedRef, id: &str, dir: &std::path::Path) -> String {
+    export_all(shared, id, dir).0
+}
+
+/// [`export_all_to`] with the number of files written.
+fn export_all(shared: &SharedRef, id: &str, dir: &std::path::Path) -> (String, usize) {
     let files = {
         let lib = shared.lib.borrow();
         let with: Vec<(&crate::core::library::Book, Vec<String>)> = lib
@@ -272,7 +351,10 @@ pub fn export_all_to(shared: &SharedRef, id: &str, dir: &std::path::Path) -> Str
         export::library_files(&with, id, chrono::Utc::now())
     };
     if files.is_empty() {
-        return "No book has highlights, notes or bookmarks to export".to_string();
+        return (
+            tr("No book has highlights, notes or bookmarks to export"),
+            0,
+        );
     }
     let mut written = 0;
     for (name, text) in &files {
@@ -281,8 +363,11 @@ pub fn export_all_to(shared: &SharedRef, id: &str, dir: &std::path::Path) -> Str
         }
     }
     eprintln!("export_all: format={id} files={written}");
-    trf(
-        "Exported the annotations of {} to {}",
-        &[&ntr("{} book", "{} books", written), &dir.display()],
+    (
+        trf(
+            "Exported the annotations of {} to {}",
+            &[&ntr("{} book", "{} books", written), &dir.display()],
+        ),
+        written,
     )
 }

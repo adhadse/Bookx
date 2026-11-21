@@ -226,6 +226,11 @@ impl Handles {
         }
     }
 
+    /// Whether a handle is being dragged now.
+    pub fn is_dragging(&self) -> bool {
+        self.st.borrow().drag.is_some()
+    }
+
     pub fn end(&self) {
         if self.st.borrow_mut().drag.take().is_none() {
             return;

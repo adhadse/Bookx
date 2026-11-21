@@ -171,7 +171,7 @@ impl StatsHub {
 }
 
 /// Numbers shown in the statistics window.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Summary {
     pub today_secs: u64,
     pub week_secs: u64,

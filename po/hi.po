@@ -20,12 +20,6 @@ msgstr "पुस्तकें जोड़ें"
 msgid "Add Folder"
 msgstr "फ़ोल्डर जोड़ें"
 
-msgid "Add a note"
-msgstr "नोट जोड़ें"
-
-msgid "Add bookmark (Ctrl+B)"
-msgstr "बुकमार्क जोड़ें (Ctrl+B)"
-
 msgid "Add from the Web"
 msgstr "वेब से जोड़ें"
 
@@ -125,9 +119,6 @@ msgstr "कॉपी करें"
 msgid "Copy Diagnostics"
 msgstr "निदान जानकारी कॉपी करें"
 
-msgid "Could not open the book: {}"
-msgstr "पुस्तक खोली नहीं जा सकी: {}"
-
 msgid "Could not save: {}"
 msgstr "सहेजा नहीं जा सका: {}"
 
@@ -215,9 +206,6 @@ msgstr "फ़ोल्डर"
 msgid "Font family"
 msgstr "फ़ॉन्ट परिवार"
 
-msgid "Font size (pt)"
-msgstr "फ़ॉन्ट आकार (pt)"
-
 msgid "Format"
 msgstr "प्रारूप"
 
@@ -263,9 +251,6 @@ msgstr "इंटरफ़ेस की भाषा"
 msgid "Justify text"
 msgstr "पाठ को समायोजित (जस्टिफ़ाई) करें"
 
-msgid "Keep this checkpoint when old ones are removed"
-msgstr "पुराने हटाए जाने पर भी यह चेकपॉइंट रखें"
-
 msgid "Keyboard Shortcuts"
 msgstr "कीबोर्ड शॉर्टकट"
 
@@ -299,15 +284,6 @@ msgstr "लाइब्रेरी"
 msgid "Library Health"
 msgstr "लाइब्रेरी की सेहत"
 
-msgid "Look up in a dictionary"
-msgstr "शब्दकोश में देखें"
-
-msgid "Look up on Wikipedia"
-msgstr "विकिपीडिया पर देखें"
-
-msgid "Main menu"
-msgstr "मुख्य मेनू"
-
 msgid "Name"
 msgstr "नाम"
 
@@ -325,9 +301,6 @@ msgstr "आपकी खोज से कोई पुस्तक मेल न
 
 msgid "No dictionaries installed"
 msgstr "कोई शब्दकोश स्थापित नहीं है"
-
-msgid "None"
-msgstr "कोई नहीं"
 
 msgid "Note"
 msgstr "नोट"
@@ -406,9 +379,6 @@ msgstr "फिर लोड करें"
 
 msgid "Remove"
 msgstr "निकालें"
-
-msgid "Remove bookmark"
-msgstr "बुकमार्क हटाएँ"
 
 msgid "Rename"
 msgstr "नाम बदलें"
@@ -569,9 +539,6 @@ msgid "{} problem"
 msgid_plural "{} problems"
 msgstr[0] "{} समस्या"
 msgstr[1] "{} समस्याएँ"
-
-msgid "Sync scrolling both ways: scrolling the preview also scrolls the code (the code always moves the preview)"
-msgstr "दोनों तरफ़ स्क्रॉल सिंक: पूर्वावलोकन स्क्रॉल करने पर कोड भी स्क्रॉल होता है (कोड हमेशा पूर्वावलोकन को चलाता है)"
 
 msgid "Could not start the program"
 msgstr "प्रोग्राम शुरू नहीं हो सका"

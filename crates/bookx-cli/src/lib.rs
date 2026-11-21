@@ -9,6 +9,7 @@
 mod catalogue;
 mod device_check;
 mod extras;
+mod highlights;
 mod libtools;
 mod mcp;
 
@@ -137,6 +138,9 @@ enum Cmd {
     },
     /// Serve the library over OPDS / the web (and KOSync)
     Serve(ServeArgs),
+    /// Fix highlights: `highlights repair` corrects colours and styles from what the e-readers say
+    #[command(subcommand)]
+    Highlights(highlights::HighlightsCmd),
     /// Run the Model Context Protocol server so AI assistants can use the library (stdio, or --http)
     Mcp(mcp::McpArgs),
     /// List the built-in conversion presets
@@ -430,6 +434,10 @@ fn dispatch(
         Cmd::Serve(a) => {
             migrate_note(root, err)?;
             serve(a, root, env, out)
+        }
+        Cmd::Highlights(c) => {
+            migrate_note(root, err)?;
+            highlights::run(c, root, out)
         }
         Cmd::Mcp(a) => mcp::run(a, root, env, out, err),
     }

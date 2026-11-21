@@ -18,10 +18,21 @@ use crate::settings_bus::Bus;
 thread_local! {
     static BUS: Rc<Bus> = Rc::new(Bus::default());
     static SWITCH: RefCell<Option<adw::SwitchRow>> = const { RefCell::new(None) };
+    static ROWS: RefCell<Option<(adw::SpinRow, adw::SpinRow)>> = const { RefCell::new(None) };
 }
 
 fn bus() -> Rc<Bus> {
     BUS.with(|b| b.clone())
+}
+
+/// Calls `f` when the ruler is turned on or off or its settings change (the menu's check item).
+pub fn subscribe(f: impl Fn() + 'static) -> crate::settings_bus::Subscription {
+    bus().subscribe(f)
+}
+
+/// Whether the ruler is on.
+pub fn is_on(shared: &SharedRef) -> bool {
+    shared.cfg.borrow().ruler.enabled
 }
 
 pub fn register() {
@@ -40,9 +51,11 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     on.set_active(p.enabled);
     let lines = adw::SpinRow::with_range(rr::MIN_LINES as f64, rr::MAX_LINES as f64, 1.0);
     lines.set_title(&tr("Lines in the band"));
+    lines.set_subtitle(&tr("Lines"));
     lines.set_value(p.lines as f64);
     let dim = adw::SpinRow::with_range(rr::MIN_DIM as f64, rr::MAX_DIM as f64, 5.0);
-    dim.set_title(&tr("Dimming (percent)"));
+    dim.set_title(&tr("Dimming"));
+    dim.set_subtitle(&tr("Percent"));
     dim.set_value(p.dim as f64);
     let save = {
         let (shared, on, lines, dim) = (ctx.shared.clone(), on.clone(), lines.clone(), dim.clone());
@@ -67,9 +80,16 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
         let s = save.clone();
         dim.connect_value_notify(move |_| s());
     }
+    // the band settings do nothing while the ruler is off
+    for r in [&lines, &dim] {
+        on.bind_property("active", r, "sensitive")
+            .sync_create()
+            .build();
+    }
     g.add(&on);
     g.add(&lines);
     g.add(&dim);
+    ROWS.with(|r| *r.borrow_mut() = Some((lines.clone(), dim.clone())));
     SWITCH.with(|s| *s.borrow_mut() = Some(on));
     g
 }
@@ -118,6 +138,46 @@ impl Ruler {
             });
         }
         overlay.add_controller(motion);
+        // a finger has no pointer to follow: dragging the band moves it, and a tap puts it there
+        // (the tap still turns the page: it is not claimed)
+        let drag = gtk::GestureDrag::new();
+        drag.set_touch_only(true);
+        drag.set_propagation_phase(gtk::PropagationPhase::Capture);
+        let from = Rc::new(Cell::new(None::<f64>));
+        {
+            let (r, f1) = (Rc::downgrade(&ruler), from.clone());
+            drag.connect_drag_begin(move |g, _, y| {
+                if let Some(r) = r.upgrade() {
+                    if r.grab(y) {
+                        f1.set(Some(r.mid()));
+                        g.set_state(gtk::EventSequenceState::Claimed);
+                    }
+                }
+            });
+            let (r, f2) = (Rc::downgrade(&ruler), from.clone());
+            drag.connect_drag_update(move |_, _, dy| {
+                if let (Some(r), Some(f)) = (r.upgrade(), f2.get()) {
+                    r.place(rr::drag_to(f, dy, r.area.height() as f64));
+                }
+            });
+            drag.connect_drag_end(move |_, _, _| from.set(None));
+        }
+        overlay.add_controller(drag);
+        let tap = gtk::GestureClick::new();
+        tap.set_touch_only(true);
+        tap.set_propagation_phase(gtk::PropagationPhase::Capture);
+        {
+            let r = Rc::downgrade(&ruler);
+            tap.connect_pressed(move |g, _, _, y| {
+                g.set_state(gtk::EventSequenceState::None);
+                if let Some(r) = r.upgrade() {
+                    if r.prefs().enabled {
+                        r.place(y);
+                    }
+                }
+            });
+        }
+        overlay.add_controller(tap);
         let weak = Rc::downgrade(&ruler);
         let sub = bus().subscribe(move || {
             if let Some(r) = weak.upgrade() {
@@ -131,6 +191,33 @@ impl Ruler {
 
     fn prefs(&self) -> rr::RulerPrefs {
         self.shared.cfg.borrow().ruler.clamped()
+    }
+
+    /// The middle of the band now.
+    fn mid(&self) -> f64 {
+        let h = self.area.height() as f64;
+        if self.y.get() < 0.0 {
+            h / 2.0
+        } else {
+            self.y.get()
+        }
+    }
+
+    /// Puts the middle of the band at `y` (a finger, a tap).
+    pub fn place(&self, y: f64) {
+        self.y.set(y.clamp(0.0, self.area.height() as f64));
+        self.area.queue_draw();
+    }
+
+    /// Whether a touch at `y` is on the band (the ruler must be on).
+    fn grab(&self, y: f64) -> bool {
+        let p = self.prefs();
+        if !p.enabled {
+            return false;
+        }
+        let h = self.area.height() as f64;
+        let (top, bottom) = rr::band(self.mid(), h, self.line_h(), p.lines);
+        rr::hit_band(y, top, bottom, self.line_h())
     }
 
     fn line_h(&self) -> f64 {
@@ -192,6 +279,16 @@ impl Ruler {
             "toggle" => self.toggle(),
             "up" => self.step(-1),
             "down" => self.step(1),
+            // `place:Y` is a tap, `drag:Y0:DY` a finger that grabs the band at Y0 and moves DY
+            c if c.starts_with("place:") => self.place(c[6..].parse().unwrap_or(0.0)),
+            c if c.starts_with("drag:") => {
+                let mut it = c[5..].split(':');
+                let y0: f64 = it.next().and_then(|v| v.parse().ok()).unwrap_or(0.0);
+                let dy: f64 = it.next().and_then(|v| v.parse().ok()).unwrap_or(0.0);
+                if self.grab(y0) {
+                    self.place(rr::drag_to(self.mid(), dy, self.area.height() as f64));
+                }
+            }
             _ => {}
         }
         let p = self.prefs();
@@ -245,8 +342,19 @@ pub fn dev_reader(cmd: &str) -> String {
     }
 }
 
-/// Dev hook `prefs:ruler-on|off`: the switch of the open Preferences.
+/// Dev hook `prefs:ruler-on|off`: the switch of the open Preferences; `prefs:ruler-dump` prints
+/// `prefs_ruler: on=B lines_sensitive=B dim_sensitive=B`.
 pub fn dev_prefs(arg: &str) {
+    if arg == "dump" {
+        let on = SWITCH.with(|s| s.borrow().as_ref().is_some_and(|r| r.is_active()));
+        let (lines, dim) = ROWS.with(|r| {
+            r.borrow().as_ref().map_or((false, false), |(l, d)| {
+                (l.is_sensitive(), d.is_sensitive())
+            })
+        });
+        eprintln!("prefs_ruler: on={on} lines_sensitive={lines} dim_sensitive={dim}");
+        return;
+    }
     SWITCH.with(|s| {
         if let Some(r) = s.borrow().as_ref() {
             r.set_active(arg != "off");

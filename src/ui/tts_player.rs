@@ -113,11 +113,11 @@ impl PlayerCard {
         names.append(&chapter);
         names.append(&mini_sentence);
         head.append(&names);
-        let collapse = icon_button("pan-down-symbolic", &tr("Show the small player"));
+        let collapse = icon_button("pan-down-symbolic", &tr("Show Small Player"));
         collapse.add_css_class("flat");
         collapse.add_css_class("circular");
         collapse.set_valign(gtk::Align::Center);
-        let stop = icon_button("window-close-symbolic", &tr("Close read aloud"));
+        let stop = icon_button("window-close-symbolic", &tr("Close Read Aloud"));
         stop.add_css_class("flat");
         stop.add_css_class("circular");
         stop.set_valign(gtk::Align::Center);
@@ -155,15 +155,15 @@ impl PlayerCard {
         // transport
         let controls = gtk::Box::new(gtk::Orientation::Horizontal, 6);
         controls.set_halign(gtk::Align::Center);
-        let prev_chapter = icon_button("media-skip-backward-symbolic", &tr("Previous chapter"));
-        let prev = icon_button("media-seek-backward-symbolic", &tr("Previous sentence"));
-        let play = icon_button("media-playback-start-symbolic", &tr("Read aloud from here"));
+        let prev_chapter = icon_button("media-skip-backward-symbolic", &tr("Previous Chapter"));
+        let prev = icon_button("media-seek-backward-symbolic", &tr("Previous Sentence"));
+        let play = icon_button("media-playback-start-symbolic", &tr("Read Aloud from Here"));
         play.add_css_class("suggested-action");
         play.add_css_class("circular");
         play.add_css_class("tts-play");
         play.set_size_request(40, 40);
-        let next = icon_button("media-seek-forward-symbolic", &tr("Next sentence"));
-        let next_chapter = icon_button("media-skip-forward-symbolic", &tr("Next chapter"));
+        let next = icon_button("media-seek-forward-symbolic", &tr("Next Sentence"));
+        let next_chapter = icon_button("media-skip-forward-symbolic", &tr("Next Chapter"));
         for b in [&prev_chapter, &prev, &next, &next_chapter] {
             b.add_css_class("flat");
             b.add_css_class("circular");
@@ -205,8 +205,8 @@ impl PlayerCard {
         vb.append(&gtk::Image::from_icon_name("audio-speakers-symbolic"));
         vb.append(&voice_label);
         voice_btn.set_child(Some(&vb));
-        voice_btn.set_tooltip_text(Some(&tr("Choose the voice")));
-        super::audit::label(&voice_btn, &tr("Choose the voice"));
+        voice_btn.set_tooltip_text(Some(&tr("Choose Voice")));
+        super::audit::label(&voice_btn, &tr("Choose Voice"));
         let voice_pop = gtk::Popover::new();
         let pop_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
         pop_box.set_margin_top(6);
@@ -231,9 +231,9 @@ impl PlayerCard {
         extras.append(&voice_btn);
 
         let sleep_btn = gtk::MenuButton::new();
-        sleep_btn.set_icon_name("preferences-system-time-symbolic");
-        sleep_btn.set_tooltip_text(Some(&tr("Sleep timer")));
-        super::audit::label(&sleep_btn, &tr("Sleep timer"));
+        sleep_btn.set_icon_name("alarm-symbolic");
+        sleep_btn.set_tooltip_text(Some(&tr("Sleep Timer")));
+        super::audit::label(&sleep_btn, &tr("Sleep Timer"));
         let sleep_pop = gtk::Popover::new();
         let sleep_box = gtk::Box::new(gtk::Orientation::Vertical, 2);
         sleep_box.set_margin_top(6);
@@ -251,7 +251,7 @@ impl PlayerCard {
             b.connect_clicked(move |_| {
                 p.popdown();
                 sb.set_tooltip_text(Some(&if i == 0 {
-                    tr("Sleep timer")
+                    tr("Sleep Timer")
                 } else {
                     trf("Sleep timer: {}", &[&tr(SLEEP[i].0)])
                 }));
@@ -291,7 +291,6 @@ impl PlayerCard {
         status_row.set_halign(gtk::Align::End);
         let status_cancel = gtk::Button::with_label(&tr("Cancel"));
         let status_retry = gtk::Button::with_label(&tr("Try again"));
-        status_retry.add_css_class("suggested-action");
         let status_copy = gtk::Button::with_label(&tr("Copy install command"));
         status_row.append(&status_copy);
         status_row.append(&status_retry);
@@ -513,7 +512,7 @@ impl PlayerCard {
         let name = if collapsed {
             tr("Show the full player")
         } else {
-            tr("Show the small player")
+            tr("Show Small Player")
         };
         self.collapse.set_icon_name(if collapsed {
             "pan-up-symbolic"
@@ -555,7 +554,7 @@ impl PlayerCard {
         } else if matches!(model.phase, Phase::Paused | Phase::Idle) {
             ("media-playback-start-symbolic", tr("Resume reading"))
         } else {
-            ("media-playback-start-symbolic", tr("Read aloud from here"))
+            ("media-playback-start-symbolic", tr("Read Aloud from Here"))
         };
         self.play.set_icon_name(icon);
         self.play.set_tooltip_text(Some(&tip));
@@ -681,7 +680,7 @@ impl PlayerCard {
     }
 
     pub fn set_sleep_off(&self) {
-        self.sleep_btn.set_tooltip_text(Some(&tr("Sleep timer")));
+        self.sleep_btn.set_tooltip_text(Some(&tr("Sleep Timer")));
     }
 
     /// The pointer is over the card, the keyboard focus is in it or its voice list is open: the

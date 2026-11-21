@@ -26,10 +26,10 @@ pub fn show_with(
     words: bool,
     focus: Option<&str>,
 ) {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("Vocabulary"));
-    dialog.set_content_width(520);
-    dialog.set_content_height(620);
+    dialog.set_content_width(560);
+    dialog.set_content_height(560);
 
     let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
     root.set_margin_top(18);
@@ -176,6 +176,7 @@ pub fn show_with(
         switch.connect_active_name_notify(move |g| {
             if let Some(n) = g.active_name() {
                 stack.set_visible_child_name(&n);
+                list.set_header_buttons_visible(n == "words");
                 if n == "words" {
                     (list.refresh)();
                 }
@@ -191,6 +192,8 @@ pub fn show_with(
     switch.set_active_name(Some(start));
     let header = adw::HeaderBar::new();
     header.set_title_widget(Some(&switch));
+    list.pack_into(&header);
+    list.set_header_buttons_visible(start == "words");
     let view = adw::ToolbarView::new();
     view.add_top_bar(&header);
     view.set_content(Some(&stack));

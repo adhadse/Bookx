@@ -30,6 +30,8 @@ struct Finished {
     result: anyhow::Result<mo::Report>,
     /// Chapters narrated by this run (also when it ended with an error).
     narrated: usize,
+    /// The fingerprint of the book when the run started (the book may be edited while it runs).
+    started: u64,
 }
 
 thread_local! {
@@ -109,6 +111,7 @@ impl Editor {
         let prefs = self.shared.cfg.borrow().tts.clamped();
         let language = crate::tts::primary_language(&self.book.borrow().metadata().language);
         let archive = self.book.borrow().archive.clone();
+        let started = editor_tools::archive_fingerprint(&archive);
         let title = trf(
             "Narrating {}",
             &[&self.book.borrow().metadata().title.clone()],
@@ -118,19 +121,44 @@ impl Editor {
         let bar = gtk::ProgressBar::new();
         bar.set_show_text(true);
         bar.set_text(Some(&tr("Loading the voice…")));
-        let dlg = adw::AlertDialog::new(
-            Some(&tr("Adding narration")),
-            Some(&tr(
-                "Finished chapters are kept if you cancel. You can restore the checkpoint to undo.",
-            )),
-        );
-        dlg.set_extra_child(Some(&bar));
-        dlg.add_response("cancel", &tr("Cancel"));
-        dlg.set_close_response("cancel");
+        let dlg = adw::Dialog::new();
+        dlg.set_title(&tr("Adding Narration"));
+        dlg.set_content_width(420);
+        let note = gtk::Label::new(Some(&tr(
+            "Finished chapters are kept if you cancel. You can keep working; editing the book while this runs discards the narration.",
+        )));
+        note.set_wrap(true);
+        note.set_xalign(0.0);
+        note.add_css_class("dim-label");
+        let background = gtk::Button::with_label(&tr("Run in Background"));
+        background.set_widget_name("narration-background");
+        let stop = gtk::Button::with_label(&tr("Cancel Narration"));
+        stop.set_widget_name("narration-cancel");
+        stop.add_css_class("destructive-action");
+        let buttons = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        buttons.set_halign(gtk::Align::End);
+        buttons.append(&stop);
+        buttons.append(&background);
+        let col = gtk::Box::new(gtk::Orientation::Vertical, 12);
+        col.set_margin_all(16);
+        col.append(&note);
+        col.append(&bar);
+        col.append(&buttons);
+        let view = adw::ToolbarView::new();
+        view.add_top_bar(&adw::HeaderBar::new());
+        view.set_content(Some(&col));
+        dlg.set_child(Some(&view));
         let cancel = crate::tts::Cancel::new();
         {
-            let c = cancel.clone();
-            dlg.connect_response(None, move |_, _| c.cancel());
+            let (c, d) = (cancel.clone(), dlg.clone());
+            stop.connect_clicked(move |_| {
+                c.cancel();
+                d.close();
+            });
+            let d = dlg.clone();
+            background.connect_clicked(move |_| {
+                d.close();
+            });
         }
         dlg.present(Some(&self.w.win));
 
@@ -148,6 +176,7 @@ impl Editor {
                         archive,
                         result: Err(e),
                         narrated: 0,
+                        started,
                     }));
                     return;
                 }
@@ -187,6 +216,7 @@ impl Editor {
                 archive: book.archive,
                 result,
                 narrated,
+                started,
             }));
         });
 
@@ -238,7 +268,16 @@ impl Editor {
             archive,
             result,
             narrated,
+            started,
         } = fin;
+        self.flush();
+        if narrated > 0 && editor_tools::archive_fingerprint(&self.book.borrow().archive) != started
+        {
+            self.toast(&tr(
+                "The book was edited while it was being narrated, so the narration was not added. Run it again.",
+            ));
+            return;
+        }
         let (cancelled, ms) = match &result {
             Ok(r) => (r.cancelled, r.duration_ms),
             Err(_) => (false, 0),

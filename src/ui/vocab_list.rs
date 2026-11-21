@@ -16,7 +16,7 @@ use relm4::gtk::{self, gio, glib};
 
 use super::vocab_own::{self, Ctx};
 use super::SharedRef;
-use crate::i18n::{tr, trf};
+use crate::i18n::{ntr, tr, trf};
 
 /// Largest glossary file read.
 const MAX_IMPORT_BYTES: u64 = 8 * 1024 * 1024;
@@ -40,12 +40,53 @@ pub struct List {
     shared: SharedRef,
     book: Option<BookView>,
     status: gtk::Label,
+    /// The text of the last action; it is shown as a toast and read back by the test hook.
+    message: RefCell<String>,
+    /// Header buttons: the host dialog puts them in its header bar (`pack_into`).
+    add_btn: gtk::Button,
+    more_btn: gtk::MenuButton,
     rows: gtk::ListBox,
+    empty: adw::StatusPage,
+    toasts: adw::ToastOverlay,
+    /// What Undo of the last removal does (the test hook presses it).
+    last_undo: RefCell<Option<Rc<dyn Fn()>>>,
 }
 
 thread_local! {
     static LAST: RefCell<Option<Rc<List>>> = const { RefCell::new(None) };
     static PASTE: RefCell<Option<(gtk::TextView, gtk::Button)>> = const { RefCell::new(None) };
+}
+
+/// Which message the empty list shows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Placeholder {
+    /// The vocabulary has no words at all.
+    NoWords,
+    /// There are words, but the search or the filter hides all of them.
+    NoResults,
+}
+
+fn placeholder_for(all: usize, shown: usize) -> Placeholder {
+    if all > 0 && shown == 0 {
+        Placeholder::NoResults
+    } else {
+        Placeholder::NoWords
+    }
+}
+
+fn set_placeholder(page: &adw::StatusPage, kind: Placeholder) {
+    match kind {
+        Placeholder::NoWords => {
+            page.set_title(&tr("No Words Yet"));
+            page.set_description(Some(&tr(
+                "Select a word or phrase while reading and choose Add to Vocabulary to write your own definition, or look a word up in a dictionary.",
+            )));
+        }
+        Placeholder::NoResults => {
+            page.set_title(&tr("No Results"));
+            page.set_description(Some(&tr("Try a different search or filter")));
+        }
+    }
 }
 
 fn source_of(name: &str) -> Source {
@@ -82,19 +123,19 @@ fn visible_entries(
 }
 
 pub fn build(shared: &SharedRef, book: Option<BookView>, focus: Option<&str>) -> Rc<List> {
-    let root = gtk::Box::new(gtk::Orientation::Vertical, 8);
-    root.set_margin_top(8);
-    root.set_margin_bottom(12);
-    root.set_margin_start(12);
-    root.set_margin_end(12);
+    let inner = gtk::Box::new(gtk::Orientation::Vertical, 8);
+    inner.set_margin_top(8);
+    inner.set_margin_bottom(12);
+    inner.set_margin_start(12);
+    inner.set_margin_end(12);
 
     let search = gtk::SearchEntry::new();
     search.set_placeholder_text(Some(&tr("Search words, definitions, notes and tags")));
     super::audit::label(&search, &tr("Search the vocabulary"));
-    root.append(&search);
+    inner.append(&search);
 
     let filter = adw::ToggleGroup::new();
-    filter.set_homogeneous(true);
+    filter.set_homogeneous(false);
     for (name, label) in [
         ("all", tr("All")),
         ("mine", tr("Mine")),
@@ -107,45 +148,54 @@ pub fn build(shared: &SharedRef, book: Option<BookView>, focus: Option<&str>) ->
     }
     filter.set_active_name(Some("all"));
     super::audit::label(&filter, &tr("Show"));
-    root.append(&filter);
+    inner.append(&filter);
 
     let rows = gtk::ListBox::new();
     rows.add_css_class("boxed-list");
     rows.set_selection_mode(gtk::SelectionMode::None);
     let empty = adw::StatusPage::new();
     empty.set_icon_name(Some("accessories-dictionary-symbolic"));
-    empty.set_title(&tr("No words here"));
-    empty.set_description(Some(&tr(
-        "Select a word or phrase while reading and choose Add to Vocabulary to write your own definition, or look a word up in a dictionary.",
-    )));
+    set_placeholder(&empty, Placeholder::NoWords);
     rows.set_placeholder(Some(&empty));
     let scroll = gtk::ScrolledWindow::new();
     scroll.set_vexpand(true);
     scroll.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
     scroll.set_child(Some(&rows));
-    root.append(&scroll);
+    inner.append(&scroll);
 
     let status = gtk::Label::new(None);
     status.add_css_class("dim-label");
     status.set_xalign(0.0);
     status.set_wrap(true);
-    root.append(&status);
+    inner.append(&status);
 
-    let bar = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-    let add = gtk::Button::with_label(&tr("Add Term"));
-    add.add_css_class("suggested-action");
+    // Add Term and the paste/import/export menu live in the header of the host dialog; an empty
+    // vocabulary also offers Add Term in its placeholder
+    let add = gtk::Button::from_icon_name("list-add-symbolic");
+    add.set_tooltip_text(Some(&tr("Add Term")));
+    super::audit::label(&add, &tr("Add Term"));
     let more = gtk::MenuButton::new();
-    more.set_label(&tr("More"));
-    more.set_direction(gtk::ArrowType::Up);
+    more.set_icon_name("view-more-symbolic");
+    more.set_tooltip_text(Some(&tr("Paste, Import and Export")));
     super::audit::label(&more, &tr("Paste, import and export"));
-    bar.append(&add);
-    bar.append(&more);
-    root.append(&bar);
+    let empty_add = gtk::Button::with_label(&tr("Add Term"));
+    empty_add.add_css_class("suggested-action");
+    empty_add.add_css_class("pill");
+    empty_add.set_halign(gtk::Align::Center);
+    empty.set_child(Some(&empty_add));
+
+    // the toasts of this list (a removed term can be brought back) show over it, in a dialog too
+    let toasts = super::dialog_toast::overlay(&inner);
+    toasts.set_vexpand(true);
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    root.append(&toasts);
 
     let list = Rc::new_cyclic(|weak: &std::rc::Weak<List>| {
         let weak = weak.clone();
-        let (rows2, status2, search2, filter2, shared2, book2) = (
+        let empty_add2 = empty_add.clone();
+        let (rows2, empty2, status2, search2, filter2, shared2, book2) = (
             rows.clone(),
+            empty.clone(),
             status.clone(),
             search.clone(),
             filter.clone(),
@@ -163,15 +213,15 @@ pub fn build(shared: &SharedRef, book: Option<BookView>, focus: Option<&str>) ->
                 rows2.append(&row_for(&me, e));
             }
             let all = visible_entries(&shared2, Source::All, "", book2.as_ref());
+            let kind = placeholder_for(all.len(), entries.len());
+            set_placeholder(&empty2, kind);
+            empty_add2.set_visible(kind == Placeholder::NoWords);
             let mine = all.iter().filter(|e| e.own.is_some()).count();
             let summary = trf(
                 "{} words · {} with your own definition",
                 &[&all.len(), &mine],
             );
-            // a message about the last action stays until the next refresh of the same text
-            if status2.label().is_empty() || status2.label().contains(" · ") {
-                status2.set_label(&summary);
-            }
+            status2.set_label(&summary);
         });
         List {
             root: root.clone(),
@@ -181,7 +231,13 @@ pub fn build(shared: &SharedRef, book: Option<BookView>, focus: Option<&str>) ->
             shared: shared.clone(),
             book: book.clone(),
             status: status.clone(),
+            message: RefCell::new(String::new()),
+            add_btn: add.clone(),
+            more_btn: more.clone(),
             rows: rows.clone(),
+            empty: empty.clone(),
+            toasts: toasts.clone(),
+            last_undo: RefCell::new(None),
         }
     });
 
@@ -192,6 +248,8 @@ pub fn build(shared: &SharedRef, book: Option<BookView>, focus: Option<&str>) ->
         filter.connect_active_name_notify(move |_| (l.refresh)());
         let l = list.clone();
         add.connect_clicked(move |_| edit_term(&l, ""));
+        let l = list.clone();
+        empty_add.connect_clicked(move |_| edit_term(&l, ""));
     }
     more.set_popover(Some(&more_menu(&list)));
     if let Some(f) = focus {
@@ -248,39 +306,47 @@ fn row_for(l: &Rc<List>, e: &VocabEntry) -> adw::ActionRow {
             row.add_suffix(&go);
         }
     }
-    let edit = gtk::Button::from_icon_name("document-edit-symbolic");
-    edit.add_css_class("flat");
-    edit.set_valign(gtk::Align::Center);
+    // the row itself edits (or adds your definition); the buttons are jump and remove, two at most
     let tip = if e.own.is_some() {
-        trf("Edit my definition of {}", &[&e.word])
+        trf("Edit Your Definition of {}", &[&e.word])
     } else {
-        trf("Add my own definition of {}", &[&e.word])
+        trf("Add Your Definition of {}", &[&e.word])
     };
-    edit.set_tooltip_text(Some(&tip));
-    super::audit::label(&edit, &tip);
+    row.set_tooltip_text(Some(&tip));
     let del = gtk::Button::from_icon_name("user-trash-symbolic");
     del.add_css_class("flat");
     del.set_valign(gtk::Align::Center);
     let tip = trf("Remove {} from the vocabulary", &[&e.word]);
     del.set_tooltip_text(Some(&tip));
     super::audit::label(&del, &tip);
-    row.add_suffix(&edit);
     row.add_suffix(&del);
     let word = e.word.clone();
     {
-        let (l1, w1) = (l.clone(), word.clone());
-        edit.connect_clicked(move |_| edit_term(&l1, &w1));
         let (l2, w2) = (l.clone(), word.clone());
         row.connect_activated(move |_| edit_term(&l2, &w2));
     }
     {
         let (l, w) = (l.clone(), word);
-        del.connect_clicked(move |_| {
-            l.shared.vocab.borrow_mut().remove_word(&w);
-            changed(&l);
-        });
+        del.connect_clicked(move |_| remove_term(&l, &w));
     }
     row
+}
+
+/// Removes a word at once and offers to bring it back (no confirmation: it is reversible).
+fn remove_term(l: &Rc<List>, word: &str) {
+    let entry = l.shared.vocab.borrow().store.find(word).cloned();
+    l.shared.vocab.borrow_mut().remove_word(word);
+    changed(l);
+    let Some(entry) = entry else { return };
+    let (l2, stash) = (l.clone(), Rc::new(RefCell::new(Some(entry))));
+    let undo: Rc<dyn Fn()> = Rc::new(move || {
+        if let Some(e) = stash.borrow_mut().take() {
+            l2.shared.vocab.borrow_mut().restore_entry(e);
+            changed(&l2);
+        }
+    });
+    *l.last_undo.borrow_mut() = Some(undo.clone());
+    super::dialog_toast::show_undo(&l.toasts, &tr("Removed from vocabulary"), move || undo());
 }
 
 fn edit_term(l: &Rc<List>, word: &str) {
@@ -296,8 +362,26 @@ fn edit_term(l: &Rc<List>, word: &str) {
     vocab_own::open_dialog(&l.root, ctx, move |_| changed(&l2));
 }
 
+/// Tells the user what an import, paste or export did: a toast over the list, not a label that
+/// stays.
 fn say(l: &List, text: String) {
-    l.status.set_label(&text);
+    super::dialog_toast::show_plain(&l.toasts, &text);
+    *l.message.borrow_mut() = text;
+}
+
+impl List {
+    /// Puts Add Term at the start of the header and the paste/import/export menu at its end; the
+    /// buttons show only while `show` says so (the Words page of the Vocabulary dialog).
+    pub fn pack_into(&self, header: &adw::HeaderBar) {
+        header.pack_start(&self.add_btn);
+        header.pack_end(&self.more_btn);
+    }
+
+    /// Show or hide the header buttons with the page that owns them.
+    pub fn set_header_buttons_visible(&self, on: bool) {
+        self.add_btn.set_visible(on);
+        self.more_btn.set_visible(on);
+    }
 }
 
 fn more_menu(l: &Rc<List>) -> gtk::Popover {
@@ -357,11 +441,11 @@ fn add_items(l: &List, items: &[GlossaryItem], all_books: bool) -> String {
         r
     };
     changed(l);
-    trf("{} terms added, {} updated.", &[&added, &updated])
+    trf("{} terms added, {} updated", &[&added, &updated])
 }
 
 fn paste_dialog(l: &Rc<List>) {
-    let d = adw::Dialog::new();
+    let d = super::dialog_toast::new_dialog();
     d.set_title(&tr("Paste a Glossary"));
     d.set_content_width(460);
     d.set_content_height(460);
@@ -387,13 +471,24 @@ fn paste_dialog(l: &Rc<List>) {
     sc.add_css_class("card");
     sc.set_vexpand(true);
     sc.set_child(Some(&tv));
-    let count = gtk::Label::new(Some(&tr("No terms found yet.")));
+    let count = gtk::Label::new(None);
     count.set_xalign(0.0);
+    count.set_visible(false);
+    // while nothing is parsed yet, a page says what to type
+    let hint = adw::StatusPage::new();
+    hint.add_css_class("compact");
+    hint.set_icon_name(Some("edit-paste-symbolic"));
+    hint.set_title(&tr("No Terms Yet"));
+    hint.set_description(Some(&tr(
+        "Paste one term per line, for example: word; its definition.",
+    )));
+    hint.set_vexpand(false);
     let all = gtk::CheckButton::with_label(&tr("Apply to all books"));
     all.set_visible(l.book.is_some());
     all.set_active(l.book.is_none());
     bx.append(&help);
     bx.append(&sc);
+    bx.append(&hint);
     bx.append(&count);
     bx.append(&all);
     let header = adw::HeaderBar::new();
@@ -417,15 +512,13 @@ fn paste_dialog(l: &Rc<List>) {
     }
     let items: Rc<RefCell<Vec<GlossaryItem>>> = Rc::new(RefCell::new(Vec::new()));
     {
-        let (items, count, add) = (items.clone(), count.clone(), add.clone());
+        let (items, count, add, hint) = (items.clone(), count.clone(), add.clone(), hint.clone());
         tv.buffer().connect_changed(move |b| {
             let text = b.text(&b.start_iter(), &b.end_iter(), false);
             let parsed = parse_glossary(&text);
-            count.set_label(&if parsed.is_empty() {
-                tr("No terms found yet.")
-            } else {
-                trf("{} terms found.", &[&parsed.len()])
-            });
+            hint.set_visible(parsed.is_empty());
+            count.set_visible(!parsed.is_empty());
+            count.set_label(&ntr("{} term found", "{} terms found", parsed.len()));
             add.set_sensitive(!parsed.is_empty());
             *items.borrow_mut() = parsed;
         });
@@ -542,12 +635,12 @@ pub fn export_choose(
 pub fn export_kinds() -> Vec<(String, &'static str, &'static str)> {
     vec![
         (
-            tr("Export My Definitions as CSV"),
+            tr("Export Your Definitions as CSV"),
             "csv",
             "my-vocabulary.csv",
         ),
         (
-            tr("Export My Definitions as JSON"),
+            tr("Export Your Definitions as JSON"),
             "json",
             "my-vocabulary.json",
         ),
@@ -562,13 +655,21 @@ pub fn export_kinds() -> Vec<(String, &'static str, &'static str)> {
 
 /// "Terms in this book": the glossary of one book in a window of its own.
 pub fn show_book_terms(parent: &impl IsA<gtk::Widget>, shared: &SharedRef, book: BookView) {
-    let d = adw::Dialog::new();
-    d.set_title(&trf("Terms in {}", &[&book.title]));
+    let d = super::dialog_toast::new_dialog();
+    d.set_title(&tr("Terms in This Book"));
+    let book_title = book.title.clone();
     d.set_content_width(520);
-    d.set_content_height(620);
+    d.set_content_height(560);
     let list = build(shared, Some(book), None);
     let view = adw::ToolbarView::new();
-    view.add_top_bar(&adw::HeaderBar::new());
+    let header = adw::HeaderBar::new();
+    // the book is the subtitle, so a long title cannot push the window name out
+    header.set_title_widget(Some(&adw::WindowTitle::new(
+        &tr("Terms in This Book"),
+        &book_title,
+    )));
+    list.pack_into(&header);
+    view.add_top_bar(&header);
     view.set_content(Some(&list.root));
     d.set_child(Some(&view));
     d.present(Some(parent));
@@ -590,6 +691,27 @@ fn has_badge(w: &gtk::Widget) -> bool {
         c = x.next_sibling();
     }
     false
+}
+
+fn count_buttons(w: &gtk::Widget) -> usize {
+    let mut n = usize::from(w.is::<gtk::Button>());
+    let mut c = w.first_child();
+    while let Some(x) = c {
+        n += count_buttons(&x);
+        c = x.next_sibling();
+    }
+    n
+}
+
+/// The most buttons any row of the list has.
+fn most_buttons_in_a_row(rows: &gtk::ListBox) -> usize {
+    let mut most = 0;
+    let mut c = rows.first_child();
+    while let Some(w) = c {
+        most = most.max(count_buttons(&w));
+        c = w.next_sibling();
+    }
+    most
 }
 
 /// `vocab:list=...` in a dev script: drives the open list through its widgets and reports its rows.
@@ -634,8 +756,12 @@ pub fn dev(arg: &str) -> String {
     } else if let Some(v) = arg.strip_prefix("edit=") {
         edit_term(&l, v);
     } else if let Some(v) = arg.strip_prefix("delete=") {
-        l.shared.vocab.borrow_mut().remove_word(v);
-        changed(&l);
+        remove_term(&l, v);
+    } else if arg == "undo" {
+        let undo = l.last_undo.borrow_mut().take();
+        if let Some(u) = undo {
+            u();
+        }
     }
     let mut rows = Vec::new();
     let mut c = l.rows.first_child();
@@ -650,10 +776,28 @@ pub fn dev(arg: &str) -> String {
         }
         c = w.next_sibling();
     }
+    let buttons = most_buttons_in_a_row(&l.rows);
     format!(
-        "vocab_list: rows={} [{}] status={:?}",
+        "vocab_list: rows={} [{}] max_buttons={buttons} status={:?} placeholder={:?}",
         rows.len(),
         rows.join(" | "),
-        l.status.label()
+        if l.message.borrow().is_empty() {
+            l.status.label().to_string()
+        } else {
+            l.message.borrow().clone()
+        },
+        l.empty.title()
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_empty_result_is_told_apart_from_an_empty_vocabulary() {
+        assert_eq!(placeholder_for(0, 0), Placeholder::NoWords);
+        assert_eq!(placeholder_for(5, 0), Placeholder::NoResults);
+        assert_eq!(placeholder_for(5, 2), Placeholder::NoWords);
+    }
 }

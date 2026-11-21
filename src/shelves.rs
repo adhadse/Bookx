@@ -235,6 +235,23 @@ impl LibraryShelves {
         }
     }
 
+    /// Where the shelf stands in the user's order (`None` when it was never ordered).
+    pub fn position(&self, name: &str) -> Option<usize> {
+        self.order.iter().position(|o| o.eq_ignore_ascii_case(name))
+    }
+
+    /// Undo of `forget`: the shelf goes back to its place and its books to their order.
+    pub fn restore(&mut self, name: &str, position: Option<usize>, books: Option<Vec<u64>>) {
+        if let Some(p) = position {
+            if self.position(name).is_none() {
+                self.order.insert(p.min(self.order.len()), name.to_string());
+            }
+        }
+        if let Some(b) = books {
+            self.books.insert(name.to_string(), b);
+        }
+    }
+
     pub fn forget(&mut self, name: &str) {
         self.order.retain(|o| !o.eq_ignore_ascii_case(name));
         self.books.remove(name);
@@ -403,6 +420,23 @@ mod tests {
         assert_eq!(l.sort_books("S", vec![2, 3, 9]), vec![3, 2, 9]);
         assert!(!l.move_book("S", vec![1, 2, 3], 1, -1));
         assert!(!l.move_book("S", vec![1, 2, 3], 7, 1));
+    }
+
+    #[test]
+    fn a_deleted_shelf_comes_back_to_its_place_with_its_book_order() {
+        let mut l = LibraryShelves::default();
+        let all = names(&["A", "B", "C"]);
+        l.move_shelf(&all, "C", -2);
+        l.move_book("B", vec![1, 2], 2, -1);
+        let (pos, books) = (l.position("B"), l.books.get("B").cloned());
+        l.forget("B");
+        assert_eq!(l.position("B"), None);
+        l.restore("B", pos, books);
+        assert_eq!(l.position("B"), pos);
+        assert_eq!(l.sort_books("B", vec![1, 2]), vec![2, 1]);
+        // restoring twice does not duplicate the entry
+        l.restore("B", pos, None);
+        assert_eq!(l.order.iter().filter(|o| *o == "B").count(), 1);
     }
 
     #[test]

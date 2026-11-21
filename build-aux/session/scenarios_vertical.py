@@ -107,7 +107,7 @@ def vertical_reading(c):
     a, b = box_of(c, canvas, 8), box_of(c, canvas, 60)
     # from the upper part of the 9th character to the lower part of the 61st: the selection is exactly 8..61
     c.sb.drag(centre(a)[0], a[1] + a[3] * 0.25, centre(b)[0], b[1] + b[3] * 0.75)
-    btn = c.wait_node("button", "Highlight yellow", timeout=5)
+    btn = c.wait_node("button", "Highlight Yellow", timeout=5)
     c.shot("selected")
     c.check("dragging down one column and into the next selects text and opens the actions", btn)
     t = text_iface(canvas)

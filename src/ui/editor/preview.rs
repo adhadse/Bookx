@@ -51,6 +51,10 @@ pub enum PvMsg {
     Checkpoints,
     CheckpointNew(String),
     CheckpointDelete(u64),
+    /// The Undo button of the "Checkpoint deleted" toast.
+    CheckpointDeleteUndo(u64),
+    /// The toast went away without Undo: delete for good.
+    CheckpointDeleteCommit(u64),
     CheckpointRename(u64, String),
     CheckpointPin(u64, bool),
     CheckpointsClosed,
@@ -88,11 +92,13 @@ pub(super) struct PvState {
     pub cmp: super::compare::CmpUi,
     pub css: super::live_css::CssUi,
     pub cp_dialog: RefCell<Option<super::compare::CpDialog>>,
+    /// Checkpoints deleted from the dialog whose Undo toast is still showing (removed for good when it goes away).
+    pub cp_hidden: RefCell<Vec<u64>>,
     pub split_dialog: RefCell<Option<super::split::SplitDlg>>,
     css_timer: Rc<RefCell<Option<glib::SourceId>>>,
     /// Scroll sync: preview scrolls the code too.
     pub both: Cell<bool>,
-    both_btn: gtk::ToggleButton,
+    both_btn: gtk::CheckButton,
     pub gate: Cell<bookx_editing::scroll_sync::Gate>,
     /// Until when a caret reveal wins over a delayed code → preview sync.
     follow_until: Cell<u64>,
@@ -112,7 +118,7 @@ pub(super) struct PvInit<'a> {
     pub preview: &'a BookCanvas,
     pub preview_head: &'a gtk::Box,
     pub win: &'a adw::Window,
-    pub tools_menu: &'a gio::Menu,
+    pub cp_menu: &'a gio::Menu,
     pub edit_menu: &'a gio::Menu,
     pub sidebar_stack: &'a adw::ViewStack,
     pub center: &'a gtk::Stack,
@@ -123,14 +129,12 @@ pub(super) struct PvInit<'a> {
     pub code_adj: Option<gtk::Adjustment>,
 }
 
-fn toggle(icon: &str, tip: &str, on: bool) -> gtk::ToggleButton {
-    let b = gtk::ToggleButton::new();
-    b.set_icon_name(icon);
-    b.set_tooltip_text(Some(tip));
-    b.add_css_class("flat");
-    b.set_active(on);
-    crate::ui::audit::label(&b, tip);
-    b
+/// A check item of the preview's View menu.
+fn check(label: &str, tip: &str, on: bool) -> gtk::CheckButton {
+    let c = gtk::CheckButton::with_label(label);
+    c.set_tooltip_text(Some(tip));
+    c.set_active(on);
+    c
 }
 
 fn flat_button(icon: &str, tip: &str) -> gtk::Button {
@@ -198,7 +202,7 @@ impl PvState {
             preview,
             preview_head,
             win,
-            tools_menu,
+            cp_menu,
             edit_menu,
             sidebar_stack,
             center,
@@ -208,27 +212,26 @@ impl PvState {
         } = init;
         install_marker_css();
         // ---- header: follow, auto reload, refresh, find, copy --------------------------------
-        let follow_btn = toggle(
-            "find-location-symbolic",
-            &tr("Follow the cursor: the preview scrolls to the element at the cursor"),
+        let follow_btn = check(
+            &tr("Follow the Cursor"),
+            &tr("The preview scrolls to the element at the cursor"),
             crate::editor_prefs::look().preview_follow,
         );
-        let auto_btn = toggle(
-            "media-playlist-repeat-symbolic",
+        let auto_btn = check(
+            &tr("Reload While Typing"),
             &tr("Reload the preview automatically while typing"),
             true,
         );
         let refresh_btn = flat_button("view-refresh-symbolic", &tr("Refresh the preview (F5)"));
-        let both_btn = toggle(
-            "object-flip-vertical-symbolic",
-            &tr("Sync scrolling both ways: scrolling the preview also scrolls the code (the code always moves the preview)"),
+        let both_btn = check(
+            &tr("Scroll the Code With the Preview"),
+            &tr("Scrolling the preview also scrolls the code (the code always moves the preview)"),
             both,
         );
         let find_btn = flat_button("edit-find-symbolic", &tr("Find in the preview"));
-        let copy_btn = flat_button(
-            "edit-copy-symbolic",
-            &tr("Copy the selection of the preview (Ctrl+Alt+C)"),
-        );
+        let copy_btn = gtk::Button::with_label(&tr("Copy Selection"));
+        copy_btn.add_css_class("flat");
+        copy_btn.set_tooltip_text(Some(&tr("Copy the selection of the preview (Ctrl+Alt+C)")));
         {
             let t = sender.input_sender().clone();
             follow_btn.connect_toggled(move |b| t.emit(Input::Pv(PvMsg::Follow(b.is_active()))));
@@ -249,13 +252,33 @@ impl PvState {
             let t = sender.input_sender().clone();
             copy_btn.connect_clicked(move |_| t.emit(Input::Pv(PvMsg::CopySelection)));
         }
+        // locate, auto reload, scroll sync and copy share one View menu; Refresh and Find stay
+        let view_btn = gtk::MenuButton::new();
+        view_btn.set_icon_name("view-more-symbolic");
+        view_btn.set_tooltip_text(Some(&tr(
+            "Preview options: follow the cursor, reload, scroll sync",
+        )));
+        view_btn.add_css_class("flat");
+        crate::ui::audit::label(&view_btn, &tr("Preview options"));
+        {
+            let col = gtk::Box::new(gtk::Orientation::Vertical, 2);
+            col.set_margin_all(8);
+            for w in [
+                follow_btn.upcast_ref::<gtk::Widget>(),
+                auto_btn.upcast_ref(),
+                both_btn.upcast_ref(),
+                copy_btn.upcast_ref(),
+            ] {
+                col.append(w);
+            }
+            let pop = gtk::Popover::new();
+            pop.set_child(Some(&col));
+            view_btn.set_popover(Some(&pop));
+        }
         for b in [
-            follow_btn.upcast_ref::<gtk::Widget>(),
-            auto_btn.upcast_ref(),
-            both_btn.upcast_ref(),
+            view_btn.upcast_ref::<gtk::Widget>(),
             refresh_btn.upcast_ref(),
             find_btn.upcast_ref(),
-            copy_btn.upcast_ref(),
         ] {
             preview_head.append(b);
         }
@@ -420,13 +443,11 @@ impl PvState {
             Some("pv.split-dialog"),
         );
         edit_menu.append_section(None, &split);
-        let cp = gio::Menu::new();
-        cp.append(Some(&tr("Checkpoints")), Some("pv.checkpoints"));
-        cp.append(
+        cp_menu.append(Some(&tr("Manage Checkpoints")), Some("pv.checkpoints"));
+        cp_menu.append(
             Some(&tr("Compare with Another Book")),
             Some("pv.compare-book"),
         );
-        tools_menu.append_section(None, &cp);
 
         // the Contents tab: point the selected entry at a place in the preview
         let pick_toc = flat_button(
@@ -479,6 +500,7 @@ impl PvState {
             cmp,
             css,
             cp_dialog: RefCell::new(None),
+            cp_hidden: RefCell::new(Vec::new()),
             split_dialog: RefCell::new(None),
             css_timer: Rc::new(RefCell::new(None)),
             both: Cell::new(both),
@@ -934,8 +956,17 @@ impl Editor {
                 self.toast(&trf("Checkpoint “{}” created", &[&name]));
                 self.refresh_cp_dialog();
             }
-            PvMsg::CheckpointDelete(id) => {
-                if self.checkpoints.delete(id).is_ok() {
+            PvMsg::CheckpointDelete(id) => self.cp_delete_later(id),
+            PvMsg::CheckpointDeleteUndo(id) => {
+                self.pv.cp_hidden.borrow_mut().retain(|h| *h != id);
+                self.refresh_restore_menu();
+                self.refresh_cp_dialog();
+            }
+            PvMsg::CheckpointDeleteCommit(id) => {
+                let pending = self.pv.cp_hidden.borrow().contains(&id);
+                if pending {
+                    let _ = self.checkpoints.delete(id);
+                    self.pv.cp_hidden.borrow_mut().retain(|h| *h != id);
                     self.refresh_restore_menu();
                     self.refresh_cp_dialog();
                 }

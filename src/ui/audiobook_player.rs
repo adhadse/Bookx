@@ -42,6 +42,10 @@ pub struct Page {
     inner: Rc<Inner>,
 }
 
+thread_local! {
+    static LAST_DELETE: std::cell::RefCell<Option<Rc<dyn Fn()>>> = const { std::cell::RefCell::new(None) };
+}
+
 struct Inner {
     shared: SharedRef,
     l: RefCell<Listening>,
@@ -205,14 +209,14 @@ pub fn open(shared: &SharedRef, id: u64, toast: Rc<dyn Fn(String)>) -> anyhow::R
     progress.add_css_class("caption");
     progress.add_css_class("dim-label");
 
-    let prev_ch = icon_button("media-skip-backward-symbolic", &tr("Previous chapter"));
+    let prev_ch = icon_button("media-skip-backward-symbolic", &tr("Previous Chapter"));
     let back = text_button("−15", &tr("Back 15 seconds"));
     let play = icon_button("media-playback-start-symbolic", &tr("Play"));
     play.remove_css_class("flat");
     play.add_css_class("suggested-action");
     play.set_size_request(56, 56);
     let fwd = text_button("+30", &tr("Forward 30 seconds"));
-    let next_ch = icon_button("media-skip-forward-symbolic", &tr("Next chapter"));
+    let next_ch = icon_button("media-skip-forward-symbolic", &tr("Next Chapter"));
     for b in [&back, &fwd] {
         b.set_size_request(44, 44);
     }
@@ -226,8 +230,8 @@ pub fn open(shared: &SharedRef, id: u64, toast: Rc<dyn Fn(String)>) -> anyhow::R
     // speed
     let speed_btn = gtk::MenuButton::new();
     speed_btn.set_label(&speed_text(listening.state.speed));
-    speed_btn.set_tooltip_text(Some(&tr("Playback speed")));
-    audit::label(&speed_btn, &tr("Playback speed"));
+    speed_btn.set_tooltip_text(Some(&tr("Playback Speed")));
+    audit::label(&speed_btn, &tr("Playback Speed"));
     let speed_pop = gtk::Popover::new();
     let sbox = gtk::Box::new(gtk::Orientation::Vertical, 8);
     sbox.set_margin_all(10);
@@ -255,16 +259,14 @@ pub fn open(shared: &SharedRef, id: u64, toast: Rc<dyn Fn(String)>) -> anyhow::R
     // sleep timer
     let sleep_btn = gtk::MenuButton::new();
     let sleep_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-    sleep_box.append(&gtk::Image::from_icon_name(
-        "preferences-system-time-symbolic",
-    ));
+    sleep_box.append(&gtk::Image::from_icon_name("alarm-symbolic"));
     let sleep_label = gtk::Label::new(None);
     sleep_label.add_css_class("numeric");
     sleep_label.set_visible(false);
     sleep_box.append(&sleep_label);
     sleep_btn.set_child(Some(&sleep_box));
-    sleep_btn.set_tooltip_text(Some(&tr("Sleep timer")));
-    audit::label(&sleep_btn, &tr("Sleep timer"));
+    sleep_btn.set_tooltip_text(Some(&tr("Sleep Timer")));
+    audit::label(&sleep_btn, &tr("Sleep Timer"));
     let sleep_pop = gtk::Popover::new();
     let slist = gtk::Box::new(gtk::Orientation::Vertical, 2);
     slist.set_margin_all(6);
@@ -663,6 +665,42 @@ impl Inner {
         }
     }
 
+    /// Deletes a bookmark and offers to take it back with a toast.
+    fn delete_bookmark(self: &Rc<Self>, id: &str) {
+        let Some(m) = self
+            .l
+            .borrow()
+            .state
+            .bookmarks
+            .iter()
+            .find(|b| b.id == id)
+            .cloned()
+        else {
+            return;
+        };
+        self.l.borrow_mut().remove_bookmark(id, chrono::Utc::now());
+        self.fill_bookmarks();
+        let w = Rc::downgrade(self);
+        let restore: Rc<dyn Fn()> = Rc::new(move || {
+            if let Some(i) = w.upgrade() {
+                i.l.borrow_mut()
+                    .restore_bookmark(m.position_ms, &m.note, chrono::Utc::now());
+                i.fill_bookmarks();
+            }
+        });
+        LAST_DELETE.with(|l| *l.borrow_mut() = Some(restore.clone()));
+        let overlay = self
+            .bookmarks
+            .root()
+            .and_then(|r| super::dialog_toast::find_overlay(&r));
+        match overlay {
+            Some(o) => {
+                super::dialog_toast::show_undo(&o, &tr("Bookmark deleted"), move || restore())
+            }
+            None => (self.toast)(tr("Bookmark deleted")),
+        }
+    }
+
     fn fill_bookmarks(self: &Rc<Self>) {
         while let Some(c) = self.bookmarks.first_child() {
             self.bookmarks.remove(&c);
@@ -696,7 +734,7 @@ impl Inner {
             text.append(&n);
             go.set_child(Some(&text));
             audit::label(&go, &trf("Go to {} {}", &[&clock(m.position_ms), &m.note]));
-            let del = icon_button("edit-delete-symbolic", &tr("Delete this bookmark"));
+            let del = icon_button("edit-delete-symbolic", &tr("Delete Bookmark"));
             row.append(&go);
             row.append(&del);
             self.bookmarks.append(&row);
@@ -710,8 +748,7 @@ impl Inner {
             let w = Rc::downgrade(self);
             del.connect_clicked(move |_| {
                 if let Some(i) = w.upgrade() {
-                    i.l.borrow_mut().remove_bookmark(&id2, chrono::Utc::now());
-                    i.fill_bookmarks();
+                    i.delete_bookmark(&id2);
                 }
             });
         }
@@ -925,8 +962,14 @@ impl Page {
                         .get(arg.parse::<usize>().unwrap_or(0))
                         .map(|b| b.id.clone());
                 if let Some(id) = id {
-                    i.l.borrow_mut().remove_bookmark(&id, chrono::Utc::now());
-                    i.fill_bookmarks();
+                    i.delete_bookmark(&id);
+                }
+            }
+            // `audio:undo`: presses Undo of the last "Bookmark deleted" toast
+            "undo" => {
+                let f = LAST_DELETE.with(|l| l.borrow_mut().take());
+                if let Some(f) = f {
+                    f();
                 }
             }
             "gobookmark" => {

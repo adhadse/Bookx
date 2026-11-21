@@ -20,12 +20,6 @@ msgstr "Ajouter des livres"
 msgid "Add Folder"
 msgstr "Ajouter un dossier"
 
-msgid "Add a note"
-msgstr "Ajouter une note"
-
-msgid "Add bookmark (Ctrl+B)"
-msgstr "Ajouter un marque-page (Ctrl+B)"
-
 msgid "Add from the Web"
 msgstr "Ajouter depuis le Web"
 
@@ -125,9 +119,6 @@ msgstr "Copier"
 msgid "Copy Diagnostics"
 msgstr "Copier les informations de diagnostic"
 
-msgid "Could not open the book: {}"
-msgstr "Impossible d'ouvrir le livre : {}"
-
 msgid "Could not save: {}"
 msgstr "Impossible d'enregistrer : {}"
 
@@ -215,9 +206,6 @@ msgstr "Dossier"
 msgid "Font family"
 msgstr "Famille de police"
 
-msgid "Font size (pt)"
-msgstr "Taille de police (pt)"
-
 msgid "Format"
 msgstr "Format"
 
@@ -263,9 +251,6 @@ msgstr "Langue de l'interface"
 msgid "Justify text"
 msgstr "Justifier le texte"
 
-msgid "Keep this checkpoint when old ones are removed"
-msgstr "Conserver ce point de contrôle quand les anciens sont retirés"
-
 msgid "Keyboard Shortcuts"
 msgstr "Raccourcis clavier"
 
@@ -299,15 +284,6 @@ msgstr "Bibliothèque"
 msgid "Library Health"
 msgstr "État de la bibliothèque"
 
-msgid "Look up in a dictionary"
-msgstr "Chercher dans un dictionnaire"
-
-msgid "Look up on Wikipedia"
-msgstr "Chercher sur Wikipédia"
-
-msgid "Main menu"
-msgstr "Menu principal"
-
 msgid "Name"
 msgstr "Nom"
 
@@ -325,9 +301,6 @@ msgstr "Aucun livre ne correspond à votre recherche"
 
 msgid "No dictionaries installed"
 msgstr "Aucun dictionnaire installé"
-
-msgid "None"
-msgstr "Aucun"
 
 msgid "Note"
 msgstr "Note"
@@ -406,9 +379,6 @@ msgstr "Recharger"
 
 msgid "Remove"
 msgstr "Retirer"
-
-msgid "Remove bookmark"
-msgstr "Retirer le marque-page"
 
 msgid "Rename"
 msgstr "Renommer"
@@ -570,9 +540,6 @@ msgid_plural "{} problems"
 msgstr[0] "{} problème"
 msgstr[1] "{} problèmes"
 
-msgid "Sync scrolling both ways: scrolling the preview also scrolls the code (the code always moves the preview)"
-msgstr "Défilement synchronisé dans les deux sens : faire défiler l'aperçu fait aussi défiler le code (le code déplace toujours l'aperçu)"
-
 msgid "Could not start the program"
 msgstr "Impossible de lancer le programme"
 
@@ -681,8 +648,6 @@ msgstr "Alignement"
 msgid "Structure"
 msgstr "Structure"
 
-
-
 msgid "Remove Text Colour"
 msgstr "Retirer la couleur du texte"
 
@@ -715,9 +680,6 @@ msgstr "Exportation"
 
 msgid "Export as Calibre Library"
 msgstr "Exporter comme bibliothèque Calibre"
-
-msgid "Choose an empty folder for the Calibre library"
-msgstr "Choisissez un dossier vide pour la bibliothèque Calibre"
 
 msgid "Export cancelled; nothing was kept"
 msgstr "Exportation annulée ; rien n’a été conservé"
@@ -770,9 +732,6 @@ msgstr "Défilement vertical (webtoon)"
 msgid "Fit"
 msgstr "Ajustement"
 
-msgid "How large a page is shown"
-msgstr "Taille d’affichage d’une page"
-
 msgid "Fit page"
 msgstr "Ajuster la page"
 
@@ -803,32 +762,11 @@ msgstr "Espace passe d’une case à l’autre au lieu de faire défiler"
 msgid "Grey pages"
 msgstr "Pages en gris"
 
-msgid "Show pages in grey (always on in e-ink mode)"
-msgstr "Afficher les pages en gris (toujours actif en mode e-ink)"
-
 msgid "Animate moves between panels"
 msgstr "Animer le passage d’une case à l’autre"
 
 msgid "Off when your system asks for reduced motion, and in e-ink mode"
 msgstr "Désactivé quand le système demande moins d’animations, et en mode e-ink"
-
-msgid "Page thumbnails (F9)"
-msgstr "Miniatures des pages (F9)"
-
-msgid "Right to left (manga)"
-msgstr "De droite à gauche (manga)"
-
-msgid "Guided view: Space goes panel by panel"
-msgstr "Vue guidée : Espace avance case par case"
-
-msgid "Use the defaults for this book"
-msgstr "Utiliser les réglages par défaut pour ce livre"
-
-msgid "View: layout, fit, direction"
-msgstr "Affichage : mise en page, ajustement, sens"
-
-msgid "Page {} cannot be shown"
-msgstr "La page {} ne peut pas être affichée"
 
 msgid "Page {} of {}"
 msgstr "Page {} sur {}"
@@ -844,3 +782,6 @@ msgstr "Page {} ({})"
 
 msgid "{}   ·   one very long line"
 msgstr "{}   ·   une seule très longue ligne"
+
+msgid "Help"
+msgstr "Aide"

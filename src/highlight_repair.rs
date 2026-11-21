@@ -19,6 +19,9 @@ fn marker(root: &Path) -> PathBuf {
 /// done). Needs a writable library. One undo step in the operation log. `None` when it was done
 /// before, nothing needed checking or the library is read-only.
 pub fn one_time_pass(lib: &mut Library) -> Option<RepairReport> {
+    // the colours and styles of highlights imported before the device looks were understood
+    // (its own marker; see `look_pass`); logged in the history as its own undoable step
+    let _ = look_pass(lib);
     if lib.is_read_only() || marker(&lib.root).exists() {
         return None;
     }
@@ -35,6 +38,38 @@ pub fn one_time_pass(lib: &mut Library) -> Option<RepairReport> {
         ),
     );
     (report.changed() > 0).then_some(report)
+}
+
+/// What the pass that corrects colours and styles reads: Bookx's own sync records and ledgers
+/// (settings folder) and every mounted USB e-reader (Kobo database, KOReader sidecars). Reads only.
+fn look_sources(root: &Path) -> Vec<bookx_serve::look_repair::Truth> {
+    use bookx_core::contracts::DeviceDriver;
+    use bookx_serve::look_repair as repair;
+    let config = crate::config::stats_path().and_then(|p| p.parent().map(Path::to_path_buf));
+    let mut rows = Vec::new();
+    if let Some(c) = &config {
+        rows.extend(repair::truths_from_annotation_store(
+            &c.join("koreader-annotations.json"),
+        ));
+    }
+    rows.extend(repair::truths_from_ledgers(config.as_deref(), root));
+    for d in crate::devices::driver().detect() {
+        rows.extend(repair::truths_from_folder(&d.mount));
+    }
+    rows
+}
+
+/// Corrects the look of highlights stored with the default colour and style although a device said
+/// otherwise, once per library (`bookx_serve::look_repair::one_time`). One undo step. The same
+/// repair is `bookx-cli highlights repair`.
+pub fn look_pass(lib: &mut Library) -> Option<bookx_serve::look_repair::Report> {
+    if lib.is_read_only() || bookx_serve::look_repair::marker(&lib.root).exists() {
+        return None;
+    }
+    let rows = look_sources(&lib.root.clone());
+    let report = bookx_serve::look_repair::one_time(lib, &rows)?;
+    tracing::info!("highlight looks repaired: {}", report.text());
+    Some(report)
 }
 
 /// What to tell the user after a pass that changed something.

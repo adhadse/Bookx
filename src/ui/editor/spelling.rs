@@ -31,6 +31,10 @@ pub enum Msg {
     /// Ignore the selected word; `true` remembers it for this book.
     Ignore(bool),
     AddTo(String),
+    /// Undo of the Ignore toast: the word is reported again (`true`: also forget it for this book).
+    UndoIgnore(String, bool),
+    /// Undo of the Add to Dictionary toast: the word leaves that dictionary.
+    UndoAdd(String, String),
     ShowAll(bool),
     ByCount(bool),
     Filter(String),
@@ -53,6 +57,8 @@ struct Ui {
     status: gtk::Label,
     spinner: gtk::Spinner,
     word: gtk::Label,
+    detail: gtk::Box,
+    placeholder: adw::StatusPage,
     entry: gtk::Entry,
     sugg: gtk::ListBox,
     change: gtk::Button,
@@ -257,6 +263,14 @@ fn build_ui(tx0: &relm4::Sender<Input>) -> Ui {
     col.append(&filter);
     col.append(&scroll);
     col.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
+    let placeholder = adw::StatusPage::builder()
+        .icon_name("tools-check-spelling-symbolic")
+        .title(tr("Select a Word"))
+        .description(tr("Pick a word in the list for suggestions"))
+        .build();
+    placeholder.add_css_class("compact");
+    col.append(&placeholder);
+    detail.set_visible(false);
     col.append(&detail);
     col.set_width_request(330);
     col.add_css_class("background");
@@ -342,6 +356,8 @@ fn build_ui(tx0: &relm4::Sender<Input>) -> Ui {
         status,
         spinner,
         word,
+        detail,
+        placeholder,
         entry,
         sugg,
         change,
@@ -381,10 +397,18 @@ impl Editor {
                 }
             }
             Msg::Open => {
+                // in a narrow window the spelling pane replaces the preview instead of squeezing both
+                if self.w.split.is_collapsed() && self.w.preview_btn.is_active() {
+                    self.ext.spell_hid_preview.set(true);
+                    self.w.preview_btn.set_active(false);
+                }
                 self.spelling.ui().root.set_reveal_child(true);
                 self.spell_panel(Msg::Refresh);
             }
             Msg::Close => {
+                if self.ext.spell_hid_preview.replace(false) {
+                    self.w.preview_btn.set_active(true);
+                }
                 self.spelling.ui().root.set_reveal_child(false);
                 self.w.view.grab_focus();
             }
@@ -408,6 +432,39 @@ impl Editor {
             Msg::Change => self.spell_change(),
             Msg::Ignore(book) => self.spell_ignore(book),
             Msg::AddTo(name) => self.spell_add(&name),
+            Msg::UndoIgnore(word, book) => {
+                {
+                    let mut sh = self.spell.borrow_mut();
+                    if let Some(st) = sh.state.as_mut() {
+                        st.unignore(&word);
+                    }
+                    if book {
+                        sh.prefs.ignored.remove(&word);
+                    }
+                }
+                if book {
+                    self.save_spell_prefs();
+                }
+                self.spell_changed_scope();
+                self.toast(&tr("Undone"));
+            }
+            Msg::UndoAdd(dict, word) => {
+                let res = self
+                    .spell
+                    .borrow_mut()
+                    .state
+                    .as_mut()
+                    .map(|s| s.remove_from_named(&dict, &word));
+                if let Some(Err(e)) = res {
+                    self.toast(&trf(
+                        "Could not remove the word: {}",
+                        &[&format!("{:#}", e)],
+                    ));
+                } else {
+                    self.spell_changed_scope();
+                    self.toast(&tr("Undone"));
+                }
+            }
             Msg::ShowAll(on) => {
                 self.spelling.show_all = on;
                 self.spell_fill();
@@ -627,12 +684,16 @@ impl Editor {
         let Some(e) = entry.and_then(|i| self.spelling.words.as_ref().map(|w| &w.entries[i]))
         else {
             ui.word.set_label(&tr("Select a word"));
+            ui.detail.set_visible(false);
+            ui.placeholder.set_visible(true);
             ui.entry.set_text("");
             for b in [&ui.change, &ui.ignore, &ui.ignore_book, &ui.add] {
                 b.set_sensitive(false);
             }
             return;
         };
+        ui.detail.set_visible(true);
+        ui.placeholder.set_visible(false);
         ui.word.set_label(&format!("{} ({})", e.word, e.lang));
         ui.entry.set_text(&e.word);
         ui.entry.set_position(-1);
@@ -782,11 +843,16 @@ impl Editor {
         if book {
             self.save_spell_prefs();
         }
-        self.toast(&if book {
-            trf("“{}” is ignored in this book", &[&e.word])
-        } else {
-            trf("“{}” is ignored until the editor closes", &[&e.word])
-        });
+        let word = e.word.clone();
+        let _ = self.toast_button(
+            &if book {
+                trf("“{}” is ignored in this book", &[&e.word])
+            } else {
+                trf("“{}” is ignored until the editor closes", &[&e.word])
+            },
+            &tr("Undo"),
+            move || Input::SpellPanel(Msg::UndoIgnore(word.clone(), book)),
+        );
         self.spelling.selected = None;
         self.spell_changed_scope();
     }
@@ -806,7 +872,14 @@ impl Editor {
                 "Could not save the word: {}",
                 &[&format!("{:#}", err)],
             )),
-            _ => self.toast(&trf("“{}” added to {}", &[&e.word, &dict])),
+            _ => {
+                let (d, w) = (dict.to_string(), e.word.clone());
+                let _ = self.toast_button(
+                    &trf("“{}” added to {}", &[&e.word, &dict]),
+                    &tr("Undo"),
+                    move || Input::SpellPanel(Msg::UndoAdd(d.clone(), w.clone())),
+                );
+            }
         }
         self.spelling.selected = None;
         self.spell_changed_scope();
@@ -920,7 +993,7 @@ impl Editor {
             s.set_icon_name(Some("tools-check-spelling-symbolic"));
             s.set_title(&tr("No Files Left Out"));
             s.set_description(Some(
-                "Add the comment <!-- bookx-no-spell-check --> to a file, or use “Exclude This File” in the panel menu.",
+                &tr("Add the comment <!-- bookx-no-spell-check --> to a file, or use “Exclude This File” in the panel menu."),
             ));
             s.upcast()
         } else {
@@ -1028,6 +1101,13 @@ impl Editor {
             eprintln!(
                 "editor_spell_sel: file={} text={t}",
                 self.current.clone().unwrap_or_default()
+            );
+        } else if c == "info" {
+            let ui = self.spelling.ui();
+            eprintln!(
+                "editor_spell_ui: placeholder={} detail={}",
+                ui.placeholder.is_visible(),
+                ui.detail.is_visible()
             );
         } else if c == "dump" {
             self.dev_spell_dump();

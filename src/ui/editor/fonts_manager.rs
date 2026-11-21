@@ -92,14 +92,6 @@ impl Editor {
 
         let list = group(&tr("Fonts in this book"));
         let tx = self.sender.input_sender().clone();
-        if fonts.is_empty() {
-            let row = adw::ActionRow::new();
-            row.set_title(&tr("This book has no embedded fonts"));
-            row.set_subtitle(&tr(
-                "Use Tools → Embed Referenced Fonts to add fonts from this computer.",
-            ));
-            list.add(&row);
-        }
         for f in &fonts {
             let ex = adw::ExpanderRow::new();
             ex.set_title(&glib::markup_escape_text(f.display_family()));
@@ -172,13 +164,28 @@ impl Editor {
         }
         let sg = group(&tr("Sample"));
         sg.add(&sample_text);
+        sg.set_widget_name("fonts-sample");
         let body = gtk::Box::new(gtk::Orientation::Vertical, 12);
         body.set_margin_all(16);
-        body.append(&list);
-        body.append(&sg);
-        body.append(&sample);
-        body.append(&sample_note);
-        body.append(&embed);
+        if fonts.is_empty() {
+            let empty = adw::StatusPage::builder()
+                .icon_name("font-x-generic-symbolic")
+                .title(tr("No Embedded Fonts"))
+                .description(tr("The book uses the fonts of the reading device"))
+                .build();
+            empty.set_widget_name("fonts-empty");
+            embed.set_halign(gtk::Align::Center);
+            embed.add_css_class("pill");
+            embed.add_css_class("suggested-action");
+            empty.set_child(Some(&embed));
+            body.append(&empty);
+        } else {
+            body.append(&list);
+            body.append(&sg);
+            body.append(&sample);
+            body.append(&sample_note);
+            body.append(&embed);
+        }
         let scroll = gtk::ScrolledWindow::new();
         scroll.set_vexpand(true);
         scroll.set_child(Some(&body));

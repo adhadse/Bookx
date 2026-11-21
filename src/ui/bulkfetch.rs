@@ -85,10 +85,10 @@ fn start_with(
             .map(|b| (b.id, b.meta.clone(), b.cover.is_some()))
             .collect()
     };
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("Fetch Metadata"));
-    dialog.set_content_width(820);
-    dialog.set_content_height(680);
+    dialog.set_content_width(640);
+    dialog.set_content_height(560);
 
     let progress = gtk::ProgressBar::new();
     progress.set_show_text(true);
@@ -120,9 +120,9 @@ fn start_with(
     let accept_all = gtk::Button::with_label(&tr("Accept All"));
     let accept_none = gtk::Button::with_label(&tr("Accept None"));
     let accept_safe = gtk::Button::with_label(&tr("Only Empty Fields"));
-    accept_safe.set_tooltip_text(Some(
+    accept_safe.set_tooltip_text(Some(&tr(
         "Accept just the rows that fill a field the book has nothing in",
-    ));
+    )));
     let bar = gtk::Box::new(gtk::Orientation::Horizontal, 6);
     for b in [&accept_all, &accept_none, &accept_safe] {
         bar.append(b);

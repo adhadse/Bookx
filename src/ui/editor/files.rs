@@ -45,6 +45,45 @@ impl Editor {
         });
     }
 
+    /// One unused file goes at once (the toast offers Undo); two or more files, or a file something refers to,
+    /// ask first and say how many.
+    pub(super) fn ask_delete_files(&mut self, paths: Vec<String>) {
+        if paths.is_empty() {
+            return;
+        }
+        let referenced = editor_tools::any_referenced(&self.book.borrow(), &paths);
+        if !editor_tools::delete_needs_confirmation(paths.len(), referenced) {
+            self.delete_files(paths);
+            return;
+        }
+        let tx = self.sender.input_sender().clone();
+        let what = if paths.len() == 1 {
+            format!("“{}”", file_name(&paths[0]))
+        } else {
+            ntr("{} file", "{} files", paths.len())
+        };
+        let body = if referenced {
+            trf(
+                "{} will be removed from the book, but other files still refer to it, so those links will break. A checkpoint is taken first and the toast offers Undo.",
+                &[&what],
+            )
+        } else {
+            trf(
+                "{} will be removed from the book. A checkpoint is taken first and the toast offers Undo.",
+                &[&what],
+            )
+        };
+        *self.ext.last_alert.borrow_mut() = format!("Delete {what}?|{body}");
+        alert(
+            &self.w.win,
+            &trf("Delete {}?", &[&what]),
+            &body,
+            &tr("Delete"),
+            true,
+            move || tx.emit(Input::DeleteFiles(paths.clone())),
+        );
+    }
+
     pub(super) fn delete_files(&mut self, paths: Vec<String>) {
         if paths.is_empty() {
             return;

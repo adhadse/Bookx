@@ -11,7 +11,6 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
 
-use super::alert;
 use crate::news::{
     feed_lines, recipe_from_form, schedule_text, status_text, NewsStore, ScheduleChoice,
     Subscription, DEFAULT_KEEP, WEEKDAYS,
@@ -35,16 +34,15 @@ fn offset() -> chrono::FixedOffset {
 }
 
 pub fn show(parent: &impl IsA<gtk::Widget>, ctx: Ctx) {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("News Subscriptions"));
     dialog.set_content_width(560);
     dialog.set_content_height(560);
+    let toasts = adw::ToastOverlay::new();
 
     let page = adw::PreferencesPage::new();
     let group = adw::PreferencesGroup::new();
-    group.set_description(Some(
-        "Each subscription makes a new book from its feeds on its schedule. Old issues are removed.",
-    ));
+    group.set_description(Some(&tr("Each subscription makes a new book from its feeds on its schedule. Old issues are removed.")));
     let add_btn = gtk::Button::with_label(&tr("Add"));
     add_btn.add_css_class("suggested-action");
     add_btn.set_valign(gtk::Align::Center);
@@ -66,6 +64,7 @@ pub fn show(parent: &impl IsA<gtk::Widget>, ctx: Ctx) {
         let ctx = ctx.clone();
         let refresh = refresh.clone();
         let parent = dialog.clone();
+        let toasts = toasts.clone();
         move || {
             for r in rows.borrow_mut().drain(..) {
                 group.remove(&r);
@@ -137,20 +136,28 @@ pub fn show(parent: &impl IsA<gtk::Widget>, ctx: Ctx) {
                     let key = s.key.clone();
                     let name = s.recipe.title.clone();
                     let parent = parent.clone();
+                    let toasts = toasts.clone();
                     let again = again.clone();
-                    del.connect_clicked(move |_| {
-                        let store = store.clone();
-                        let key = key.clone();
-                        let again = again.clone();
-                        alert(
-                            &parent,
-                            &trf("Delete “{}”?", &[&name]),
-                            "The subscription is removed. Issues already in the library stay.",
-                            "Delete",
-                            true,
+                    del.connect_clicked(move |b| {
+                        // reversible (issues already in the library are not touched): no
+                        // confirmation, a toast with Undo
+                        let taken = store.borrow_mut().take(&key).ok().flatten();
+                        again();
+                        let _ = (b, &parent);
+                        let Some((index, sub)) = taken else {
+                            return;
+                        };
+                        let overlay = toasts.clone();
+                        let (store, again) = (store.clone(), again.clone());
+                        let stash = Rc::new(RefCell::new(Some((index, sub))));
+                        super::dialog_toast::show_undo(
+                            &overlay,
+                            &trf("Subscription “{}” deleted", &[&name]),
                             move || {
-                                let _ = store.borrow_mut().remove(&key);
-                                again();
+                                if let Some((i, s)) = stash.borrow_mut().take() {
+                                    let _ = store.borrow_mut().put_back(i, s);
+                                    again();
+                                }
                             },
                         );
                     });
@@ -195,7 +202,8 @@ pub fn show(parent: &impl IsA<gtk::Widget>, ctx: Ctx) {
     let toolbar = adw::ToolbarView::new();
     toolbar.add_top_bar(&adw::HeaderBar::new());
     toolbar.set_content(Some(&page));
-    dialog.set_child(Some(&toolbar));
+    toasts.set_child(Some(&toolbar));
+    dialog.set_child(Some(&toasts));
     dialog.present(Some(parent));
 }
 
@@ -204,7 +212,7 @@ const KINDS: [&str; 4] = ["Manual only", "Every hour", "Every day", "Every week"
 /// The form for a new subscription (`existing` is `None`) or an existing one.
 fn edit(parent: &adw::Dialog, ctx: Ctx, existing: Option<Subscription>, done: Rc<dyn Fn()>) {
     let off = offset();
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(
         &(if existing.is_some() {
             tr("Edit Subscription")
@@ -213,7 +221,7 @@ fn edit(parent: &adw::Dialog, ctx: Ctx, existing: Option<Subscription>, done: Rc
         }),
     );
     dialog.set_content_width(520);
-    dialog.set_content_height(640);
+    dialog.set_content_height(560);
 
     let choice = ScheduleChoice::from_schedule(
         existing.as_ref().and_then(|s| s.recipe.schedule.as_ref()),
@@ -249,9 +257,9 @@ fn edit(parent: &adw::Dialog, ctx: Ctx, existing: Option<Subscription>, done: Rc
     feeds_scroll.add_css_class("card");
     let feeds_group = adw::PreferencesGroup::new();
     feeds_group.set_title(&tr("Feed addresses"));
-    feeds_group.set_description(Some(
+    feeds_group.set_description(Some(&tr(
         "One address per line. Start a line with # to switch that feed off.",
-    ));
+    )));
     let opml_btn = gtk::Button::with_label(&tr("Import OPML"));
     opml_btn.set_valign(gtk::Align::Center);
     opml_btn.set_widget_name("news-opml");

@@ -123,15 +123,15 @@ as Markdown, text or JSON, or send it to your e-reader together with the book.
 
 ## Your e-reader and your other apps
 
-Send books to an e-reader over USB, to a phone, a WebDAV folder or by e-mail, with the right format for the device.
-Serve the library over OPDS, and keep your reading position in step with KOReader. Device support is new: so far it has
-been tried on real hardware with one Kobo only.
+Plug in an e-reader to sync your reading state once from the library banner, then send books and manage them in the
+Devices window — over USB, to a phone or to a WebDAV folder. Serve the library over OPDS, and keep your reading position
+in step with KOReader. Device support is new: so far it has been tried on real hardware with one Kobo only.
 
 [More about devices](devices-and-sharing.md){ .md-button }
 </div>
 <div class="feature-shot">
-<img class="only-light" src="assets/device-window-light.png#only-light" alt="The Device window listing the books on a connected e-reader" width="1392" height="880" loading="lazy" decoding="async">
-<img class="only-dark" src="assets/device-window-dark.png#only-dark" alt="The Device window listing the books on a connected e-reader" width="1392" height="880" loading="lazy" decoding="async">
+<img class="only-light" src="assets/device-window-light.png#only-light" alt="The Books page of the Devices window, listing books on a connected e-reader" width="1392" height="880" loading="lazy" decoding="async">
+<img class="only-dark" src="assets/device-window-dark.png#only-dark" alt="The Books page of the Devices window, listing books on a connected e-reader" width="1392" height="880" loading="lazy" decoding="async">
 </div>
 </section>
 
@@ -156,7 +156,7 @@ been tried on real hardware with one Kobo only.
 
     ---
 
-    Catalogue snapshots, restore, a trash and an undo list. [Backup and restore](backup-and-restore.md)
+    Catalogue snapshots, restore, a trash and an undo list. Your book files need your normal document backup. [Backup and restore](backup-and-restore.md)
 
 - :material-swap-horizontal: **Convert**
 

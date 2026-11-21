@@ -26,21 +26,32 @@ them back. Your position is remembered per book.
 - Double-click the margin or press ++f11++ for fullscreen. Pinch or ++ctrl++ + wheel zooms.
 - The sidebar (++f9++) has the book, its table of contents, bookmarks and notes (see [The sidebar](#the-sidebar));
   **full-book search** is ++ctrl+f++. Links and footnotes have a *Back* button.
-- ++escape++ returns to the library. ++ctrl+r++ reloads the book.
+- ++escape++ puts away the first thing that is open: the selection popover, a handle you are dragging, the selection, the
+  sidebar, full screen, and only then returns to the library. ++ctrl+r++ reloads the book.
+- **Removing is not asking.** Removing a highlight (with its note), a bookmark or a word of your vocabulary happens at
+  once and a message with **Undo** stays for ten seconds. Opening a book that is damaged or missing shows a page that
+  says why, with **Back to Library**; a big book shows *Opening Book* while its first chapter is laid out.
 
 ## The reader menu
 
 <figure markdown="1">
 ![The reader menu with the themes row](assets/reader-menu-light.png#only-light)
 ![The reader menu with the themes row](assets/reader-menu-dark.png#only-dark)
-<figcaption markdown="1">The reader menu: the theme swatches (system, light, sepia, dark, black), *Theme / Original / Custom*, the zoom, then Go to, Layout, Speed Reading, Book Map, Reading Ruler and Footer Stats.</figcaption>
+<figcaption markdown="1">The Main Menu: *Go to*, *Speed Reading*, *Book Map*, *Terms in This Book*, *Footer Statistics* and *Reading Ruler* (a check item), *Open Book* and *Reload*, then *Preferences*, *Keyboard Shortcuts*, *Help* and *About Bookx*.</figcaption>
 </figure>
 
 
-The main menu holds the theme swatches (with your own themes), zoom, *Open Book*, *Reload*, *Go to*,
-*Layout*, *Speed Reading*, *Book Map*, *Footer Stats*, *Preferences* and *Keyboard Shortcuts*. (*Properties* of the book
-is a button in the sidebar.) Everything about how the text looks is in
-the **Text appearance** button next to it (see [Text appearance](#text-appearance)).
+The **Main Menu** (the button at the top right, or ++f10++) has twelve entries in three groups and no submenus. *This
+book*: *Go to*, *Speed Reading*, *Book Map*, *Terms in This Book*, *Footer Statistics* and *Reading Ruler*, which has a
+check mark while the ruler is on. *File*: *Open Book* and *Reload*. Then *Preferences*, *Keyboard Shortcuts*, *Help*
+(the online manual, ++f1++) and *About Bookx*. The keys are written next to the entries. (*Properties* of the book is a
+button in the sidebar.) Everything about how the text looks, the themes and the size included, is in the **Text
+Appearance** button next to it (see [Text appearance](#text-appearance)).
+
+**Narrow windows.** In a window narrower than about 600 px (a phone, or a half-screen window) the header gives up
+*Fullscreen* and *Read Aloud*, and *Text Appearance* moves into the menu: they are its first three entries, and the
+page-jump buttons show icons instead of words. PDFs and comics have the same Main Menu (*Go to Page*, *Properties* and
+the same last four entries) and give up *Fullscreen* the same way.
 
 ## The sidebar
 
@@ -56,7 +67,7 @@ so on). Under it the tabs **Contents**, **Bookmarks** and **Notes** switch the p
 keyboard (arrow keys, ++enter++ to go there).
 
 - **Contents**: the chapters, indented by level; the chapter you are reading is marked and scrolled into view.
-- **Bookmarks**: where each bookmark is, with its date and a button to remove it. Add one with ++ctrl+b++.
+- **Bookmarks**: where each bookmark is, with its date and a button to remove it. Add one with ++ctrl+b++ or ++ctrl+d++.
 - **Notes**: every highlight of the book, grouped under its chapter, in the order of the book.
 
 ![Notes and highlights in the sidebar](assets/reader-sidebar-notes-light.png#only-light)
@@ -88,7 +99,12 @@ The search box at the top finds highlights by words of the quote, the note or th
 </figure>
 
 
-++ctrl+g++ (or *Go to* in the menu) asks where to go. Type:
+The search popover fits the window (it is narrower and shorter in a small window). The line under the field counts
+the matches while it searches ("12 results so far…"); a search with no match shows a *No Results* page.
+
+++ctrl+g++ or ++ctrl+l++ (or *Go to* in the menu) asks where to go. The field says *Page, percent, location or chapter*;
+the line under it tells what the book has and, as you type, where the text leads. A text that does not work turns the
+field red and explains why. Type:
 
 | You type | Where it goes |
 |---|---|
@@ -98,16 +114,23 @@ The search box at the top finds highlights by words of the quote, the note or th
 | `loc 1200` or `@1200` | that location (a location is about 128 characters of text) |
 | `ch 3` | the third entry of the table of contents |
 
-The line under the field says where it leads before you press *Go*, and why a number does not work.
+The line under the field says where it leads before you press *Go*: *Page 45 of 312*, *37 percent*, *Chapter 3 of 12*,
+*Location 1200 of 3100*; and why a text does not work. (`loc` and `ch` still work as shortcuts; the field does not
+advertise them.)
 
 **Printed pages.** Some EPUBs carry their paper page numbers (an EPUB *page-list*). Then the footer shows *Page iv*
 instead of "12 of 340", and *Go to* takes those labels. Books without a page-list keep the layout page count.
 
+The *Font* list of the text popover shows only the families installed on your computer (plus Serif, Sans and
+Monospace), so a font that is not there cannot be picked by mistake. The highlight colours, the highlight styles and the
+sleep timer entries are translated like the rest of the app. The *View options* button of PDFs and comics has a display
+icon now; the speed-reading button keeps the eye.
+
 ### Back and forward
 
 Following a link, choosing a table-of-contents entry, a search result, a bookmark or a highlight, dragging the slider
-or using *Go to* remembers where you were. **Back** (++alt+left++, or the button at the top left) returns there;
-**Forward** (++alt+right++) goes to where you came back from. A new jump forgets the forward list. Dragging the slider
+or using *Go to* remembers where you were. **Previous Position** (++alt+left++, the button at the top left that appears
+after a jump) returns there; **Next Position** (++alt+right++) goes to where you came back from. A new jump forgets the forward list. Dragging the slider
 counts as one jump.
 
 ### Images
@@ -165,7 +188,7 @@ kept on this computer (`dwell.json` next to the settings) and is not shared.
 
 ### Themes and your own themes
 
-Themes: follow the system, **light**, **sepia**, **dark** and **black** are swatches at the top of the main menu. A
+Themes: follow the system, **light**, **sepia**, **dark** and **black** are swatches at the top of the *Text Appearance* popover. A
 **+** swatch next to them makes a **custom theme**: pick the text and page colour, see the preview (with a warning when
 the contrast is too low to read), name it and **Save Theme**. Your themes get their own swatch with a small **pencil**
 to edit or delete them; the editor also **exports** and **imports** themes as JSON. Themes are shared by all your books.
@@ -209,19 +232,24 @@ The editor's live preview has the same control (the palette button above the pre
 </figure>
 
 
-The **Text appearance** button (the "A" in the header) holds everything about how the text looks, in three parts:
+The **Text Appearance** button (the "A" in the header) keeps the basics in a small popover: the **theme swatches**, the
+**text size** (smaller, bigger, back to 100 %), the **font**, **columns** (two, single, scroll), **line spacing** and
+**margins** with their values written next to the sliders, and **justify text**.
 
-- **Text**: font, paragraph spacing, optimal line breaking and the hyphenation language.
-- **Layout**: columns (two, single, scroll), line spacing, margins, justification and hyphenation.
+**More Text Options** opens a window with the rest:
+
+- **Colours**: *Theme / Original / Custom* and the colour pickers.
+- **Text**: hyphenate words, paragraph spacing, optimal line breaking and the hyphenation language.
 - **Advanced and custom CSS** (collapsed): overrides of line height, margins, font and justification, and your own
   style sheet that is applied after the book's.
+- **This book**: *Use as Default for New Books* and *Reset This Book to Defaults*, each with a line that says what it does.
 
-The popover scrolls when the window is small. **Every change is kept for the open book** - there is nothing to save,
-and other books are not touched. New books start from your defaults:
+**Every change is kept for the open book** - there is nothing to save, and other books are not touched. New books start
+from your defaults:
 
-- **Use as default for new books** makes the current look (including the tweaks) the starting point of books you have
+- **Use as Default for New Books** makes the current look (including the tweaks) the starting point of books you have
   not changed yet.
-- **Reset this book to defaults** forgets this book's own look.
+- **Reset This Book to Defaults** forgets this book's own look.
 
 (Older named *reading profiles* were replaced by this: a profile pinned to a book became that book's own look; the
 others were saved to `reading-profiles-backup.json` next to the settings.)
@@ -231,8 +259,10 @@ monospace, alignment, hidden text, first-line indents and paragraph spacing) on 
 
 ## The footer
 
-Under the page the footer shows reading statistics. Right-click it, or choose **Footer Stats** in the main menu, to
-choose what it shows and in which order; the same settings are in *Preferences → Reading → Footer Stats*.
+Under the page the footer shows reading statistics. Right-click it, or choose **Footer Statistics** in the Main Menu, to
+open the *Footer Statistics* window: the preset, the items (each with up and down buttons), how the footer looks and
+*Only for this book*, in lists; every change shows in the footer at once. The same settings are in *Preferences →
+Reading → Footer Stats*.
 
 ![The footer settings](assets/reader-footer-settings-light.png#only-light)
 ![The footer settings](assets/reader-footer-settings-dark.png#only-dark)
@@ -364,8 +394,7 @@ A look-up uses **StarDict dictionaries on your computer**, so it works offline. 
   yet* and offers **Download dictionary (7 MB)**. One click downloads and installs it, shows the progress, and then
   shows the definition of the word you looked up in the same popover. *Choose another* opens Preferences → Reading →
   Dictionaries, *Learn more* opens this page.
-- **By itself.** With *Preferences → Reading → Dictionaries → Download dictionaries automatically for the languages of
-  my books* on (the default), adding a book in a language that has no dictionary (import, Add from the Web, news,
+- **By itself.** With *Preferences → Dictionaries → Download dictionaries automatically* on (the default), adding a book in a language that has no dictionary (import, Add from the Web, news,
   device) starts a download in the background, and so does opening such a book. Each language is one job in the
   **Background Jobs** panel (progress, cancel, log), with a toast *Dictionary for German ready* at the end. Books that
   were already in your library when the feature first ran do not start downloads by themselves; opening one does.
@@ -384,7 +413,7 @@ A look-up uses **StarDict dictionaries on your computer**, so it works offline. 
   `~/.local/share/bookx/dictionaries/` (*Open folder* in the settings) are used too. A dictionary whose name says
   which language it is for (*German-English*) counts for that language, one that does not counts for every language,
   so Bookx does not offer a download next to your own.
-- **Remove** a downloaded dictionary with the bin button in the settings. Downloads are checked against the SHA-256 of
+- **Remove** a downloaded dictionary with the bin button in the settings: it disappears at once and a message with **Undo** stays for 8 seconds; the files are deleted when it goes away. A download in progress shows *Downloading… 3 MB of 12 MB* in the *Get a dictionary* row, and a failure says *Could not download* and why. Downloads are checked against the SHA-256 of
   the catalogue and unpacked safely (no paths outside the folder, size limits).
 - **Privacy.** The only hosts Bookx contacts for dictionaries are the ones named in the catalogue entry:
   `github.com` / `raw.githubusercontent.com` (the Wiktionary dictionaries of Vuizur, and Webster 1913) and
@@ -431,7 +460,7 @@ Export them from the library (right-click → *Export Annotations*) to JSON, Mar
 
 
 - **Reading Statistics** (main menu): time today, this week and this month, streaks, reading speed, a 7-day chart and
-  your most-read books. It also holds your **goals** (minutes a day, books a year, with a progress bar each; 0 means
+  your most-read books. It also holds your **goals** (a switch for *Daily goal* and for *Yearly goal*; switching one on shows the amount and a progress bar, off means
   no goal), a **calendar of the year** that shades the days you read, and a **review of the year** (time, days read,
   pages, books finished, longest streak, best day).
 - **Vocabulary** (main menu): two pages. **Review** is the spaced-repetition flashcards of the words you looked up.
@@ -467,7 +496,7 @@ and the button says **Edit my definition**. It works offline and with no diction
 **Remove** and **Open in Vocabulary**; to select the word instead, double-click it as usual. Matching ignores case,
 needs whole words (`art` is not found in `part`; there are no inflections, so `walk` does not mark `walked`), finds
 phrases (`New York`) and works with any script and with hyphenated words. A term marked inside a highlight opens the
-highlight's popover instead. Turn the marks off in *Preferences → Reading → Vocabulary → Mark my vocabulary terms in
+highlight's popover instead. Turn the marks off in *Preferences → Reading → Vocabulary → Mark vocabulary terms in
 the text* (on by default).
 
 **Terms in this book** (reader menu, or the command palette) lists what you defined for the book and the words you met
@@ -475,16 +504,17 @@ in it; the arrow button of a term goes to the place where you met it.
 
 **The Words page.** Terms with your own definition carry a **Mine** badge. *All / Mine / From dictionary* filters, the
 search looks in words, definitions, notes and tags. **Add Term**, the pencil (edit; on a word from a dictionary it
-adds your own definition) and the bin work on a row. **More** has:
+adds your own definition) and the bin work on a row; a removed term can be brought back with **Undo**. **Add Term**
+(the **+** button) and the **More** menu (the three dots) are in the header of the window. **More** has:
 
 - **Paste a Glossary**: one term per line as `term; definition` (also a tab, or `term — definition`); the dialog counts
   the terms it found before you add them,
 - **Import a CSV File**: `term;definition` with an optional note and tags column, quoted fields understood (a header
   row is skipped),
-- **Export My Definitions as CSV or JSON**, **Export Everything as Anki Cards** (the text file Anki imports; your
+- **Export Your Definitions as CSV or JSON**, **Export Everything as Anki Cards** (the text file Anki imports; your
   definition and note are on the back) and **Export as a StarDict Dictionary**.
 
-**My Vocabulary as a dictionary.** *Preferences → Reading → Dictionaries* lists **My Vocabulary** first, before the
+**My Vocabulary as a dictionary.** *Preferences → Dictionaries* lists **Your vocabulary** first, before the
 downloaded ones. It is built in and cannot be removed; its *Export* button writes it as a StarDict dictionary, JSON or
 CSV for other apps.
 
@@ -541,7 +571,7 @@ what search, the library index and *Convert To* use.
 - **Crop margins** cuts the white edges (it looks at a sample of pages). **Dark pages** inverts the colours for night
   reading or an e-ink screen with a dark theme.
 - **Sidebar** (F9): page thumbnails, the PDF's own contents (bookmarks), your bookmarks and your notes. The footer has a
-  slider and a page box that takes a number or a page label (`iv`, `A-3`). Ctrl+G jumps to it.
+  slider and a page box that takes a number or a page label (`iv`, `A-3`). Ctrl+G (or Ctrl+L) jumps to it.
 - **Links** inside the PDF jump there (the *Back* button returns); links to web addresses open in your browser.
 - **Search** (Ctrl+F) lists every match with its page and shows it highlighted on the page.
 - **Select text** by dragging (double click: word, triple click: line; selection stays on one page). The popover has the
@@ -581,17 +611,18 @@ file says which pages are double pages or covers. Real RAR archives cannot be re
 
 - **Layout** (*View* menu, the eye button, or the **M** key): *Single page*, *Two pages* (like an open book) or
   *Vertical scroll* for webtoons, where the pages follow each other as one long strip. In the two-page layout
-  *Cover on its own page* keeps the first page alone and *Wide pages on their own* gives a double-page picture the
+  *Cover alone* keeps the first page alone and *Wide pages alone* gives a double-page picture the
   whole screen; the pairs then continue after it.
 - **Fit**: *Fit page*, *Fit width*, *Fit height* or *Original size*. In a page that is taller than the window, Space
   reads down the page and turns to the next one at the bottom.
 - **Direction**: a book marked as manga in ComicInfo.xml (`Manga` = `YesAndRightToLeft`) opens **right to left**: the
   Left arrow and a click on the left edge go forward, the first page of a two-page spread is on the right, and the page
-  slider runs from right to left. Switch it for a book with *Right to left (manga)* or the **R** key; Bookx remembers
-  it, the layout and the fit **for that book**. *Use the defaults for this book* forgets them.
+  slider runs from right to left. Switch it for a book with *Right to left* or the **R** key; Bookx remembers
+  it, the layout and the fit **for that book**. *Use the Defaults for This Book* (it shows only while the book differs
+  from the defaults) forgets them.
 - **Smart zoom**: double-click (or double-tap) a panel to zoom to it, double-click again to go back. Bookx finds the
   panels by the gutters between them; on a page without gutters it zooms to the region around the pointer.
-- **Guided view** (**G** key, or the *View* menu): Space goes to the next panel, Shift+Space to the one before, across
+- **Guided view** (**G** key, or the *View* menu; the menu says only *Guided view*, its tooltip says what it does): Space goes to the next panel, Shift+Space to the one before, across
   pages, in reading order (right to left in manga). The panel is outlined. Without guided view Space reads on a screenful
   at a time.
 - **Moving and zooming**: arrow keys turn pages, or move a zoomed page; Page Up and Page Down turn pages; Home and End go

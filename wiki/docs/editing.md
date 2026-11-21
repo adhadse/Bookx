@@ -174,7 +174,10 @@ Files are grouped by type, with reading-order numbers.
 - Select several with Ctrl/Shift-click.
 - **Rename** with ++f2++. Every `href`, `src`, CSS `url()` and `#fragment` that points at the file is repaired; other
   files with similar names are left alone.
-- **Delete** with ++delete++. Reorder the spine by moving files up or down.
+- **Delete** with ++delete++. One file that nothing else refers to goes at once and a toast offers **Undo** for about
+  ten seconds. Two or more files, or a file a page, stylesheet or the contents still points to, ask first and say how
+  many. The *Images* dialog does the same; its button says how many images are selected ("Delete 3 Images").
+  Reorder the spine by moving files up or down.
 - From the `⋯` menu or a right-click: *New File* (templates, optional stylesheet links, ++ctrl+n++),
   *Merge Selected*, *Bulk Rename*, *Link Stylesheets* and *Export Selected*.
 - Files you open get **tabs**. ++ctrl+w++ closes one, ++ctrl+alt+down++ / ++ctrl+alt+up++ step through the reading
@@ -186,11 +189,15 @@ Files are grouped by type, with reading-order numbers.
 ![The editor's command palette](assets/editor-palette-light.png#only-light)
 ![The editor's command palette](assets/editor-palette-dark.png#only-dark)
 
-Every change that touches the whole book first takes a checkpoint named "Before: …".
+Every change that touches the whole book first takes a checkpoint named "Before: …". The toast that reports the
+change (a tool, Replace All in the whole book, a restore) has an **Undo** button for about ten seconds: it puts the
+book back and removes that checkpoint again. *Revert to Before the Last Change* shows a **Redo** button, and
+*Revert to After (Redo)* an **Undo** button, the same way.
 
 ## Search and replace
 
-++ctrl+h++ or ++ctrl+f++ opens find and replace.
+++ctrl+f++ opens the find bar, one row high. The **Search Options** button at its end holds the mode, match case, whole
+words, scope and the other options; ++ctrl+h++ adds the replace row.
 
 <figure markdown="1">
 ![Find and replace in the editor](assets/editor-find-light.png#only-light)
@@ -430,7 +437,7 @@ the top quarter puts the entry *before* it, the bottom quarter *after* it (and a
 makes it the *last sub-entry*. An entry always moves with its sub-entries, and nothing can be dropped into itself.
 The same moves work from the keyboard: ++alt+up++ / ++alt+down++ move the selected entry among its siblings,
 ++alt+right++ makes it a sub-entry of the entry above, ++alt+left++ moves it out, after its parent. *Delete* keeps
-the sub-entries of the deleted entry (they move up a level). *Add* puts a new entry after the selected one; when the
+the sub-entries of the deleted entry (they move up a level) and shows an **Undo** toast. *Add* puts a new entry after the selected one; when the
 caret of the open page is in or after an element with an `id`, the entry points at that element and takes its
 heading text as the title. Everything is written to `nav.xhtml` and `toc.ncx` when you save.
 
@@ -449,7 +456,7 @@ you import. None are bundled.
   (or double-click) to jump there and put the focus in the editor.
 - **Change All** replaces every occurrence in the book with the suggestion you picked or the word you typed. A checkpoint
   is taken first, so you can go back.
-- **Ignore** hides the word until the editor closes; **Ignore in Book** remembers it for this book.
+- **Ignore** hides the word until the editor closes; **Ignore in Book** remembers it for this book. Both, and **Add to Dictionary**, show a toast with **Undo**.
 - **Add to Dictionary** puts the word into one of your dictionaries (*Personal* or one you made). Words are plain text files
   in the settings folder (`spelling-words.txt` and `spelling-dictionaries/`).
 - The toggle with the list icon shows **all words** with their counts, not only the misspelled ones; the filter field
@@ -488,7 +495,8 @@ Tabs are built when you first open them; *Refresh* rebuilds them after edits.
 **Markup menu → Insert Special Character** (++ctrl+alt+i++) shows every Unicode character by block, with a search by name
 or code (`acute`, `U+00E9`), your **favourites** (right-click a character to add, remove or move it) and the characters
 you used last. Click inserts the character at the caret, or into the find and replace field when that has the focus, and
-closes the window; ++ctrl+click++ inserts and keeps it open. `&`, `<` and `>` are inserted as entities.
+closes the window; ++ctrl+click++ inserts and keeps it open. `&`, `<` and `>` are inserted as entities. In a narrow window
+(below about 720 px) the list of blocks becomes a drop-down above the characters.
 
 Type a hex code and press ++alt+x++ to turn it into the character (`00e9` or `U+2014`). With **Convert Typed
 Entities** switched on (off by default), typing `;` after `&eacute` or `&#233` replaces it by the character; `&amp;`,
@@ -505,7 +513,7 @@ The pane on the right shows the open chapter and follows what you do in the code
 |---|---|
 | Follow the cursor | the preview scrolls to the element at the cursor (on by default) |
 | Scrolling the code | the preview scrolls to show the same part of the page, also with the mouse wheel, the scrollbar and Page Up/Down |
-| Sync scrolling both ways | on by default: scrolling the preview also scrolls the code; switch it off in the preview toolbar or in the editor settings; the setting is remembered |
+| Sync scrolling both ways | on by default: scrolling the preview also scrolls the code; switch it off in the preview's options menu (the ⋯ button of the preview header) or in the editor settings; the setting is remembered |
 | Click in the preview | puts the cursor at that element in the code |
 | Click a link of the book | opens the linked file in the editor and the preview |
 | Reload automatically | redraws the preview while you type; switch it off for big files and refresh with ++f5++ |
@@ -549,8 +557,10 @@ Only well-formed XHTML can be split.
 
 
 Every tool takes a snapshot of the book first. Tools → *Checkpoints* lists them with time, size and file count; there
-you can create a named checkpoint, rename one, keep it when old ones are pruned, delete it, *Compare* it with the book
-or *Revert* the book to it (the state before the revert is kept too).
+you can create a named checkpoint. Each row has **Compare** (with the book) and a `⋯` menu with *Revert the Book to
+This State* (the state before the revert is kept too), *Rename*, *Keep* (the row then says "Kept"; it survives
+pruning of old checkpoints) and *Delete*. Delete takes the row away at once and a toast offers **Undo** for ten
+seconds; after that it is gone.
 
 The comparison opens in the middle of the editor: two columns with line numbers, only the differences and a few
 lines around them (the others are folded), changed lines tinted with the changed words marked. The colours work in
@@ -580,21 +590,28 @@ and it is read only: edit the stylesheet itself.
 <figure markdown="1">
 ![The Tools menu](assets/editor-tools-menu-light.png#only-light)
 ![The Tools menu](assets/editor-tools-menu-dark.png#only-dark)
-<figcaption markdown="1">The Tools menu: fixes, EPUB 3, the submenus of dialogs, contents page, accessibility, images, fonts, splitting and the problems list.</figcaption>
+<figcaption markdown="1">The Tools menu: Check Book and Fix Problems, the submenus, Spelling, Reports and Checkpoints.</figcaption>
 </figure>
 
 
-The first entries run at once; the grouped entries open a dialog that shows **what will change** (press *Preview*:
-the tool runs on a copy and lists the files with the lines before and after) and runs on a checkpoint, so one undo
-brings the old state back.
+The Tools button is in the header, with **Find**, **Preview** and **Markup**; the main menu (☰) is the last button. At
+the top of Tools are *Check Book* (++f7++) and *Fix Problems Automatically*; then the submenus *Fix & Clean*, *Styles*,
+*Media and Fonts*, *Structure*, *Accessibility* and *Links*; then *Check Spelling*, *Reports* and *Checkpoints*, and
+*Plugins* when a plugin adds something. Each tool is listed once.
 
-### Text
+The entries of the submenus open a dialog that shows **what will change**: press *Preview* and the tool runs on a copy
+and lists the files with the lines before and after (the list stays folded until you press it, so the options are
+visible first). The tool runs on a checkpoint, so one undo brings the old state back.
+
+### Fix & Clean
 
 | Entry | What it does |
 |---|---|
+| Reformat Markup | pretty-prints the open file (XHTML, OPF, NCX or other XML), see [Reformat](#reformat-markup) |
 | Smarten Punctuation | curly quotes, dashes and ellipses in the text of the pages; the double quotes follow the language rules you choose (English “ ”, German „ “, French « », Swedish ” ”); *Straighten* undoes it; for the open page or all pages. Code, `pre`, scripts, styles and attributes are never touched |
 | Fix HTML | repairs pages that are not well-formed XHTML (open page or all pages). If the quick repair cannot fix a page, it is rebuilt with an HTML5 parser, the way a browser reads it; the switch uses that parser always |
-| Beautify | tidies the layout of pages, stylesheets and package files. Only the white space between block tags changes, so pages look the same |
+| Reformat Markup in Files | tidies the layout of pages, stylesheets and package files (all of them or the open file). Only the white space between block tags changes, so pages look the same |
+| Upgrade to EPUB 3 | converts an EPUB 2 book |
 
 ### Styles
 
@@ -612,7 +629,7 @@ brings the old state back.
 | Remove Unused CSS Rules | deletes the rules that match nothing in the book (`@font-face` and other @-rules stay) |
 | Filter Style Information | removes the ticked properties (with how often they are used) everywhere |
 
-### Media and fonts
+### Media and Fonts
 
 <figure markdown="1">
 ![The Set Cover dialog](assets/editor-set-cover-light.png#only-light)
@@ -623,7 +640,7 @@ brings the old state back.
 <figure markdown="1">
 ![The Manage Fonts dialog](assets/editor-manage-fonts-light.png#only-light)
 ![The Manage Fonts dialog](assets/editor-manage-fonts-dark.png#only-dark)
-<figcaption markdown="1">Manage Fonts: the fonts embedded in the book, a sample, and *Embed Fonts from this Computer*.</figcaption>
+<figcaption markdown="1">Manage Fonts: the fonts embedded in the book, a sample, and *Embed Fonts from this Computer*. A book without embedded fonts shows only that button, on a page of its own.</figcaption>
 </figure>
 
 
@@ -635,13 +652,15 @@ brings the old state back.
 | Embed Referenced Fonts | finds the fonts the pages ask for but the book does not carry among the fonts installed on this computer and embeds them. A font whose licence forbids embedding cannot be ticked; fonts that do not say are marked with a warning. Optionally keeps only the characters the book uses |
 | Download External Resources | copies images, stylesheets and media that pages load from the web into the book. Needs a network connection; check the licences |
 
-### Structure and accessibility
+### Structure and Accessibility
 
 <figure markdown="1">
 ![The Book Jacket dialog](assets/editor-jacket-light.png#only-light)
 ![The Book Jacket dialog](assets/editor-jacket-dark.png#only-dark)
 <figcaption markdown="1">Book Jacket: a page after the cover that lists the metadata, with the fields you want.</figcaption>
 </figure>
+
+The button of the dialog names the action: *Add Jacket*, *Update Jacket* or *Remove Jacket*.
 
 <figure markdown="1">
 ![The Accessibility Metadata form](assets/editor-a11y-form-light.png#only-light)
@@ -653,9 +672,9 @@ brings the old state back.
 | Entry | What it does |
 |---|---|
 | Set Semantics | says which page is the cover, title page, table of contents, foreword, dedication, index and so on (guide and, in EPUB 3, landmarks) |
-| Accessibility Metadata | a form for the EPUB 3 accessibility metadata: summary, access modes, sufficient modes, features, hazards, conformance statement and the certifier (name, credential, report address). Start from a preset or press *Suggest from the Book*, which looks at the images and their descriptions, audio, MathML, headings and contents. The values are checked against the vocabulary as you type (errors stop *Apply*, warnings do not) and against the book: claiming *alternativeText* while images have no description, or *MathML* without any, is reported. Hazards such as flashing cannot be detected: confirm them yourself |
+| Accessibility Metadata | a form for the EPUB 3 accessibility metadata: summary, access modes, sufficient modes (one block of Textual, Visual, Auditory and Tactile boxes per way of reading the book, and *Add Alternative Set*; the text form is under *Advanced*), features, hazards, conformance statement and the certifier (name, credential, report address). Start from a preset or press *Suggest from the Book*, which looks at the images and their descriptions, audio, MathML, headings and contents. The values are checked against the vocabulary as you type (errors stop *Apply*, warnings do not) and against the book: claiming *alternativeText* while images have no description, or *MathML* without any, is reported. Hazards such as flashing cannot be detected: confirm them yourself |
 | Book Jacket | adds, updates or removes a page after the cover that lists the title, authors, series, rating, tags and comments (and optionally the cover and publisher) from the metadata. The page is marked, so Bookx updates it when you change the metadata in the editor and *Remove the jacket* takes it away without a trace |
-| Accessibility | three tabs: the book’s *Language*; *Image descriptions* (a text per image, *Decorative* for images a screen reader should skip, one text for every use of an image); *Accessibility metadata* (summary, access modes, features, hazards, conformance; EPUB 3) |
+| Check Accessibility | three tabs: the book’s *Language*; *Image descriptions* (a text per image, *Decorative* for images a screen reader should skip, one text for every use of an image); *Accessibility metadata* (summary, access modes, features, hazards, conformance; EPUB 3) |
 
 ### Links
 
@@ -668,7 +687,7 @@ brings the old state back.
 
 | Entry | What it does |
 |---|---|
-| Check External Links | visits every web address the book links to, one request every moment, in the background; broken ones are listed in the results panel with their page. Nothing is changed. Does not run when the network is switched off |
+| Check External Links | visits every web address the book links to, one request every moment, in the background (a progress bar and **Cancel** are in the dialog; Cancel lists what was checked so far); broken ones are listed in the results panel with their page. Nothing is changed. Does not run when the network is switched off |
 | Repair Broken Links | fixes links to files or anchors that moved or differ in capital letters; the rest is listed |
 | Move Files to a Folder | moves the selected files into a folder of the book and updates every link |
 
@@ -676,23 +695,27 @@ brings the old state back.
 
 | Entry | What it does |
 |---|---|
+| Check Book | the full validation, shown in the Problems panel (++f7++), see [Checking the book](#checking-the-book) |
 | Fix Problems Automatically | repairs what the checker can fix automatically |
-| Upgrade to EPUB 3 | converts an EPUB 2 book |
-| Insert / Remove Contents Page | adds or removes a contents page in the book |
-| Improve Accessibility | improves accessibility metadata and markup |
-| Compress Images | shrinks images |
-| Shrink Embedded Fonts | subsets embedded fonts |
-| Arrange Files in Folders | sorts files into folders by type |
-| Split File at Chapter Headings | splits the open chapter; links, contents and manifest are repaired |
-| Merge with Next File | merges the open chapter with the next one |
-| Next / Previous Problem | goes through the Problems panel (++f8++ / ++shift+f8++) |
+| Insert / Remove Contents Page | in *Structure*: adds or removes a contents page in the book |
+| Improve Accessibility | in *Accessibility*: improves accessibility metadata and markup |
+| Compress Images | in *Media and Fonts*: shrinks images |
+| Shrink Embedded Fonts | in *Media and Fonts*: subsets embedded fonts |
+| Arrange Files in Folders | in *Structure*: sorts files into folders by type |
+| Split File at Chapter Headings | in *Structure*: splits the open chapter; links, contents and manifest are repaired |
+| Merge with Next File | in *Structure*: merges the open chapter with the next one |
+| Add Narration / Remove Narration | in *Media and Fonts*: reads the book aloud into the EPUB as a media overlay, see [Read aloud](read-aloud.md#narrating-a-book-media-overlays). The progress dialog has **Run in Background**; if you edit the book while it runs, the narration is not added (a message says so) |
 | Check Spelling | the spelling panel, see [Spelling](#spelling) |
 | Reports | the reports window, see [Reports](#reports) |
-| *name* (plugin) | transforms from [plugins](plugins-and-patches.md) |
-| Plugins › *action* | actions of editor plugins, see [plugins](plugins-and-patches.md); one checkpoint each |
-| Add Narration / Remove Narration | reads the book aloud into the EPUB as a media overlay, see [Read aloud](read-aloud.md#narrating-a-book-media-overlays) |
-| Checkpoints / Create / Restore / Compare Checkpoint | see [Compare and checkpoints](#compare-and-checkpoints) |
-| Compare with Another Book | see above |
+| Checkpoints | Create, Restore and Compare with a checkpoint, *Manage Checkpoints*, *Compare with Another Book*, see [Compare and checkpoints](#compare-and-checkpoints) |
+| Plugins | transforms and actions of [plugins](plugins-and-patches.md); one checkpoint each |
+
+++f8++ and ++shift+f8++ still go to the next and the previous problem.
+
+### Reformat Markup
+
+*Reformat Markup* in *Fix & Clean* pretty-prints the open XHTML, OPF, NCX or XML file. *Reformat Markup in Files*
+does the same for all pages, stylesheets and package files, or for the open file only. (Both were called *Beautify*.)
 
 ## File list extras
 
@@ -732,26 +755,40 @@ brings the old state back.
 <figure markdown="1">
 ![The Book menu of the editor](assets/editor-book-menu-light.png#only-light)
 ![The Book menu of the editor](assets/editor-book-menu-dark.png#only-dark)
-<figcaption markdown="1">The Book menu: save a copy, open another book, revert, close tabs and reopen tabs next time.</figcaption>
+<figcaption markdown="1">The main menu: save a copy, open another book, revert, wrapping, preferences and help.</figcaption>
 </figure>
 
 
-The ☰ button at the left of the header bar.
+The ☰ button at the right end of the header bar; ++f10++ opens it. At most 12 entries.
 
 | Entry | Shortcut | What it does |
 |---|---|---|
-| Save a Copy | ++ctrl+alt+s++ | writes the book as it is now to a file; the library is not changed |
+| Save a Copy | ++ctrl+shift+s++ | writes the book as it is now to a file; the library is not changed |
 | Save a Copy and Edit It | ++ctrl+alt+shift+s++ | the same, adds the copy to the library and continues editing the copy |
 | Open Another Book | ++ctrl+o++ | shows another book of the library in this window |
-| Open an Unzipped Folder | | opens a folder with an unzipped EPUB as a book (added to the library) |
-| Open a Book of Another Format to Edit | | opens an AZW3, MOBI, KEPUB, FB2, FBZ, DOCX, ODT, RTF, HTMLZ or TXTZ file: it is converted to a temporary EPUB in memory (a KEPUB is edited as it is, with its Kobo markup) and is not added to the library. *Save* asks whether to **save as an EPUB** or to **convert back** into the original format; the old file is kept next to it as a backup (`book.azw3.bak`). A warning names what may be lost in the round trip. Formats Bookx cannot write (ODT, FBZ) can only be saved as EPUB |
 | New Book | | a book with one empty chapter |
-| Import HTML, DOCX or Text as a New Book | | adds the file to the library and opens it |
-| Revert to Before the Last Change / Revert to After | ++ctrl+alt+z++ / ++ctrl+alt+shift+z++ | walks back and forth over the checkpoints (a new change ends the redo list) |
-| Close Other Tabs / Close Tabs to the Right | ++ctrl+shift+w++ / ++alt+shift+w++ | also in the context menu of a tab |
+| More Ways to Open | | *Open an Unzipped Folder* (a folder with an unzipped EPUB, added to the library); *Open a Book of Another Format to Edit* (an AZW3, MOBI, KEPUB, FB2, FBZ, DOCX, ODT, RTF, HTMLZ or TXTZ file is converted to a temporary EPUB in memory, a KEPUB is edited as it is with its Kobo markup, and nothing is added to the library; a banner says you are editing a copy; *Save* asks whether to **save as an EPUB** (the safe choice) or to **convert back** into the original format, the old file is kept next to it as a backup (`book.azw3.bak`); a warning names what may be lost; formats Bookx cannot write, ODT and FBZ, can only be saved as EPUB); *Import as New Book* (an HTML, DOCX or text file) |
+| Revert to Before the Last Change / Revert to After (Redo) | ++ctrl+alt+z++ / ++ctrl+alt+shift+z++ | walks back and forth over the checkpoints (a new change ends the redo list); greyed out while there is nothing to revert or redo |
 | Wrap Long Lines | | wraps long lines in the code view |
-| Reopen Tabs and Cursors Next Time | | open tabs, the selected tab and the caret of each file are remembered per book |
-| Help on Editing | ++f1++ | opens this page |
+| Preferences | ++ctrl+comma++ | the Bookx preferences, with the editor settings |
+| Keyboard Shortcuts | ++ctrl+question++ | every shortcut, editable |
+| Help | ++f1++ | opens this page |
+| About Bookx | | version and credits |
+
+*Close Other Tabs* and *Close Tabs to the Right* (++ctrl+shift+w++ / ++alt+shift+w++) are in the context menu of a tab.
+*Reopen tabs and cursors* (open tabs, the selected tab and the caret of each file, remembered per book) is a switch in
+the editor preferences.
+
+A save that fails shows a banner at the top of the window ("Could not save the book") with **Try Again**; it stays
+until the book is saved.
+
+### Small windows
+
+Below about 1000 px the file sidebar slides over the code (a button at the start of the header shows it) and the minimap
+goes; below about 700 px the preview sits under the code instead of beside it. In a narrow window the spelling panel
+replaces the preview while it is open. The find bar is one row: the **Search Options** button holds the mode, match
+case, whole words and scope; ++ctrl+h++ adds the replace row. The sidebar tabs show icons only (their names are the
+tooltips).
 
 Opening a book in the editor from a terminal: `bookx --edit book.epub OEBPS/ch1.xhtml --select-text "some words"` or
 `bookx-cli edit book.epub OEBPS/ch1.xhtml --select-text "some words"`. The file is added to the library if it is not

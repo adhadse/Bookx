@@ -39,6 +39,8 @@ pub struct Widgets {
     warnings: gtk::Label,
     notes: gtk::Label,
     a11y: gtk::CheckButton,
+    body_stack: gtk::Stack,
+    head: gtk::Box,
     ignored_btn: gtk::MenuButton,
     ignored_box: gtk::Box,
     help_title: gtk::Label,
@@ -157,11 +159,15 @@ pub fn build(sender: &ComponentSender<Editor>) -> Widgets {
     pop_scroll.set_propagate_natural_width(true);
     pop_scroll.set_max_content_height(320);
     pop_scroll.set_child(Some(&ignored_box));
-    pop.set_child(Some(&pop_scroll));
+    let pop_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
+    a11y.set_margin_all(8);
+    pop_box.append(&a11y);
+    pop_box.append(&pop_scroll);
+    pop.set_child(Some(&pop_box));
     let ignored_btn = gtk::MenuButton::new();
-    ignored_btn.set_icon_name("view-conceal-symbolic");
-    ignored_btn.set_tooltip_text(Some(&tr("Kinds of problems you chose to ignore")));
-    ignored_btn.update_property(&[gtk::accessible::Property::Label(&tr("Ignored kinds"))]);
+    ignored_btn.set_icon_name("view-more-symbolic");
+    ignored_btn.set_tooltip_text(Some(&tr("Problem options: accessibility, ignored kinds")));
+    ignored_btn.update_property(&[gtk::accessible::Property::Label(&tr("Problem options"))]);
     ignored_btn.set_popover(Some(&pop));
     ignored_btn.add_css_class("flat");
 
@@ -197,7 +203,6 @@ pub fn build(sender: &ComponentSender<Editor>) -> Widgets {
     let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     spacer.set_hexpand(true);
     head.append(&spacer);
-    head.append(&a11y);
     head.append(&ignored_btn);
     head.append(&prev);
     head.append(&next);
@@ -271,10 +276,29 @@ pub fn build(sender: &ComponentSender<Editor>) -> Widgets {
     let body = gtk::Box::new(gtk::Orientation::Horizontal, 6);
     body.append(&list_scroll);
     body.append(&help_card);
+    let empty = adw::StatusPage::builder()
+        .icon_name("object-select-symbolic")
+        .title(tr("No Problems Found"))
+        .description(tr("The book passed every check."))
+        .build();
+    empty.add_css_class("compact");
+    let again = gtk::Button::with_label(&tr("Check Again"));
+    again.add_css_class("pill");
+    again.set_halign(gtk::Align::Center);
+    {
+        let emit = emit.clone();
+        again.connect_clicked(move |_| emit(Act::Run));
+    }
+    empty.set_child(Some(&again));
+    let body_stack = gtk::Stack::new();
+    body_stack.set_hhomogeneous(false);
+    body_stack.set_vhomogeneous(false);
+    body_stack.add_named(&body, Some("list"));
+    body_stack.add_named(&empty, Some("empty"));
     let outer = gtk::Box::new(gtk::Orientation::Vertical, 0);
     outer.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
     outer.append(&head);
-    outer.append(&body);
+    outer.append(&body_stack);
     let root = gtk::Revealer::new();
     root.set_child(Some(&outer));
     Widgets {
@@ -285,6 +309,8 @@ pub fn build(sender: &ComponentSender<Editor>) -> Widgets {
         warnings,
         notes,
         a11y,
+        body_stack,
+        head,
         ignored_btn,
         ignored_box,
         help_title,
@@ -477,6 +503,13 @@ impl Editor {
             plural(total, "problem", "problems")
         });
         w.a11y.set_active(self.problems.accessibility);
+        w.body_stack.set_visible_child_name(
+            if self.problems.ran && total == 0 && self.problems.hidden == 0 {
+                "empty"
+            } else {
+                "list"
+            },
+        );
         self.problems_rebuild_ignored();
         self.problems_style_stale();
         match self.problems.selected {
@@ -497,11 +530,14 @@ impl Editor {
             w.ignored_box.remove(&c);
         }
         let n = self.problems.ignored.len();
-        w.ignored_btn.set_visible(n > 0);
-        w.ignored_btn.set_tooltip_text(Some(&trf(
-            "{} ignored ({} hidden problems)",
-            &[&plural(n, "kind", "kinds"), &self.problems.hidden],
-        )));
+        w.ignored_btn.set_tooltip_text(Some(&if n > 0 {
+            trf(
+                "{} ignored ({} hidden problems)",
+                &[&plural(n, "kind", "kinds"), &self.problems.hidden],
+            )
+        } else {
+            tr("Problem options: accessibility, ignored kinds")
+        }));
         if n == 0 {
             return;
         }
@@ -823,6 +859,26 @@ impl Editor {
                 eprintln!(
                     "check_prefs: {:?} a11y={}",
                     p.ignored_checks, p.check_accessibility
+                );
+            }
+            "panel" => {
+                let w = &self.w.problems;
+                let mut controls = 0;
+                let mut c = w.head.first_child();
+                while let Some(x) = c {
+                    if x.is::<gtk::Button>()
+                        || x.is::<gtk::MenuButton>()
+                        || x.is::<gtk::CheckButton>()
+                    {
+                        controls += 1;
+                    }
+                    c = x.next_sibling();
+                }
+                eprintln!(
+                    "check_panel: problems={} results={} empty={} controls={controls}",
+                    w.root.reveals_child(),
+                    self.w.results_rev.reveals_child(),
+                    w.body_stack.visible_child_name().as_deref() == Some("empty"),
                 );
             }
             "dump" => {

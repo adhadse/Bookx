@@ -134,15 +134,15 @@ pub(super) fn build(
     let mode = gtk::DropDown::from_strings(&Mode::ALL.map(|m| m.label()));
     crate::ui::audit::label(&mode, &tr("Search mode"));
     mode.set_tooltip_text(Some(
-        "Text: literal · Regex: regular expression · Function: a script decides each replacement · Tag: elements and attributes",
+        &tr("Text: literal · Regex: regular expression · Function: a script decides each replacement · Tag: elements and attributes"),
     ));
     let word_btn = gtk::ToggleButton::with_label("W");
     word_btn.set_tooltip_text(Some(&tr("Whole words only")));
     crate::ui::audit::label(&word_btn, &tr("Whole words only"));
     let markup_btn = gtk::ToggleButton::with_label("<>");
-    markup_btn.set_tooltip_text(Some(
+    markup_btn.set_tooltip_text(Some(&tr(
         "Ignore HTML markup: find text across tags such as <i>",
-    ));
+    )));
     crate::ui::audit::label(&markup_btn, &tr("Ignore HTML markup"));
     let fn_list = gtk::StringList::new(&[]);
     let fn_dd = gtk::DropDown::new(Some(fn_list.clone()), gtk::Expression::NONE);
@@ -873,10 +873,10 @@ impl Editor {
                 Mode::from_index(self.w.sx.mode.selected()).label(),
                 self.w.find_entry.text(),
                 self.w.replace_entry.text(),
-                self.w.sx.fn_dd.is_visible(),
+                self.w.sx.fn_dd.get_visible(),
                 WidgetExt::is_visible(&self.w.replace_entry),
-                self.w.dotall_btn.is_visible(),
-                self.w.sx.markup_btn.is_visible(),
+                self.w.dotall_btn.get_visible(),
+                self.w.sx.markup_btn.get_visible(),
                 self.scope().label(),
                 self.own_hits()
             ),

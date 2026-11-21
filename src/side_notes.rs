@@ -106,6 +106,19 @@ pub fn date_text(d: DateTime<Utc>) -> String {
 
 /// The entries from the library's highlights (PDF ones are not part of the EPUB list).
 pub fn colour_label(name: &str) -> String {
+    use crate::i18n::{tr, N_};
+    let known = match name {
+        "yellow" => N_("Yellow"),
+        "purple" => N_("Purple"),
+        "orange" => N_("Orange"),
+        "red" => N_("Red"),
+        "blue" => N_("Blue"),
+        "green" => N_("Green"),
+        _ => "",
+    };
+    if !known.is_empty() {
+        return tr(known);
+    }
     let mut c = name.to_string();
     if let Some(f) = c.get_mut(..1) {
         f.make_ascii_uppercase();
@@ -299,5 +312,14 @@ mod tests {
         assert_eq!(shorten("abcdefghijklmnop", 5), "abcde…");
         assert_eq!(colour_label("yellow"), "Yellow");
         assert_eq!(colour_label(""), "");
+    }
+
+    #[test]
+    fn every_highlight_colour_has_a_label() {
+        for (name, _) in crate::ui::reader::HIGHLIGHT_COLORS {
+            let l = colour_label(name);
+            assert!(l.chars().next().unwrap().is_uppercase(), "{name}");
+            assert_eq!(l.to_lowercase(), name);
+        }
     }
 }

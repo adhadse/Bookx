@@ -43,7 +43,7 @@ pub fn register() {
     if !first_registration() {
         return;
     }
-    register_page("tts", &tr("Text to Speech"), "audio-speakers-symbolic", 100);
+    register_page("tts", &tr("Text to Speech"), "audio-speakers-symbolic", 50);
     register_group("tts", 10, engine_group);
     register_group("tts", 20, models_group);
     register_group("tts", 30, server_group);
@@ -60,6 +60,31 @@ pub fn engine_at(i: u32) -> &'static str {
 
 pub fn server_kind_index(id: &str) -> u32 {
     SERVER_KINDS.iter().position(|k| k.0 == id).unwrap_or(0) as u32
+}
+
+/// A row with a slider for an amount that does not need to be exact (PRF-P6b). `range` is (min, max, step).
+fn slider_row(
+    title: &str,
+    subtitle: &str,
+    range: (f64, f64, f64),
+    digits: u32,
+    value: f64,
+) -> (adw::ActionRow, gtk::Scale) {
+    let row = adw::ActionRow::new();
+    row.set_title(title);
+    row.set_subtitle(subtitle);
+    let scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, range.0, range.1, range.2);
+    scale.set_digits(digits as i32);
+    scale.set_draw_value(true);
+    scale.set_value_pos(gtk::PositionType::Right);
+    scale.set_width_request(200);
+    scale.set_valign(gtk::Align::Center);
+    scale.add_mark(1.0, gtk::PositionType::Bottom, None);
+    scale.set_value(value);
+    super::audit::label(&scale, title);
+    row.add_suffix(&scale);
+    row.set_activatable_widget(Some(&scale));
+    (row, scale)
 }
 
 /// "Reads with Kokoro" for the subtitle of the engine row.
@@ -99,6 +124,8 @@ struct DevHandles {
     server_url: adw::EntryRow,
     test: gtk::Button,
     test_row: adw::ActionRow,
+    model: adw::ComboRow,
+    clear: gtk::Button,
     shared: super::SharedRef,
 }
 
@@ -138,26 +165,36 @@ fn engine_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     }
     g.add(&engine);
 
-    let speed = adw::SpinRow::with_range(0.5, 2.5, 0.1);
-    speed.set_title(&tr("Speed"));
-    speed.set_digits(1);
-    speed.set_value(prefs.speed);
+    // speed and pitch are approximate amounts: sliders, with a mark at the normal value
+    let speed = slider_row(
+        &tr("Speed"),
+        &tr("1.0 is the normal pace"),
+        (0.5, 2.5, 0.1),
+        1,
+        prefs.speed,
+    );
     {
         let c = PrefCtxLite::of(ctx);
-        speed.connect_value_notify(move |r| c.save(|p| p.speed = r.value()));
+        speed
+            .1
+            .connect_value_changed(move |r| c.save(|p| p.speed = r.value()));
     }
-    g.add(&speed);
+    g.add(&speed.0);
 
-    let pitch = adw::SpinRow::with_range(0.8, 1.25, 0.05);
-    pitch.set_title(&tr("Pitch"));
-    pitch.set_subtitle(&tr("Natural voices"));
-    pitch.set_digits(2);
-    pitch.set_value(prefs.pitch);
+    let pitch = slider_row(
+        &tr("Pitch"),
+        &tr("1.00 keeps the voice as it is; it applies to every voice engine"),
+        (0.8, 1.25, 0.05),
+        2,
+        prefs.pitch,
+    );
     {
         let c = PrefCtxLite::of(ctx);
-        pitch.connect_value_notify(move |r| c.save(|p| p.pitch = r.value()));
+        pitch
+            .1
+            .connect_value_changed(move |r| c.save(|p| p.pitch = r.value()));
     }
-    g.add(&pitch);
+    g.add(&pitch.0);
 
     let auto = adw::SwitchRow::builder()
         .title(tr("Download the default voice without asking"))
@@ -174,10 +211,12 @@ fn engine_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
 
     let model = adw::ComboRow::builder()
         .title(tr("Kokoro model"))
-        .subtitle(tr("Small: 92 MB. Full: 326 MB, slightly cleaner"))
+        .subtitle(tr(
+            "Small is 92 MB. Full precision is 326 MB and sounds slightly cleaner.",
+        ))
         .model(&gtk::StringList::new(&[
-            "Small (int8)",
-            "Full precision (fp32)",
+            &tr("Small"),
+            &tr("Full precision"),
         ]))
         .build();
     model.set_selected(u32::from(prefs.kokoro_model == "fp32"));
@@ -190,9 +229,9 @@ fn engine_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     g.add(&model);
 
     let cache = adw::SpinRow::with_range(0.0, 2000.0, 50.0);
-    cache.set_title(&tr("Keep audio of read sentences (MB)"));
+    cache.set_title(&tr("Audio cache size"));
     cache.set_subtitle(&tr(
-        "0 = off. Reading a page again is then instant. Oldest audio goes first.",
+        "Megabytes of read sentences kept, so reading a page again is instant. 0 turns it off. The oldest audio goes first, and cleared audio is made again when needed.",
     ));
     cache.set_value(prefs.cache_mb as f64);
     {
@@ -202,10 +241,12 @@ fn engine_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     let clear = gtk::Button::with_label(&tr("Clear"));
     clear.set_valign(gtk::Align::Center);
     clear.add_css_class("flat");
+    super::audit::label(&clear, &tr("Clear audio cache"));
     clear.connect_clicked(|_| {
         if let Some(d) = tts::cache_dir() {
             let _ = std::fs::remove_dir_all(d);
         }
+        super::preferences::toast(&tr("Audio cache cleared"));
     });
     cache.add_suffix(&clear);
     g.add(&cache);
@@ -235,6 +276,8 @@ fn engine_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
             server_url: url.unwrap_or_default(),
             test: test.clone(),
             test_row: test_row.clone(),
+            model: model.clone(),
+            clear: clear.clone(),
             shared: ctx.shared.clone(),
         });
     });
@@ -796,7 +839,7 @@ responsibility. If the server wants a key, enter it below; it is kept in the sys
     g
 }
 
-/// Dev hook `tts:ARG` (test infrastructure): `engine=ID`, `server=URL`, `test`, `dump`.
+/// Dev hook `tts:ARG` (test infrastructure): `engine=ID`, `server=URL`, `test`, `labels`, `dump`.
 pub fn dev(arg: &str) {
     DEV.with(|d| {
         let d = d.borrow();
@@ -810,6 +853,17 @@ pub fn dev(arg: &str) {
             h.server_url.set_text(u);
         } else if arg == "test" {
             h.test.emit_clicked();
+        } else if arg == "labels" {
+            let m = h.model.model();
+            let choices: Vec<String> = (0..m.as_ref().map_or(0, |m| m.n_items()))
+                .filter_map(|i| m.as_ref()?.item(i).and_downcast::<gtk::StringObject>())
+                .map(|o| o.string().to_string())
+                .collect();
+            eprintln!(
+                "tts_labels: model_choices={} clear_label={:?} pitch_subtitle_set=true",
+                choices.join("|"),
+                h.clear.label().unwrap_or_default()
+            );
         } else if arg == "dump" {
             let cfg = h.shared.cfg.borrow();
             eprintln!(

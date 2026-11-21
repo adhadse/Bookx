@@ -62,27 +62,134 @@ struct Registry {
 thread_local! {
     static REGISTRY: RefCell<Registry> = RefCell::default();
     static CURRENT: RefCell<Option<Rc<View>>> = const { RefCell::new(None) };
+    static TOASTS: RefCell<Option<glib::WeakRef<adw::ToastOverlay>>> = const { RefCell::new(None) };
+    static LAST_UNDO: RefCell<Option<adw::Toast>> = const { RefCell::new(None) };
+    static ON_CLOSE: RefCell<Vec<Box<dyn Fn()>>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Shows a short message at the bottom of the open Preferences (nothing happens when it is closed).
+pub fn toast(text: &str) {
+    let t = adw::Toast::new(text);
+    t.set_use_markup(false);
+    t.set_timeout(3);
+    show_toast(&t);
+}
+
+/// A message with an **Undo** button. `on_undo` runs when the button is pressed; `on_expire` runs
+/// once when the message goes away without it (timeout, dismissed, or Preferences closed).
+pub fn toast_undo(
+    text: &str,
+    seconds: u32,
+    on_undo: impl Fn() + 'static,
+    on_expire: impl Fn() + 'static,
+) {
+    let t = adw::Toast::new(text);
+    t.set_use_markup(false);
+    t.set_timeout(seconds);
+    t.set_button_label(Some(&tr("Undo")));
+    let undone = Rc::new(std::cell::Cell::new(false));
+    let on_expire = Rc::new(on_expire);
+    t.connect_button_clicked({
+        let undone = undone.clone();
+        move |_| {
+            undone.set(true);
+            on_undo();
+        }
+    });
+    t.connect_dismissed({
+        let (undone, on_expire) = (undone.clone(), on_expire.clone());
+        move |_| {
+            if !undone.replace(true) {
+                on_expire();
+            }
+        }
+    });
+    // closing Preferences ends the wait
+    ON_CLOSE.with(|c| {
+        c.borrow_mut().push(Box::new(move || {
+            if !undone.replace(true) {
+                on_expire();
+            }
+        }))
+    });
+    LAST_UNDO.with(|l| *l.borrow_mut() = Some(t.clone()));
+    show_toast(&t);
+}
+
+/// Dev hooks: presses **Undo** on the newest toast that has one; false when there is none.
+pub fn press_undo() -> bool {
+    match LAST_UNDO.with(|l| l.borrow_mut().take()) {
+        Some(t) => {
+            t.emit_by_name::<()>("button-clicked", &[]);
+            t.dismiss();
+            true
+        }
+        None => false,
+    }
+}
+
+fn show_toast(t: &adw::Toast) {
+    if let Some(o) = TOASTS.with(|o| o.borrow().as_ref().and_then(|w| w.upgrade())) {
+        o.add_toast(t.clone());
+    }
+}
+
+/// A row that only informs: not focusable and not activatable, so Tab skips it (a screen reader
+/// still reads title and subtitle). The subtitle shows in full.
+pub fn info_row(title: &str, subtitle: &str) -> adw::ActionRow {
+    let r = adw::ActionRow::new();
+    r.set_title(&glib::markup_escape_text(title));
+    r.set_subtitle(&glib::markup_escape_text(subtitle));
+    r.set_subtitle_lines(0);
+    r.set_title_lines(0);
+    r.set_activatable(false);
+    r.set_focusable(false);
+    r
+}
+
+/// The section index after `current` when Ctrl+PageDown (`forward`) or Ctrl+PageUp is pressed:
+/// the next visible section, wrapping around; `None` when no section is visible.
+pub fn step_section(visible: &[bool], current: usize, forward: bool) -> Option<usize> {
+    let n = visible.len();
+    (1..=n)
+        .map(|k| {
+            if forward {
+                (current + k) % n
+            } else {
+                (current + n - (k % n)) % n
+            }
+        })
+        .find(|&i| visible[i])
 }
 
 /// Ids and sort order of the built-in sections (sidebar order: lower first).
-pub const BUILTIN: [(&str, &str, &str, i32); 7] = [
+pub const BUILTIN: [(&str, &str, &str, i32); 6] = [
     ("general", N_("General"), "preferences-system-symbolic", 10),
     ("library", N_("Library"), "library-symbolic", 20),
     ("reading", N_("Reading"), "book-open-variant-symbolic", 30),
-    ("sync", N_("Sync"), "view-refresh-symbolic", 40),
-    ("email", N_("E-mail"), "mail-send-symbolic", 50),
+    ("sync", N_("Sync"), "view-refresh-symbolic", 60),
+    ("email", N_("E-mail"), "mail-send-symbolic", 70),
     (
         "extensions",
         N_("Extensions"),
         "application-x-addon-symbolic",
         80,
     ),
-    ("patches", N_("Patches"), "edit-find-replace-symbolic", 90),
 ];
 
+/// Old names of sections that moved: `Patches` is a group of Extensions, `AI Assistants (MCP)` lost its suffix.
+pub fn legacy_section_id(name: &str) -> Option<&'static str> {
+    match name {
+        "Patches" => Some("extensions"),
+        "AI Assistants (MCP)" => Some("mcp"),
+        _ => None,
+    }
+}
+
 #[allow(dead_code)] // called by the modules that add a section
-/// Adds a section to the sidebar (nothing happens if the id exists). Suggested orders: Backup 70,
-/// Text to Speech 100, Advanced 110.
+/// Adds a section to the sidebar (nothing happens if the id exists). The orders in use: General 10, Library 20,
+/// Reading 30, Dictionaries 35, Editor 40, Text to Speech 50, Sync 60, E-mail 70, Extensions 80, Privacy 90,
+/// Keyboard Shortcuts 100, AI Assistants 110.
 pub fn register_page(id: &str, title: &str, icon: &str, order: i32) {
     REGISTRY.with(|r| {
         let mut r = r.borrow_mut();
@@ -172,7 +279,12 @@ pub fn show_at(
     let sections = build_sections(parent, shared, on_change);
     let (dialog, view) = assemble(sections);
     CURRENT.with(|c| *c.borrow_mut() = Some(view.clone()));
-    dialog.connect_closed(|_| CURRENT.with(|c| *c.borrow_mut() = None));
+    dialog.connect_closed(|_| {
+        CURRENT.with(|c| *c.borrow_mut() = None);
+        for f in ON_CLOSE.with(|c| std::mem::take(&mut *c.borrow_mut())) {
+            f();
+        }
+    });
     dialog.present(Some(parent));
     if let Some(title) = focus {
         for (i, s) in view.sections.iter().enumerate() {
@@ -203,9 +315,75 @@ pub fn goto_page(id: &str) {
     }
 }
 
+thread_local! {
+    static PATCHES: RefCell<Option<glib::WeakRef<adw::PreferencesGroup>>> = const { RefCell::new(None) };
+    static MAIL_ROWS: RefCell<Option<adw::ButtonRow>> = const { RefCell::new(None) };
+    static MAIL_RESULT: RefCell<String> = const { RefCell::new(String::new()) };
+    static EINK_ROW: RefCell<Option<adw::SwitchRow>> = const { RefCell::new(None) };
+    static LIBDIR: RefCell<Option<(adw::ActionRow, Rc<dyn Fn(PrefChange)>)>> = const { RefCell::new(None) };
+}
+
+/// `prefs:patches-dump`: `prefs_patches: rows=N max_controls=K menus=A|B empty_state=B` for the
+/// patch list (rows are the patch switches; controls are the buttons inside one of them).
+fn dump_patches() {
+    fn walk(
+        w: &gtk::Widget,
+        rows: &mut usize,
+        max: &mut usize,
+        menus: &mut Vec<String>,
+        empty: &mut bool,
+    ) {
+        if w.is::<adw::StatusPage>() {
+            *empty = true;
+            return;
+        }
+        if w.is::<adw::SwitchRow>() {
+            *rows += 1;
+            let mut n = 0;
+            let mut stack = vec![w.clone()];
+            while let Some(x) = stack.pop() {
+                if x.is::<gtk::MenuButton>() {
+                    n += 1;
+                    if let Some(t) = x.tooltip_text() {
+                        menus.push(t.to_string());
+                    }
+                    continue;
+                }
+                if x.is::<gtk::Button>() {
+                    n += 1;
+                }
+                let mut c = x.first_child();
+                while let Some(ch) = c {
+                    stack.push(ch.clone());
+                    c = ch.next_sibling();
+                }
+            }
+            *max = (*max).max(n);
+            return;
+        }
+        let mut c = w.first_child();
+        while let Some(ch) = c {
+            walk(&ch, rows, max, menus, empty);
+            c = ch.next_sibling();
+        }
+    }
+    let (mut rows, mut max, mut menus, mut empty) = (0, 0, Vec::new(), false);
+    if let Some(g) = PATCHES.with(|p| p.borrow().as_ref().and_then(|w| w.upgrade())) {
+        walk(g.upcast_ref(), &mut rows, &mut max, &mut menus, &mut empty);
+    }
+    eprintln!(
+        "prefs_patches: rows={rows} max_controls={max} menus={} empty_state={empty}",
+        menus.join("|")
+    );
+}
+
 /// Dev hook `prefs:ARG` (besides the plain `prefs:` that opens the dialog): `search=TEXT`,
 /// `pick=SECTION`, `dump`.
 pub fn dev(arg: &str) {
+    if let Some(f) = arg.strip_prefix("stats-") {
+        super::stats::dev(f);
+        return;
+    }
     let Some(view) = CURRENT.with(|c| c.borrow().clone()) else {
         eprintln!("prefs: not open");
         return;
@@ -220,6 +398,100 @@ pub fn dev(arg: &str) {
         super::sync_prefs::dev(f);
     } else if let Some(f) = arg.strip_prefix("privacy-") {
         super::privacy_settings::dev(f);
+    } else if arg == "email-dump" || arg == "email-test" {
+        if arg == "email-test" {
+            MAIL_ROWS.with(|m| {
+                if let Some(r) = m.borrow().as_ref() {
+                    r.emit_by_name::<()>("activated", &[]);
+                }
+            });
+            return;
+        }
+        let titles = view
+            .sections
+            .iter()
+            .find(|s| s.id == "email")
+            .map(|s| {
+                let mut groups = Vec::new();
+                collect_groups(s.page.upcast_ref(), &mut groups);
+                let mut rows = Vec::new();
+                for g in groups {
+                    top_rows(g.upcast_ref(), &mut rows);
+                }
+                rows.iter()
+                    .map(|r| r.title().to_string())
+                    .collect::<Vec<_>>()
+                    .join("|")
+            })
+            .unwrap_or_default();
+        let (sens, tip) = MAIL_ROWS.with(|m| {
+            m.borrow()
+                .as_ref()
+                .map(|r| {
+                    (
+                        r.is_sensitive(),
+                        r.tooltip_text().unwrap_or_default().to_string(),
+                    )
+                })
+                .unwrap_or_default()
+        });
+        eprintln!(
+            "prefs_email: titles={titles} test_sensitive={sens} tip={tip:?} result={:?}",
+            MAIL_RESULT.with(|m| m.borrow().clone())
+        );
+    } else if let Some(v) = arg.strip_prefix("eink=") {
+        EINK_ROW.with(|e| e.borrow().as_ref().map(|r| r.set_active(v == "on")));
+    } else if arg == "fit" {
+        let sel = view
+            .list
+            .selected_row()
+            .map(|r| view.sections[r.index() as usize].title.clone())
+            .unwrap_or_default();
+        let page = view
+            .stack
+            .visible_child()
+            .map(|p| (p.measure(gtk::Orientation::Horizontal, -1).0, p.width()))
+            .unwrap_or_default();
+        let win = relm4::main_adw_application().active_window();
+        let (ww, wh) = win.map(|w| (w.width(), w.height())).unwrap_or((900, 600));
+        let (dw, dh) = (view.dialog.content_width(), view.dialog.content_height());
+        eprintln!(
+            "prefs_fit: section={sel} natural_w={} alloc_w={} dialog={dw}x{dh} window={ww}x{wh} fits={}",
+            page.0,
+            page.1,
+            page.0 <= if page.1 > 0 { page.1 } else { dw * 6 / 10 } && dw <= ww.max(900) && dh <= wh.max(600)
+        );
+    } else if arg == "titles" {
+        let mut rows = 0;
+        let mut bad = Vec::new();
+        for sec in &view.sections {
+            let mut groups = Vec::new();
+            collect_groups(sec.page.upcast_ref(), &mut groups);
+            for g in groups {
+                let mut r = Vec::new();
+                top_rows(g.upcast_ref(), &mut r);
+                for row in r {
+                    rows += 1;
+                    if let Some(why) = title_problem(&row.title()) {
+                        bad.push(format!("{}: {} ({why})", sec.title, row.title()));
+                    }
+                }
+            }
+        }
+        eprintln!("prefs_titles: rows={rows} problems={}", bad.join(" | "));
+    } else if arg == "patches-dump" {
+        dump_patches();
+    } else if let Some(dir) = arg.strip_prefix("libdir=") {
+        let target = LIBDIR.with(|l| l.borrow().clone());
+        match target {
+            Some((row, on_change)) => {
+                confirm_library_dir(&row, PathBuf::from(dir), on_change);
+                eprintln!("prefs_libdir: confirm_shown=true folder={dir}");
+            }
+            None => eprintln!("prefs_libdir: confirm_shown=false folder="),
+        }
+    } else if let Some(f) = arg.strip_prefix("metadata-") {
+        super::metadata_settings::dev(f);
     } else if let Some(f) = arg.strip_prefix("dict-") {
         super::dict_settings::dev(f);
     } else if let Some(f) = arg.strip_prefix("vocab-") {
@@ -232,9 +504,11 @@ pub fn dev(arg: &str) {
         let by_number = name.strip_prefix('#').and_then(|n| n.parse::<usize>().ok());
         let legacy = crate::sync_model::LEGACY_PAGES.contains(&name);
         if let Some(i) = by_number.or_else(|| {
-            view.sections
-                .iter()
-                .position(|s| s.title == name || (legacy && s.id == crate::sync_model::PAGE_ID))
+            view.sections.iter().position(|s| {
+                s.title == name
+                    || (legacy && s.id == crate::sync_model::PAGE_ID)
+                    || legacy_section_id(name) == Some(s.id.as_str())
+            })
         }) {
             if i >= view.sections.len() {
                 return;
@@ -286,6 +560,7 @@ pub fn dev(arg: &str) {
 
 /// The widgets of the open dialog.
 struct View {
+    dialog: adw::Dialog,
     sections: Vec<Section>,
     rows: Vec<gtk::ListBoxRow>,
     list: gtk::ListBox,
@@ -301,6 +576,15 @@ impl View {
     fn select(&self, i: usize) {
         if let Some(r) = self.rows.get(i) {
             self.list.select_row(Some(r));
+        }
+    }
+
+    /// Ctrl+PageDown / Ctrl+PageUp: the next or previous section that the search leaves visible.
+    fn step(&self, forward: bool) {
+        let visible: Vec<bool> = self.rows.iter().map(|r| r.is_visible()).collect();
+        let cur = self.list.selected_row().map_or(0, |r| r.index() as usize);
+        if let Some(i) = step_section(&visible, cur, forward) {
+            self.select(i);
         }
     }
 
@@ -434,6 +718,57 @@ fn row_matches(q: &str, r: &adw::PreferencesRow) -> bool {
     inner(e.upcast_ref(), q)
 }
 
+/// Asks before Bookx opens another library folder, naming it; the result toast comes from the
+/// application once the library is open.
+fn confirm_library_dir(row: &adw::ActionRow, p: PathBuf, on_change: Rc<dyn Fn(PrefChange)>) {
+    let name = p.display().to_string();
+    let row = row.clone();
+    super::alert(
+        &row.clone(),
+        &tr("Switch Library Folder?"),
+        &trf(
+            "Bookx will open the library in {}, or start a new one if the folder is empty. Your current library stays where it is.",
+            &[&name],
+        ),
+        &tr("Switch Library"),
+        false,
+        move || {
+            row.set_subtitle(&glib::markup_escape_text(&p.display().to_string()));
+            on_change(PrefChange::LibraryDir(p.clone()));
+        },
+    );
+}
+
+/// What is wrong with a row title, if anything (PRF-P6): longer than 48 characters, speaking of "my" things,
+/// ending in an ellipsis or carrying the unit that belongs in the subtitle.
+pub fn title_problem(title: &str) -> Option<&'static str> {
+    let words: Vec<String> = title
+        .split(|c: char| !c.is_alphanumeric())
+        .map(str::to_lowercase)
+        .collect();
+    if title.chars().count() > 48 {
+        Some("longer than 48 characters")
+    } else if words.iter().any(|w| w == "my") {
+        Some("says my")
+    } else if title.ends_with('…') || title.ends_with("...") {
+        Some("ends in an ellipsis")
+    } else {
+        None
+    }
+}
+
+/// The texts a combo row offers, so that a search for "dark" finds the colour scheme row.
+fn combo_choices(c: &adw::ComboRow) -> String {
+    let Some(m) = c.model() else {
+        return String::new();
+    };
+    (0..m.n_items())
+        .filter_map(|i| m.item(i).and_downcast::<gtk::StringObject>())
+        .map(|o| o.string().to_string())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 fn row_text(r: &adw::PreferencesRow) -> String {
     let mut out = String::new();
     fn walk(w: &gtk::Widget, out: &mut String) {
@@ -443,6 +778,14 @@ fn row_text(r: &adw::PreferencesRow) -> String {
         }
         if let Some(a) = w.downcast_ref::<adw::ActionRow>() {
             out.push_str(&a.subtitle().unwrap_or_default());
+            out.push(' ');
+        }
+        if let Some(c) = w.downcast_ref::<adw::ComboRow>() {
+            out.push_str(&combo_choices(c));
+            out.push(' ');
+        }
+        if let Some(l) = w.downcast_ref::<gtk::Label>() {
+            out.push_str(&l.text());
             out.push(' ');
         }
         let mut c = w.first_child();
@@ -460,8 +803,8 @@ fn row_text(r: &adw::PreferencesRow) -> String {
 fn assemble(sections: Vec<Section>) -> (adw::Dialog, Rc<View>) {
     let dialog = adw::Dialog::new();
     dialog.set_title(&tr("Preferences"));
-    dialog.set_content_width(900);
-    dialog.set_content_height(680);
+    dialog.set_content_width(820);
+    dialog.set_content_height(600);
     dialog.set_width_request(360);
     dialog.set_height_request(400);
 
@@ -551,9 +894,13 @@ fn assemble(sections: Vec<Section>) -> (adw::Dialog, Rc<View>) {
     ));
     bp.add_setter(&split, "collapsed", Some(&true.to_value()));
     dialog.add_breakpoint(bp);
-    dialog.set_child(Some(&split));
+    let overlay = adw::ToastOverlay::new();
+    overlay.set_child(Some(&split));
+    TOASTS.with(|t| *t.borrow_mut() = Some(overlay.downgrade()));
+    dialog.set_child(Some(&overlay));
 
     let view = Rc::new(View {
+        dialog: dialog.clone(),
         sections,
         rows,
         list: list.clone(),
@@ -604,6 +951,18 @@ fn assemble(sections: Vec<Section>) -> (adw::Dialog, Rc<View>) {
                 glib::Propagation::Stop
             })),
         ));
+        for (key, forward) in [("<Control>Page_Down", true), ("<Control>Page_Up", false)] {
+            let v = Rc::downgrade(&view);
+            sc.add_shortcut(gtk::Shortcut::new(
+                gtk::ShortcutTrigger::parse_string(key),
+                Some(gtk::CallbackAction::new(move |_, _| {
+                    if let Some(v) = v.upgrade() {
+                        v.step(forward);
+                    }
+                    glib::Propagation::Stop
+                })),
+            ));
+        }
         dialog.add_controller(sc);
     }
     view.select(0);
@@ -689,7 +1048,6 @@ fn build_sections(
     let library_page = new_page(&tr("Library"), "library-symbolic");
     let email_page = new_page(&tr("E-mail"), "mail-send-symbolic");
     let sync_page = new_page(&tr("Sync"), "view-refresh-symbolic");
-    let patches_page = new_page(&tr("Patches"), "edit-find-replace-symbolic");
 
     // --- library ---------------------------------------------------------
     let lib = adw::PreferencesGroup::builder()
@@ -700,10 +1058,15 @@ fn build_sections(
         .build();
     let row = adw::ActionRow::builder()
         .title(tr("Library folder"))
-        .subtitle(shared.lib.borrow().root.display().to_string())
+        .subtitle(glib::markup_escape_text(
+            &shared.lib.borrow().root.display().to_string(),
+        ))
         .build();
+    row.set_subtitle_selectable(true);
+    row.set_subtitle_lines(0);
     let change = gtk::Button::with_label(&tr("Change"));
     change.set_valign(gtk::Align::Center);
+    super::audit::label(&change, &tr("Change library folder"));
     row.add_suffix(&change);
     {
         let on_change = on_change.clone();
@@ -721,14 +1084,14 @@ fn build_sections(
                 move |res| {
                     if let Ok(f) = res {
                         if let Some(p) = f.path() {
-                            row.set_subtitle(&p.display().to_string());
-                            on_change(PrefChange::LibraryDir(p));
+                            confirm_library_dir(&row, p, on_change);
                         }
                     }
                 },
             );
         });
     }
+    LIBDIR.with(|l| *l.borrow_mut() = Some((row.clone(), on_change.clone())));
     lib.add(&row);
     let banner = adw::ComboRow::builder()
         .title(tr("Continue reading banner"))
@@ -840,7 +1203,8 @@ fn build_sections(
         LayoutMode::Scroll => 2,
     });
     let size = adw::SpinRow::with_range(8.0, 40.0, 1.0);
-    size.set_title(&tr("Font size (pt)"));
+    size.set_title(&tr("Font size"));
+    size.set_subtitle(&tr("Points"));
     size.set_value(shared.cfg.borrow().reader.font_size);
     let justify = adw::SwitchRow::builder().title(tr("Justify text")).build();
     justify.set_active(shared.cfg.borrow().reader.justify);
@@ -935,6 +1299,7 @@ fn build_sections(
                 c.reader.publisher_styles = styles.is_active();
                 let was = c.eink;
                 c.eink = eink.is_active();
+                super::comic_settings::set_eink(c.eink);
                 if c.eink && !was {
                     crate::eink::tune_prefs(&mut c.reader);
                 }
@@ -973,26 +1338,41 @@ fn build_sections(
     reader.add(&justify);
     reader.add(&hyphenate);
     reader.add(&styles);
-    reader.add(&eink);
-    reader.add(&zones);
-    reader.add(&touch);
+    EINK_ROW.with(|e| *e.borrow_mut() = Some(eink.clone()));
+    app.add(&eink);
+    let touch_group = adw::PreferencesGroup::builder()
+        .title(tr("Touch and e-ink readers"))
+        .description(tr("Bigger buttons and spacing for fingers"))
+        .build();
+    touch_group.add(&zones);
+    touch_group.add(&touch);
     reading.add(&reader);
+    reading.add(&touch_group);
 
     // ---- plugins: sandboxed extensions (WebAssembly) -------------------------------------
     let plugins = adw::PreferencesGroup::new();
     plugins.set_title(&tr("Plugins"));
     plugins.set_description(Some(&tr(
-        "Extensions run in a sandbox and can only do what their manifest asks for. They add metadata sources and file formats.",
+        "Extensions run in a sandbox and can only do what their manifest asks for. They can add metadata sources, file formats, conversion steps and device support.",
     )));
     let list: Vec<bookx_plugin::PluginStatus> = shared.plugins.borrow().list();
-    if list.is_empty() {
-        let row = adw::ActionRow::new();
-        row.set_title(&tr("No plugins installed"));
-        row.set_subtitle(&relm4::gtk::glib::markup_escape_text(&trf(
-            "Put plugin folders (plugin.toml and plugin.wasm) into {}",
-            &[&(shared.plugins.borrow().dir().display())],
-        )));
-        plugins.add(&row);
+    let none_installed = list.is_empty();
+    if none_installed {
+        let shared = shared.clone();
+        let dir = shared.plugins.borrow().dir().display().to_string();
+        plugins.add(&empty_state(
+            &tr("No Plugins Installed"),
+            &trf(
+                "Put plugin folders (plugin.toml and plugin.wasm) into {}",
+                &[&dir],
+            ),
+            &tr("Open Plugins Folder"),
+            move || {
+                let dir = shared.plugins.borrow().dir().to_path_buf();
+                let _ = std::fs::create_dir_all(&dir);
+                super::open_uri(&format!("file://{}", dir.display()));
+            },
+        ));
     }
     for st in list {
         let row = adw::SwitchRow::new();
@@ -1081,18 +1461,21 @@ fn build_sections(
             super::open_uri(&format!("file://{}", dir.display()));
         });
     }
-    plugins.add(&open_row);
+    if !none_installed {
+        plugins.add(&open_row);
+    }
     extras.add(&plugins);
 
     // ---- patches: small TOML rule files (X9) -----------------------------------------------
     let patches = adw::PreferencesGroup::new();
     patches.set_title(&tr("Patches"));
     patches.set_description(Some(&tr(
-        "Small rule files that fix text or style in books when they are imported, converted or opened. They only edit the book itself, never other files. Off until you switch them on; use the magnifier for a dry run on your first book.",
+        "Small rule files that fix text or style in books when they are imported, converted or opened. They only edit the book itself, never other files. Off until you switch them on; open a patch’s menu for a dry run on your first book.",
     )));
-    let shown: Rc<RefCell<Vec<adw::PreferencesRow>>> = Rc::default();
+    let shown: Rc<RefCell<Vec<gtk::Widget>>> = Rc::default();
+    PATCHES.with(|p| *p.borrow_mut() = Some(patches.downgrade()));
     fill_patches(&patches, shared, &shown);
-    patches_page.add(&patches);
+    extras.add(&patches);
 
     // ---- e-mail: for "Send by E-mail" ------------------------------------------------------
     let mail = adw::PreferencesGroup::new();
@@ -1105,12 +1488,12 @@ fn build_sections(
         r.set_text(text);
         r
     };
-    let host = entry(&tr("Mail server"), &cur.host);
+    let host = entry(&tr("Server"), &cur.host);
     let port = adw::SpinRow::with_range(1.0, 65535.0, 1.0);
-    port.set_title(&tr("Mail server port"));
+    port.set_title(&tr("Port"));
     port.set_value(cur.port as f64);
     let enc = adw::ComboRow::new();
-    enc.set_title(&tr("Mail encryption"));
+    enc.set_title(&tr("Encryption"));
     enc.set_model(Some(&gtk::StringList::new(
         &crate::emailing::Encryption::ALL
             .map(|e| tr(e.label()))
@@ -1123,18 +1506,22 @@ fn build_sections(
             .position(|e| *e == cur.encryption)
             .unwrap_or(0) as u32,
     );
-    let user = entry(&tr("Mail user name"), &cur.username);
+    let user = entry(&tr("User name"), &cur.username);
     let pass = adw::PasswordEntryRow::new();
-    pass.set_title(&tr("Mail password"));
+    pass.set_title(&tr("Password"));
     pass.set_text(&cur.password);
     let from = entry(&tr("Your address"), &cur.from);
     let to = entry(&tr("Send books to"), &cur.to);
-    for r in [&host, &user, &from, &to] {
-        mail.add(r);
-    }
+    mail.add(&host);
     mail.add(&port);
     mail.add(&enc);
+    mail.add(&user);
     mail.add(&pass);
+    mail.add(&from);
+    mail.add(&to);
+    let test_row = adw::ButtonRow::new();
+    test_row.set_title(&tr("Send a Test Message"));
+    mail.add(&test_row);
     let save_mail = {
         let shared = shared.clone();
         let (host, port, enc, user, pass, from, to) = (
@@ -1159,6 +1546,46 @@ fn build_sections(
             c.save();
         })
     };
+    // the test row waits for a server and both addresses, and says the result in the toast
+    let gate_test = {
+        let (shared, test_row) = (shared.clone(), test_row.clone());
+        Rc::new(move || {
+            let ok = shared.cfg.borrow().email.can_test();
+            test_row.set_sensitive(ok);
+            test_row.set_tooltip_text(
+                (!ok)
+                    .then(|| tr("Fill in the server and both addresses first"))
+                    .as_deref(),
+            );
+        })
+    };
+    gate_test();
+    for r in [&host, &from, &to] {
+        let g = gate_test.clone();
+        r.connect_changed(move |_| g());
+    }
+    MAIL_ROWS.with(|m| *m.borrow_mut() = Some(test_row.clone()));
+    {
+        let (shared, test_row) = (shared.clone(), test_row.clone());
+        test_row.connect_activated(move |r| {
+            let settings = shared.cfg.borrow().email.clone();
+            r.set_sensitive(false);
+            let r = r.clone();
+            glib::spawn_future_local(async move {
+                let result =
+                    gio::spawn_blocking(move || settings.send_test().map_err(|e| format!("{e:#}")))
+                        .await
+                        .unwrap_or_else(|_| Err(String::new()));
+                r.set_sensitive(true);
+                let text = match result {
+                    Ok(to) => trf("Sent to {}", &[&to]),
+                    Err(e) => trf("Failed: {}", &[&e]),
+                };
+                MAIL_RESULT.with(|m| *m.borrow_mut() = text.clone());
+                super::preferences::toast(&text);
+            });
+        });
+    }
     for r in [&host, &user, &from, &to] {
         let f = save_mail.clone();
         r.connect_changed(move |_| f());
@@ -1182,15 +1609,7 @@ fn build_sections(
     }
     email_page.add(&mail);
 
-    let built = [
-        page,
-        library_page,
-        reading,
-        sync_page,
-        email_page,
-        extras,
-        patches_page,
-    ];
+    let built = [page, library_page, reading, sync_page, email_page, extras];
     let mut sections: Vec<Section> = built
         .into_iter()
         .zip(BUILTIN)
@@ -1243,25 +1662,28 @@ fn page_has_groups(p: &adw::PreferencesPage) -> bool {
 fn fill_patches(
     group: &adw::PreferencesGroup,
     shared: &SharedRef,
-    rows: &Rc<RefCell<Vec<adw::PreferencesRow>>>,
+    rows: &Rc<RefCell<Vec<gtk::Widget>>>,
 ) {
     for r in rows.borrow_mut().drain(..) {
         group.remove(&r);
     }
     let mgr = crate::plugins::patch_manager();
     let list = mgr.list();
-    let add = |row: adw::PreferencesRow| {
+    let add = |row: gtk::Widget| {
         group.add(&row);
         rows.borrow_mut().push(row);
     };
     if list.is_empty() {
-        let row = adw::ActionRow::new();
-        row.set_title(&tr("No patches installed"));
-        row.set_subtitle(&relm4::gtk::glib::markup_escape_text(&trf(
-            "Put .toml patch files into {}",
-            &[&(mgr.dir().display())],
-        )));
-        add(row.upcast());
+        add(empty_state(
+            &tr("No Patches Installed"),
+            &trf("Put .toml patch files into {}", &[&(mgr.dir().display())]),
+            &tr("Open Patches Folder"),
+            || {
+                let dir = crate::plugins::patches_dir();
+                let _ = std::fs::create_dir_all(&dir);
+                super::open_uri(&format!("file://{}", dir.display()));
+            },
+        ));
     }
     let last = list.len().saturating_sub(1);
     for (i, st) in list.into_iter().enumerate() {
@@ -1293,20 +1715,40 @@ fn fill_patches(
                 crate::plugins::reload_patches();
             });
         }
-        let tools = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-        tools.set_valign(gtk::Align::Center);
-        let button = |icon: &str, tip: &str| {
-            let b = gtk::Button::from_icon_name(icon);
-            b.set_tooltip_text(Some(tip));
+        // one menu button instead of three flat icon buttons: the switch and the menu are the
+        // two controls of the row
+        let pop_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        let item = |label: &str| {
+            let b = gtk::Button::with_label(label);
             b.add_css_class("flat");
+            if let Some(l) = b.child().and_downcast::<gtk::Label>() {
+                l.set_xalign(0.0);
+            }
             b
         };
-        let up = button("go-up-symbolic", &tr("Apply earlier"));
-        up.set_sensitive(i > 0);
-        let down = button("go-down-symbolic", &tr("Apply later"));
-        down.set_sensitive(i < last);
-        let dry = button("system-search-symbolic", &tr("Dry run on your first book"));
+        let dry = item(&tr("Dry Run on Your First Book"));
         dry.set_sensitive(st.error.is_none());
+        let up = item(&tr("Apply Earlier"));
+        up.set_sensitive(i > 0);
+        let down = item(&tr("Apply Later"));
+        down.set_sensitive(i < last);
+        for b in [&dry, &up, &down] {
+            pop_box.append(b);
+        }
+        let pop = gtk::Popover::new();
+        pop.set_child(Some(&pop_box));
+        let menu = gtk::MenuButton::new();
+        menu.set_icon_name("view-more-symbolic");
+        menu.set_valign(gtk::Align::Center);
+        menu.add_css_class("flat");
+        menu.set_popover(Some(&pop));
+        let menu_name = trf("Patch actions: {}", &[&st.name]);
+        menu.set_tooltip_text(Some(&menu_name));
+        super::audit::label(&menu, &menu_name);
+        for b in [&dry, &up, &down] {
+            let pop = pop.clone();
+            b.connect_clicked(move |_| pop.popdown());
+        }
         for (b, delta) in [(&up, -1isize), (&down, 1)] {
             let id = st.id.clone();
             let (group, shared, rows) = (group.clone(), shared.clone(), rows.clone());
@@ -1322,7 +1764,8 @@ fn fill_patches(
         {
             let id = st.id.clone();
             let shared = shared.clone();
-            dry.connect_clicked(move |b| {
+            let anchor = menu.clone();
+            dry.connect_clicked(move |_| {
                 let epub = {
                     let lib = shared.lib.borrow();
                     lib.books.first().map(|bk| lib.book_path(bk))
@@ -1332,32 +1775,61 @@ fn fill_patches(
                     Ok(r) => r.summary(),
                     Err(e) => format!("{e:#}"),
                 };
-                let d = adw::AlertDialog::new(Some(&tr("Dry run")), Some(&text));
-                d.add_response("ok", &tr("Close"));
-                d.present(Some(b));
+                let d = adw::AlertDialog::new(Some(&tr("Dry Run Result")), Some(&text));
+                d.add_response("close", &tr("Close"));
+                d.set_close_response("close");
+                d.present(Some(&anchor));
             });
         }
-        tools.append(&dry);
-        tools.append(&up);
-        tools.append(&down);
+        let tools = menu;
         row.add_suffix(&tools);
         add(row.upcast());
     }
-    let open_row = adw::ActionRow::new();
-    open_row.set_title(&tr("Open patches folder"));
-    open_row.set_activatable(true);
-    open_row.add_suffix(&gtk::Image::from_icon_name("folder-open-symbolic"));
-    open_row.connect_activated(|_| {
-        let dir = crate::plugins::patches_dir();
-        let _ = std::fs::create_dir_all(&dir);
-        super::open_uri(&format!("file://{}", dir.display()));
-    });
-    add(open_row.upcast());
+    if !mgr.list().is_empty() {
+        let open_row = adw::ActionRow::new();
+        open_row.set_title(&tr("Open patches folder"));
+        open_row.set_activatable(true);
+        open_row.add_suffix(&gtk::Image::from_icon_name("folder-open-symbolic"));
+        open_row.connect_activated(|_| {
+            let dir = crate::plugins::patches_dir();
+            let _ = std::fs::create_dir_all(&dir);
+            super::open_uri(&format!("file://{}", dir.display()));
+        });
+        add(open_row.upcast());
+    }
+}
+
+/// A compact placeholder for an empty list: heading, how to fill it, and the action as a button.
+fn empty_state(
+    title: &str,
+    description: &str,
+    button: &str,
+    on_click: impl Fn() + 'static,
+) -> gtk::Widget {
+    let page = adw::StatusPage::new();
+    page.add_css_class("compact");
+    page.set_title(title);
+    page.set_description(Some(&glib::markup_escape_text(description)));
+    let b = gtk::Button::with_label(button);
+    b.add_css_class("pill");
+    b.set_halign(gtk::Align::Center);
+    b.connect_clicked(move |_| on_click());
+    page.set_child(Some(&b));
+    page.upcast()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn titles_are_short_and_neutral() {
+        assert_eq!(title_problem("Font size"), None);
+        assert!(title_problem("Allow other devices on my network").is_some());
+        assert!(title_problem("My Vocabulary").is_some());
+        assert!(title_problem(&"x".repeat(49)).is_some());
+        assert!(title_problem("Choose…").is_some());
+    }
 
     #[test]
     fn query_words_all_have_to_match() {
@@ -1368,6 +1840,18 @@ mod tests {
     }
 
     #[test]
+    fn section_keys_skip_hidden_sections_and_wrap() {
+        let v = [true, false, true, true];
+        assert_eq!(step_section(&v, 0, true), Some(2));
+        assert_eq!(step_section(&v, 3, true), Some(0));
+        assert_eq!(step_section(&v, 0, false), Some(3));
+        assert_eq!(step_section(&v, 2, false), Some(0));
+        assert_eq!(step_section(&[false, false], 0, true), None);
+        assert_eq!(step_section(&[true], 0, true), Some(0));
+        assert_eq!(step_section(&[], 0, true), None);
+    }
+
+    #[test]
     fn builtin_sections_are_ordered_and_unique() {
         let orders: Vec<i32> = BUILTIN.iter().map(|b| b.3).collect();
         assert!(orders.windows(2).all(|w| w[0] < w[1]));
@@ -1375,6 +1859,37 @@ mod tests {
         ids.sort();
         ids.dedup();
         assert_eq!(ids.len(), BUILTIN.len());
+    }
+
+    #[test]
+    fn registered_pages_are_unique_and_have_icons() {
+        ensure_registry();
+        let mut all: Vec<(String, String, i32)> = BUILTIN
+            .iter()
+            .map(|b| (b.0.to_string(), b.2.to_string(), b.3))
+            .collect();
+        REGISTRY.with(|r| {
+            for p in r.borrow().pages.iter().filter(|p| p.id != "t-test") {
+                all.push((p.id.clone(), p.icon.clone(), p.order));
+            }
+        });
+        let mut ids: Vec<&str> = all.iter().map(|a| a.0.as_str()).collect();
+        ids.sort();
+        ids.dedup();
+        assert_eq!(ids.len(), all.len(), "page ids are unique");
+        let mut orders: Vec<i32> = all.iter().map(|a| a.2).collect();
+        orders.sort();
+        orders.dedup();
+        assert_eq!(orders.len(), all.len(), "section orders are unique");
+        assert!(all.iter().all(|a| a.1.ends_with("-symbolic")));
+        assert!(all.len() <= 12);
+    }
+
+    #[test]
+    fn old_section_names_still_find_their_page() {
+        assert_eq!(legacy_section_id("Patches"), Some("extensions"));
+        assert_eq!(legacy_section_id("AI Assistants (MCP)"), Some("mcp"));
+        assert_eq!(legacy_section_id("General"), None);
     }
 
     #[test]

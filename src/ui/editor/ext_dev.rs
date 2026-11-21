@@ -131,7 +131,9 @@ impl Editor {
             }
             "beautify" => {
                 let pages = self.dev_pages(arg);
-                self.run_op("Beautify", move |b, _| editor_tools::beautify(b, &pages));
+                self.run_op("Reformat Markup", move |b, _| {
+                    editor_tools::beautify(b, &pages)
+                });
             }
             "styles" => {
                 let rules: Result<Vec<_>, _> = arg

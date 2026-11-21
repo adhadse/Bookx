@@ -179,6 +179,8 @@ struct FloatBox {
     pix: Pixbuf,
     /// The picture's path in the book (for the image viewer).
     src: String,
+    /// What the picture is, for a screen reader (`<img alt>`).
+    alt: String,
     x: f64,
     y: f64,
     h: f64,
@@ -194,7 +196,12 @@ struct Zone {
 
 enum Kind {
     Text(TextItem),
-    Image { pix: Pixbuf, src: String },
+    Image {
+        pix: Pixbuf,
+        src: String,
+        /// What the picture is, for a screen reader (`<img alt>`).
+        alt: String,
+    },
     Rule,
 }
 
@@ -2534,7 +2541,7 @@ fn visible_images(s: &State) -> Vec<((f64, f64, f64, f64), String)> {
     }
     for col in visible_columns(s) {
         for item in &s.items {
-            if let Kind::Image { pix, src } = &item.kind {
+            if let Kind::Image { pix, src, .. } = &item.kind {
                 if item.y < col.y1 && item.y + item.h > col.y0 {
                     let r = col
                         .frame
@@ -2712,13 +2719,14 @@ fn visible_range_rects(s: &State, a: i32, b: i32) -> Vec<(f64, f64, f64, f64)> {
 
 /// The paragraphs on the visible page(s) with the start of each visual line.
 fn visible_page_text(s: &State) -> PageText {
-    let mut paras: Vec<(String, Vec<usize>, i32)> = Vec::new();
+    // (y of the first line or of the picture, paragraph)
+    let mut paras: Vec<(f64, (String, Vec<usize>, i32))> = Vec::new();
     for col in visible_columns(s) {
         let (y0, y1) = (col.y0, col.y1);
         let first = s.lines.partition_point(|l| l.y + l.h <= y0);
         let mut group: Option<(usize, Vec<&LineBox>)> = None;
         let flush = |g: Option<(usize, Vec<&LineBox>)>,
-                     out: &mut Vec<(String, Vec<usize>, i32)>| {
+                     out: &mut Vec<(f64, (String, Vec<usize>, i32))>| {
             let Some((item, lines)) = g else { return };
             let Kind::Text(t) = &s.items[item].kind else {
                 return;
@@ -2743,7 +2751,7 @@ fn visible_page_text(s: &State) -> PageText {
             if !text.trim().is_empty() {
                 let global =
                     t.char_base + canon_of_layout_char(&t.text, byte_to_char(&t.text, sb)) as i32;
-                out.push((text, starts, global));
+                out.push((lines[0].y, (text, starts, global)));
             }
         };
         for l in &s.lines[first.min(s.lines.len())..] {
@@ -2762,7 +2770,25 @@ fn visible_page_text(s: &State) -> PageText {
             }
         }
         flush(group.take(), &mut paras);
+        // the pictures on this page: what the author says they show
+        let pictures = s
+            .items
+            .iter()
+            .filter_map(|i| match &i.kind {
+                Kind::Image { alt, .. } => Some((i.y, i.h, alt.as_str())),
+                _ => None,
+            })
+            .chain(s.floats.iter().map(|f| (f.y, f.h, f.alt.as_str())));
+        for (y, h, alt) in pictures {
+            if y < y1 && y + h > y0 {
+                if let Some(p) = crate::a11y::image_paragraph(alt) {
+                    paras.push((y, (p, vec![0], crate::a11y::IMAGE_CHAR_BASE)));
+                }
+            }
+        }
     }
+    paras.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let paras: Vec<(String, Vec<usize>, i32)> = paras.into_iter().map(|p| p.1).collect();
     PageText::from_paragraphs(&paras)
 }
 
@@ -3032,7 +3058,7 @@ fn build_flow(s: &mut State, ctxs: &Ctxs) {
 
     for block in &doc.blocks {
         // Split block content at images.
-        let mut pieces: Vec<Result<Pending, (String, FloatSide)>> = Vec::new();
+        let mut pieces: Vec<Result<Pending, (String, FloatSide, String)>> = Vec::new();
         let mut cur = Pending::new();
         let mut anchors: Vec<String> = Vec::new();
         if let Some(m) = &block.marker {
@@ -3084,13 +3110,15 @@ fn build_flow(s: &mut State, ctxs: &Ctxs) {
                     cur.text.push('\n');
                 }
                 Span::Anchor(a) => anchors.push(a.clone()),
-                Span::Image { path, float, .. } => {
+                Span::Image {
+                    path, float, alt, ..
+                } => {
                     if !cur.text.trim().is_empty() {
                         pieces.push(Ok(std::mem::replace(&mut cur, Pending::new())));
                     } else {
                         cur = Pending::new();
                     }
-                    pieces.push(Err((path.clone(), *float)));
+                    pieces.push(Err((path.clone(), *float, alt.clone())));
                 }
             }
         }
@@ -3185,7 +3213,7 @@ fn build_flow(s: &mut State, ctxs: &Ctxs) {
 
         for piece in pieces {
             match piece {
-                Err((path, side)) => {
+                Err((path, side, alt)) => {
                     let Some(pix) = load_pixbuf(s, &path) else {
                         continue;
                     };
@@ -3213,6 +3241,7 @@ fn build_flow(s: &mut State, ctxs: &Ctxs) {
                         s.floats.push(FloatBox {
                             pix: scaled,
                             src: path.clone(),
+                            alt: alt.clone(),
                             x: if side == FloatSide::Left {
                                 0.0
                             } else {
@@ -3265,6 +3294,7 @@ fn build_flow(s: &mut State, ctxs: &Ctxs) {
                         kind: Kind::Image {
                             pix: scaled,
                             src: path.clone(),
+                            alt: alt.clone(),
                         },
                         y: item_y,
                         h: th,

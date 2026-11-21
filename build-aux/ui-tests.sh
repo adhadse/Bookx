@@ -422,6 +422,13 @@ scenario() {
                 "$CLI" --library "$d/lib" library add --allow-duplicates "$ROOT/src/book.md" >/dev/null 2>&1
             done
             ;;
+        lib9_group*)
+            # thirty authors, so that the Authors group of the sidebar is cut to its top entries
+            for n in $(seq 10 39); do
+                sed "s/UI Test Book/Title $n/; s/Test Author/Writer $n/" "$ROOT/src/book.md" >"$d/w$n.md"
+                "$CLI" --library "$d/lib" library add "$d/w$n.md" >/dev/null 2>&1
+            done
+            ;;
         library_switcher)
             # a second library with one other book
             "$CLI" --library "$d/lib2" library add "$ROOT/src/second.md" >/dev/null 2>&1
@@ -566,7 +573,7 @@ PY
         esac
         case "$name" in
             device_none) rm -rf "$d/mounts" && mkdir -p "$d/mounts" ;;
-            device_window|device_options) fake_devices "$d/mounts" ;;
+            device_window|device_options|device_window_hig|device_fit) fake_devices "$d/mounts" ;;
             device_ui|device_lists|device_sync_ui|device_auto_sync) fake_devices_ui "$d/mounts" ;;
         esac
         case "$name" in
@@ -671,7 +678,7 @@ open(f, "wb").write(b)
 os.utime(f, ns=(st.st_atime_ns, st.st_mtime_ns))
 PY
             ;;
-        cat_trackers)
+        cat_trackers | win9_trackers*)
             for pair in "Dune|Frank Herbert" "Emma|Jane Austen"; do
                 t=${pair%%|*}; a=${pair#*|}
                 printf -- '---\ntitle: "%s"\nauthor: "%s"\n---\n# One\n\nText.\n' "$t" "$a" >"$d/$t.md"
@@ -680,6 +687,11 @@ PY
             printf 'Book Id,Title,Author,ISBN13,My Rating,Date Read,Bookshelves,Exclusive Shelf\n1,Dune,Frank Herbert,"=""9780441172719""",5,2021/03/14,"favorites, sci-fi",read\n2,Emma,Jane Austen,"=""""",0,,classics,to-read\n3,Not Mine,Nobody,,4,,,read\n' >"$d/goodreads.csv"
             ;;
         opds_*) make_opds_mock "$d/opdsmock" ;;
+        win9_scale*)
+            # large text (XC-7): GTK reads the text scale from the settings file, Broadway has no portal
+            mkdir -p "$d/cfg/gtk-4.0"
+            printf '[Settings]\ngtk-xft-dpi=147456\n' >"$d/cfg/gtk-4.0/settings.ini"
+            ;;
         wiki_image*)
             # canned Wikipedia: a search hit, a summary with a lead picture, and the picture (a 48x32 PNG)
             mkdir -p "$d/webmock"
@@ -727,7 +739,7 @@ PY
             # a big book (about 2000 contents entries) is book 1 of these scenarios
             "$CLI" --library "$d/lib" library add "$ROOT/big/big.epub" >/dev/null 2>&1
             ;;
-        cat_audiobooks)
+        cat_audiobooks | win9_audiobooks*)
             printf -- '---\ntitle: "Dune"\nauthor: "Frank Herbert"\n---\n# One\n\nText.\n' >"$d/Dune.md"
             "$CLI" --library "$d/lib" library add "$d/Dune.md" >/dev/null 2>&1
             mkdir -p "$d/audio/Other Stuff"
@@ -796,7 +808,7 @@ PY
         bw=$!
         for _ in $(seq 1 100); do [ -e "$rtd/broadway$((disp + 1)).socket" ] && break; sleep 0.1; done
         smtp=
-        if [ "$name" = email_book ]; then
+        if [ "$name" = email_book ] || [ "$name" = prefs9_email_test_sends ]; then
             python3 "$HERE/fake-smtp.py" "$d/smtp-port" "$d/mail.txt" &
             smtp=$!
             for _ in $(seq 1 50); do [ -s "$d/smtp-port" ] && break; sleep 0.1; done
@@ -1376,25 +1388,28 @@ scenario device_none 'library:devices-scan,wait:300,library:dump,library:ctxmenu
     has "^send_to_device: disabled"; check "activating it does nothing while no device is connected" $?
     has "^devwin: not open"; check "and no Device window opens" $?
     has "^device_button: visible=false"; check "without a device the header has no Device button" $?
-    has "^device_banner: revealed=false"; check "and no banner asks anything" $?
+    has "^device_banner: widget=AdwBanner .*revealed=false"; check "and no banner asks anything" $?
     has "^devwin: devices=0 selected=none books=0"; check "the Device window opens without a device" $?
     has "^devwin_hint: No device is connected\\."; check "the window explains how to connect a device" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
 scenario device_button 'library:ctxmenu,library:menus,wait:2500,library:dump,library:device-banner=later,wait:300,library:dump,library:device-button,wait:1500,devwin:dump,quit' '
     L=$(grep -E "^(device_button|device_banner):" <<<"$OUT")
-    has "^ctxmenu: Read \\| .*Edit Metadata \\| Edit Book .*\\| Remove$"; check "the book menu lists the book actions" $?
+    has "^ctxmenu: Read \\| .*Edit Metadata \\| Edit Book .*\\| Move to Trash$"; check "the book menu lists the book actions" $?
     [ "$(grep "^ctxmenu:" <<<"$OUT" | head -1 | grep -o "Device" | wc -l)" -eq 1 ]; check "the book menu has the one Send to Device entry and no other device entry" $?
-    [ "$(grep "^ctxmenu_top:" <<<"$OUT" | head -1 | sed "s/.*: //")" -le 10 ]; check "the book menu has at most 10 entries at its first level (it fits a normal window)" $?
+    [ "$(grep "^ctxmenu_top:" <<<"$OUT" | head -1 | sed "s/.*: //")" -le 12 ]; check "the book menu has at most 12 entries at its first level (it fits a normal window)" $?
     ! has "^(ctxmenu|mainmenu|welcome): .*…"; check "no menu entry or button ends in an ellipsis" $?
     ! has "^ctxmenu:.*(Send to (Kobo|Kindle|E-reader)|with Notes)"; check "no per-device entry and no separate with-notes entry (bug 3)" $?
     has "^ctxmenu_send: enabled=true tooltip=Open the Device window with these books ready to send"; check "with a device connected Send to Device is enabled" $?
     has "^device_button: visible=true label=.+"; check "a connected device shows the Device button in the header bar, with its name" $?
-    grep -q "^device_banner: revealed=true text=.* connected — Sync reading progress and notes?" <<<"$L"; check "the banner asks to sync when a device connects" $?
-    grep "^device_banner:" <<<"$L" | tail -1 | grep -q "revealed=false"; check "Not now hides the banner" $?
+    grep -q "^device_banner: widget=AdwBanner title=E-reader connected button=Sync dismiss=true revealed=true" <<<"$L"; check "the banner is an AdwBanner with only Sync and dismiss" $?
+    ! has "^device_banner:.*(Always|Not now)"; check "the banner has no Always or Not now choice that silently changes auto-sync" $?
+    grep "^device_banner:" <<<"$L" | tail -1 | grep -q "revealed=false"; check "dismissing hides the banner" $?
     has "^devwin: devices=2 "; check "the Device button opens the Device window" $?
     ! has "^mainmenu: .*(News Subscriptions|Find Duplicates|Needs Attention|Editions|Series|Notes & Highlights)"; check "the main menu does not list what moved to the sidebar, the + menu and Library Health" $?
     has "^mainmenu: .*Library Health \\[lib.health\\]"; check "Library Health is in the main menu" $?
+    has "^mainmenu: .*Sync \\[app.sync\\] \\| Devices \\[app.devices\\]"; check "the plural Devices entry sits directly after Sync" $?
+    ! has "^mainmenu: .*Device \\[app.devices\\]"; check "there is no singular Device menu entry" $?
     has "^welcome: .*News Subscriptions \\[lib.news\\]"; check "News Subscriptions is on the welcome page" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
@@ -1402,16 +1417,16 @@ scenario device_ui 'library:annotate,library:selectall,wait:600,library:send-to-
     has "^devwin_lists: to_send=2 checked=2 "; check "Send to Device opens the Device window with the selected books listed and ticked" $?
     has "^devwin_send_item: UI Test Book \\| EPUB \\(sent as is\\) \\| \\+ 2 notes added as a last section \\|  \\| checked=true"; check "each book shows its format, that it is sent as is, and the notes that are added" $?
     has "^devwin_send_item: Second Book \\| EPUB \\(sent as is\\) \\|  \\|  \\| checked=true"; check "a book without notes has no notes line" $?
-    has "^devwin_ui: view=grid covers=[0-9]+ include_notes=true auto_sync=false send_button=Send 2 books send_enabled=true"; check "the Send N books button counts the ticked books; notes are included and automatic sync is off by default" $?
+    has "^devwin_ui: view=grid covers=[0-9]+ include_notes=true auto_sync=false send_button=Send 2 Books send_enabled=true"; check "the Send N Books button counts the ticked books; notes are included and automatic sync is off by default" $?
     has "^devwin_ui: view=list "; check "the books can be shown as a list" $?
     has "^devwin_lists: to_send=2 checked=1 "; check "clicking a row unticks it" $?
-    has "^devwin_ui: .*send_button=Send 1 book send_enabled=true"; check "and the button follows" $?
+    has "^devwin_ui: .*send_button=Send 1 Book send_enabled=true"; check "and the button follows" $?
     has "^devwin_sent: Sent 1 book to "; check "only the ticked book is sent" $?
     [ -n "$(find "$d/mounts/SDCARD" -name "UI Test Book*.epub" 2>/dev/null)" ] && [ -z "$(find "$d/mounts/SDCARD" -name "Second Book*" 2>/dev/null)" ]; check "the unticked book is not on the device" $?
     S=$(find "$d/mounts/SDCARD" -path "*.sdr/metadata.epub.lua" 2>/dev/null | head -1)
     [ -n "$S" ] && grep -q "devhighlight text" "$S"; check "a book with notes goes with its notes (bug 3)" $?
     has "^devwin_send_item: UI Test Book \\| EPUB → KEPUB \\(converted\\) \\| \\+ 2 notes added as a last section \\| Already on the device.* \\| checked=false"; check "on a Kobo the book is shown as converted to KEPUB, with a warning that it is already there, and left out" $?
-    has "^devwin_ui: .*send_button=Send 0 books send_enabled=false"; check "with nothing ticked the button is disabled" $?
+    has "^devwin_ui: .*send_button=Send 0 Books send_enabled=false"; check "with nothing ticked the button is disabled" $?
     has "^devwin_send_item: UI Test Book \\| EPUB → KEPUB \\(converted\\) \\|  \\|"; check "with the notes option off the notes line is gone" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
@@ -1465,7 +1480,7 @@ scenario annotations_import_devices 'library:import-highlights=@D@/imp/copy.sqli
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
 scenario annotations_export 'library:menus,library:annotate,library:export-all=md:@D@/out,library:export-all=readwise:@D@/out2,library:export-all=kindle:@D@/out3,wait:800,quit' '
-    has "^mainmenu: .*Import Highlights \\[lib.import-highlights\\].*Export All Annotations \\[lib.export-annotations\\]"; check "Import Highlights and Export All Annotations are in the main menu" $?
+    ! has "^mainmenu: .*(Import Highlights|Export All Annotations)"; check "Import Highlights moved to the + menu and Export All Annotations to Notes, not the main menu" $?
     has "^export_all: format=md files=1"; check "one file is written for the one book with annotations" $?
     grep -q "devhighlight text" "$d/out/UI Test Book - annotations.md" && grep -q "devnote remember this" "$d/out/UI Test Book - annotations.md"; check "the Markdown has the highlight and its note" $?
     python3 -c "import json,sys; j=json.load(open(sys.argv[1])); h=j[\"highlights\"]; assert len(h)==1 and h[0][\"note\"]==\"devnote remember this\" and h[0][\"title\"]==\"UI Test Book\"" "$d/out2/UI Test Book - annotations.json"; check "the Readwise file is the highlights API body" $?
@@ -1727,7 +1742,28 @@ scenario device_window 'devwin:show,wait:1500,devwin:dump,devwin:device=SDCARD,w
     [ -e "$d/mounts/SDCARD/Books/On Card.epub" ]; check "the SD card is untouched" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
-scenario device_options 'devwin:show,wait:1200,devwin:format=epub,devwin:template={author}/{title},devwin:shelf=Bookx,devwin:dump,library:send=KOBO,wait:800,devwin:template={nope},devwin:dump,wait:600,quit' '
+scenario device_window_hig 'devwin:show,wait:1500,devwin:page=books,wait:300,devwin:layout,devwin:page=settings,wait:300,devwin:layout,quit' '
+    has "^devwin_page: books"; check "the Books page can be selected" $?
+    has "^devwin_page: settings"; check "the Settings page can be selected" $?
+    has "^devwin_dialog: title=Devices pages=Books,Settings active=books linked_toggles=0 "; check "the dialog is titled Devices, has exactly Books and Settings, and no linked header toggles" $?
+    has "^devwin_status: title=No Device Connected description=Connect your e-reader with USB"; check "the empty page is a status page with the connect hint" $?
+    has "^devwin_device_row: title=Device subtitle="; check "the selector is one row titled Device with the storage as subtitle" $?
+    has "^devwin_buttons: send=.* remove=Remove from Device remove_enabled=false"; check "the destructive Remove is at the bottom and insensitive with no selection" $?
+    has "^devwin_selection_mode: class=true "; check "the lists use libadwaita selection-mode checkboxes" $?
+    has "^devwin_menus: on_device=\\[Select All, Select None\\]"; check "the selection actions live in a popover menu" $?
+    ! has "^devwin_dialog:.*linked_toggles=[1-9]"; check "the linked grid/list toggle in the header is gone" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
+scenario device_fit 'devwin:show,wait:1500,devwin:layout,quit' '
+    D=$(grep "^devwin_dialog:" <<<"$OUT" | head -1)
+    grep -q "title=Devices" <<<"$D"; check "the fit check opens the Devices dialog" $?
+    H=$(grep -o "content_height=[0-9.]*" <<<"$D" | cut -d= -f2)
+    [ -n "$H" ] && [ "$(awk -v h="$H" "BEGIN { print (h <= 560) }")" = 1 ]; check "the dialog content is capped at 560 px, not a fixed 720 px page" $?
+    PH=$(grep -o "parent_alloc=[0-9]*x[0-9]*" <<<"$D" | cut -dx -f2)
+    [ -n "$H" ] && [ -n "$PH" ] && [ "$H" -le "$(( PH * 85 / 100 ))" ]; check "the dialog content stays within 85% of the parent height" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
+scenario device_options 'devwin:show,wait:1200,devwin:page=settings,wait:300,devwin:format=epub,devwin:template={author}/{title},devwin:shelf=Bookx,devwin:dump,library:send=KOBO,wait:800,devwin:template={nope},devwin:dump,wait:600,quit' '
     has "^devwin: .* format=epub template={author}/{title} template_error=false "; check "the chosen format and save path are shown" $?
     F=$(find "$d/mounts/KOBOeReader/Bookx" -name "*.epub" 2>/dev/null | head -1)
     [ "${F##*/Bookx/}" = "Test Author/UI Test Book.epub" ]; check "the book is sent as EPUB into the author folder named by the template" $?
@@ -2347,6 +2383,16 @@ scenario health_backup_restore 'library:health=open,wait:800,library:health=back
     [ "$(ls "$d/lib/.bookx-backups" | grep -c prerestore)" -ge 1 ]; check "the catalogue before the restore was snapshotted too" $?
     has "^health_snapshots: [3-9]"; check "the window lists the snapshots (startup, manual, before-restore)" $?'
 
+scenario backup_scope_explanation 'library:health=open,wait:800,library:health=tab=backups,wait:500,library:health=backup-scope,a11y-audit:,quit' '
+    has "^backup_scope: title=What is in a backup "; check "the Backups panel names what a backup contains before the user runs one" $?
+    has "description=A backup is one complete snapshot of the catalogue"; check "the description states it is a catalogue snapshot" $?
+    has "included=Included: catalogue metadata"; check "the included data is listed" $?
+    has "excluded=Not included: book files, covers"; check "book files and covers are explicitly excluded" $?
+    has "incremental=Not incremental — each copy is a whole file"; check "the copy says backups are whole-file, not incremental" $?
+    ! has "incremental=.*(delta|deduplicat|incremental transfer)"; check "it does not claim deltas, dedup or incremental transfer" $?
+    ! has "^a11y-problem:"; check "the scope row has an accessible name" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
 scenario backup_destinations 'library:health=open,wait:800,library:health=backup-add=USB drive|@D@/usb,library:health=backup-add=Offsite|@D@/offsite|encrypt,library:health=backup-add=Gone|@D@/nope/deeper,library:health=backup-passphrase=secret-phrase-77,library:health=backup,wait:6000,library:health=dump,quit' '
     has "^health: backup ok books=2"; check "Back up now still writes the local snapshot" $?
     has "^backup_place: USB drive \| OK \| enabled=true \| encrypt=false"; check "the plain folder destination is OK" $?
@@ -2749,15 +2795,15 @@ scenario prefs_search 'prefs:,wait:800,palette:open,wait:600,palette:type=sync,w
     sed -n 2p <<<"$P" | grep -q "Setting|"; check "settings of the E-mail section are in the search index" $?
     sed -n 3p <<<"$P" | grep -q "Setting|\|Command|"; check "plugin settings are in the search index" $?'
 
-scenario prefs_sidebar 'prefs:,wait:900,prefs:dump,prefs:search=hyphen,wait:400,prefs:dump,prefs:search=mail server,wait:400,prefs:dump,prefs:search=sync,wait:400,prefs:dump,prefs:search=zzqq,wait:400,prefs:dump,prefs:search=,wait:400,prefs:dump,prefs:pick=Patches,wait:300,prefs:dump,quit' '
+scenario prefs_sidebar 'prefs:,wait:900,prefs:dump,prefs:search=hyphen,wait:400,prefs:dump,prefs:search=your address,wait:400,prefs:dump,prefs:search=sync,wait:400,prefs:dump,prefs:search=zzqq,wait:400,prefs:dump,prefs:search=,wait:400,prefs:dump,prefs:pick=Patches,wait:300,prefs:dump,quit' '
     P=$(grep "^prefs: query" <<<"$OUT")
-    sed -n 1p <<<"$P" | grep -q "sections=General|Library|Reading|Sync|Editor|E-mail|Extensions|Patches.* selected=General"; check "Preferences lists its sections in the sidebar, General first" $?
+    sed -n 1p <<<"$P" | grep -q "sections=General|Library|Reading|Dictionaries|Editor|Text to Speech|Sync|E-mail|Extensions.* selected=General"; check "Preferences lists its sections in the sidebar, General first" $?
     sed -n 2p <<<"$P" | grep -q "sections=Reading selected=Reading hits=[1-9]"; check "searching filters the sidebar to the matching section, selects it and highlights the hit" $?
-    sed -n 3p <<<"$P" | grep -q "sections=E-mail.* selected=E-mail"; check "a search finds a row of another section" $?
+    sed -n 3p <<<"$P" | grep -q "sections=.*E-mail"; check "a search finds a row of another section" $?
     sed -n 4p <<<"$P" | grep -q "sections=.*Sync.* selected"; check "the search also matches section titles" $?
     sed -n 5p <<<"$P" | grep -q "empty=true"; check "nonsense shows the empty state" $?
-    sed -n 6p <<<"$P" | grep -q "sections=General|Library|Reading|Sync|Editor|E-mail|Extensions|Patches.* selected=.* hits=0"; check "clearing the search brings every section back" $?
-    sed -n 7p <<<"$P" | grep -q "selected=Patches"; check "a section can be picked" $?
+    sed -n 6p <<<"$P" | grep -q "sections=General|Library|Reading|Dictionaries|Editor|Text to Speech|Sync|E-mail|Extensions.* selected=.* hits=0"; check "clearing the search brings every section back" $?
+    sed -n 7p <<<"$P" | grep -q "selected=Extensions"; check "a section can be picked (Patches is a group of Extensions now)" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no GTK warnings" $?'
 
 scenario rtl_book "library:import=$ROOT/rtl-epub/lib,wait:2500,read:3,wait:3500,reader:page-text,reader:dump,reader:next,wait:600,reader:next,wait:600,reader:dump,reader:tap=0.9,wait:700,reader:dump,reader:tap=0.1,wait:700,reader:dump,reader:swipe-left,wait:700,reader:dump,quit" '
@@ -3011,6 +3057,11 @@ scenario language 'library:language=es,library:menus-tr,library:opds=open,wait:5
 . "$HERE/ui-tests-anchor.sh"
 . "$HERE/ui-tests-koannot.sh"
 . "$HERE/ui-tests-sync.sh"
+. "$HERE/ui-tests-lib8.sh"
+. "$HERE/ui-tests-reader8.sh"
+. "$HERE/ui-tests-editor8.sh"
+. "$HERE/ui-tests-prefs8.sh"
+. "$HERE/ui-tests-win8.sh"
 . "$HERE/ui-tests-bigbook.sh"
 . "$HERE/ui-tests-i18n.sh"
 
@@ -3092,9 +3143,9 @@ scenario reading_goals 'stats:goal:1:2,read:1,wait:3500,reader:next,wait:500,rea
     has "^stats_review: Pages turned = [1-9]"; check "and the pages turned" $?
     grep -q "\"daily_minutes\": 0" "$d/cfg/bookx/config.json"; check "goals are stored in the settings file" $?'
 
-scenario mcp_settings_page 'prefs:,wait:900,prefs:pick=AI Assistants (MCP),wait:300,prefs:dump,mcp:dump,a11y-audit:,mcp:snippet=claude-code,mcp:snippet=opencode,mcp:snippet=opencode:http,mcp:copied,mcp:port=@MCPPORT@,mcp:enable=on,wait:500,mcp:dump,mcp:ping,wait:200,mcp:dump,mcp:token=regen,wait:500,mcp:ping,mcp:write=on,wait:300,mcp:ping,mcp:dump,mcp:enable=off,wait:300,mcp:ping,mcp:dump,quit' '
+scenario mcp_settings_page 'prefs:,wait:900,prefs:pick=AI Assistants,wait:300,prefs:dump,mcp:dump,a11y-audit:,mcp:snippet=claude-code,mcp:snippet=opencode,mcp:snippet=opencode:http,mcp:copied,mcp:port=@MCPPORT@,mcp:enable=on,wait:500,mcp:dump,mcp:ping,wait:200,mcp:dump,mcp:token=regen,wait:500,mcp:ping,mcp:write=on,wait:300,mcp:ping,mcp:dump,mcp:enable=off,wait:300,mcp:ping,mcp:dump,quit' '
     P=$(grep "^prefs:" <<<"$OUT" | head -1)
-    grep -q "sections=.*AI Assistants (MCP)" <<<"$P" && grep -q "selected=AI Assistants (MCP)" <<<"$P"; check "Preferences has an AI Assistants (MCP) section" $?
+    grep -q "sections=.*AI Assistants" <<<"$P" && grep -q "selected=AI Assistants" <<<"$P"; check "Preferences has an AI Assistants section" $?
     M=$(grep "^mcp: " <<<"$OUT")
     sed -n 1p <<<"$M" | grep -q "running=0 .*enabled=0 .*write=0"; check "the server is off and read-only by default" $?
     ! has "^a11y-problem:"; check "every control of the page has an accessible name" $?

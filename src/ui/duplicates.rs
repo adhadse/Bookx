@@ -13,14 +13,14 @@ use super::SharedRef;
 use crate::duplicates::{self, Group};
 
 pub fn show(parent: &impl IsA<gtk::Widget>, shared: &SharedRef, on_changed: Rc<dyn Fn(String)>) {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("Duplicate Books"));
     dialog.set_content_width(560);
-    dialog.set_content_height(620);
+    dialog.set_content_height(560);
     let view = adw::ToolbarView::new();
     view.add_top_bar(&adw::HeaderBar::new());
     view.set_content(Some(&page(shared, on_changed)));
-    dialog.set_child(Some(&view));
+    dialog.set_child(Some(&super::dialog_toast::overlay(&view)));
     dialog.present(Some(parent));
 }
 
@@ -33,9 +33,9 @@ pub fn page(shared: &SharedRef, on_changed: Rc<dyn Fn(String)>) -> gtk::Widget {
     let status = adw::StatusPage::new();
     status.set_icon_name(Some("object-select-symbolic"));
     status.set_title(&tr("No duplicates found"));
-    status.set_description(Some(
+    status.set_description(Some(&tr(
         "Books with the same title and author, or the same ISBN, would show up here.",
-    ));
+    )));
     status.add_css_class("compact");
     let remaining = Rc::new(Cell::new(groups.len()));
     status.set_visible(groups.is_empty());
@@ -60,12 +60,12 @@ pub fn page(shared: &SharedRef, on_changed: Rc<dyn Fn(String)>) -> gtk::Widget {
         // copies that differ in format are one book in several files: keep them all
         let formats = g.differ_in_format(&shared.lib.borrow().books);
         group.set_description(Some(&if formats {
-            format!(
+            trf(
                 "{} files in different formats. Merge keeps every file as a format of one book.",
-                rows.len()
+                &[&rows.len()],
             )
         } else {
-            format!("{} copies. Pick the one to keep.", rows.len())
+            trf("{} copies. Pick the one to keep.", &[&rows.len()])
         }));
         let keep = Rc::new(Cell::new(g.keep));
         let merge_btn = gtk::Button::with_label(
@@ -146,6 +146,7 @@ pub fn page(shared: &SharedRef, on_changed: Rc<dyn Fn(String)>) -> gtk::Widget {
                 on_changed.clone(),
             );
             merge_btn.connect_clicked(move |b| {
+                let seq = duplicates::last_seq(&shared.lib.borrow());
                 let res = if formats {
                     let others: Vec<u64> =
                         ids.iter().copied().filter(|i| *i != keep.get()).collect();
@@ -165,11 +166,38 @@ pub fn page(shared: &SharedRef, on_changed: Rc<dyn Fn(String)>) -> gtk::Widget {
                         b.set_sensitive(false);
                         remaining.set(remaining.get().saturating_sub(1));
                         status.set_visible(remaining.get() == 0);
-                        on_changed(if formats {
+                        let text = if formats {
                             trf("Merged {} files as formats of one book", &[&(n + 1)])
                         } else {
                             trf("Merged {} copies into one", &[&(n + 1)])
-                        });
+                        };
+                        // the merge is in the operation log: an Undo toast takes it back
+                        if let Some(overlay) = super::dialog_toast::overlay_of(&group) {
+                            let (shared, group, b, status, remaining, on_changed) = (
+                                shared.clone(),
+                                group.clone(),
+                                b.clone(),
+                                status.clone(),
+                                remaining.clone(),
+                                on_changed.clone(),
+                            );
+                            super::dialog_toast::show_undo(&overlay, &text, move || {
+                                match duplicates::undo_since(&mut shared.lib.borrow_mut(), seq) {
+                                    Ok(_) => {
+                                        group.set_visible(true);
+                                        b.set_sensitive(true);
+                                        remaining.set(remaining.get() + 1);
+                                        status.set_visible(false);
+                                        on_changed(tr("Merge undone"));
+                                    }
+                                    Err(e) => on_changed(trf(
+                                        "Could not undo: {}",
+                                        &[&format!("{:#}", e)],
+                                    )),
+                                }
+                            });
+                        }
+                        on_changed(text);
                     }
                     Err(e) => on_changed(trf("Could not merge: {}", &[&format!("{:#}", e)])),
                 }

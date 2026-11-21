@@ -1,6 +1,6 @@
 # Search and replace
 
-The book editor's find bar (++ctrl+f++ or ++ctrl+h++) searches one file or the whole book. It has four modes, five
+The book editor's find bar (++ctrl+f++; ++ctrl+h++ adds the replace row) searches one file or the whole book. It has four modes, five
 scopes of files, saved searches, and a **function mode** in which a small script decides every replacement.
 
 Every *Replace All* first takes a checkpoint named "Before: Replace All" (see [Checkpoints](editing.md#compare-and-checkpoints) to go back).
@@ -261,7 +261,7 @@ contents page. (The contents tab's *Generate* does this without a script; the ex
 
 | Action | Shortcut |
 |---|---|
-| Open find and replace | ++ctrl+f++ / ++ctrl+h++ |
+| Open find / open find with the replace row | ++ctrl+f++ / ++ctrl+h++ |
 | Next / previous match | ++f3++ or ++ctrl+g++ / ++shift+f3++ or ++ctrl+shift+g++ |
 | Replace and find next / previous | ++ctrl+r++ or `Ctrl+]` / `Ctrl+[` |
 | Go to line | ++ctrl+l++ |

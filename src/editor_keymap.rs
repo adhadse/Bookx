@@ -121,17 +121,24 @@ pub const COMMANDS: &[Cmd] = &[
     ),
     c!(
         "editor.beautify",
-        N_("Beautify File"),
+        N_("Reformat Markup"),
         &[],
-        "format pretty indent",
+        "beautify format pretty indent",
         "editor:beautify"
     ),
     c!(
         "editor.find",
         N_("Find and Replace"),
-        &["<Control>f", "<Control>h"],
-        "search replace regex",
+        &["<Control>f"],
+        "search regex",
         "editor:find"
+    ),
+    c!(
+        "editor.replace-bar",
+        N_("Find and Replace With Replace Row"),
+        &["<Control>h"],
+        "search replace regex",
+        ""
     ),
     c!(
         "editor.find-next",
@@ -493,7 +500,7 @@ pub const COMMANDS: &[Cmd] = &[
     c!(
         "editor.save-copy",
         N_("Save a Copy"),
-        &["<Control><Alt>s"],
+        &["<Control><Shift>s"],
         "export",
         ""
     ),

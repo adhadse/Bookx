@@ -103,8 +103,10 @@ impl Editor {
         let spine = self.book.borrow().spine_paths();
         let semantics = bookx_editing::semantics::read_semantics(&self.book.borrow());
         for (g, files) in groups {
-            for f in files {
-                let row = self.file_row(&f, g, &spine, &semantics, full_paths);
+            let names: Vec<&str> = files.iter().map(|f| file_name(f)).collect();
+            let shown = editor_tools::display_names(&names);
+            for (f, shown) in files.into_iter().zip(shown) {
+                let row = self.file_row(&f, g, &spine, &semantics, full_paths, &shown);
                 self.w.files.append(&row.0);
                 self.file_rows.insert(f, row);
             }
@@ -124,6 +126,7 @@ impl Editor {
         spine: &[String],
         semantics: &[bookx_editing::semantics::SemanticEntry],
         full_paths: bool,
+        shown_name: &str,
     ) -> (gtk::ListBoxRow, gtk::Image) {
         let row = gtk::ListBoxRow::new();
         row.set_widget_name(group);
@@ -133,10 +136,13 @@ impl Editor {
         bx.set_margin_top(5);
         bx.set_margin_bottom(5);
         bx.append(&gtk::Image::from_icon_name(file_icon(f)));
-        let name = gtk::Label::new(Some(if full_paths { f } else { file_name(f) }));
+        let shown = if full_paths { f } else { shown_name };
+        let name = gtk::Label::new(Some(shown));
         name.set_xalign(0.0);
         name.set_hexpand(true);
-        name.set_ellipsize(pango::EllipsizeMode::Middle);
+        name.add_css_class("file-name");
+        name.set_tooltip_text(Some(f));
+        name.set_ellipsize(pango::EllipsizeMode::End);
         bx.append(&name);
         let notes = book_tools::file_notes_with(&self.book.borrow(), f, semantics);
         for n in notes.iter().take(3) {
@@ -668,7 +674,8 @@ impl Editor {
         dialog.set_content_width(w);
         dialog.set_content_height(h);
         let open = gtk::Button::with_label(&tr("Open"));
-        let delete = gtk::Button::with_label(&tr("Delete Selected"));
+        let delete = gtk::Button::with_label(&editor_tools::delete_images_label(0));
+        delete.set_sensitive(false);
         delete.add_css_class("destructive-action");
         let bar = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         bar.set_margin_all(10);
@@ -716,12 +723,19 @@ impl Editor {
                 dialog.clone(),
                 chosen.clone(),
             );
+            let chosen_now = chosen.clone();
             delete.connect_clicked(move |_| {
-                let paths = chosen();
+                let paths = chosen_now();
                 if !paths.is_empty() {
-                    tx.emit(Input::DeleteFiles(paths));
+                    tx.emit(Input::AskDeleteFiles(paths));
                     d.close();
                 }
+            });
+            let (delete, chosen) = (delete.clone(), chosen.clone());
+            flow.connect_selected_children_changed(move |_| {
+                let n = chosen().len();
+                delete.set_label(&editor_tools::delete_images_label(n));
+                delete.set_sensitive(n > 0);
             });
         }
         dialog.present(Some(&self.w.win));

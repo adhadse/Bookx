@@ -14,7 +14,7 @@ use super::preferences::{register_group, PrefCtx};
 use super::share::follow;
 use super::stepper::{StepInfo, Stepper};
 use super::SharedRef;
-use crate::i18n::tr;
+use crate::i18n::{tr, N_};
 use crate::sync_model::{self, Snapshot};
 
 thread_local! {
@@ -205,30 +205,14 @@ fn usb_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     g.set_description(Some(&tr(
         "Plug in a Kobo, Kindle or other e-reader. Books, progress and notes sync over the cable, never wirelessly. Progress only moves forward and nothing is deleted.",
     )));
-    let auto_sync = adw::SwitchRow::builder()
-        .title(tr(crate::device_sync::AUTO_SYNC_TITLE))
-        .subtitle(tr(crate::device_sync::AUTO_SYNC_SUBTITLE))
-        .build();
-    auto_sync.add_suffix(&super::help_button(&tr(crate::device_sync::AUTO_SYNC_HELP)));
-    auto_sync.set_active(shared.cfg.borrow().device_sync.auto_sync);
+    // The canonical "Always sync when connected" switch lives in Devices → Settings; this page
+    // only shows the USB result and the notes option so the two pages do not duplicate a control.
     let include_notes = adw::SwitchRow::builder()
         .title(tr(crate::device_sync::NOTES_TITLE))
         .subtitle(tr(crate::device_sync::NOTES_SUBTITLE))
         .build();
     include_notes.set_active(shared.cfg.borrow().device_sync.include_notes);
     {
-        let sh = shared.clone();
-        auto_sync.connect_active_notify(move |r| {
-            {
-                let mut c = sh.cfg.borrow_mut();
-                if c.device_sync.auto_sync == r.is_active() {
-                    return;
-                }
-                c.device_sync.auto_sync = r.is_active();
-                c.save();
-            }
-            crate::settings_bus::sync().notify();
-        });
         let sh = shared.clone();
         include_notes.connect_active_notify(move |r| {
             {
@@ -241,26 +225,16 @@ fn usb_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
             }
             crate::settings_bus::sync().notify();
         });
-        let (sh, a, n) = (
-            shared.clone(),
-            auto_sync.downgrade(),
-            include_notes.downgrade(),
-        );
+        let (sh, n) = (shared.clone(), include_notes.downgrade());
         follow(&g, move || {
-            let d = sh.cfg.borrow().device_sync.clone();
-            if let Some(r) = a.upgrade() {
-                if r.is_active() != d.auto_sync {
-                    r.set_active(d.auto_sync);
-                }
-            }
+            let notes = sh.cfg.borrow().device_sync.include_notes;
             if let Some(r) = n.upgrade() {
-                if r.is_active() != d.include_notes {
-                    r.set_active(d.include_notes);
+                if r.is_active() != notes {
+                    r.set_active(notes);
                 }
             }
         });
     }
-    g.add(&auto_sync);
     g.add(&include_notes);
     g.add(&link_row(
         &tr("Device window"),
@@ -346,36 +320,36 @@ fn requirement_table(r: &sync_model::Requirement) -> gtk::Grid {
     g
 }
 
-/// The requirements table: one expandable row per sync type with the columns as a small table
-/// inside it (the Stock Kobo/Kindle note is the first thing in the body).
-pub fn requirements_expander() -> adw::ExpanderRow {
-    let outer = adw::ExpanderRow::new();
-    outer.set_title(&tr("Requirements: what each sync type needs"));
-    outer.set_subtitle(&tr(
-        "Which device needs what, over which connection, and what syncs",
-    ));
-    let note = gtk::Label::new(Some(&tr(sync_model::STOCK_NOTE)));
-    note.set_wrap(true);
-    note.set_xalign(0.0);
-    note.set_margin_top(6);
-    note.set_margin_bottom(6);
-    note.set_margin_start(12);
-    note.set_margin_end(12);
-    outer.add_row(&note);
+const REQUIREMENTS_TITLE: &str = N_("What each sync type needs");
+
+/// The requirements table as a dialog: one group per sync type with its columns as a small table, the stock
+/// Kobo/Kindle note on top. The page only has a row that opens it.
+pub fn requirements_dialog(parent: &gtk::Widget) -> adw::Dialog {
+    let dialog = adw::Dialog::new();
+    dialog.set_title(&tr(REQUIREMENTS_TITLE));
+    dialog.set_content_width(560);
+    dialog.set_content_height(520);
+    let page = adw::PreferencesPage::new();
+    let first = adw::PreferencesGroup::new();
+    first.set_description(Some(&glib::markup_escape_text(&tr(sync_model::STOCK_NOTE))));
+    page.add(&first);
     for r in &sync_model::REQUIREMENTS {
-        let e = adw::ExpanderRow::new();
-        e.set_title(&glib::markup_escape_text(&tr(r.sync_type)));
-        e.set_subtitle(&glib::markup_escape_text(&format!(
+        let g = adw::PreferencesGroup::new();
+        g.set_title(&glib::markup_escape_text(&tr(r.sync_type)));
+        g.set_description(Some(&glib::markup_escape_text(&format!(
             "{} · {}",
             tr(r.connection),
             tr(r.syncs)
-        )));
-        e.set_subtitle_lines(0);
-        super::audit::label(&e, &tr(r.sync_type));
-        e.add_row(&requirement_table(r));
-        outer.add_row(&e);
+        ))));
+        g.add(&requirement_table(r));
+        page.add(&g);
     }
-    outer
+    let view = adw::ToolbarView::new();
+    view.add_top_bar(&adw::HeaderBar::new());
+    view.set_content(Some(&page));
+    dialog.set_child(Some(&view));
+    dialog.present(Some(parent));
+    dialog
 }
 
 fn advanced_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
@@ -434,7 +408,14 @@ fn advanced_group(ctx: &PrefCtx) -> adw::PreferencesGroup {
         &tr("Open"),
         |_| super::preferences::goto_page("email"),
     ));
-    adv.add_row(&requirements_expander());
+    adv.add_row(&link_row(
+        &tr(REQUIREMENTS_TITLE),
+        &tr("Which device needs what, over which connection, and what syncs"),
+        &tr("Show"),
+        |w| {
+            requirements_dialog(w);
+        },
+    ));
     g.add(&adv);
     g
 }
@@ -621,9 +602,41 @@ pub fn dev(cmd: &str) {
             has("This device is called"),
             has("Offline mode and the list of connections"),
             has("Reverse proxy and remote access"),
-            has("Requirements: what each sync type needs"),
+            has(REQUIREMENTS_TITLE),
             all.contains(&tr("Allow this port in your firewall for the e-reader to connect.")),
             a.is_expanded() && mapped("Port"),
+        );
+        return;
+    }
+    if cmd == "requirements" {
+        let parent = CHECK
+            .with(|r| r.borrow().as_ref().and_then(|w| w.upgrade()))
+            .map(|g| g.upcast::<gtk::Widget>());
+        let Some(parent) = parent else {
+            eprintln!("prefs_sync_requirements: no page");
+            return;
+        };
+        let d = requirements_dialog(&parent);
+        let mut groups = Vec::new();
+        fn titles(w: &gtk::Widget, out: &mut Vec<String>) {
+            if let Some(g) = w.downcast_ref::<adw::PreferencesGroup>() {
+                if !g.title().is_empty() {
+                    out.push(g.title().to_string());
+                }
+            }
+            let mut c = w.first_child();
+            while let Some(ch) = c {
+                titles(&ch, out);
+                c = ch.next_sibling();
+            }
+        }
+        if let Some(c) = d.child() {
+            titles(&c, &mut groups);
+        }
+        eprintln!(
+            "prefs_sync_requirements: groups={} titles={}",
+            groups.len(),
+            groups.join("|")
         );
         return;
     }

@@ -30,7 +30,9 @@ adds others, such as a Calibre server (`http://host:8080/opds`) or another Bookx
 name and password are only needed when the server asks for them; they are sent to that server only, and the password is
 kept in the system keyring.
 
-Open a catalogue, follow the folders (*Back* returns), search with the search entry, and press *Add* on a book. Bookx
+Open a catalogue, follow the folders (*Back* returns), search with the **search button** in the header (or
+<kbd>Ctrl</kbd>+<kbd>F</kbd>), and press *Add* on a book. While a page loads you can press *Cancel*; a page that cannot
+be loaded offers *Try Again*. A password for an `http://` address is sent unencrypted: the dialog warns you. Bookx
 downloads the best format on offer (EPUB, then KEPUB, AZW3, MOBI, FB2, CBZ, PDF) and imports it like any other file.
 Long lists end with *Load more*. Limits: no sign-in pages other than basic authentication, no paid or borrowed books
 (the DRM-protected ones are refused by the importer), and the built-in catalogues need network access.
@@ -45,7 +47,7 @@ Long lists end with *Load more*. Limits: no sign-in pages other than basic authe
 
 
 Open **News Subscriptions** to have Bookx build a news book for you on a schedule. You find it in two places: the
-**+** menu and on the **welcome page** of an empty library.
+**Library** menu (*Subscribe to News*) and the **welcome page** of an empty library.
 
 1. Press *Add*. Give it a **name** (the refresh button next to the name takes it from the feed).
 2. Enter one or more **feed addresses**, one per line. A line starting with `#` switches a feed off. You can also

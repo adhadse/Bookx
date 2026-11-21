@@ -149,17 +149,41 @@ pub fn resolve(target: &Target, book: &Book) -> Result<Dest, String> {
     }
 }
 
+/// The live line under the field for what was typed, with the book's numbers: "Page 45 of 312",
+/// "37 percent", "Location 1200 of 3000", "Chapter 3 of 12" (the typed prefixes are not advertised).
+pub fn describe(target: &Target, book: &Book) -> String {
+    use crate::i18n::trf;
+    match target {
+        Target::Page(label) => {
+            let total = match book.page_list {
+                Some(m) => m.total_pages(),
+                None => book.layout_pages,
+            };
+            trf("Page {} of {}", &[label, &total])
+        }
+        Target::Percent(p) => trf("{} percent", &[&format!("{p:.0}")]),
+        Target::Location(n) => trf("Location {} of {}", &[n, &locations(book)]),
+        Target::Chapter(n) => trf("Chapter {} of {}", &[n, &book.chapters]),
+    }
+}
+
 /// The line under the field: what the book has.
 pub fn hint(book: &Book) -> String {
+    use crate::i18n::ntr;
     let pages = match book.page_list {
-        Some(m) => format!("{} printed pages", m.total_pages()),
-        None => format!("{} pages", book.layout_pages),
+        Some(m) => ntr(
+            "{} printed page",
+            "{} printed pages",
+            m.total_pages() as u64,
+        ),
+        None => ntr("{} page", "{} pages", book.layout_pages as u64),
     };
-    format!(
-        "{pages} · {} locations · {} chapters",
-        locations(book),
-        book.chapters
-    )
+    [
+        pages,
+        ntr("{} location", "{} locations", locations(book) as u64),
+        ntr("{} chapter", "{} chapters", book.chapters as u64),
+    ]
+    .join(" · ")
 }
 
 #[cfg(test)]
@@ -269,6 +293,28 @@ mod tests {
             .unwrap_err()
             .contains("no page"));
         assert!(hint(&b).starts_with("4 printed pages"));
+    }
+
+    #[test]
+    fn the_live_line_gives_the_number_with_the_total() {
+        let w = [12_800.0];
+        let b = book(&w, None);
+        assert_eq!(describe(&Target::Page("45".into()), &b), "Page 45 of 100");
+        assert_eq!(describe(&Target::Percent(37.0), &b), "37 percent");
+        assert_eq!(
+            describe(&Target::Location(1200), &b),
+            "Location 1200 of 100"
+        );
+        assert_eq!(describe(&Target::Chapter(3), &b), "Chapter 3 of 12");
+        for t in [
+            Target::Page("1".into()),
+            Target::Percent(1.0),
+            Target::Location(1),
+            Target::Chapter(1),
+        ] {
+            let d = describe(&t, &b);
+            assert!(!d.contains("loc ") && !d.contains("ch "), "{d}");
+        }
     }
 
     #[test]

@@ -59,7 +59,7 @@ becomes an error message in the app, never a crash.
 <figure markdown="1">
 ![Preferences, Patches](assets/preferences-patches-light.png#only-light)
 ![Preferences, Patches](assets/preferences-patches-dark.png#only-dark)
-<figcaption markdown="1">Preferences → Patches: installed patches and their folder.</figcaption>
+<figcaption markdown="1">Preferences → Extensions: installed patches and their folder.</figcaption>
 </figure>
 
 
@@ -72,8 +72,7 @@ A patch is one `.toml` file. It applies regex or CSS rules to the book's text fi
 | `convert-after` | the same, after Bookx's steps and plugin transforms |
 | `open-before` | when the reader opens a book; only what you see changes |
 
-Manage patches in *Preferences → Patches*: a switch per patch (off by default), buttons to apply a patch
-earlier or later, and a **dry run** that shows how many changes it would make in your first library book (or a
+Manage patches in *Preferences → Extensions*: a switch per patch (off by default), a **⋯** menu with *Apply Earlier*, *Apply Later* and a **dry run** that shows how many changes it would make in your first library book (or a
 built-in sample) with a before → after excerpt, without changing anything.
 
 Patches only edit `.xhtml`, `.html`, `.htm`, `.css`, `.svg`, `.txt`, `.ncx` and `.xml` files, never `mimetype`,

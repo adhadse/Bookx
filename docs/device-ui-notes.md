@@ -1,7 +1,8 @@
 # Device UI: notes for developers
 
-Enhancement 4 and bugs 3 to 5 (see `docs/enhancements.md`, `docs/bugs.md`). Public description: the wiki pages
-*Library* and *Devices and sharing*.
+Enhancement 4 and bugs 3 to 5 (see `docs/enhancements.md`, `docs/bugs.md`), plus the wave 7 Device UX redesign
+(`docs/human_interface_backlog.md` §7 D2/D5/D7). Public description: the wiki pages *Library* and *Devices and sharing*.
+This file is internal: decisions, component map and dev hooks, not user copy.
 
 ## Pieces
 
@@ -9,8 +10,8 @@ Enhancement 4 and bugs 3 to 5 (see `docs/enhancements.md`, `docs/bugs.md`). Publ
 |---|---|
 | `src/device_sync.rs` | pure: `plan` (device readings + library books → what would change), `Plan::summary` (counts and words), `apply_book` / `apply_to_library` (library side), `apply_to_device` through the `NoteSink` trait (`SidecarSink` writes a new KOReader sidecar, never over an existing file), `Locator` trait (finds a device quote in the book; `BookLocator` searches the chapter text), `read_device` (glue over `bookx_serve::reading::collect_data`), `SyncPrefs`, header-button and banner texts |
 | `src/device_covers.rs` | cover bytes of EPUB/KEPUB device books, cached in `<cache>/device-covers/` keyed by path, size and mtime (a book without cover is remembered with a `.none` file) |
-| `src/ui/devices.rs` | the Device window (grid/list with covers, send library selection, options), `start_sync` (read → plan → summary dialog or automatic apply), `send_books` |
-| `src/ui/library.rs` | Device button, connect banner, device scan every 3 s on a worker thread, details panel opening, breakpoint, News in the menus |
+| `src/ui/devices.rs` | the **Devices** window (plural): two pages, **Books** and **Settings**; the Books page has the individual **Device** row, *Books on the device* (covers, hover/selection checkboxes, one grid/list toggle), *Books to send*, `start_sync` (read → plan → summary dialog or automatic apply) and `send_books`; Settings holds Sending options, Sync and Cloud folder (WebDAV) |
+| `src/ui/library.rs` | **Devices** button, the `adw::Banner` **E-reader connected** with one-shot **Sync** and built-in dismiss, device scan every 3 s on a worker thread, details panel opening, breakpoint, News in the menus |
 
 ## Rules of the sync (all enforced and tested in `device_sync.rs`)
 
@@ -18,7 +19,9 @@ Enhancement 4 and bugs 3 to 5 (see `docs/enhancements.md`, `docs/bugs.md`). Publ
   the device is never written to for progress;
 * highlights are the same when the id matches or the text matches without case, spacing and punctuation;
   new ones are added to the side that lacks them, never removed; a note fills an empty note but never replaces one;
-* a device copy that already has a KOReader notes file is never written to (counted as *held back* in the summary).
+* a device copy that already has a KOReader notes file is never written to (counted as *held back* in the summary);
+* the connection banner's **Sync** is one-shot and never changes settings. Persistent sync is only the **Always sync when
+  connected** switch in Devices → Settings, **off by default**.
 
 ## Caveats
 
@@ -28,18 +31,42 @@ Enhancement 4 and bugs 3 to 5 (see `docs/enhancements.md`, `docs/bugs.md`). Publ
   "behind but newer").
 * Incoming highlight positions come from searching the chapter text (`Doc::to_text`) and are character offsets in
   that text; they are exact only when the reader's text is the same. The quote text is always kept.
-* Not tried on real hardware; the scenarios `device_ui`, `device_sync_ui`, `device_auto_sync` use simulated devices
-  (`BOOKX_DEVICE_ROOTS`).
-* No drag and drop of library books onto the Device button.
+* Not tried on real hardware; the scenarios `device_ui`, `device_sync_ui`, `device_auto_sync`, `device_window_hig` and
+  `device_fit` use simulated devices (`BOOKX_DEVICE_ROOTS`). The real-session a11y scenarios are `device_window_a11y`
+  and `device_banner_a11y`.
+* The window title and hamburger entry are **Devices**; only an individual row is titled **Device**. The Books page shows
+  **No Device Connected** when nothing is plugged in. Do not reintroduce the old *Always*/*Not now* banner answers.
+* The Devices dialog keeps its content under 560 px high and at most 85 % of the parent window (`device_fit`), so the
+  send controls stay reachable at 900x600.
+* No drag and drop of library books onto the Devices button.
 
 ## Dev hooks
 
 `library:devices-scan`, `library:forget-devices` (then `devices-scan` behaves like a new connection),
-`library:device-banner=sync|always|later`, `library:device-button`, `library:autosync=on`, `library:details-toggle`
+`library:device-banner=dismiss` (the canonical hook; `sync` runs the one-shot summary, old `always|later` aliases only
+dismiss and never turn auto-sync on), `library:device-button`, `library:autosync=on`, `library:details-toggle`
 (the user's click), `library:unselect`, `library:narrow|wide`, `library:menus`, `library:ctxmenu`;
-`devwin:view=grid|list`, `devwin:notes=on|off`, `devwin:autosync=on|off`, `devwin:syncask` (summary dialog),
-`devwin:syncconfirm`, `devwin:send`; `library:dump` also prints `device_button`, `device_banner`, `details_auto`,
-`close_button_in_header`.
+`devwin:page=books|settings` (switches the two pages), `devwin:view=grid|list` (the one toggle on the Books page, named
+*Show as a Grid* / *Show as a List*), `devwin:layout` (prints the dialog height, the parent height and the current page
+for `device_fit`), `devwin:notes=on|off`, `devwin:autosync=on|off`, `devwin:syncask` (summary dialog),
+`devwin:syncconfirm`, `devwin:send`; `library:dump` also prints `device_button`, `device_banner` (including
+`dismiss=true`), `details_auto` (with `auto_sync`) and `close_button_in_header`.
+
+## Wave 7 layout and strings
+
+The exact user-visible copy, checked by `device_window_hig` and the wiki scenarios:
+
+- window/menu: **Devices**; individual row: **Device**; pages: **Books**, **Settings**;
+- no device: status page **No Device Connected** — **Connect your e-reader with USB, or add a WebDAV folder below**;
+- device list group: **Books on the device**, suffix **Sync Reading State**, a **Select All / Select None** popover, one
+  **Show as a Grid** / **Show as a List** toggle, hover/selection checkboxes and a bottom **Remove from Device** with
+  **Remove N Books from the Device?** confirmation;
+- send group: **Books to send**, empty row **Select books in the library, then choose Send to Device**, button
+  **Send 1 Book** / **Send N Books**;
+- Settings groups: **Sending options** (Format, Save path, Kobo shelf, *Add my notes to the copy sent to the device*),
+  **Sync** (**Always sync when connected**, off by default) and **Cloud folder (WebDAV)**;
+- header tooltip: **Connected e-reader: sync, send and manage books**;
+- banner: `adw::Banner` **E-reader connected** with **Sync** and its built-in dismiss only.
 
 ## Follow-up: Books to send, shared lists, explanations
 

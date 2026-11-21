@@ -25,6 +25,7 @@ pub(super) fn input_for(id: &str) -> Option<Input> {
         "editor.preview" => Input::TogglePreview,
         "editor.beautify" => Input::Reformat,
         "editor.find" => Input::ToggleFind,
+        "editor.replace-bar" => Input::ToggleReplace,
         "editor.find-next" => Input::FindNext(true),
         "editor.find-previous" => Input::FindNext(false),
         "editor.replace" => Input::Replace(true),

@@ -46,6 +46,38 @@ impl Import {
     }
 }
 
+/// What the Reading Trackers window shows before anything is written (WIN-L6).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Preview {
+    pub rows: usize,
+    pub matched: usize,
+    pub changes: usize,
+    pub not_found: Vec<String>,
+    /// Titles not listed because the list is capped.
+    pub not_found_more: usize,
+}
+
+/// The longest "Not found" list the window builds.
+pub const NOT_FOUND_CAP: usize = 50;
+
+impl Import {
+    /// Counts and the titles that match no book (at most `NOT_FOUND_CAP`).
+    pub fn preview(&self) -> Preview {
+        let all = self.unmatched();
+        Preview {
+            rows: self.rows.len(),
+            matched: self.matched(),
+            changes: self.updates.len(),
+            not_found: all
+                .iter()
+                .take(NOT_FOUND_CAP)
+                .map(|r| r.title.clone())
+                .collect(),
+            not_found_more: all.len().saturating_sub(NOT_FOUND_CAP),
+        }
+    }
+}
+
 /// Reads CSV text and plans the changes. Nothing is written.
 pub fn plan_import(text: &str, books: &[Book], overwrite_ratings: bool) -> Result<Import, String> {
     let rows = tr::parse(text)?;
@@ -185,6 +217,16 @@ mod tests {
         assert!(imp.summary().contains("2 matched"));
         assert_eq!(lib.books[0].meta.rating, 0);
         assert!(plan_import("nonsense,here\n1,2\n", &lib.books, false).is_err());
+        let _ = std::fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn the_preview_lists_the_titles_that_were_not_found() {
+        let (lib, _store, d) = setup();
+        let p = plan_import(CSV, &lib.books, false).unwrap().preview();
+        assert_eq!((p.rows, p.matched, p.changes), (3, 2, 2));
+        assert_eq!(p.not_found, vec!["Unknown Book".to_string()]);
+        assert_eq!(p.not_found_more, 0);
         let _ = std::fs::remove_dir_all(d);
     }
 

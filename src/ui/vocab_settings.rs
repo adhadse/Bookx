@@ -38,14 +38,14 @@ pub fn dev(arg: &str) {
 }
 
 pub fn register() {
-    register_group("reading", 56, group);
+    register_group("dictionaries", 56, group);
 }
 
 fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     let g = adw::PreferencesGroup::new();
     g.set_title(&tr("Vocabulary"));
     let row = adw::SwitchRow::new();
-    row.set_title(&tr("Mark my vocabulary terms in the text"));
+    row.set_title(&tr("Mark vocabulary terms in the text"));
     row.set_subtitle(&tr(
         "Words and phrases you saved with your own definition get a dotted underline; tap one to see your definition.",
     ));
@@ -67,17 +67,19 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
 /// The first row of the dictionaries: "My Vocabulary".
 pub fn my_vocabulary_row(ctx: &PrefCtx) -> adw::ActionRow {
     let row = adw::ActionRow::new();
-    row.set_title(&tr("My Vocabulary"));
+    row.set_title(&tr("Your vocabulary"));
     let n = ctx.shared.vocab.borrow().store.own_entries().len();
-    row.set_subtitle(&trf(
-        "Your own definitions · {} terms · works offline, always first",
-        &[&n],
+    // the fact that it cannot be removed is text of the row, not only a tooltip of its lock
+    row.set_subtitle(&format!(
+        "{}\n{}",
+        trf(
+            "Your own definitions · {} terms · works offline, always first",
+            &[&n],
+        ),
+        tr("Built in, it cannot be removed"),
     ));
     let lock = gtk::Image::from_icon_name("changes-prevent-symbolic");
-    lock.set_tooltip_text(Some(&tr("Built in, it cannot be removed")));
-    lock.update_property(&[gtk::accessible::Property::Label(&tr(
-        "Built in, it cannot be removed",
-    ))]);
+    lock.set_accessible_role(gtk::AccessibleRole::Presentation);
     row.add_prefix(&lock);
     let menu = gtk::MenuButton::new();
     menu.set_label(&tr("Export"));

@@ -62,7 +62,7 @@ impl Kind {
         match self {
             Kind::Import => "document-open-symbolic",
             Kind::Export => "document-save-symbolic",
-            Kind::Convert => "emblem-synchronizing-symbolic",
+            Kind::Convert => "system-run-symbolic",
             Kind::Send => "send-to-symbolic",
             Kind::Fetch => "system-search-symbolic",
             Kind::Backup => "document-save-symbolic",
@@ -195,6 +195,8 @@ fn cut(text: &str, max: usize) -> String {
 /// (running) or how long it took (finished); not both at once.
 pub fn status_lines(job: &Job, now_ms: i64) -> StatusLines {
     let took = duration_text(job.elapsed_ms(now_ms));
+    // "After 0 ms" says nothing: the elapsed time is shown from one second on
+    let quick = job.elapsed_ms(now_ms) < 1000;
     match &job.state {
         State::Running if job.cancel_asked() => StatusLines {
             primary: tr("Cancelling…"),
@@ -214,21 +216,33 @@ pub fn status_lines(job: &Job, now_ms: i64) -> StatusLines {
                         .trim();
                     trf("about {} left", &[&amount])
                 }
-                None => String::new(),
+                None => eta_text(job.progress, job.elapsed_ms(now_ms)).unwrap_or_default(),
             };
             StatusLines { primary, secondary }
         }
         State::Done => StatusLines {
             primary: tr("Done"),
-            secondary: crate::i18n::trf("Took {}", &[&took]),
+            secondary: if quick {
+                String::new()
+            } else {
+                crate::i18n::trf("Took {}", &[&took])
+            },
         },
         State::Failed(reason) => StatusLines {
             primary: format!("{}: {}", tr("Failed"), cut(reason, REASON_MAX)),
-            secondary: crate::i18n::trf("After {}", &[&took]),
+            secondary: if quick {
+                String::new()
+            } else {
+                crate::i18n::trf("After {}", &[&took])
+            },
         },
         State::Cancelled => StatusLines {
             primary: tr("Cancelled"),
-            secondary: crate::i18n::trf("After {}", &[&took]),
+            secondary: if quick {
+                String::new()
+            } else {
+                crate::i18n::trf("After {}", &[&took])
+            },
         },
     }
 }
@@ -265,6 +279,24 @@ pub fn retry(id: u64) -> bool {
         }
         None => false,
     }
+}
+
+/// The time left of a running job that reports how far it is: only once it has run for 10 seconds
+/// (before that the guess jumps around) and has made some progress but is not done.
+pub fn eta_text(progress: Option<f64>, elapsed_ms: i64) -> Option<String> {
+    let f = progress?;
+    if elapsed_ms < 10_000 || !(0.02..1.0).contains(&f) {
+        return None;
+    }
+    let left_s = (elapsed_ms as f64 / 1000.0) * (1.0 - f) / f;
+    let amount = if left_s < 90.0 {
+        let n = (left_s.round() as i64).max(1);
+        crate::i18n::ntr("{} second", "{} seconds", n as usize).replace("{}", &n.to_string())
+    } else {
+        let n = ((left_s / 60.0).round() as i64).max(2);
+        crate::i18n::ntr("{} minute", "{} minutes", n as usize).replace("{}", &n.to_string())
+    };
+    Some(trf("about {} left", &[&amount]))
 }
 
 /// "850 ms", "12 s", "3 min 05 s".
@@ -708,7 +740,7 @@ mod tests {
         assert_eq!(l.secondary, "After 12 s");
         let mut j = job(Kind::Send, State::Cancelled, "", "Send");
         j.finished_ms = Some(500);
-        assert_eq!(status_lines(&j, 9).secondary, "After 500 ms");
+        assert_eq!(status_lines(&j, 9).secondary, "");
     }
 
     #[test]

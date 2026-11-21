@@ -167,7 +167,7 @@ PY
 
 scenario image_viewer "library:import=$ROOT/image-epub/lib,wait:2500,read:3,wait:3500,reader:image-click,wait:1200,reader:image-viewer=dump,reader:image-viewer=in,reader:image-viewer=in,wait:500,reader:image-viewer=pan=40+20,wait:400,reader:image-viewer=dump,reader:image-viewer=actual,reader:image-viewer=pinch=2,reader:image-viewer=fit,reader:image-viewer=toggle,reader:image-viewer=copy,reader:image-viewer=save=@D@/saved.png,reader:image-viewer=close,wait:600,reader:image-viewer=dump,quit" '
     I=$(grep "^image_viewer:" <<<"$OUT")
-    sed -n 5p <<<"$I" | grep -q "scroll=290,184"; check "dragging or scrolling pans the zoomed picture (40,20 further)" $?
+    sed -n 5p <<<"$I" | grep -q "scroll=276,159"; check "dragging or scrolling pans the zoomed picture (40,20 further)" $?
     has "^reader_image: click OEBPS/fig.png"; check "a click in the middle of a picture is seen as a click on that picture" $?
     sed -n 1p <<<"$I" | grep -q "image=640x400"; check "the viewer opens on the picture at its real size" $?
     sed -n 1p <<<"$I" | grep -q "fit=true"; check "it starts fitted to the window" $?
@@ -306,8 +306,8 @@ scenario jobs_layout "jobs:start=voice|$LONG|cancel,jobs:progress=2|0.98|130 MB 
     R=$(grep "^jobs: rows" <<<"$OUT")
     grep -q "Downloading · 130 of 132 MB · 1.4 MB/s / about 2 s left" <<<"$R"; check "the status is on two clear lines: what it does, then the time left (no elapsed time while it runs)" $?
     ! grep -q "Running ·" <<<"$R"; check "no more mixed Running / elapsed text" $?
-    grep -q "Failed: .*… / After" <<<"$R"; check "a failed job shows a cut reason and how long it took" $?
-    grep -q "Short / Done / Took" <<<"$R"; check "a finished job shows the result and how long it took" $?
+    grep -q "Failed: .*…" <<<"$R" && ! grep -q "After [0-9]* ms" <<<"$R"; check "a failed job shows a cut reason and no \"After 0 ms\" (the elapsed time starts at one second)" $?
+    grep -qE "Short / Done( ;|$)" <<<"$R" && ! grep -q "Took [0-9]* ms" <<<"$R"; check "a job done in under a second shows the result and no elapsed time" $?
     G=$(grep "^jobs: rings" <<<"$OUT")
     grep -q "header=fraction" <<<"$G"; check "the header button shows a ring with the overall progress ($(sed "s/.*header=\([a-z0-9% ]*\) rows.*/\1/" <<<"$G"))" $?
     grep -q "2=fraction 98%" <<<"$G"; check "a row ring shows the percent of a job that knows it" $?

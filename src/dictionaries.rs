@@ -109,7 +109,7 @@ pub fn render(term: &str, lookup: &Lookup) -> String {
     let esc = |s: &str| relm4::gtk::glib::markup_escape_text(s).to_string();
     let mut out = String::new();
     if lookup.results.is_empty() {
-        let _ = write!(out, "No entry for <b>{}</b>.", esc(term));
+        out.push_str(&trf("No definition found for <b>{}</b>", &[&esc(term)]));
     }
     for r in &lookup.results {
         if !out.is_empty() {
@@ -253,7 +253,7 @@ mod tests {
     #[test]
     fn render_reports_a_missing_word() {
         let t = render("zzz<", &Lookup::default());
-        assert_eq!(t, "No entry for <b>zzz&lt;</b>.");
+        assert_eq!(t, "No definition found for <b>zzz&lt;</b>");
     }
 
     #[test]

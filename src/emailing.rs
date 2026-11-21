@@ -96,6 +96,29 @@ impl EmailSettings {
         None
     }
 
+    /// Enough is filled in to send a test message (the button of Preferences → E-mail).
+    pub fn can_test(&self) -> bool {
+        !self.host.trim().is_empty()
+            && Address::parse(&self.from).is_ok()
+            && Address::parse(&self.to).is_ok()
+    }
+
+    /// Sends a short message to your own address, to check the server, the login and the address.
+    pub fn send_test(&self) -> Result<String> {
+        if !self.can_test() {
+            bail!(self.problem().unwrap_or_default());
+        }
+        let me = Address::parse(&self.from)?;
+        let msg = Message::new(
+            me.clone(),
+            vec![me],
+            "Bookx test message",
+            "This message was sent from Bookx to check the e-mail settings.\n",
+        );
+        bookx_serve::mail::send(&self.smtp(), &msg)?;
+        Ok(self.from.trim().to_string())
+    }
+
     pub fn smtp(&self) -> SmtpConfig {
         let mut c = SmtpConfig::new(self.host.trim());
         c.port = self.port;
@@ -355,6 +378,41 @@ mod tests {
             .to_string()
             .contains("mail server"));
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn the_test_message_needs_server_and_both_addresses() {
+        let mut s = ready();
+        assert!(s.can_test());
+        s.to.clear();
+        assert!(!s.can_test());
+        let mut s = ready();
+        s.host = " ".into();
+        assert!(!s.can_test());
+    }
+
+    #[test]
+    fn a_test_message_goes_to_your_own_address() {
+        let (port, rx) = fake_smtp();
+        let s = EmailSettings {
+            host: "127.0.0.1".into(),
+            port,
+            encryption: Encryption::None,
+            from: "me@example.com".into(),
+            to: "friend@example.org".into(),
+            ..Default::default()
+        };
+        assert_eq!(s.send_test().unwrap(), "me@example.com");
+        let (cmds, data) = rx.recv_timeout(std::time::Duration::from_secs(10)).unwrap();
+        assert!(
+            cmds.iter().any(|c| c.contains("RCPT TO:<me@example.com>")),
+            "{cmds:?}"
+        );
+        assert!(
+            !cmds.iter().any(|c| c.contains("friend@example.org")),
+            "{cmds:?}"
+        );
+        assert!(data.contains("Bookx test message"), "{data}");
     }
 
     #[test]

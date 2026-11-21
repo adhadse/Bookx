@@ -20,8 +20,10 @@ Nothing goes to a cloud: the server is your own computer, a self-hosted server y
 
 *Preferences → Sync → **Setup checklist*** is a **stepper**: four numbered steps one under the other, each with a short status (for example *Off*, *alice*, *Copied*), a check mark when it is done and a line to the next step. The first step that is not done is open; click any step to open it (you can go back to a done one), click an open step to close it. The steps:
 
-1. **Turn on the Bookx sync server.** Starts the server on this computer so the e-reader can reach it over your
-   Wi-Fi or home network. The address for the e-reader appears below the switch, ending in `/bookx`
+1. **Turn on the Bookx sync server.** Starts the Bookx sync server on this computer, opens it to your local network so
+   the e-reader can reach it, and creates a library password if you have none (shown under **Advanced**). Turning the
+   switch off stops the server again. While the server is open to the network, the Sync window of the main menu shows
+   the banner *Other devices on your network can reach this server*. The address for the e-reader appears below the switch, ending in `/bookx`
    (for example `http://192.168.1.5:8080/bookx`) with a copy button.
 2. **Create your sync account.** Type any **User name** and **Password** and press **Register** (this also logs in).
    There is no existing KOReader account: you make it here. These are what you type into Bookx Sync on the e-reader.

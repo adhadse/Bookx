@@ -8,6 +8,34 @@ use relm4::gtk;
 use super::preferences::{register_group, PrefCtx};
 use crate::metadata_fetch as mf;
 
+thread_local! {
+    static CLEAR: std::cell::RefCell<Option<gtk::Button>> = const { std::cell::RefCell::new(None) };
+}
+
+/// The toast after Clear: says how many saved answers went.
+fn cleared_text(n: usize) -> String {
+    if n == 0 {
+        tr("Source cache cleared")
+    } else {
+        trf("Source cache cleared ({} saved answers)", &[&n])
+    }
+}
+
+/// Dev hook `prefs:metadata-clear`: presses Clear and prints `prefs_metadata_clear: label=L`.
+pub fn dev(arg: &str) {
+    if arg == "clear" {
+        CLEAR.with(|c| {
+            if let Some(b) = c.borrow().as_ref() {
+                eprintln!(
+                    "prefs_metadata_clear: label={:?}",
+                    b.label().unwrap_or_default()
+                );
+                b.emit_clicked();
+            }
+        });
+    }
+}
+
 /// Adds the group; called once from the registry of Preferences.
 pub fn register() {
     register_group("library", 40, group);
@@ -38,13 +66,12 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     ));
     let clear = gtk::Button::with_label(&tr("Clear"));
     clear.set_valign(gtk::Align::Center);
-    clear.connect_clicked({
-        let cache = cache.clone();
-        move |_| {
-            let n = mf::clear_cache();
-            cache.set_subtitle(&trf("Cleared {} saved answers.", &[&n]));
-        }
+    super::audit::label(&clear, &tr("Clear source cache"));
+    clear.connect_clicked(move |_| {
+        let n = mf::clear_cache();
+        super::preferences::toast(&cleared_text(n));
     });
+    CLEAR.with(|c| *c.borrow_mut() = Some(clear.clone()));
     cache.add_suffix(&clear);
     g.add(&cache);
     g

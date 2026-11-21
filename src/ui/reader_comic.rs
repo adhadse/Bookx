@@ -7,7 +7,7 @@
 //! panels, camera maths, preload order) is in the `bookx-comic` crate and unit tested there; this
 //! file draws, handles input and keeps the settings.
 
-use crate::i18n::{tr, trf};
+use crate::i18n::{ntr, tr, trf};
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::rc::Rc;
@@ -23,7 +23,7 @@ use bookx_comic::smart::{self, Stop};
 use bookx_comic::view::{self, Cam, Frame};
 use bookx_comic::worker::{Done, Job, Source, Worker};
 use relm4::adw::{self, prelude::*};
-use relm4::gtk::{self, cairo, gdk, glib};
+use relm4::gtk::{self, cairo, gdk, gio, glib};
 use relm4::prelude::*;
 
 use super::{window_of, SharedRef};
@@ -136,6 +136,10 @@ pub enum Input {
     SetCoverAlone(bool),
     SetWideAlone(bool),
     ResetBook,
+    /// Go to Page (Ctrl+G / Ctrl+L, Main Menu).
+    GotoDialog,
+    /// Properties (Main Menu).
+    Properties,
     SidebarShown,
     ThumbScroll,
     Fullscreen,
@@ -176,6 +180,12 @@ struct W {
     cover: gtk::CheckButton,
     wide: gtk::CheckButton,
     grey: gtk::CheckButton,
+    reset: gtk::Button,
+    primary: gtk::MenuButton,
+    header: adw::HeaderBar,
+    view_pop: gtk::Popover,
+    narrow: Rc<Cell<bool>>,
+    fullscreen_btn: gtk::Button,
 }
 
 pub struct ReaderComic {
@@ -253,6 +263,15 @@ fn mode_fit(mode: Mode, fit: Fit) -> Fit {
     }
 }
 
+/// What an empty page says: its number while it loads, "This page cannot be shown" when it is damaged.
+fn placeholder_text(failed: bool, page: usize) -> String {
+    if failed {
+        tr("This page cannot be shown")
+    } else {
+        trf("Page {}", &[&(page + 1)])
+    }
+}
+
 fn draw(v: &View, cr: &cairo::Context, w: i32, h: i32) {
     let bg = if crate::eink::is_active() {
         (1.0, 1.0, 1.0)
@@ -295,11 +314,7 @@ fn draw(v: &View, cr: &cairo::Context, w: i32, h: i32) {
                 let ink = if v.dark { 0.7 } else { 0.35 };
                 cr.set_source_rgb(ink, ink, ink);
                 cr.set_font_size(16.0);
-                let text = if v.failed.contains(&p.page) {
-                    trf("Page {} cannot be shown", &[&(p.page + 1)])
-                } else {
-                    trf("Page {}", &[&(p.page + 1)])
-                };
+                let text = placeholder_text(v.failed.contains(&p.page), p.page);
                 let ext = cr.text_extents(&text).ok();
                 let tw = ext.map(|e| e.width()).unwrap_or(60.0);
                 let (tx, ty) = (
@@ -339,6 +354,7 @@ fn key_input(key: gdk::Key, ctrl: bool, shift: bool) -> Option<Input> {
         Key::plus | Key::equal | Key::KP_Add => Input::ZoomKey(1.25),
         Key::minus | Key::KP_Subtract => Input::ZoomKey(0.8),
         Key::_0 | Key::KP_0 => Input::ZoomReset,
+        Key::g | Key::l if ctrl => Input::GotoDialog,
         Key::g if !ctrl => Input::Dev("toggle-guided".into()),
         Key::m if !ctrl => Input::CycleMode,
         Key::r if !ctrl => Input::Dev("toggle-rtl".into()),
@@ -935,6 +951,7 @@ impl ReaderComic {
         }
         crate::comic::save(&disk);
         self.store = disk;
+        self.w.reset.set_visible(self.store.has_own(self.book_id));
     }
 
     fn refresh_effective(&mut self) {
@@ -962,6 +979,47 @@ impl ReaderComic {
         self.request_thumbs();
     }
 
+    /// The Go to Page dialog (the field takes a page number).
+    fn goto_dialog(&self) {
+        let n = self.n();
+        let tx = self.sender.input_sender().clone();
+        super::reader_goto::show_with(
+            self.w.page.upcast_ref(),
+            &tr("Page number"),
+            &tr("Go to page"),
+            &ntr("{} page", "{} pages", n as u64),
+            Rc::new(move |t| page_check(t, n)),
+            Rc::new(move |t| {
+                if let Ok(p) = t.trim().parse::<usize>() {
+                    tx.emit(Input::GoPage(p.saturating_sub(1)));
+                }
+            }),
+        );
+    }
+
+    /// The Properties dialog: title, author, pages, reading direction.
+    fn properties(&self) {
+        let author = self
+            .shared
+            .lib
+            .borrow()
+            .get(self.book_id)
+            .map(|b| b.meta.authors.join(", "))
+            .unwrap_or_default();
+        let mut lines = vec![trf("Pages: {}", &[&self.n()])];
+        if !author.trim().is_empty() {
+            lines.insert(0, trf("Author: {}", &[&author]));
+        }
+        lines.push(if self.eff.rtl {
+            tr("Reading direction: right to left")
+        } else {
+            tr("Reading direction: left to right")
+        });
+        let d = adw::AlertDialog::new(Some(&self.title), Some(&lines.join("\n")));
+        d.add_response("ok", &tr("Close"));
+        d.present(Some(&self.w.page));
+    }
+
     fn sync_controls(&self) {
         self.updating_ui.set(true);
         for (m, b) in &self.w.modes {
@@ -978,6 +1036,7 @@ impl ReaderComic {
         self.w.wide.set_sensitive(self.eff.mode == Mode::Spread);
         self.w.grey.set_active(self.grey());
         self.w.grey.set_sensitive(!self.eink());
+        self.w.reset.set_visible(self.store.has_own(self.book_id));
         self.w
             .slider
             .set_inverted(self.eff.rtl && self.eff.mode != Mode::Webtoon);
@@ -1391,6 +1450,8 @@ impl ReaderComic {
                 self.refresh_effective();
                 self.relayout(had_rtl != self.eff.rtl);
             }
+            Input::GotoDialog => self.goto_dialog(),
+            Input::Properties => self.properties(),
             Input::SidebarShown => self.sidebar_changed(),
             Input::ThumbScroll => self.request_thumbs(),
             Input::Fullscreen => {
@@ -1474,6 +1535,81 @@ impl ReaderComic {
             Some((x.parse().ok()?, y.parse().ok()?))
         };
         match cmd {
+            // `reader:menu-dump` prints the Main Menu, `reader:header-dump` the header, `reader:view-dump` the View popover
+            "menu-dump" => {
+                let mut list = Vec::new();
+                let (mut n, mut sections) = (0, 0);
+                if let Some(m) = self.w.primary.menu_model() {
+                    for i in 0..m.n_items() {
+                        if let Some(sec) = m.item_link(i, "section") {
+                            sections += 1;
+                            for j in 0..sec.n_items() {
+                                n += 1;
+                                let l = sec
+                                    .item_attribute_value(j, "label", None)
+                                    .and_then(|v| v.str().map(String::from))
+                                    .unwrap_or_default();
+                                let a = sec
+                                    .item_attribute_value(j, "action", None)
+                                    .and_then(|v| v.str().map(String::from))
+                                    .unwrap_or_default();
+                                list.push(format!("{} [{a}]", l.replace('_', "")));
+                            }
+                        }
+                    }
+                }
+                eprintln!(
+                    "reader_menu: entries={n} sections={sections} submenus=0 narrow={} | {}",
+                    self.w.narrow.get(),
+                    list.join(" | ")
+                );
+            }
+            "menu-popup" => self.w.primary.popup(),
+            "menu-popdown" => self.w.primary.popdown(),
+            "header-dump" => {
+                let hw = self.w.header.width() as f64;
+                let (mut shown, mut clipped) = (0, 0);
+                header_buttons(
+                    self.w.header.upcast_ref(),
+                    self.w.header.upcast_ref(),
+                    hw,
+                    &mut shown,
+                    &mut clipped,
+                );
+                eprintln!(
+                    "reader_header: width={hw:.0} title={} buttons={shown} clipped={clipped} fullscreen={} narrow={}",
+                    self.w.title.width(),
+                    self.w.fullscreen_btn.is_visible(),
+                    self.w.narrow.get()
+                );
+            }
+            "view-dump" => {
+                // a widget in a closed popover is not "visible" for GTK: open it for the look
+                self.w.view_pop.popup();
+                let nat = self
+                    .w
+                    .view_pop
+                    .child()
+                    .map(|c| c.measure(gtk::Orientation::Vertical, 300).1)
+                    .unwrap_or(0);
+                eprintln!(
+                    "comic_view: natural_height={nat} window_height={} reset_visible={} labels={}",
+                    self.w.page.height(),
+                    self.w.reset.is_visible(),
+                    [&self.w.rtl, &self.w.guided, &self.w.grey]
+                        .iter()
+                        .filter_map(|c| c.label())
+                        .collect::<Vec<_>>()
+                        .join("|")
+                );
+                self.w.view_pop.popdown();
+            }
+            "comic-failed-text" => eprintln!(
+                "comic_failed_text: {:?} label={:?}",
+                placeholder_text(true, 0),
+                self.w.label.text()
+            ),
+            "goto-dialog" => self.goto_dialog(),
             "toggle-guided" => self.input(Input::SetGuided(!self.eff.guided)),
             "toggle-rtl" => self.input(Input::SetRtl(!self.eff.rtl)),
             "toggle-sidebar" => {
@@ -1575,6 +1711,44 @@ fn check(label: &str) -> gtk::CheckButton {
     let b = gtk::CheckButton::with_label(label);
     b.set_focus_on_click(false);
     b
+}
+
+/// The line under the Go to Page field: where it leads, or why it does not.
+fn page_check(text: &str, pages: usize) -> Result<String, String> {
+    let n: usize = text
+        .trim()
+        .parse()
+        .map_err(|_| tr("A page is a number, for example 12."))?;
+    if n == 0 || n > pages {
+        return Err(trf("This comic has {} pages.", &[&pages]));
+    }
+    Ok(trf("Page {} of {}", &[&n, &pages]))
+}
+
+/// Counts the buttons of a header and those that stick out of it.
+pub(super) fn header_buttons(
+    w: &gtk::Widget,
+    header: &gtk::Widget,
+    hw: f64,
+    shown: &mut i32,
+    clipped: &mut i32,
+) {
+    let is_button =
+        w.is::<gtk::Button>() || w.is::<gtk::MenuButton>() || w.is::<gtk::ToggleButton>();
+    if is_button && w.is_mapped() {
+        *shown += 1;
+        if let Some(b) = w.compute_bounds(header) {
+            if b.x() < -1.0 || (b.x() + b.width()) as f64 > hw + 1.0 {
+                *clipped += 1;
+            }
+        }
+        return;
+    }
+    let mut c = w.first_child();
+    while let Some(x) = c {
+        header_buttons(&x, header, hw, shown, clipped);
+        c = x.next_sibling();
+    }
 }
 
 fn heading(text: &str) -> gtk::Label {
@@ -1805,8 +1979,8 @@ impl SimpleComponent for ReaderComic {
         slider.set_hexpand(true);
         slider.set_focus_on_click(false);
         slider.add_css_class("reader-slider");
-        let prev_btn = icon_button("go-previous-symbolic", &tr("Previous page (Page Up)"));
-        let next_btn = icon_button("go-next-symbolic", &tr("Next page (Page Down)"));
+        let prev_btn = icon_button("go-previous-symbolic", &tr("Previous Page (Page Up)"));
+        let next_btn = icon_button("go-next-symbolic", &tr("Next Page (Page Down)"));
         for b in [&prev_btn, &next_btn] {
             b.add_css_class("flat");
             b.add_css_class("circular");
@@ -1840,9 +2014,9 @@ impl SimpleComponent for ReaderComic {
         header.set_title_widget(Some(&title));
         let sidebar_btn = gtk::ToggleButton::new();
         sidebar_btn.set_icon_name("sidebar-show-symbolic");
-        sidebar_btn.set_tooltip_text(Some(&tr("Page thumbnails (F9)")));
+        sidebar_btn.set_tooltip_text(Some(&tr("Page Thumbnails (F9)")));
         sidebar_btn.set_focus_on_click(false);
-        super::audit::label(&sidebar_btn, &tr("Page thumbnails"));
+        super::audit::label(&sidebar_btn, &tr("Page Thumbnails"));
         split
             .bind_property("show-sidebar", &sidebar_btn, "active")
             .bidirectional()
@@ -1850,6 +2024,14 @@ impl SimpleComponent for ReaderComic {
             .build();
         header.pack_start(&sidebar_btn);
         let fullscreen_btn = icon_button("view-fullscreen-symbolic", &tr("Fullscreen (F11)"));
+        let bin = adw::BreakpointBin::new();
+        bin.set_size_request(360, 294);
+        let primary = gtk::MenuButton::new();
+        primary.set_icon_name("open-menu-symbolic");
+        primary.set_primary(true);
+        primary.set_tooltip_text(Some(&tr("Main Menu")));
+        super::audit::label(&primary, &tr("Main Menu"));
+        header.pack_end(&primary);
         header.pack_end(&fullscreen_btn);
 
         // view options
@@ -1869,7 +2051,7 @@ impl SimpleComponent for ReaderComic {
         for (m, name) in [
             (Mode::Single, tr("Single page")),
             (Mode::Spread, tr("Two pages")),
-            (Mode::Webtoon, tr("Vertical scroll (webtoon)")),
+            (Mode::Webtoon, tr("Vertical scroll")),
         ] {
             let b = check(&name);
             if let Some(f) = &first {
@@ -1886,8 +2068,10 @@ impl SimpleComponent for ReaderComic {
             vbox.append(&b);
             modes.push((m, b));
         }
-        let cover = check(&tr("Cover on its own page"));
-        let wide = check(&tr("Wide pages on their own"));
+        let cover = check(&tr("Cover alone"));
+        cover.set_tooltip_text(Some(&tr("First Page on Its Own in Two-Page View")));
+        let wide = check(&tr("Wide pages alone"));
+        wide.set_tooltip_text(Some(&tr("Double-Page Picture on Its Own in Two-Page View")));
         vbox.append(&cover);
         vbox.append(&wide);
         vbox.append(&heading(&tr("Fit")));
@@ -1915,13 +2099,18 @@ impl SimpleComponent for ReaderComic {
             fits.push((f, b));
         }
         vbox.append(&heading(&tr("Reading")));
-        let rtl = check(&tr("Right to left (manga)"));
-        let guided = check(&tr("Guided view: Space goes panel by panel"));
+        let rtl = check(&tr("Right to left"));
+        rtl.set_tooltip_text(Some(&tr(
+            "Manga Order: Pages and Panels Run from Right to Left",
+        )));
+        let guided = check(&tr("Guided view"));
+        guided.set_tooltip_text(Some(&tr("Space Goes Panel by Panel")));
         let grey = check(&tr("Grey pages"));
         vbox.append(&rtl);
         vbox.append(&guided);
         vbox.append(&grey);
-        let reset = gtk::Button::with_label(&tr("Use the defaults for this book"));
+        let reset = gtk::Button::with_label(&tr("Use the Defaults for This Book"));
+        reset.set_visible(false);
         reset.add_css_class("flat");
         reset.set_margin_top(6);
         vbox.append(&reset);
@@ -1966,21 +2155,54 @@ impl SimpleComponent for ReaderComic {
         pop_scroll.set_child(Some(&vbox));
         pop_scroll.set_propagate_natural_height(true);
         pop_scroll.set_propagate_natural_width(true);
-        pop_scroll.set_max_content_height(480);
+        pop_scroll.set_max_content_height(320);
         pop_scroll.set_hscrollbar_policy(gtk::PolicyType::Never);
         pop.set_child(Some(&pop_scroll));
         let view_btn = gtk::MenuButton::new();
-        view_btn.set_icon_name("view-reveal-symbolic");
-        view_btn.set_tooltip_text(Some(&tr("View: layout, fit, direction")));
+        view_btn.set_icon_name("preferences-desktop-display-symbolic");
+        view_btn.set_tooltip_text(Some(&tr("View Options")));
         super::audit::label(&view_btn, &tr("View options"));
         view_btn.set_popover(Some(&pop));
         header.pack_end(&view_btn);
+
+        // main menu: the same builder as the e-book reader; a narrow window gives up Fullscreen
+        let wide_menu = super::reader_menu::build(&super::reader_menu::COMIC_MENU);
+        let narrow_menu = super::reader_menu::build(&super::reader_menu::narrow_entries(
+            &super::reader_menu::COMIC_MENU,
+            &super::reader_menu::NARROW_PDF,
+        ));
+        primary.set_menu_model(Some(&wide_menu));
+        super::audit::name_menu_items(&primary);
+        let narrow = Rc::new(Cell::new(false));
+        {
+            let narrow_flag = narrow.clone();
+            let (primary, fs) = (primary.clone(), fullscreen_btn.clone());
+            super::reader_menu::install_narrow(&bin, move |is_narrow| {
+                narrow_flag.set(is_narrow);
+                fs.set_visible(!is_narrow);
+                primary.set_menu_model(Some(if is_narrow { &narrow_menu } else { &wide_menu }));
+            });
+        }
+        {
+            let group = gio::SimpleActionGroup::new();
+            let add = |name: &str, input: fn() -> Input| {
+                let a = gio::SimpleAction::new(name, None);
+                let tx = sender.input_sender().clone();
+                a.connect_activate(move |_, _| tx.emit(input()));
+                group.add_action(&a);
+            };
+            add("goto", || Input::GotoDialog);
+            add("properties", || Input::Properties);
+            add("fullscreen", || Input::Fullscreen);
+            root.insert_action_group("reader", Some(&group));
+        }
 
         let toolbar = adw::ToolbarView::new();
         toolbar.add_top_bar(&header);
         toolbar.set_content(Some(&split));
         toolbar.add_bottom_bar(&bottom);
-        root.set_child(Some(&toolbar));
+        bin.set_child(Some(&toolbar));
+        root.set_child(Some(&bin));
         root.set_title(&title_text);
         root.add_css_class("reader-page");
         root.add_css_class("comic-reader");
@@ -2089,6 +2311,12 @@ impl SimpleComponent for ReaderComic {
                 cover,
                 wide,
                 grey,
+                reset: reset.clone(),
+                primary: primary.clone(),
+                header: header.clone(),
+                view_pop: pop.clone(),
+                narrow,
+                fullscreen_btn: fullscreen_btn.clone(),
             },
             sender,
             dirty,
@@ -2142,6 +2370,20 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_go_to_page_line_says_where_it_leads() {
+        assert_eq!(page_check("12", 40), Ok("Page 12 of 40".to_string()));
+        assert!(page_check("41", 40).is_err());
+        assert!(page_check("0", 40).is_err());
+        assert!(page_check("ii", 40).is_err());
+    }
+
+    #[test]
+    fn a_damaged_page_says_so_and_a_loading_one_says_its_number() {
+        assert_eq!(placeholder_text(true, 4), "This page cannot be shown");
+        assert_eq!(placeholder_text(false, 4), "Page 5");
+    }
+
+    #[test]
     fn a_strip_is_as_wide_as_the_window_unless_shown_at_its_own_size() {
         assert_eq!(mode_fit(Mode::Webtoon, Fit::Page), Fit::Width);
         assert_eq!(mode_fit(Mode::Webtoon, Fit::Height), Fit::Width);
@@ -2166,7 +2408,18 @@ mod tests {
             Some(Input::Arrow(Dir::Right))
         ));
         assert!(key_input(Key::q, false, false).is_none());
-        // Ctrl+G is not the guided-view key (it is the PDF "go to" key and may be taken by the window)
-        assert!(key_input(Key::g, true, false).is_none());
+        // Ctrl+G is not the guided-view key (that is plain G): like Ctrl+L it asks which page to go to
+        assert!(matches!(
+            key_input(Key::g, true, false),
+            Some(Input::GotoDialog)
+        ));
+        assert!(matches!(
+            key_input(Key::l, true, false),
+            Some(Input::GotoDialog)
+        ));
+        assert!(matches!(
+            key_input(Key::g, false, false),
+            Some(Input::Dev(_))
+        ));
     }
 }

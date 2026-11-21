@@ -18,6 +18,87 @@ mod more;
 pub mod rules;
 pub use more::*;
 
+/// A fingerprint of the files of a book: equal archives give equal values, any changed, added or removed file
+/// changes it. A background job compares it before it puts its result into the book.
+pub fn archive_fingerprint(a: &crate::core::archive::Archive) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut names: Vec<&String> = a.names().iter().collect();
+    names.sort();
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    for n in names {
+        n.hash(&mut h);
+        a.get(n).unwrap_or_default().hash(&mut h);
+    }
+    h.finish()
+}
+
+/// Splits the intro of a tool dialog after its first sentence: the sentence stays under the title, the rest moves
+/// beneath it as the description of the options. One sentence (or no full stop followed by a space) stays whole.
+pub fn split_intro(text: &str) -> (String, String) {
+    let text = text.trim();
+    let end = text
+        .char_indices()
+        .find(|(i, c)| {
+            matches!(c, '.' | '!' | '?')
+                && text[i + c.len_utf8()..].starts_with(char::is_whitespace)
+        })
+        .map(|(i, c)| i + c.len_utf8());
+    match end {
+        Some(e) => (text[..e].to_string(), text[e..].trim_start().to_string()),
+        None => (text.to_string(), String::new()),
+    }
+}
+
+/// The names a file list shows. A name that shares a long start with a sibling (`archive_scan_one.css`,
+/// `archive_scan_two.css`) loses that start, cut back to a separator, and gets an ellipsis instead; the full path is
+/// the tooltip. Names that stand alone stay whole.
+pub fn display_names(names: &[&str]) -> Vec<String> {
+    names
+        .iter()
+        .enumerate()
+        .map(|(i, n)| {
+            let cut = names
+                .iter()
+                .enumerate()
+                .filter(|(j, _)| *j != i)
+                .map(|(_, o)| shared_cut(n, o))
+                .max()
+                .unwrap_or(0);
+            display_name(n, cut)
+        })
+        .collect()
+}
+
+/// The length of the start `a` and `b` share, cut back to just after a separator (`_`, `-`, `.`, a space); zero
+/// when `a` is short (22 characters or fewer), the start is shorter than six characters, or either name would be
+/// left with less than two.
+fn shared_cut(a: &str, b: &str) -> usize {
+    let n: usize = a
+        .chars()
+        .zip(b.chars())
+        .take_while(|(x, y)| x == y)
+        .map(|(x, _)| x.len_utf8())
+        .sum();
+    let cut = a[..n]
+        .rfind(['_', '-', '.', ' '])
+        .map(|i| i + 1)
+        .unwrap_or(0);
+    // short names fit the sidebar whole
+    if a.chars().count() <= 22 || cut < 6 || a.len() <= cut + 1 || b.len() <= cut + 1 {
+        0
+    } else {
+        cut
+    }
+}
+
+/// The name a file list row shows: `name` without its first `strip` bytes, led by an ellipsis.
+pub fn display_name(name: &str, strip: usize) -> String {
+    if strip == 0 || strip >= name.len() || !name.is_char_boundary(strip) {
+        return name.to_string();
+    }
+    format!("…{}", &name[strip..])
+}
+
 #[cfg(test)]
 use crate::core::archive::Archive;
 use crate::core::book::OpenBook;
@@ -394,6 +475,48 @@ pub fn delete_paths(book: &mut OpenBook, paths: &[String]) -> Result<Outcome> {
     Ok(outcome(true, summary, details))
 }
 
+/// Whether another file of the book (a page, stylesheet, table of contents; not the package document, which lists
+/// every file) mentions the file name of one of `paths`, which are about to be deleted.
+pub fn any_referenced(book: &OpenBook, paths: &[String]) -> bool {
+    let opf = book.package.opf_path.clone();
+    let names: Vec<&str> = paths
+        .iter()
+        .filter_map(|p| p.rsplit('/').next())
+        .filter(|n| !n.is_empty())
+        .collect();
+    book.archive.names().iter().any(|n| {
+        if paths.contains(n) || *n == opf {
+            return false;
+        }
+        let lower = n.to_ascii_lowercase();
+        if !["xhtml", "html", "htm", "css", "ncx", "svg", "xml"]
+            .iter()
+            .any(|e| lower.ends_with(&format!(".{e}")))
+        {
+            return false;
+        }
+        match book.archive.get(n).map(String::from_utf8_lossy) {
+            Some(text) => names.iter().any(|f| text.contains(f)),
+            None => false,
+        }
+    })
+}
+
+/// Deleting asks first for two or more files, or for a file something else refers to; one unused file is deleted
+/// at once and can be undone from the toast.
+pub fn delete_needs_confirmation(count: usize, referenced: bool) -> bool {
+    count >= 2 || referenced
+}
+
+/// Label of the Images dialog's delete button.
+pub fn delete_images_label(selected: usize) -> String {
+    if selected == 0 {
+        tr("Delete Selected")
+    } else {
+        ntr("Delete {} Image", "Delete {} Images", selected)
+    }
+}
+
 /// Merges the markup files into the first one (CE-027).
 pub fn merge_many(book: &mut OpenBook, paths: &[String]) -> Result<Outcome> {
     let r = bookx_editing::split_merge::merge_files(book, paths)?;
@@ -723,6 +846,23 @@ mod tests {
             None,
         );
         OpenBook::from_archive(a).unwrap()
+    }
+
+    #[test]
+    fn delete_confirmation_rules() {
+        assert!(!delete_needs_confirmation(1, false));
+        assert!(delete_needs_confirmation(1, true));
+        assert!(delete_needs_confirmation(2, false));
+        assert_eq!(delete_images_label(0), "Delete Selected");
+        assert_eq!(delete_images_label(1), "Delete 1 Image");
+        assert_eq!(delete_images_label(3), "Delete 3 Images");
+    }
+
+    #[test]
+    fn referenced_files_are_found_outside_the_package_document() {
+        let b = book();
+        assert!(any_referenced(&b, &["OEBPS/chapter-1.xhtml".to_string()]));
+        assert!(!any_referenced(&b, &["OEBPS/never-used.png".to_string()]));
     }
 
     fn add_png(book: &mut OpenBook, with_alt: bool) {
@@ -1191,5 +1331,57 @@ mod tests {
         assert_eq!(kib(1024), "1 KB");
         assert_eq!(kib(1025), "2 KB");
         assert_eq!(kib(3 * 1024 * 1024), "3.0 MB");
+    }
+
+    #[test]
+    fn sibling_names_lose_their_shared_prefix() {
+        let names = [
+            "40402273_part-a1.htm.xhtml",
+            "40402273_part-a2.htm.xhtml",
+            "style.css",
+        ];
+        let shown = display_names(&names);
+        assert_eq!(shown, ["…a1.htm.xhtml", "…a2.htm.xhtml", "style.css"]);
+        assert_eq!(
+            display_names(&["chapter-1.xhtml", "chapter-2.xhtml"]),
+            ["chapter-1.xhtml", "chapter-2.xhtml"],
+            "short names stay whole"
+        );
+        assert_eq!(display_names(&["only.xhtml"]), ["only.xhtml"]);
+        assert_eq!(display_name("cover.xhtml", 0), "cover.xhtml");
+    }
+
+    #[test]
+    fn an_intro_is_cut_after_its_first_sentence() {
+        assert_eq!(
+            split_intro("Tidies the layout. Only the white space changes."),
+            (
+                "Tidies the layout.".to_string(),
+                "Only the white space changes.".to_string()
+            )
+        );
+        assert_eq!(
+            split_intro("One sentence only."),
+            ("One sentence only.".into(), String::new())
+        );
+        assert_eq!(
+            split_intro("Version 1.5 stays whole"),
+            ("Version 1.5 stays whole".into(), String::new())
+        );
+        assert_eq!(split_intro(""), (String::new(), String::new()));
+    }
+
+    #[test]
+    fn the_fingerprint_changes_with_any_file() {
+        let mut a = crate::core::archive::Archive::default();
+        a.set("a.txt", b"one".to_vec());
+        let f = archive_fingerprint(&a);
+        assert_eq!(f, archive_fingerprint(&a.clone()));
+        let mut b = a.clone();
+        b.set("a.txt", b"two".to_vec());
+        assert_ne!(f, archive_fingerprint(&b));
+        let mut c = a.clone();
+        c.set("b.txt", Vec::new());
+        assert_ne!(f, archive_fingerprint(&c));
     }
 }

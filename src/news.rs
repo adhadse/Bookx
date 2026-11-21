@@ -224,6 +224,7 @@ impl NewsStore {
         self.save()
     }
 
+    #[cfg(test)]
     pub fn remove(&mut self, key: &str) -> Result<bool> {
         let before = self.subs.len();
         self.subs.retain(|s| s.key != key);
@@ -232,6 +233,28 @@ impl NewsStore {
             self.save()?;
         }
         Ok(removed)
+    }
+
+    /// Removes a subscription and hands it back with its place, so that Undo can put it back where
+    /// it was ([`NewsStore::put_back`]).
+    pub fn take(&mut self, key: &str) -> Result<Option<(usize, Subscription)>> {
+        let Some(i) = self.subs.iter().position(|s| s.key == key) else {
+            return Ok(None);
+        };
+        let sub = self.subs.remove(i);
+        self.save()?;
+        Ok(Some((i, sub)))
+    }
+
+    /// Puts a subscription taken with [`NewsStore::take`] back at its old place (at the end when the
+    /// list is shorter now; nothing when the key is in use again).
+    pub fn put_back(&mut self, index: usize, sub: Subscription) -> Result<()> {
+        if self.get(&sub.key).is_some() {
+            return Ok(());
+        }
+        let at = index.min(self.subs.len());
+        self.subs.insert(at, sub);
+        self.save()
     }
 
     /// Indexes of the subscriptions to run at `now`.
@@ -757,6 +780,28 @@ mod tests {
         assert!(st.remove(&k).unwrap());
         assert!(!st.remove(&k).unwrap());
         assert!(st.subs.is_empty());
+    }
+
+    #[test]
+    fn a_taken_subscription_comes_back_at_its_old_place() {
+        let mut st = NewsStore::in_memory();
+        let a = st.add(sub("A", None)).unwrap();
+        let b = st.add(sub("B", None)).unwrap();
+        let c = st.add(sub("C", None)).unwrap();
+        let (i, taken) = st.take(&b).unwrap().unwrap();
+        assert_eq!(i, 1);
+        assert_eq!(
+            st.subs.iter().map(|s| s.key.clone()).collect::<Vec<_>>(),
+            [a.clone(), c.clone()]
+        );
+        assert!(st.take("nothing").unwrap().is_none());
+        st.put_back(i, taken.clone()).unwrap();
+        assert_eq!(
+            st.subs.iter().map(|s| s.key.clone()).collect::<Vec<_>>(),
+            [a, b, c]
+        );
+        st.put_back(0, taken).unwrap();
+        assert_eq!(st.subs.len(), 3, "a key that is in use is not added twice");
     }
 
     #[test]

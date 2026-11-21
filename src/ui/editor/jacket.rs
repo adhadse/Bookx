@@ -9,6 +9,15 @@ use bookx_editing::jacket::{self, JacketOptions};
 use super::tools_ui::*;
 use super::*;
 
+/// The primary button of the Book Jacket dialog for the chosen action (0 = add or update, 1 = remove).
+pub(super) fn apply_label(existing: bool, action: u32) -> &'static str {
+    match (action, existing) {
+        (1, _) => crate::i18n::N_("Remove Jacket"),
+        (_, true) => crate::i18n::N_("Update Jacket"),
+        (_, false) => crate::i18n::N_("Add Jacket"),
+    }
+}
+
 impl Editor {
     pub(super) fn tool_jacket(&self) {
         let existing = jacket::options_of(&self.book.borrow());
@@ -33,6 +42,8 @@ impl Editor {
         let comments = sw("Comments", o.comments);
         let publisher = sw("Publisher", o.publisher);
         let g = group("");
+        let action_row = action.clone();
+        let has_jacket = existing.is_some();
         for w in [
             action.upcast_ref::<gtk::Widget>(),
             cover.upcast_ref(),
@@ -64,16 +75,20 @@ impl Editor {
                 Rc::new(move |b: &mut OpenBook, _: Option<&str>| es::jacket_add(b, &o)) as Op,
             ))
         });
-        self.tool_dialog(
+        let ui = self.tool_dialog(
             Spec::new(
                 crate::i18n::N_("Book Jacket"),
                 tr("A page after the cover that lists the title, authors, series, tags, rating and comments from the book's metadata. It is marked, so it can be updated when the metadata changes and removed without a trace."),
-                crate::i18n::N_("Apply"),
+                apply_label(has_jacket, 0),
             ),
             Some(g.upcast()),
             make,
             None,
         );
+        let apply = ui.apply.clone();
+        action_row.connect_selected_notify(move |r| {
+            apply.set_label(&tr(apply_label(has_jacket, r.selected())));
+        });
     }
 
     /// Called after the metadata was applied: a jacket page shows the new values.
@@ -145,5 +160,18 @@ impl Editor {
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::apply_label;
+
+    #[test]
+    fn jacket_button_names_the_action() {
+        assert_eq!(apply_label(false, 0), "Add Jacket");
+        assert_eq!(apply_label(true, 0), "Update Jacket");
+        assert_eq!(apply_label(true, 1), "Remove Jacket");
+        assert_eq!(apply_label(false, 1), "Remove Jacket");
     }
 }

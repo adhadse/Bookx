@@ -15,10 +15,7 @@ fn rebuild_list(list: &gtk::ListBox, rules: &Rules) {
     list.remove_all();
     let n = rules.borrow().len();
     if n == 0 {
-        let row = adw::ActionRow::new();
-        row.set_title(&tr("No rules yet"));
-        row.set_subtitle(&tr("Add a rule below, or load a saved set"));
-        row.set_activatable(false);
+        let row = empty_rules_row(list);
         list.append(&row);
         return;
     }
@@ -52,7 +49,7 @@ impl Editor {
         rebuild_list(&list, &rules);
 
         // the form for one new rule
-        let kinds_owned: Vec<String> = RuleKind::ALL.iter().map(|k| tr(k.label())).collect();
+        let kinds_owned: Vec<String> = RuleKind::ALL.iter().map(|k| tr(k.short_label())).collect();
         let kinds: Vec<&str> = kinds_owned.iter().map(String::as_str).collect();
         let kind = combo_row(&tr("New rule"), &kinds, 0);
         let fields: Vec<adw::EntryRow> = (0..3).map(|_| entry_row("", "")).collect();
@@ -69,9 +66,10 @@ impl Editor {
             form.add(f);
         }
         let show_fields = {
-            let (kind, fields) = (kind.clone(), fields.clone());
+            let (kind, fields, form2) = (kind.clone(), fields.clone(), form.clone());
             Rc::new(move || {
                 let k = RuleKind::ALL[kind.selected() as usize % RuleKind::ALL.len()];
+                form2.set_description(Some(&glib::markup_escape_text(&tr(k.label()))));
                 let fs = k.fields();
                 for (i, row) in fields.iter().enumerate() {
                     match fs.get(i) {
@@ -126,7 +124,7 @@ impl Editor {
         let refill = {
             let (sets_row, saved) = (sets_row.clone(), saved.clone());
             Rc::new(move || {
-                let n = std::iter::once("(choose a saved set)".to_string())
+                let n = std::iter::once(tr("None chosen"))
                     .chain(saved.borrow().iter().map(|x| x.name.clone()))
                     .collect::<Vec<_>>();
                 let refs: Vec<&str> = n.iter().map(String::as_str).collect();

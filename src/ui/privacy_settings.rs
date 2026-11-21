@@ -5,16 +5,26 @@ use std::cell::RefCell;
 
 use relm4::adw::{self, prelude::*};
 
-use super::preferences::{register_group, register_page, PrefCtx};
+use super::preferences::{info_row, register_group, register_page, PrefCtx};
 use crate::i18n::tr;
 use crate::privacy;
 
 thread_local! {
     static SWITCH: RefCell<Option<adw::SwitchRow>> = const { RefCell::new(None) };
+    static LEDGER: RefCell<Option<relm4::gtk::glib::WeakRef<adw::PreferencesGroup>>> = const { RefCell::new(None) };
 }
 
 /// Dev hook (`prefs:privacy-offline=on|off`): the switch of the open Preferences.
+/// `prefs:privacy-dump` prints `prefs_privacy: rows=N focusable=K` for the list of connections.
 pub fn dev(arg: &str) {
+    if arg == "dump" {
+        let (mut rows, mut focusable) = (0, 0);
+        if let Some(g) = LEDGER.with(|l| l.borrow().as_ref().and_then(|w| w.upgrade())) {
+            count_rows(g.upcast_ref(), &mut rows, &mut focusable);
+        }
+        eprintln!("prefs_privacy: rows={rows} focusable={focusable}");
+        return;
+    }
     if let Some(v) = arg.strip_prefix("offline=") {
         SWITCH.with(|s| {
             if let Some(r) = s.borrow().as_ref() {
@@ -25,7 +35,7 @@ pub fn dev(arg: &str) {
 }
 
 pub fn register() {
-    register_page("privacy", &tr("Privacy"), "security-high-symbolic", 120);
+    register_page("privacy", &tr("Privacy"), "security-high-symbolic", 90);
     register_group("privacy", 10, network_group);
     register_group("privacy", 20, ledger_group);
 }
@@ -67,15 +77,22 @@ fn ledger_group(_: &PrefCtx) -> adw::PreferencesGroup {
         "Only when you use the feature. The same list is on the wiki page Privacy.",
     )));
     for c in privacy::LEDGER.iter() {
-        let r = adw::ActionRow::new();
-        r.set_title(&tr(c.feature));
-        r.set_subtitle(&gtk_escape(&privacy::describe(c)));
-        r.set_subtitle_lines(0);
-        g.add(&r);
+        g.add(&info_row(&tr(c.feature), &privacy::describe(c)));
     }
+    LEDGER.with(|l| *l.borrow_mut() = Some(g.downgrade()));
     g
 }
 
-fn gtk_escape(s: &str) -> String {
-    relm4::gtk::glib::markup_escape_text(s).to_string()
+fn count_rows(w: &relm4::gtk::Widget, rows: &mut usize, focusable: &mut usize) {
+    if w.is::<adw::ActionRow>() && !w.is::<adw::SwitchRow>() {
+        *rows += 1;
+        if w.is_focusable() {
+            *focusable += 1;
+        }
+    }
+    let mut c = w.first_child();
+    while let Some(ch) = c {
+        count_rows(&ch, rows, focusable);
+        c = ch.next_sibling();
+    }
 }

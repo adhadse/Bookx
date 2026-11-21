@@ -369,7 +369,7 @@ impl Editor {
             }
             return;
         }
-        self.create_checkpoint("Before: Replace All");
+        let before = self.create_checkpoint("Before: Replace All");
         let (mut total, changed_files) = (0, plan.len());
         for (f, new, n) in plan {
             let buf = self.buffer_for(&f);
@@ -381,13 +381,16 @@ impl Editor {
             buf.end_user_action();
             total += n;
         }
-        self.toast(&trf(
-            "Replaced {} in {}",
-            &[
-                &ntr("{} occurrence", "{} occurrences", total),
-                &ntr("{} file", "{} files", changed_files),
-            ],
-        ));
+        self.toast_undo(
+            &trf(
+                "Replaced {} in {}",
+                &[
+                    &ntr("{} occurrence", "{} occurrences", total),
+                    &ntr("{} file", "{} files", changed_files),
+                ],
+            ),
+            before,
+        );
         if let Some(r) = runner.as_ref() {
             self.finish_fn_run(r, final_output, total, changed_files);
         }

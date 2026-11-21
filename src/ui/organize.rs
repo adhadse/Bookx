@@ -26,7 +26,7 @@ fn esc(s: &str) -> String {
 }
 
 fn window(title: &str, page: &adw::PreferencesPage, extra: &[&gtk::Button]) -> adw::Dialog {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     fill_window(&dialog, title, page, extra);
     dialog
 }
@@ -39,7 +39,7 @@ fn fill_window(
 ) {
     dialog.set_title(title);
     dialog.set_content_width(620);
-    dialog.set_content_height(680);
+    dialog.set_content_height(560);
     let header = adw::HeaderBar::new();
     for b in extra {
         header.pack_end(*b);
@@ -63,12 +63,12 @@ fn empty_group(page: &adw::PreferencesPage, title: &str, text: &str) {
 pub fn show_series(parent: &gtk::Window, shared: &SharedRef, search: Search, fetch: Fetch) {
     let page = adw::PreferencesPage::new();
     let list = series_view::summaries(&shared.lib.borrow().books);
-    let dialog = window("Series", &page, &[]);
+    let dialog = window(&tr("Series"), &page, &[]);
     if list.is_empty() {
         empty_group(
             &page,
-            "No series yet",
-            "Books with a series name in their metadata are grouped here, in reading order.",
+            &tr("No series yet"),
+            &tr("Books with a series name in their metadata are grouped here, in reading order."),
         );
     }
     for s in list.iter().take(300) {
@@ -84,9 +84,9 @@ pub fn show_series(parent: &gtk::Window, shared: &SharedRef, search: Search, fet
         show.add_css_class("flat");
         let fetch_btn = gtk::Button::with_label(&tr("Fetch Metadata"));
         fetch_btn.add_css_class("flat");
-        fetch_btn.set_tooltip_text(Some(
+        fetch_btn.set_tooltip_text(Some(&tr(
             "Look these books up online; series names and numbers appear in the review",
-        ));
+        )));
         let b = gtk::Box::new(gtk::Orientation::Horizontal, 4);
         b.append(&show);
         b.append(&fetch_btn);
@@ -137,7 +137,7 @@ pub fn show_series(parent: &gtk::Window, shared: &SharedRef, search: Search, fet
 
 /// The Editions & Formats window.
 pub fn show_works(parent: &gtk::Window, shared: &SharedRef, search: Search, notify: Notify) {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     let page = works_page(&dialog, parent, shared, search, notify);
     fill_window(&dialog, &tr("Editions & Formats"), &page, &[]);
     dialog.present(Some(parent));
@@ -155,16 +155,15 @@ pub fn works_page(
     let page = adw::PreferencesPage::new();
     let list = works::group(&shared.lib.borrow().books);
     let note = adw::PreferencesGroup::new();
-    note.set_description(Some(
-        "Books with the same title and author, whatever the format or edition. Merge as Formats keeps \
-         every file in one book (you see a preview first and can undo it); Find Duplicates merges plain copies.",
-    ));
+    note.set_description(Some(&tr(
+        "Books with the same title and author, whatever the format or edition. Merge as Formats keeps every file in one book (you see a preview first and can undo it); Find Duplicates merges plain copies.",
+    )));
     page.add(&note);
     if list.is_empty() {
         empty_group(
             &page,
-            "Every book is its own work",
-            "When two books share a title and author, they are listed together here.",
+            &tr("Every book is its own work"),
+            &tr("When two books share a title and author, they are listed together here."),
         );
     }
     for w in list.iter().take(300) {
@@ -231,7 +230,7 @@ pub fn show_attention(
     fetch: Fetch,
     notify: Notify,
 ) {
-    let dialog = adw::Dialog::new();
+    let dialog = super::dialog_toast::new_dialog();
     let (page, fetch_all) = attention_page(&dialog, shared, search, fetch, notify);
     fill_window(&dialog, &tr("Needs Attention"), &page, &[&fetch_all]);
     dialog.present(Some(parent));
@@ -293,9 +292,9 @@ pub fn attention_page(
     if !ids.is_empty() {
         let g = adw::PreferencesGroup::new();
         g.set_title(&tr("Identifiers"));
-        g.set_description(Some(
+        g.set_description(Some(&tr(
             "Suggestions only; nothing changes until you press Clean Up.",
-        ));
+        )));
         let clean = gtk::Button::with_label(&tr("Clean Up"));
         clean.add_css_class("flat");
         g.set_header_suffix(Some(&clean));

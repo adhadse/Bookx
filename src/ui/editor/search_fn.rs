@@ -2,6 +2,7 @@
 //! source editor and a test run on a sample (the current selection by default).
 
 use super::search_bar::SearchAct;
+use super::tools_ui::{set_dialog_content, toast_in_dialog};
 use super::*;
 use crate::editor_search::{Opts, Pattern};
 use crate::editor_search_fn::{self as sfn, Function};
@@ -90,7 +91,7 @@ impl Editor {
         let tb = adw::ToolbarView::new();
         tb.add_top_bar(&hb);
         tb.set_content(Some(&col));
-        m.dialog.set_child(Some(&tb));
+        set_dialog_content(&m.dialog, &tb);
         {
             let m2 = m.clone();
             new.connect_clicked(move |_| edit_fn(&m2, None));
@@ -117,14 +118,13 @@ impl Editor {
                             }
                             changed(&m3);
                         }
-                        Err(e) => {
-                            let a = adw::AlertDialog::new(
-                                Some(&tr("Could not import")),
-                                Some(&trf("That file is not a list of functions: {}", &[&e])),
-                            );
-                            a.add_response("ok", &tr("OK"));
-                            a.present(Some(&m3.dialog));
-                        }
+                        Err(e) => toast_in_dialog(
+                            &m3.dialog,
+                            &trf(
+                                "Could not import: that file is not a list of functions ({})",
+                                &[&e],
+                            ),
+                        ),
                     }
                 });
             });
@@ -287,7 +287,7 @@ fn edit_fn(m: &Rc<Manager>, f: Option<Function>) {
 
     let test = gtk::Button::with_label(&tr("Test on Sample"));
     test.set_tooltip_text(Some(
-        "Run the function on the sample text with the suggested expression. Nothing in the book changes.",
+        &tr("Run the function on the sample text with the suggested expression. Nothing in the book changes."),
     ));
     let caption = |t: &str| {
         let l = gtk::Label::new(Some(t));
@@ -316,9 +316,9 @@ fn edit_fn(m: &Rc<Manager>, f: Option<Function>) {
     hb.pack_end(&save);
     if builtin {
         save.set_label(&tr("Save as My Version"));
-        save.set_tooltip_text(Some(
+        save.set_tooltip_text(Some(&tr(
             "A saved function with the same name replaces the built-in one",
-        ));
+        )));
     }
     let tb = adw::ToolbarView::new();
     tb.add_top_bar(&hb);
