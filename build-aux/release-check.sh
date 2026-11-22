@@ -29,6 +29,11 @@ for f in crates/*/Cargo.toml; do
 done
 meta=$(sed -n 's/.*<release version="\([^"]*\)".*/\1/p' data/$APP_ID.metainfo.xml | head -1)
 [ "$meta" = "$version" ] && ok "metainfo newest release: $meta" || bad "metainfo newest release is '$meta'"
+for f in packaging/aur/*/PKGBUILD; do
+    [ -f "$f" ] || continue
+    v=$(sed -n 's/^_pkgver=\(.*\)/\1/p' "$f" | head -1)
+    [ "$v" = "$version" ] && ok "$f: $v" || bad "$f has _pkgver $v (Cargo.toml: $version)"
+done
 log=$(sed -n 's/^## \[\([0-9][^]]*\)\].*/\1/p' CHANGELOG.md | head -1)
 [ "$log" = "$version" ] && ok "CHANGELOG newest version: $log" || bad "CHANGELOG newest version is '$log'"
 if [ -n "$tag" ]; then
