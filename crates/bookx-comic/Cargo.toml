@@ -2,7 +2,7 @@
 name = "bookx-comic"
 version = "0.3.0-beta.2"
 authors = ["Anurag Dhadse <hello@adhadse.com>"]
-edition = "2021"
+edition = "2024"
 rust-version = "1.85"
 description = "Comic reading for Bookx without GTK: page decoding with limits, panel detection, spread layout, zoom and pan maths, page cache and per-book settings"
 publish = false

@@ -183,7 +183,7 @@ pub fn open_book(
 
 /// Called whenever the reader's position is saved. Does nothing without a session (sync off).
 pub fn position(shared: &SharedRef, book_id: u64, spine: usize, pct: f64) {
-    let gen = SESSIONS.with(|s| {
+    let r#gen = SESSIONS.with(|s| {
         let mut s = s.borrow_mut();
         let sess = s.get_mut(&book_id)?;
         if !ks::worth_pushing(sess.last_pct, pct) {
@@ -194,13 +194,13 @@ pub fn position(shared: &SharedRef, book_id: u64, spine: usize, pct: f64) {
         sess.generation += 1;
         Some(sess.generation)
     });
-    let Some(gen) = gen else {
+    let Some(r#gen) = r#gen else {
         return;
     };
     let shared = shared.clone();
     glib::timeout_add_local_once(std::time::Duration::from_millis(DEBOUNCE_MS), move || {
         let current = SESSIONS.with(|s| s.borrow().get(&book_id).map(|s| s.generation));
-        if current == Some(gen) {
+        if current == Some(r#gen) {
             flush(&shared, book_id);
         }
     });

@@ -469,7 +469,7 @@ impl BookRow {
 }
 
 macro_rules! column {
-    ($name:ident, $label:expr, $ty:ty, $expand:expr, $width:expr, |$i:ident| $val:expr $(, fmt = |$v:ident| $fmt:expr)? $(, sort = $sort:expr)?) => {
+    ($name:ident, $label:expr_2021, $ty:ty, $expand:expr_2021, $width:expr_2021, |$i:ident| $val:expr_2021 $(, fmt = |$v:ident| $fmt:expr_2021)? $(, sort = $sort:expr_2021)?) => {
         struct $name;
         impl RelmColumn for $name {
             type Root = gtk::Label;
@@ -514,10 +514,10 @@ macro_rules! column {
             }
         }
     };
-    (@sort $ty:ty, $val:expr) => {{ let v: $ty = $val; v }};
-    (@sort $ty:ty, $val:expr, $sort:expr) => {{ $sort }};
+    (@sort $ty:ty, $val:expr_2021) => {{ let v: $ty = $val; v }};
+    (@sort $ty:ty, $val:expr_2021, $sort:expr_2021) => {{ $sort }};
     (@fmt $value:ident) => { $value.to_string() };
-    (@fmt $value:ident, $v:ident, $fmt:expr) => {{
+    (@fmt $value:ident, $v:ident, $fmt:expr_2021) => {{
         let $v = &$value;
         $fmt
     }};
@@ -1582,16 +1582,16 @@ impl LibraryView {
         if self.fill.is_none() {
             return;
         }
-        let (tx, gen) = (self.sender.input_sender().clone(), self.fill_gen);
+        let (tx, r#gen) = (self.sender.input_sender().clone(), self.fill_gen);
         if self.filling() {
             glib::idle_add_local_full(glib::Priority::DEFAULT_IDLE, move || {
-                tx.emit(Input::FillStep(gen));
+                tx.emit(Input::FillStep(r#gen));
                 glib::ControlFlow::Break
             });
         } else {
             // only the scroll position is left: wait for the frame that lays the list out
             glib::timeout_add_local_once(std::time::Duration::from_millis(50), move || {
-                tx.emit(Input::FillStep(gen))
+                tx.emit(Input::FillStep(r#gen))
             });
         }
     }
@@ -4128,13 +4128,13 @@ impl LibraryView {
         &self,
         ids: Vec<u64>,
         parent: Option<gtk::Window>,
-        gen: impl Fn(&crate::core::library::Library, u64) -> Option<(String, String)> + 'static,
+        r#gen: impl Fn(&crate::core::library::Library, u64) -> Option<(String, String)> + 'static,
     ) {
         let shared = self.shared.clone();
         let tx = self.sender.input_sender().clone();
-        let gen = Rc::new(gen);
+        let r#gen = Rc::new(r#gen);
         if ids.len() == 1 {
-            let Some((text, name)) = gen(&shared.lib.borrow(), ids[0]) else {
+            let Some((text, name)) = r#gen(&shared.lib.borrow(), ids[0]) else {
                 tx.emit(Input::Toast(tr("Could not read the book")));
                 return;
             };
@@ -4161,7 +4161,7 @@ impl LibraryView {
                     if let Some(dir) = f.path() {
                         let mut n = 0;
                         for id in &ids {
-                            if let Some((text, name)) = gen(&shared.lib.borrow(), *id) {
+                            if let Some((text, name)) = r#gen(&shared.lib.borrow(), *id) {
                                 if std::fs::write(dir.join(name), text).is_ok() {
                                     n += 1;
                                 }
@@ -8002,10 +8002,10 @@ impl SimpleComponent for LibraryView {
                     _ => {}
                 }
             }
-            Input::FillStep(gen) => {
+            Input::FillStep(r#gen) => {
                 if self.fill.as_ref().is_some_and(|f| match &f.rows {
-                    FillRows::Grid(c) => c.is_for(gen),
-                    FillRows::Table(c) => c.is_for(gen),
+                    FillRows::Grid(c) => c.is_for(r#gen),
+                    FillRows::Table(c) => c.is_for(r#gen),
                 }) {
                     self.fill_piece(false);
                     self.schedule_fill();

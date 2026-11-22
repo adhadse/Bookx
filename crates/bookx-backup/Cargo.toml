@@ -2,7 +2,7 @@
 name = "bookx-backup"
 version = "0.3.0-beta.2"
 authors = ["Anurag Dhadse <hello@adhadse.com>"]
-edition = "2021"
+edition = "2024"
 rust-version = "1.85"
 description = "Off-site backups of the Bookx catalogue: destinations, encryption, verify-after-write, retention, restore"
 publish = false

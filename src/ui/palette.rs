@@ -63,11 +63,11 @@ impl State {
         for i in &idx {
             self.list.append(&row(&self.entries[*i]));
         }
-        if let Some(first) = self.list.row_at_index(0) {
+        match self.list.row_at_index(0) { Some(first) => {
             self.list.select_row(Some(&first));
-        } else {
+        } _ => {
             self.list.append(&empty_row());
-        }
+        }}
         *self.shown.borrow_mut() = idx;
     }
 

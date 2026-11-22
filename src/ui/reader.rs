@@ -6066,8 +6066,8 @@ impl SimpleComponent for Reader {
                     self.w.wiki_img.2.set_paintable(None::<&gdk::Paintable>);
                     self.w.wiki_spin.set_opacity(1.0);
                     self.w.wiki_spin.start();
-                    let gen = self.fetch_gen.get() + 1;
-                    self.fetch_gen.set(gen);
+                    let r#gen = self.fetch_gen.get() + 1;
+                    self.fetch_gen.set(r#gen);
                     let (g, spin, label, url, img) = (
                         self.fetch_gen.clone(),
                         self.w.wiki_spin.clone(),
@@ -6076,7 +6076,7 @@ impl SimpleComponent for Reader {
                         self.w.wiki_img.clone(),
                     );
                     web::wikipedia(&lang, &term, move |res| {
-                        if g.get() != gen {
+                        if g.get() != r#gen {
                             return;
                         }
                         spin.stop();
@@ -6096,7 +6096,7 @@ impl SimpleComponent for Reader {
                                     stack.set_visible_child_name("placeholder");
                                     let g = g.clone();
                                     web::image(&u, move |res| {
-                                        if g.get() != gen {
+                                        if g.get() != r#gen {
                                             return;
                                         }
                                         match res {
@@ -6139,15 +6139,15 @@ impl SimpleComponent for Reader {
                     self.w.tr_text.set_label("");
                     self.w.tr_spin.set_opacity(1.0);
                     self.w.tr_spin.start();
-                    let gen = self.fetch_gen.get() + 1;
-                    self.fetch_gen.set(gen);
+                    let r#gen = self.fetch_gen.get() + 1;
+                    self.fetch_gen.set(r#gen);
                     let (g, spin, label) = (
                         self.fetch_gen.clone(),
                         self.w.tr_spin.clone(),
                         self.w.tr_text.clone(),
                     );
                     web::translate(&to, &text, move |res| {
-                        if g.get() != gen {
+                        if g.get() != r#gen {
                             return;
                         }
                         spin.stop();
@@ -6453,8 +6453,8 @@ impl SimpleComponent for Reader {
                 self.w.search_status.set_label(&tr("Searching"));
                 let hits_now = self.canvas.find_all_re(&re);
                 self.canvas.set_hits(hits_now, None);
-                let gen = self.search_gen.get() + 1;
-                self.search_gen.set(gen);
+                let r#gen = self.search_gen.get() + 1;
+                self.search_gen.set(r#gen);
                 // Parse chapters incrementally so the UI stays responsive.
                 let book = self.book.clone();
                 let spine = self.spine.clone();
@@ -6463,12 +6463,12 @@ impl SimpleComponent for Reader {
                 let total = Rc::new(Cell::new(0usize));
                 let next = Rc::new(Cell::new(0usize));
                 glib::idle_add_local(move || {
-                    if gen_cell.get() != gen {
+                    if gen_cell.get() != r#gen {
                         return glib::ControlFlow::Break;
                     }
                     let i = next.get();
                     if i >= spine.len() || total.get() > 400 {
-                        tx.emit(Input::SearchDone(gen, Vec::new(), true));
+                        tx.emit(Input::SearchDone(r#gen, Vec::new(), true));
                         return glib::ControlFlow::Break;
                     }
                     next.set(i + 1);
@@ -6491,13 +6491,13 @@ impl SimpleComponent for Reader {
                     }
                     if !batch.is_empty() {
                         total.set(total.get() + batch.len());
-                        tx.emit(Input::SearchDone(gen, batch, false));
+                        tx.emit(Input::SearchDone(r#gen, batch, false));
                     }
                     glib::ControlFlow::Continue
                 });
             }
-            Input::SearchDone(gen, results, finished) => {
-                if gen != self.search_gen.get() {
+            Input::SearchDone(r#gen, results, finished) => {
+                if r#gen != self.search_gen.get() {
                     return;
                 }
                 for (spine, nth, snippet) in &results {

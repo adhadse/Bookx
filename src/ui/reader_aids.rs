@@ -259,11 +259,11 @@ impl Reader {
         if !pop.is_visible() {
             pop.popup();
         }
-        let gen = self.aids.skim_gen.get() + 1;
-        self.aids.skim_gen.set(gen);
+        let r#gen = self.aids.skim_gen.get() + 1;
+        self.aids.skim_gen.set(r#gen);
         let (g, pop2) = (self.aids.skim_gen.clone(), pop.clone());
         glib::timeout_add_local_once(std::time::Duration::from_millis(900), move || {
-            if g.get() == gen {
+            if g.get() == r#gen {
                 pop2.popdown();
             }
         });

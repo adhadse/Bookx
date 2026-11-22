@@ -343,14 +343,14 @@ impl Synthesizer for OverlaySynth {
 /// A speaker for tests and the UI scenarios: "plays" for as long as the audio lasts, in steps of
 /// 10 ms, without a sound. `speedup` makes it faster than real time.
 pub struct SilentSink {
-    gen: Arc<std::sync::atomic::AtomicU64>,
+    r#gen: Arc<std::sync::atomic::AtomicU64>,
     speedup: u32,
 }
 
 impl SilentSink {
     pub fn new(speedup: u32) -> SilentSink {
         SilentSink {
-            gen: Arc::default(),
+            r#gen: Arc::default(),
             speedup: speedup.max(1),
         }
     }
@@ -359,19 +359,19 @@ impl SilentSink {
 impl bookx_tts::sink::AudioSink for SilentSink {
     fn write(&mut self, rate: u32, samples: &[i16]) -> Result<()> {
         use std::sync::atomic::Ordering::SeqCst;
-        let g = self.gen.load(SeqCst);
+        let g = self.r#gen.load(SeqCst);
         let total = std::time::Duration::from_micros(
             samples.len() as u64 * 1_000_000 / rate.max(1) as u64 / self.speedup as u64,
         );
         let t0 = std::time::Instant::now();
-        while t0.elapsed() < total && self.gen.load(SeqCst) == g {
+        while t0.elapsed() < total && self.r#gen.load(SeqCst) == g {
             std::thread::sleep(std::time::Duration::from_millis(10).min(total));
         }
         Ok(())
     }
 
     fn flush(&mut self) {
-        self.gen.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.r#gen.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     }
 }
 

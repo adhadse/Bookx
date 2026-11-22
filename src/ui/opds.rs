@@ -501,10 +501,10 @@ impl Ui {
         if !append {
             self.entries.borrow_mut().clear();
             self.clear();
-        } else if let Some(last) = self.list.last_child() {
+        } else { match self.list.last_child() { Some(last) => {
             // the "Load more" row
             self.list.remove(&last);
-        }
+        } _ => {}}}
         if self.root_feed.borrow().is_none() {
             *self.root_feed.borrow_mut() = Some(feed.clone());
         }

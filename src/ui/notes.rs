@@ -665,9 +665,9 @@ impl State {
                 let now = st.selected.borrow().len();
                 if (was == 0) != (now == 0) {
                     st.selection_changed();
-                } else if let Some(cb) = st.on_selection.borrow().clone() {
+                } else { match st.on_selection.borrow().clone() { Some(cb) => {
                     cb(now);
-                }
+                } _ => {}}}
             });
         }
         card.root.set_hexpand(true);

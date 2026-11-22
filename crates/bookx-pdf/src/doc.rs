@@ -410,7 +410,7 @@ impl Document {
             ];
             let target = if let Some(d) = self.entry_dest(&a) {
                 LinkTarget::Page(d)
-            } else if let Some(act) = a.get::<Dict>("A") {
+            } else { match a.get::<Dict>("A") { Some(act) => {
                 match (
                     act.get::<Name>("S").map(|n| n.as_str().to_string()),
                     act.get::<hayro::hayro_interpret::hayro_syntax::object::String>("URI"),
@@ -420,9 +420,9 @@ impl Document {
                     }
                     _ => continue,
                 }
-            } else {
+            } _ => {
                 continue;
-            };
+            }}};
             out.push(Link { rect, target });
         }
         out

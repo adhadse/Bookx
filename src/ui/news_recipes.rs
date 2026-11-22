@@ -642,7 +642,7 @@ pub fn dev(arg: &str) {
     let site_form_w = SITE_FORM.with(|s| s.borrow().clone());
     match parts[0] {
         "open" => {
-            if let Some((ctx, dialog)) = WINDOW.with(|w| w.borrow().clone()) {
+            match WINDOW.with(|w| w.borrow().clone()) { Some((ctx, dialog)) => {
                 let d2 = dialog.clone();
                 let refresh = ctx.slot.clone();
                 edit_feeds(
@@ -655,9 +655,9 @@ pub fn dev(arg: &str) {
                         }
                     }),
                 );
-            } else {
+            } _ => {
                 eprintln!("news_recipes: no news window");
-            }
+            }}
         }
         "save" => {
             if let Some(e) = ed {

@@ -601,16 +601,16 @@ pub fn dev(cmd: &str) {
         // the highlights, notes and bookmarks switch: on by default, independent of the server
         let on = NOTES_SW.with(|n| n.borrow().as_ref().map(|s| s.is_active()));
         let sh = SHARED.with(|s| s.borrow().clone());
-        if let (Some(on), Some(sh)) = (on, sh) {
+        match (on, sh) { (Some(on), Some(sh)) => {
             eprintln!(
                 "prefs_notes: switch={on} config={} listening={} store={}",
                 sh.cfg.borrow().share.annotations,
                 sh.sharing.borrow().running(),
                 sh.sharing.borrow().annotations().is_some()
             );
-        } else {
+        } _ => {
             eprintln!("prefs_notes: no page");
-        }
+        }}
         return;
     }
     if let Some(v) = cmd.strip_prefix("notes=") {

@@ -1317,7 +1317,7 @@ pub fn show_tab(
     });
 
     macro_rules! wire {
-        ($btn:expr, $method:ident) => {{
+        ($btn:expr_2021, $method:ident) => {{
             let weak = Rc::downgrade(&ctx);
             $btn.connect_clicked(move |_| {
                 if let Some(c) = weak.upgrade() {

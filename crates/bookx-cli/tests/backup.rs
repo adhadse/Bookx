@@ -86,11 +86,11 @@ fn encrypted_backups_need_the_passphrase_and_never_contain_the_catalogue_in_clea
     sb.add("Gamma Secret Title");
     let to_dir = sb.dir.join("cloud");
     let to = to_dir.to_str().unwrap();
-    std::env::remove_var("BOOKX_BACKUP_PASSPHRASE");
+    bookx_cli::override_var("BOOKX_BACKUP_PASSPHRASE", None);
     let (code, _, err) = sb.cli(&["library", "backup", "--to", to, "--encrypt"]);
     assert_ne!(code, 0);
     assert!(err.contains("BOOKX_BACKUP_PASSPHRASE"), "{err}");
-    std::env::set_var("BOOKX_BACKUP_PASSPHRASE", "correct horse battery");
+    bookx_cli::override_var("BOOKX_BACKUP_PASSPHRASE", Some("correct horse battery"));
     let (code, out, err) = sb.cli(&["library", "backup", "--to", to, "--encrypt"]);
     assert_eq!(code, 0, "{out} {err}");
     let file = std::fs::read_dir(&to_dir)
@@ -102,13 +102,13 @@ fn encrypted_backups_need_the_passphrase_and_never_contain_the_catalogue_in_clea
     assert!(!String::from_utf8_lossy(&bytes).contains("Gamma Secret Title"));
     sb.add("Delta");
     // wrong passphrase
-    std::env::set_var("BOOKX_BACKUP_PASSPHRASE", "wrong");
+    bookx_cli::override_var("BOOKX_BACKUP_PASSPHRASE", Some("wrong"));
     let (code, _, err) = sb.cli(&["library", "restore", "latest", "--from", to]);
     assert_ne!(code, 0);
     assert!(err.contains("wrong passphrase"), "{err}");
     assert!(sb.titles().contains("Delta"), "nothing was restored");
     // right passphrase, from the destination and from the picked file
-    std::env::set_var("BOOKX_BACKUP_PASSPHRASE", "correct horse battery");
+    bookx_cli::override_var("BOOKX_BACKUP_PASSPHRASE", Some("correct horse battery"));
     let (code, out, err) = sb.cli(&["library", "restore", "latest", "--from", to]);
     assert_eq!(code, 0, "{out} {err}");
     assert!(!sb.titles().contains("Delta"));
@@ -117,7 +117,7 @@ fn encrypted_backups_need_the_passphrase_and_never_contain_the_catalogue_in_clea
     assert_eq!(code, 0, "{out} {err}");
     let t = sb.titles();
     assert!(t.contains("Gamma") && !t.contains("Epsilon"), "{t}");
-    std::env::remove_var("BOOKX_BACKUP_PASSPHRASE");
+    bookx_cli::override_var("BOOKX_BACKUP_PASSPHRASE", None);
 }
 
 #[test]

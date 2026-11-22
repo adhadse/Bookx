@@ -2,7 +2,7 @@
 name = "bookx-core"
 version = "0.3.0-beta.2"
 authors = ["Anurag Dhadse <hello@adhadse.com>"]
-edition = "2021"
+edition = "2024"
 rust-version = "1.85"
 description = "GUI-independent engine of Bookx: EPUB parsing/editing, conversion, library catalogue"
 publish = false

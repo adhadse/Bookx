@@ -29,7 +29,7 @@ pub struct RemoteArgs {
 
 fn destination(spec: &str, r: &RemoteArgs) -> Result<Box<dyn bookx_backup::Target>> {
     if spec.starts_with("http://") || spec.starts_with("https://") {
-        let pw = std::env::var("BOOKX_WEBDAV_PASSWORD").unwrap_or_default();
+        let pw = crate::var("BOOKX_WEBDAV_PASSWORD").unwrap_or_default();
         return Ok(Box::new(bookx_backup::WebDavTarget::new(
             spec,
             r.user.as_deref().unwrap_or(""),
@@ -46,8 +46,7 @@ fn destination(spec: &str, r: &RemoteArgs) -> Result<Box<dyn bookx_backup::Targe
 }
 
 fn passphrase() -> Option<String> {
-    std::env::var("BOOKX_BACKUP_PASSPHRASE")
-        .ok()
+    crate::var("BOOKX_BACKUP_PASSPHRASE")
         .filter(|p| !p.is_empty())
 }
 

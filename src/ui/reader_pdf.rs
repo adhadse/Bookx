@@ -3259,8 +3259,8 @@ impl SimpleComponent for ReaderPdf {
                 self.w.wiki_text.set_label("");
                 self.w.wiki_spin.set_opacity(1.0);
                 self.w.wiki_spin.start();
-                let gen = self.fetch_gen.get() + 1;
-                self.fetch_gen.set(gen);
+                let r#gen = self.fetch_gen.get() + 1;
+                self.fetch_gen.set(r#gen);
                 let (g, spin, label, url) = (
                     self.fetch_gen.clone(),
                     self.w.wiki_spin.clone(),
@@ -3268,7 +3268,7 @@ impl SimpleComponent for ReaderPdf {
                     self.w.wiki_url.clone(),
                 );
                 web::wikipedia(&lang, &term, move |res| {
-                    if g.get() != gen {
+                    if g.get() != r#gen {
                         return;
                     }
                     spin.stop();
@@ -3310,15 +3310,15 @@ impl SimpleComponent for ReaderPdf {
                 self.w.tr_text.set_label("");
                 self.w.tr_spin.set_opacity(1.0);
                 self.w.tr_spin.start();
-                let gen = self.fetch_gen.get() + 1;
-                self.fetch_gen.set(gen);
+                let r#gen = self.fetch_gen.get() + 1;
+                self.fetch_gen.set(r#gen);
                 let (g, spin, label) = (
                     self.fetch_gen.clone(),
                     self.w.tr_spin.clone(),
                     self.w.tr_text.clone(),
                 );
                 web::translate(&to, &text, move |res| {
-                    if g.get() != gen {
+                    if g.get() != r#gen {
                         return;
                     }
                     spin.stop();

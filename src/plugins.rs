@@ -60,8 +60,20 @@ pub fn publish(loaded: Loaded) {
     *CURRENT.lock().unwrap_or_else(|e| e.into_inner()) = Some(Arc::new(loaded));
 }
 
-/// `$BOOKX_PLUGINS`, else `~/.local/share/bookx/plugins`.
+/// The plugin and patch folders safe mode points at (empty ones) for the rest of the process; the environment is not
+/// changed for this (writing it is unsafe in Rust 2024 and other threads may be reading it).
+static SAFE_DIRS: Mutex<Option<(PathBuf, PathBuf)>> = Mutex::new(None);
+
+/// Makes [`plugins_dir`] and [`patches_dir`] answer with these folders from now on (safe mode).
+pub fn override_dirs(plugins: PathBuf, patches: PathBuf) {
+    *SAFE_DIRS.lock().unwrap_or_else(|e| e.into_inner()) = Some((plugins, patches));
+}
+
+/// The safe-mode folder, else `$BOOKX_PLUGINS`, else `~/.local/share/bookx/plugins`.
 pub fn plugins_dir() -> PathBuf {
+    if let Some((p, _)) = SAFE_DIRS.lock().unwrap_or_else(|e| e.into_inner()).clone() {
+        return p;
+    }
     if let Some(d) = std::env::var_os("BOOKX_PLUGINS") {
         return PathBuf::from(d);
     }
@@ -298,8 +310,11 @@ pub fn set_auto_transform(path: &Path, id: &str, on: bool) -> Result<()> {
 
 // ---- user patches (X9) -------------------------------------------------------------------
 
-/// `$BOOKX_PATCHES`, else `~/.local/share/bookx/patches`.
+/// The safe-mode folder, else `$BOOKX_PATCHES`, else `~/.local/share/bookx/patches`.
 pub fn patches_dir() -> PathBuf {
+    if let Some((_, p)) = SAFE_DIRS.lock().unwrap_or_else(|e| e.into_inner()).clone() {
+        return p;
+    }
     if let Some(d) = std::env::var_os("BOOKX_PATCHES") {
         return PathBuf::from(d);
     }

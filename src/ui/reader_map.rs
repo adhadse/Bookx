@@ -333,7 +333,7 @@ fn draw_number(cr: &gtk::cairo::Context, p: &Pal, n: u8, x: f64, y: f64, r: f64)
 // ---- the grid ----
 
 /// A device pixel aligned coordinate.
-fn snapper(w: &gtk::Widget) -> impl Fn(f64) -> f64 {
+fn snapper(w: &gtk::Widget) -> impl Fn(f64) -> f64 + use<> {
     let s = w
         .native()
         .and_then(|n| n.surface())

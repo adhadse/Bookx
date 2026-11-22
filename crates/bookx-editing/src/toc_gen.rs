@@ -318,14 +318,14 @@ mod tests {
             title: "Mine".into(),
             href: "OEBPS/chapter-1.xhtml".into(),
         }];
-        let gen = generate(&b, &TocOptions::default());
-        let out = combine(&existing, gen.clone(), TocMode::Append);
+        let r#gen = generate(&b, &TocOptions::default());
+        let out = combine(&existing, r#gen.clone(), TocMode::Append);
         assert_eq!(out[0].title, "Mine");
         assert_eq!(out.len(), 2);
         assert_eq!(out[1].title, "Part Two");
         assert_eq!(
-            combine(&existing, gen.clone(), TocMode::Replace).len(),
-            gen.len()
+            combine(&existing, r#gen.clone(), TocMode::Replace).len(),
+            r#gen.len()
         );
     }
 }

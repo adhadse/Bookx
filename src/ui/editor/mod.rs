@@ -1368,16 +1368,16 @@ impl SimpleComponent for Editor {
             mb.set_menu_model(Some(&move_menu));
             toc_bar.append(&mb);
         }
-        let gen = gtk::Button::with_label(&tr("Generate"));
-        gen.set_tooltip_text(Some(&tr(
+        let r#gen = gtk::Button::with_label(&tr("Generate"));
+        r#gen.set_tooltip_text(Some(&tr(
             "Build the table of contents: from headings, links or files",
         )));
-        gen.add_css_class("flat");
+        r#gen.add_css_class("flat");
         {
             let tx = sender.input_sender().clone();
-            gen.connect_clicked(move |_| tx.emit(Input::PromptTocGenerate));
+            r#gen.connect_clicked(move |_| tx.emit(Input::PromptTocGenerate));
         }
-        toc_bar.append(&gen);
+        toc_bar.append(&r#gen);
         let toc_page = gtk::Box::new(gtk::Orientation::Vertical, 0);
         toc_page.append(&toc_scroll);
         toc_page.append(&gtk::Separator::new(gtk::Orientation::Horizontal));

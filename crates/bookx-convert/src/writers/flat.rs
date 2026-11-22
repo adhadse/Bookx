@@ -16,7 +16,7 @@ use zip::{CompressionMethod, ZipWriter};
 use crate::markup::{body_range, escape_attr, get_attr, set_attr, tag_info, tokenize, Tok};
 
 macro_rules! plain_writer {
-    ($name:ident, $id:literal, $ext:literal, $fmt:expr) => {
+    ($name:ident, $id:literal, $ext:literal, $fmt:expr_2021) => {
         #[derive(Debug, Clone, Copy, Default)]
         pub struct $name;
         impl FormatWriter for $name {

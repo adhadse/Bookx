@@ -34,7 +34,7 @@ struct Settings {
 enum Work {
     Say {
         id: u64,
-        gen: u64,
+        r#gen: u64,
         text: String,
         settings: Settings,
     },
@@ -50,12 +50,12 @@ enum Work {
 enum Play {
     Audio {
         id: u64,
-        gen: u64,
+        r#gen: u64,
         pcm: Pcm,
     },
     /// The synthesis of the sentence at this place of the queue failed.
     Failed {
-        gen: u64,
+        r#gen: u64,
         message: String,
     },
     Pause,
@@ -65,7 +65,7 @@ enum Play {
 }
 
 struct Shared {
-    gen: AtomicU64,
+    r#gen: AtomicU64,
     /// Playback gain as `f32` bits (1.0 = as synthesized).
     volume: AtomicU32,
     cancel: Mutex<Cancel>,
@@ -94,9 +94,9 @@ impl PipelineEngine {
     pub fn with_session(mut self, guard: crate::service::SessionGuard) -> PipelineEngine {
         let (play, shared) = (Mutex::new(self.play.clone()), self.shared.clone());
         guard.set_stop(Arc::new(move || {
-            let gen = shared.gen.fetch_add(1, Ordering::SeqCst) + 1;
+            let r#gen = shared.r#gen.fetch_add(1, Ordering::SeqCst) + 1;
             shared.cancel.lock().unwrap().cancel();
-            let _ = play.lock().unwrap().send(Play::Stop(gen));
+            let _ = play.lock().unwrap().send(Play::Stop(r#gen));
         }));
         self.guard = Some(guard);
         self
@@ -110,7 +110,7 @@ impl PipelineEngine {
         lookahead: usize,
     ) -> PipelineEngine {
         let shared = Arc::new(Shared {
-            gen: AtomicU64::new(1),
+            r#gen: AtomicU64::new(1),
             volume: AtomicU32::new(1.0f32.to_bits()),
             cancel: Mutex::new(Cancel::new()),
             error: Mutex::new(None),
@@ -157,7 +157,7 @@ impl PipelineEngine {
 impl Drop for PipelineEngine {
     fn drop(&mut self) {
         self.shared.cancel.lock().unwrap().cancel();
-        self.shared.gen.fetch_add(1, Ordering::SeqCst);
+        self.shared.r#gen.fetch_add(1, Ordering::SeqCst);
         let _ = self.work.send(Work::Quit);
         let _ = self.play.send(Play::Quit);
         // the threads end by themselves; not joined, a synthesis may still be running
@@ -171,7 +171,7 @@ impl Engine for PipelineEngine {
         self.work
             .send(Work::Say {
                 id: self.next_id,
-                gen: self.shared.gen.load(Ordering::SeqCst),
+                r#gen: self.shared.r#gen.load(Ordering::SeqCst),
                 text: text.to_string(),
                 settings: self.settings.clone(),
             })
@@ -180,14 +180,14 @@ impl Engine for PipelineEngine {
     }
 
     fn stop(&mut self) {
-        let gen = self.shared.gen.fetch_add(1, Ordering::SeqCst) + 1;
+        let r#gen = self.shared.r#gen.fetch_add(1, Ordering::SeqCst) + 1;
         {
             let mut c = self.shared.cancel.lock().unwrap();
             c.cancel();
             *c = Cancel::new();
         }
         *self.shared.error.lock().unwrap() = None;
-        let _ = self.play.send(Play::Stop(gen));
+        let _ = self.play.send(Play::Stop(r#gen));
         while self.events.try_recv().is_ok() {}
     }
 
@@ -339,11 +339,11 @@ fn worker_loop(
             }
             Work::Say {
                 id,
-                gen,
+                r#gen,
                 text,
                 settings,
             } => {
-                if gen != shared.gen.load(Ordering::SeqCst) {
+                if r#gen != shared.r#gen.load(Ordering::SeqCst) {
                     continue;
                 }
                 let cancel = shared.cancel.lock().unwrap().clone();
@@ -383,20 +383,20 @@ fn worker_loop(
                         r
                     }
                 };
-                if gen != shared.gen.load(Ordering::SeqCst) {
+                if r#gen != shared.r#gen.load(Ordering::SeqCst) {
                     continue;
                 }
                 match result {
                     Ok(p) => {
                         let _ = play.send(Play::Audio {
                             id,
-                            gen,
+                            r#gen,
                             pcm: p.time_stretch(stretch).with_pitch(settings.pitch),
                         });
                     }
                     Err(e) => {
                         let _ = play.send(Play::Failed {
-                            gen,
+                            r#gen,
                             message: format!("{e:#}"),
                         });
                     }
@@ -434,7 +434,7 @@ struct Player {
     sink: Box<dyn AudioSink>,
     out: Sender<Event>,
     shared: Arc<Shared>,
-    gen: u64,
+    r#gen: u64,
     rate: Option<u32>,
     ready: VecDeque<Result<(u64, Pcm), String>>,
     cur: Option<Playing>,
@@ -458,7 +458,7 @@ impl Player {
             sink,
             out,
             shared,
-            gen: 1,
+            r#gen: 1,
             rate: None,
             ready: VecDeque::new(),
             cur: None,
@@ -558,13 +558,13 @@ impl Player {
     fn handle(&mut self, m: Play) -> bool {
         match m {
             Play::Quit => return true,
-            Play::Audio { id, gen, pcm } => {
-                if gen == self.gen {
+            Play::Audio { id, r#gen, pcm } => {
+                if r#gen == self.r#gen {
                     self.ready.push_back(Ok((id, pcm)));
                 }
             }
-            Play::Failed { gen, message } => {
-                if gen == self.gen {
+            Play::Failed { r#gen, message } => {
+                if r#gen == self.r#gen {
                     self.ready.push_back(Err(message));
                 }
             }
@@ -590,8 +590,8 @@ impl Player {
                     }
                 }
             }
-            Play::Stop(gen) => {
-                self.gen = gen;
+            Play::Stop(r#gen) => {
+                self.r#gen = r#gen;
                 self.ready.clear();
                 self.cur = None;
                 self.due.clear();

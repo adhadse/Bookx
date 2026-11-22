@@ -377,7 +377,7 @@ impl Editor {
                             .item_attribute_value(j, "label", None)
                             .and_then(|v| v.str().map(str::to_string))
                             .unwrap_or_default();
-                        if let Some(sub) = sec.item_link(j, "submenu").and_downcast::<gio::Menu>() {
+                        match sec.item_link(j, "submenu").and_downcast::<gio::Menu>() { Some(sub) => {
                             labels.push(format!(
                                 "{l}[{}]",
                                 (0..sub.n_items())
@@ -387,9 +387,9 @@ impl Editor {
                                     .collect::<Vec<_>>()
                                     .join(",")
                             ));
-                        } else {
+                        } _ => {
                             labels.push(l);
-                        }
+                        }}
                     }
                 }
             }

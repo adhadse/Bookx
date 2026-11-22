@@ -88,11 +88,11 @@ pub fn read_input(
     let lower = input_name.to_ascii_lowercase();
     let archive = if lower.ends_with(".epub") || lower.ends_with(".kepub") {
         Archive::from_bytes(bytes.to_vec())?
-    } else if let Ok(reader) = pick_reader(readers, input_name, &bytes[..bytes.len().min(512)]) {
+    } else { match pick_reader(readers, input_name, &bytes[..bytes.len().min(512)]) { Ok(reader) => {
         reader
             .read(bytes)
             .with_context(|| format!("reading {input_name} as {}", reader.id()))?
-    } else if is_importable(Path::new(input_name)) {
+    } _ => if is_importable(Path::new(input_name)) {
         import_with_core(bytes, input_name)?
     } else if bytes.starts_with(b"PK")
         && Archive::from_bytes(bytes.to_vec()).is_ok_and(|a| a.contains("META-INF/container.xml"))
@@ -100,7 +100,7 @@ pub fn read_input(
         Archive::from_bytes(bytes.to_vec())?
     } else {
         bail!("no reader for `{input_name}`");
-    };
+    }}};
     let mut book = OpenBook::from_archive(archive)?;
     title_from_file_name(&mut book, input_name);
     Ok(book)

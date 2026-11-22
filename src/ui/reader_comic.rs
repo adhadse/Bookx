@@ -225,7 +225,7 @@ pub struct ReaderComic {
     stop: Option<usize>,
     pending: Option<Pending>,
     forward: bool,
-    gen: u64,
+    r#gen: u64,
     view: Rc<RefCell<View>>,
     w: W,
     sender: ComponentSender<Self>,
@@ -466,7 +466,7 @@ impl ReaderComic {
         let ms = view::duration_ms(animate && self.animate_on());
         let mut v = self.view.borrow_mut();
         v.anim_gen += 1;
-        let gen = v.anim_gen;
+        let r#gen = v.anim_gen;
         let cam = view::clamp(cam, v.frame());
         if ms == 0
             || (cam.s - v.cam.s).abs() + (cam.x - v.cam.x).abs() + (cam.y - v.cam.y).abs() < 0.5
@@ -487,7 +487,7 @@ impl ReaderComic {
         let view = self.view.clone();
         self.w.area.add_tick_callback(move |area, _| {
             let mut v = view.borrow_mut();
-            if v.anim_gen != gen {
+            if v.anim_gen != r#gen {
                 return glib::ControlFlow::Break;
             }
             let Some(a) = &v.anim else {
@@ -592,7 +592,7 @@ impl ReaderComic {
                 .flat_map(|s| self.plan[*s].iter().copied())
                 .collect()
         };
-        let tag = self.gen << 1;
+        let tag = self.r#gen << 1;
         let opts = self.decode_opts();
         let jobs: Vec<Job> = {
             let v = self.view.borrow();
@@ -624,7 +624,7 @@ impl ReaderComic {
             self.on_thumb(d);
             return;
         }
-        if d.tag >> 1 != self.gen {
+        if d.tag >> 1 != self.r#gen {
             return;
         }
         match d.result.map(|p| p.into_bgra()).map(surf_of) {
@@ -649,7 +649,7 @@ impl ReaderComic {
     }
 
     fn on_thumb(&mut self, d: Done) {
-        if d.tag >> 1 != self.gen {
+        if d.tag >> 1 != self.r#gen {
             return;
         }
         self.thumbs_done.insert(d.page);
@@ -690,7 +690,7 @@ impl ReaderComic {
             grey: self.grey(),
             panels: None,
         };
-        let tag = (self.gen << 1) | 1;
+        let tag = (self.r#gen << 1) | 1;
         self.worker.request_thumbs(
             want.into_iter()
                 .map(|p| Job { page: p, tag, opts })
@@ -1043,7 +1043,7 @@ impl ReaderComic {
     fn relayout(&mut self, redecode: bool) {
         let page = self.page;
         if redecode {
-            self.gen += 1;
+            self.r#gen += 1;
             let mut v = self.view.borrow_mut();
             v.cache.clear();
             v.failed.clear();
@@ -1328,7 +1328,7 @@ impl ReaderComic {
             v.vw,
             v.vh,
             self.pending.is_some(),
-            self.gen,
+            self.r#gen,
             self.page_text(),
         )
     }
@@ -2483,7 +2483,7 @@ impl SimpleComponent for ReaderComic {
             stop: None,
             pending: None,
             forward: true,
-            gen: 0,
+            r#gen: 0,
             view: view_state,
             w: W {
                 page: root.clone(),

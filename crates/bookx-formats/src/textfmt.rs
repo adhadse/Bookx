@@ -171,7 +171,7 @@ fn convert_html_single(html: &str, stem: &str) -> Result<Archive> {
 }
 
 macro_rules! plain_reader {
-    ($ty:ty, $id:literal, $ext:literal, $exts:expr, $sniff:expr) => {
+    ($ty:ty, $id:literal, $ext:literal, $exts:expr_2021, $sniff:expr_2021) => {
         impl FormatReader for $ty {
             fn id(&self) -> &'static str {
                 $id

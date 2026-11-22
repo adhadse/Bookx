@@ -719,8 +719,8 @@ impl DevWin {
 
     /// Lists the books of the selected device on a worker thread.
     fn reload_books(self: &Rc<Self>) {
-        let gen = self.generation.get() + 1;
-        self.generation.set(gen);
+        let r#gen = self.generation.get() + 1;
+        self.generation.set(r#gen);
         self.states.borrow_mut().clear();
         let Some(device) = self.selected_device() else {
             let (_, storage) = ds::device_row_text("", &tr(NO_DEVICE_SHORT));
@@ -760,7 +760,7 @@ impl DevWin {
         });
         let me = self.clone();
         poll(rx, move |(summary, shelves, books)| {
-            if me.generation.get() != gen {
+            if me.generation.get() != r#gen {
                 return;
             }
             let (_, storage) = ds::device_row_text(&device_name, &summary);
@@ -804,7 +804,7 @@ impl DevWin {
 
     /// Reads the covers on a worker thread (cached on disk) and shows them as they arrive.
     fn start_covers(self: &Rc<Self>, books: &[DeviceBook]) {
-        let gen = self.generation.get();
+        let r#gen = self.generation.get();
         let books: Vec<DeviceBook> = books.to_vec();
         let (tx, rx) = std::sync::mpsc::channel::<(usize, Option<PathBuf>)>();
         std::thread::spawn(move || {
@@ -817,7 +817,7 @@ impl DevWin {
         });
         let me = self.clone();
         glib::timeout_add_local(std::time::Duration::from_millis(40), move || {
-            if me.generation.get() != gen {
+            if me.generation.get() != r#gen {
                 return glib::ControlFlow::Break;
             }
             for _ in 0..12 {
@@ -1647,11 +1647,11 @@ pub fn dev_command(
         "sync" => w.sync_state(false),
         "syncask" => w.sync_state(true),
         "syncconfirm" => {
-            if let Some(f) = PENDING_SYNC.with(|p| p.borrow_mut().take()) {
+            match PENDING_SYNC.with(|p| p.borrow_mut().take()) { Some(f) => {
                 f();
-            } else {
+            } _ => {
                 eprintln!("sync_summary: no dialog");
-            }
+            }}
         }
         "send" => w.send_checked(),
         "selectall" => w.on_dev.set_all(true),

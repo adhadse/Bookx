@@ -1190,7 +1190,7 @@ impl SourceSet {
         let mut meta = Metadata::default();
         let mut field_sources: std::collections::BTreeMap<String, String> = Default::default();
         macro_rules! first_string {
-            ($field:expr, $get:expr, $set:expr) => {
+            ($field:expr_2021, $get:expr_2021, $set:expr_2021) => {
                 if let Some((v, src)) = pick($field)
                     .iter()
                     .map(|r| ($get(&r.candidate.meta), r.candidate.source.clone()))

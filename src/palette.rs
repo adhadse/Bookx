@@ -80,7 +80,7 @@ pub struct Command {
 }
 
 macro_rules! cmd {
-    ($a:expr, $t:expr, $acc:expr, $k:expr, $s:expr) => {
+    ($a:expr_2021, $t:expr_2021, $acc:expr_2021, $k:expr_2021, $s:expr_2021) => {
         Command {
             action: $a,
             title: $t,

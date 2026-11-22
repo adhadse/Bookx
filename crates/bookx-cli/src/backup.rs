@@ -186,7 +186,7 @@ fn secrets() -> Secrets {
 
 fn kdf() -> Kdf {
     // tests may ask for the cheap parameters; the default is the real one
-    if std::env::var("BOOKX_BACKUP_KDF").is_ok_and(|v| v == "test") {
+    if crate::var("BOOKX_BACKUP_KDF").is_some_and(|v| v == "test") {
         Kdf::TEST
     } else {
         Kdf::DEFAULT

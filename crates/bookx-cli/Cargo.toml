@@ -2,7 +2,7 @@
 name = "bookx-cli"
 version = "0.3.0-beta.2"
 authors = ["Anurag Dhadse <hello@adhadse.com>"]
-edition = "2021"
+edition = "2024"
 rust-version = "1.85"
 description = "Command-line tool of Bookx: convert, inspect, check, manage a library and serve it over OPDS"
 publish = false

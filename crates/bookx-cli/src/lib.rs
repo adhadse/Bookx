@@ -36,6 +36,25 @@ use bookx_formats::{default_readers, read_any, supported_extensions};
 use bookx_serve::server::{LibrarySnapshot, Server, ServerConfig, User};
 use clap::{Parser, Subcommand};
 
+thread_local! {
+    static TEST_VARS: std::cell::RefCell<std::collections::HashMap<String, Option<String>>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// An environment variable as the commands see it. A test can change what *its own thread* sees with
+/// [`override_var`] (the process environment is shared by every test thread, and writing it is unsafe in Rust 2024).
+pub(crate) fn var(name: &str) -> Option<String> {
+    if let Some(v) = TEST_VARS.with(|m| m.borrow().get(name).cloned()) {
+        return v;
+    }
+    std::env::var(name).ok()
+}
+
+/// For tests: from now on this thread sees `name` as `value` (`None`: not set), whatever the real environment says.
+pub fn override_var(name: &str, value: Option<&str>) {
+    TEST_VARS.with(|m| m.borrow_mut().insert(name.to_string(), value.map(String::from)));
+}
+
 /// Process-level context that tests can replace.
 pub struct Env {
     /// Library used when `--library` is not given.

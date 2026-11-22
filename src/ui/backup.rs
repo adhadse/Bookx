@@ -1412,8 +1412,8 @@ impl Panel {
             self.restore_group.remove(&w);
         }
         self.restore_btns.borrow_mut().clear();
-        let gen = self.generation.get() + 1;
-        self.generation.set(gen);
+        let r#gen = self.generation.get() + 1;
+        self.generation.set(r#gen);
         let Some(d) = self.selected_destination() else {
             return;
         };
@@ -1440,7 +1440,7 @@ impl Panel {
             .unwrap_or_else(|_| (Vec::new(), Err("stopped unexpectedly".into())));
             let Some(p) = weak.upgrade() else { return };
             // another place was picked (or the list rebuilt) meanwhile
-            if p.generation.get() != gen {
+            if p.generation.get() != r#gen {
                 return;
             }
             p.restore_group.remove(&loading);
