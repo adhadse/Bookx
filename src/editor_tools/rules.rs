@@ -265,16 +265,20 @@ mod tests {
                 .unwrap_err(),
             "Fill in “Is”"
         );
-        assert!(RuleKind::RemoveProperty
-            .build(&v(&["a b"]))
-            .unwrap_err()
-            .contains("not a property"));
+        assert!(
+            RuleKind::RemoveProperty
+                .build(&v(&["a b"]))
+                .unwrap_err()
+                .contains("not a property")
+        );
         assert!(RuleKind::ScaleFonts.build(&v(&["big"])).is_err());
         assert!(RuleKind::ScaleFonts.build(&v(&["0"])).is_err());
-        assert!(RuleKind::ReplaceColor
-            .build(&v(&["notacolour", "red"]))
-            .unwrap_err()
-            .contains("not a colour"));
+        assert!(
+            RuleKind::ReplaceColor
+                .build(&v(&["notacolour", "red"]))
+                .unwrap_err()
+                .contains("not a colour")
+        );
         assert!(RuleKind::ReplaceColor.build(&v(&["#f00", "#0a0"])).is_ok());
     }
 
@@ -299,8 +303,10 @@ mod tests {
         sorted.sort();
         sorted.dedup();
         assert_eq!(sorted.len(), shorts.len());
-        assert!(RuleKind::ALL
-            .iter()
-            .all(|k| k.label().len() > k.short_label().len()));
+        assert!(
+            RuleKind::ALL
+                .iter()
+                .all(|k| k.label().len() > k.short_label().len())
+        );
     }
 }

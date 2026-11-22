@@ -161,31 +161,36 @@ fn collection_name_errors() {
     let s = three_books();
     let a = s.create_collection("Mine").unwrap();
     let b = s.create_collection("Other").unwrap();
-    assert!(s
-        .create_collection("  ")
-        .unwrap_err()
-        .to_string()
-        .contains("empty"));
-    assert!(s
-        .create_collection("mine")
-        .unwrap_err()
-        .to_string()
-        .contains("already exists"));
-    assert!(s
-        .rename_collection(b, "MINE")
-        .unwrap_err()
-        .to_string()
-        .contains("already exists"));
-    assert!(s
-        .rename_collection(b, "")
-        .unwrap_err()
-        .to_string()
-        .contains("empty"));
-    assert!(s
-        .rename_collection(999, "Zed")
-        .unwrap_err()
-        .to_string()
-        .contains("no such collection"));
+    assert!(
+        s.create_collection("  ")
+            .unwrap_err()
+            .to_string()
+            .contains("empty")
+    );
+    assert!(
+        s.create_collection("mine")
+            .unwrap_err()
+            .to_string()
+            .contains("already exists")
+    );
+    assert!(
+        s.rename_collection(b, "MINE")
+            .unwrap_err()
+            .to_string()
+            .contains("already exists")
+    );
+    assert!(
+        s.rename_collection(b, "")
+            .unwrap_err()
+            .to_string()
+            .contains("empty")
+    );
+    assert!(
+        s.rename_collection(999, "Zed")
+            .unwrap_err()
+            .to_string()
+            .contains("no such collection")
+    );
     // renaming to a different case of itself is fine
     s.rename_collection(a, "MINE").unwrap();
     assert_eq!(s.list_collections().unwrap()[0].name, "MINE");
@@ -224,16 +229,18 @@ fn books_in_many_collections() {
 fn collection_membership_errors() {
     let s = three_books();
     let c = s.create_collection("C").unwrap();
-    assert!(s
-        .add_to_collection(c, 99)
-        .unwrap_err()
-        .to_string()
-        .contains("no such book 99"));
-    assert!(s
-        .add_to_collection(77, 1)
-        .unwrap_err()
-        .to_string()
-        .contains("no such collection 77"));
+    assert!(
+        s.add_to_collection(c, 99)
+            .unwrap_err()
+            .to_string()
+            .contains("no such book 99")
+    );
+    assert!(
+        s.add_to_collection(77, 1)
+            .unwrap_err()
+            .to_string()
+            .contains("no such collection 77")
+    );
 }
 
 #[test]
@@ -546,33 +553,38 @@ fn registry_validation_errors() {
     let t = Tmp::new();
     let mut r = LibraryRegistry::open(&t.join("l.json")).unwrap();
     r.add("A", t.path()).unwrap();
-    assert!(r
-        .add("A", t.path())
-        .unwrap_err()
-        .to_string()
-        .contains("already exists"));
-    assert!(r
-        .add("  ", t.path())
-        .unwrap_err()
-        .to_string()
-        .contains("empty"));
-    assert!(r
-        .rename("Zed", "Y")
-        .unwrap_err()
-        .to_string()
-        .contains("no library named"));
+    assert!(
+        r.add("A", t.path())
+            .unwrap_err()
+            .to_string()
+            .contains("already exists")
+    );
+    assert!(
+        r.add("  ", t.path())
+            .unwrap_err()
+            .to_string()
+            .contains("empty")
+    );
+    assert!(
+        r.rename("Zed", "Y")
+            .unwrap_err()
+            .to_string()
+            .contains("no library named")
+    );
     assert!(r.rename("A", "").unwrap_err().to_string().contains("empty"));
     r.add("B", t.path()).unwrap();
-    assert!(r
-        .rename("A", "B")
-        .unwrap_err()
-        .to_string()
-        .contains("already exists"));
-    assert!(r
-        .set_current("Zed")
-        .unwrap_err()
-        .to_string()
-        .contains("no library named"));
+    assert!(
+        r.rename("A", "B")
+            .unwrap_err()
+            .to_string()
+            .contains("already exists")
+    );
+    assert!(
+        r.set_current("Zed")
+            .unwrap_err()
+            .to_string()
+            .contains("no library named")
+    );
     assert_eq!(r.list().len(), 2);
 }
 

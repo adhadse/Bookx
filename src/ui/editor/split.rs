@@ -421,9 +421,11 @@ mod tests {
             tag: None,
             class: "zzz".into(),
         };
-        assert!(split_preview(SRC, &none, &rules)
-            .unwrap_err()
-            .contains("Nothing to split"));
+        assert!(
+            split_preview(SRC, &none, &rules)
+                .unwrap_err()
+                .contains("Nothing to split")
+        );
         let empty = SplitSpec::ByClass {
             tag: None,
             class: String::new(),

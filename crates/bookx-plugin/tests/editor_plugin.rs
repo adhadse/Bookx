@@ -12,7 +12,7 @@ use bookx_plugin::{
     SharedSession,
 };
 use common::*;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 fn manifest_text(perms: &str, extra: &str) -> String {
     format!(
@@ -236,9 +236,10 @@ fn editor_call_needs_the_editor_kind() {
     assert!(e.contains("only for editor-action"), "{e}");
     // and without a session (e.g. a plain call) the import answers -6, never touches a book
     let p = load(&manifest_text("\"editor.read\"", ""), &wasm).unwrap();
-    assert!(p
-        .call_json("run_action", &json!({"action": "run"}))
-        .is_err());
+    assert!(
+        p.call_json("run_action", &json!({"action": "run"}))
+            .is_err()
+    );
 }
 
 #[test]

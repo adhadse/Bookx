@@ -16,8 +16,8 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use anyhow::{bail, Context, Result};
-use rusqlite::{params, Connection, OpenFlags};
+use anyhow::{Context, Result, bail};
+use rusqlite::{Connection, OpenFlags, params};
 
 use crate::reading::{DeviceNote, DeviceState, Status};
 
@@ -147,9 +147,17 @@ fn read_states_in(c: &Connection) -> Result<Vec<(String, DeviceState)>> {
     let has = |n: &str| cols.iter().any(|c| c == n);
     let sql = format!(
         "SELECT ContentID, Title, {}, {}, {}, {} FROM content WHERE ContentType = '6' OR ContentType = 6",
-        if has("___PercentRead") { "___PercentRead" } else { "0" },
+        if has("___PercentRead") {
+            "___PercentRead"
+        } else {
+            "0"
+        },
         if has("ReadStatus") { "ReadStatus" } else { "0" },
-        if has("DateLastRead") { "DateLastRead" } else { "NULL" },
+        if has("DateLastRead") {
+            "DateLastRead"
+        } else {
+            "NULL"
+        },
         if has("MimeType") { "MimeType" } else { "NULL" },
     );
     let mut st = c.prepare(&sql)?;
@@ -1198,9 +1206,11 @@ mod tests {
         let other =
             parse_version("N1,3.0,4.1.2,3.0,3.0,00000000-0000-0000-0000-000000000999").unwrap();
         assert_eq!(other.model, None);
-        assert!(other
-            .describe()
-            .contains("model id 00000000-0000-0000-0000-000000000999"));
+        assert!(
+            other
+                .describe()
+                .contains("model id 00000000-0000-0000-0000-000000000999")
+        );
         assert!(parse_version("").is_none());
         assert!(parse_version("a,b,c").is_none());
         assert!(parse_version("N1,3.0,notaversion,3.0,3.0,id").is_none());

@@ -16,7 +16,7 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gdk, glib};
 
-use crate::cover_color::{hex, BannerColors};
+use crate::cover_color::{BannerColors, hex};
 use crate::i18n::{tr, trf};
 use crate::library_nav::{self as nav, BannerKind, Variant};
 

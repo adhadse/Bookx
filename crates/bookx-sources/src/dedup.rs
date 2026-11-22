@@ -854,8 +854,10 @@ mod tests {
         assert!(
             TitlePre::new("Zzzz Qqqq").cannot_reach(&TitlePre::new("Hobbit"), DEFAULT_THRESHOLD)
         );
-        assert!(!TitlePre::new("The Hobbit")
-            .cannot_reach(&TitlePre::new("Hobbit, The"), DEFAULT_THRESHOLD));
+        assert!(
+            !TitlePre::new("The Hobbit")
+                .cannot_reach(&TitlePre::new("Hobbit, The"), DEFAULT_THRESHOLD)
+        );
     }
 
     #[test]

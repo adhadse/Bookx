@@ -1,6 +1,6 @@
 //! Text-level editing helpers for the package document that keep unrelated markup byte-identical.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::book::OpenBook;
 use bookx_core::opf::{NS_DC, NS_OPF};
 use bookx_core::util::{parse_xml, xml_escape};
@@ -234,7 +234,10 @@ mod tests {
             "A",
         )
         .unwrap();
-        assert_eq!(t2, "<package><metadata><dc:title xmlns:dc=\"http://purl.org/dc/elements/1.1/\" id=\"x\">A</dc:title></metadata></package>");
+        assert_eq!(
+            t2,
+            "<package><metadata><dc:title xmlns:dc=\"http://purl.org/dc/elements/1.1/\" id=\"x\">A</dc:title></metadata></package>"
+        );
         assert!(append_to_section(OPF, "nonexistent", "<x/>").is_err());
         let g =
             append_to_section(OPF, "guide", "<reference type=\"toc\" href=\"t.xhtml\"/>").unwrap();
@@ -280,18 +283,21 @@ mod tests {
             !edit_opf(&mut b, |t| Ok(t.to_string())).unwrap(),
             "unchanged text reports false"
         );
-        assert!(edit_opf(&mut b, |t| Ok(set_element_attr(
-            t,
-            "spine",
-            "page-progression-direction",
-            "rtl"
-        )))
-        .unwrap());
-        assert!(b
-            .archive
-            .get_string(&b.package.opf_path)
+        assert!(
+            edit_opf(&mut b, |t| Ok(set_element_attr(
+                t,
+                "spine",
+                "page-progression-direction",
+                "rtl"
+            )))
             .unwrap()
-            .contains("page-progression-direction=\"rtl\""));
+        );
+        assert!(
+            b.archive
+                .get_string(&b.package.opf_path)
+                .unwrap()
+                .contains("page-progression-direction=\"rtl\"")
+        );
         let now = b.archive.get_string(&b.package.opf_path).unwrap();
         let e = edit_opf(&mut b, |t| Ok(t.replace("</package>", ""))).unwrap_err();
         assert!(e.to_string().contains("not well-formed"), "{e}");

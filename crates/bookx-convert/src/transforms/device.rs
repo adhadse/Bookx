@@ -321,9 +321,10 @@ mod tests {
         let data = r#gen(400, 200, ImageFormat::Png);
         assert!(p.fit_image(&data, "png").is_none());
         p.max_width = 0;
-        assert!(p
-            .fit_image(&r#gen(400, 200, ImageFormat::Jpeg), "jpg")
-            .is_none());
+        assert!(
+            p.fit_image(&r#gen(400, 200, ImageFormat::Jpeg), "jpg")
+                .is_none()
+        );
     }
 
     #[test]
@@ -387,14 +388,17 @@ mod tests {
             dims(b.archive.get("OEBPS/images/pic.png").unwrap()),
             (100, 48)
         );
-        assert!(b
-            .archive
-            .get_string("OEBPS/bookx-device.css")
-            .unwrap()
-            .contains("Georgia"));
+        assert!(
+            b.archive
+                .get_string("OEBPS/bookx-device.css")
+                .unwrap()
+                .contains("Georgia")
+        );
         assert!(b.package.item_by_path("OEBPS/bookx-device.css").is_some());
-        assert!(chapter(&b, 0)
-            .contains("<link rel=\"stylesheet\" type=\"text/css\" href=\"bookx-device.css\"/>"));
+        assert!(
+            chapter(&b, 0)
+                .contains("<link rel=\"stylesheet\" type=\"text/css\" href=\"bookx-device.css\"/>")
+        );
         assert!(chapter(&b, 1).contains("bookx-device.css"));
     }
 

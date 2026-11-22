@@ -13,7 +13,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use bookx_comic::cache::{preload_order, PageCache};
+use bookx_comic::cache::{PageCache, preload_order};
 use bookx_comic::decode::Opts as DecodeOpts;
 use bookx_comic::layout::{self, Placed, SpreadOpts, Turn};
 use bookx_comic::meta;
@@ -26,7 +26,7 @@ use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, cairo, gdk, gio, glib};
 use relm4::prelude::*;
 
-use super::{window_of, SharedRef};
+use super::{SharedRef, window_of};
 use crate::comic::ComicBook;
 use crate::core::library::ReadPos;
 
@@ -1311,7 +1311,9 @@ impl ReaderComic {
             cx,
             cy,
             shows,
-            self.stop.map(|s| (s + 1).to_string()).unwrap_or_else(|| "none".into()),
+            self.stop
+                .map(|s| (s + 1).to_string())
+                .unwrap_or_else(|| "none".into()),
             // `stops` borrows the view again, so count them by hand
             v.placed
                 .iter()

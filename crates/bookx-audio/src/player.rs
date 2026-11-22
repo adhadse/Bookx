@@ -11,16 +11,16 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::mpsc::{channel, Receiver, RecvTimeoutError, Sender};
+use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 
 use crate::decode::Decoder;
 use crate::model::AudioBook;
-use crate::stretch::{clamp_speed, Stretcher};
+use crate::stretch::{Stretcher, clamp_speed};
 
 // ---- sinks ---------------------------------------------------------------------------------
 
@@ -335,11 +335,7 @@ impl Player {
             .iter()
             .map(|p| {
                 let q = PathBuf::from(&p.path);
-                if q.is_absolute() {
-                    q
-                } else {
-                    root.join(q)
-                }
+                if q.is_absolute() { q } else { root.join(q) }
             })
             .collect();
         let mut w = Worker {

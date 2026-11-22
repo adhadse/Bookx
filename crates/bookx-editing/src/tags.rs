@@ -5,7 +5,7 @@
 
 use std::ops::Range;
 
-use crate::markup::{scan, Event};
+use crate::markup::{Event, scan};
 
 /// Elements that never have a closing tag in HTML.
 const VOID: [&str; 14] = [
@@ -539,10 +539,12 @@ mod tests {
         let e = change_block_to_heading(&out, out.find("Hello").unwrap(), 0).unwrap();
         assert_eq!(e.apply(&out), DOC);
         // inside <b> the enclosing block is the paragraph, not the bold text
-        assert!(change_block_to_heading(DOC, at("big"), 3)
-            .unwrap()
-            .apply(DOC)
-            .contains("<h3>Hello"));
+        assert!(
+            change_block_to_heading(DOC, at("big"), 3)
+                .unwrap()
+                .apply(DOC)
+                .contains("<h3>Hello")
+        );
         assert!(change_block_to_heading(DOC, 0, 1).is_none() || DOC.starts_with("<body"));
         assert!(change_block_to_heading(DOC, at("two"), 7).is_none());
     }

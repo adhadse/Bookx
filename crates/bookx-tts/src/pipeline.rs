@@ -14,13 +14,13 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
-use crate::cache::{cache_key, SentenceCache};
+use crate::cache::{SentenceCache, cache_key};
 use crate::session::{Engine, Event, EventKind, Voice};
 use crate::sink::AudioSink;
 use crate::synth::{
-    engine_max_speed, resample, split_speed, Cancel, Pcm, SynthRequest, Synthesizer,
+    Cancel, Pcm, SynthRequest, Synthesizer, engine_max_speed, resample, split_speed,
 };
 
 #[derive(Debug, Clone)]
@@ -1125,9 +1125,10 @@ mod tests {
         s.load(&mut e, "Hello.");
         s.play_from(&mut e, 0);
         let got = run(&mut s, &mut e, 5);
-        assert!(got
-            .iter()
-            .any(|u| matches!(u, Update::Error(m) if m.contains("no audio player"))));
+        assert!(
+            got.iter()
+                .any(|u| matches!(u, Update::Error(m) if m.contains("no audio player")))
+        );
     }
 
     #[test]

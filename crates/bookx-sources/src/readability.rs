@@ -9,9 +9,9 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_core::archive::Archive;
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::opf::{Identifier, Metadata, Package};
 use ego_tree::{NodeId, NodeRef};
 use regex::Regex;
@@ -1516,9 +1516,10 @@ mod tests {
             "{}",
             a.content
         );
-        assert!(a
-            .content
-            .contains("<a href=\"https://example.org/abs?x=1&amp;y=2\">absolute one</a>"));
+        assert!(
+            a.content
+                .contains("<a href=\"https://example.org/abs?x=1&amp;y=2\">absolute one</a>")
+        );
         assert!(
             a.content.contains("Second note"),
             "fragment links are unwrapped"
@@ -1652,7 +1653,9 @@ mod tests {
     fn link_heavy_blocks_lose_against_prose() {
         let prose = "This paragraph is real prose, written for people, with commas, clauses, and a decent length to score.";
         let links: String = (0..8).map(|i| format!("<p><a href=\"/l{i}\">A link list entry that is long enough to pass the length filter {i}</a></p>")).collect();
-        let html = format!("<html><body><div id=\"list\">{links}</div><div id=\"prose\"><p>{prose}</p><p>{prose}</p></div></body></html>");
+        let html = format!(
+            "<html><body><div id=\"list\">{links}</div><div id=\"prose\"><p>{prose}</p><p>{prose}</p></div></body></html>"
+        );
         let a = extract(&html, "https://x.org/").unwrap();
         assert!(
             a.content.contains("real prose") && !a.content.contains("link list entry"),
@@ -1687,12 +1690,14 @@ mod tests {
             min_text_len: 1000,
             ..Default::default()
         };
-        assert!(extract_with(
-            "<html><body><p>short text here but fine</p></body></html>",
-            "https://x.org/",
-            &opts
-        )
-        .is_err());
+        assert!(
+            extract_with(
+                "<html><body><p>short text here but fine</p></body></html>",
+                "https://x.org/",
+                &opts
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -1752,7 +1757,11 @@ mod tests {
     #[test]
     fn deeply_nested_page_does_not_overflow() {
         let depth = 400;
-        let html = format!("<html><body>{}<p>Deep text, with commas, that is long enough to matter for scoring purposes.</p>{}</body></html>", "<div>".repeat(depth), "</div>".repeat(depth));
+        let html = format!(
+            "<html><body>{}<p>Deep text, with commas, that is long enough to matter for scoring purposes.</p>{}</body></html>",
+            "<div>".repeat(depth),
+            "</div>".repeat(depth)
+        );
         let a = extract(&html, "https://x.org/").unwrap();
         assert!(a.content.contains("Deep text"));
     }
@@ -1797,18 +1806,22 @@ mod tests {
             keep: vec!["div[".into()],
             ..Default::default()
         };
-        assert!(extract_with("<p>x</p>", "https://x.org/", &keep)
-            .unwrap_err()
-            .to_string()
-            .contains("invalid keep selector"));
+        assert!(
+            extract_with("<p>x</p>", "https://x.org/", &keep)
+                .unwrap_err()
+                .to_string()
+                .contains("invalid keep selector")
+        );
         let rm = ExtractOptions {
             remove: vec!["[[".into()],
             ..Default::default()
         };
-        assert!(extract_with("<p>x</p>", "https://x.org/", &rm)
-            .unwrap_err()
-            .to_string()
-            .contains("invalid remove selector"));
+        assert!(
+            extract_with("<p>x</p>", "https://x.org/", &rm)
+                .unwrap_err()
+                .to_string()
+                .contains("invalid remove selector")
+        );
     }
 
     #[test]
@@ -1816,7 +1829,9 @@ mod tests {
         let imgs: String = (0..10)
             .map(|i| format!("<img src=\"/i{i}.jpg\" alt=\"\">"))
             .collect();
-        let html = format!("<html><body><article><p>Some text, long enough to be here for the article test case.</p>{imgs}</article></body></html>");
+        let html = format!(
+            "<html><body><article><p>Some text, long enough to be here for the article test case.</p>{imgs}</article></body></html>"
+        );
         let opts = ExtractOptions {
             max_images: 3,
             ..Default::default()
@@ -1845,7 +1860,10 @@ mod tests {
 
     #[test]
     fn clean_fragment_basics() {
-        let f = clean_fragment("<p>Hello <b>world</b></p><script>x()</script><img src=\"/a.png\" alt=\"A\"><div>loose</div>", "https://x.org/post/");
+        let f = clean_fragment(
+            "<p>Hello <b>world</b></p><script>x()</script><img src=\"/a.png\" alt=\"A\"><div>loose</div>",
+            "https://x.org/post/",
+        );
         assert!(f.content.contains("<p>Hello <strong>world</strong></p>"));
         assert!(f.content.contains("<p>loose</p>"));
         assert!(!f.content.contains("script"));
@@ -1983,10 +2001,11 @@ mod tests {
         assert!(ch.contains("By Ada Lovelace"));
         assert!(ch.contains("src=\"images/img1.png\""), "{ch}");
         assert!(!ch.contains("cdn.example.com"), "unfetched image removed");
-        assert!(book
-            .file_list()
-            .iter()
-            .any(|f| f.ends_with("images/img1.png")));
+        assert!(
+            book.file_list()
+                .iter()
+                .any(|f| f.ends_with("images/img1.png"))
+        );
         assert_eq!(book.toc().len(), 1);
     }
 
@@ -2002,7 +2021,7 @@ mod tests {
         let method = u16::from_le_bytes([bytes[8], bytes[9]]);
         assert_eq!(method, 0, "mimetype must be stored uncompressed");
         ZipPeek(vec![
-            String::from_utf8_lossy(&bytes[30..30 + n]).into_owned()
+            String::from_utf8_lossy(&bytes[30..30 + n]).into_owned(),
         ])
     }
 

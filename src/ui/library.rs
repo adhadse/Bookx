@@ -15,9 +15,9 @@ use relm4::typed_view::grid::{RelmGridItem, TypedGridView};
 
 use super::covers;
 use super::metadata::{self, CoverChange};
-use super::{window_of, SharedRef};
+use super::{SharedRef, window_of};
 use crate::config::ViewMode;
-use crate::core::convert::{export_book, ExportFormat};
+use crate::core::convert::{ExportFormat, export_book};
 use crate::core::library::{AddOutcome, Book, Category, Prepared, SortKey};
 use crate::core::util::*;
 use crate::grid_columns;
@@ -1238,7 +1238,7 @@ impl LibraryView {
         schedule: &str,
         keep: Option<usize>,
     ) -> Result<String, String> {
-        use crate::news::{recipe_from_form, ScheduleChoice, Subscription};
+        use crate::news::{ScheduleChoice, Subscription, recipe_from_form};
         let off = *chrono::Local::now().offset();
         let title = if title.trim().is_empty() {
             crate::news::feed_title(url, &*crate::web_import::fetcher())
@@ -1732,7 +1732,9 @@ impl LibraryView {
                     (
                         "starred-symbolic",
                         tr("No favourites yet"),
-                        tr("Right-click a book and choose to add it to your favourites to find it here."),
+                        tr(
+                            "Right-click a book and choose to add it to your favourites to find it here.",
+                        ),
                     )
                 };
                 p.set_icon_name(Some(icon));
@@ -2120,7 +2122,9 @@ impl LibraryView {
         };
         let d = adw::AlertDialog::new(
             Some(&tr("Add from the Web")),
-            Some(&tr("Paste the address of an article to read later, or of a news feed (RSS, Atom, JSON Feed) to make a book of its latest articles. Type wikipedia:Title to make a book of a Wikipedia article.")),
+            Some(&tr(
+                "Paste the address of an article to read later, or of a news feed (RSS, Atom, JSON Feed) to make a book of its latest articles. Type wikipedia:Title to make a book of a Wikipedia article.",
+            )),
         );
         let entry = gtk::Entry::new();
         entry.set_placeholder_text(Some(&tr("https://example.com/article")));
@@ -4017,35 +4021,40 @@ impl LibraryView {
                     .max(1);
                 std::thread::scope(|sc| {
                     for _ in 0..workers {
-                        sc.spawn(|| loop {
-                            let i = next.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                            let Some((path, title)) = jobs.get(i) else {
-                                break;
-                            };
-                            if token.is_cancelled() {
-                                let _ = prog_tx.send("Cancelled".into());
-                                break;
-                            }
-                            let _permit = crate::convert_prefs::limiter().acquire();
-                            let _ = prog_tx.send(trf("Converting {}", &[&title]));
-                            let res = crate::export::convert_epub_file(path, t).and_then(|bytes| {
-                                let dest =
-                                    (dest_for.lock().unwrap_or_else(|e| e.into_inner()))(title);
-                                // with a report next to the result: what the conversion found
-                                crate::preflight::write_converted(
-                                    &dest, title, t, path, &bytes, report,
-                                )?;
-                                Ok(dest)
-                            });
-                            let done = {
-                                let mut g = state.lock().unwrap_or_else(|e| e.into_inner());
-                                match res {
-                                    Ok(_) => g.0 += 1,
-                                    Err(e) => g.1.push(format!("{title}: {e:#}")),
+                        sc.spawn(|| {
+                            loop {
+                                let i = next.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                                let Some((path, title)) = jobs.get(i) else {
+                                    break;
+                                };
+                                if token.is_cancelled() {
+                                    let _ = prog_tx.send("Cancelled".into());
+                                    break;
                                 }
-                                g.0 + g.1.len()
-                            };
-                            let _ = prog_tx.send(format!("\u{1}{done}"));
+                                let _permit = crate::convert_prefs::limiter().acquire();
+                                let _ = prog_tx.send(trf("Converting {}", &[&title]));
+                                let res =
+                                    crate::export::convert_epub_file(path, t).and_then(|bytes| {
+                                        let dest =
+                                            (dest_for.lock().unwrap_or_else(|e| e.into_inner()))(
+                                                title,
+                                            );
+                                        // with a report next to the result: what the conversion found
+                                        crate::preflight::write_converted(
+                                            &dest, title, t, path, &bytes, report,
+                                        )?;
+                                        Ok(dest)
+                                    });
+                                let done = {
+                                    let mut g = state.lock().unwrap_or_else(|e| e.into_inner());
+                                    match res {
+                                        Ok(_) => g.0 += 1,
+                                        Err(e) => g.1.push(format!("{title}: {e:#}")),
+                                    }
+                                    g.0 + g.1.len()
+                                };
+                                let _ = prog_tx.send(format!("\u{1}{done}"));
+                            }
                         });
                     }
                 });
@@ -4432,8 +4441,8 @@ impl LibraryView {
     }
 }
 
-use crate::i18n::ntr;
 use crate::i18n::N_;
+use crate::i18n::ntr;
 
 /// Names of `Category::label` (the core crate cannot translate): listed here so that they are extracted.
 const _CATEGORY_NAMES: [&str; 7] = [
@@ -6462,14 +6471,16 @@ impl SimpleComponent for LibraryView {
                     }
                 });
                 let tx = sender.input_sender().clone();
-                glib::timeout_add_local(std::time::Duration::from_millis(40), move || loop {
-                    match res_rx.try_recv() {
-                        Ok(r) => tx.emit(Input::Prepared(r)),
-                        Err(std::sync::mpsc::TryRecvError::Empty) => {
-                            return glib::ControlFlow::Continue
-                        }
-                        Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                            return glib::ControlFlow::Break
+                glib::timeout_add_local(std::time::Duration::from_millis(40), move || {
+                    loop {
+                        match res_rx.try_recv() {
+                            Ok(r) => tx.emit(Input::Prepared(r)),
+                            Err(std::sync::mpsc::TryRecvError::Empty) => {
+                                return glib::ControlFlow::Continue;
+                            }
+                            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                                return glib::ControlFlow::Break;
+                            }
                         }
                     }
                 });
@@ -7026,7 +7037,10 @@ impl SimpleComponent for LibraryView {
                     "viewopts" => eprintln!(
                         "viewopts: icon={} grid_only_visible={} order={:?}",
                         self.w.view_btn.icon_name().unwrap_or_default(),
-                        self.w.grid_only.iter().any(|w| w.property::<bool>("visible")),
+                        self.w
+                            .grid_only
+                            .iter()
+                            .any(|w| w.property::<bool>("visible")),
                         order_label(self.shared.cfg.borrow().sort_ascending)
                     ),
                     "searchph" => eprintln!(
@@ -7454,7 +7468,8 @@ impl SimpleComponent for LibraryView {
                         };
                         let native = "Paragraph 20 of chapter 3 talks about functionality";
                         let mut hs = Vec::new();
-                        if let Some(r) = bookx_core::anchor::resolve(&chapters, native, None, None) {
+                        if let Some(r) = bookx_core::anchor::resolve(&chapters, native, None, None)
+                        {
                             hs.push(mk(
                                 "real-native",
                                 r.spine,
@@ -7910,7 +7925,11 @@ impl SimpleComponent for LibraryView {
                         let l = self.sidebar_layout();
                         eprintln!(
                             "sidebar_layout: shown={} hidden={} health={}",
-                            l.visible().iter().map(|i| i.key()).collect::<Vec<_>>().join(","),
+                            l.visible()
+                                .iter()
+                                .map(|i| i.key())
+                                .collect::<Vec<_>>()
+                                .join(","),
                             l.hidden.join(","),
                             l.show_health()
                         );

@@ -13,12 +13,12 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use bookx_core::book::OpenBook;
 use bookx_core::util::{parent_dir, resolve_href};
 use bookx_editing::media_overlay::{fragment_texts, parse_smil};
-use bookx_tts::synth::{Pcm, SynthRequest, Synthesizer};
 use bookx_tts::Voice;
+use bookx_tts::synth::{Pcm, SynthRequest, Synthesizer};
 
 /// Longest clip played (ms); a longer one in a hostile book is cut.
 pub const MAX_CLIP_MS: u64 = 10 * 60 * 1000;
@@ -405,7 +405,7 @@ pub fn open_engine(book: &OpenBook) -> Option<bookx_tts::factory::Opened> {
 mod tests {
     use super::*;
     use bookx_editing::media_overlay_narrate::{
-        narrate_book, remove_narration, Audio, Options, SentenceSynth,
+        Audio, Options, SentenceSynth, narrate_book, remove_narration,
     };
     use bookx_tts::synth::Cancel;
 

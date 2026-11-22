@@ -16,8 +16,8 @@ use bookx_core::book::OpenBook;
 use bookx_core::contracts::FormatWriter;
 
 use crate::charset::cp1252_byte;
-use crate::images::{image_size, kind_of, to_png, Kind};
-use crate::model::{split_lines, Align, Block, Fmt, Inline, Link, Model};
+use crate::images::{Kind, image_size, kind_of, to_png};
+use crate::model::{Align, Block, Fmt, Inline, Link, Model, split_lines};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct RtfWriter;

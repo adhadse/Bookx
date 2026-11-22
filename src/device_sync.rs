@@ -45,14 +45,20 @@ impl Default for SyncPrefs {
 
 /// Title and subtitle of the "add notes" switch (Device window and Preferences).
 pub const NOTES_TITLE: &str = crate::i18n::N_("Add notes to the copy sent to the device");
-pub const NOTES_SUBTITLE: &str = crate::i18n::N_("The copy on the device gets an extra “My notes” section at the end (readable in any e-reader app) and a KOReader notes file, so KOReader lists them too. Your library copy is not changed.");
+pub const NOTES_SUBTITLE: &str = crate::i18n::N_(
+    "The copy on the device gets an extra “My notes” section at the end (readable in any e-reader app) and a KOReader notes file, so KOReader lists them too. Your library copy is not changed.",
+);
 
 /// Title and subtitle of the persistent automatic sync switch in Devices → Settings.
 pub const AUTO_SYNC_TITLE: &str = crate::i18n::N_("Always sync when connected");
-pub const AUTO_SYNC_SUBTITLE: &str = crate::i18n::N_("For e-readers plugged in with a cable. When this is on, Bookx syncs the reading progress, highlights and notes on every connection without asking. Progress only moves forward, notes are united and nothing is deleted.");
+pub const AUTO_SYNC_SUBTITLE: &str = crate::i18n::N_(
+    "For e-readers plugged in with a cable. When this is on, Bookx syncs the reading progress, highlights and notes on every connection without asking. Progress only moves forward, notes are united and nothing is deleted.",
+);
 
 /// The longer explanation behind the "?" button of the automatic sync switch.
-pub const AUTO_SYNC_HELP: &str = crate::i18n::N_("This is about a device plugged in with a USB cable (or mounted in Files).\n\nWhen you plug in a Kobo, Kindle or similar reader, Bookx reads the reading progress and the highlights and notes the device keeps: from the Kobo’s own database, or from KOReader’s “.sdr” files if KOReader is installed on it. It merges them with your library. Progress only moves forward, highlights and notes are united, and nothing is deleted on either side.\n\nA Kobo needs no KOReader for this; its own reading state is read. A Kindle’s own state is not readable, only KOReader’s files. If the device has no readable state, nothing happens. Reading progress is never written to the device; notes go to it only as a new KOReader notes file where there is none.\n\nOff by default: the connection banner offers a one-time Sync. Answering it never changes this setting. Turn the switch on to sync on every connection without asking.");
+pub const AUTO_SYNC_HELP: &str = crate::i18n::N_(
+    "This is about a device plugged in with a USB cable (or mounted in Files).\n\nWhen you plug in a Kobo, Kindle or similar reader, Bookx reads the reading progress and the highlights and notes the device keeps: from the Kobo’s own database, or from KOReader’s “.sdr” files if KOReader is installed on it. It merges them with your library. Progress only moves forward, highlights and notes are united, and nothing is deleted on either side.\n\nA Kobo needs no KOReader for this; its own reading state is read. A Kindle’s own state is not readable, only KOReader’s files. If the device has no readable state, nothing happens. Reading progress is never written to the device; notes go to it only as a new KOReader notes file where there is none.\n\nOff by default: the connection banner offers a one-time Sync. Answering it never changes this setting. Turn the switch on to sync on every connection without asking.",
+);
 
 /// The connection banner: one title, one action and the built-in dismiss button.
 pub const BANNER_TITLE: &str = crate::i18n::N_("E-reader connected");
@@ -670,11 +676,7 @@ fn plural(n: usize, one: &str, many: &str) -> String {
 }
 
 fn go(n: usize) -> &'static str {
-    if n == 1 {
-        "goes"
-    } else {
-        "go"
-    }
+    if n == 1 { "goes" } else { "go" }
 }
 
 fn clip(s: &str, n: usize) -> String {
@@ -939,7 +941,7 @@ pub fn apply_bookmarks(
     store: &mut crate::bookmark_sync::Store,
     now: DateTime<Utc>,
 ) -> (usize, usize) {
-    use crate::bookmark_sync::{import, Outcome};
+    use crate::bookmark_sync::{Outcome, import};
     let (mut added, mut linked) = (0, 0);
     for i in &plan.bookmarks_in {
         match import(
@@ -1161,11 +1163,7 @@ fn note_of(n: &bookx_serve::reading::DeviceNote) -> DeviceNote {
 
 /// Where a device bookmark came from: a dog-ear names its chapter file, KOReader's does not.
 pub fn bookmark_source(m: &crate::bookmark_sync::DeviceMark) -> &'static str {
-    if m.href.is_some() {
-        "Kobo"
-    } else {
-        "KOReader"
-    }
+    if m.href.is_some() { "Kobo" } else { "KOReader" }
 }
 
 fn mark_of(b: &bookx_serve::reading::DeviceBookmark) -> crate::bookmark_sync::DeviceMark {
@@ -1780,9 +1778,10 @@ mod tests {
         assert_eq!(b.out[0].highlights.len(), 2);
         let s = p.summary();
         assert_eq!((s.highlights_to_device, s.notes_to_device), (2, 1));
-        assert!(s
-            .text()
-            .contains("2 highlights go Bookx→device (1 with notes)"));
+        assert!(
+            s.text()
+                .contains("2 highlights go Bookx→device (1 with notes)")
+        );
     }
 
     #[test]

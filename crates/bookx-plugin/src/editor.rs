@@ -37,10 +37,10 @@
 
 use std::sync::{Arc, Mutex};
 
-use anyhow::{anyhow, Result};
-use base64::engine::general_purpose::STANDARD as B64;
+use anyhow::{Result, anyhow};
 use base64::Engine as _;
-use serde_json::{json, Value};
+use base64::engine::general_purpose::STANDARD as B64;
+use serde_json::{Value, json};
 
 use crate::manifest::Permission;
 

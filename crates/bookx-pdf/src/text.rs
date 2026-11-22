@@ -562,11 +562,7 @@ fn horizontal_cut(segs: &[Seg], idx: &[usize]) -> Option<Vec<Vec<usize>>> {
         cur.push(i);
     }
     parts.push(cur);
-    if parts.len() > 1 {
-        Some(parts)
-    } else {
-        None
-    }
+    if parts.len() > 1 { Some(parts) } else { None }
 }
 
 #[cfg(test)]

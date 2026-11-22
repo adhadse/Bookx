@@ -170,11 +170,7 @@ pub fn ease_out(t: f64) -> f64 {
 
 /// Length of a move in milliseconds; 0 when animations are off (reduced motion, e-ink).
 pub fn duration_ms(animate: bool) -> u32 {
-    if animate {
-        220
-    } else {
-        0
-    }
+    if animate { 220 } else { 0 }
 }
 
 /// Whether a camera shows the whole content (nothing is zoomed in beyond the page fit).

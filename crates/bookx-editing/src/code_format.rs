@@ -5,8 +5,8 @@
 use std::ops::Range;
 
 use crate::code_nav::attr_spans;
-use crate::markup::{remove_tag_attr, scan, Event};
-use crate::tags::{innermost_open, pairs, TagEdit};
+use crate::markup::{Event, remove_tag_attr, scan};
+use crate::tags::{TagEdit, innermost_open, pairs};
 
 const VOID: [&str; 14] = [
     "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source",

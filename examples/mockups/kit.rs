@@ -126,11 +126,17 @@ impl Svg {
         let st = stroke
             .map(|s| format!(" stroke=\"{s}\" stroke-width=\"1.5\""))
             .unwrap_or_default();
-        let _ = writeln!(self.body, "<rect x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\" rx=\"{r}\" fill=\"{fill}\"{st}/>");
+        let _ = writeln!(
+            self.body,
+            "<rect x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\" rx=\"{r}\" fill=\"{fill}\"{st}/>"
+        );
     }
 
     pub fn rect_a(&mut self, x: f64, y: f64, w: f64, h: f64, r: f64, fill: &str, a: f64) {
-        let _ = writeln!(self.body, "<rect x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\" rx=\"{r}\" fill=\"{fill}\" fill-opacity=\"{a}\"/>");
+        let _ = writeln!(
+            self.body,
+            "<rect x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\" rx=\"{r}\" fill=\"{fill}\" fill-opacity=\"{a}\"/>"
+        );
     }
 
     pub fn circle(&mut self, cx: f64, cy: f64, r: f64, fill: &str) {
@@ -141,15 +147,24 @@ impl Svg {
     }
 
     pub fn ring(&mut self, cx: f64, cy: f64, r: f64, stroke: &str, w: f64) {
-        let _ = writeln!(self.body, "<circle cx=\"{cx}\" cy=\"{cy}\" r=\"{r}\" fill=\"none\" stroke=\"{stroke}\" stroke-width=\"{w}\"/>");
+        let _ = writeln!(
+            self.body,
+            "<circle cx=\"{cx}\" cy=\"{cy}\" r=\"{r}\" fill=\"none\" stroke=\"{stroke}\" stroke-width=\"{w}\"/>"
+        );
     }
 
     pub fn line(&mut self, x1: f64, y1: f64, x2: f64, y2: f64, stroke: &str, w: f64) {
-        let _ = writeln!(self.body, "<line x1=\"{x1}\" y1=\"{y1}\" x2=\"{x2}\" y2=\"{y2}\" stroke=\"{stroke}\" stroke-width=\"{w}\" stroke-linecap=\"round\"/>");
+        let _ = writeln!(
+            self.body,
+            "<line x1=\"{x1}\" y1=\"{y1}\" x2=\"{x2}\" y2=\"{y2}\" stroke=\"{stroke}\" stroke-width=\"{w}\" stroke-linecap=\"round\"/>"
+        );
     }
 
     pub fn path(&mut self, d: &str, fill: &str, stroke: &str, w: f64) {
-        let _ = writeln!(self.body, "<path d=\"{d}\" fill=\"{fill}\" stroke=\"{stroke}\" stroke-width=\"{w}\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>");
+        let _ = writeln!(
+            self.body,
+            "<path d=\"{d}\" fill=\"{fill}\" stroke=\"{stroke}\" stroke-width=\"{w}\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>"
+        );
     }
 
     pub fn text(

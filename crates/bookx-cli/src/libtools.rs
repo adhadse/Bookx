@@ -8,11 +8,11 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use bookx_core::inbox::{self, InboxState};
 use bookx_core::layout::Layout;
-use bookx_core::library::{prepare_from_archive, Prepared};
-use bookx_store::guard::{open_library_guarded, GuardedLibrary};
+use bookx_core::library::{Prepared, prepare_from_archive};
+use bookx_store::guard::{GuardedLibrary, open_library_guarded};
 use bookx_store::health::{self, CheckOptions, Fix, Severity, SnapshotKind};
 use clap::Subcommand;
 
@@ -46,8 +46,7 @@ fn destination(spec: &str, r: &RemoteArgs) -> Result<Box<dyn bookx_backup::Targe
 }
 
 fn passphrase() -> Option<String> {
-    crate::var("BOOKX_BACKUP_PASSPHRASE")
-        .filter(|p| !p.is_empty())
+    crate::var("BOOKX_BACKUP_PASSPHRASE").filter(|p| !p.is_empty())
 }
 
 #[derive(Subcommand, Debug)]

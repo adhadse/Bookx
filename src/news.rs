@@ -8,15 +8,15 @@ use crate::i18n::tr;
 use crate::i18n::trf;
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_sources::feed::parse_feed;
 use bookx_sources::fetch::Fetcher;
-use bookx_sources::recipe::{build_news_epub, is_due, FeedSpec, Recipe, Schedule};
+use bookx_sources::recipe::{FeedSpec, Recipe, Schedule, build_news_epub, is_due};
 use chrono::{DateTime, FixedOffset, Utc, Weekday};
 use serde::{Deserialize, Serialize};
 
 use crate::core::book::OpenBook;
-use crate::core::library::{prepare_from_archive, Book, Prepared};
+use crate::core::library::{Book, Prepared, prepare_from_archive};
 use crate::core::opf::Identifier;
 
 /// Scheme of the identifier that ties an issue to its subscription.
@@ -125,11 +125,7 @@ pub fn slug(title: &str) -> String {
         }
     }
     let out = out.trim_end_matches('-').to_string();
-    if out.is_empty() {
-        "news".into()
-    } else {
-        out
-    }
+    if out.is_empty() { "news".into() } else { out }
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -1152,11 +1148,13 @@ mod tests {
             serde_json::json!({"subscriptions":[{"key":"s","recipe":recipe}]}).to_string(),
         )
         .unwrap();
-        assert!(NewsStore::load(Some(p))
-            .get("s")
-            .unwrap()
-            .disabled_feeds
-            .is_empty());
+        assert!(
+            NewsStore::load(Some(p))
+                .get("s")
+                .unwrap()
+                .disabled_feeds
+                .is_empty()
+        );
     }
 
     #[test]

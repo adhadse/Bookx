@@ -14,7 +14,7 @@ use relm4::{gtk, gtk::glib};
 
 use super::share::{self, follow};
 use super::stepper::Stepper;
-use super::{sync_prefs, SharedRef};
+use super::{SharedRef, sync_prefs};
 use crate::i18n::tr;
 use crate::sync_model::{self, Snapshot};
 

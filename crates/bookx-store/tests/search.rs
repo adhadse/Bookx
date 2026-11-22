@@ -4,7 +4,7 @@ use bookx_core::contracts::Store;
 use bookx_core::library::Book;
 use bookx_core::opf::Identifier;
 use bookx_core::query::Query;
-use bookx_store::{is_fast_query, SqliteStore};
+use bookx_store::{SqliteStore, is_fast_query};
 use common::*;
 
 fn store_with(books: &[Book]) -> SqliteStore {
@@ -141,11 +141,12 @@ fn text_for_unknown_book_is_an_error() {
     let s = SqliteStore::open_in_memory().unwrap();
     let err = s.index_book_text(5, "x").unwrap_err();
     assert!(err.to_string().contains("no such book 5"), "{err}");
-    assert!(s
-        .index_book_texts(&[(5, "x".into())])
-        .unwrap_err()
-        .to_string()
-        .contains("no such book"));
+    assert!(
+        s.index_book_texts(&[(5, "x".into())])
+            .unwrap_err()
+            .to_string()
+            .contains("no such book")
+    );
     assert_eq!(s.indexed_text_count(), 0);
 }
 

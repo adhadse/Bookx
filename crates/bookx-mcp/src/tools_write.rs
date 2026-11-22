@@ -9,12 +9,12 @@ use bookx_core::library::{AddOutcome, Bookmark, Highlight};
 use bookx_core::opf::Metadata;
 use bookx_store::ReadingStatus;
 use chrono::Utc;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
-use crate::app::{fail, App, Config, ToolError, ToolOutput};
+use crate::app::{App, Config, ToolError, ToolOutput, fail};
 use crate::server::Ctx;
 use crate::text::BookText;
-use crate::tools::{arg_id, arg_str, summary, write_def, ToolDef};
+use crate::tools::{ToolDef, arg_id, arg_str, summary, write_def};
 
 const COLORS: [&str; 5] = ["yellow", "purple", "blue", "red", "green"];
 
@@ -29,34 +29,88 @@ fn obj(props: Value, required: &[&str]) -> Value {
 pub fn defs(cfg: &Config) -> Vec<ToolDef> {
     let tag_list = json!({"type":"array","items":{"type":"string","minLength":1,"maxLength":100},"maxItems":50});
     let mut v = vec![
-        write_def("add_highlight", "Add a highlight",
+        write_def(
+            "add_highlight",
+            "Add a highlight",
             "Highlights a passage of a book: give the exact text (and the chapter to look in; otherwise the first match in the book is used) and optionally a note. Shows up in the reader and can be removed there.",
-            obj(json!({"book_id":book_id(),
+            obj(
+                json!({"book_id":book_id(),
                 "text":{"type":"string","minLength":2,"maxLength":2000},
                 "chapter":{"type":"integer","minimum":0},
                 "note":{"type":"string","maxLength":4000},
-                "color":{"type":"string","enum":COLORS}}), &["book_id","text"]), false),
-        write_def("add_note", "Add a note",
+                "color":{"type":"string","enum":COLORS}}),
+                &["book_id", "text"],
+            ),
+            false,
+        ),
+        write_def(
+            "add_note",
+            "Add a note",
             "Adds a note to a book: attached to a passage when `text` is given (a highlight with a note), otherwise a bookmark labelled with the note at the start of the chapter.",
-            obj(json!({"book_id":book_id(),"note":{"type":"string","minLength":1,"maxLength":4000},
-                "text":{"type":"string","maxLength":2000},"chapter":{"type":"integer","minimum":0}}), &["book_id","note"]), false),
-        write_def("set_rating", "Set the rating",
+            obj(
+                json!({"book_id":book_id(),"note":{"type":"string","minLength":1,"maxLength":4000},
+                "text":{"type":"string","maxLength":2000},"chapter":{"type":"integer","minimum":0}}),
+                &["book_id", "note"],
+            ),
+            false,
+        ),
+        write_def(
+            "set_rating",
+            "Set the rating",
             "Sets the star rating of a book (0 clears it, half stars allowed). Written into the book file; undoable in the app.",
-            obj(json!({"book_id":book_id(),"stars":{"type":"number","minimum":0,"maximum":5}}), &["book_id","stars"]), true),
-        write_def("add_tags", "Add tags", "Adds tags to a book (undoable in the app).",
-            obj(json!({"book_id":book_id(),"tags":tag_list.clone()}), &["book_id","tags"]), true),
-        write_def("remove_tags", "Remove tags", "Removes tags from a book (undoable in the app).",
-            obj(json!({"book_id":book_id(),"tags":tag_list}), &["book_id","tags"]), true),
-        write_def("mark_read", "Mark read or unread",
+            obj(
+                json!({"book_id":book_id(),"stars":{"type":"number","minimum":0,"maximum":5}}),
+                &["book_id", "stars"],
+            ),
+            true,
+        ),
+        write_def(
+            "add_tags",
+            "Add tags",
+            "Adds tags to a book (undoable in the app).",
+            obj(
+                json!({"book_id":book_id(),"tags":tag_list.clone()}),
+                &["book_id", "tags"],
+            ),
+            true,
+        ),
+        write_def(
+            "remove_tags",
+            "Remove tags",
+            "Removes tags from a book (undoable in the app).",
+            obj(
+                json!({"book_id":book_id(),"tags":tag_list}),
+                &["book_id", "tags"],
+            ),
+            true,
+        ),
+        write_def(
+            "mark_read",
+            "Mark read or unread",
             "Marks a book finished (progress 100%) or resets it to unread.",
-            obj(json!({"book_id":book_id(),"read":{"type":"boolean","description":"Default true."}}), &["book_id"]), true),
-        write_def("add_to_shelf", "Add to a shelf",
+            obj(
+                json!({"book_id":book_id(),"read":{"type":"boolean","description":"Default true."}}),
+                &["book_id"],
+            ),
+            true,
+        ),
+        write_def(
+            "add_to_shelf",
+            "Add to a shelf",
             "Puts a book on a shelf (collection). The shelf must exist unless create is true.",
-            obj(json!({"book_id":book_id(),"shelf":{"type":"string","minLength":1,"maxLength":100},
-                "create":{"type":"boolean"}}), &["book_id","shelf"]), true),
-        write_def("update_metadata", "Update metadata",
+            obj(
+                json!({"book_id":book_id(),"shelf":{"type":"string","minLength":1,"maxLength":100},
+                "create":{"type":"boolean"}}),
+                &["book_id", "shelf"],
+            ),
+            true,
+        ),
+        write_def(
+            "update_metadata",
+            "Update metadata",
             "Changes metadata fields of a book (only the fields you give). Written into the book file; undoable in the app.",
-            obj(json!({"book_id":book_id(),"fields":{"type":"object","additionalProperties":false,"properties":{
+            obj(
+                json!({"book_id":book_id(),"fields":{"type":"object","additionalProperties":false,"properties":{
                 "title":{"type":"string","minLength":1,"maxLength":500},
                 "authors":{"type":"array","items":{"type":"string","minLength":1,"maxLength":200},"maxItems":20},
                 "series":{"type":"string","maxLength":200},
@@ -65,21 +119,39 @@ pub fn defs(cfg: &Config) -> Vec<ToolDef> {
                 "language":{"type":"string","maxLength":20},
                 "description":{"type":"string","maxLength":20000},
                 "published":{"type":"string","maxLength":40},
-                "tags":{"type":"array","items":{"type":"string","minLength":1,"maxLength":100},"maxItems":100}}}}), &["book_id","fields"]), true),
+                "tags":{"type":"array","items":{"type":"string","minLength":1,"maxLength":100},"maxItems":100}}}}),
+                &["book_id", "fields"],
+            ),
+            true,
+        ),
     ];
     if cfg.allow_network && cfg.fetcher.is_some() {
-        let mut d = write_def("fetch_metadata", "Fetch metadata online",
+        let mut d = write_def(
+            "fetch_metadata",
+            "Fetch metadata online",
             "Looks the book up in Open Library, Google Books and Wikidata and shows what would change. With apply=true the missing fields are filled in (mode fill_empty) or all found fields replaced (mode replace); undoable in the app. Sends the title, author and ISBN to those services.",
-            obj(json!({"book_id":book_id(),"apply":{"type":"boolean"},
-                "mode":{"type":"string","enum":["fill_empty","replace"]}}), &["book_id"]), true);
+            obj(
+                json!({"book_id":book_id(),"apply":{"type":"boolean"},
+                "mode":{"type":"string","enum":["fill_empty","replace"]}}),
+                &["book_id"],
+            ),
+            true,
+        );
         d.open_world = true;
         v.push(d);
     }
     if !cfg.allow_dirs.is_empty() {
-        let mut d = write_def("add_book_from_path", "Add a book from a file",
+        let mut d = write_def(
+            "add_book_from_path",
+            "Add a book from a file",
             "Imports a book file into the library. The file must be inside one of the folders the user allowed for this server.",
-            obj(json!({"path":{"type":"string","minLength":1,"maxLength":2000},
-                "allow_duplicate":{"type":"boolean"}}), &["path"]), false);
+            obj(
+                json!({"path":{"type":"string","minLength":1,"maxLength":2000},
+                "allow_duplicate":{"type":"boolean"}}),
+                &["path"],
+            ),
+            false,
+        );
         d.description.push_str(&format!(
             " Allowed folders: {}.",
             cfg.allow_dirs
@@ -355,7 +427,7 @@ fn add_to_shelf(app: &Arc<App>, a: &Value) -> Result<ToolOutput, ToolError> {
             None => {
                 return fail(format!(
                     "there is no shelf \"{shelf}\" (pass create: true to make it)"
-                ))
+                ));
             }
         };
         store.add_to_collection(cid, id)?;

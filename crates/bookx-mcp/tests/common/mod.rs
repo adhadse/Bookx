@@ -3,15 +3,15 @@
 
 use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, Sender, channel};
 
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::library::{AddOutcome, Highlight, Library};
 use bookx_core::opf::Metadata;
 use bookx_mcp::{Config, Server};
 use chrono::Utc;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 pub fn tmp(tag: &str) -> PathBuf {
     let d = std::env::temp_dir().join(format!(

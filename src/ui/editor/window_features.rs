@@ -133,12 +133,17 @@ pub(super) fn book_menu() -> gio::Menu {
 pub(super) fn top_level_labels(menu: &gio::MenuModel) -> Vec<String> {
     let mut out = Vec::new();
     for i in 0..menu.n_items() {
-        match menu.item_link(i, "section") { Some(s) => {
-            out.extend(top_level_labels(&s));
-        } _ => { match menu.item_attribute_value(i, "label", Some(glib::VariantTy::STRING))
-        { Some(v) => {
-            out.push(v.str().unwrap_or_default().to_string());
-        } _ => {}}}}
+        match menu.item_link(i, "section") {
+            Some(s) => {
+                out.extend(top_level_labels(&s));
+            }
+            _ => match menu.item_attribute_value(i, "label", Some(glib::VariantTy::STRING)) {
+                Some(v) => {
+                    out.push(v.str().unwrap_or_default().to_string());
+                }
+                _ => {}
+            },
+        }
     }
     out
 }

@@ -1,6 +1,6 @@
 //! Table of contents reading (EPUB 3 nav + EPUB 2 NCX) and writing.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use roxmltree::Node;
 
 use super::archive::Archive;

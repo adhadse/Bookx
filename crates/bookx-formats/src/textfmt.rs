@@ -5,10 +5,10 @@
 
 use std::path::PathBuf;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::contracts::FormatReader;
-use bookx_core::convert::{import_to_epub, Chapter};
+use bookx_core::convert::{Chapter, import_to_epub};
 use bookx_core::opf::Metadata;
 
 use crate::common::*;
@@ -471,10 +471,12 @@ pub(crate) mod tests {
     #[test]
     fn empty_and_blank_text_is_an_error() {
         for ext in ["txt", "md", "html"] {
-            assert!(convert_plain(ext, b"", "x")
-                .unwrap_err()
-                .to_string()
-                .contains("empty"));
+            assert!(
+                convert_plain(ext, b"", "x")
+                    .unwrap_err()
+                    .to_string()
+                    .contains("empty")
+            );
             assert!(convert_plain(ext, b" \n\t\n", "x").is_err());
         }
     }
@@ -547,16 +549,20 @@ pub(crate) mod tests {
 
     #[test]
     fn htmlz_errors() {
-        assert!(convert_htmlz(&make_zip(&[("a.png", PNG)]))
-            .unwrap_err()
-            .to_string()
-            .contains("no HTML"));
+        assert!(
+            convert_htmlz(&make_zip(&[("a.png", PNG)]))
+                .unwrap_err()
+                .to_string()
+                .contains("no HTML")
+        );
         assert!(convert_htmlz(b"nope").is_err());
         let empty = make_zip(&[("index.html", b"<html><body></body></html>")]);
-        assert!(convert_htmlz(&empty)
-            .unwrap_err()
-            .to_string()
-            .contains("no readable text"));
+        assert!(
+            convert_htmlz(&empty)
+                .unwrap_err()
+                .to_string()
+                .contains("no readable text")
+        );
     }
 
     #[test]
@@ -570,9 +576,11 @@ pub(crate) mod tests {
         assert_eq!(book.metadata().title, "Zipped Title");
         assert_eq!(book.metadata().authors, vec!["Zed Author"]);
         assert_eq!(book.cover_bytes(), Some(PNG));
-        assert!(chapter_texts(&book)
-            .iter()
-            .any(|t| t.contains("Hello zipped world.")));
+        assert!(
+            chapter_texts(&book)
+                .iter()
+                .any(|t| t.contains("Hello zipped world."))
+        );
         // markdown inside a txtz
         let z = make_zip(&[("index.md", b"# Head\n\nBody *em*\n")]);
         let book = validate(&convert_txtz(&z).unwrap());
@@ -583,10 +591,12 @@ pub(crate) mod tests {
             validate(&convert_txtz(&z).unwrap()).metadata().title,
             "story"
         );
-        assert!(convert_txtz(&make_zip(&[("a.png", PNG)]))
-            .unwrap_err()
-            .to_string()
-            .contains("no text file"));
+        assert!(
+            convert_txtz(&make_zip(&[("a.png", PNG)]))
+                .unwrap_err()
+                .to_string()
+                .contains("no text file")
+        );
     }
 
     #[test]

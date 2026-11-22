@@ -256,9 +256,10 @@ mod tests {
         std::fs::create_dir_all(d.join("mtp:host=phone")).unwrap();
         let p = gvfs_places(&d);
         assert_eq!(p.len(), 2);
-        assert!(p
-            .iter()
-            .any(|x| x.kind == PlaceKind::Cloud("Google Drive".into())));
+        assert!(
+            p.iter()
+                .any(|x| x.kind == PlaceKind::Cloud("Google Drive".into()))
+        );
         let _ = std::fs::remove_dir_all(d);
     }
 

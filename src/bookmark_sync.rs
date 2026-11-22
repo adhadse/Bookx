@@ -30,7 +30,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::core::library::{Book, Bookmark};
-use crate::highlight_goto::{fraction_in_markup, parse_xpointer, title_key, Hint};
+use crate::highlight_goto::{Hint, fraction_in_markup, parse_xpointer, title_key};
 
 /// Characters of text per page of Bookx's estimate of a book's pages (the reader's own estimate
 /// starts from the same density before a chapter is laid out).

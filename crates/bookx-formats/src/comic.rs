@@ -10,7 +10,7 @@
 use std::cmp::Ordering;
 use std::io::Read;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::contracts::FormatReader;
 use bookx_core::convert::Chapter;
@@ -399,10 +399,12 @@ pub(crate) mod tests {
         assert_eq!(book.spine_paths().len(), 3);
         assert_eq!(book.package.metadata.series, "Space Saga");
         let plain = read_with("cbr", &rar, ComicOptions { ignore_info: true }).unwrap();
-        assert!(!plain
-            .get_string("OEBPS/content.opf")
-            .unwrap()
-            .contains("Space Saga"));
+        assert!(
+            !plain
+                .get_string("OEBPS/content.opf")
+                .unwrap()
+                .contains("Space Saga")
+        );
     }
 
     #[test]
@@ -475,10 +477,11 @@ pub(crate) mod tests {
         assert!(x.contains(
             "<div class=\"page\"><img src=\"images/page-0002.png\" alt=\"Page 2\"/></div>"
         ));
-        assert!(arc
-            .get_string("OEBPS/style.css")
-            .unwrap()
-            .contains("max-width: 100%"));
+        assert!(
+            arc.get_string("OEBPS/style.css")
+                .unwrap()
+                .contains("max-width: 100%")
+        );
     }
 
     #[test]
@@ -513,10 +516,11 @@ pub(crate) mod tests {
         let book = validate(&arc);
         assert_eq!(book.metadata().title, "Untitled");
         assert_eq!(book.cover_bytes(), Some(&img(1, "jpg")[..]));
-        assert!(!arc
-            .get_string("OEBPS/content.opf")
-            .unwrap()
-            .contains("page-progression-direction"));
+        assert!(
+            !arc.get_string("OEBPS/content.opf")
+                .unwrap()
+                .contains("page-progression-direction")
+        );
     }
 
     #[test]
@@ -566,14 +570,18 @@ pub(crate) mod tests {
     #[test]
     fn errors() {
         assert!(CbzReader.read(b"").is_err());
-        assert!(CbzReader
-            .read(&make_zip(&[("a.txt", b"x")]))
-            .unwrap_err()
-            .to_string()
-            .contains("no images"));
-        assert!(CbzReader
-            .read(&make_zip(&[("a.jpg", b"not an image")]))
-            .is_err());
+        assert!(
+            CbzReader
+                .read(&make_zip(&[("a.txt", b"x")]))
+                .unwrap_err()
+                .to_string()
+                .contains("no images")
+        );
+        assert!(
+            CbzReader
+                .read(&make_zip(&[("a.jpg", b"not an image")]))
+                .is_err()
+        );
         assert!(CbtReader.read(b"").is_err());
     }
 
@@ -608,14 +616,18 @@ pub(crate) mod tests {
         assert!(CbtReader.sniff(&t));
         assert!(!CbtReader.sniff(b"short"));
         assert!(!CbtReader.sniff(&sample()));
-        assert!(CbtReader
-            .read(b"definitely not a tar file, just text that is long enough")
-            .is_err());
-        assert!(CbtReader
-            .read(&make_tar(&[("a.txt", b"x")]))
-            .unwrap_err()
-            .to_string()
-            .contains("no images"));
+        assert!(
+            CbtReader
+                .read(b"definitely not a tar file, just text that is long enough")
+                .is_err()
+        );
+        assert!(
+            CbtReader
+                .read(&make_tar(&[("a.txt", b"x")]))
+                .unwrap_err()
+                .to_string()
+                .contains("no images")
+        );
         let evil = make_tar(&[("a.jpg", &img(1, "jpg"))]);
         assert!(CbtReader.read(&evil).is_ok());
     }
@@ -626,14 +638,18 @@ pub(crate) mod tests {
             ("1.jpg", &vec![0xFFu8; 5000]),
             ("2.jpg", &vec![0xFFu8; 5000]),
         ]);
-        assert!(read_tar_limited(&t, 4000, 1 << 30)
-            .unwrap_err()
-            .to_string()
-            .contains("too large"));
-        assert!(read_tar_limited(&t, 6000, 8000)
-            .unwrap_err()
-            .to_string()
-            .contains("too large"));
+        assert!(
+            read_tar_limited(&t, 4000, 1 << 30)
+                .unwrap_err()
+                .to_string()
+                .contains("too large")
+        );
+        assert!(
+            read_tar_limited(&t, 6000, 8000)
+                .unwrap_err()
+                .to_string()
+                .contains("too large")
+        );
         assert_eq!(read_tar_limited(&t, 6000, 20000).unwrap().len(), 2);
     }
 
@@ -647,11 +663,13 @@ pub(crate) mod tests {
         assert_eq!(book.spine_paths().len(), 3);
         let t = make_tar(&[("1.jpg", &img(1, "jpg"))]);
         assert!(CbrReader.read(&t).is_ok());
-        assert!(CbrReader
-            .read(b"nothing useful here")
-            .unwrap_err()
-            .to_string()
-            .contains("not a comic"));
+        assert!(
+            CbrReader
+                .read(b"nothing useful here")
+                .unwrap_err()
+                .to_string()
+                .contains("not a comic")
+        );
     }
 
     #[test]

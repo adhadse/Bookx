@@ -1,7 +1,7 @@
 //! Application window: navigation between library, reader and the editor windows.
 
 use crate::i18n::trf;
-use crate::i18n::{tr, N_};
+use crate::i18n::{N_, tr};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -9,9 +9,9 @@ use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio, glib};
 use relm4::prelude::*;
 
-use crate::config::{Config, Scheme, APP_ID, APP_NAME, VERSION};
+use crate::config::{APP_ID, APP_NAME, Config, Scheme, VERSION};
 use crate::ui::preferences::{self, PrefChange};
-use crate::ui::{editor, library, notes, reader, reader_comic, reader_pdf, Shared, SharedRef};
+use crate::ui::{Shared, SharedRef, editor, library, notes, reader, reader_comic, reader_pdf};
 
 pub struct App {
     shared: SharedRef,
@@ -1884,7 +1884,9 @@ fn about_comments(version: &str) -> String {
     if crate::beta::channel_of(version).is_prerelease() {
         format!(
             "{base}\n\n{}",
-            tr("Beta software: it can have bugs. Please report problems (Main Menu → Report a Problem).")
+            tr(
+                "Beta software: it can have bugs. Please report problems (Main Menu → Report a Problem)."
+            )
         )
     } else {
         base
@@ -2258,7 +2260,7 @@ mod shortcut_list_tests {
 
 #[cfg(test)]
 mod about_tests {
-    use super::{release_notes, translator_credits, APPDATA};
+    use super::{APPDATA, release_notes, translator_credits};
     use crate::config::VERSION;
 
     #[test]

@@ -5,7 +5,7 @@
 //!
 //! The wiki page *Privacy* repeats this list; the test `ledger_matches_the_wiki` keeps them in step.
 
-use crate::i18n::{tr, trf, N_};
+use crate::i18n::{N_, tr, trf};
 
 /// One thing Bookx can connect to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -95,7 +95,9 @@ pub const LEDGER: [Connection; 14] = [
     },
     Connection {
         feature: N_("Sync: OPDS server and Bookx sync"),
-        destination: N_("nothing: other devices connect to this computer, only while sharing is on and only with the password"),
+        destination: N_(
+            "nothing: other devices connect to this computer, only while sharing is on and only with the password",
+        ),
         sends: N_("the books you share"),
         offline_blocks: false,
     },
@@ -144,15 +146,17 @@ mod tests {
         names.sort();
         names.dedup();
         assert_eq!(names.len(), LEDGER.len());
-        assert!(LEDGER
-            .iter()
-            .all(|c| !c.destination.is_empty() && !c.sends.is_empty()));
+        assert!(
+            LEDGER
+                .iter()
+                .all(|c| !c.destination.is_empty() && !c.sends.is_empty())
+        );
         // things the user types an address for are never blocked silently by a global switch
-        assert!(LEDGER.iter().filter(|c| !c.offline_blocks).all(|c| c
-            .destination
-            .contains("you enter")
-            || c.destination.starts_with("nothing")
-            || c.destination.contains("readwise")));
+        assert!(LEDGER.iter().filter(|c| !c.offline_blocks).all(|c| {
+            c.destination.contains("you enter")
+                || c.destination.starts_with("nothing")
+                || c.destination.contains("readwise")
+        }));
     }
 
     #[test]
@@ -177,10 +181,12 @@ mod tests {
 
     #[test]
     fn there_is_no_telemetry_entry() {
-        assert!(LEDGER
-            .iter()
-            .all(|c| !c.feature.to_lowercase().contains("telemetry")
-                && !c.feature.to_lowercase().contains("update")
-                && !c.feature.to_lowercase().contains("analytics")));
+        assert!(
+            LEDGER
+                .iter()
+                .all(|c| !c.feature.to_lowercase().contains("telemetry")
+                    && !c.feature.to_lowercase().contains("update")
+                    && !c.feature.to_lowercase().contains("analytics"))
+        );
     }
 }

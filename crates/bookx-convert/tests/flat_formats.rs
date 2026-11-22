@@ -151,9 +151,11 @@ fn fb2_body_sections_and_text() {
         .find(|n| n.has_tag_name((FB2, "emphasis")))
         .unwrap();
     assert_eq!(p_with_em.text(), Some("italic"));
-    assert!(sections[0]
-        .descendants()
-        .any(|n| n.has_tag_name((FB2, "strong")) && n.text() == Some("bold")));
+    assert!(
+        sections[0]
+            .descendants()
+            .any(|n| n.has_tag_name((FB2, "strong")) && n.text() == Some("bold"))
+    );
     // external link kept as <a l:href>, internal link flattened to text
     let link = sections[1]
         .descendants()
@@ -192,13 +194,15 @@ fn fb2_binaries_are_base64_of_the_original_images() {
             engine.decode(raw).unwrap(),
         ));
     }
-    assert!(decoded
-        .iter()
-        .any(|(_, ct, d)| ct == "image/jpeg" && d == book.cover_bytes().unwrap()));
-    assert!(decoded
-        .iter()
-        .any(|(_, ct, d)| ct == "image/png"
-            && d == book.archive.get("OEBPS/images/pic.png").unwrap()));
+    assert!(
+        decoded
+            .iter()
+            .any(|(_, ct, d)| ct == "image/jpeg" && d == book.cover_bytes().unwrap())
+    );
+    assert!(
+        decoded.iter().any(|(_, ct, d)| ct == "image/png"
+            && d == book.archive.get("OEBPS/images/pic.png").unwrap())
+    );
     // coverpage and inline <image> point at existing binaries
     let ids: Vec<&str> = bins.iter().map(|b| b.attribute("id").unwrap()).collect();
     for img in doc.descendants().filter(|n| n.has_tag_name((FB2, "image"))) {
@@ -300,9 +304,10 @@ fn htmlz_contains_index_cover_metadata_and_images() {
             .collect::<String>(),
         "The Test Book: A Story"
     );
-    assert!(h
-        .select(&sel("link[rel=stylesheet]"))
-        .any(|l| l.value().attr("href") == Some("style.css")));
+    assert!(
+        h.select(&sel("link[rel=stylesheet]"))
+            .any(|l| l.value().attr("href") == Some("style.css"))
+    );
     let body_text: String = h.select(&sel("body")).next().unwrap().text().collect();
     for want in [
         "Chapter One",
@@ -365,9 +370,10 @@ fn txtz_has_index_txt_and_metadata() {
     assert!(txt.contains("CHAPTER ONE"));
     let opf = String::from_utf8(files["metadata.opf"].clone()).unwrap();
     let d = Document::parse(&opf).unwrap();
-    assert!(d
-        .descendants()
-        .any(|n| n.has_tag_name("title") && n.text() == Some("The Test Book: A Story")));
+    assert!(
+        d.descendants()
+            .any(|n| n.has_tag_name("title") && n.text() == Some("The Test Book: A Story"))
+    );
 }
 
 #[test]
@@ -385,11 +391,13 @@ fn plain_writers_wrap_the_core_exporters() {
     let html = String::from_utf8(HtmlWriter.write(&book).unwrap()).unwrap();
     assert!(html.starts_with("<!DOCTYPE html>"));
     let parsed = scraper::Html::parse_document(&html);
-    assert!(parsed
-        .root_element()
-        .text()
-        .collect::<String>()
-        .contains("The end of the story."));
+    assert!(
+        parsed
+            .root_element()
+            .text()
+            .collect::<String>()
+            .contains("The end of the story.")
+    );
     let ids: Vec<(&str, &str)> = vec![
         (TxtWriter.id(), TxtWriter.extension()),
         (MarkdownWriter.id(), MarkdownWriter.extension()),

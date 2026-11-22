@@ -7,7 +7,7 @@
 
 use std::path::PathBuf;
 
-use crate::core::formats::{format_of, FormatFile, Target};
+use crate::core::formats::{FormatFile, Target, format_of};
 use crate::core::library::{Book, Library, Prepared};
 use crate::core::merge::MergePlan;
 

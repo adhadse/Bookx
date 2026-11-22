@@ -7,9 +7,9 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
-use crate::devices::{sanitize_file_name, BOOK_EXTENSIONS};
+use crate::devices::{BOOK_EXTENSIONS, sanitize_file_name};
 
 // -- storage ------------------------------------------------------------------------------------
 
@@ -590,14 +590,18 @@ mod tests {
 
     #[test]
     fn bad_templates_are_explained() {
-        assert!(template_problem("{nope}/{title}")
-            .unwrap()
-            .contains("unknown field"));
+        assert!(
+            template_problem("{nope}/{title}")
+                .unwrap()
+                .contains("unknown field")
+        );
         assert!(template_problem("{title").unwrap().contains("closing"));
         assert!(template_problem("title}").unwrap().contains("opening"));
-        assert!(template_problem("a/b/c/d/e/{title}")
-            .unwrap()
-            .contains("too many"));
+        assert!(
+            template_problem("a/b/c/d/e/{title}")
+                .unwrap()
+                .contains("too many")
+        );
         assert_eq!(template_problem("{author}/{title}"), None);
         assert_eq!(template_problem(""), None);
     }

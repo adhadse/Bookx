@@ -14,8 +14,8 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
 
-use super::preferences::{register_group, PrefCtx};
 use super::SharedRef;
+use super::preferences::{PrefCtx, register_group};
 use crate::lookup_prefs as lp;
 use bookx_lookup::dictset::WebSource;
 
@@ -764,7 +764,13 @@ pub fn dev(arg: &str) {
                 .unwrap_or_default();
             eprintln!(
                 "lookup_settings: order={} web={} history={} keep={} window={} error={:?} opened={}",
-                UI.with(|u| u.borrow().order.iter().map(|r| r.title.clone()).collect::<Vec<_>>().join(",")),
+                UI.with(|u| u
+                    .borrow()
+                    .order
+                    .iter()
+                    .map(|r| r.title.clone())
+                    .collect::<Vec<_>>()
+                    .join(",")),
                 own.join(","),
                 history().entries().join(","),
                 shared().is_some_and(|s| s.cfg.borrow().lookup.keep_history),

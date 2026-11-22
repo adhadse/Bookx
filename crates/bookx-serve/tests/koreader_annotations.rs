@@ -8,11 +8,11 @@ use std::process::Command;
 use std::sync::Arc;
 use std::time::Duration;
 
-use bookx_serve::annotation_sync::{parse_annotation, AnnotationSync, Source, ORIGIN_BOOKX};
+use bookx_serve::annotation_sync::{AnnotationSync, ORIGIN_BOOKX, Source, parse_annotation};
 use bookx_serve::httpc::request;
-use bookx_serve::kosync::{md5_hex, KoSync, MemoryStore};
+use bookx_serve::kosync::{KoSync, MemoryStore, md5_hex};
 use bookx_serve::server::{LibrarySnapshot, Server, ServerConfig, ServerHandle};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 const DOC: &str = "0123456789abcdef0123456789abcdef";
 

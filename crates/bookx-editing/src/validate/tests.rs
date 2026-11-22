@@ -303,12 +303,27 @@ fn with_ch2_body(files: &mut Files, body: &str) {
 #[test]
 fn features_need_their_properties() {
     let cases: [(&str, &str); 6] = [
-        ("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"5\" height=\"5\"><rect width=\"5\" height=\"5\"/></svg>", "svg"),
-        ("<math xmlns=\"http://www.w3.org/1998/Math/MathML\"><mi>x</mi></math>", "mathml"),
-        ("<epub:switch><epub:case required-namespace=\"http://www.w3.org/1998/Math/MathML\"><p>a</p></epub:case><epub:default><p>b</p></epub:default></epub:switch>", "switch"),
-        ("<img src=\"http://example.com/a.png\" alt=\"remote\"/>", "remote-resources"),
+        (
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"5\" height=\"5\"><rect width=\"5\" height=\"5\"/></svg>",
+            "svg",
+        ),
+        (
+            "<math xmlns=\"http://www.w3.org/1998/Math/MathML\"><mi>x</mi></math>",
+            "mathml",
+        ),
+        (
+            "<epub:switch><epub:case required-namespace=\"http://www.w3.org/1998/Math/MathML\"><p>a</p></epub:case><epub:default><p>b</p></epub:default></epub:switch>",
+            "switch",
+        ),
+        (
+            "<img src=\"http://example.com/a.png\" alt=\"remote\"/>",
+            "remote-resources",
+        ),
         ("<p onclick=\"go()\">x</p>", "scripted"),
-        ("<audio src=\"https://example.com/a.mp3\"></audio>", "remote-resources"),
+        (
+            "<audio src=\"https://example.com/a.mp3\"></audio>",
+            "remote-resources",
+        ),
     ];
     for (body, prop) in cases {
         let mut files = clean_epub3();
@@ -325,7 +340,9 @@ fn features_need_their_properties() {
             &mut files,
             OPF,
             "<item id=\"ch2\" href=\"ch2.xhtml\" media-type=\"application/xhtml+xml\"/>",
-            &format!("<item id=\"ch2\" href=\"ch2.xhtml\" media-type=\"application/xhtml+xml\" properties=\"{prop}\"/>"),
+            &format!(
+                "<item id=\"ch2\" href=\"ch2.xhtml\" media-type=\"application/xhtml+xml\" properties=\"{prop}\"/>"
+            ),
         );
         let r = report(&files);
         assert!(r.messages.is_empty(), "{prop}: {}", render_text(&r));
@@ -353,14 +370,25 @@ fn remote_stylesheets_and_fonts_need_remote_resources() {
     let r = report(&files);
     assert_ids(&r, &["OPF-014"]);
     assert!(r.of("OPF-014")[0].text.contains("style.css"));
-    rep(&mut files, OPF, "<item id=\"css\" href=\"style.css\" media-type=\"text/css\"/>", "<item id=\"css\" href=\"style.css\" media-type=\"text/css\" properties=\"remote-resources\"/>");
+    rep(
+        &mut files,
+        OPF,
+        "<item id=\"css\" href=\"style.css\" media-type=\"text/css\"/>",
+        "<item id=\"css\" href=\"style.css\" media-type=\"text/css\" properties=\"remote-resources\"/>",
+    );
     assert!(report(&files).messages.is_empty());
 }
 
 #[test]
 fn css_references_are_resolved() {
     let mut files = clean_epub3();
-    set(&mut files, "OEBPS/style.css", format!("{STYLE}@import \"other.css\";\n@import url(missing.css);\nh1 {{ background: url('images/nope.png'); }}\n@font-face {{ font-family: U; src: url(fonts/nofont.ttf) format('truetype'); }}\np {{ background: url(data:image/png;base64,AAAA); }}\n"));
+    set(
+        &mut files,
+        "OEBPS/style.css",
+        format!(
+            "{STYLE}@import \"other.css\";\n@import url(missing.css);\nh1 {{ background: url('images/nope.png'); }}\n@font-face {{ font-family: U; src: url(fonts/nofont.ttf) format('truetype'); }}\np {{ background: url(data:image/png;base64,AAAA); }}\n"
+        ),
+    );
     add_item(
         &mut files,
         "other",
@@ -390,7 +418,13 @@ const OTHER_CSS_TEST: &str = "p { margin: 0; }\n";
 #[test]
 fn css_comments_hide_rules_and_strings_hide_braces() {
     let mut files = clean_epub3();
-    set(&mut files, "OEBPS/style.css", format!("{STYLE}/* @foo {{ direction: rtl; url(nothing.png) */\nq::before {{ content: \"}} {{ @bar\"; }}\n"));
+    set(
+        &mut files,
+        "OEBPS/style.css",
+        format!(
+            "{STYLE}/* @foo {{ direction: rtl; url(nothing.png) */\nq::before {{ content: \"}} {{ @bar\"; }}\n"
+        ),
+    );
     let r = report(&files);
     assert!(r.messages.is_empty(), "{}", render_text(&r));
 }
@@ -418,7 +452,11 @@ fn css_syntax_errors() {
 #[test]
 fn css_vendor_at_rules_are_known_and_unknown_ones_warn() {
     let mut files = clean_epub3();
-    set(&mut files, "OEBPS/style.css", "@-webkit-keyframes a { from { margin: 0 } to { margin: 1px } }\n@media print { p { margin: 0 } }\n@page { margin: 1em }\n@namespace url(http://www.w3.org/1999/xhtml);\n");
+    set(
+        &mut files,
+        "OEBPS/style.css",
+        "@-webkit-keyframes a { from { margin: 0 } to { margin: 1px } }\n@media print { p { margin: 0 } }\n@page { margin: 1em }\n@namespace url(http://www.w3.org/1999/xhtml);\n",
+    );
     assert!(report(&files).messages.is_empty());
     set(&mut files, "OEBPS/style.css", "@-epub-foo x;\n");
     assert_ids(&report(&files), &["CSS-902"]);
@@ -495,7 +533,11 @@ fn doctype_documents_may_use_named_entities() {
     assert_ids(&report(&files), &["RSC-016"]);
     // without a doctype named entities are errors
     let mut files = clean_epub3();
-    set(&mut files, "OEBPS/ch2.xhtml", "<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\"><head><title>t</title></head><body><section id=\"sec\"><p>&nbsp;<a href=\"ch1.xhtml\">b</a></p></section></body></html>");
+    set(
+        &mut files,
+        "OEBPS/ch2.xhtml",
+        "<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\"><head><title>t</title></head><body><section id=\"sec\"><p>&nbsp;<a href=\"ch1.xhtml\">b</a></p></section></body></html>",
+    );
     assert_ids(&report(&files), &["RSC-016"]);
 }
 
@@ -524,7 +566,10 @@ fn img_without_alt_inside_a_captioned_figure_is_allowed_in_epub3() {
 #[test]
 fn links_with_images_or_aria_labels_have_text() {
     let mut files = clean_epub3();
-    with_ch2_body(&mut files, "<a href=\"ch1.xhtml\"><img src=\"images/cover.png\" alt=\"c\"/></a><a href=\"ch1.xhtml\" aria-label=\"x\"></a><a id=\"anchor\"></a>");
+    with_ch2_body(
+        &mut files,
+        "<a href=\"ch1.xhtml\"><img src=\"images/cover.png\" alt=\"c\"/></a><a href=\"ch1.xhtml\" aria-label=\"x\"></a><a id=\"anchor\"></a>",
+    );
     assert!(report(&files).messages.is_empty());
 }
 
@@ -564,7 +609,10 @@ fn idrefs() {
 #[test]
 fn links_ignore_other_schemes_and_resolve_encoding() {
     let mut files = clean_epub3();
-    with_ch2_body(&mut files, "<a href=\"mailto:a@b.c\">m</a><a href=\"tel:123\">t</a><a href=\"https://example.com/\">w</a><a href=\"urn:isbn:1\">u</a><a href=\"images/../ch1.xhtml?x=1#top\">q</a><a href=\"%63h1.xhtml\">pct</a>");
+    with_ch2_body(
+        &mut files,
+        "<a href=\"mailto:a@b.c\">m</a><a href=\"tel:123\">t</a><a href=\"https://example.com/\">w</a><a href=\"urn:isbn:1\">u</a><a href=\"images/../ch1.xhtml?x=1#top\">q</a><a href=\"%63h1.xhtml\">pct</a>",
+    );
     let r = report(&files);
     assert!(r.messages.is_empty(), "{}", render_text(&r));
 }
@@ -589,7 +637,14 @@ fn fragment_in_unparsed_target_is_not_checked() {
 #[test]
 fn a_name_anchor_is_a_fragment_target() {
     let mut files = clean_epub3();
-    set(&mut files, "OEBPS/ch1.xhtml", xhtml3("<title>One</title>", "<section><a name=\"old\"></a><h1 id=\"top\">One</h1><a href=\"ch2.xhtml#sec\">n</a><a href=\"#old\">o</a></section>"));
+    set(
+        &mut files,
+        "OEBPS/ch1.xhtml",
+        xhtml3(
+            "<title>One</title>",
+            "<section><a name=\"old\"></a><h1 id=\"top\">One</h1><a href=\"ch2.xhtml#sec\">n</a><a href=\"#old\">o</a></section>",
+        ),
+    );
     let r = report(&files);
     assert!(r.messages.is_empty(), "{}", render_text(&r));
 }
@@ -639,7 +694,12 @@ fn nav_structure_variants() {
     }
     // other navs (landmarks) are not held to the toc rules but their links are resolved
     let mut files = clean_epub3();
-    rep(&mut files, "OEBPS/nav.xhtml", "</nav>", "</nav><nav epub:type=\"landmarks\"><ol><li><a epub:type=\"bodymatter\" href=\"ch1.xhtml\">Start</a></li></ol></nav>");
+    rep(
+        &mut files,
+        "OEBPS/nav.xhtml",
+        "</nav>",
+        "</nav><nav epub:type=\"landmarks\"><ol><li><a epub:type=\"bodymatter\" href=\"ch1.xhtml\">Start</a></li></ol></nav>",
+    );
     assert!(report(&files).messages.is_empty());
     rep(
         &mut files,
@@ -721,7 +781,12 @@ fn ncx_uid_comparison_ignores_whitespace() {
 fn spine_fallbacks_make_non_core_items_acceptable() {
     let mut files = clean_epub3();
     // an image in the spine with a fallback to a content document is fine
-    rep(&mut files, OPF, "<item id=\"cover\" href=\"images/cover.png\" media-type=\"image/png\" properties=\"cover-image\"/>", "<item id=\"cover\" href=\"images/cover.png\" media-type=\"image/png\" properties=\"cover-image\" fallback=\"ch1\"/>");
+    rep(
+        &mut files,
+        OPF,
+        "<item id=\"cover\" href=\"images/cover.png\" media-type=\"image/png\" properties=\"cover-image\"/>",
+        "<item id=\"cover\" href=\"images/cover.png\" media-type=\"image/png\" properties=\"cover-image\" fallback=\"ch1\"/>",
+    );
     rep(
         &mut files,
         OPF,
@@ -886,11 +951,19 @@ fn broken_opf_stops_cleanly() {
 fn container_rootfile_choice() {
     // the first rootfile with the package media type wins, others are ignored
     let mut files = clean_epub3();
-    set(&mut files, "META-INF/container.xml", "<container xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\"><rootfiles><rootfile full-path=\"x.pdf\" media-type=\"application/pdf\"/><rootfile full-path=\"OEBPS/content.opf\" media-type=\"application/oebps-package+xml\"/></rootfiles></container>");
+    set(
+        &mut files,
+        "META-INF/container.xml",
+        "<container xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\"><rootfiles><rootfile full-path=\"x.pdf\" media-type=\"application/pdf\"/><rootfile full-path=\"OEBPS/content.opf\" media-type=\"application/oebps-package+xml\"/></rootfiles></container>",
+    );
     // a pdf rootfile has a media type of its own, so it is skipped
     let r = report(&files);
     assert!(r.messages.is_empty(), "{}", render_text(&r));
-    set(&mut files, "META-INF/container.xml", "<container xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\"><rootfiles><rootfile full-path=\"\" media-type=\"application/oebps-package+xml\"/></rootfiles></container>");
+    set(
+        &mut files,
+        "META-INF/container.xml",
+        "<container xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\"><rootfiles><rootfile full-path=\"\" media-type=\"application/oebps-package+xml\"/></rootfiles></container>",
+    );
     assert_ids(&report(&files), &["RSC-003"]);
 }
 

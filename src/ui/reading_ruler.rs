@@ -8,9 +8,9 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 
-use super::canvas::BookCanvas;
-use super::preferences::{register_group, PrefCtx};
 use super::SharedRef;
+use super::canvas::BookCanvas;
+use super::preferences::{PrefCtx, register_group};
 use crate::i18n::tr;
 use crate::reading_ruler as rr;
 use crate::settings_bus::Bus;

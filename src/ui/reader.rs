@@ -1,6 +1,6 @@
 //! The EPUB reader page.
 
-use crate::i18n::{tr, trf, N_};
+use crate::i18n::{N_, tr, trf};
 use crate::side_notes;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -15,14 +15,14 @@ use super::canvas::{
     BookCanvas, Edge, Highlight as CHighlight, LayoutMode, PosInfo, Rgb, SelectionInfo,
 };
 use super::web;
-use super::{open_uri, system_is_dark, window_of, SharedRef};
+use super::{SharedRef, open_uri, system_is_dark, window_of};
 use crate::config::{ColorMode, ReaderPrefs, ReaderTheme};
 use crate::gestures::right_is_forward;
 use bookx_text::highlight::HighlightStyle;
 
 use crate::core::book::OpenBook;
 use crate::core::library::{Bookmark, Highlight, ReadPos};
-use crate::core::toc::{flatten, FlatToc};
+use crate::core::toc::{FlatToc, flatten};
 use crate::core::util::*;
 
 #[path = "reader_aids.rs"]
@@ -630,7 +630,7 @@ impl Reader {
         Vec<bookx_lookup::mapview::Marker>,
         Vec<(usize, bookx_lookup::mapview::Swatch, String)>,
     ) {
-        use bookx_lookup::mapview::{page_of_fraction, MarkStyle, Marker, MarkerKind, Swatch};
+        use bookx_lookup::mapview::{MarkStyle, Marker, MarkerKind, Swatch, page_of_fraction};
         let page_of =
             |spine: usize, frac: f64| page_of_fraction(self.overall_of(spine, frac), total);
         let mut marks: Vec<Marker> = Vec::new();
@@ -1321,7 +1321,11 @@ impl Reader {
                     self.w.mid_label.label(),
                     self.w.right_label.label(),
                     self.w.slider_row.is_visible(),
-                    self.shared.cfg.borrow().footer_books.contains_key(&self.book_id),
+                    self.shared
+                        .cfg
+                        .borrow()
+                        .footer_books
+                        .contains_key(&self.book_id),
                     super::reader_footer::names(&fc),
                     fc.align(),
                     fc.size_pct,
@@ -2669,7 +2673,7 @@ impl Reader {
     /// Brings back the cards the book was left with: where they were, how big, at which place; paused
     /// (never playing), with the page at the spoken sentence or the speed-read word.
     fn restore_cards(&mut self) {
-        use crate::reader_cards::{resolve_chapter, resolve_offset, Top};
+        use crate::reader_cards::{Top, resolve_chapter, resolve_offset};
         let Some(c) = self.shared.cfg.borrow().cards.get(self.book_id) else {
             return;
         };
@@ -4562,7 +4566,9 @@ impl SimpleComponent for Reader {
             for (title, sub, input) in [
                 (
                     tr("Use as Default for New Books"),
-                    tr("Every change is kept for this book. This makes the current look the starting point of books you have not changed yet."),
+                    tr(
+                        "Every change is kept for this book. This makes the current look the starting point of books you have not changed yet.",
+                    ),
                     (|| Input::UseAsDefault) as fn() -> Input,
                 ),
                 (

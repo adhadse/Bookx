@@ -2,7 +2,7 @@
 //! The reading itself is [`crate::tts`].
 
 use crate::i18n::trf;
-use crate::i18n::{tr, N_};
+use crate::i18n::{N_, tr};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -397,36 +397,38 @@ fn run_export(
         .map_err(|e| format!("{e:#}"));
         let _ = tx.send(Msg::Done(r));
     });
-    glib::timeout_add_local(std::time::Duration::from_millis(80), move || loop {
-        match rx.try_recv() {
-            Ok(Msg::Progress(d, t, title)) => {
-                bar.set_fraction(d as f64 / t.max(1) as f64);
-                bar.set_text(Some(&format!("{title}: {d} / {t}")));
-            }
-            Ok(Msg::Done(r)) => {
-                dlg.force_close();
-                let msg = match r {
-                    Ok(files) => {
-                        eprintln!("tts_save: files={}", files.len());
-                        match files.as_slice() {
-                            [one] => trf("Saved {}", &[&one.display()]),
-                            many => trf("Saved {} audio files", &[&many.len()]),
+    glib::timeout_add_local(std::time::Duration::from_millis(80), move || {
+        loop {
+            match rx.try_recv() {
+                Ok(Msg::Progress(d, t, title)) => {
+                    bar.set_fraction(d as f64 / t.max(1) as f64);
+                    bar.set_text(Some(&format!("{title}: {d} / {t}")));
+                }
+                Ok(Msg::Done(r)) => {
+                    dlg.force_close();
+                    let msg = match r {
+                        Ok(files) => {
+                            eprintln!("tts_save: files={}", files.len());
+                            match files.as_slice() {
+                                [one] => trf("Saved {}", &[&one.display()]),
+                                many => trf("Saved {} audio files", &[&many.len()]),
+                            }
                         }
-                    }
-                    Err(e) if e == "cancelled" => {
-                        eprintln!("tts_save: cancelled");
-                        "Saving as audio was cancelled".to_string()
-                    }
-                    Err(e) => {
-                        eprintln!("tts_save: error: {e}");
-                        trf("Could not save the audio: {}", &[&e])
-                    }
-                };
-                toast(msg);
-                return glib::ControlFlow::Break;
+                        Err(e) if e == "cancelled" => {
+                            eprintln!("tts_save: cancelled");
+                            "Saving as audio was cancelled".to_string()
+                        }
+                        Err(e) => {
+                            eprintln!("tts_save: error: {e}");
+                            trf("Could not save the audio: {}", &[&e])
+                        }
+                    };
+                    toast(msg);
+                    return glib::ControlFlow::Break;
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => return glib::ControlFlow::Continue,
+                Err(_) => return glib::ControlFlow::Break,
             }
-            Err(std::sync::mpsc::TryRecvError::Empty) => return glib::ControlFlow::Continue,
-            Err(_) => return glib::ControlFlow::Break,
         }
     });
 }

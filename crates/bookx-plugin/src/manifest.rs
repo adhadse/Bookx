@@ -18,7 +18,7 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use serde::{Deserialize, Serialize};
 
 /// The base ABI version (all kinds except `editor-action`).
@@ -276,7 +276,9 @@ impl Manifest {
         };
         let wasm = raw.wasm.unwrap_or_else(|| "plugin.wasm".to_string());
         if !valid_wasm_name(&wasm) {
-            bail!("invalid wasm file name `{wasm}` (must be a `*.wasm` file inside the plugin folder)");
+            bail!(
+                "invalid wasm file name `{wasm}` (must be a `*.wasm` file inside the plugin folder)"
+            );
         }
         if raw.permissions.len() > MAX_PERMISSIONS {
             bail!("more than {MAX_PERMISSIONS} permissions");

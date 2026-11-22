@@ -1,7 +1,7 @@
 //! Data model for the book map / page browser: chapter segments sized by word
 //! count with highlight and bookmark marks placed on them.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChapterInfo {
@@ -179,10 +179,12 @@ mod tests {
             fraction: 0.0,
             kind: MarkKind::Note,
         }];
-        assert!(build_book_map(&c, &bad_ch)
-            .unwrap_err()
-            .to_string()
-            .contains("chapter 1"));
+        assert!(
+            build_book_map(&c, &bad_ch)
+                .unwrap_err()
+                .to_string()
+                .contains("chapter 1")
+        );
         let nan = [Mark {
             chapter: 0,
             fraction: f64::NAN,

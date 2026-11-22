@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Condvar, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 use crate::session::Voice;
 use crate::synth::{Pcm, SynthRequest, Synthesizer};

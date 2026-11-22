@@ -2,19 +2,19 @@
 //! licence, progress and cancel), the voice server, and a test button. The engines themselves
 //! are in the `bookx-tts` crate.
 
-use crate::i18n::{tr, trf, N_};
+use crate::i18n::{N_, tr, trf};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::mpsc;
 
-use bookx_tts::items::{items, subtitle, Item};
+use bookx_tts::items::{Item, items, subtitle};
 use bookx_tts::models::catalog;
 use bookx_tts::prefs::ENGINES;
 use bookx_tts::server::ServerSynth;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
 
-use super::preferences::{register_group, register_page, PrefCtx};
+use super::preferences::{PrefCtx, register_group, register_page};
 use crate::tts;
 
 const ENGINE_LABELS: [&str; 3] = [
@@ -106,11 +106,7 @@ pub fn system_language() -> String {
         .or_else(|_| std::env::var("LANG"))
         .unwrap_or_default();
     let p = tts::primary_language(&l.replace('.', "-"));
-    if p.is_empty() {
-        "en".into()
-    } else {
-        p
-    }
+    if p.is_empty() { "en".into() } else { p }
 }
 
 thread_local! {

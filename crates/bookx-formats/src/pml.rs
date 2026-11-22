@@ -12,7 +12,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::contracts::FormatReader;
 use bookx_core::convert::Chapter;
@@ -194,11 +194,7 @@ fn safe_id(s: &str) -> String {
 }
 
 fn heading_level(n: u8) -> u8 {
-    if n == 0 {
-        1
-    } else {
-        (n + 1).min(5)
-    }
+    if n == 0 { 1 } else { (n + 1).min(5) }
 }
 
 impl<'a> Renderer<'a> {
@@ -1009,9 +1005,11 @@ mod tests {
         );
         assert_eq!(book.media.len(), 1);
         assert!(book.media[0].path.starts_with("images/"));
-        assert!(book.chapters[0]
-            .body
-            .contains(&format!("src=\"{}\"", book.media[0].path)));
+        assert!(
+            book.chapters[0]
+                .body
+                .contains(&format!("src=\"{}\"", book.media[0].path))
+        );
     }
 
     #[test]

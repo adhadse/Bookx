@@ -16,8 +16,8 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
 
-use super::news::Ctx;
 use super::SharedRef;
+use super::news::Ctx;
 use crate::news_recipe_form::{self as form, FeedForm, Mode, RecipeForm};
 use crate::news_sites::{self as sites, SiteAccount};
 
@@ -246,7 +246,9 @@ pub fn edit_feeds(parent: &adw::Dialog, ctx: &Ctx, key: &str, done: Rc<dyn Fn()>
 
     let (g_inc, include) = text_card(
         &tr("Keep only articles matching"),
-        &tr("Patterns (regular expressions), one per line, tried on the title and the address. Empty keeps all."),
+        &tr(
+            "Patterns (regular expressions), one per line, tried on the title and the address. Empty keeps all.",
+        ),
         &f.include,
     );
     let (g_exc, exclude) = text_card(
@@ -641,8 +643,8 @@ pub fn dev(arg: &str) {
     let sites_w = SITES.with(|s| s.borrow().clone());
     let site_form_w = SITE_FORM.with(|s| s.borrow().clone());
     match parts[0] {
-        "open" => {
-            match WINDOW.with(|w| w.borrow().clone()) { Some((ctx, dialog)) => {
+        "open" => match WINDOW.with(|w| w.borrow().clone()) {
+            Some((ctx, dialog)) => {
                 let d2 = dialog.clone();
                 let refresh = ctx.slot.clone();
                 edit_feeds(
@@ -655,10 +657,11 @@ pub fn dev(arg: &str) {
                         }
                     }),
                 );
-            } _ => {
+            }
+            _ => {
                 eprintln!("news_recipes: no news window");
-            }}
-        }
+            }
+        },
         "save" => {
             if let Some(e) = ed {
                 e.save.emit_clicked();
@@ -724,9 +727,21 @@ pub fn dev(arg: &str) {
                 eprintln!(
                     "news_recipes: open=true feeds={} modes={} on={} max={} language={} template={:?} images={} include={} exclude={} keep={} remove={} banner={} error={:?}",
                     f.feeds.len(),
-                    f.feeds.iter().map(|x| x.mode.index().to_string()).collect::<Vec<_>>().join("+"),
-                    f.feeds.iter().map(|x| u8::from(x.enabled).to_string()).collect::<Vec<_>>().join("+"),
-                    f.feeds.iter().map(|x| x.max_articles.to_string()).collect::<Vec<_>>().join("+"),
+                    f.feeds
+                        .iter()
+                        .map(|x| x.mode.index().to_string())
+                        .collect::<Vec<_>>()
+                        .join("+"),
+                    f.feeds
+                        .iter()
+                        .map(|x| u8::from(x.enabled).to_string())
+                        .collect::<Vec<_>>()
+                        .join("+"),
+                    f.feeds
+                        .iter()
+                        .map(|x| x.max_articles.to_string())
+                        .collect::<Vec<_>>()
+                        .join("+"),
                     f.language,
                     f.title_template,
                     f.images,

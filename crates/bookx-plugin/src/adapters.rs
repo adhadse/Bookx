@@ -19,9 +19,9 @@ use std::collections::HashMap;
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 
-use anyhow::{anyhow, bail, Context, Result};
-use base64::engine::general_purpose::STANDARD as B64;
+use anyhow::{Context, Result, anyhow, bail};
 use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as B64;
 use bookx_core::archive::Archive;
 use bookx_core::book::OpenBook;
 use bookx_core::contracts::{
@@ -30,7 +30,7 @@ use bookx_core::contracts::{
 };
 use bookx_core::opf::{Identifier, Metadata};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::manifest::PluginKind;
 use crate::runtime::Plugin;
@@ -601,10 +601,12 @@ mod tests {
     fn base64_decoding_errors_name_the_field() {
         assert_eq!(decode_b64("f", &json!("aGk=")).unwrap(), b"hi");
         assert_eq!(decode_b64("f", &json!(" aGk=\n")).unwrap(), b"hi");
-        assert!(decode_b64("cover", &json!(1))
-            .unwrap_err()
-            .to_string()
-            .contains("cover"));
+        assert!(
+            decode_b64("cover", &json!(1))
+                .unwrap_err()
+                .to_string()
+                .contains("cover")
+        );
         assert!(decode_b64("f", &json!("a")).is_err());
     }
 

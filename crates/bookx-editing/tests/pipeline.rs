@@ -5,17 +5,17 @@ mod common;
 
 use bookx_core::archive::Archive;
 use bookx_core::book::OpenBook;
-use bookx_core::check::{check_book, Severity};
-use bookx_editing::accessibility::{make_accessible, AccessibilityOptions};
+use bookx_core::check::{Severity, check_book};
+use bookx_editing::accessibility::{AccessibilityOptions, make_accessible};
 use bookx_editing::checkpoints::Checkpoints;
-use bookx_editing::compare::{archive_unified_diff, compare_archives, CompareOptions};
-use bookx_editing::fixes::{fix_archive, FixKind, FixOptions};
-use bookx_editing::inline_toc::{insert_inline_toc, InlineTocOptions};
-use bookx_editing::links::{arrange_files, ArrangeOptions};
+use bookx_editing::compare::{CompareOptions, archive_unified_diff, compare_archives};
+use bookx_editing::fixes::{FixKind, FixOptions, fix_archive};
+use bookx_editing::inline_toc::{InlineTocOptions, insert_inline_toc};
+use bookx_editing::links::{ArrangeOptions, arrange_files};
 use bookx_editing::markup::normalized_text;
-use bookx_editing::reports::{build_report, Report, ReportOptions};
-use bookx_editing::semantics::{read_semantics, set_semantic, Semantic};
-use bookx_editing::upgrade::{upgrade_to_epub3, UpgradeOptions};
+use bookx_editing::reports::{Report, ReportOptions, build_report};
+use bookx_editing::semantics::{Semantic, read_semantics, set_semantic};
+use bookx_editing::upgrade::{UpgradeOptions, upgrade_to_epub3};
 
 fn errors(a: &Archive) -> Vec<String> {
     check_book(a)
@@ -126,10 +126,11 @@ fn messy_epub_through_the_whole_toolchain() {
         },
     )
     .unwrap();
-    assert!(acc
-        .changes
-        .iter()
-        .any(|c| c.contains("accessibility metadata")));
+    assert!(
+        acc.changes
+            .iter()
+            .any(|c| c.contains("accessibility metadata"))
+    );
     let files = common::validate_epub(&book.archive.to_bytes().unwrap());
     let opf = String::from_utf8(files["OEBPS/content.opf"].clone()).unwrap();
     assert!(opf.contains("schema:accessibilitySummary"));

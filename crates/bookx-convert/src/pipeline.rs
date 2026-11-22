@@ -5,15 +5,15 @@ use std::fmt;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_core::archive::Archive;
 use bookx_core::book::OpenBook;
-use bookx_core::contracts::{pick_reader, FormatReader, FormatWriter, Registry, TransformReport};
+use bookx_core::contracts::{FormatReader, FormatWriter, Registry, TransformReport, pick_reader};
 use bookx_core::convert::{import_to_epub, is_importable};
 
 use crate::mobi::{Azw3Writer, MobiWriter};
 use crate::options::ConvertOptions;
-use crate::writers::{default_writers, EpubWriter, KepubWriter};
+use crate::writers::{EpubWriter, KepubWriter, default_writers};
 
 /// Returned (inside `anyhow::Error`) when the cancel flag was raised. Check with
 /// `err.downcast_ref::<Cancelled>()`.
@@ -71,11 +71,7 @@ impl Tracker<'_> {
 
 fn normalized_ext(ext: &str) -> String {
     let e = ext.trim().trim_start_matches('.').to_ascii_lowercase();
-    if e == "kepub.epub" {
-        "kepub".into()
-    } else {
-        e
-    }
+    if e == "kepub.epub" { "kepub".into() } else { e }
 }
 
 /// Opens the input: EPUB directly, other formats through `readers`, and TXT/Markdown/HTML through
@@ -88,19 +84,25 @@ pub fn read_input(
     let lower = input_name.to_ascii_lowercase();
     let archive = if lower.ends_with(".epub") || lower.ends_with(".kepub") {
         Archive::from_bytes(bytes.to_vec())?
-    } else { match pick_reader(readers, input_name, &bytes[..bytes.len().min(512)]) { Ok(reader) => {
-        reader
-            .read(bytes)
-            .with_context(|| format!("reading {input_name} as {}", reader.id()))?
-    } _ => if is_importable(Path::new(input_name)) {
-        import_with_core(bytes, input_name)?
-    } else if bytes.starts_with(b"PK")
-        && Archive::from_bytes(bytes.to_vec()).is_ok_and(|a| a.contains("META-INF/container.xml"))
-    {
-        Archive::from_bytes(bytes.to_vec())?
     } else {
-        bail!("no reader for `{input_name}`");
-    }}};
+        match pick_reader(readers, input_name, &bytes[..bytes.len().min(512)]) {
+            Ok(reader) => reader
+                .read(bytes)
+                .with_context(|| format!("reading {input_name} as {}", reader.id()))?,
+            _ => {
+                if is_importable(Path::new(input_name)) {
+                    import_with_core(bytes, input_name)?
+                } else if bytes.starts_with(b"PK")
+                    && Archive::from_bytes(bytes.to_vec())
+                        .is_ok_and(|a| a.contains("META-INF/container.xml"))
+                {
+                    Archive::from_bytes(bytes.to_vec())?
+                } else {
+                    bail!("no reader for `{input_name}`");
+                }
+            }
+        }
+    };
     let mut book = OpenBook::from_archive(archive)?;
     title_from_file_name(&mut book, input_name);
     Ok(book)

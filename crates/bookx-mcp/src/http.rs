@@ -10,14 +10,14 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
-use bookx_serve::http::{constant_time_eq, Request, Response};
+use bookx_serve::http::{Request, Response, constant_time_eq};
 use bookx_serve::net::{self, Limits};
 use bookx_serve::server::TlsConfig;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::app::lock;
 use crate::server::{
-    error_message, RpcError, Server, Session, INVALID_REQUEST, PARSE_ERROR, SUPPORTED_VERSIONS,
+    INVALID_REQUEST, PARSE_ERROR, RpcError, SUPPORTED_VERSIONS, Server, Session, error_message,
 };
 
 #[derive(Clone)]
@@ -222,7 +222,7 @@ impl Endpoint {
             (Some(id), false) => match self.sessions.get(id) {
                 Some(s) => (s, None),
                 None => {
-                    return http_error(404, INVALID_REQUEST, "unknown session; initialize again")
+                    return http_error(404, INVALID_REQUEST, "unknown session; initialize again");
                 }
             },
             (_, true) => {

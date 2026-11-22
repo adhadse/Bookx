@@ -4,10 +4,10 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::library::AddOutcome;
 use bookx_core::opf::Metadata;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 fn tmp(tag: &str) -> PathBuf {
     let d = std::env::temp_dir().join(format!(
@@ -108,17 +108,21 @@ fn the_real_binary_speaks_mcp_over_stdio() {
         .as_u64()
         .unwrap();
     let r = s.ask(json!({"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"read_book_text","arguments":{"book_id":id}}}));
-    assert!(r["result"]["structuredContent"]["text"]
-        .as_str()
-        .unwrap()
-        .contains("Hello from the smoke test"));
+    assert!(
+        r["result"]["structuredContent"]["text"]
+            .as_str()
+            .unwrap()
+            .contains("Hello from the smoke test")
+    );
     // read-only by default: no write tools
     let r = s.ask(json!({"jsonrpc":"2.0","id":4,"method":"tools/list"}));
-    assert!(!r["result"]["tools"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|t| t["name"] == "add_tags"));
+    assert!(
+        !r["result"]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|t| t["name"] == "add_tags")
+    );
     // closing stdin ends the process cleanly
     drop(s.child.stdin.take());
     let status = s.child.wait().unwrap();
@@ -137,13 +141,14 @@ fn allow_write_lists_the_write_tools_and_changes_survive() {
     drop(s.child.stdin.take());
     assert!(s.child.wait().unwrap().success());
     let o = bookx_store::open_library(&root).unwrap();
-    assert!(o
-        .library
-        .get(1)
-        .unwrap()
-        .meta
-        .tags
-        .contains(&"from-mcp".to_string()));
+    assert!(
+        o.library
+            .get(1)
+            .unwrap()
+            .meta
+            .tags
+            .contains(&"from-mcp".to_string())
+    );
     assert!(root.join(".bookx/mcp-audit.log").exists());
     let _ = std::fs::remove_dir_all(d);
 }

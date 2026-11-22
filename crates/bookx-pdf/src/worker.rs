@@ -8,10 +8,10 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::ops::Range;
-use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{Receiver, Sender, TryRecvError, channel};
 use std::thread::JoinHandle;
 
 use crate::doc::{Document, Info, Link, OpenError, OutlineItem};

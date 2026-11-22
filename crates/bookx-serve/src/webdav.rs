@@ -14,10 +14,10 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use base64::Engine;
 use bookx_core::contracts::{DeviceDriver, DeviceInfo};
-use percent_encoding::{percent_decode_str, utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
+use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, percent_decode_str, utf8_percent_encode};
 
 use crate::devfs::{DeviceBook, Space};
 use crate::devices::sanitize_file_name;
@@ -829,11 +829,12 @@ mod tests {
         let port = l.local_addr().unwrap().port();
         drop(l);
         let w = WebDav::new(&format!("http://127.0.0.1:{port}/"), "", "").unwrap();
-        assert!(w
-            .check()
-            .unwrap_err()
-            .to_string()
-            .contains("could not reach"));
+        assert!(
+            w.check()
+                .unwrap_err()
+                .to_string()
+                .contains("could not reach")
+        );
     }
 
     #[test]
@@ -952,10 +953,12 @@ mod tests {
             "bad",
         )
         .unwrap();
-        assert!(wrong
-            .put_replace(&dir, "x.db", b"y")
-            .unwrap_err()
-            .to_string()
-            .contains("refused"));
+        assert!(
+            wrong
+                .put_replace(&dir, "x.db", b"y")
+                .unwrap_err()
+                .to_string()
+                .contains("refused")
+        );
     }
 }

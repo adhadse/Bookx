@@ -13,7 +13,7 @@ use crate::i18n::{ntr, tr, trf};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_lookup::import::{self, Imported};
 use bookx_serve::syncplan::{self, Pairing};
 use chrono::{DateTime, Utc};
@@ -653,11 +653,13 @@ mod tests {
         assert_eq!(p.notes_added(), 1);
         assert_eq!(p.already(), 2);
         assert_eq!(p.unplaced(), 1);
-        assert!(p.books[0]
-            .plan
-            .highlights_in
-            .iter()
-            .any(|i| i.start < 0 && i.note.text.contains("MISSING")));
+        assert!(
+            p.books[0]
+                .plan
+                .highlights_in
+                .iter()
+                .any(|i| i.start < 0 && i.note.text.contains("MISSING"))
+        );
         assert_eq!(p.unmatched, vec![("Not Mine".to_string(), 1)]);
         let text = p.text();
         assert!(

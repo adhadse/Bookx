@@ -15,7 +15,7 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 
 use super::history::OpKind;

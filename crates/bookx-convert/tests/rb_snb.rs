@@ -201,7 +201,9 @@ fn rb_images_are_png_pages() {
 #[test]
 fn rb_lists_tables_quotes() {
     let book = book_with(
-        &["<ul><li>a</li><li>b<p>more</p></li></ul><ol><li>x</li></ol><table><tr><td>1</td><td>2</td></tr></table><blockquote><p>q</p></blockquote><hr/><p style=\"text-align:center\">c</p><p style=\"text-align:right\">r</p><p>l<br/>m</p>"],
+        &[
+            "<ul><li>a</li><li>b<p>more</p></li></ul><ol><li>x</li></ol><table><tr><td>1</td><td>2</td></tr></table><blockquote><p>q</p></blockquote><hr/><p style=\"text-align:center\">c</p><p style=\"text-align:right\">r</p><p>l<br/>m</p>",
+        ],
         false,
     );
     let s = String::from_utf8(rb_html(&rb(&book))).unwrap();
@@ -295,12 +297,16 @@ fn rb_layout_matches_calibre() {
     assert_eq!(t[2].length, o[2].length);
     assert_eq!(rb_page(&theirs, &t[2]), rb_page(&ours, &o[2]));
     // images are stored PNG pages in both
-    assert!(t[3..]
-        .iter()
-        .all(|p| p.name.ends_with(".png") && p.flags == 0));
-    assert!(o[3..]
-        .iter()
-        .all(|p| p.name.ends_with(".png") && p.flags == 0));
+    assert!(
+        t[3..]
+            .iter()
+            .all(|p| p.name.ends_with(".png") && p.flags == 0)
+    );
+    assert!(
+        o[3..]
+            .iter()
+            .all(|p| p.name.ends_with(".png") && p.flags == 0)
+    );
     let ti = rb_page(&theirs, &t[1]);
     let th = String::from_utf8_lossy(&ti);
     assert!(
@@ -585,7 +591,9 @@ fn snb_chapter_text_and_images() {
 #[test]
 fn snb_lists_tables_and_line_breaks() {
     let book = book_with(
-        &["<ul><li>a</li></ul><ol><li>x</li><li>y</li></ol><table><tr><td>1</td><td>2</td></tr></table><p>l<br/>m</p><pre>p\n q</pre>]]>"],
+        &[
+            "<ul><li>a</li></ul><ol><li>x</li><li>y</li></ol><table><tr><td>1</td><td>2</td></tr></table><p>l<br/>m</p><pre>p\n q</pre>]]>",
+        ],
         false,
     );
     let s = snb_parse(&snb(&book));

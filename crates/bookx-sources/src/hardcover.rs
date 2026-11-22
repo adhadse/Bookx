@@ -8,8 +8,8 @@
 //! `Authorization` header and is never part of an error text. Written against the public schema
 //! (`me.user_books`); checked here against a stub server, not against the live service.
 
-use anyhow::{anyhow, bail, Context, Result};
-use serde_json::{json, Value};
+use anyhow::{Context, Result, anyhow, bail};
+use serde_json::{Value, json};
 
 use crate::fetch::{FetchError, Fetcher};
 use crate::isbn;
@@ -288,10 +288,12 @@ mod tests {
         let (items, _) = parse_page(odd.as_bytes()).unwrap();
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].status, Status::Reading);
-        assert!(parse_page(br#"{"errors":[{"message":"Invalid token"}]}"#)
-            .unwrap_err()
-            .to_string()
-            .contains("Invalid token"));
+        assert!(
+            parse_page(br#"{"errors":[{"message":"Invalid token"}]}"#)
+                .unwrap_err()
+                .to_string()
+                .contains("Invalid token")
+        );
         assert!(parse_page(b"nope").is_err());
         assert!(parse_page(b"{}").is_err());
     }

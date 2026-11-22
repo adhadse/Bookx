@@ -3,16 +3,16 @@
 
 mod common;
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
+use bookx_backup::Cancelled;
 use bookx_backup::crypto::Kdf;
 use bookx_backup::repo::{
     MemStore, RekeyOptions, RekeyPending, RepoLocked, Repository, RestoreOptions, RunOptions,
     Secrets,
 };
-use bookx_backup::Cancelled;
-use common::{tmp, tree, Lib};
+use common::{Lib, tmp, tree};
 
 fn no() -> AtomicBool {
     AtomicBool::new(false)
@@ -122,10 +122,12 @@ fn a_changed_passphrase_opens_everything_and_the_old_one_nothing() {
     assert_eq!(object_paths(&m), before, "no object was renamed");
     {
         let f = m.files.lock().unwrap();
-        assert!(before
-            .iter()
-            .zip(&bytes_before)
-            .all(|(p, old)| &f[p] != old && f[p].len() == old.len()));
+        assert!(
+            before
+                .iter()
+                .zip(&bytes_before)
+                .all(|(p, old)| &f[p] != old && f[p].len() == old.len())
+        );
         assert!(!f.contains_key("rekey.json"), "the marker is removed");
         assert!(!f.contains_key("lock.json"));
     }

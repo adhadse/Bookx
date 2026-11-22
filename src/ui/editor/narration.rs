@@ -222,39 +222,43 @@ impl Editor {
 
         let book_id = self.book_id;
         let input = self.sender.input_sender().clone();
-        glib::timeout_add_local(std::time::Duration::from_millis(80), move || loop {
-            match rx.try_recv() {
-                Ok(Msg::Progress(p)) => {
-                    let whole =
-                        (p.chapter - 1) as f64 + p.sentence as f64 / p.sentences.max(1) as f64;
-                    let f = whole / p.chapters.max(1) as f64;
-                    bar.set_fraction(f);
-                    let text = trf(
-                        "Chapter {} of {}: sentence {} of {}",
-                        &[&p.chapter, &p.chapters, &p.sentence, &p.sentences],
-                    );
-                    bar.set_text(Some(&text));
-                    crate::jobs::progress(job, Some(f), &text);
-                }
-                Ok(Msg::Done(fin)) => {
-                    dlg.force_close();
-                    let cancelled = matches!(&fin.result, Ok(r) if r.cancelled);
-                    match &fin.result {
-                        Err(e) if fin.narrated == 0 => {
-                            crate::jobs::finish(job, Err(format!("{e:#}")))
-                        }
-                        _ if cancelled => crate::jobs::finish(job, Err("cancelled".into())),
-                        _ => crate::jobs::finish(job, Ok(())),
+        glib::timeout_add_local(std::time::Duration::from_millis(80), move || {
+            loop {
+                match rx.try_recv() {
+                    Ok(Msg::Progress(p)) => {
+                        let whole =
+                            (p.chapter - 1) as f64 + p.sentence as f64 / p.sentences.max(1) as f64;
+                        let f = whole / p.chapters.max(1) as f64;
+                        bar.set_fraction(f);
+                        let text = trf(
+                            "Chapter {} of {}: sentence {} of {}",
+                            &[&p.chapter, &p.chapters, &p.sentence, &p.sentences],
+                        );
+                        bar.set_text(Some(&text));
+                        crate::jobs::progress(job, Some(f), &text);
                     }
-                    FINISHED.with(|f| f.borrow_mut().insert(book_id, fin));
-                    input.emit(Input::RunPluginTool("narration:apply".into()));
-                    return glib::ControlFlow::Break;
-                }
-                Err(std::sync::mpsc::TryRecvError::Empty) => return glib::ControlFlow::Continue,
-                Err(_) => {
-                    dlg.force_close();
-                    crate::jobs::finish(job, Err("the worker stopped".into()));
-                    return glib::ControlFlow::Break;
+                    Ok(Msg::Done(fin)) => {
+                        dlg.force_close();
+                        let cancelled = matches!(&fin.result, Ok(r) if r.cancelled);
+                        match &fin.result {
+                            Err(e) if fin.narrated == 0 => {
+                                crate::jobs::finish(job, Err(format!("{e:#}")))
+                            }
+                            _ if cancelled => crate::jobs::finish(job, Err("cancelled".into())),
+                            _ => crate::jobs::finish(job, Ok(())),
+                        }
+                        FINISHED.with(|f| f.borrow_mut().insert(book_id, fin));
+                        input.emit(Input::RunPluginTool("narration:apply".into()));
+                        return glib::ControlFlow::Break;
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Empty) => {
+                        return glib::ControlFlow::Continue;
+                    }
+                    Err(_) => {
+                        dlg.force_close();
+                        crate::jobs::finish(job, Err("the worker stopped".into()));
+                        return glib::ControlFlow::Break;
+                    }
                 }
             }
         });

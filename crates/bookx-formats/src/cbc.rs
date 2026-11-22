@@ -2,7 +2,7 @@
 //! per line. All listed comics are merged into one book with one chapter per comic whose body
 //! is the comic's pages. An optional `metadata.opf` supplies the collection's metadata.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::contracts::FormatReader;
 use bookx_core::convert::Chapter;
@@ -212,7 +212,9 @@ mod tests {
 
     #[test]
     fn comics_txt_parsing() {
-        let v = parse_comics_txt("a.cbz:Title: with colon\n\n# note\nB.CBZ\nsub/c.cbr : C comic \nweird:thing\n:x\n\u{feff}d.cbz");
+        let v = parse_comics_txt(
+            "a.cbz:Title: with colon\n\n# note\nB.CBZ\nsub/c.cbr : C comic \nweird:thing\n:x\n\u{feff}d.cbz",
+        );
         let t: Vec<(&str, &str)> = v
             .iter()
             .map(|e| (e.file.as_str(), e.title.as_str()))

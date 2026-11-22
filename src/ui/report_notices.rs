@@ -8,8 +8,8 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 
-use super::report_dialog::Prefill;
 use super::SharedRef;
+use super::report_dialog::Prefill;
 use crate::i18n::tr;
 
 struct Notice {
@@ -122,7 +122,9 @@ pub fn install(
     open: Rc<dyn Fn(Prefill)>,
 ) -> gtk::Box {
     let beta = Notice::new(
-        &tr("Thanks for trying the Bookx beta. It can have bugs, so keep a backup of anything you care about. Reporting problems helps a lot."),
+        &tr(
+            "Thanks for trying the Bookx beta. It can have bugs, so keep a backup of anything you care about. Reporting problems helps a lot.",
+        ),
         &tr("Beta notice"),
     );
     let crash = Notice::new(

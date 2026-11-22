@@ -304,11 +304,7 @@ pub(crate) fn split_important(mut toks: Vec<Tok>) -> (Vec<Tok>, bool) {
 }
 
 fn ident(t: &Tok) -> Option<&str> {
-    if let Tok::Ident(s) = t {
-        Some(s)
-    } else {
-        None
-    }
+    if let Tok::Ident(s) = t { Some(s) } else { None }
 }
 
 fn kw(toks: &[Tok]) -> Option<String> {
@@ -823,7 +819,7 @@ pub(crate) fn parse_declaration(name: &str, toks: &[Tok]) -> Vec<Decl> {
                 match k.as_str() {
                     "inherit" => return vec![Decl::BackgroundColor(Val::Inherit)],
                     "initial" | "none" | "transparent" => {
-                        return vec![Decl::BackgroundColor(Val::Initial)]
+                        return vec![Decl::BackgroundColor(Val::Initial)];
                     }
                     "unset" | "revert" => return vec![Decl::BackgroundColor(Val::Unset)],
                     _ => {}
@@ -1316,9 +1312,10 @@ mod tests {
         assert_eq!(w.len(), 4);
         assert!(w.iter().all(|d| matches!(d, Decl::Margin(_, Val::Inherit))));
         let w = one("padding", "initial");
-        assert!(w
-            .iter()
-            .all(|d| matches!(d, Decl::Padding(_, Val::Initial))));
+        assert!(
+            w.iter()
+                .all(|d| matches!(d, Decl::Padding(_, Val::Initial)))
+        );
     }
 
     #[test]

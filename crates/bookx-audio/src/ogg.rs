@@ -4,7 +4,7 @@
 use std::io::{Read, Seek, SeekFrom};
 
 use crate::limits::*;
-use crate::vorbis::{parse_comments, Comments};
+use crate::vorbis::{Comments, parse_comments};
 
 #[derive(Debug, Clone, Default)]
 pub struct OggInfo {

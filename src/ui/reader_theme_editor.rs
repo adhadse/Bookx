@@ -7,7 +7,7 @@ use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gdk, gio, glib};
 
 use super::SharedRef;
-use crate::config::{parse_hex, ReaderPrefs};
+use crate::config::{ReaderPrefs, parse_hex};
 
 /// What the windows need from the reader.
 #[derive(Clone)]

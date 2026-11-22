@@ -686,7 +686,10 @@ impl Editor {
             let p = self.chars.prefs.borrow();
             eprintln!(
                 "editor_chars: open={} cat={} shown={} title={} favourites={} recent={} entities={} info={}",
-                self.chars.win.as_ref().is_some_and(|w| w.window.is_visible()),
+                self.chars
+                    .win
+                    .as_ref()
+                    .is_some_and(|w| w.window.is_visible()),
                 cat,
                 shown,
                 title,

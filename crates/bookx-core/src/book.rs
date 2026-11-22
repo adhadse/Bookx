@@ -217,7 +217,7 @@ fn file_rank(name: &str) -> u8 {
 #[cfg(test)]
 mod styled_tests {
     use super::*;
-    use crate::convert::{create_epub, Chapter};
+    use crate::convert::{Chapter, create_epub};
     use crate::doc::Span;
     use crate::opf::Metadata;
 

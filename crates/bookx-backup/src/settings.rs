@@ -6,7 +6,7 @@
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::repo::store::{RepoStore, REPO_DIR};
+use crate::repo::store::{REPO_DIR, RepoStore};
 use crate::repo::{DavStore, FolderStore, Scope};
 use crate::target::{FolderTarget, Target, WebDavTarget};
 
@@ -365,9 +365,10 @@ mod tests {
         let mut d = Destination::folder("d1", "a", "/a");
         d.record_error("could not reach nas", t(9));
         s.destinations.push(d);
-        assert!(s
-            .due(Trigger::Tick, t(9) + Duration::minutes(20))
-            .is_empty());
+        assert!(
+            s.due(Trigger::Tick, t(9) + Duration::minutes(20))
+                .is_empty()
+        );
         assert_eq!(s.due(Trigger::Tick, t(9) + Duration::minutes(61)), vec![0]);
         assert_eq!(s.due(Trigger::Exit, t(9) + Duration::minutes(20)), vec![0]);
     }
@@ -414,10 +415,11 @@ mod tests {
         assert_eq!(sc.max_file_size, Some(2 * 1024 * 1024));
         assert_eq!(d.repo_store().unwrap().label(), "/mnt/usb/Bookx Backup");
         let w = Destination::webdav("d2", "n", "https://c.example/dav", "u", "p");
-        assert!(w
-            .repo_store()
-            .unwrap()
-            .label()
-            .ends_with("Bookx backups/Bookx Backup"));
+        assert!(
+            w.repo_store()
+                .unwrap()
+                .label()
+                .ends_with("Bookx backups/Bookx Backup")
+        );
     }
 }

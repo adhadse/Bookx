@@ -2,10 +2,10 @@
 
 mod common;
 
-use bookx_editing::compare::{compare_books, html_diff, CompareOptions};
-use bookx_editing::filter_styles::{filter_styles, list_properties, FilterSpec};
-use bookx_editing::reports::{build_report, ReportOptions};
-use bookx_editing::transform_css::{transform_book, CssTransform, Unit};
+use bookx_editing::compare::{CompareOptions, compare_books, html_diff};
+use bookx_editing::filter_styles::{FilterSpec, filter_styles, list_properties};
+use bookx_editing::reports::{ReportOptions, build_report};
+use bookx_editing::transform_css::{CssTransform, Unit, transform_book};
 
 fn styled() -> bookx_core::book::OpenBook {
     let mut b = common::book_from_bodies(&[
@@ -48,11 +48,12 @@ fn transform_then_compare_then_report() {
     assert!(css.contains(".a { color: #cc0000; margin: 0 0 8px 0;"));
     assert!(css.contains(".unused { color: #cc0000 }"));
     assert!(css.contains("rgb(0, 0, 255)"), "other colours untouched");
-    assert!(b
-        .archive
-        .get_string("OEBPS/chapter-1.xhtml")
-        .unwrap()
-        .contains("style=\"color: #cc0000;"));
+    assert!(
+        b.archive
+            .get_string("OEBPS/chapter-1.xhtml")
+            .unwrap()
+            .contains("style=\"color: #cc0000;")
+    );
     common::validate_epub(&b.archive.to_bytes().unwrap());
 
     let d = compare_books(
@@ -97,18 +98,22 @@ fn filter_styles_and_inventory() {
         },
     );
     assert_eq!(r.declarations_removed, 3);
-    assert!(!b
-        .archive
-        .get_string("OEBPS/style.css")
-        .unwrap()
-        .contains("-webkit"));
-    assert!(!b
-        .archive
-        .get_string("OEBPS/chapter-1.xhtml")
-        .unwrap()
-        .contains("-webkit"));
+    assert!(
+        !b.archive
+            .get_string("OEBPS/style.css")
+            .unwrap()
+            .contains("-webkit")
+    );
+    assert!(
+        !b.archive
+            .get_string("OEBPS/chapter-1.xhtml")
+            .unwrap()
+            .contains("-webkit")
+    );
     common::validate_epub(&b.archive.to_bytes().unwrap());
-    assert!(list_properties(&b)
-        .keys()
-        .all(|k| !k.starts_with("-webkit") && k != "margin"));
+    assert!(
+        list_properties(&b)
+            .keys()
+            .all(|k| !k.starts_with("-webkit") && k != "margin")
+    );
 }

@@ -3,10 +3,10 @@
 
 use std::time::{Duration, Instant};
 
-use bookx_comic::decode::{decode_page, dimensions, Opts};
-use bookx_comic::layout::{place_spread, plan_spreads, strip, SpreadOpts};
-use bookx_comic::panels::{detect, Opts as PanelOpts};
-use bookx_comic::testgen::{jpeg, page_gray, Layout};
+use bookx_comic::decode::{Opts, decode_page, dimensions};
+use bookx_comic::layout::{SpreadOpts, place_spread, plan_spreads, strip};
+use bookx_comic::panels::{Opts as PanelOpts, detect};
+use bookx_comic::testgen::{Layout, jpeg, page_gray};
 
 fn budget(release_ms: u64) -> Duration {
     let scale: f64 = std::env::var("BOOKX_PERF_SCALE")

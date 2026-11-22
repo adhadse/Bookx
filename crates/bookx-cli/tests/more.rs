@@ -1,10 +1,10 @@
 //! `catalog`, `polish`, `fonts`, `saved-search` and `plugin run`. Each test has its own sandbox.
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
-use bookx_cli::{run, Env};
+use bookx_cli::{Env, run};
 use bookx_core::archive::Archive;
 
 struct Sandbox {
@@ -192,11 +192,13 @@ fn plugin_run_reports_first_and_writes_only_with_apply() {
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     assert_eq!(v["applied"], true);
     assert_eq!(v["changed"], 1);
-    assert!(!Archive::open(&file)
-        .unwrap()
-        .get_string(&chapter)
-        .unwrap()
-        .contains("</p>   "));
+    assert!(
+        !Archive::open(&file)
+            .unwrap()
+            .get_string(&chapter)
+            .unwrap()
+            .contains("</p>   ")
+    );
 
     // the query narrows the books
     dirty(&file);

@@ -5,16 +5,16 @@
 use crate::i18n::trf;
 use std::path::Path;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_sources::feed::{decode_text, detect};
 use bookx_sources::fetch::Fetcher;
 use bookx_sources::readability::{
-    article_to_epub, extract_with, fetch_images, ExtractOptions, ImageLimits,
+    ExtractOptions, ImageLimits, article_to_epub, extract_with, fetch_images,
 };
-use bookx_sources::recipe::{build_news_epub, Recipe};
+use bookx_sources::recipe::{Recipe, build_news_epub};
 use chrono::{DateTime, Utc};
 
-use crate::core::library::{prepare_from_archive, Prepared};
+use crate::core::library::{Prepared, prepare_from_archive};
 
 /// Fewer visible characters than this is not an article.
 const MIN_ARTICLE_CHARS: usize = 200;
@@ -336,10 +336,11 @@ mod tests {
         assert_eq!(got.kind, Kind::Wikipedia);
         assert_eq!(got.prepared.meta.title, "Ada Lovelace");
         assert!(got.summary.contains("Ada Lovelace"), "{}", got.summary);
-        assert!(f
-            .urls()
-            .iter()
-            .all(|u| u.starts_with("https://en.wikipedia.org/")));
+        assert!(
+            f.urls()
+                .iter()
+                .all(|u| u.starts_with("https://en.wikipedia.org/"))
+        );
         // an article address of Wikipedia takes the same route
         let again = import("https://en.wikipedia.org/wiki/Ada_Lovelace", &f, now()).unwrap();
         assert_eq!(again.kind, Kind::Wikipedia);
@@ -436,7 +437,7 @@ mod tests {
 
     #[test]
     fn wallabag_articles_become_books_once() {
-        use bookx_sources::wallabag::{entries_url, Query};
+        use bookx_sources::wallabag::{Query, entries_url};
         let mut acc = crate::web_accounts::WebAccounts {
             wallabag_url: "wallabag.example.org".into(),
             wallabag_token: "TOK".into(),
@@ -465,7 +466,7 @@ mod tests {
 
     #[test]
     fn wallabag_signs_in_when_there_is_no_token() {
-        use bookx_sources::wallabag::{entries_url, Query};
+        use bookx_sources::wallabag::{Query, entries_url};
         let mut acc = crate::web_accounts::WebAccounts {
             wallabag_url: "https://w.example.org".into(),
             ..Default::default()

@@ -6,7 +6,7 @@
 
 use super::*;
 use bookx_text::aids::{
-    cite, AutoTurn, AutoTurnTick, CitationFields, PageAnimation, RemoteAction, REMOTE_DEFAULTS,
+    AutoTurn, AutoTurnTick, CitationFields, PageAnimation, REMOTE_DEFAULTS, RemoteAction, cite,
 };
 
 #[derive(Debug, Clone, PartialEq)]

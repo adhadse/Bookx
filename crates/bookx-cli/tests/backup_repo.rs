@@ -9,8 +9,8 @@ use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
-use bookx_cli::{run, Env};
-use common::{dav, tmp, tree, Lib};
+use bookx_cli::{Env, run};
+use common::{Lib, dav, tmp, tree};
 
 static ENV: Mutex<()> = Mutex::new(());
 
@@ -280,12 +280,13 @@ fn a_webdav_place_works_end_to_end() {
         ],
     );
     assert_eq!(code, 0, "{out} {err}");
-    assert!(d
-        .files
-        .lock()
-        .unwrap()
-        .keys()
-        .any(|k| k.contains("/dav/cli/Bookx Backup/blobs/")));
+    assert!(
+        d.files
+            .lock()
+            .unwrap()
+            .keys()
+            .any(|k| k.contains("/dav/cli/Bookx Backup/blobs/"))
+    );
     let (_, out, _) = cli(
         &lib.root,
         &[

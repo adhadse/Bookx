@@ -4,10 +4,10 @@
 use std::collections::HashSet;
 use std::sync::OnceLock;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::book::OpenBook;
-use bookx_core::check::{check_book, Severity};
+use bookx_core::check::{Severity, check_book};
 use bookx_core::util::{
     extension, file_name, is_external, media_type_for, parse_xml, relative_href, xml_escape,
 };
@@ -1224,20 +1224,24 @@ mod tests {
         assert_eq!(a.get("mimetype").unwrap(), b"application/epub+zip");
         assert!(fix_mimetype(&mut a).is_none());
         a.set("mimetype", b"application/epub+zip\n".to_vec());
-        assert!(fix_mimetype(&mut a)
-            .unwrap()
-            .description
-            .starts_with("Rewrote"));
+        assert!(
+            fix_mimetype(&mut a)
+                .unwrap()
+                .description
+                .starts_with("Rewrote")
+        );
         assert!(fix_mimetype(&mut a).is_none());
     }
 
     #[test]
     fn container_recreated_and_repointed() {
         let mut a = Archive::default();
-        assert!(fix_container(&mut a)
-            .unwrap_err()
-            .to_string()
-            .contains("no .opf"));
+        assert!(
+            fix_container(&mut a)
+                .unwrap_err()
+                .to_string()
+                .contains("no .opf")
+        );
         a.set_string("x/deep/b.opf", "<package/>");
         a.set_string("content.opf", "<package/>");
         let f = fix_container(&mut a).unwrap().unwrap();
@@ -1354,7 +1358,9 @@ mod tests {
 
     #[test]
     fn missing_alt_added_only_where_absent() {
-        let mut b = make_book(&["<p><img src=\"a.png\"/><img src=\"b.png\" alt=\"B\"/><img src=\"c.png\" alt=\"\" /><IMG src=\"d.png\"></IMG></p>"]);
+        let mut b = make_book(&[
+            "<p><img src=\"a.png\"/><img src=\"b.png\" alt=\"B\"/><img src=\"c.png\" alt=\"\" /><IMG src=\"d.png\"></IMG></p>",
+        ]);
         let f = fix_missing_alt(&mut b);
         assert_eq!(f.len(), 1);
         assert!(f[0].description.contains("2 image"));
@@ -1427,14 +1433,17 @@ mod tests {
         assert!(f
             .iter()
             .any(|x| x.file.ends_with("chapter-1.xhtml") && x.description.contains("namespace")));
-        assert!(f
-            .iter()
-            .any(|x| x.file.ends_with("chapter-2.xhtml") && x.description.starts_with("Repaired")));
-        assert!(b
-            .archive
-            .get_string("OEBPS/chapter-2.xhtml")
-            .unwrap()
-            .contains("Tom &amp; Jerry<br/>"));
+        assert!(
+            f.iter()
+                .any(|x| x.file.ends_with("chapter-2.xhtml")
+                    && x.description.starts_with("Repaired"))
+        );
+        assert!(
+            b.archive
+                .get_string("OEBPS/chapter-2.xhtml")
+                .unwrap()
+                .contains("Tom &amp; Jerry<br/>")
+        );
         let (f2, _) = fix_wellformedness(&mut b);
         assert!(f2.is_empty());
         assert_eq!(fix_missing_namespace("<p>no html</p>"), None);
@@ -1463,15 +1472,18 @@ mod tests {
         assert_eq!(b.package.metadata.title, "Untitled");
         assert_eq!(b.package.metadata.language, "en");
         assert_eq!(b.package.unique_id, "bookid");
-        assert!(b
-            .package
-            .metadata
-            .identifiers
-            .iter()
-            .any(|i| i.value.contains("9781234567897")));
-        assert!(check_book(&b.archive)
-            .iter()
-            .all(|i| i.severity != Severity::Error));
+        assert!(
+            b.package
+                .metadata
+                .identifiers
+                .iter()
+                .any(|i| i.value.contains("9781234567897"))
+        );
+        assert!(
+            check_book(&b.archive)
+                .iter()
+                .all(|i| i.severity != Severity::Error)
+        );
         assert!(fix_metadata(&mut b, &opts).unwrap().is_empty());
     }
 
@@ -1755,9 +1767,11 @@ mod tests {
         );
         let (all, _) = fix_html_files(&mut book, &[], true);
         assert_eq!(all.len(), 1);
-        assert!(all[0]
-            .description
-            .starts_with("Rebuilt with the HTML5 parser"));
+        assert!(
+            all[0]
+                .description
+                .starts_with("Rebuilt with the HTML5 parser")
+        );
         let (none, _) = fix_html_files(&mut book, &[], false);
         assert!(none.is_empty());
     }

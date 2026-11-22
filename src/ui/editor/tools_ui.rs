@@ -7,10 +7,10 @@
 //! operation.
 
 use crate::i18n::ntr;
-use crate::i18n::{tr, trf, N_};
+use crate::i18n::{N_, tr, trf};
 use std::collections::{BTreeMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 
 use bookx_convert::transforms::punctuation::SmartenOptions;
 use bookx_editing::book_tools::{self, AccessMeta, Punctuation, QuoteStyle};
@@ -626,7 +626,9 @@ impl Editor {
         let scope = self.scope_row();
         let html5 = switch_row(
             &tr("Always use the HTML5 parser"),
-            &tr("Rebuild broken pages the way a browser reads them. Otherwise it is only used when the quick repair fails."),
+            &tr(
+                "Rebuild broken pages the way a browser reads them. Otherwise it is only used when the quick repair fails.",
+            ),
             false,
         );
         let g = group("");
@@ -991,7 +993,9 @@ impl Editor {
                         }
                         let subset = switch_row(
                             &tr("Keep only the characters the book uses"),
-                            &tr("Smaller files. Text you add later may need glyphs that are no longer there."),
+                            &tr(
+                                "Smaller files. Text you add later may need glyphs that are no longer there.",
+                            ),
                             true,
                         );
                         let g = group("");
@@ -1445,30 +1449,37 @@ impl Editor {
                 let tx_ui = tx_ui.clone();
                 let book = book.clone();
                 let (progress, stop) = (progress.clone(), stop.clone());
-                glib::timeout_add_local(std::time::Duration::from_millis(80), move || loop {
-                    match rx.try_recv() {
-                        Ok(Ok((d, t))) => {
-                            label.set_text(&trf("Checking {} of {}", &[&d, &t]));
-                            progress.set_fraction(if t == 0 { 0.0 } else { d as f64 / t as f64 });
+                glib::timeout_add_local(std::time::Duration::from_millis(80), move || {
+                    loop {
+                        match rx.try_recv() {
+                            Ok(Ok((d, t))) => {
+                                label.set_text(&trf("Checking {} of {}", &[&d, &t]));
+                                progress.set_fraction(if t == 0 {
+                                    0.0
+                                } else {
+                                    d as f64 / t as f64
+                                });
+                            }
+                            Ok(Err(done)) => {
+                                progress.set_visible(false);
+                                stop.set_visible(false);
+                                let checker =
+                                    editor_tools::Gathered(done.iter().cloned().collect());
+                                let res = links::check_external_links(&book.borrow(), &checker);
+                                let (broken, ok, lines) = editor_tools::link_report(&res);
+                                let mut text = vec![format!(
+                                    "{} checked: {ok} fine, {broken} broken",
+                                    done.len()
+                                )];
+                                text.extend(lines.into_iter().take(14));
+                                label.set_text(&text.join("\n"));
+                                tx_ui.emit(Input::Ext(Cmd::LinkResults(done)));
+                                dialog.set_title(&tr("External Links Checked"));
+                                return glib::ControlFlow::Break;
+                            }
+                            Err(mpsc::TryRecvError::Empty) => return glib::ControlFlow::Continue,
+                            Err(_) => return glib::ControlFlow::Break,
                         }
-                        Ok(Err(done)) => {
-                            progress.set_visible(false);
-                            stop.set_visible(false);
-                            let checker = editor_tools::Gathered(done.iter().cloned().collect());
-                            let res = links::check_external_links(&book.borrow(), &checker);
-                            let (broken, ok, lines) = editor_tools::link_report(&res);
-                            let mut text = vec![format!(
-                                "{} checked: {ok} fine, {broken} broken",
-                                done.len()
-                            )];
-                            text.extend(lines.into_iter().take(14));
-                            label.set_text(&text.join("\n"));
-                            tx_ui.emit(Input::Ext(Cmd::LinkResults(done)));
-                            dialog.set_title(&tr("External Links Checked"));
-                            return glib::ControlFlow::Break;
-                        }
-                        Err(mpsc::TryRecvError::Empty) => return glib::ControlFlow::Continue,
-                        Err(_) => return glib::ControlFlow::Break,
                     }
                 });
             })

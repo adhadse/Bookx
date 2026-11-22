@@ -801,11 +801,7 @@ pub fn bulk_dialog(
         apply.connect_clicked(move |_| {
             let opt = |e: &adw::EntryRow| {
                 let t = e.text().trim().to_string();
-                if t.is_empty() {
-                    None
-                } else {
-                    Some(t)
-                }
+                if t.is_empty() { None } else { Some(t) }
             };
             let custom_edits = match custom.as_ref().map(|c| c.collect()).transpose() {
                 Ok(v) => v.unwrap_or_default(),

@@ -4,10 +4,10 @@
 use std::sync::Arc;
 
 use base64::Engine;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::app::App;
-use crate::server::{RpcError, INTERNAL_ERROR, RESOURCE_NOT_FOUND};
+use crate::server::{INTERNAL_ERROR, RESOURCE_NOT_FOUND, RpcError};
 use crate::tools;
 
 pub fn templates() -> Vec<Value> {

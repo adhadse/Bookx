@@ -220,9 +220,10 @@ mod tests {
         .unwrap();
         let s = State::load(&p);
         assert_eq!(s.bookmarks.len(), MAX_BOOKMARKS);
-        assert!(s
-            .bookmarks
-            .iter()
-            .all(|b| b.note.chars().count() <= MAX_NOTE));
+        assert!(
+            s.bookmarks
+                .iter()
+                .all(|b| b.note.chars().count() <= MAX_NOTE)
+        );
     }
 }

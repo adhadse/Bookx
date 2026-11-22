@@ -9,7 +9,7 @@
 
 use std::collections::HashMap;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::contracts::FormatReader;
 use bookx_core::opf::Metadata;
@@ -832,20 +832,26 @@ pub(crate) mod tests {
 
     #[test]
     fn errors() {
-        assert!(convert_rtf(b"")
-            .unwrap_err()
-            .to_string()
-            .contains("not an RTF"));
+        assert!(
+            convert_rtf(b"")
+                .unwrap_err()
+                .to_string()
+                .contains("not an RTF")
+        );
         assert!(convert_rtf(b"plain text").is_err());
-        assert!(convert_rtf(br"{\rtf1\ansi {\fonttbl{\f0 Times;}}}")
-            .unwrap_err()
-            .to_string()
-            .contains("no text"));
+        assert!(
+            convert_rtf(br"{\rtf1\ansi {\fonttbl{\f0 Times;}}}")
+                .unwrap_err()
+                .to_string()
+                .contains("no text")
+        );
         let deep = format!("{{\\rtf1{}x", "{".repeat(5000));
-        assert!(convert_rtf(deep.as_bytes())
-            .unwrap_err()
-            .to_string()
-            .contains("nested"));
+        assert!(
+            convert_rtf(deep.as_bytes())
+                .unwrap_err()
+                .to_string()
+                .contains("nested")
+        );
         // truncated in the middle of escapes must not panic
         for cut in 1..40 {
             let s = sample();

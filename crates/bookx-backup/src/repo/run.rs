@@ -7,20 +7,20 @@ use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_store::health::{self, SnapshotKind};
 use chrono::{DateTime, Utc};
 use sha2::{Digest, Sha256};
 
 use super::manifest::{
-    journal_name, BlobRef, BookNotes, FileEntry, JournalRecord, Manifest, Role, SnapName, FORMAT,
+    BlobRef, BookNotes, FORMAT, FileEntry, JournalRecord, Manifest, Role, SnapName, journal_name,
 };
-use super::seal::{ids_equal, IdHasher};
+use super::seal::{IdHasher, ids_equal};
 use super::source::{
-    scan_library, CachedFile, LibrarySource, LocalState, Scan, ScannedFile, Scope, Skipped,
+    CachedFile, LibrarySource, LocalState, Scan, ScannedFile, Scope, Skipped, scan_library,
 };
 use super::store::RepoStore;
-use super::{blob_path, Repository, RolledBack};
+use super::{Repository, RolledBack, blob_path};
 use crate::push::Cancelled;
 
 const CHANGED: &str = "the file changed while it was being copied";
@@ -172,12 +172,14 @@ pub(crate) fn parallel_for<F: Fn(usize) + Sync>(n: usize, jobs: usize, f: F) {
     let jobs = jobs.clamp(1, 8).min(n.max(1));
     std::thread::scope(|s| {
         for _ in 0..jobs {
-            s.spawn(|| loop {
-                let i = next.fetch_add(1, Ordering::Relaxed);
-                if i >= n {
-                    break;
+            s.spawn(|| {
+                loop {
+                    let i = next.fetch_add(1, Ordering::Relaxed);
+                    if i >= n {
+                        break;
+                    }
+                    f(i);
                 }
-                f(i);
             });
         }
     });
@@ -488,7 +490,9 @@ impl Repository {
                 let _ = self.store.delete(&path);
                 return Err(BlobFail::Remote(match back {
                     Err(e) => anyhow!("could not read the copy back: {e:#}"),
-                    Ok(_) => anyhow!("the copy does not match the original (it was removed); the place may be full or unreliable"),
+                    Ok(_) => anyhow!(
+                        "the copy does not match the original (it was removed); the place may be full or unreliable"
+                    ),
                 }));
             }
         }

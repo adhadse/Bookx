@@ -2,13 +2,13 @@
 
 use std::collections::{HashMap, HashSet};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use base64::Engine;
 use bookx_core::archive::Archive;
 use bookx_core::contracts::FormatReader;
 use bookx_core::convert::Chapter;
 use bookx_core::opf::{Identifier, Metadata};
-use bookx_core::toc::{write_toc, TocEntry};
+use bookx_core::toc::{TocEntry, write_toc};
 use bookx_core::util::{parse_xml, xml_escape};
 use roxmltree::Node;
 
@@ -822,11 +822,12 @@ pub(crate) mod tests {
         assert_eq!(arc.get("OEBPS/images/pic.jpg"), Some(JPG));
         assert!(chapter_xml(&book, 1).contains("<img src=\"images/pic.jpg\" alt=\"A picture\"/>"));
         // the cover binary is only used as the cover, not duplicated as media
-        assert!(book
-            .package
-            .manifest
-            .iter()
-            .any(|i| i.href == "images/pic.jpg"));
+        assert!(
+            book.package
+                .manifest
+                .iter()
+                .any(|i| i.href == "images/pic.jpg")
+        );
         assert!(!arc.contains("OEBPS/images/cover_png.png"));
     }
 
@@ -878,14 +879,18 @@ pub(crate) mod tests {
     #[test]
     fn errors_are_reported_for_bad_input() {
         assert!(convert_fb2(b"").unwrap_err().to_string().contains("empty"));
-        assert!(convert_fb2(b"<html/>")
-            .unwrap_err()
-            .to_string()
-            .contains("not a FictionBook"));
-        assert!(convert_fb2(b"<FictionBook><body></body></FictionBook>")
-            .unwrap_err()
-            .to_string()
-            .contains("no text"));
+        assert!(
+            convert_fb2(b"<html/>")
+                .unwrap_err()
+                .to_string()
+                .contains("not a FictionBook")
+        );
+        assert!(
+            convert_fb2(b"<FictionBook><body></body></FictionBook>")
+                .unwrap_err()
+                .to_string()
+                .contains("no text")
+        );
         assert!(convert_fb2(b"<FictionBook><body>").is_err());
     }
 
@@ -915,11 +920,13 @@ pub(crate) mod tests {
         );
         assert!(!FbzReader.sniff(&make_zip(&[("a.txt", b"x")])));
         let empty = make_zip(&[("a.txt", b"x")]);
-        assert!(FbzReader
-            .read(&empty)
-            .unwrap_err()
-            .to_string()
-            .contains("no .fb2"));
+        assert!(
+            FbzReader
+                .read(&empty)
+                .unwrap_err()
+                .to_string()
+                .contains("no .fb2")
+        );
         assert!(FbzReader.read(b"not a zip").is_err());
     }
 

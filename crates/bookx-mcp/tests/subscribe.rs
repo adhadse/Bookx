@@ -80,10 +80,11 @@ fn a_subscribed_book_is_reported_when_it_changes_and_others_are_not() {
     std::thread::sleep(Duration::from_millis(250));
     let r = c.request("ping", json!({}));
     assert_eq!(r["result"], json!({}));
-    assert!(!c
-        .notes
-        .iter()
-        .any(|n| n["method"] == "notifications/resources/updated"));
+    assert!(
+        !c.notes
+            .iter()
+            .any(|n| n["method"] == "notifications/resources/updated")
+    );
     c.close();
 }
 

@@ -604,7 +604,9 @@ pub fn run(s: &mut Svg) {
         s,
         660.0,
         2650.0,
-        &["Books with the same title and author, or the same ISBN, are grouped. When there are none, a status page says so."],
+        &[
+            "Books with the same title and author, or the same ISBN, are grouped. When there are none, a status page says so.",
+        ],
     );
 
     // ---------------------------------------------------------------- 3.f Preferences
@@ -684,7 +686,9 @@ pub fn run(s: &mut Svg) {
                 ),
                 Row::Switch(
                     "Use the book's own styling",
-                    Some("Italic and bold classes, alignment, hidden text. Takes effect when a chapter loads."),
+                    Some(
+                        "Italic and bold classes, alignment, hidden text. Takes effect when a chapter loads.",
+                    ),
                     true,
                 ),
                 Row::Switch(

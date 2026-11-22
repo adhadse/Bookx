@@ -17,7 +17,7 @@
 use std::collections::HashMap;
 use std::io::Read;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::contracts::FormatReader;
 use bookx_core::convert::Chapter;

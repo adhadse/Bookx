@@ -3,8 +3,8 @@
 
 use std::collections::{HashMap, HashSet};
 
-use anyhow::{bail, Context, Result};
-use bookx_convert::transforms::css::{parse_css, parse_decls, split_selectors, CssItem};
+use anyhow::{Context, Result, bail};
+use bookx_convert::transforms::css::{CssItem, parse_css, parse_decls, split_selectors};
 use bookx_core::book::OpenBook;
 use bookx_core::opf::SpineItem;
 use bookx_core::util::{extension, file_name, parent_dir, parse_xml, relative_href, resolve_href};
@@ -284,7 +284,7 @@ pub fn snap_offset(src: &str, off: usize) -> usize {
             Event::Open { range, .. } | Event::Close { range, .. } | Event::Other(range)
                 if range.start >= off =>
             {
-                break
+                break;
             }
             _ => {}
         }
@@ -1144,7 +1144,7 @@ fn collect_head_links(src: &str, dir: &str) -> HashSet<String> {
 mod tests {
     use super::*;
     use crate::testutil::make_book;
-    use bookx_core::check::{check_book, Severity};
+    use bookx_core::check::{Severity, check_book};
 
     fn errors(book: &OpenBook) -> Vec<String> {
         check_book(&book.archive)
@@ -1186,7 +1186,9 @@ mod tests {
 
     #[test]
     fn split_points_by_heading_level_and_ids() {
-        let src = format!("<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>t</title></head><body>{SAMPLE}</body></html>");
+        let src = format!(
+            "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>t</title></head><body>{SAMPLE}</body></html>"
+        );
         let p1 = split_points(&src, &SplitSpec::Headings(1), &PageBreakRules::default()).unwrap();
         assert_eq!(
             p1.len(),
@@ -1227,9 +1229,11 @@ mod tests {
         ));
         // break-after on the very last element does not create an empty part
         let src2 = "<html><body><p>a</p><p class=\"x\">b</p></body></html>";
-        assert!(split_points(src2, &SplitSpec::PageBreaks, &rules)
-            .unwrap()
-            .is_empty());
+        assert!(
+            split_points(src2, &SplitSpec::PageBreaks, &rules)
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[test]
@@ -1255,7 +1259,10 @@ mod tests {
 
     #[test]
     fn split_file_updates_manifest_spine_links_toc() {
-        let mut book = make_book(&[SAMPLE, "<p id=\"x\">other <a href=\"chapter-1.xhtml#c\">to gamma</a> <a href=\"chapter-1.xhtml\">whole</a></p>"]);
+        let mut book = make_book(&[
+            SAMPLE,
+            "<p id=\"x\">other <a href=\"chapter-1.xhtml#c\">to gamma</a> <a href=\"chapter-1.xhtml\">whole</a></p>",
+        ]);
         // make the TOC point into chapter 1
         let toc = vec![bookx_core::toc::TocEntry {
             title: "Gamma".into(),
@@ -1451,14 +1458,18 @@ mod tests {
         let mut book = make_book(&["<p>a</p>", "<p>b</p>"]);
         let a = "OEBPS/chapter-1.xhtml".to_string();
         let b = "OEBPS/chapter-2.xhtml".to_string();
-        assert!(merge_files(&mut book, std::slice::from_ref(&a))
-            .unwrap_err()
-            .to_string()
-            .contains("at least two"));
-        assert!(merge_files(&mut book, &[a.clone(), a.clone()])
-            .unwrap_err()
-            .to_string()
-            .contains("twice"));
+        assert!(
+            merge_files(&mut book, std::slice::from_ref(&a))
+                .unwrap_err()
+                .to_string()
+                .contains("at least two")
+        );
+        assert!(
+            merge_files(&mut book, &[a.clone(), a.clone()])
+                .unwrap_err()
+                .to_string()
+                .contains("twice")
+        );
         assert!(
             merge_files(&mut book, &[a.clone(), "OEBPS/style.css".into()])
                 .unwrap_err()
@@ -1620,7 +1631,9 @@ mod tests {
     }
 
     fn wrapped(body: &str) -> String {
-        format!("<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>t</title></head><body>{body}</body></html>")
+        format!(
+            "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>t</title></head><body>{body}</body></html>"
+        )
     }
 
     #[test]
@@ -1775,7 +1788,9 @@ mod tests {
 
     #[test]
     fn by_class_splits_at_each_element_with_the_class() {
-        let src = wrapped("<p>intro</p><div class=\"chap a\"><p>1</p></div><div class=\"chap\"><p>2</p></div><p class=\"chap\">3</p>");
+        let src = wrapped(
+            "<p>intro</p><div class=\"chap a\"><p>1</p></div><div class=\"chap\"><p>2</p></div><p class=\"chap\">3</p>",
+        );
         let pts = |tag: Option<&str>| {
             split_points(
                 &src,

@@ -17,16 +17,16 @@
 //! carry only keys and D-Bus messages.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 mod file;
 pub use file::{
-    check_passphrase, kdf_is_reasonable, probe, restrict_dir, restrict_file, FileStore, Kdf,
-    OpenError,
+    FileStore, Kdf, OpenError, check_passphrase, kdf_is_reasonable, probe, restrict_dir,
+    restrict_file,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 /// Where passwords live. Keys are short names such as `share-password`.
 pub trait SecretStore: Send + Sync {
@@ -751,11 +751,12 @@ mod tests {
     fn a_vault_without_a_file_cannot_make_one_and_has_nothing_to_unlock() {
         let v = Vault::new(Box::new(Unavailable("x".into())));
         assert!(!v.has_file());
-        assert!(v
-            .create_vault("a long master password")
-            .unwrap_err()
-            .to_string()
-            .contains("no password store"));
+        assert!(
+            v.create_vault("a long master password")
+                .unwrap_err()
+                .to_string()
+                .contains("no password store")
+        );
         assert_eq!(
             v.unlock_vault("a long master password"),
             Err(OpenError::Missing)

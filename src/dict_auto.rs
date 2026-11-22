@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
-use crate::dict_catalog::{language_name, Catalog};
+use crate::dict_catalog::{Catalog, language_name};
 use crate::dict_install::Presence;
 use crate::i18n::{tr, trf};
 
@@ -278,7 +278,9 @@ impl Prompt {
                 message, offline, ..
             } => {
                 if *offline {
-                    tr("There is no connection to the internet. Bookx will try again later, or press Try again.")
+                    tr(
+                        "There is no connection to the internet. Bookx will try again later, or press Try again.",
+                    )
                 } else {
                     trf("The download did not work: {}", &[message])
                 }

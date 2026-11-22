@@ -3,10 +3,10 @@
 mod common;
 
 use bookx_core::book::OpenBook;
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::opf::Metadata;
 use bookx_editing::validate::{
-    render_json, render_text, summary_line, validate, validate_bytes, Severity,
+    Severity, render_json, render_text, summary_line, validate, validate_bytes,
 };
 
 fn made_book(chapters: usize) -> OpenBook {

@@ -392,8 +392,8 @@ impl Device {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::{AtomicI64, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicI64, Ordering};
 
     fn clocked() -> (ActivityLog, Arc<AtomicI64>) {
         let t = Arc::new(AtomicI64::new(1_700_000_000));

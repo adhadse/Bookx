@@ -12,10 +12,10 @@ use crate::i18n::tr;
 use crate::i18n::trf;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_core::contracts::{DeviceDriver, DeviceInfo};
 use bookx_serve::devfs::{self, BookFields, DeviceBook, Space, Storage};
-use bookx_serve::devices::{choose_format, DeviceKind, MassStorageDriver};
+use bookx_serve::devices::{DeviceKind, MassStorageDriver, choose_format};
 use bookx_serve::mtp::MtpGvfsDriver;
 use bookx_serve::reading;
 #[cfg(test)]
@@ -908,10 +908,11 @@ mod tests {
         let dev = find(&drv, "KOBO");
         let sent = send_book(&drv, &dev, &epub(&src), "Sent Book").unwrap();
         assert!(sent.path.starts_with(&root), "{:?}", sent.path);
-        assert!(sent
-            .path
-            .to_string_lossy()
-            .ends_with("Sent Book.kepub.epub"));
+        assert!(
+            sent.path
+                .to_string_lossy()
+                .ends_with("Sent Book.kepub.epub")
+        );
         assert_eq!(sent.format, "KEPUB (Kobo)");
         let bytes = fs::read(&sent.path).unwrap();
         assert!(bytes.starts_with(b"PK"));
@@ -1029,14 +1030,17 @@ mod tests {
             ..ctx
         };
         let p = plan_send(&bad, &|_| false, &cand);
-        assert!(p
-            .warnings
-            .iter()
-            .any(|w| matches!(w, SendWarning::BadTemplate(_))));
+        assert!(
+            p.warnings
+                .iter()
+                .any(|w| matches!(w, SendWarning::BadTemplate(_)))
+        );
         let empty = SendContext { chain: &[], ..bad };
-        assert!(plan_send(&empty, &|_| false, &cand)
-            .warnings
-            .contains(&SendWarning::NoFormat));
+        assert!(
+            plan_send(&empty, &|_| false, &cand)
+                .warnings
+                .contains(&SendWarning::NoFormat)
+        );
     }
 
     #[test]
@@ -1300,10 +1304,12 @@ mod tests {
         let sent = send_book(&drivers, &found[0], &epub(&src), "My Book").unwrap();
         assert_eq!(sent.path, mount.join("books/last.bin"));
         assert!(sent.format.contains("FictionBook"), "{}", sent.format);
-        assert!(fs::read(&sent.path)
-            .unwrap()
-            .windows(11)
-            .any(|w| w == b"FictionBook"));
+        assert!(
+            fs::read(&sent.path)
+                .unwrap()
+                .windows(11)
+                .any(|w| w == b"FictionBook")
+        );
         let _ = fs::remove_dir_all(root);
     }
 
@@ -1704,10 +1710,11 @@ mod tests {
             .filter(|d| d.id.starts_with("webdav:"))
             .collect();
         assert_eq!(cloud.len(), 1);
-        assert!(!on
-            .detect_physical()
-            .iter()
-            .any(|d| d.id.starts_with("webdav:")));
+        assert!(
+            !on.detect_physical()
+                .iter()
+                .any(|d| d.id.starts_with("webdav:"))
+        );
         assert_eq!(on.backend(&cloud[0]), Backend::Cloud);
     }
 

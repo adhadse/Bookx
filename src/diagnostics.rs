@@ -174,11 +174,7 @@ fn ipv4_label(o: &[u32]) -> &'static str {
         || (o[0] == 172 && (16..=31).contains(&o[1]))
         || (o[0] == 192 && o[1] == 168)
         || (o[0] == 169 && o[1] == 254);
-    if private {
-        "<lan-ip>"
-    } else {
-        "<ip>"
-    }
+    if private { "<lan-ip>" } else { "<ip>" }
 }
 
 /// The same for IPv6: loopback, unique-local (`fc00::/7`) and link-local (`fe80::/10`).

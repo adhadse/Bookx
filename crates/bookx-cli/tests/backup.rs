@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
-use bookx_cli::{run, Env};
+use bookx_cli::{Env, run};
 
 static ENV: Mutex<()> = Mutex::new(());
 

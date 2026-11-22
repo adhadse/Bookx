@@ -8,7 +8,7 @@ use std::path::Path;
 use bookx_core::layout::Layout;
 use bookx_core::library::{AddOutcome, Library};
 use bookx_store::health::*;
-use bookx_store::{open_library, OpenedLibrary};
+use bookx_store::{OpenedLibrary, open_library};
 use chrono::{Duration, TimeZone, Utc};
 use common::Tmp;
 
@@ -242,10 +242,11 @@ fn the_read_only_second_opener_cannot_change_the_library() {
     assert_eq!(h.pid, std::process::id());
     let mut o = open_library(&root).unwrap();
     o.library.set_read_only(true);
-    assert!(o
-        .library
-        .add_path(&md(t.path(), "Dune", "Frank Herbert"), false)
-        .is_err());
+    assert!(
+        o.library
+            .add_path(&md(t.path(), "Dune", "Frank Herbert"), false)
+            .is_err()
+    );
 }
 
 // -- Calibre import -------------------------------------------------------------------------------

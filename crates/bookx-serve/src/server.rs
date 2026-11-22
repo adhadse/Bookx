@@ -18,15 +18,15 @@ use std::sync::Arc;
 use anyhow::Result;
 use bookx_core::library::Book;
 use bookx_core::query::Query;
-use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
+use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use serde_json::json;
 
 use crate::accounts::{self, Access, Account};
 use crate::annotation_sync::{self, AnnotationSync};
 use crate::devices::sanitize_file_name;
 use crate::http::{
-    constant_time_eq, mime_for_extension, parse_basic_auth, parse_range, RangeSpec, Request,
-    Response,
+    RangeSpec, Request, Response, constant_time_eq, mime_for_extension, parse_basic_auth,
+    parse_range,
 };
 use crate::kosync::KoSync;
 use crate::net::{self, Limits};
@@ -163,11 +163,7 @@ pub fn content_disposition(name: &str) -> String {
         .chars()
         .map(|c| {
             if c.is_ascii_graphic() || c == ' ' {
-                if c == '"' || c == '\\' {
-                    '_'
-                } else {
-                    c
-                }
+                if c == '"' || c == '\\' { '_' } else { c }
             } else {
                 '_'
             }
@@ -760,10 +756,11 @@ mod tests {
         assert_eq!(r.body, b"0123456789");
         assert_eq!(r.header("content-type"), Some("application/epub+zip"));
         assert_eq!(r.header("accept-ranges"), Some("bytes"));
-        assert!(r
-            .header("content-disposition")
-            .unwrap()
-            .contains("Dune - Ann.epub"));
+        assert!(
+            r.header("content-disposition")
+                .unwrap()
+                .contains("Dune - Ann.epub")
+        );
         let r = handle(
             &cfg,
             &Request::new("GET", "/download/1.epub").with_header("Range", "bytes=2-4"),
@@ -964,12 +961,16 @@ mod tests {
             password: "pw".into(),
         }];
         cfg.accounts = vec![Account::new("kid", "kidpw", &["kids".into()])];
-        assert!(get_as(&cfg, "/opds/all", Some(("owner", "pw")))
-            .body_str()
-            .contains("Grown Ups"));
-        assert!(!get_as(&cfg, "/opds/all", Some(("kid", "kidpw")))
-            .body_str()
-            .contains("Grown Ups"));
+        assert!(
+            get_as(&cfg, "/opds/all", Some(("owner", "pw")))
+                .body_str()
+                .contains("Grown Ups")
+        );
+        assert!(
+            !get_as(&cfg, "/opds/all", Some(("kid", "kidpw")))
+                .body_str()
+                .contains("Grown Ups")
+        );
         std::fs::remove_dir_all(root).ok();
     }
 
@@ -994,9 +995,11 @@ mod tests {
             401
         );
         // the real login still sees everything
-        assert!(get_as(&cfg, "/opds/all", Some(("mum", "mumpw")))
-            .body_str()
-            .contains("Grown Ups"));
+        assert!(
+            get_as(&cfg, "/opds/all", Some(("mum", "mumpw")))
+                .body_str()
+                .contains("Grown Ups")
+        );
         // an empty guest list is no guest
         cfg.guest = Some(vec![]);
         assert_eq!(get_as(&cfg, "/opds/all", None).status, 401);
@@ -1090,10 +1093,11 @@ mod tests {
         let cfg = cfg_with(&root, vec![book(1, "Dune", "a.epub")]);
         let r = handle(&cfg, &Request::new("GET", "/opds"));
         assert_eq!(r.status, 200);
-        assert!(r
-            .header("content-type")
-            .unwrap()
-            .contains("kind=navigation"));
+        assert!(
+            r.header("content-type")
+                .unwrap()
+                .contains("kind=navigation")
+        );
         assert_eq!(handle(&cfg, &Request::new("GET", "/opds/")).status, 200);
         let r = handle(&cfg, &Request::new("GET", "/opds/search?q=dune"));
         assert!(r.body_str().contains("<title>Dune</title>"));

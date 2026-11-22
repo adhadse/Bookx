@@ -567,9 +567,11 @@ mod tests {
         }
         assert_eq!(log.crashes().len(), KEEP_CRASHES);
         let newest = log.unseen_crash().unwrap();
-        assert!(newest
-            .to_string_lossy()
-            .ends_with("crash-20260101-000006.txt"));
+        assert!(
+            newest
+                .to_string_lossy()
+                .ends_with("crash-20260101-000006.txt")
+        );
         log.dismiss_crashes();
         assert!(log.unseen_crash().is_none(), "dismissed");
         assert!(

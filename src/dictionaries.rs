@@ -145,7 +145,10 @@ fn truncate(s: &str, max: usize) -> String {
 
 /// Text shown when no dictionary is installed.
 pub fn empty_help(dir: &Path) -> String {
-    trf("No dictionaries installed.\n\nCopy StarDict dictionaries (folders with .ifo, .idx and .dict files) into:\n{}", &[&dir.display()])
+    trf(
+        "No dictionaries installed.\n\nCopy StarDict dictionaries (folders with .ifo, .idx and .dict files) into:\n{}",
+        &[&dir.display()],
+    )
 }
 
 #[cfg(test)]

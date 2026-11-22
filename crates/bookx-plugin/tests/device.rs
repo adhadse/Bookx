@@ -6,8 +6,8 @@ mod common;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use base64::engine::general_purpose::STANDARD as B64;
 use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as B64;
 use bookx_core::contracts::{DeviceDriver, DeviceInfo, Registry};
 use bookx_plugin::{Host, MountProvider, PluginDevice, PluginManager};
 use common::*;
@@ -139,11 +139,12 @@ fn send_checks_the_device_belongs_to_the_plugin_and_is_connected() {
     assert!(d.send(&other, "b.epub", b"x").is_err());
     let mut gone = device(&s);
     gone.mount = s.mount.join("unplugged");
-    assert!(d
-        .send(&gone, "b.epub", b"x")
-        .unwrap_err()
-        .to_string()
-        .contains("no longer connected"));
+    assert!(
+        d.send(&gone, "b.epub", b"x")
+            .unwrap_err()
+            .to_string()
+            .contains("no longer connected")
+    );
     // plugin errors come through
     let d = driver(&[(b's', br#"{"err":"disk full"}"#.to_vec())], &s.mount);
     assert!(
@@ -194,9 +195,10 @@ fn the_manager_registers_enabled_device_plugins_only() {
     );
     m.scan();
     let mut reg: Registry<dyn DeviceDriver> = Registry::new();
-    assert!(m
-        .register_devices(&mut reg, mounts(vec![s.mount.clone()]))
-        .is_empty());
+    assert!(
+        m.register_devices(&mut reg, mounts(vec![s.mount.clone()]))
+            .is_empty()
+    );
     assert_eq!(reg.len(), 0, "plugins start disabled");
     m.set_enabled("test.dev", true).unwrap();
     let errs = m.register_devices(&mut reg, mounts(vec![s.mount.clone()]));

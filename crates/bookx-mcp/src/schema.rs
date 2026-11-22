@@ -173,21 +173,29 @@ mod tests {
     fn accepts_good_and_names_the_problem() {
         assert!(validate(&s(), &json!({"id":3,"q":"abc","mode":"a","ids":[1,2]})).is_ok());
         assert!(validate(&s(), &json!({})).unwrap_err().contains("`id`"));
-        assert!(validate(&s(), &json!({"id":"x"}))
-            .unwrap_err()
-            .contains("integer"));
-        assert!(validate(&s(), &json!({"id":0}))
-            .unwrap_err()
-            .contains("at least"));
+        assert!(
+            validate(&s(), &json!({"id":"x"}))
+                .unwrap_err()
+                .contains("integer")
+        );
+        assert!(
+            validate(&s(), &json!({"id":0}))
+                .unwrap_err()
+                .contains("at least")
+        );
         assert!(validate(&s(), &json!({"id":1,"q":"toolong"})).is_err());
-        assert!(validate(&s(), &json!({"id":1,"mode":"z"}))
-            .unwrap_err()
-            .contains("a, b"));
+        assert!(
+            validate(&s(), &json!({"id":1,"mode":"z"}))
+                .unwrap_err()
+                .contains("a, b")
+        );
         assert!(validate(&s(), &json!({"id":1,"ids":[1,2,3]})).is_err());
         assert!(validate(&s(), &json!({"id":1,"ids":["x"]})).is_err());
-        assert!(validate(&s(), &json!({"id":1,"extra":1}))
-            .unwrap_err()
-            .contains("extra"));
+        assert!(
+            validate(&s(), &json!({"id":1,"extra":1}))
+                .unwrap_err()
+                .contains("extra")
+        );
         assert!(validate(&s(), &json!([])).is_err());
     }
 

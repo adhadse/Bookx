@@ -5,11 +5,11 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-use anyhow::{bail, Result};
-use base64::engine::general_purpose::STANDARD as B64;
+use anyhow::{Result, bail};
 use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as B64;
 use bookx_core::book::OpenBook;
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::opf::Metadata;
 use bookx_plugin::{Host, HostLog, HostNetwork, Manifest, Plugin};
 

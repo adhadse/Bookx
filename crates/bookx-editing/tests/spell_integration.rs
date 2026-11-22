@@ -2,7 +2,7 @@
 
 mod common;
 
-use bookx_editing::spell::{apply_replacement, check_book_spelling, replace_in_book, SpellChecker};
+use bookx_editing::spell::{SpellChecker, apply_replacement, check_book_spelling, replace_in_book};
 
 const AFF: &str = "SET UTF-8\nTRY esianrtolcdugmphbyfvkwz\nSFX S Y 1\nSFX S 0 s .\n";
 const DIC: &str =
@@ -31,16 +31,20 @@ fn dictionary_files_check_replace_and_user_words() {
         .collect();
     assert_eq!(
         chapter_words,
-        vec!["quikc", "foxes", "ovr", "Bookx", "Another", "with", "wrods", "more", "quikc"]
+        vec![
+            "quikc", "foxes", "ovr", "Bookx", "Another", "with", "wrods", "more", "quikc"
+        ]
     );
     assert!(report.unavailable_languages.contains("fr"));
     assert!(!chapter_words.contains(&"notaword"), "code is not checked");
     assert!(!chapter_words.contains(&"bonjour"));
 
     // suggestions
-    assert!(checker
-        .suggest("en", "quikc")
-        .contains(&"quick".to_string()));
+    assert!(
+        checker
+            .suggest("en", "quikc")
+            .contains(&"quick".to_string())
+    );
 
     // fix one occurrence by offset, the rest through replace-all
     let m = report

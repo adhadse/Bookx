@@ -268,11 +268,7 @@ impl Default for Options {
 }
 
 fn onoff(b: bool) -> &'static str {
-    if b {
-        "on"
-    } else {
-        "off"
-    }
+    if b { "on" } else { "off" }
 }
 
 fn cut(s: &str, max: usize) -> String {
@@ -870,8 +866,10 @@ mod tests {
     #[test]
     fn the_issue_address_is_safe_and_carries_only_a_short_title() {
         assert!(bookx_core::util::safe_external_url(ISSUE_URL).is_some());
-        assert!(ISSUE_URL
-            .starts_with("https://github.com/adhadse/Bookx/issues/new?template=bug_report.yml"));
+        assert!(
+            ISSUE_URL
+                .starts_with("https://github.com/adhadse/Bookx/issues/new?template=bug_report.yml")
+        );
         assert!(ISSUE_URL.len() < 120);
     }
 

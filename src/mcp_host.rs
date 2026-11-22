@@ -5,12 +5,12 @@
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_mcp::http::{HttpConfig, HttpHandle};
 use bookx_mcp::{Config, WritePolicy};
 use bookx_secrets::Vault;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 pub const DEFAULT_PORT: u16 = 8765;
 const TOKEN_KEY: &str = "mcp-token";
@@ -403,12 +403,14 @@ mod tests {
         std::fs::write(&p, r#"{"enabled":true}"#).unwrap();
         assert!(load_from(&p).enabled);
         assert_eq!(load_from(&p).port, 8765);
-        assert!(McpSettings {
-            port: 80,
-            ..Default::default()
-        }
-        .problem()
-        .is_some());
+        assert!(
+            McpSettings {
+                port: 80,
+                ..Default::default()
+            }
+            .problem()
+            .is_some()
+        );
         assert!(s.problem().is_none());
         let _ = std::fs::remove_dir_all(d);
     }

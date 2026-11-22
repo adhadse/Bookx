@@ -288,9 +288,11 @@ fn entities_are_fixed_the_way_the_help_says() {
     rep(&mut f, "OEBPS/ch2.xhtml", "More", "AT&T &foo; &");
     let b = one("BKX-005", &f, Scope::Kind);
     assert!(text(&b, "OEBPS/ch2.xhtml").contains("AT&amp;T &amp;foo; &amp;"));
-    assert!(!collect(&b.archive, &opts())
-        .iter()
-        .any(|p| p.severity == Severity::Error));
+    assert!(
+        !collect(&b.archive, &opts())
+            .iter()
+            .any(|p| p.severity == Severity::Error)
+    );
 
     let mut f = clean_epub3();
     rep(
@@ -380,10 +382,12 @@ fn bare_text_is_wrapped_with_its_inline_neighbours() {
         out.contains("<p>kept</p>") && out.contains("<p>tail</p>"),
         "{out}"
     );
-    assert!(fix::wrap_bare_text(
-        "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><p>x</p></body></html>"
-    )
-    .is_none());
+    assert!(
+        fix::wrap_bare_text(
+            "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><p>x</p></body></html>"
+        )
+        .is_none()
+    );
     assert!(fix::wrap_bare_text("<html><body>broken").is_none());
 }
 

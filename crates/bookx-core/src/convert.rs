@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
 use super::archive::Archive;
 use super::book::OpenBook;
@@ -259,7 +259,7 @@ fn text_chapters(text: &str) -> Vec<Chapter> {
 }
 
 fn markdown_to_html(md: &str) -> String {
-    use pulldown_cmark::{html, Options, Parser};
+    use pulldown_cmark::{Options, Parser, html};
     let mut html_out = String::new();
     let parser = Parser::new_ext(md, Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH);
     html::push_html(&mut html_out, parser);

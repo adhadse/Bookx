@@ -97,10 +97,11 @@ fn spans_wrappers_and_unchanged_text() {
                 "{id}"
             );
             assert!(seen.insert(id.to_string()), "duplicate {id}");
-            assert!(!s
-                .descendants()
-                .skip(1)
-                .any(|d| d.has_tag_name("span") && d.attribute("class") == Some("koboSpan")));
+            assert!(
+                !s.descendants()
+                    .skip(1)
+                    .any(|d| d.has_tag_name("span") && d.attribute("class") == Some("koboSpan"))
+            );
             assert!(
                 !s.text().unwrap_or("x").trim().is_empty() || s.children().any(|c| c.is_element())
             );

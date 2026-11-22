@@ -4,7 +4,7 @@
 use crate::i18n::tr;
 use std::path::Path;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_serve::mail::{Address, Attachment, Message, Security, SmtpConfig};
 use serde::{Deserialize, Serialize};
 
@@ -373,10 +373,12 @@ mod tests {
         let e = send_book(&s, &dir.join("gone.epub"), "T", "").unwrap_err();
         assert!(format!("{e:#}").contains("gone.epub"), "{e:#}");
         s.host.clear();
-        assert!(send_book(&s, &file, "T", "")
-            .unwrap_err()
-            .to_string()
-            .contains("mail server"));
+        assert!(
+            send_book(&s, &file, "T", "")
+                .unwrap_err()
+                .to_string()
+                .contains("mail server")
+        );
         let _ = std::fs::remove_dir_all(dir);
     }
 

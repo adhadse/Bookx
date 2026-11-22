@@ -8,7 +8,7 @@ use std::sync::OnceLock;
 use bookx_core::util::{is_external, parent_dir, resolve_href};
 use regex::Regex;
 
-use crate::markup::{is_css_path, is_markup_path, scan, Event};
+use crate::markup::{Event, is_css_path, is_markup_path, scan};
 
 // ---------------------------------------------------------------------------------------------
 // attributes with positions

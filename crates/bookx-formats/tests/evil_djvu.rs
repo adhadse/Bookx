@@ -2,7 +2,7 @@
 //! parsed here. The reader must answer garbage with an error, never a panic or a hang, and a lying
 //! page must not allocate what it claims.
 
-use bookx_formats::djvu::{is_djvu, parse_pnm, read_with, DjvuReader};
+use bookx_formats::djvu::{DjvuReader, is_djvu, parse_pnm, read_with};
 use bookx_formats::read_any;
 
 fn header(kind: &[u8]) -> Vec<u8> {

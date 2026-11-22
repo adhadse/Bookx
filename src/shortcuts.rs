@@ -598,9 +598,10 @@ mod tests {
                 );
             }
         }
-        assert!(reg
-            .iter()
-            .any(|a| a.action == "app.palette" && a.defaults.len() == 2));
+        assert!(
+            reg.iter()
+                .any(|a| a.action == "app.palette" && a.defaults.len() == 2)
+        );
     }
 
     #[test]

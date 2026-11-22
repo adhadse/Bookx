@@ -3,11 +3,11 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 use crate::cache::SentenceCache;
 use crate::kokoro::{self, Kokoro};
-use crate::models::{kokoro_paths, piper_installed, Store};
+use crate::models::{Store, kokoro_paths, piper_installed};
 use crate::phonemize::espeak_program;
 use crate::pipeline::PipelineEngine;
 use crate::prefs::TtsPrefs;
@@ -447,9 +447,10 @@ mod tests {
 
         let (c, why) = choose("piper", "fr", &all()).unwrap();
         assert_eq!(c, Choice::Kokoro);
-        assert!(why
-            .unwrap()
-            .contains("no downloaded Piper voice speaks French"));
+        assert!(
+            why.unwrap()
+                .contains("no downloaded Piper voice speaks French")
+        );
     }
 
     #[test]
@@ -469,7 +470,7 @@ mod tests {
 
     #[test]
     fn an_installed_kokoro_is_found_whatever_model_the_settings_name() {
-        use crate::models::{find_pack, Store};
+        use crate::models::{Store, find_pack};
         let d = std::env::temp_dir().join(format!("bookx-avail-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         let store = Store::new(&d);

@@ -9,7 +9,7 @@ use bookx_sources::idclean::{self, Suggestion};
 use bookx_store::SqliteStore;
 
 use crate::core::library::{Book, Library};
-use crate::core::quality::{weak_reasons, Weak};
+use crate::core::quality::{Weak, weak_reasons};
 
 /// The search that shows these books in the library.
 pub const QUERY: &str = "weak:";
@@ -184,11 +184,12 @@ mod tests {
             (ids[0].scheme.as_str(), ids[0].value.as_str()),
             ("isbn", "9780441172719")
         );
-        assert!(g
-            .store
-            .provenance(id0)
-            .iter()
-            .any(|f| f.field == "identifiers" && f.source == "identifier cleanup"));
+        assert!(
+            g.store
+                .provenance(id0)
+                .iter()
+                .any(|f| f.field == "identifiers" && f.source == "identifier cleanup")
+        );
         assert_eq!(
             clean_identifiers(&mut lib, &g.store, &[], 6),
             0,

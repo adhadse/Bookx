@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use bookx_core::archive::Archive;
 use bookx_core::book::OpenBook;
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::opf::Metadata;
 
 pub fn png(w: u32, h: u32) -> Vec<u8> {

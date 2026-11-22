@@ -439,7 +439,7 @@ fn text_track_chapters<R: Read + Seek>(moov: &[u8], r: &mut R) -> Option<Vec<Cha
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testgen::{mp4_file, Mp4Spec};
+    use crate::testgen::{Mp4Spec, mp4_file};
     use std::io::Cursor;
 
     #[test]

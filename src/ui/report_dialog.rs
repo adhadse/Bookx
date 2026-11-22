@@ -12,7 +12,7 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio, glib};
 
-use super::{window_of, SharedRef};
+use super::{SharedRef, window_of};
 use crate::debug_log::{Scrub, Scrubber};
 use crate::i18n::{tr, trf};
 use crate::report::{self, Input, Options};
@@ -192,9 +192,13 @@ fn shown_path(p: &std::path::Path) -> String {
 
 fn intro_text() -> String {
     if crate::beta::channel().is_prerelease() {
-        tr("Bookx is in beta. Reports help us fix bugs. This report contains no book titles, passwords or personal paths.")
+        tr(
+            "Bookx is in beta. Reports help us fix bugs. This report contains no book titles, passwords or personal paths.",
+        )
     } else {
-        tr("Reports help us fix bugs. This report contains no book titles, passwords or personal paths.")
+        tr(
+            "Reports help us fix bugs. This report contains no book titles, passwords or personal paths.",
+        )
     }
 }
 

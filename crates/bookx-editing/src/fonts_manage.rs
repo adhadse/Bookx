@@ -4,14 +4,14 @@
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
 
-use anyhow::{bail, Result};
-use bookx_convert::transforms::css::{parse_css, CssItem};
+use anyhow::{Result, bail};
+use bookx_convert::transforms::css::{CssItem, parse_css};
 use bookx_core::book::OpenBook;
 use bookx_core::util::{parent_dir, resolve_href};
 
-use crate::fonts::{analyze_fonts, embedding_permission, Embedding};
+use crate::fonts::{Embedding, analyze_fonts, embedding_permission};
 use crate::markup::css_files;
-use crate::transform_css::{transform_book, CssTransform};
+use crate::transform_css::{CssTransform, transform_book};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManagedFont {

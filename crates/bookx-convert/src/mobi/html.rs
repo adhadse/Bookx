@@ -7,11 +7,11 @@ use anyhow::Result;
 use bookx_core::book::OpenBook;
 use bookx_core::toc::TocEntry;
 use bookx_core::util::{is_external, parent_dir, resolve_href};
-use image::codecs::jpeg::JpegEncoder;
 use image::ImageReader;
+use image::codecs::jpeg::JpegEncoder;
 
 use crate::markup::{
-    body_range, decode_entities, escape_attr, escape_text, get_attr, tag_info, tokenize, Tok,
+    Tok, body_range, decode_entities, escape_attr, escape_text, get_attr, tag_info, tokenize,
 };
 
 /// Marker used for 10-digit `filepos` values that are patched once all offsets are known.

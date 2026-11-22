@@ -3,7 +3,7 @@
 //! the Sync window (task cards) and Preferences → Sync (setup checklist) show, as plain data so it
 //! is unit tested without GTK. See `docs/sync-ux-notes.md` for why it is shaped like this.
 
-use crate::i18n::{tr, trf, N_};
+use crate::i18n::{N_, tr, trf};
 
 /// Title of the umbrella: menu entry, window and Preferences page.
 pub const TITLE: &str = N_("Sync");
@@ -13,7 +13,9 @@ pub const PAGE_ID: &str = "sync";
 pub const LEGACY_PAGES: [&str; 2] = ["Devices and Sharing", "Devices"];
 
 /// Said once, on the Preferences page: what the name means.
-pub const BRAND_EXPLAINED: &str = N_("Bookx sync (extended KOSync) is compatible with KOReader’s KOSync progress protocol. Bookx’s extension also syncs highlights, notes and bookmarks when the Bookx plugin is installed in KOReader. Everything goes over one connection to this computer; no cloud service is involved.");
+pub const BRAND_EXPLAINED: &str = N_(
+    "Bookx sync (extended KOSync) is compatible with KOReader’s KOSync progress protocol. Bookx’s extension also syncs highlights, notes and bookmarks when the Bookx plugin is installed in KOReader. Everything goes over one connection to this computer; no cloud service is involved.",
+);
 
 /// How a group of settings reaches the other side.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -97,22 +99,36 @@ pub fn is_legacy_name(name: &str) -> bool {
 // ---- words ------------------------------------------------------------------------------------
 
 /// First screen of the Sync window: what Sync is for, in one plain sentence.
-pub const WINDOW_SENTENCE: &str = N_("Sync your Kobo or other KOReader device over Wi-Fi: reading position, highlights, notes and bookmarks. Use USB for devices without KOReader.");
+pub const WINDOW_SENTENCE: &str = N_(
+    "Sync your Kobo or other KOReader device over Wi-Fi: reading position, highlights, notes and bookmarks. Use USB for devices without KOReader.",
+);
 
 pub const STEP_SERVER: &str = N_("Turn on the Bookx sync server");
-pub const STEP_SERVER_HELP: &str = N_("Starts the Bookx sync server on this computer, opens it to your local network so the e-reader can reach it, and creates a library password if you have none (shown under Advanced).");
+pub const STEP_SERVER_HELP: &str = N_(
+    "Starts the Bookx sync server on this computer, opens it to your local network so the e-reader can reach it, and creates a library password if you have none (shown under Advanced).",
+);
 /// The same, shortened for the setup card of the Sync window.
-pub const STEP_SERVER_HINT: &str = N_("Starts the server, opens it to your local network and creates a library password if you have none.");
+pub const STEP_SERVER_HINT: &str = N_(
+    "Starts the server, opens it to your local network and creates a library password if you have none.",
+);
 /// The persistent banner of the Sync window while the server is open to the network.
 pub const LAN_BANNER: &str = N_("Other devices on your network can reach this server");
 pub const STEP_ACCOUNT: &str = N_("Create your sync account");
-pub const STEP_ACCOUNT_HELP: &str = N_("Choose any user name and password. Copy these into Bookx Sync on the e-reader. This is not the OPDS server password. There is no existing KOReader account. If the server is not on yet, switch on step 1 first.");
+pub const STEP_ACCOUNT_HELP: &str = N_(
+    "Choose any user name and password. Copy these into Bookx Sync on the e-reader. This is not the OPDS server password. There is no existing KOReader account. If the server is not on yet, switch on step 1 first.",
+);
 pub const STEP_PLUGIN: &str = N_("Install the Bookx plugin on KOReader");
-pub const STEP_PLUGIN_HELP: &str = N_("Copies the plugin into KOReader’s plugins folder on the connected e-reader, or into a folder you choose. Restart KOReader afterwards. Without the plugin only the reading position is synced.");
+pub const STEP_PLUGIN_HELP: &str = N_(
+    "Copies the plugin into KOReader’s plugins folder on the connected e-reader, or into a folder you choose. Restart KOReader afterwards. Without the plugin only the reading position is synced.",
+);
 pub const STEP_TEST: &str = N_("Test on the device");
-pub const STEP_TEST_HELP: &str = N_("On the e-reader: open a book → top menu → More tools → Bookx Sync → Sync now. Enter this computer’s address, the user name and the password from step 2.");
+pub const STEP_TEST_HELP: &str = N_(
+    "On the e-reader: open a book → top menu → More tools → Bookx Sync → Sync now. Enter this computer’s address, the user name and the password from step 2.",
+);
 
-pub const WHAT_SYNCS: &str = N_("Reading position, highlights, notes and bookmarks, over the same connection, when the Bookx plugin is installed. Without the plugin: reading position only.");
+pub const WHAT_SYNCS: &str = N_(
+    "Reading position, highlights, notes and bookmarks, over the same connection, when the Bookx plugin is installed. Without the plugin: reading position only.",
+);
 
 /// Said under the fields of the account step and in the Sync window.
 pub const ACCOUNT_ONE_LINER: &str =
@@ -152,13 +168,17 @@ pub fn account_status(
     if user.is_empty() {
         (
             tr("Log in"),
-            tr("Register creates the account on the server; Log in checks it. The result shows here."),
+            tr(
+                "Register creates the account on the server; Log in checks it. The result shows here.",
+            ),
         )
     } else if !has_password {
         let why = if keyring_ok {
             tr("Enter the password.")
         } else {
-            tr("The password could not be read from the system keyring (locked or not running). Unlock it and restart Bookx, or type the password again.")
+            tr(
+                "The password could not be read from the system keyring (locked or not running). Unlock it and restart Bookx, or type the password again.",
+            )
         };
         (trf("Password needed for {}", &[&user]), why)
     } else if logged_in {
@@ -184,7 +204,9 @@ pub const KOREADER_PROGRESS_PATH: &str =
     N_("In KOReader: Tools → Progress sync → Custom sync server");
 
 /// Said once, above the requirements table.
-pub const STOCK_NOTE: &str = N_("Stock Kobo and Kindle Wi-Fi sync is not supported: those readers sync over the USB cable only. Wi-Fi sync needs KOReader on the e-reader. “bookx” is the only address path: http://<host-ip>:<port>/bookx");
+pub const STOCK_NOTE: &str = N_(
+    "Stock Kobo and Kindle Wi-Fi sync is not supported: those readers sync over the USB cable only. Wi-Fi sync needs KOReader on the e-reader. “bookx” is the only address path: http://<host-ip>:<port>/bookx",
+);
 
 /// The message of a failed Register or Log in with a hint for the usual cause.
 pub fn account_hint(error: &str, register: bool) -> String {
@@ -408,7 +430,9 @@ impl Snapshot {
             Card {
                 id: "wifi",
                 title: tr("Bookx sync with KOReader (Wi-Fi)"),
-                use_when: tr("Use this when your Kobo, Kindle, Android or other e-reader runs KOReader."),
+                use_when: tr(
+                    "Use this when your Kobo, Kindle, Android or other e-reader runs KOReader.",
+                ),
                 status: self.readiness().headline(),
                 button: if self.checklist().ready() {
                     tr("Open setup guide")
@@ -419,7 +443,9 @@ impl Snapshot {
             Card {
                 id: "usb",
                 title: tr("USB device"),
-                use_when: tr("Use this when your e-reader is connected by a cable. It also works for devices without KOReader."),
+                use_when: tr(
+                    "Use this when your e-reader is connected by a cable. It also works for devices without KOReader.",
+                ),
                 status: match &self.usb_device {
                     Some(n) => format!("{} ({n})", tr("connected")),
                     None => tr("not connected"),
@@ -429,12 +455,10 @@ impl Snapshot {
             Card {
                 id: "opds",
                 title: tr("OPDS server"),
-                use_when: tr("Use this to let another device or app download books from this computer."),
-                status: if self.opds_on() {
-                    tr("on")
-                } else {
-                    tr("off")
-                },
+                use_when: tr(
+                    "Use this to let another device or app download books from this computer.",
+                ),
+                status: if self.opds_on() { tr("on") } else { tr("off") },
                 button: if self.opds_on() {
                     tr("Stop OPDS server")
                 } else {
@@ -497,8 +521,14 @@ impl Snapshot {
             self.offline,
             self.readiness().key(),
             self.checklist().digits(),
-            self.checklist().next().map_or("-".to_string(), |n| n.to_string()),
-            if self.primary_syncs() { "sync-now" } else { "setup" },
+            self.checklist()
+                .next()
+                .map_or("-".to_string(), |n| n.to_string()),
+            if self.primary_syncs() {
+                "sync-now"
+            } else {
+                "setup"
+            },
         )
     }
 }
@@ -562,8 +592,12 @@ pub const REQUIREMENTS: [Requirement; 5] = [
         id: "progress",
         sync_type: N_("Reading progress (KOReader)"),
         works_between: N_("Bookx and KOReader on a Kobo, Kindle, Android or PocketBook reader"),
-        bookx_needs: N_("The Bookx sync server on, and a sync account you make in Bookx under Preferences → Sync (Register); no existing KOReader account is needed"),
-        reader_needs: N_("KOReader with Progress sync set to a custom sync server at the same address http://<host-ip>:<port>/bookx and that user name and password (or create the account from KOReader’s own Progress sync menu)"),
+        bookx_needs: N_(
+            "The Bookx sync server on, and a sync account you make in Bookx under Preferences → Sync (Register); no existing KOReader account is needed",
+        ),
+        reader_needs: N_(
+            "KOReader with Progress sync set to a custom sync server at the same address http://<host-ip>:<port>/bookx and that user name and password (or create the account from KOReader’s own Progress sync menu)",
+        ),
         connection: N_("Wi-Fi or local network"),
         syncs: N_("Reading position only (highlights, notes and bookmarks need the Bookx plugin)"),
     },
@@ -572,7 +606,9 @@ pub const REQUIREMENTS: [Requirement; 5] = [
         sync_type: N_("Highlights, notes and bookmarks (KOReader)"),
         works_between: N_("Bookx and KOReader"),
         bookx_needs: N_("The Bookx sync server on and “Sync highlights, notes and bookmarks” on"),
-        reader_needs: N_("KOReader with the Bookx Sync plugin installed and set up. Not available on stock Kobo or Kindle software"),
+        reader_needs: N_(
+            "KOReader with the Bookx Sync plugin installed and set up. Not available on stock Kobo or Kindle software",
+        ),
         connection: N_("Wi-Fi or local network, the same one"),
         syncs: N_("Highlights with their text, notes, colours and styles, and bookmarks"),
     },
@@ -580,17 +616,25 @@ pub const REQUIREMENTS: [Requirement; 5] = [
         id: "usb",
         sync_type: N_("USB device sync"),
         works_between: N_("Bookx and a Kobo or other e-reader mounted as a USB drive"),
-        bookx_needs: N_("Nothing to switch on; the USB switches on this page choose what is synced"),
-        reader_needs: N_("Connected with the cable and mounted. Bookx reads the Kobo’s own reading state and KOReader’s sidecar files"),
+        bookx_needs: N_(
+            "Nothing to switch on; the USB switches on this page choose what is synced",
+        ),
+        reader_needs: N_(
+            "Connected with the cable and mounted. Bookx reads the Kobo’s own reading state and KOReader’s sidecar files",
+        ),
         connection: N_("USB cable, no Wi-Fi"),
-        syncs: N_("Books, reading progress, highlights and notes. Stock Kobo notes and progress are imported; stock firmware has no wireless sync with Bookx"),
+        syncs: N_(
+            "Books, reading progress, highlights and notes. Stock Kobo notes and progress are imported; stock firmware has no wireless sync with Bookx",
+        ),
     },
     Requirement {
         id: "opds",
         sync_type: N_("OPDS server (catalogue and web page)"),
         works_between: N_("Bookx and reader apps or e-readers that browse OPDS"),
         bookx_needs: N_("The OPDS server on"),
-        reader_needs: N_("An app or browser on the same network, or one that can reach this computer (KOReader, Moon+ Reader, Librera, Kybook)"),
+        reader_needs: N_(
+            "An app or browser on the same network, or one that can reach this computer (KOReader, Moon+ Reader, Librera, Kybook)",
+        ),
         connection: N_("Wi-Fi or local network"),
         syncs: N_("Books and the catalogue only"),
     },
@@ -598,7 +642,9 @@ pub const REQUIREMENTS: [Requirement; 5] = [
         id: "mail",
         sync_type: N_("E-mail and exports"),
         works_between: N_("Bookx and any address, file or app"),
-        bookx_needs: N_("A mail account under Preferences → E-mail to send books; nothing for exports"),
+        bookx_needs: N_(
+            "A mail account under Preferences → E-mail to send books; nothing for exports",
+        ),
         reader_needs: N_("Nothing: the other side only receives a file"),
         connection: N_("Internet for e-mail; none for exports"),
         syncs: N_("Book files, annotations and citations only"),
@@ -661,9 +707,10 @@ mod tests {
             t,
             ["Wi-Fi sync: off", "USB device: not connected", "OPDS: off"]
         );
-        assert!(s
-            .dump()
-            .contains("state=off steps=0000 next=1 primary=setup"));
+        assert!(
+            s.dump()
+                .contains("state=off steps=0000 next=1 primary=setup")
+        );
     }
 
     #[test]
@@ -701,11 +748,13 @@ mod tests {
             ..Default::default()
         };
         assert!(!lan_only.lan_open(), "a stopped server reaches nobody");
-        assert!(Snapshot {
-            lan: true,
-            ..running()
-        }
-        .lan_open());
+        assert!(
+            Snapshot {
+                lan: true,
+                ..running()
+            }
+            .lan_open()
+        );
         assert!(!running().lan_open(), "this computer only");
     }
 

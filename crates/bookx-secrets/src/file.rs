@@ -30,7 +30,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use argon2::{Algorithm, Argon2, Params, Version};
 use chacha20poly1305::aead::{Aead, Payload};
 use chacha20poly1305::{ChaCha20Poly1305, Key, KeyInit, Nonce};
@@ -862,9 +862,11 @@ mod tests {
             OpenError::Missing.to_string(),
             "there is no password store yet"
         );
-        assert!(OpenError::WrongOrDamaged
-            .to_string()
-            .contains("wrong master password"));
+        assert!(
+            OpenError::WrongOrDamaged
+                .to_string()
+                .contains("wrong master password")
+        );
         assert_eq!(
             OpenError::Unreadable("version 9".into()).to_string(),
             "the password store cannot be read (version 9)"

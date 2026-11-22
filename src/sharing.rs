@@ -7,7 +7,7 @@ use std::net::UdpSocket;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_serve::kosync::{JsonFileStore, KoSync};
 use bookx_serve::server::{LibraryProvider, LibrarySnapshot, ServerConfig, User};
 use serde::{Deserialize, Serialize};
@@ -103,9 +103,9 @@ impl ShareSettings {
             return Some(tr("The password must not contain a colon."));
         }
         if self.https && (self.cert_file.trim().is_empty() != self.key_file.trim().is_empty()) {
-            return Some(
-                tr("Choose both a certificate file and a key file, or neither to use a self-signed certificate."),
-            );
+            return Some(tr(
+                "Choose both a certificate file and a key file, or neither to use a self-signed certificate.",
+            ));
         }
         if let Some(p) = self.proxy_problem() {
             return Some(p);
@@ -157,11 +157,7 @@ impl ShareSettings {
 
     /// Address to bind: this computer only, or all interfaces.
     pub fn bind(&self) -> &'static str {
-        if self.lan {
-            "0.0.0.0"
-        } else {
-            "127.0.0.1"
-        }
+        if self.lan { "0.0.0.0" } else { "127.0.0.1" }
     }
 }
 
@@ -810,10 +806,11 @@ mod tests {
             cert_file: "/x/c.pem".into(),
             ..Default::default()
         };
-        assert!(s
-            .problem()
-            .unwrap()
-            .contains("both a certificate file and a key"));
+        assert!(
+            s.problem()
+                .unwrap()
+                .contains("both a certificate file and a key")
+        );
         s.key_file = "/x/k.pem".into();
         assert!(s.problem().is_none() && s.own_certificate());
         s.cert_file.clear();
@@ -868,7 +865,7 @@ mod tests {
 
     #[test]
     fn a_real_tls_client_gets_the_catalogue_from_a_started_share() {
-        use rustls::pki_types::{pem::PemObject, CertificateDer, ServerName};
+        use rustls::pki_types::{CertificateDer, ServerName, pem::PemObject};
         let d = tmp("tlsrun");
         let root = tmp("tlsrun-lib");
         library_with_book(&root, "Over Tls");

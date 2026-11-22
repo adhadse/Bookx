@@ -100,8 +100,10 @@ mod tests {
         let oeb_names = names(OebWriter.write(&book).unwrap());
         assert!(oeb_names.contains(&"content.opf".to_string()));
         assert!(oeb_names.contains(&"chapter-1.xhtml".to_string()));
-        assert!(!oeb_names
-            .iter()
-            .any(|n| n == "mimetype" || n.starts_with("META-INF")));
+        assert!(
+            !oeb_names
+                .iter()
+                .any(|n| n == "mimetype" || n.starts_with("META-INF"))
+        );
     }
 }

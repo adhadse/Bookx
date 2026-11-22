@@ -15,8 +15,8 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio, glib};
 
-use super::preferences::{register_group, PrefChange, PrefCtx};
 use super::SharedRef;
+use super::preferences::{PrefChange, PrefCtx, register_group};
 use crate::hardcover_sync as sync;
 use bookx_sources::hardcover as hc;
 use bookx_store::ReadingStatus;

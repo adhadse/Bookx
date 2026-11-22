@@ -2,12 +2,12 @@
 
 mod common;
 
-use base64::engine::general_purpose::STANDARD as B64;
 use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as B64;
 use bookx_core::archive::Archive;
 use bookx_core::contracts::{
-    pick_reader, run_pipeline, FormatReader, FormatWriter, MetadataQuery, MetadataSource, Registry,
-    Transform,
+    FormatReader, FormatWriter, MetadataQuery, MetadataSource, Registry, Transform, pick_reader,
+    run_pipeline,
 };
 use bookx_core::opf::Metadata;
 use bookx_plugin::adapters::decode_metadata_list;
@@ -88,11 +88,13 @@ fn lookup_with_no_isbn_sends_null() {
 #[test]
 fn lookup_empty_and_errors() {
     let p = arc("metadata-source", "", &canned(&[(b'l', ok("[]"))]));
-    assert!(PluginMetadataSource::new(p)
-        .unwrap()
-        .lookup(&query())
-        .unwrap()
-        .is_empty());
+    assert!(
+        PluginMetadataSource::new(p)
+            .unwrap()
+            .lookup(&query())
+            .unwrap()
+            .is_empty()
+    );
 
     let p = arc(
         "metadata-source",
@@ -181,21 +183,27 @@ fn adapters_check_the_plugin_kind() {
     let m = |kind: &str| arc(kind, "extensions = [\"x\"]\nextension = \"x\"", &wasm);
     let e = PluginMetadataSource::new(t()).err().unwrap().to_string();
     assert!(e.contains("is a transform, not a metadata-source"), "{e}");
-    assert!(PluginReader::new(t())
-        .err()
-        .unwrap()
-        .to_string()
-        .contains("not a format-reader"));
-    assert!(PluginWriter::new(t())
-        .err()
-        .unwrap()
-        .to_string()
-        .contains("not a format-writer"));
-    assert!(PluginTransform::new(m("metadata-source"))
-        .err()
-        .unwrap()
-        .to_string()
-        .contains("not a transform"));
+    assert!(
+        PluginReader::new(t())
+            .err()
+            .unwrap()
+            .to_string()
+            .contains("not a format-reader")
+    );
+    assert!(
+        PluginWriter::new(t())
+            .err()
+            .unwrap()
+            .to_string()
+            .contains("not a format-writer")
+    );
+    assert!(
+        PluginTransform::new(m("metadata-source"))
+            .err()
+            .unwrap()
+            .to_string()
+            .contains("not a transform")
+    );
     assert!(PluginTransform::new(m("device")).is_err());
     assert!(PluginTransform::new(t()).is_ok());
 }

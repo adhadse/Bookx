@@ -17,7 +17,7 @@ use super::page_area::{Geometry, PageArea};
 use crate::a11y::{PageText, Step};
 use crate::flow_window;
 use crate::gestures::{
-    classify_swipe, drag_selects, mirror_tap, right_is_forward, Swipe, TapAction, TapZones,
+    Swipe, TapAction, TapZones, classify_swipe, drag_selects, mirror_tap, right_is_forward,
 };
 use bookx_text::hyphenate::Hyphenator;
 use bookx_text::paragraph;
@@ -2539,7 +2539,7 @@ impl BookCanvas {
 
     /// A letter typed while the hints show: follows the link it completes.
     pub fn hint_key(&self, c: char) -> HintResult {
-        use bookx_text::aids::{match_hint, HintMatch};
+        use bookx_text::aids::{HintMatch, match_hint};
         let href = {
             let mut s = self.st.borrow_mut();
             if s.hints.is_empty() {
@@ -4792,7 +4792,7 @@ fn segments(
             return vec![Seg {
                 layout: trial,
                 links: p.links.clone(),
-            }]
+            }];
         }
     };
     let (hp, tp) = split_parts(&p.parts, split);

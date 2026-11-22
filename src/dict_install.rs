@@ -8,7 +8,7 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use serde::{Deserialize, Serialize};
 
 use crate::dict_catalog::{Dict, Format};
@@ -509,11 +509,12 @@ mod tests {
         let again = install_archive(&dict(), "de", &root, &a, Format::TarGz, "x").unwrap();
         assert_eq!(again.dir, i.dir);
         assert_eq!(managed(&root).len(), 1);
-        assert!(!root.join(".downloads").read_dir().unwrap().any(|e| e
-            .unwrap()
-            .file_name()
-            .to_string_lossy()
-            .starts_with("unpack")));
+        assert!(!root.join(".downloads").read_dir().unwrap().any(|e| {
+            e.unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with("unpack")
+        }));
         remove(&again).unwrap();
         assert!(managed(&root).is_empty());
     }
@@ -728,7 +729,13 @@ mod tests {
                 }
                 let part = &body[range_from.min(body.len())..];
                 let head = if range_from > 0 {
-                    format!("HTTP/1.1 206 Partial Content\r\nContent-Length: {}\r\nContent-Range: bytes {}-{}/{}\r\n\r\n", part.len(), range_from, body.len() - 1, body.len())
+                    format!(
+                        "HTTP/1.1 206 Partial Content\r\nContent-Length: {}\r\nContent-Range: bytes {}-{}/{}\r\n\r\n",
+                        part.len(),
+                        range_from,
+                        body.len() - 1,
+                        body.len()
+                    )
                 } else {
                     format!("HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n", part.len())
                 };
@@ -798,10 +805,12 @@ mod tests {
         // cancelled before it starts
         let c = Cancel::new();
         c.cancel();
-        assert!(install(&d, "de", &root.join("dicts3"), &c, &mut |_, _| {})
-            .unwrap_err()
-            .to_string()
-            .contains("cancelled"));
+        assert!(
+            install(&d, "de", &root.join("dicts3"), &c, &mut |_, _| {})
+                .unwrap_err()
+                .to_string()
+                .contains("cancelled")
+        );
     }
 
     /// The real archives of the catalogue, when `build-aux/dict-catalog.py generate|verify` has fetched

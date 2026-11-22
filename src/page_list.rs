@@ -186,11 +186,13 @@ mod tests {
 
     #[test]
     fn a_nav_without_a_page_list_or_broken_xml_gives_nothing() {
-        assert!(parse_nav(
-            "<html><body><nav epub:type=\"toc\"/></body></html>",
-            "n.xhtml"
-        )
-        .is_empty());
+        assert!(
+            parse_nav(
+                "<html><body><nav epub:type=\"toc\"/></body></html>",
+                "n.xhtml"
+            )
+            .is_empty()
+        );
         assert!(parse_nav("not xml at all", "n.xhtml").is_empty());
     }
 

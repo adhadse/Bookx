@@ -225,14 +225,16 @@ fn epub3_has_nav_cover_and_valid_package() {
     assert_eq!(links, vec!["Chapter One", "Chapter Two", "Chapter Three"]);
     for a in toc_nav.descendants().filter(|n| n.has_tag_name("a")) {
         let href = a.attribute("href").unwrap();
-        assert!(z
-            .files
-            .contains_key(&join(base, href.split('#').next().unwrap())));
+        assert!(
+            z.files
+                .contains_key(&join(base, href.split('#').next().unwrap()))
+        );
     }
 
-    assert!(doc
-        .descendants()
-        .any(|n| n.has_tag_name("meta") && n.attribute("property") == Some("dcterms:modified")));
+    assert!(
+        doc.descendants()
+            .any(|n| n.has_tag_name("meta") && n.attribute("property") == Some("dcterms:modified"))
+    );
     // cover
     let cover_meta = doc
         .descendants()
@@ -243,10 +245,12 @@ fn epub3_has_nav_cover_and_valid_package() {
         .descendants()
         .find(|n| n.has_tag_name("item") && n.attribute("id") == Some(cover_meta))
         .expect("cover item");
-    assert!(cover_item
-        .attribute("properties")
-        .unwrap_or("")
-        .contains("cover-image"));
+    assert!(
+        cover_item
+            .attribute("properties")
+            .unwrap_or("")
+            .contains("cover-image")
+    );
     assert_eq!(cover_item.attribute("media-type"), Some("image/jpeg"));
     assert_eq!(
         z.files[&join(base, cover_item.attribute("href").unwrap())],
@@ -268,9 +272,11 @@ fn epub3_has_nav_cover_and_valid_package() {
         text("description"),
         vec!["A <b>short</b> description & more."]
     );
-    assert!(text("identifier")
-        .iter()
-        .any(|i| i == "urn:isbn:9781234567897"));
+    assert!(
+        text("identifier")
+            .iter()
+            .any(|i| i == "urn:isbn:9781234567897")
+    );
 }
 
 #[test]
@@ -328,9 +334,10 @@ fn epub2_has_ncx_and_no_epub3_features() {
         .collect();
     assert_eq!(orders, vec![1, 2, 3]);
     // the cover is still announced the EPUB 2 way
-    assert!(doc
-        .descendants()
-        .any(|n| n.has_tag_name("meta") && n.attribute("name") == Some("cover")));
+    assert!(
+        doc.descendants()
+            .any(|n| n.has_tag_name("meta") && n.attribute("name") == Some("cover"))
+    );
 }
 
 #[test]

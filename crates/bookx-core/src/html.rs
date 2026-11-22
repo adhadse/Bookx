@@ -1270,10 +1270,11 @@ mod vertical_tests {
         );
         assert_eq!(d.writing_mode, WritingMode::VerticalRl);
         assert_eq!(d.orientation, TextOrientation::Upright);
-        assert!(d
-            .blocks
-            .iter()
-            .all(|b| b.css.writing_mode == WritingMode::VerticalRl));
+        assert!(
+            d.blocks
+                .iter()
+                .all(|b| b.css.writing_mode == WritingMode::VerticalRl)
+        );
     }
 
     #[test]

@@ -11,11 +11,11 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::library::Book;
 use bookx_core::util::{author_sort, sanitize_filename, title_sort, xml_escape};
 use chrono::{DateTime, NaiveDate, Utc};
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, params};
 
 const SCHEMA: &str = include_str!("calibre_schema.sql");
 const SCHEMA_POST: &str = include_str!("calibre_schema_post.sql");
@@ -146,11 +146,7 @@ pub fn language_to_calibre(code: &str) -> String {
 pub(crate) fn name_part(s: &str) -> String {
     let t: String = sanitize_filename(s).chars().take(MAX_PART).collect();
     let t = t.trim().trim_matches('.').trim().to_string();
-    if t.is_empty() {
-        "Unknown".into()
-    } else {
-        t
-    }
+    if t.is_empty() { "Unknown".into() } else { t }
 }
 
 fn primary_author(b: &Book) -> String {

@@ -6,7 +6,7 @@ use bookx_core::doc::{BlockKind, Span};
 use bookx_core::toc::FlatToc;
 use bookx_core::util::{file_name, is_external, parent_dir, resolve_href};
 
-use crate::markup::{plain_text, scan, tag_attr, Event};
+use crate::markup::{Event, plain_text, scan, tag_attr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TocSource {
@@ -291,14 +291,16 @@ mod tests {
         );
         assert_eq!(titles(&l), vec![(0, "One".into()), (0, "Two b".into())]);
         assert_eq!(l[1].href, "OEBPS/chapter-2.xhtml#x");
-        assert!(generate(
-            &b,
-            &TocOptions {
-                source: TocSource::Links,
-                ..Default::default()
-            }
-        )
-        .is_empty());
+        assert!(
+            generate(
+                &b,
+                &TocOptions {
+                    source: TocSource::Links,
+                    ..Default::default()
+                }
+            )
+            .is_empty()
+        );
     }
 
     #[test]

@@ -2,9 +2,9 @@
 
 use bookx_core::library::Book;
 use bookx_core::opf::Metadata;
-use bookx_sources::dedup::{find_duplicates, merge_metadata, DEFAULT_THRESHOLD};
+use bookx_sources::dedup::{DEFAULT_THRESHOLD, find_duplicates, merge_metadata};
 use bookx_sources::filename::{default_patterns, guess};
-use bookx_sources::identifiers::{ids_of, parse, IdKind};
+use bookx_sources::identifiers::{IdKind, ids_of, parse};
 use bookx_sources::isbn::extract_isbns;
 use bookx_sources::template::render_save_path;
 use chrono::Utc;

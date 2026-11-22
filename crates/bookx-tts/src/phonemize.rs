@@ -12,7 +12,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 
 /// The espeak-ng program, if the system has one.
 pub fn espeak_program() -> Option<PathBuf> {

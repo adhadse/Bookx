@@ -104,7 +104,10 @@ fn main() {
                 b'd',
                 format!(r#"{{"ok":[{{"id":"r1","name":"Plugin Reader","mount":{mount_json}}}]}}"#),
             ),
-            (b's', r#"{"ok":{"path":"plugin-books/last-sent.bin"}}"#.to_string()),
+            (
+                b's',
+                r#"{"ok":{"path":"plugin-books/last-sent.bin"}}"#.to_string(),
+            ),
             (b'l', r#"{"ok":["plugin-books/last-sent.bin"]}"#.to_string()),
         ]),
     );

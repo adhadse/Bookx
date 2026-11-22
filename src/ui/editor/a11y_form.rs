@@ -8,7 +8,7 @@ use std::collections::BTreeSet;
 use crate::editor_structure as es;
 use crate::i18n::{tr, trf};
 use bookx_editing::a11y_meta::{self, A11yForm, Severity};
-use bookx_editing::book_tools::{AccessMeta, ACCESS_FEATURES, ACCESS_HAZARDS, ACCESS_MODES};
+use bookx_editing::book_tools::{ACCESS_FEATURES, ACCESS_HAZARDS, ACCESS_MODES, AccessMeta};
 
 use super::tools_ui::*;
 use super::*;
@@ -342,7 +342,9 @@ impl Editor {
             .unwrap_or(0);
         let conforms = combo_row(&tr("Conforms to"), &refs, sel);
         let sufficient = entry_row(
-            &tr("Sufficient modes as text, sets separated by ; (for example textual; textual,visual)"),
+            &tr(
+                "Sufficient modes as text, sets separated by ; (for example textual; textual,visual)",
+            ),
             &form0.meta.sufficient_modes.join("; "),
         );
         sufficient.set_widget_name("suff-entry");
@@ -516,9 +518,19 @@ impl Editor {
             eprintln!(
                 "editor_x: a11y-form: summary={} modes={} suff={} features={} hazards={} conf={} by={} report={}",
                 f.meta.summary,
-                f.meta.access_modes.iter().cloned().collect::<Vec<_>>().join(","),
+                f.meta
+                    .access_modes
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(","),
                 f.meta.sufficient_modes.join(";"),
-                f.meta.features.iter().cloned().collect::<Vec<_>>().join(","),
+                f.meta
+                    .features
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(","),
                 f.meta.hazards.iter().cloned().collect::<Vec<_>>().join(","),
                 f.meta.conformance,
                 f.certified_by,

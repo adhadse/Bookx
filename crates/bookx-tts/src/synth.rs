@@ -1,10 +1,10 @@
 //! Synthesizers (text to audio samples) and what to do with the samples: WAV in and out,
 //! resampling for the pitch, joining.
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 
 use crate::session::Voice;
 

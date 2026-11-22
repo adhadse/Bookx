@@ -9,7 +9,7 @@ use crate::i18n::tr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use base64::Engine as _;
 use bookx_serve::opds_client::{self as opds, Entry, Feed, Link, SearchLink};
 use bookx_sources::fetch::Fetcher;
@@ -238,11 +238,7 @@ fn file_stem(title: &str) -> String {
         .collect();
     let s = s.split_whitespace().collect::<Vec<_>>().join(" ");
     let s: String = s.trim_matches('.').chars().take(100).collect();
-    if s.is_empty() {
-        "book".into()
-    } else {
-        s
-    }
+    if s.is_empty() { "book".into() } else { s }
 }
 
 /// Downloads the entry's best format into `dir` and returns the path. Never overwrites.

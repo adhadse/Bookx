@@ -229,9 +229,11 @@ mod tests {
             Ok(Dest::Fraction(0.25))
         );
         assert_eq!(resolve(&Target::Chapter(3), &b), Ok(Dest::Chapter(2)));
-        assert!(resolve(&Target::Chapter(13), &b)
-            .unwrap_err()
-            .contains("12 chapters"));
+        assert!(
+            resolve(&Target::Chapter(13), &b)
+                .unwrap_err()
+                .contains("12 chapters")
+        );
     }
 
     #[test]
@@ -259,9 +261,11 @@ mod tests {
             resolve(&Target::Page("51".into()), &b),
             Ok(Dest::Fraction(0.5))
         );
-        assert!(resolve(&Target::Page("101".into()), &b)
-            .unwrap_err()
-            .contains("100 pages"));
+        assert!(
+            resolve(&Target::Page("101".into()), &b)
+                .unwrap_err()
+                .contains("100 pages")
+        );
         assert!(resolve(&Target::Page("0".into()), &b).is_err());
         assert!(resolve(&Target::Page("iv".into()), &b).is_err());
     }
@@ -289,9 +293,11 @@ mod tests {
             resolve(&Target::Page("2".into()), &b),
             Ok(Dest::Spine(1, 0.5))
         );
-        assert!(resolve(&Target::Page("99".into()), &b)
-            .unwrap_err()
-            .contains("no page"));
+        assert!(
+            resolve(&Target::Page("99".into()), &b)
+                .unwrap_err()
+                .contains("no page")
+        );
         assert!(hint(&b).starts_with("4 printed pages"));
     }
 

@@ -29,9 +29,9 @@ use std::sync::Mutex;
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
-use crate::http::{split_path, Request, Response};
+use crate::http::{Request, Response, split_path};
 
 pub const KIND_HIGHLIGHT: &str = "highlight";
 pub const KIND_BOOKMARK: &str = "bookmark";

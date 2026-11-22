@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_core::contracts::{
     DeviceDriver, FormatReader, FormatWriter, MetadataQuery, MetadataSource, Registry, Transform,
 };
@@ -354,7 +354,7 @@ pub fn reload_patches() -> Arc<PatchSet> {
 
 /// A small book for dry runs when the library is empty.
 pub fn sample_book() -> Archive {
-    use crate::core::convert::{create_epub, Chapter};
+    use crate::core::convert::{Chapter, create_epub};
     create_epub(
         &Metadata {
             title: "Sample".into(),
@@ -513,10 +513,14 @@ pub fn convert_with(
 pub fn permission_summary(permissions: &[String]) -> String {
     let has = |p: &str| permissions.iter().any(|x| x == p);
     if has("editor.write") {
-        return tr("Permissions: may read and change the book open in the editor. Every action is one checkpoint you can restore. It cannot reach other files or the network.");
+        return tr(
+            "Permissions: may read and change the book open in the editor. Every action is one checkpoint you can restore. It cannot reach other files or the network.",
+        );
     }
     if has("editor.read") {
-        return tr("Permissions: may read the book open in the editor. It cannot change anything, reach other files or the network.");
+        return tr(
+            "Permissions: may read the book open in the editor. It cannot change anything, reach other files or the network.",
+        );
     }
     let hosts: Vec<&str> = permissions
         .iter()
@@ -762,12 +766,14 @@ mod tests {
         let list = m.list();
         assert_eq!(list.len(), 2);
         assert!(list.iter().any(|p| p.error.is_some()), "{list:?}");
-        assert!(list
-            .iter()
-            .any(|p| p.id == "ok.source" && p.error.is_none()));
-        assert!(list
-            .iter()
-            .any(|p| p.kind == Some(PluginKind::MetadataSource)));
+        assert!(
+            list.iter()
+                .any(|p| p.id == "ok.source" && p.error.is_none())
+        );
+        assert!(
+            list.iter()
+                .any(|p| p.kind == Some(PluginKind::MetadataSource))
+        );
         let _ = std::fs::remove_dir_all(d);
     }
 
@@ -1018,9 +1024,11 @@ mod tests {
             t,
         )
         .unwrap();
-        assert!(Archive::from_bytes(out)
-            .unwrap()
-            .contains("META-INF/container.xml"));
+        assert!(
+            Archive::from_bytes(out)
+                .unwrap()
+                .contains("META-INF/container.xml")
+        );
 
         // as a conversion option it also runs for ordinary targets
         let auto: BTreeSet<String> = ["test.transform".to_string()].into();
@@ -1182,10 +1190,12 @@ mod tests {
         let none = patch_set(&ts::tmp("patch-noted-none"), &[]);
         let prepared =
             crate::core::library::prepare_from_archive(sample_book(), Path::new("x.epub")).unwrap();
-        assert!(patch_prepared_noted(&none, prepared, Path::new("x.epub"))
-            .unwrap()
-            .1
-            .is_empty());
+        assert!(
+            patch_prepared_noted(&none, prepared, Path::new("x.epub"))
+                .unwrap()
+                .1
+                .is_empty()
+        );
         let _ = std::fs::remove_dir_all(d);
     }
 

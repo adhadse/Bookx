@@ -5,12 +5,12 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::PathBuf;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_core::book::OpenBook;
 
-use crate::markup::{scan, tag_attr, Event};
+use crate::markup::{Event, scan, tag_attr};
 use crate::reports::{book_text_files, document_language};
-use crate::spell::{extract_words, lang_key, replace_all_in_source, SpellChecker};
+use crate::spell::{SpellChecker, extract_words, lang_key, replace_all_in_source};
 
 /// Comments that switch the spell check off for the file that contains them. The second one is accepted so books
 /// prepared with Calibre keep working.
@@ -303,7 +303,7 @@ pub fn change_everywhere(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::spell::tests::{checker, AFF, DIC};
+    use crate::spell::tests::{AFF, DIC, checker};
     use crate::testutil::make_book;
 
     fn book_with(bodies: &[&str]) -> OpenBook {
@@ -322,7 +322,9 @@ mod tests {
 
     #[test]
     fn words_get_counts_languages_and_places() {
-        let b = book_with(&["<p>The quikc fox and the quikc dog</p><p lang=\"de\">Der Hund</p><p>The <code>zzz</code></p>"]);
+        let b = book_with(&[
+            "<p>The quikc fox and the quikc dog</p><p lang=\"de\">Der Hund</p><p>The <code>zzz</code></p>",
+        ]);
         let c = checker();
         let w = scan_book(&b, &c, &HashSet::new());
         let q = w.entries.iter().find(|e| e.word == "quikc").unwrap();
@@ -368,7 +370,9 @@ colour
             ),
         )
         .unwrap();
-        let b = book_with(&["<p lang=\"en-GB\">The colour fox</p><p lang=\"en-US\">The colour fox</p><p>The colour</p>"]);
+        let b = book_with(&[
+            "<p lang=\"en-GB\">The colour fox</p><p lang=\"en-US\">The colour fox</p><p>The colour</p>",
+        ]);
         let w = scan_book(&b, &c, &HashSet::new());
         let gb = w
             .entries
@@ -466,11 +470,12 @@ colour
         );
         let (_, n) = change_everywhere(&mut b, "quick", "a&b", &HashSet::new()).unwrap();
         assert_eq!(n, 3);
-        assert!(b
-            .archive
-            .get_string(&spine[0])
-            .unwrap()
-            .contains("a&amp;b and a&amp;b"));
+        assert!(
+            b.archive
+                .get_string(&spine[0])
+                .unwrap()
+                .contains("a&amp;b and a&amp;b")
+        );
         assert!(change_everywhere(&mut b, "a", " ", &HashSet::new()).is_err());
         let ex: HashSet<String> = [spine[0].clone()].into();
         let (files, _) = change_everywhere(&mut b, "and", "or", &ex).unwrap();

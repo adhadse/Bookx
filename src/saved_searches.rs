@@ -144,11 +144,7 @@ fn dnf(query: &str, items: &[SavedSearch], depth: usize) -> Result<Dnf, String> 
                 let saved = find(items, &name)
                     .ok_or_else(|| trf("There is no saved search called “{}”", &[&name]))?;
                 let d = dnf(&saved.query, items, depth + 1)?;
-                if neg {
-                    negate(&d)?
-                } else {
-                    d
-                }
+                if neg { negate(&d)? } else { d }
             }
             None => vec![vec![tok]],
         };
@@ -379,9 +375,11 @@ mod tests {
     fn cycles_and_unknown_names_are_errors() {
         let items = [s("a", "search:b"), s("b", "search:a")];
         assert!(expand("search:a", &items).unwrap_err().contains("circle"));
-        assert!(expand("search:nope", &[])
-            .unwrap_err()
-            .contains("no saved search"));
+        assert!(
+            expand("search:nope", &[])
+                .unwrap_err()
+                .contains("no saved search")
+        );
     }
 
     #[test]

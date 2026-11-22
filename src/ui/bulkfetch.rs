@@ -7,7 +7,7 @@ use crate::i18n::{tr, trf};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
@@ -365,7 +365,9 @@ impl Ctx {
                 .filter(|r| r.found.is_some())
                 .count();
             let total = self.review.borrow().results.len();
-            eprintln!("bulkfetch: import lookup found={found} of {total}, {left} proposals left for review");
+            eprintln!(
+                "bulkfetch: import lookup found={found} of {total}, {left} proposals left for review"
+            );
             if left > 0 {
                 (self.notify)(format!(
                     "{left} more proposals wait: select the books and use Fetch Metadata… to review them"

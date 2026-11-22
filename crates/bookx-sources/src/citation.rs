@@ -132,11 +132,7 @@ pub fn cite_key(m: &Metadata) -> String {
         })
         .unwrap_or_default();
     let key = format!("{}{}{}", ascii(&first), year_of(&m.published), word);
-    if key.is_empty() {
-        "book".into()
-    } else {
-        key
-    }
+    if key.is_empty() { "book".into() } else { key }
 }
 
 /// Keys that are unique within one list (`a`, `b`, … appended to repeats).

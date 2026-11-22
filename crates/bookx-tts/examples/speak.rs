@@ -8,13 +8,15 @@
 
 use std::time::Instant;
 
-use bookx_tts::models::{kokoro_paths, piper_installed, Store};
+use bookx_tts::models::{Store, kokoro_paths, piper_installed};
 use bookx_tts::synth::{Cancel, SynthRequest, Synthesizer};
 
 fn main() -> anyhow::Result<()> {
     let a: Vec<String> = std::env::args().collect();
     if a.len() < 6 {
-        eprintln!("usage: speak <kokoro|piper> <voice> <language> <out.wav> <text> [speed] [kokoro model int8|fp32]");
+        eprintln!(
+            "usage: speak <kokoro|piper> <voice> <language> <out.wav> <text> [speed] [kokoro model int8|fp32]"
+        );
         std::process::exit(2);
     }
     let root = std::env::var("BOOKX_TTS_DIR").expect("BOOKX_TTS_DIR");

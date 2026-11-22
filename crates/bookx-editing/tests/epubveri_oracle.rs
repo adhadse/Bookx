@@ -128,30 +128,32 @@ fn the_validator_agrees_with_epubveri() {
     let disagreements = std::sync::Mutex::new(Vec::new());
     std::thread::scope(|scope| {
         for _ in 0..workers {
-            scope.spawn(|| loop {
-                let i = next.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                let Some(case) = cases.get(i) else { break };
-                if DIFFERENCES_FROM_EPUBVERI.contains(&case.name.as_str()) {
-                    continue;
-                }
-                let path = dir.join(format!("{}.epub", case.name));
-                std::fs::write(&path, &case.bytes).unwrap();
-                let out = Command::new(&bin)
-                    .arg("-i")
-                    .arg(&path)
-                    .output()
-                    .expect("running epubveri");
-                let epubveri_failed = !out.status.success();
-                let ours_failed = !validate_bytes(&case.bytes).passed;
-                if epubveri_failed != ours_failed {
-                    let msg = String::from_utf8_lossy(&out.stdout);
-                    let first = msg.lines().next().unwrap_or("");
-                    disagreements.lock().unwrap().push(format!(
-                        "{}: epubveri {}, bookx {} ({first})",
-                        case.name,
-                        if epubveri_failed { "fails" } else { "passes" },
-                        if ours_failed { "fails" } else { "passes" }
-                    ));
+            scope.spawn(|| {
+                loop {
+                    let i = next.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    let Some(case) = cases.get(i) else { break };
+                    if DIFFERENCES_FROM_EPUBVERI.contains(&case.name.as_str()) {
+                        continue;
+                    }
+                    let path = dir.join(format!("{}.epub", case.name));
+                    std::fs::write(&path, &case.bytes).unwrap();
+                    let out = Command::new(&bin)
+                        .arg("-i")
+                        .arg(&path)
+                        .output()
+                        .expect("running epubveri");
+                    let epubveri_failed = !out.status.success();
+                    let ours_failed = !validate_bytes(&case.bytes).passed;
+                    if epubveri_failed != ours_failed {
+                        let msg = String::from_utf8_lossy(&out.stdout);
+                        let first = msg.lines().next().unwrap_or("");
+                        disagreements.lock().unwrap().push(format!(
+                            "{}: epubveri {}, bookx {} ({first})",
+                            case.name,
+                            if epubveri_failed { "fails" } else { "passes" },
+                            if ours_failed { "fails" } else { "passes" }
+                        ));
+                    }
                 }
             });
         }

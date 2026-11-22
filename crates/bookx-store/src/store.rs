@@ -4,12 +4,12 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::contracts::Store;
 use bookx_core::library::Book;
 use bookx_core::query::Query;
 use chrono::Utc;
-use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 use serde::Deserialize;
 
 /// Schema version written to `PRAGMA user_version` by the newest migration.
@@ -1175,11 +1175,12 @@ mod tests {
         let a = tmp_sibling(Path::new("/x/y/z.db"));
         let b = tmp_sibling(Path::new("/x/y/z.db"));
         assert_eq!(a.parent(), Some(Path::new("/x/y")));
-        assert!(a
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .starts_with("z.db.tmp-"));
+        assert!(
+            a.file_name()
+                .unwrap()
+                .to_string_lossy()
+                .starts_with("z.db.tmp-")
+        );
         assert_ne!(a, b);
     }
 

@@ -8,7 +8,7 @@ use bookx_core::archive::Archive;
 use bookx_core::util::{parent_dir, parse_xml, resolve_href};
 
 use crate::markup::defined_ids;
-use crate::media_overlay::{duration_ms, parse_clock, parse_smil, Par};
+use crate::media_overlay::{Par, duration_ms, parse_clock, parse_smil};
 use crate::media_overlay_opf::SMIL_TYPE;
 use crate::validate::{Message, Rule, Severity};
 
@@ -341,7 +341,7 @@ pub fn total_ms(per_chapter: &[Vec<Par>]) -> u64 {
 mod tests {
     use super::*;
     use crate::media_overlay_narrate::{
-        narrate_book, remove_narration, Audio, Options, SentenceSynth,
+        Audio, Options, SentenceSynth, narrate_book, remove_narration,
     };
     use crate::testutil::make_book;
     use bookx_core::book::OpenBook;

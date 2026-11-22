@@ -3,12 +3,12 @@
 
 use std::path::{Path, PathBuf};
 
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::library::{AddOutcome, Bookmark, Highlight, ReadPos};
 use bookx_core::opf::Metadata;
 use bookx_store::{
-    has_library, library_db_path, open_library, CatalogWatcher, SqliteStore, LEGACY_JSON,
-    LIBRARY_DB,
+    CatalogWatcher, LEGACY_JSON, LIBRARY_DB, SqliteStore, has_library, library_db_path,
+    open_library,
 };
 use chrono::Utc;
 

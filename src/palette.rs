@@ -5,7 +5,7 @@
 //! the menus run. Every action named here must exist in its window: the UI scenario `palette_registry`
 //! checks that.
 
-use crate::i18n::{tr, N_};
+use crate::i18n::{N_, tr};
 
 /// Where the palette was opened.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1130,9 +1130,11 @@ mod tests {
         }
         assert!(commands(Scope::Library).iter().all(|e| !e.title.is_empty()));
         assert!(commands(Scope::Reader).len() > 20);
-        assert!(!commands(Scope::Library)
-            .iter()
-            .any(|e| e.target == Target::Action("reader.next-page".into())));
+        assert!(
+            !commands(Scope::Library)
+                .iter()
+                .any(|e| e.target == Target::Action("reader.next-page".into()))
+        );
     }
 
     fn gtk_free_accel_ok(a: &str) -> bool {

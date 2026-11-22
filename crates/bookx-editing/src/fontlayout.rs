@@ -1219,10 +1219,22 @@ mod tests {
     fn kern_subtables_that_cannot_be_kept_are_reported() {
         let ok = kern_subtable(1, &[(1, 2, -5)]);
         let cases: [(Vec<u8>, &str); 4] = [
-            (kern_subtable(0x0201, &[(1, 2, 3)]), "kern subtable 1: format 2 (horizontal true, minimum false, cross-stream false) is not preserved"),
-            (kern_subtable(0x0000, &[(1, 2, 3)]), "kern subtable 1: format 0 (horizontal false, minimum false, cross-stream false) is not preserved"),
-            (kern_subtable(0x0003, &[(1, 2, 3)]), "kern subtable 1: format 0 (horizontal true, minimum true, cross-stream false) is not preserved"),
-            (kern_subtable(0x0005, &[(1, 2, 3)]), "kern subtable 1: format 0 (horizontal true, minimum false, cross-stream true) is not preserved"),
+            (
+                kern_subtable(0x0201, &[(1, 2, 3)]),
+                "kern subtable 1: format 2 (horizontal true, minimum false, cross-stream false) is not preserved",
+            ),
+            (
+                kern_subtable(0x0000, &[(1, 2, 3)]),
+                "kern subtable 1: format 0 (horizontal false, minimum false, cross-stream false) is not preserved",
+            ),
+            (
+                kern_subtable(0x0003, &[(1, 2, 3)]),
+                "kern subtable 1: format 0 (horizontal true, minimum true, cross-stream false) is not preserved",
+            ),
+            (
+                kern_subtable(0x0005, &[(1, 2, 3)]),
+                "kern subtable 1: format 0 (horizontal true, minimum false, cross-stream true) is not preserved",
+            ),
         ];
         for (bad, msg) in cases {
             let (tables, rep) = run(&kern_font(kern_table(&[ok.clone(), bad])));

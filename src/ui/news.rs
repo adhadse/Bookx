@@ -12,8 +12,8 @@ use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
 
 use crate::news::{
-    feed_lines, recipe_from_form, schedule_text, status_text, NewsStore, ScheduleChoice,
-    Subscription, DEFAULT_KEEP, WEEKDAYS,
+    DEFAULT_KEEP, NewsStore, ScheduleChoice, Subscription, WEEKDAYS, feed_lines, recipe_from_form,
+    schedule_text, status_text,
 };
 
 /// Lets the owner redraw the list of an open window after a download finished.

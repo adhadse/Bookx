@@ -1153,7 +1153,11 @@ impl Editor {
             sugg.join("|"),
             ui.entry.text(),
             names.join("|"),
-            excluded.iter().map(|s| s.as_str()).collect::<Vec<_>>().join("|"),
+            excluded
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>()
+                .join("|"),
             ui.status.label()
         );
     }

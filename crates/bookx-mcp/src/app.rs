@@ -7,12 +7,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use bookx_core::library::{Book, Library};
 use bookx_sources::fetch::Fetcher;
 use bookx_store::SqliteStore;
 use chrono::{DateTime, Utc};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::text::TextCache;
 
@@ -400,17 +400,21 @@ impl App {
     ) -> Result<T, ToolError> {
         let _lock = match self.cfg.write {
             WritePolicy::Off => {
-                return fail("this server is read-only (start it with write access to change the library)")
+                return fail(
+                    "this server is read-only (start it with write access to change the library)",
+                );
             }
-            WritePolicy::Locked => match bookx_store::guard::acquire(&self.cfg.root, &self.cfg.app_name)? {
-                bookx_store::guard::Lock::Acquired(l) => Some(l),
-                bookx_store::guard::Lock::Busy(h) => {
-                    return fail(format!(
-                        "the library is open in {}; writes are refused while it is. Use the server inside the app, or close it",
-                        h.describe()
-                    ))
+            WritePolicy::Locked => {
+                match bookx_store::guard::acquire(&self.cfg.root, &self.cfg.app_name)? {
+                    bookx_store::guard::Lock::Acquired(l) => Some(l),
+                    bookx_store::guard::Lock::Busy(h) => {
+                        return fail(format!(
+                            "the library is open in {}; writes are refused while it is. Use the server inside the app, or close it",
+                            h.describe()
+                        ));
+                    }
                 }
-            },
+            }
             WritePolicy::InApp => None,
         };
         let opened = bookx_store::open_library(&self.cfg.root).map_err(|e| anyhow!("{e:#}"))?;

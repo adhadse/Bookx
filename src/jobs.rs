@@ -8,8 +8,8 @@
 use crate::i18n::{tr, trf};
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// How many finished jobs the panel keeps.
 const KEEP_FINISHED: usize = 30;

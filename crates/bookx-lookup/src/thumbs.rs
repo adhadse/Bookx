@@ -291,9 +291,10 @@ mod tests {
         assert_eq!(seen.len(), 2, "{chapters:?}");
         assert_eq!(seen[0], 1);
         assert_eq!(out[0], 7);
-        assert!(out
-            .windows(2)
-            .all(|w| w[0] / 5 == w[1] / 5 || w[0] / 5 == seen[0]));
+        assert!(
+            out.windows(2)
+                .all(|w| w[0] / 5 == w[1] / 5 || w[0] / 5 == seen[0])
+        );
         assert!(group_by_chapter(&[], 0, 3, |p| p).is_empty());
         assert!(group_by_chapter(&pages, 0, 0, |p| p).is_empty());
     }

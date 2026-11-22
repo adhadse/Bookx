@@ -4,8 +4,8 @@
 //! belong together". The automatic suggestions (same title and author, same ISBN) are computed by
 //! the app from the books and never stored; only what the user decided is.
 
-use anyhow::{bail, Result};
-use rusqlite::{params, Connection};
+use anyhow::{Result, bail};
+use rusqlite::{Connection, params};
 
 use crate::store::SqliteStore;
 

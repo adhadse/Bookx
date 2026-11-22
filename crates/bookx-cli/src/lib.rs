@@ -19,17 +19,17 @@ mod replace;
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_convert::transforms::{AutoTocMode, ProfileKind};
 use bookx_convert::writers::EpubVersion;
-use bookx_convert::{builtin_presets, convert_file, default_writers, ConvertOptions, PresetStore};
+use bookx_convert::{ConvertOptions, PresetStore, builtin_presets, convert_file, default_writers};
 use bookx_core::archive::Archive;
 use bookx_core::book::OpenBook;
-use bookx_core::check::{check_book, Severity};
+use bookx_core::check::{Severity, check_book};
 use bookx_core::library::{AddOutcome, Library, SortKey};
 use bookx_core::opf::Metadata;
 use bookx_formats::{default_readers, read_any, supported_extensions};
@@ -52,7 +52,10 @@ pub(crate) fn var(name: &str) -> Option<String> {
 
 /// For tests: from now on this thread sees `name` as `value` (`None`: not set), whatever the real environment says.
 pub fn override_var(name: &str, value: Option<&str>) {
-    TEST_VARS.with(|m| m.borrow_mut().insert(name.to_string(), value.map(String::from)));
+    TEST_VARS.with(|m| {
+        m.borrow_mut()
+            .insert(name.to_string(), value.map(String::from))
+    });
 }
 
 /// Process-level context that tests can replace.

@@ -6,7 +6,7 @@
 
 use std::sync::OnceLock;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use regex::Regex;
 use roxmltree::{Document, Node, ParsingOptions};
@@ -593,11 +593,7 @@ fn parse_atom(root: Node, xml: &str) -> Result<Feed> {
         feed.entries.push(Entry {
             id: {
                 let id = child_text(e, "id");
-                if id.is_empty() {
-                    link.clone()
-                } else {
-                    id
-                }
+                if id.is_empty() { link.clone() } else { id }
             },
             title: plain_text(
                 &kids(e, "title")
@@ -711,11 +707,7 @@ fn parse_json_feed(text: &str) -> Result<Feed> {
                             .unwrap_or_else(|| i.to_string())
                     })
                     .unwrap_or_default();
-                if id.is_empty() {
-                    link.clone()
-                } else {
-                    id
-                }
+                if id.is_empty() { link.clone() } else { id }
             },
             title: plain_text(&json_str(it, "title")),
             link,
@@ -994,20 +986,24 @@ mod tests {
 
     #[test]
     fn json_feed_errors() {
-        assert!(parse_feed(br#"{"hello": 1}"#)
-            .unwrap_err()
-            .to_string()
-            .contains("not a JSON Feed"));
+        assert!(
+            parse_feed(br#"{"hello": 1}"#)
+                .unwrap_err()
+                .to_string()
+                .contains("not a JSON Feed")
+        );
         assert!(
             parse_feed(br#"{"version":"https://jsonfeed.org/version/1","items":5}"#)
                 .unwrap_err()
                 .to_string()
                 .contains("items")
         );
-        assert!(parse_feed(b"{ nope")
-            .unwrap_err()
-            .to_string()
-            .contains("not valid JSON"));
+        assert!(
+            parse_feed(b"{ nope")
+                .unwrap_err()
+                .to_string()
+                .contains("not valid JSON")
+        );
     }
 
     #[test]

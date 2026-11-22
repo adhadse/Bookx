@@ -10,7 +10,7 @@ use bookx_comic::settings::{Fit, Mode, Store};
 use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 
-use super::preferences::{register_group, PrefCtx};
+use super::preferences::{PrefCtx, register_group};
 
 pub fn register() {
     register_group("reading", 75, group);
@@ -195,7 +195,9 @@ fn group(ctx: &PrefCtx) -> adw::PreferencesGroup {
     library_rtl.set_widget_name("comic-library-rtl");
     let ignore_info = switch(
         &tr("Ignore ComicInfo.xml when importing"),
-        &tr("Use the file name and picture order only, not the title, series, direction or cover the file claims"),
+        &tr(
+            "Use the file name and picture order only, not the title, series, direction or cover the file claims",
+        ),
         s.ignore_info,
     );
     ignore_info.set_widget_name("comic-ignore-info");

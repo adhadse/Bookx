@@ -22,7 +22,7 @@ use chrono::Utc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio, glib};
 
-use super::{window_of, SharedRef};
+use super::{SharedRef, window_of};
 use crate::backups as bk;
 use crate::library_health as lh;
 
@@ -1302,7 +1302,9 @@ impl Panel {
             super::alert(
                 &self.parent,
                 &tr("Remove old backups?"),
-                &tr("Backups beyond the number this place keeps are removed, and so are the files only they needed. Manual backups and the newest ones stay."),
+                &tr(
+                    "Backups beyond the number this place keeps are removed, and so are the files only they needed. Manual backups and the newest ones stay.",
+                ),
                 &tr("Remove"),
                 true,
                 go,

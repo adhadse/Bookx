@@ -3,7 +3,7 @@
 //!
 //!     fake_install <dir> <pack-id> [pack-id ...]
 
-use bookx_tts::models::{find_pack, Store};
+use bookx_tts::models::{Store, find_pack};
 
 fn main() {
     let a: Vec<String> = std::env::args().collect();

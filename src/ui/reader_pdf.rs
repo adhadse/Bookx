@@ -7,7 +7,7 @@
 //! byte budget. While a page is being rendered at a new zoom the last rendering of it is drawn
 //! scaled.
 
-use crate::i18n::{tr, trf, N_};
+use crate::i18n::{N_, tr, trf};
 use crate::side_notes;
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
@@ -26,7 +26,7 @@ use relm4::prelude::*;
 
 use super::reader::HIGHLIGHT_COLORS;
 use super::web;
-use super::{open_external_link, open_uri, window_of, SharedRef};
+use super::{SharedRef, open_external_link, open_uri, window_of};
 use crate::core::library::{Bookmark, Highlight, ReadPos};
 use crate::pdf::{self, Layout, PdfPrefs, Place, ViewMode, ZoomMode};
 
@@ -3039,11 +3039,7 @@ impl SimpleComponent for ReaderPdf {
                         .page_at(dx, dy, false)
                         .and_then(|(p, px, py)| st.texts.get(&p).and_then(|t| t.char_at(px, py)))
                         .is_some();
-                    if over_text {
-                        "text"
-                    } else {
-                        "default"
-                    }
+                    if over_text { "text" } else { "default" }
                 };
                 self.w.area.set_cursor_from_name(Some(name));
             }
@@ -3630,7 +3626,10 @@ impl ReaderPdf {
                     st.texts.len(),
                     top,
                     self.vadj.upper(),
-                    self.selection.as_ref().map(|s| s.text.as_str()).unwrap_or(""),
+                    self.selection
+                        .as_ref()
+                        .map(|s| s.text.as_str())
+                        .unwrap_or(""),
                     st.highlights.len(),
                     st.links.values().map(|l| l.len()).sum::<usize>(),
                     self.search_rows.len(),

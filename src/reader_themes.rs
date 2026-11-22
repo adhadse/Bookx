@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::config::{parse_hex, ColorMode, ReaderPrefs};
+use crate::config::{ColorMode, ReaderPrefs, parse_hex};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Theme {
@@ -146,9 +146,11 @@ mod tests {
     fn low_contrast_is_flagged() {
         assert!(warning("#777777", "#808080").unwrap().contains("too low"));
         assert!(warning("#767676", "#ffffff").is_none());
-        assert!(warning("#8a8a8a", "#ffffff")
-            .unwrap()
-            .contains("a little low"));
+        assert!(
+            warning("#8a8a8a", "#ffffff")
+                .unwrap()
+                .contains("a little low")
+        );
         assert!(warning("#000000", "#ffffff").is_none());
     }
 

@@ -3,16 +3,16 @@
 
 use crate::i18n::tr;
 use crate::i18n::trf;
-use crate::i18n::{ntr, N_};
+use crate::i18n::{N_, ntr};
 use anyhow::Result;
-use bookx_editing::accessibility::{make_accessible, AccessibilityOptions};
-use bookx_editing::fixes::{fix_book, FixOptions};
+use bookx_editing::accessibility::{AccessibilityOptions, make_accessible};
+use bookx_editing::fixes::{FixOptions, fix_book};
 use bookx_editing::fonts::subset_embedded_fonts;
-use bookx_editing::images::{optimize_images, ImageOptions};
-use bookx_editing::inline_toc::{insert_inline_toc, remove_inline_toc, InlineTocOptions};
-use bookx_editing::links::{arrange_files, ArrangeOptions};
-use bookx_editing::reports::{build_report, ReportOptions};
-use bookx_editing::upgrade::{upgrade_to_epub3, UpgradeOptions};
+use bookx_editing::images::{ImageOptions, optimize_images};
+use bookx_editing::inline_toc::{InlineTocOptions, insert_inline_toc, remove_inline_toc};
+use bookx_editing::links::{ArrangeOptions, arrange_files};
+use bookx_editing::reports::{ReportOptions, build_report};
+use bookx_editing::upgrade::{UpgradeOptions, upgrade_to_epub3};
 
 mod more;
 pub mod rules;
@@ -338,7 +338,7 @@ pub fn run(tool: Tool, book: &mut OpenBook) -> Result<Outcome> {
 /// validator are left out; its ids are put in front of the text (`[OPF-003] ...`).
 #[cfg(test)]
 pub fn check_all(archive: &Archive) -> Vec<Issue> {
-    use bookx_editing::validate::{validate, Severity as V};
+    use bookx_editing::validate::{Severity as V, validate};
     let mut out = check_book(archive);
     for m in validate(archive).messages {
         let severity = match m.severity {
@@ -359,7 +359,7 @@ pub fn check_all(archive: &Archive) -> Vec<Issue> {
 
 /// Splits `path` into one file per heading of level `1..=level`.
 pub fn split_at_headings(book: &mut OpenBook, path: &str, level: u8) -> Result<Outcome> {
-    use bookx_editing::split_merge::{split_file, SplitSpec};
+    use bookx_editing::split_merge::{SplitSpec, split_file};
     let r = match split_file(book, path, &SplitSpec::Headings(level.clamp(1, 6))) {
         Ok(r) => r,
         Err(e) if e.to_string().starts_with("nothing to split") => {
@@ -699,7 +699,7 @@ pub fn spelling_issues(
     book: &OpenBook,
     dirs: &[std::path::PathBuf],
 ) -> (Vec<Issue>, Option<String>) {
-    use bookx_editing::spell::{check_book_spelling, SpellChecker};
+    use bookx_editing::spell::{SpellChecker, check_book_spelling};
     let lang = book.package.metadata.language.clone();
     let lang = if lang.trim().is_empty() {
         "en".to_string()
@@ -820,7 +820,7 @@ pub fn report_rows(book: &OpenBook) -> Vec<(String, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::convert::{create_epub, Chapter};
+    use crate::core::convert::{Chapter, create_epub};
     use crate::core::opf::Metadata;
 
     fn book() -> OpenBook {
@@ -1014,9 +1014,11 @@ mod tests {
         assert_eq!(b.chapter_doc(&ch).unwrap().to_text(), text_before);
         let src = b.archive.get_string(&ch).unwrap();
         assert!(src.contains("Images/pic.png"), "{src}");
-        assert!(crate::core::check::check_book(&b.archive)
-            .iter()
-            .all(|i| i.severity != crate::core::check::Severity::Error));
+        assert!(
+            crate::core::check::check_book(&b.archive)
+                .iter()
+                .all(|i| i.severity != crate::core::check::Severity::Error)
+        );
         let again = run(Tool::ArrangeFiles, &mut b).unwrap();
         assert!(!again.changed, "{again:?}");
     }
@@ -1074,9 +1076,11 @@ mod tests {
     #[test]
     fn check_all_adds_validator_findings_with_their_ids() {
         let mut b = book();
-        assert!(check_all(&b.archive)
-            .iter()
-            .all(|i| i.severity != Severity::Error));
+        assert!(
+            check_all(&b.archive)
+                .iter()
+                .all(|i| i.severity != Severity::Error)
+        );
         b.archive.set("mimetype", b"wrong".to_vec());
         let issues = check_all(&b.archive);
         assert!(
@@ -1219,16 +1223,18 @@ mod tests {
         assert!(o.changed);
         let src = b.archive.get_string(&ch).unwrap();
         assert!(src.contains("src=\"cover-art.png\"") && src.contains("src=\"data.png\""));
-        assert!(b
-            .archive
-            .get_string("OEBPS/style.css")
-            .unwrap()
-            .contains("url(cover-art.png)"));
-        assert!(b
-            .archive
-            .get_string("OEBPS/style.css")
-            .unwrap()
-            .contains("url(data.png)"));
+        assert!(
+            b.archive
+                .get_string("OEBPS/style.css")
+                .unwrap()
+                .contains("url(cover-art.png)")
+        );
+        assert!(
+            b.archive
+                .get_string("OEBPS/style.css")
+                .unwrap()
+                .contains("url(data.png)")
+        );
         assert!(rename_one(&mut b, "OEBPS/data.png", "a/b.png").is_err());
         assert!(
             !rename_one(&mut b, "OEBPS/data.png", "data.png")
@@ -1258,11 +1264,12 @@ mod tests {
         )
         .unwrap();
         assert!(o.summary.contains("Added 2 files"));
-        assert!(b
-            .package
-            .manifest
-            .iter()
-            .any(|i| i.href.ends_with("one.png")));
+        assert!(
+            b.package
+                .manifest
+                .iter()
+                .any(|i| i.href.ends_with("one.png"))
+        );
 
         let o = new_file(
             &mut b,

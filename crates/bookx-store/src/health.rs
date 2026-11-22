@@ -7,7 +7,7 @@
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::book::OpenBook;
 use bookx_core::library::{Book, Library};
 use bookx_core::opf::Metadata;

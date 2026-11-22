@@ -10,11 +10,11 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::{gtk, gtk::glib};
 
-use super::preferences::{register_group, PrefCtx};
+use super::SharedRef;
+use super::preferences::{PrefCtx, register_group};
 use super::share::follow;
 use super::stepper::{StepInfo, Stepper};
-use super::SharedRef;
-use crate::i18n::{tr, N_};
+use crate::i18n::{N_, tr};
 use crate::sync_model::{self, Snapshot};
 
 thread_local! {
@@ -601,16 +601,19 @@ pub fn dev(cmd: &str) {
         // the highlights, notes and bookmarks switch: on by default, independent of the server
         let on = NOTES_SW.with(|n| n.borrow().as_ref().map(|s| s.is_active()));
         let sh = SHARED.with(|s| s.borrow().clone());
-        match (on, sh) { (Some(on), Some(sh)) => {
-            eprintln!(
-                "prefs_notes: switch={on} config={} listening={} store={}",
-                sh.cfg.borrow().share.annotations,
-                sh.sharing.borrow().running(),
-                sh.sharing.borrow().annotations().is_some()
-            );
-        } _ => {
-            eprintln!("prefs_notes: no page");
-        }}
+        match (on, sh) {
+            (Some(on), Some(sh)) => {
+                eprintln!(
+                    "prefs_notes: switch={on} config={} listening={} store={}",
+                    sh.cfg.borrow().share.annotations,
+                    sh.sharing.borrow().running(),
+                    sh.sharing.borrow().annotations().is_some()
+                );
+            }
+            _ => {
+                eprintln!("prefs_notes: no page");
+            }
+        }
         return;
     }
     if let Some(v) = cmd.strip_prefix("notes=") {
@@ -671,7 +674,9 @@ pub fn dev(cmd: &str) {
             has("Offline mode and the list of connections"),
             has("Reverse proxy and remote access"),
             has(REQUIREMENTS_TITLE),
-            all.contains(&tr("Allow this port in your firewall for the e-reader to connect.")),
+            all.contains(&tr(
+                "Allow this port in your firewall for the e-reader to connect."
+            )),
             a.is_expanded() && mapped("Port"),
         );
         return;
@@ -739,7 +744,9 @@ pub fn dev(cmd: &str) {
             "prefs_sync_req: rows={} titles={} columns={} notsupported={} bookx_path={} kosync_text={} koreader_menu={} steps={} account_help={} not_share={} kosync_labels={} brand={} advanced={} info_rows={}",
             req_titles.len(),
             req_titles.join("|"),
-            sync_model::COLUMNS[1..].iter().all(|c| all.contains(&tr(c))),
+            sync_model::COLUMNS[1..]
+                .iter()
+                .all(|c| all.contains(&tr(c))),
             all.contains("not supported"),
             all.contains("/bookx"),
             all.contains("/kosync"),

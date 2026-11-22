@@ -1135,7 +1135,7 @@ pub fn sources(ledger: &Ledger) -> HashMap<(u64, String), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bookx_serve::annotation_sync::{Record, ORIGIN_BOOKX};
+    use bookx_serve::annotation_sync::{ORIGIN_BOOKX, Record};
 
     struct Fixed(Vec<(&'static str, (usize, i32, i32))>);
 

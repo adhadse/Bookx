@@ -1,6 +1,6 @@
 //! Cascade, inheritance and computed values.
 
-use super::sheet::{parse_declaration_text, parse_stylesheet, MediaEnv, Rule};
+use super::sheet::{MediaEnv, Rule, parse_declaration_text, parse_stylesheet};
 use super::values::*;
 use scraper::ElementRef;
 
@@ -700,7 +700,9 @@ mod tests {
 
     #[test]
     fn ua_defaults() {
-        let h = page("<h1>a</h1><p>b</p><em>c</em><strong>d</strong><ul><li>e</li></ul><blockquote>q</blockquote><u>u</u><s>s</s><code>c</code><center>x</center>");
+        let h = page(
+            "<h1>a</h1><p>b</p><em>c</em><strong>d</strong><ul><li>e</li></ul><blockquote>q</blockquote><u>u</u><s>s</s><code>c</code><center>x</center>",
+        );
         let s = StyleSheetSet::new();
         let h1 = st(&s, &h, "h1");
         assert_eq!(h1.display, Display::Block);
@@ -780,7 +782,9 @@ mod tests {
 
     #[test]
     fn font_size_keywords() {
-        let h = page("<p>x</p><div style='font-size: 10px'><span style='font-size: larger'>y</span><i style='font-size: smaller'>z</i></div>");
+        let h = page(
+            "<p>x</p><div style='font-size: 10px'><span style='font-size: larger'>y</span><i style='font-size: smaller'>z</i></div>",
+        );
         let s = StyleSheetSet::new().add_author("p { font-size: x-large }");
         approx(st(&s, &h, "p").font_size, 24.0);
         approx(st(&s, &h, "span").font_size, 12.0);
@@ -1063,7 +1067,9 @@ mod tests {
 
     #[test]
     fn selectors_in_cascade() {
-        let h = page("<div class=box><p>first</p><p>second</p><p class=x>third</p></div><ul><li>a</li><li>b</li></ul><a href=u>l</a>");
+        let h = page(
+            "<div class=box><p>first</p><p>second</p><p class=x>third</p></div><ul><li>a</li><li>b</li></ul><a href=u>l</a>",
+        );
         let s = StyleSheetSet::new().add_author(
             "p:first-child { text-indent: 0 } p + p { text-indent: 1em } .box > p.x { color: red } div p:last-child { font-weight: bold }
              li:nth-child(2) { margin-left: 7px } a[href] { text-decoration: underline } a[href='nope'] { color: red }",
@@ -1162,7 +1168,9 @@ mod tests {
 
     #[test]
     fn compute_equals_compute_with_parent_walk() {
-        let h = page("<div id=a style='font-size: 14px'><section><p class=q>deep <em>text</em></p></section></div>");
+        let h = page(
+            "<div id=a style='font-size: 14px'><section><p class=q>deep <em>text</em></p></section></div>",
+        );
         let s = StyleSheetSet::new().add_author(
             "div { color: #abc; line-height: 1.3 } .q { margin-top: 1em } em { font-size: 120% }",
         );

@@ -9,8 +9,8 @@
 //! * The cache is capped in total size, per entry and by age; the oldest entries go first.
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::Result;
 

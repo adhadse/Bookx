@@ -5,7 +5,7 @@ use std::cell::RefCell;
 
 use relm4::adw::{self, prelude::*};
 
-use super::preferences::{info_row, register_group, register_page, PrefCtx};
+use super::preferences::{PrefCtx, info_row, register_group, register_page};
 use crate::i18n::tr;
 use crate::privacy;
 

@@ -255,11 +255,7 @@ fn parse_word(tok: &str) -> Node {
         value: value.to_lowercase(),
         rx,
     });
-    if negate {
-        Node::Not(Box::new(t))
-    } else {
-        t
-    }
+    if negate { Node::Not(Box::new(t)) } else { t }
 }
 
 impl Query {
@@ -469,10 +465,10 @@ fn custom_match(stored: Option<&str>, term: &Term, today: &Today) -> bool {
             "" => return stored.is_some(),
             "empty" | "blank" | "unset" => return stored.is_none(),
             "true" | "yes" => {
-                return stored.is_some_and(|s| matches!(s.to_lowercase().as_str(), "true" | "yes"))
+                return stored.is_some_and(|s| matches!(s.to_lowercase().as_str(), "true" | "yes"));
             }
             "false" | "no" => {
-                return stored.is_some_and(|s| matches!(s.to_lowercase().as_str(), "false" | "no"))
+                return stored.is_some_and(|s| matches!(s.to_lowercase().as_str(), "false" | "no"));
             }
             _ => {}
         }

@@ -9,8 +9,8 @@ use std::time::Duration;
 use base64::Engine;
 use bookx_core::library::Book;
 use bookx_core::opf::Metadata;
-use bookx_serve::kosync::{md5_hex, JsonFileStore, KoSync, MemoryStore};
-use bookx_serve::opds_client::{expand_search_template, parse_feed, SearchLink};
+use bookx_serve::kosync::{JsonFileStore, KoSync, MemoryStore, md5_hex};
+use bookx_serve::opds_client::{SearchLink, expand_search_template, parse_feed};
 use bookx_serve::server::{LibrarySnapshot, Server, ServerConfig, ServerHandle, User};
 use chrono::Utc;
 
@@ -252,10 +252,11 @@ fn serves_pages_downloads_and_errors() {
         r.header("content-length"),
         Some(fx.files[1].len().to_string().as_str())
     );
-    assert!(r
-        .header("content-disposition")
-        .unwrap()
-        .contains("Emma - Jane Austen.epub"));
+    assert!(
+        r.header("content-disposition")
+            .unwrap()
+            .contains("Emma - Jane Austen.epub")
+    );
 
     let r = get(addr, "/cover/1");
     assert_eq!((r.status, r.body.as_slice()), (200, &b"JPEGDATA"[..]));
@@ -278,10 +279,11 @@ fn opds_over_http_is_valid_xml_and_followable() {
 
     let r = get(addr, "/opds");
     assert_eq!(r.status, 200);
-    assert!(r
-        .header("content-type")
-        .unwrap()
-        .contains("profile=opds-catalog"));
+    assert!(
+        r.header("content-type")
+            .unwrap()
+            .contains("profile=opds-catalog")
+    );
     roxmltree::Document::parse(&r.text()).expect("valid XML");
     let root = parse_feed(&r.text(), &format!("{base}/opds")).unwrap();
     assert!(!root.is_acquisition());
@@ -360,10 +362,11 @@ fn basic_auth_protects_everything_but_health_and_kosync() {
     for p in ["/", "/opds", "/download/1.epub", "/cover/1", "/opds/new"] {
         let r = get(addr, p);
         assert_eq!(r.status, 401, "{p}");
-        assert!(r
-            .header("www-authenticate")
-            .unwrap()
-            .starts_with("Basic realm="));
+        assert!(
+            r.header("www-authenticate")
+                .unwrap()
+                .starts_with("Basic realm=")
+        );
     }
     let good = basic("reader", "s3cret");
     for p in ["/", "/opds", "/download/1.epub", "/cover/1"] {

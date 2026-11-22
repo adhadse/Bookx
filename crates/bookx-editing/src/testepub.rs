@@ -56,7 +56,9 @@ pub fn add_item(
         files,
         OPF,
         "</manifest>",
-        &format!("<item id=\"{id}\" href=\"{href}\" media-type=\"{media_type}\"{extra_attrs}/></manifest>"),
+        &format!(
+            "<item id=\"{id}\" href=\"{href}\" media-type=\"{media_type}\"{extra_attrs}/></manifest>"
+        ),
     );
     if let Some(c) = content {
         let decoded = decode_href(href);
@@ -253,7 +255,11 @@ pub fn faults() -> Vec<Fault> {
         }),
         f("RSC-002", 3, true, |x| remove(x, "META-INF/container.xml")),
         f("RSC-003", 3, true, |x| {
-            set(x, "META-INF/container.xml", "<container xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\"><rootfiles/></container>")
+            set(
+                x,
+                "META-INF/container.xml",
+                "<container xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\"><rootfiles/></container>",
+            )
         }),
         f("RSC-004", 3, false, |x| {
             set(x, "META-INF/encryption.xml", ENCRYPTION)
@@ -419,7 +425,12 @@ pub fn faults() -> Vec<Fault> {
             );
         }),
         f("OPF-012", 3, true, |x| {
-            rep(x, OPF, "<item id=\"css\" href=\"style.css\" media-type=\"text/css\"/>", "<item id=\"css\" href=\"style.css\" media-type=\"text/css\" properties=\"cover-image\"/>")
+            rep(
+                x,
+                OPF,
+                "<item id=\"css\" href=\"style.css\" media-type=\"text/css\"/>",
+                "<item id=\"css\" href=\"style.css\" media-type=\"text/css\" properties=\"cover-image\"/>",
+            )
         }),
         f("OPF-915", 2, false, |x| {
             rep(
@@ -430,7 +441,12 @@ pub fn faults() -> Vec<Fault> {
             )
         }),
         f("OPF-027", 3, true, |x| {
-            rep(x, OPF, "<item id=\"css\" href=\"style.css\" media-type=\"text/css\"/>", "<item id=\"css\" href=\"style.css\" media-type=\"text/css\" properties=\"bogus\"/>")
+            rep(
+                x,
+                OPF,
+                "<item id=\"css\" href=\"style.css\" media-type=\"text/css\"/>",
+                "<item id=\"css\" href=\"style.css\" media-type=\"text/css\" properties=\"bogus\"/>",
+            )
         }),
         f("OPF-026", 3, true, |x| {
             rep(
@@ -441,7 +457,12 @@ pub fn faults() -> Vec<Fault> {
             )
         }),
         f("OPF-028", 3, true, |x| {
-            rep(x, OPF, "<item id=\"css\" href=\"style.css\" media-type=\"text/css\"/>", "<item id=\"css\" href=\"style.css\" media-type=\"text/css\" properties=\"foo:bar\"/>")
+            rep(
+                x,
+                OPF,
+                "<item id=\"css\" href=\"style.css\" media-type=\"text/css\"/>",
+                "<item id=\"css\" href=\"style.css\" media-type=\"text/css\" properties=\"foo:bar\"/>",
+            )
         }),
         f("OPF-014", 3, true, |x| {
             rep(
@@ -452,10 +473,20 @@ pub fn faults() -> Vec<Fault> {
             )
         }),
         f("OPF-015", 3, true, |x| {
-            rep(x, OPF, "<item id=\"ch1\" href=\"ch1.xhtml\" media-type=\"application/xhtml+xml\"/>", "<item id=\"ch1\" href=\"ch1.xhtml\" media-type=\"application/xhtml+xml\" properties=\"scripted\"/>")
+            rep(
+                x,
+                OPF,
+                "<item id=\"ch1\" href=\"ch1.xhtml\" media-type=\"application/xhtml+xml\"/>",
+                "<item id=\"ch1\" href=\"ch1.xhtml\" media-type=\"application/xhtml+xml\" properties=\"scripted\"/>",
+            )
         }),
         f("OPF-018", 3, false, |x| {
-            rep(x, OPF, "<item id=\"ch1\" href=\"ch1.xhtml\" media-type=\"application/xhtml+xml\"/>", "<item id=\"ch1\" href=\"ch1.xhtml\" media-type=\"application/xhtml+xml\" properties=\"remote-resources\"/>")
+            rep(
+                x,
+                OPF,
+                "<item id=\"ch1\" href=\"ch1.xhtml\" media-type=\"application/xhtml+xml\"/>",
+                "<item id=\"ch1\" href=\"ch1.xhtml\" media-type=\"application/xhtml+xml\" properties=\"remote-resources\"/>",
+            )
         }),
         f("OPF-040", 3, true, |x| {
             add_item(
@@ -516,19 +547,41 @@ pub fn faults() -> Vec<Fault> {
             rep(x, "OEBPS/ch2.xhtml", "<title>Two</title>", "")
         }),
         f("HTM-903", 3, false, |x| {
-            set(x, "OEBPS/ch2.xhtml", "<?xml version=\"1.0\"?>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\"><body><section id=\"sec\"><p>x <a href=\"ch1.xhtml\">back</a></p></section></body></html>")
+            set(
+                x,
+                "OEBPS/ch2.xhtml",
+                "<?xml version=\"1.0\"?>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\"><body><section id=\"sec\"><p>x <a href=\"ch1.xhtml\">back</a></p></section></body></html>",
+            )
         }),
         f("HTM-905", 3, true, |x| {
-            set(x, "OEBPS/ch2.xhtml", ch2_v3("<section id=\"sec\"><p id=\"sec\">dup <a href=\"ch1.xhtml\">back</a></p></section>"))
+            set(
+                x,
+                "OEBPS/ch2.xhtml",
+                ch2_v3(
+                    "<section id=\"sec\"><p id=\"sec\">dup <a href=\"ch1.xhtml\">back</a></p></section>",
+                ),
+            )
         }),
         f("HTM-909", 3, false, |x| {
-            set(x, "OEBPS/ch2.xhtml", ch2_v3("<section id=\"sec\"><p aria-labelledby=\"nope\">x <a href=\"ch1.xhtml\">back</a></p></section>"))
+            set(
+                x,
+                "OEBPS/ch2.xhtml",
+                ch2_v3(
+                    "<section id=\"sec\"><p aria-labelledby=\"nope\">x <a href=\"ch1.xhtml\">back</a></p></section>",
+                ),
+            )
         }),
         f("HTM-906", 2, false, |x| {
             rep(x, "OEBPS/ch2.xhtml", "</div>", "<canvas></canvas></div>")
         }),
         f("HTM-907", 3, true, |x| {
-            set(x, "OEBPS/ch2.xhtml", ch2_v3("<section id=\"sec\"><p>x <a href=\"ch1.xhtml\">back</a></p><img src=\"images/cover.png\"/></section>"))
+            set(
+                x,
+                "OEBPS/ch2.xhtml",
+                ch2_v3(
+                    "<section id=\"sec\"><p>x <a href=\"ch1.xhtml\">back</a></p><img src=\"images/cover.png\"/></section>",
+                ),
+            )
         }),
         Fault {
             id: "RSC-006",
@@ -536,8 +589,19 @@ pub fn faults() -> Vec<Fault> {
             also: &[],
             oracle_error: false,
             apply: |x| {
-                set(x, "OEBPS/ch2.xhtml", ch2_v3("<section id=\"sec\"><p>x <a href=\"ch1.xhtml\">back</a></p><script src=\"http://example.com/a.js\"></script></section>"));
-                rep(x, OPF, "<item id=\"ch2\" href=\"ch2.xhtml\" media-type=\"application/xhtml+xml\"/>", "<item id=\"ch2\" href=\"ch2.xhtml\" media-type=\"application/xhtml+xml\" properties=\"scripted\"/>");
+                set(
+                    x,
+                    "OEBPS/ch2.xhtml",
+                    ch2_v3(
+                        "<section id=\"sec\"><p>x <a href=\"ch1.xhtml\">back</a></p><script src=\"http://example.com/a.js\"></script></section>",
+                    ),
+                );
+                rep(
+                    x,
+                    OPF,
+                    "<item id=\"ch2\" href=\"ch2.xhtml\" media-type=\"application/xhtml+xml\"/>",
+                    "<item id=\"ch2\" href=\"ch2.xhtml\" media-type=\"application/xhtml+xml\" properties=\"scripted\"/>",
+                );
             },
         },
         f("RSC-007", 3, true, |x| {
@@ -573,7 +637,13 @@ pub fn faults() -> Vec<Fault> {
             )
         }),
         f("ACC-004", 3, false, |x| {
-            set(x, "OEBPS/ch2.xhtml", ch2_v3("<section id=\"sec\"><p>x <a href=\"ch1.xhtml\">back</a> <a href=\"ch1.xhtml\"></a></p></section>"))
+            set(
+                x,
+                "OEBPS/ch2.xhtml",
+                ch2_v3(
+                    "<section id=\"sec\"><p>x <a href=\"ch1.xhtml\">back</a> <a href=\"ch1.xhtml\"></a></p></section>",
+                ),
+            )
         }),
         f("ACC-007", 3, false, |x| {
             rep(x, "OEBPS/ch2.xhtml", " lang=\"en\" xml:lang=\"en\"", "")
@@ -606,7 +676,12 @@ pub fn faults() -> Vec<Fault> {
             set(x, "OEBPS/toc.ncx", ncx("urn:uuid:other", NAV_MAP))
         }),
         f("NCX-002", 2, false, |x| {
-            rep(x, "OEBPS/toc.ncx", "<meta name=\"dtb:uid\" content=\"urn:uuid:12345678-1234-1234-1234-123456789abc\"/>", "")
+            rep(
+                x,
+                "OEBPS/toc.ncx",
+                "<meta name=\"dtb:uid\" content=\"urn:uuid:12345678-1234-1234-1234-123456789abc\"/>",
+                "",
+            )
         }),
         f("NCX-901", 2, true, |x| {
             set(x, "OEBPS/toc.ncx", ncx(UID, ""))

@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::io::Cursor;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_core::book::OpenBook;
 use image::codecs::jpeg::JpegEncoder;
 use image::codecs::png::{CompressionType, FilterType, PngEncoder};
@@ -451,7 +451,7 @@ pub fn image_dimensions(data: &[u8]) -> (u32, u32) {
 mod tests {
     use super::*;
     use crate::testutil::make_book;
-    use bookx_core::check::{check_book, Severity};
+    use bookx_core::check::{Severity, check_book};
     use image::{Rgb, RgbImage, Rgba, RgbaImage};
 
     fn encode(img: &DynamicImage, fmt: ImageFormat) -> Vec<u8> {
@@ -627,10 +627,12 @@ mod tests {
         assert_eq!(image_dimensions(&s), (25, 25));
         assert_eq!(guess_format(&s), Some(ImageFormat::Jpeg));
         let bmp = encode(&photo(10, 10), ImageFormat::Bmp);
-        assert!(downscale(&bmp, Some(5), None, 85)
-            .unwrap_err()
-            .to_string()
-            .contains("cannot downscale"));
+        assert!(
+            downscale(&bmp, Some(5), None, 85)
+                .unwrap_err()
+                .to_string()
+                .contains("cannot downscale")
+        );
         assert!(downscale(b"xx", Some(5), None, 85).is_err());
     }
 
@@ -650,8 +652,8 @@ mod tests {
 
     #[test]
     fn animated_gif_detection() {
-        use image::codecs::gif::GifEncoder;
         use image::Frame;
+        use image::codecs::gif::GifEncoder;
         let frame = |c: u8| Frame::new(RgbaImage::from_pixel(4, 4, Rgba([c, 0, 0, 255])));
         let mut one = Vec::new();
         GifEncoder::new(&mut one)
@@ -755,11 +757,12 @@ mod tests {
         assert_eq!(b.package.item_by_id("c").unwrap().href, "images/c.png");
         let ch = b.archive.get_string("OEBPS/chapter-1.xhtml").unwrap();
         assert!(ch.contains("src=\"images/c.png\"") && !ch.contains("c.bmp"));
-        assert!(b
-            .archive
-            .get_string("OEBPS/style.css")
-            .unwrap()
-            .contains("url(images/c.png)"));
+        assert!(
+            b.archive
+                .get_string("OEBPS/style.css")
+                .unwrap()
+                .contains("url(images/c.png)")
+        );
         let jpg = b.archive.get("OEBPS/images/b.jpg").unwrap();
         assert_eq!(image_dimensions(jpg), (300, 200));
         assert!(jpg.len() < encode_jpeg(&photo(300, 200), 95).unwrap().len());
@@ -809,14 +812,16 @@ mod tests {
             b.archive.contains("OEBPS/images/c.bmp"),
             "conversion disabled"
         );
-        assert!(rep
-            .skipped
-            .iter()
-            .any(|(p, why)| p.ends_with("c.bmp") && why.contains("left as it is")));
-        assert!(rep.changes.iter().any(|c| c
-            .actions
-            .iter()
-            .any(|a| a.starts_with("scaled down to 100x75"))));
+        assert!(
+            rep.skipped
+                .iter()
+                .any(|(p, why)| p.ends_with("c.bmp") && why.contains("left as it is"))
+        );
+        assert!(rep.changes.iter().any(|c| {
+            c.actions
+                .iter()
+                .any(|a| a.starts_with("scaled down to 100x75"))
+        }));
         // a tiny GIF is not smaller as PNG, so it stays
         assert!(b.archive.contains("OEBPS/images/d.gif"));
     }
@@ -849,10 +854,11 @@ mod tests {
             &[1, 2, 3],
             "existing file untouched"
         );
-        assert!(rep
-            .skipped
-            .iter()
-            .any(|(p, why)| p.ends_with("junk.png") && why == "not a recognised image"));
+        assert!(
+            rep.skipped
+                .iter()
+                .any(|(p, why)| p.ends_with("junk.png") && why == "not a recognised image")
+        );
     }
 
     #[test]
@@ -876,10 +882,11 @@ mod tests {
             },
         )
         .unwrap();
-        assert!(rep
-            .skipped
-            .iter()
-            .any(|(p, why)| p.ends_with("d.gif") && why == "animated GIF"));
+        assert!(
+            rep.skipped
+                .iter()
+                .any(|(p, why)| p.ends_with("d.gif") && why == "animated GIF")
+        );
         assert_eq!(b.archive.get("OEBPS/images/d.gif").unwrap(), two.as_slice());
     }
 

@@ -2,13 +2,13 @@
 
 use std::collections::BTreeMap;
 
-use bookx_convert::transforms::css::{parse_css, CssItem};
+use bookx_convert::transforms::css::{CssItem, parse_css};
 use bookx_core::book::OpenBook;
 use serde::{Deserialize, Serialize};
 
 use crate::markup::*;
 use crate::transform_css::{
-    split_declarations, transform_markup_styles, transform_stylesheet, CssTransform,
+    CssTransform, split_declarations, transform_markup_styles, transform_stylesheet,
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -206,7 +206,9 @@ mod tests {
     use crate::testutil::make_book;
 
     fn styled_book() -> OpenBook {
-        let mut b = make_book(&["<p style=\"-webkit-hyphens: auto; color: red\">a</p><p style=\"-webkit-hyphens: auto\">b</p><p style=\"margin: 0\">c</p>"]);
+        let mut b = make_book(&[
+            "<p style=\"-webkit-hyphens: auto; color: red\">a</p><p style=\"-webkit-hyphens: auto\">b</p><p style=\"margin: 0\">c</p>",
+        ]);
         b.archive.set_string(
             "OEBPS/style.css",
             "body { -webkit-hyphens: auto; color: black }\n.x { -webkit-hyphens: none }\n\n@media print {\n  .y { -webkit-text-size-adjust: 100% }\n  .z { color: red }\n}\n@font-face { font-family: F; -webkit-font-smoothing: antialiased }\np { margin: 0 }\n",
@@ -252,7 +254,10 @@ mod tests {
         );
         assert_eq!(r.empty_style_attrs_removed, 1);
         let css = b.archive.get_string("OEBPS/style.css").unwrap();
-        assert_eq!(css, "body { color: black }\n@media print {\n  .z { color: red }\n}\n@font-face { font-family: F; }\np { margin: 0 }\n");
+        assert_eq!(
+            css,
+            "body { color: black }\n@media print {\n  .z { color: red }\n}\n@font-face { font-family: F; }\np { margin: 0 }\n"
+        );
         let ch = b.archive.get_string("OEBPS/chapter-1.xhtml").unwrap();
         assert!(
             ch.contains("<p style=\"color: red\">a</p><p>b</p><p style=\"margin: 0\">c</p>"),
@@ -282,16 +287,18 @@ mod tests {
         );
         assert_eq!(r.declarations_removed, 2);
         assert_eq!(r.empty_rules_removed, 0);
-        assert!(b
-            .archive
-            .get_string("OEBPS/style.css")
-            .unwrap()
-            .contains("p { }"));
-        assert!(b
-            .archive
-            .get_string("OEBPS/chapter-1.xhtml")
-            .unwrap()
-            .contains("<p style=\"\">c</p>"));
+        assert!(
+            b.archive
+                .get_string("OEBPS/style.css")
+                .unwrap()
+                .contains("p { }")
+        );
+        assert!(
+            b.archive
+                .get_string("OEBPS/chapter-1.xhtml")
+                .unwrap()
+                .contains("<p style=\"\">c</p>")
+        );
     }
 
     #[test]

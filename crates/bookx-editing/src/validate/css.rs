@@ -4,7 +4,7 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 
-use super::{add_ref, offset_pos, Cx, Features, Item, RefKind};
+use super::{Cx, Features, Item, RefKind, add_ref, offset_pos};
 
 const KNOWN_AT_RULES: &[&str] = &[
     "charset",

@@ -14,12 +14,12 @@ use std::io::Write;
 use anyhow::Result;
 use bookx_core::book::OpenBook;
 use bookx_core::contracts::FormatWriter;
-use flate2::write::ZlibEncoder;
 use flate2::Compression;
+use flate2::write::ZlibEncoder;
 
 use crate::charset::{cp1252_byte, to_cp1252_lossy};
 use crate::images::to_png;
-use crate::model::{flat_inlines, Align, Block, Fmt, Inline, Link, Model};
+use crate::model::{Align, Block, Fmt, Inline, Link, Model, flat_inlines};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct RbWriter;

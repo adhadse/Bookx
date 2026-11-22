@@ -97,9 +97,10 @@ fn rust_plugin_unsupported_op_and_panic_are_errors() {
     // panic = "abort" compiles to `unreachable`: a trap, not a host crash
     let e = format!("{:#}", p.call_json("panic", &json!({})).unwrap_err());
     assert!(e.contains("trapped"), "{e}");
-    assert!(p
-        .call_json("lookup", &json!({"title": "Still fine"}))
-        .is_ok());
+    assert!(
+        p.call_json("lookup", &json!({"title": "Still fine"}))
+            .is_ok()
+    );
 }
 
 #[test]

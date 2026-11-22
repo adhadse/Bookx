@@ -1164,11 +1164,16 @@ pub fn run(out: &mut Svg) {
     // ---------------------------------------------------------------- 1.a
     label(s, 90.0, 300.0, "1.a Library — the clean first screen");
     lib_window(s, 90.0, 320.0, 1440.0, 860.0, t, &Opts::default());
-    note(s, 90.0, 1216.0, &[
-        "Header: add books (+) · title with the number of books · search · main menu. No panels, no toolbars.",
-        "Continue Reading: a yellow card for the book you read last (cover, title, author, % completed). Click it to carry on.",
-        "Under each cover: % read and a thin progress bar, then title and author. A check badge marks finished books.",
-    ]);
+    note(
+        s,
+        90.0,
+        1216.0,
+        &[
+            "Header: add books (+) · title with the number of books · search · main menu. No panels, no toolbars.",
+            "Continue Reading: a yellow card for the book you read last (cover, title, author, % completed). Click it to carry on.",
+            "Under each cover: % read and a thin progress bar, then title and author. A check badge marks finished books.",
+        ],
+    );
 
     // ---------------------------------------------------------------- 1.b
     label(
@@ -1193,10 +1198,15 @@ pub fn run(out: &mut Svg) {
             ..Default::default()
         },
     );
-    note(s, 1660.0, 1216.0, &[
-        "Ctrl+F, the search button, or just start typing. Closing the bar clears the filter. `text:` searches inside the books.",
-        "The title shows “3 of 12 books” while a filter is active.",
-    ]);
+    note(
+        s,
+        1660.0,
+        1216.0,
+        &[
+            "Ctrl+F, the search button, or just start typing. Closing the bar clears the filter. `text:` searches inside the books.",
+            "The title shows “3 of 12 books” while a filter is active.",
+        ],
+    );
 
     // ---------------------------------------------------------------- 1.c
     label(
@@ -1218,10 +1228,15 @@ pub fn run(out: &mut Svg) {
             ..Default::default()
         },
     );
-    note(s, 90.0, 2196.0, &[
-        "Ctrl/Shift-click or drag a rubber band. The bar at the bottom shows “3 selected” with Read, Edit Metadata (bulk), Remove, and a clear button.",
-        "Double-click or Enter opens a book in the reader; Delete asks before removing.",
-    ]);
+    note(
+        s,
+        90.0,
+        2196.0,
+        &[
+            "Ctrl/Shift-click or drag a rubber band. The bar at the bottom shows “3 selected” with Read, Edit Metadata (bulk), Remove, and a clear button.",
+            "Double-click or Enter opens a book in the reader; Delete asks before removing.",
+        ],
+    );
 
     // ---------------------------------------------------------------- 1.d
     label(
@@ -1288,10 +1303,15 @@ pub fn run(out: &mut Svg) {
         ],
         t,
     );
-    note(s, 1660.0, 2196.0, &[
-        "Convert To: device formats first (EPUB, KEPUB, AZW3, MOBI, FB2, HTMLZ, TXTZ), then plain text, Markdown and HTML.",
-        "One device entry: Send to Device… opens the Device window (1.n) with the selected books ready (disabled with “No device connected” otherwise). Export Annotations → JSON / Markdown / plain text.",
-    ]);
+    note(
+        s,
+        1660.0,
+        2196.0,
+        &[
+            "Convert To: device formats first (EPUB, KEPUB, AZW3, MOBI, FB2, HTMLZ, TXTZ), then plain text, Markdown and HTML.",
+            "One device entry: Send to Device… opens the Device window (1.n) with the selected books ready (disabled with “No device connected” otherwise). Export Annotations → JSON / Markdown / plain text.",
+        ],
+    );
 
     // ---------------------------------------------------------------- 1.e
     label(
@@ -1314,10 +1334,15 @@ pub fn run(out: &mut Svg) {
         },
     );
     main_menu(s, 540.0, 2394.0, t);
-    note(s, 90.0, 3276.0, &[
-        "Grid / table, sort key and order, cover size, and the two optional panels.",
-        "Reading Statistics, Vocabulary and Share Library open their own dialogs (sheet “Dialogs”).",
-    ]);
+    note(
+        s,
+        90.0,
+        3276.0,
+        &[
+            "Grid / table, sort key and order, cover size, and the two optional panels.",
+            "Reading Statistics, Vocabulary and Share Library open their own dialogs (sheet “Dialogs”).",
+        ],
+    );
 
     // ---------------------------------------------------------------- 1.f
     label(
@@ -1340,10 +1365,15 @@ pub fn run(out: &mut Svg) {
             ..Default::default()
         },
     );
-    note(s, 940.0, 3276.0, &[
-        "Browse filters by Authors, Series, Tags, Publishers, Languages, Ratings and Reading status (click a name to fill the search).",
-        "Details shows the selected book: cover, rating, format, publisher, identifiers, last read, annotations, comments. Both panels remember their state.",
-    ]);
+    note(
+        s,
+        940.0,
+        3276.0,
+        &[
+            "Browse filters by Authors, Series, Tags, Publishers, Languages, Ratings and Reading status (click a name to fill the search).",
+            "Details shows the selected book: cover, rating, format, publisher, identifiers, last read, annotations, comments. Both panels remember their state.",
+        ],
+    );
 
     // ---------------------------------------------------------------- 1.g
     label(
@@ -1646,11 +1676,16 @@ pub fn run(out: &mut Svg) {
             ..Default::default()
         },
     );
-    note(s, 90.0, 6156.0, &[
-        "The Device button appears in the header bar only while a device is connected, with its name; it opens the Device window (1.n).",
-        "The banner offers Sync, Always (turns on automatic sync in Preferences) or Not now. Nothing happens before you answer unless automatic sync is on.",
-        "The details panel opened by itself when the book was clicked; its toggle, like the browse toggle, stays in the header bar and the window buttons never move.",
-    ]);
+    note(
+        s,
+        90.0,
+        6156.0,
+        &[
+            "The Device button appears in the header bar only while a device is connected, with its name; it opens the Device window (1.n).",
+            "The banner offers Sync, Always (turns on automatic sync in Preferences) or Not now. Nothing happens before you answer unless automatic sync is on.",
+            "The details panel opened by itself when the book was clicked; its toggle, like the browse toggle, stays in the header bar and the window buttons never move.",
+        ],
+    );
 
     // ---------------------------------------------------------------- 1.m sync summary
     label(
@@ -1677,10 +1712,15 @@ pub fn run(out: &mut Svg) {
         false,
         t,
     );
-    note(s, 1660.0, 5510.0, &[
-        "Always progressive: progress only moves forward, highlights and notes are united by identity, a richer note wins over an empty one,",
-        "and nothing is ever deleted or lowered because the other side lacks it.",
-    ]);
+    note(
+        s,
+        1660.0,
+        5510.0,
+        &[
+            "Always progressive: progress only moves forward, highlights and notes are united by identity, a richer note wins over an empty one,",
+            "and nothing is ever deleted or lowered because the other side lacks it.",
+        ],
+    );
 
     // ---------------------------------------------------------------- 1.n device window
     label(
@@ -1906,7 +1946,9 @@ pub fn run(out: &mut Svg) {
             w - 40.0,
             78.0,
             "Add my notes to the copy sent to the device",
-            Some("An extra “My notes” section at the end of the copy on the device; your library copy is not changed"),
+            Some(
+                "An extra “My notes” section at the end of the copy on the device; your library copy is not changed",
+            ),
             true,
             t,
         );
@@ -1917,18 +1959,25 @@ pub fn run(out: &mut Svg) {
             w - 40.0,
             78.0,
             "Sync automatically when a device connects",
-            Some("Cable-connected readers · progress only moves forward, nothing is deleted      (?)"),
+            Some(
+                "Cable-connected readers · progress only moves forward, nothing is deleted      (?)",
+            ),
             false,
             t,
         );
     }
-    note(s, 990.0, 6340.0, &[
-        "Books to send: exactly the books selected in the library (right-click → Send to Device…), each with the format it will have,",
-        "whether it is converted, the notes that are added, its size and any warning. Untick a book to leave it out; a warned book starts unticked.",
-        "Every row and tile has its check box at the far left / top-left and toggles when you click anywhere on it; Shift-click ticks a range.",
-        "Covers sit in a fixed 40×60 slot so the check boxes and titles line up whatever the cover.",
-        "“Send N books” sends only the ticked ones, with the same format decisions the preview shows.",
-    ]);
+    note(
+        s,
+        990.0,
+        6340.0,
+        &[
+            "Books to send: exactly the books selected in the library (right-click → Send to Device…), each with the format it will have,",
+            "whether it is converted, the notes that are added, its size and any warning. Untick a book to leave it out; a warned book starts unticked.",
+            "Every row and tile has its check box at the far left / top-left and toggles when you click anywhere on it; Shift-click ticks a range.",
+            "Covers sit in a fixed 40×60 slot so the check boxes and titles line up whatever the cover.",
+            "“Send N books” sends only the ticked ones, with the same format decisions the preview shows.",
+        ],
+    );
 
     s.text(
         1600.0,

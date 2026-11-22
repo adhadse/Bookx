@@ -16,7 +16,7 @@ use sourceview5::prelude::*;
 use super::canvas::{BookCanvas, CanvasStyle, LayoutMode};
 use super::metadata::{self, CoverChange};
 use super::syntax::Lang;
-use super::{alert, system_is_dark, SharedRef};
+use super::{SharedRef, alert, system_is_dark};
 use crate::core::book::OpenBook;
 use crate::core::check::Severity;
 use crate::core::format::pretty_print_xml;

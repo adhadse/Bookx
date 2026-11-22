@@ -355,11 +355,15 @@ mod tests {
         assert_eq!(p.items[0].meta.author_sort, "Clemens, Samuel Langhorne");
         assert!(p.summary().starts_with("3 books"));
         // renaming to the current spelling changes nothing
-        assert!(plan_rename(&books, &["Other".to_string()], "Other")
-            .items
-            .is_empty());
-        assert!(plan_rename(&books, &["Other".to_string()], "  ")
-            .items
-            .is_empty());
+        assert!(
+            plan_rename(&books, &["Other".to_string()], "Other")
+                .items
+                .is_empty()
+        );
+        assert!(
+            plan_rename(&books, &["Other".to_string()], "  ")
+                .items
+                .is_empty()
+        );
     }
 }

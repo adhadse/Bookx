@@ -9,9 +9,9 @@ use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
-use crate::text::{split_sentences, Sentence};
+use crate::text::{Sentence, split_sentences};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Voice {

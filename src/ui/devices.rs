@@ -13,14 +13,14 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use bookx_core::contracts::DeviceInfo;
-use bookx_serve::devfs::{self, human_size, DeviceBook};
+use bookx_serve::devfs::{self, DeviceBook, human_size};
 use bookx_serve::devices::DeviceKind;
 use bookx_serve::reading::DeviceState;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio, glib};
 
-use super::devices_list::{Item, PickList};
 use super::SharedRef;
+use super::devices_list::{Item, PickList};
 use crate::device_sync as ds;
 use crate::devices as dev;
 
@@ -825,10 +825,10 @@ impl DevWin {
                     Ok((i, Some(file))) => me.on_dev.set_cover(i, &file),
                     Ok(_) => {}
                     Err(std::sync::mpsc::TryRecvError::Empty) => {
-                        return glib::ControlFlow::Continue
+                        return glib::ControlFlow::Continue;
                     }
                     Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                        return glib::ControlFlow::Break
+                        return glib::ControlFlow::Break;
                     }
                 }
             }
@@ -1646,13 +1646,14 @@ pub fn dev_command(
         "remove" => w.remove_selected(false),
         "sync" => w.sync_state(false),
         "syncask" => w.sync_state(true),
-        "syncconfirm" => {
-            match PENDING_SYNC.with(|p| p.borrow_mut().take()) { Some(f) => {
+        "syncconfirm" => match PENDING_SYNC.with(|p| p.borrow_mut().take()) {
+            Some(f) => {
                 f();
-            } _ => {
+            }
+            _ => {
                 eprintln!("sync_summary: no dialog");
-            }}
-        }
+            }
+        },
         "send" => w.send_checked(),
         "selectall" => w.on_dev.set_all(true),
         "none" => w.on_dev.set_all(false),

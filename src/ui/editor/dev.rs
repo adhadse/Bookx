@@ -254,7 +254,9 @@ impl Editor {
             eprintln!(
                 "editor_view: file={} lang={} scheme={} line_numbers={} current_line={} brackets={} auto_indent={} indent_tab={} smart_home={} margin={} whitespace={} minimap={} fallback_tags={}",
                 self.current.clone().unwrap_or_default(),
-                b.language().map(|l| l.id().to_string()).unwrap_or_else(|| "none".into()),
+                b.language()
+                    .map(|l| l.id().to_string())
+                    .unwrap_or_else(|| "none".into()),
                 codeview::scheme_id(&b),
                 v.shows_line_numbers(),
                 v.is_highlight_current_line(),
@@ -377,19 +379,22 @@ impl Editor {
                             .item_attribute_value(j, "label", None)
                             .and_then(|v| v.str().map(str::to_string))
                             .unwrap_or_default();
-                        match sec.item_link(j, "submenu").and_downcast::<gio::Menu>() { Some(sub) => {
-                            labels.push(format!(
-                                "{l}[{}]",
-                                (0..sub.n_items())
-                                    .filter_map(|k| sub
-                                        .item_attribute_value(k, "label", None)
-                                        .and_then(|v| v.str().map(str::to_string)))
-                                    .collect::<Vec<_>>()
-                                    .join(",")
-                            ));
-                        } _ => {
-                            labels.push(l);
-                        }}
+                        match sec.item_link(j, "submenu").and_downcast::<gio::Menu>() {
+                            Some(sub) => {
+                                labels.push(format!(
+                                    "{l}[{}]",
+                                    (0..sub.n_items())
+                                        .filter_map(|k| sub
+                                            .item_attribute_value(k, "label", None)
+                                            .and_then(|v| v.str().map(str::to_string)))
+                                        .collect::<Vec<_>>()
+                                        .join(",")
+                                ));
+                            }
+                            _ => {
+                                labels.push(l);
+                            }
+                        }
                     }
                 }
             }

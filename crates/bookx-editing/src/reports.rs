@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use bookx_convert::transforms::css::{parse_css, parse_decls, split_selectors, CssItem};
+use bookx_convert::transforms::css::{CssItem, parse_css, parse_decls, split_selectors};
 use bookx_core::book::OpenBook;
 use bookx_core::util::{extension, is_external, parent_dir, resolve_href};
 use scraper::{Html, Selector};
@@ -776,7 +776,7 @@ pub fn images_report(book: &OpenBook) -> ImagesReport {
 mod tests {
     use super::*;
     use bookx_core::archive::Archive;
-    use bookx_core::convert::{create_epub, Chapter};
+    use bookx_core::convert::{Chapter, create_epub};
     use bookx_core::opf::Metadata;
 
     use crate::testutil::png;
@@ -869,10 +869,11 @@ mod tests {
             .find(|f| f.path.ends_with("nav.xhtml"))
             .unwrap();
         assert!(nav.in_manifest && !nav.in_spine);
-        assert!(r
-            .files
-            .iter()
-            .any(|f| f.path == "mimetype" && !f.in_manifest));
+        assert!(
+            r.files
+                .iter()
+                .any(|f| f.path == "mimetype" && !f.in_manifest)
+        );
     }
 
     #[test]
@@ -903,11 +904,12 @@ mod tests {
         );
         assert!(w.overall.unique <= w.overall.total);
         // sorted: count desc then alphabetical
-        assert!(w
-            .overall
-            .top
-            .windows(2)
-            .all(|p| p[0].1 > p[1].1 || (p[0].1 == p[1].1 && p[0].0 < p[1].0)));
+        assert!(
+            w.overall
+                .top
+                .windows(2)
+                .all(|p| p[0].1 > p[1].1 || (p[0].1 == p[1].1 && p[0].0 < p[1].0))
+        );
     }
 
     #[test]
@@ -981,10 +983,11 @@ mod tests {
         assert_eq!(l.external, 1);
         assert_eq!(l.mail, 1);
         assert_eq!(l.broken.len(), 2);
-        assert!(l
-            .broken
-            .iter()
-            .any(|e| e.href == "chapter-2.xhtml#nope" && e.text == "bad"));
+        assert!(
+            l.broken
+                .iter()
+                .any(|e| e.href == "chapter-2.xhtml#nope" && e.text == "bad")
+        );
         assert!(l.broken.iter().any(|e| e.href == "gone.xhtml"));
         assert_eq!(l.external_links[0].href, "http://example.com/");
         assert_eq!(l.missing_resources.len(), 1);

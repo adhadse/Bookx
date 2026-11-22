@@ -5,7 +5,7 @@
 //! byte-aligned compressed starts from the reset table, decoder resets at the reset interval,
 //! and hard output limits.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use lzxd::{Lzxd, WindowSize};
 
 /// Uncompressed size of one LZX frame.

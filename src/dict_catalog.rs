@@ -4,7 +4,7 @@
 
 use std::sync::OnceLock;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -288,27 +288,35 @@ mod tests {
             "tests may use this computer"
         );
         assert!(Catalog::parse(&json("http://evil.org/a.zip"), true).is_err());
-        assert!(Catalog::parse(
-            &json("https://e.org/a.zip").replace(&"a".repeat(64), "abc"),
-            false
-        )
-        .is_err());
-        assert!(Catalog::parse(
-            &json("https://e.org/a.zip").replace("\"a-1\"", "\"../x\""),
-            false
-        )
-        .is_err());
-        assert!(Catalog::parse(
-            &json("https://e.org/a.zip").replace("\"xx\"", "\"X\""),
-            false
-        )
-        .is_err());
+        assert!(
+            Catalog::parse(
+                &json("https://e.org/a.zip").replace(&"a".repeat(64), "abc"),
+                false
+            )
+            .is_err()
+        );
+        assert!(
+            Catalog::parse(
+                &json("https://e.org/a.zip").replace("\"a-1\"", "\"../x\""),
+                false
+            )
+            .is_err()
+        );
+        assert!(
+            Catalog::parse(
+                &json("https://e.org/a.zip").replace("\"xx\"", "\"X\""),
+                false
+            )
+            .is_err()
+        );
         assert!(Catalog::parse("{", false).is_err());
-        assert!(Catalog::parse(
-            &json("https://e.org/a.zip").replace("\"version\":1", "\"version\":2"),
-            false
-        )
-        .is_err());
+        assert!(
+            Catalog::parse(
+                &json("https://e.org/a.zip").replace("\"version\":1", "\"version\":2"),
+                false
+            )
+            .is_err()
+        );
     }
 
     #[test]

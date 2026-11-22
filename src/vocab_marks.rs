@@ -5,7 +5,7 @@
 use std::rc::Rc;
 
 use bookx_lookup::termmatch::TermMatcher;
-use bookx_lookup::vocab::{VocabStore, MAX_TERM_CHARS};
+use bookx_lookup::vocab::{MAX_TERM_CHARS, VocabStore};
 
 /// What a selection is saved as: the words as they stand, white space made single, punctuation around
 /// them dropped (`“Ned Land,”` is `Ned Land`; `C++` keeps its signs). `None` when nothing word-like.

@@ -6,11 +6,11 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_serve::webdav::WebDav;
 use chrono::{DateTime, Utc};
 
-use bookx_store::health::{parse_snapshot_name, SnapshotKind};
+use bookx_store::health::{SnapshotKind, parse_snapshot_name};
 
 /// Largest backup file read back from a WebDAV server.
 pub const MAX_DOWNLOAD: usize = 2 * 1024 * 1024 * 1024;

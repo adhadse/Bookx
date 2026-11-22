@@ -1,7 +1,7 @@
 //! Stylesheet parsing: rules, `@media`, error recovery.
 
-use super::selector::{parse_selector_list, Selector};
-use super::values::{parse_declaration, split_important, tokenize, Decl};
+use super::selector::{Selector, parse_selector_list};
+use super::values::{Decl, parse_declaration, split_important, tokenize};
 use cssparser::{Delimiter, ParseError, Parser, Token};
 use std::rc::Rc;
 
@@ -266,7 +266,9 @@ mod tests {
 
     #[test]
     fn bad_declarations_skipped_good_ones_kept() {
-        let r = parse("p { color: ; font-size: huge; margin: 1px; : red; nothing; color: blue; glorp-prop: left; ;; }");
+        let r = parse(
+            "p { color: ; font-size: huge; margin: 1px; : red; nothing; color: blue; glorp-prop: left; ;; }",
+        );
         assert_eq!(r.len(), 1);
         let d = &r[0].decls;
         assert_eq!(d.len(), 5, "margin expands to 4 + color: {d:?}");
@@ -389,7 +391,9 @@ mod tests {
 
     #[test]
     fn nested_blocks_in_declarations_do_not_break_parsing() {
-        let r = parse("p { color: red; background: url(data:image/png;base64,AAAA); font-size: 2em } q { color: blue }");
+        let r = parse(
+            "p { color: red; background: url(data:image/png;base64,AAAA); font-size: 2em } q { color: blue }",
+        );
         assert_eq!(r.len(), 2);
         assert_eq!(
             r[0].decls.len(),

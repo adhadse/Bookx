@@ -6,7 +6,7 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
 /// File names written by [`write_self_signed`].
 pub const CERT_FILE: &str = "bookx-share-cert.pem";
@@ -93,9 +93,11 @@ mod tests {
         let (c, k) = write_self_signed(&d.join("sub"), &["books.lan".into()]).unwrap();
         assert!(c.is_file() && k.is_file());
         assert_eq!(check_pair(&c, &k), None);
-        assert!(std::fs::read_to_string(&c)
-            .unwrap()
-            .starts_with("-----BEGIN CERTIFICATE"));
+        assert!(
+            std::fs::read_to_string(&c)
+                .unwrap()
+                .starts_with("-----BEGIN CERTIFICATE")
+        );
         let _ = std::fs::remove_dir_all(d);
     }
 

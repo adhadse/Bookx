@@ -20,18 +20,18 @@
 //! * Writers are shut out by the repository lock for the whole time.
 
 use std::io::{Read, Write};
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use serde::{Deserialize, Serialize};
 
 use super::manifest::FORMAT;
 use super::run::parallel_for;
 use super::seal::{self, Crypto, IdHasher, Keys};
 use super::store::RepoStore;
-use super::{KdfConfig, RepoConfig, Repository, Secrets, CHECK_TEXT, CONFIG, MAX_CONFIG_BYTES};
+use super::{CHECK_TEXT, CONFIG, KdfConfig, MAX_CONFIG_BYTES, RepoConfig, Repository, Secrets};
 use crate::crypto::{self, Kdf};
 use crate::push::Cancelled;
 
@@ -377,7 +377,9 @@ impl Repository {
                     .and_then(|b| c.open_bytes("bookx-repo.json#check", &b, 1024).ok())
                     .is_some_and(|t| t == CHECK_TEXT);
                 if !ok {
-                    bail!("an earlier change to another new passphrase was not finished; use that new passphrase to finish it");
+                    bail!(
+                        "an earlier change to another new passphrase was not finished; use that new passphrase to finish it"
+                    );
                 }
                 (m, c)
             }

@@ -410,19 +410,24 @@ impl Document {
             ];
             let target = if let Some(d) = self.entry_dest(&a) {
                 LinkTarget::Page(d)
-            } else { match a.get::<Dict>("A") { Some(act) => {
-                match (
-                    act.get::<Name>("S").map(|n| n.as_str().to_string()),
-                    act.get::<hayro::hayro_interpret::hayro_syntax::object::String>("URI"),
-                ) {
-                    (Some(s), Some(u)) if s == "URI" => {
-                        LinkTarget::Uri(String::from_utf8_lossy(u.as_bytes()).trim().to_string())
+            } else {
+                match a.get::<Dict>("A") {
+                    Some(act) => {
+                        match (
+                            act.get::<Name>("S").map(|n| n.as_str().to_string()),
+                            act.get::<hayro::hayro_interpret::hayro_syntax::object::String>("URI"),
+                        ) {
+                            (Some(s), Some(u)) if s == "URI" => LinkTarget::Uri(
+                                String::from_utf8_lossy(u.as_bytes()).trim().to_string(),
+                            ),
+                            _ => continue,
+                        }
                     }
-                    _ => continue,
+                    _ => {
+                        continue;
+                    }
                 }
-            } _ => {
-                continue;
-            }}};
+            };
             out.push(Link { rect, target });
         }
         out

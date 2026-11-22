@@ -7,7 +7,7 @@ use std::sync::atomic::AtomicBool;
 
 use bookx_convert::inspect::Digest;
 use bookx_convert::report::{build_report, caps};
-use bookx_convert::{convert, read_input, ConvertOptions};
+use bookx_convert::{ConvertOptions, convert, read_input};
 
 fn go(ext: &str) -> bookx_convert::Converted {
     let epub = common::nested_toc_book().archive.to_bytes().unwrap();

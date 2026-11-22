@@ -9,13 +9,13 @@
 use std::collections::HashSet;
 use std::ops::Range;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::util::{parent_dir, resolve_href};
-use bookx_text::css::{media_applies, parse_selector_list, MediaEnv};
+use bookx_text::css::{MediaEnv, media_applies, parse_selector_list};
 use scraper::ElementRef;
 
-use crate::markup::{scan, tag_attr, Event};
+use crate::markup::{Event, scan, tag_attr};
 
 /// A declaration of a matched rule.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -731,10 +731,11 @@ mod tests {
         assert_eq!(l.rules[0].origin.file, "OEBPS/c.xhtml");
         assert_eq!(l.rules[0].origin.line, 5);
         // the print rule did not apply, the screen one did
-        assert!(!l
-            .rules
-            .iter()
-            .any(|r| r.decls.iter().any(|d| d.value == "green")));
+        assert!(
+            !l.rules
+                .iter()
+                .any(|r| r.decls.iter().any(|d| d.value == "green"))
+        );
     }
 
     #[test]
@@ -810,10 +811,11 @@ mod tests {
         assert_eq!(in_i.element, "i");
         // `i` has no rules of its own but inherits the paragraph's
         assert!(in_i.rules.is_empty());
-        assert!(in_i
-            .inherited
-            .iter()
-            .any(|r| r.from.as_deref() == Some("p.note")));
+        assert!(
+            in_i.inherited
+                .iter()
+                .any(|r| r.from.as_deref() == Some("p.note"))
+        );
         let after = inspect(&book(), "OEBPS/c.xhtml", HTML, at("</p>") + 4).unwrap();
         assert_eq!(after.element, "div.chapter");
         assert!(after.path.starts_with("html > body"), "{}", after.path);

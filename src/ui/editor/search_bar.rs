@@ -861,7 +861,9 @@ impl Editor {
             "replace-find" => self.replace_one(true),
             "replace-find-prev" => self.replace_one(false),
             "special" => {
-                if let Some((label, ins, _)) = saved::SPECIALS.get(arg.parse::<usize>().unwrap_or(0)) {
+                if let Some((label, ins, _)) =
+                    saved::SPECIALS.get(arg.parse::<usize>().unwrap_or(0))
+                {
                     let regex = Mode::from_index(self.w.sx.mode.selected()).is_regex();
                     let _ = label;
                     self.search_act(SearchAct::Insert(saved::special_text(ins, regex)));
@@ -884,7 +886,10 @@ impl Editor {
                 // `path|needle`: how often the needle occurs in that file's current text
                 let (path, needle) = arg.split_once('|').unwrap_or((arg, ""));
                 let t = self.text_of(path);
-                eprintln!("editor_search_has: {path} {needle:?} = {}", t.matches(needle).count());
+                eprintln!(
+                    "editor_search_has: {path} {needle:?} = {}",
+                    t.matches(needle).count()
+                );
             }
             "sel" => {
                 let buf = self.w.view.buffer();
@@ -902,7 +907,12 @@ impl Editor {
                 );
             }
             "history-use" => {
-                let t = sx.borrow().history.find.get(arg.parse().unwrap_or(0)).cloned();
+                let t = sx
+                    .borrow()
+                    .history
+                    .find
+                    .get(arg.parse().unwrap_or(0))
+                    .cloned();
                 if let Some(t) = t {
                     self.search_act(SearchAct::History(true, t));
                 }
@@ -928,10 +938,18 @@ impl Editor {
                 let list: Vec<SavedSearch> = {
                     let s = sx.borrow();
                     idx.split([' ', '+'])
-                        .filter_map(|i| i.parse::<usize>().ok().and_then(|i| s.saved.get(i).cloned()))
+                        .filter_map(|i| {
+                            i.parse::<usize>()
+                                .ok()
+                                .and_then(|i| s.saved.get(i).cloned())
+                        })
                         .collect()
                 };
-                let action = if act == "replace" { Action::ReplaceAll } else { Action::Count };
+                let action = if act == "replace" {
+                    Action::ReplaceAll
+                } else {
+                    Action::Count
+                };
                 self.run_saved(list, action);
             }
             "saved-delete" => {
@@ -971,7 +989,8 @@ impl Editor {
                 // `Name|find|source` (`\n` is a line break)
                 let p: Vec<&str> = arg.splitn(3, '|').collect();
                 if let [name, find, src] = p[..] {
-                    let mut f = Function::new(name, find, &src.replace("\\n", "\n").replace('§', ","));
+                    let mut f =
+                        Function::new(name, find, &src.replace("\\n", "\n").replace('§', ","));
                     f.description = "Test function".into();
                     let mut s = sx.borrow_mut();
                     s.user_fns.retain(|x| x.name != name);

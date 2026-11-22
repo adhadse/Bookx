@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use anyhow::bail;
 use bookx_convert::transforms::{AutoTocMode, MetadataOverride, ProfileKind};
 use bookx_convert::{
-    builtin_presets, convert, convert_file, read_input, Cancelled, ConvertOptions, Progress,
+    Cancelled, ConvertOptions, Progress, builtin_presets, convert, convert_file, read_input,
 };
 use bookx_core::archive::Archive;
 use bookx_core::book::OpenBook;
@@ -117,9 +117,11 @@ fn markdown_and_html_inputs() {
         &ConvertOptions::default(),
     )
     .unwrap();
-    assert!(String::from_utf8(out.bytes)
-        .unwrap()
-        .contains("Hello world"));
+    assert!(
+        String::from_utf8(out.bytes)
+            .unwrap()
+            .contains("Hello world")
+    );
     let (out, _) = run(
         b"<html><head><title>T</title></head><body><p>Hi</p></body></html>",
         "page.html",
@@ -166,9 +168,11 @@ fn readers_registry_is_consulted_by_extension_then_content() {
         &cancel,
     )
     .unwrap();
-    assert!(String::from_utf8(out.bytes)
-        .unwrap()
-        .contains("The end of the story."));
+    assert!(
+        String::from_utf8(out.bytes)
+            .unwrap()
+            .contains("The end of the story.")
+    );
     // wrong extension, right magic
     let out = convert(
         &readers,
@@ -506,11 +510,12 @@ fn builtin_presets_run_end_to_end() {
     let book = reopen(&out.bytes);
     assert_eq!(book.package.version, "2.0");
     // and the e-ink profile stylesheet is part of it
-    assert!(book
-        .archive
-        .names()
-        .iter()
-        .any(|n| n.ends_with("bookx-device.css")));
+    assert!(
+        book.archive
+            .names()
+            .iter()
+            .any(|n| n.ends_with("bookx-device.css"))
+    );
 }
 
 #[test]

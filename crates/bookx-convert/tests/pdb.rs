@@ -727,12 +727,15 @@ fn layout_matches_calibres_pmlz_output() {
     };
     let their_names: Vec<String> = unzip(&theirs).into_iter().map(|f| f.0).collect();
     assert!(their_names.contains(&"index.pml".to_string()));
-    assert!(their_names
-        .iter()
-        .any(|n| n.starts_with("index_img/") && n.ends_with(".png")));
+    assert!(
+        their_names
+            .iter()
+            .any(|n| n.starts_with("index_img/") && n.ends_with(".png"))
+    );
     let ours = unzip(&PmlzWriter.write(&sample_book()).unwrap());
     assert!(ours.iter().any(|(n, _)| n == "index.pml"));
-    assert!(ours
-        .iter()
-        .all(|(n, _)| n == "index.pml" || n == "metadata.opf" || n.starts_with("index_img/")));
+    assert!(
+        ours.iter()
+            .all(|(n, _)| n == "index.pml" || n == "metadata.opf" || n.starts_with("index_img/"))
+    );
 }

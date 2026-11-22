@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_core::book::OpenBook;
 use bookx_core::util::{extension, file_name};
 use bookx_editing::book_tools::{self, AccessMeta, PageRole, Punctuation};
@@ -20,7 +20,7 @@ use bookx_editing::semantics::{self, Semantic};
 use bookx_editing::transform_css::{self, CssTransform};
 use bookx_sources::fetch::{FetchError, Fetcher, MockFetcher, MockReply, Throttle, UreqFetcher};
 
-use super::{kib, outcome, plural, Outcome};
+use super::{Outcome, kib, outcome, plural};
 
 fn files_word(n: usize) -> String {
     plural(n, "file", "files")
@@ -954,7 +954,7 @@ pub fn network_allowed() -> bool {
 mod tests {
     use super::*;
     use bookx_convert::transforms::punctuation::SmartenOptions;
-    use bookx_core::convert::{create_epub, Chapter};
+    use bookx_core::convert::{Chapter, create_epub};
     use bookx_core::opf::Metadata;
     use bookx_editing::links::{ExternalLink, LinkCheckResult, LinkKind};
 
@@ -979,17 +979,19 @@ mod tests {
     #[test]
     fn smarten_reports_and_validates() {
         let mut b = book(&["<p>\"Hi\" -- there...</p>"]);
-        assert!(smarten(
-            &mut b,
-            &[],
-            Punctuation::Smarten(SmartenOptions {
-                quotes: false,
-                dashes: false,
-                ellipses: false
-            }),
-            Default::default()
-        )
-        .is_err());
+        assert!(
+            smarten(
+                &mut b,
+                &[],
+                Punctuation::Smarten(SmartenOptions {
+                    quotes: false,
+                    dashes: false,
+                    ellipses: false
+                }),
+                Default::default()
+            )
+            .is_err()
+        );
         let o = smarten(
             &mut b,
             &[],
@@ -1103,14 +1105,18 @@ mod tests {
         assert!(o.summary.contains("Title"), "{}", o.summary);
         assert!(spine_drop(&mut b, &s[0], 1).unwrap().changed);
         assert!(!spine_drop(&mut b, &s[0], 1).unwrap().changed);
-        assert!(toggle_nonlinear(&mut b, &s[0])
-            .unwrap()
-            .summary
-            .contains("no longer"));
-        assert!(toggle_nonlinear(&mut b, &s[0])
-            .unwrap()
-            .summary
-            .contains("again"));
+        assert!(
+            toggle_nonlinear(&mut b, &s[0])
+                .unwrap()
+                .summary
+                .contains("no longer")
+        );
+        assert!(
+            toggle_nonlinear(&mut b, &s[0])
+                .unwrap()
+                .summary
+                .contains("again")
+        );
     }
 
     #[test]
@@ -1120,20 +1126,22 @@ mod tests {
         let s = b.spine_paths();
         let o = change_extension(&mut b, &[s[0].clone()], "html").unwrap();
         assert!(o.changed, "{o:?}");
-        assert!(b
-            .archive
-            .get_string(&s[1])
-            .unwrap()
-            .contains("chapter-1.html"));
+        assert!(
+            b.archive
+                .get_string(&s[1])
+                .unwrap()
+                .contains("chapter-1.html")
+        );
         assert!(!change_extension(&mut b, &[], "html").unwrap().changed);
         let new0 = b.spine_paths()[0].clone();
         let o = move_to_folder(&mut b, &new0, "Text").unwrap();
         assert!(o.changed, "{o:?}");
-        assert!(b
-            .archive
-            .get_string(&s[1])
-            .unwrap()
-            .contains("Text/chapter-1.html"));
+        assert!(
+            b.archive
+                .get_string(&s[1])
+                .unwrap()
+                .contains("Text/chapter-1.html")
+        );
         let moved = b.spine_paths()[0].clone();
         assert!(!move_to_folder(&mut b, &moved, "Text").unwrap().changed);
         let o = replace_with(
@@ -1179,18 +1187,22 @@ mod tests {
         installed[0].family = "zapf".into();
         let cands = font_candidates(&b, &installed);
         assert_eq!(cands.len(), 2);
-        assert!(cands
-            .iter()
-            .find(|c| c.key.family == "zapf")
-            .unwrap()
-            .font
-            .is_some());
-        assert!(cands
-            .iter()
-            .find(|c| c.key.family == "open sans")
-            .unwrap()
-            .font
-            .is_none());
+        assert!(
+            cands
+                .iter()
+                .find(|c| c.key.family == "zapf")
+                .unwrap()
+                .font
+                .is_some()
+        );
+        assert!(
+            cands
+                .iter()
+                .find(|c| c.key.family == "open sans")
+                .unwrap()
+                .font
+                .is_none()
+        );
         assert!(embed_fonts(&mut b, &installed, &HashSet::new(), false).is_err());
         // a restricted font is never embedded
         installed[0].embedding = fonts::Embedding::Restricted;
@@ -1319,7 +1331,9 @@ mod tests {
 
     #[test]
     fn download_through_a_prefetch() {
-        let mut b = book(&["<p><img src=\"https://x.test/p.png\" alt=\"\"/><img src=\"https://x.test/gone.png\" alt=\"\"/></p>"]);
+        let mut b = book(&[
+            "<p><img src=\"https://x.test/p.png\" alt=\"\"/><img src=\"https://x.test/gone.png\" alt=\"\"/></p>",
+        ]);
         let net = MockFetcher::new()
             .with_body("https://x.test/p.png", bookx_editing_png())
             .on("https://x.test/gone.png", MockReply::Status(404));
@@ -1331,9 +1345,11 @@ mod tests {
             o.changed && o.summary.contains("1 resource") && o.summary.contains("1 failed"),
             "{o:?}"
         );
-        assert!(links::remote_resources(&b)
-            .iter()
-            .all(|u| u.contains("gone")));
+        assert!(
+            links::remote_resources(&b)
+                .iter()
+                .all(|u| u.contains("gone"))
+        );
         // too large
         let b2 = book(&["<p><img src=\"https://x.test/p.png\" alt=\"\"/></p>"]);
         let big = prefetch(&links::remote_resources(&b2), &net, 0, 4, &|| false);
@@ -1398,10 +1414,12 @@ mod tests {
         assert_eq!(a.names().len(), b.archive.names().len());
         assert!(OpenBook::from_archive(a).is_ok());
         std::fs::remove_file(dir.join("META-INF/container.xml")).unwrap();
-        assert!(archive_from_folder(&dir)
-            .unwrap_err()
-            .to_string()
-            .contains("container.xml"));
+        assert!(
+            archive_from_folder(&dir)
+                .unwrap_err()
+                .to_string()
+                .contains("container.xml")
+        );
         let _ = std::fs::remove_dir_all(&dir);
         assert!(archive_from_folder(&dir).is_err());
     }

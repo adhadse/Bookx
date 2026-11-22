@@ -1158,11 +1158,16 @@ pub fn run(s: &mut Svg) {
             "wa-tery",
         );
     }
-    note(s, 90.0, 1016.0, &[
-        "Header: back · contents/notes sidebar · add bookmark · title and chapter · search · text appearance (Aa) · fullscreen · main menu.",
-        "Footer: previous / next page and the progress slider; below it “page of book” on the left and “chapter · minutes to complete” on the right.",
-        "Hyphenation (ringed) breaks long words at line ends in the language of the book, so justified lines stay evenly spaced. Preferences → Hyphenate words.",
-    ]);
+    note(
+        s,
+        90.0,
+        1016.0,
+        &[
+            "Header: back · contents/notes sidebar · add bookmark · title and chapter · search · text appearance (Aa) · fullscreen · main menu.",
+            "Footer: previous / next page and the progress slider; below it “page of book” on the left and “chapter · minutes to complete” on the right.",
+            "Hyphenation (ringed) breaks long words at line ends in the language of the book, so justified lines stay evenly spaced. Preferences → Hyphenate words.",
+        ],
+    );
 
     label(s, 1600.0, 300.0, "2.b Sidebar — Contents (sepia theme)");
     reader_window(
@@ -1180,7 +1185,12 @@ pub fn run(s: &mut Svg) {
     );
 
     // ------------------------------------------------------------ 2.c / 2.d / 2.e
-    label(s, 90.0, 1140.0, "2.c Selecting text — colours, note, copy, dictionary, Wikipedia, translate, highlight style");
+    label(
+        s,
+        90.0,
+        1140.0,
+        "2.c Selecting text — colours, note, copy, dictionary, Wikipedia, translate, highlight style",
+    );
     let a = reader_window(
         s,
         90.0,
@@ -1251,12 +1261,24 @@ pub fn run(s: &mut Svg) {
     if let Some((px, py)) = a.note {
         hover_note(s, px, py, l, &["Compare with the opening of", "chapter 2"]);
     }
-    note(s, 90.0, 1896.0, &[
-        "Selecting text opens the popover: five highlight colours, then Note, Copy, Dictionary, Wikipedia, Translate (and Remove on an existing highlight).",
-        "The bottom row chooses how the highlight is drawn: background, underline, strikethrough or squiggly. Clicking a highlight edits it; its note is shown in the popover",
-        "(touch screens have no hover) and, with a mouse, in a bubble as soon as the pointer is over the highlight. Dictionary look-ups are saved to Vocabulary.",
-    ]);
-    note(s, 90.0, 1972.0, &["Notes: a highlight with a note keeps a solid 2 px line in its colour under the text (2.d, 2.e)."]);
+    note(
+        s,
+        90.0,
+        1896.0,
+        &[
+            "Selecting text opens the popover: five highlight colours, then Note, Copy, Dictionary, Wikipedia, Translate (and Remove on an existing highlight).",
+            "The bottom row chooses how the highlight is drawn: background, underline, strikethrough or squiggly. Clicking a highlight edits it; its note is shown in the popover",
+            "(touch screens have no hover) and, with a mouse, in a bubble as soon as the pointer is over the highlight. Dictionary look-ups are saved to Vocabulary.",
+        ],
+    );
+    note(
+        s,
+        90.0,
+        1972.0,
+        &[
+            "Notes: a highlight with a note keeps a solid 2 px line in its colour under the text (2.d, 2.e).",
+        ],
+    );
 
     // ------------------------------------------------------------ 2.f styles
     label(
@@ -1317,9 +1339,14 @@ pub fn run(s: &mut Svg) {
             }
         }
     }
-    note(s, 90.0, 2500.0, &[
-        "Dark pages use a gentler tint so the text stays readable. In e-ink mode colours turn into grey and black lines.",
-    ]);
+    note(
+        s,
+        90.0,
+        2500.0,
+        &[
+            "Dark pages use a gentler tint so the text stays readable. In e-ink mode colours turn into grey and black lines.",
+        ],
+    );
 
     // sidebar tabs
     label(
@@ -1429,10 +1456,15 @@ pub fn run(s: &mut Svg) {
             },
         );
     }
-    note(s, 90.0, 4036.0, &[
-        "Two columns pages like a printed book; single column suits narrow windows; scroll keeps one long chapter.",
-        "At the end of a chapter the reader carries on with the next one — in scroll mode, just keep scrolling.",
-    ]);
+    note(
+        s,
+        90.0,
+        4036.0,
+        &[
+            "Two columns pages like a printed book; single column suits narrow windows; scroll keeps one long chapter.",
+            "At the end of a chapter the reader carries on with the next one — in scroll mode, just keep scrolling.",
+        ],
+    );
 
     // ------------------------------------------------------------ 2.l themes
     label(
@@ -1582,10 +1614,15 @@ pub fn run(s: &mut Svg) {
         "middle",
         "Custom — text #ffcc00 on page #101010",
     );
-    note(s, 90.0, 5880.0, &[
-        "Below the five theme swatches a linked toggle chooses the colours: Theme (the swatch), Original (what the book’s CSS says,",
-        "on a light page like a browser) or Custom. Custom adds Text and Page colour buttons.",
-    ]);
+    note(
+        s,
+        90.0,
+        5880.0,
+        &[
+            "Below the five theme swatches a linked toggle chooses the colours: Theme (the swatch), Original (what the book’s CSS says,",
+            "on a light page like a browser) or Custom. Custom adds Text and Page colour buttons.",
+        ],
+    );
     s.text(
         1600.0,
         6010.0,

@@ -76,7 +76,9 @@ pub fn confirm_text(chapters: usize, chars: usize) -> String {
                 &bookx_core::util::human_size(estimated_bytes(chars))
             ],
         ),
-        tr("You can cancel at any time: finished chapters are kept and running this again continues with the rest. Everything can be undone with Restore Checkpoint.")
+        tr(
+            "You can cancel at any time: finished chapters are kept and running this again continues with the rest. Everything can be undone with Restore Checkpoint."
+        )
     )
 }
 
@@ -96,8 +98,8 @@ pub fn summary(narrated: usize, cancelled: bool, duration_ms: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bookx_tts::synth::Pcm;
     use bookx_tts::TtsPrefs;
+    use bookx_tts::synth::Pcm;
 
     struct Tone;
     impl Synthesizer for Tone {
@@ -163,7 +165,7 @@ mod tests {
     /// clips against the audio and prints the real-time factor.
     #[test]
     fn live_a_short_chapter_with_kokoro() {
-        use bookx_editing::media_overlay_narrate::{narrate_book, Options};
+        use bookx_editing::media_overlay_narrate::{Options, narrate_book};
         let Some(dir) = std::env::var("BOOKX_TTS_LIVE")
             .ok()
             .and_then(|_| std::env::var("BOOKX_TTS_DIR").ok())

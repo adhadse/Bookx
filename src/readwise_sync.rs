@@ -18,7 +18,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use bookx_lookup::export::{self as ex, AnnotationItem, ExportOptions, HighlightStyle};
 use bookx_lookup::ids;
 use serde::{Deserialize, Serialize};
@@ -486,10 +486,12 @@ mod tests {
             }),
             "Sent 1 highlight to Readwise"
         );
-        assert!(summary(&Outcome {
-            already: 4,
-            ..Default::default()
-        })
-        .contains("up to date"));
+        assert!(
+            summary(&Outcome {
+                already: 4,
+                ..Default::default()
+            })
+            .contains("up to date")
+        );
     }
 }

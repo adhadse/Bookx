@@ -8,7 +8,7 @@
 
 use std::collections::HashMap;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::contracts::FormatReader;
 use bookx_core::convert::Chapter;
@@ -659,24 +659,30 @@ pub(crate) mod tests {
     fn errors() {
         assert!(convert_docx(b"junk").is_err());
         let z = make_zip(&[("a.txt", b"x")]);
-        assert!(convert_docx(&z)
-            .unwrap_err()
-            .to_string()
-            .contains("word/document.xml"));
+        assert!(
+            convert_docx(&z)
+                .unwrap_err()
+                .to_string()
+                .contains("word/document.xml")
+        );
         let z = make_zip(&[("word/document.xml", b"<w:document")]);
         assert!(convert_docx(&z).is_err());
         let doc = format!("<w:document {W}><w:body><w:p/></w:body></w:document>");
         let z = make_zip(&[("word/document.xml", doc.as_bytes())]);
-        assert!(convert_docx(&z)
-            .unwrap_err()
-            .to_string()
-            .contains("no text"));
+        assert!(
+            convert_docx(&z)
+                .unwrap_err()
+                .to_string()
+                .contains("no text")
+        );
         let doc = format!("<w:document {W}/>");
         let z = make_zip(&[("word/document.xml", doc.as_bytes())]);
-        assert!(convert_docx(&z)
-            .unwrap_err()
-            .to_string()
-            .contains("no body"));
+        assert!(
+            convert_docx(&z)
+                .unwrap_err()
+                .to_string()
+                .contains("no body")
+        );
     }
 
     #[test]

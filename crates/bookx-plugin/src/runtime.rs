@@ -7,7 +7,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use serde_json::Value;
 use wasmi::{
     Caller, Config, Engine, Extern, ExternType, FuncType, Linker, Memory, Module, Store,

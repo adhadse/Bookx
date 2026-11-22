@@ -8,7 +8,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde_json::{Map, Value};
 
 use crate::config::Config;
@@ -288,10 +288,12 @@ mod tests {
             .map(|i| format!("\"k{i}\":1"))
             .collect::<Vec<_>>()
             .join(",");
-        assert!(err(&format!(
-            r#"{{"format":"bookx-settings","version":1,"settings":{{{many}}}}}"#
-        ))
-        .contains("too many"));
+        assert!(
+            err(&format!(
+                r#"{{"format":"bookx-settings","version":1,"settings":{{{many}}}}}"#
+            ))
+            .contains("too many")
+        );
     }
 
     #[test]
