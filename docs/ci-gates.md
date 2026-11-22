@@ -5,16 +5,17 @@ entry point for coverage is `build-aux/coverage.sh`; CI runs the same script.
 
 ## The workflows
 
-Before (2026-11-21): 9 workflows, 14 jobs, nothing ever green. After: 6 workflows (`ci`, `_flatpak`, `release`,
+Before (2026-11-21): 9 workflows, 14 jobs, nothing ever green. After: 7 workflows (`ci`, `_flatpak`, `wiki-deploy`, `release`,
 `nightly`, `package-native`, `flathub-update`) plus `dependabot-sources`, 13 job definitions in `ci.yml` and the reusable
 ones (the UI job is a 10-way matrix), one required check.
 
 | Workflow | Runs on | Jobs |
 |---|---|---|
-| `ci.yml` (name **CI**) | push to `main`, pull requests, manual | `changes`, `quick`, `rust`, `build-ui`, `ui` (10 shards), `wiki`, `deploy-wiki` (main only), `flatpak` (calls `_flatpak.yml`), **`required`**, `report` |
+| `ci.yml` (name **CI**) | push to `main`, pull requests, manual | `changes`, `quick`, `rust`, `build-ui`, `ui` (10 shards), `wiki` (build and check only), `flatpak` (calls `_flatpak.yml`), **`required`**, `report` |
 | `_flatpak.yml` | called by `ci.yml`, `release.yml`, `nightly.yml` | `bundle`: the Flatpak bundle, smoke-tested, Flathub linter optional |
 | `dependabot-sources.yml` | Dependabot pull requests that change Cargo files | `regenerate`: commits `build-aux/cargo-sources.json`, dispatches CI on the new commit |
-| `release.yml` | tags `v*`, manual | `gates`, `version`, `tarball`, `flatpak`, `publish` |
+| `wiki-deploy.yml` (name **Wiki deploy**) | called by `release.yml`, manual (`ref`) | `deploy`: builds the wiki of a ref and publishes it to GitHub Pages |
+| `release.yml` | tags `v*`, manual | `gates`, `version`, `tarball`, `flatpak`, `publish`, `wiki` (after `publish`, tags only) |
 | `nightly.yml` | 03:17 UTC, manual | `coverage-ui` (UI tier), `flatpak` with cold caches |
 | `package-native.yml` | manual (`os`: macos-arm64, macos-x64, windows) | `macos`, `windows` |
 | `flathub-update.yml` | unchanged | dry-run/PR against the Flathub repository |
@@ -32,7 +33,8 @@ Old to new:
 | `pr-report.yml` (never merged as a workflow of its own) | the `report` job of `ci.yml` |
 | `ci.yml` `flatpak`, `package-flatpak.yml` | `flatpak` via `_flatpak.yml` |
 | `i18n.yml` | steps of `rust` (pot, POTFILES, LINGUAS, msgfmt, status table, reviewed-locales tests) |
-| `wiki.yml` `build`, `deploy` | `wiki`, `deploy-wiki` |
+| `wiki.yml` `build` | `wiki` (build and check; it no longer deploys) |
+| `wiki.yml` `deploy` | `wiki-deploy.yml`, run by `release.yml` after `publish` or by hand |
 | `coverage-ui.yml` | `nightly.yml` `coverage-ui` |
 | `package-macos.yml`, `package-windows.yml` | `package-native.yml` |
 | `release.yml` `tarball`, `flatpak`, `publish` | same, plus `gates` and `version` |
@@ -53,7 +55,6 @@ Rust (format, lint, tests, coverage)
 Build the app for the UI scenarios
 UI scenarios (Broadway, shard N/10)          N = 1..10
 Wiki (build and check)
-Deploy the wiki to GitHub Pages              main only
 Flatpak / Flatpak bundle (x86_64)            only when packaging changed
 required                                     <- the only one to require
 Report                                       informational, never required
@@ -71,6 +72,20 @@ gh api -X PUT repos/adhadse/Bookx/branches/main/protection --input - <<'JSON'
 }
 JSON
 ```
+
+### The public wiki is deployed by releases, not by pushes
+
+`ci.yml` builds and checks the wiki (job `wiki`, also feeding `required`) on pull requests and pushes, and never
+deploys it: the live site must not describe a feature that no download has yet. `wiki-deploy.yml` publishes it:
+
+* `release.yml` calls it as the last job (`wiki`, `needs: publish`) with the tag, so the docs go live after the release
+  assets are out, for pre-release tags too. It is skipped for manual runs without a tag, and a Pages failure leaves the
+  release as it is (red job, assets already published).
+* by hand (Actions, Wiki deploy, Run workflow): `ref` empty publishes the latest stable release tag; any other tag or branch,
+  `main` included, only if you type it.
+
+The environment `github-pages` restricts deployments to refs it allows. Its policies are `main`, `master` and the tag
+pattern `v*` (added 2026-11-22 with `gh api -X POST repos/adhadse/Bookx/environments/github-pages/deployment-branch-policies -f name='v*' -f type=tag`); without the tag policy a tag-triggered deploy is refused.
 
 ## What a job does, and how to run it locally
 
