@@ -90,8 +90,10 @@ Do the steps in this order. Everything before step 7 is reversible; the tag is n
    `cargo update -w` (workspace only), then `python3 build-aux/flatpak-cargo-sources.py`.
 3. **Write the notes:** a `<release version="X" date="YYYY-MM-DD">` block in the metainfo (user-visible changes in
    plain words, the beta limits) and a `CHANGELOG.md` entry.
-4. **Pin the screenshots to the tag:** `build-aux/pin-screenshots.sh v0.3.0-beta.1`. If the UI changed, retake them
-   first (`build-aux/wiki-screenshots.sh`).
+4. **Screenshots:** retake them first if the UI changed (`build-aux/wiki-screenshots.sh`). Do **not** run
+   `build-aux/pin-screenshots.sh` before the tag exists: the Flatpak job validates the metainfo screenshot URLs and
+   they 404 until the tag is pushed, so CI goes red (found on the first beta). Pin only for a Flathub submission, as a
+   follow-up commit after the tag.
 5. **Run the local gate:** `build-aux/release-check.sh v0.3.0-beta.1` (or `make release-check`), then the usual
    `cargo fmt`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`,
    `build-aux/lint-checks.sh`, `build-aux/ui-tests.sh`, `build-aux/wiki.sh` (AGENTS.md §4).
