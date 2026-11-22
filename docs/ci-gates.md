@@ -125,6 +125,9 @@ The decision, with the first matching file, is printed in the `changes` job log 
 would skip them, add the label **`run-ui-tests`** (adding it starts CI again) or run CI by hand with `force_ui`. `required`
 treats the skipped jobs as fine, and it is code that decides, never a label: a label can only add a run.
 
+Verified on real pull requests (2026-11-22): a docs-only pull request reports `UI scenarios: skipped: no UI-relevant change: ...`,
+runs no `build-ui` or `ui` job and `required` is green; adding the label `run-ui-tests` to it runs them.
+
 Rust (format, lint, tests, coverage) has its own, unchanged path rule (`ci-changes.sh`, `rust=`). Cases the classifier is
 tested on (`build-aux/tests/test_ci_ui_scope.py`): docs only, wiki only, `po/` only, `src/ui`, a library crate, `Cargo.lock`
 only, other workflows, unknown paths, an empty change, a crate outside the graph (synthetic workspace), forcing.
