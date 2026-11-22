@@ -182,22 +182,31 @@ pub struct CrashInfo {
 
 impl CrashInfo {
     pub fn from_hook(info: &std::panic::PanicHookInfo<'_>) -> CrashInfo {
-        let p = info.payload();
-        let message = p
+        CrashInfo::from_parts(
+            info.payload(),
+            info.location().map(|l| (l.file(), l.line(), l.column())),
+            std::thread::current().name(),
+            std::backtrace::Backtrace::force_capture().to_string(),
+        )
+    }
+
+    /// The pure part of [`CrashInfo::from_hook`].
+    pub fn from_parts(
+        payload: &(dyn std::any::Any + Send),
+        location: Option<(&str, u32, u32)>,
+        thread: Option<&str>,
+        backtrace: String,
+    ) -> CrashInfo {
+        let message = payload
             .downcast_ref::<&str>()
             .map(|s| s.to_string())
-            .or_else(|| p.downcast_ref::<String>().cloned())
+            .or_else(|| payload.downcast_ref::<String>().cloned())
             .unwrap_or_else(|| "panic without a message".to_string());
         CrashInfo {
             message,
-            location: info
-                .location()
-                .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column())),
-            thread: std::thread::current()
-                .name()
-                .unwrap_or("unnamed")
-                .to_string(),
-            backtrace: std::backtrace::Backtrace::force_capture().to_string(),
+            location: location.map(|(f, l, c)| format!("{f}:{l}:{c}")),
+            thread: thread.unwrap_or("unnamed").to_string(),
+            backtrace,
         }
     }
 }
@@ -587,5 +596,85 @@ mod tests {
     #[test]
     fn the_scrubber_is_always_there() {
         assert!(scrubber().apply("a b").contains("a b"));
+    }
+
+    #[test]
+    fn a_crash_is_described_from_the_payload_and_location() {
+        let c = CrashInfo::from_parts(&"boom", Some(("a.rs", 3, 4)), Some("main"), "bt".into());
+        assert_eq!(c.message, "boom");
+        assert_eq!(c.location.as_deref(), Some("a.rs:3:4"));
+        assert_eq!((c.thread.as_str(), c.backtrace.as_str()), ("main", "bt"));
+        let c = CrashInfo::from_parts(&String::from("owned"), None, None, String::new());
+        assert_eq!(c.message, "owned");
+        assert!(c.location.is_none());
+        assert_eq!(c.thread, "unnamed");
+        let c = CrashInfo::from_parts(&42u8, None, None, String::new());
+        assert_eq!(c.message, "panic without a message");
+    }
+
+    #[test]
+    fn crash_text_cuts_long_traces_and_keeps_short_rustc_paths() {
+        let info = CrashInfo {
+            message: "first\nsecond".into(),
+            location: Some("x.rs:1:2".into()),
+            thread: "t".into(),
+            backtrace: format!("at /rustc/abc/lib.rs\n{}", "é".repeat(MAX_CRASH_BYTES)),
+        };
+        let t = crash_text(&info, "now");
+        assert!(t.contains("message: first\n") && !t.contains("second"));
+        assert!(t.contains("at: x.rs:1:2") && t.contains("/rustc/abc/lib.rs"));
+        assert!(t.ends_with("\n(cut)\n"));
+        assert!(t.len() <= MAX_CRASH_BYTES + 10);
+    }
+
+    #[test]
+    fn two_crashes_in_one_second_get_two_files() {
+        let d = tmp("twice");
+        let log = LogFile::new(d.clone());
+        let info = CrashInfo::default();
+        let now = chrono::Utc::now();
+        let a = write_crash(&log, &info, &rules(), now).unwrap();
+        let b = write_crash(&log, &info, &rules(), now).unwrap();
+        assert_ne!(a, b);
+        assert!(b.to_string_lossy().ends_with("-1.txt"));
+        let _ = std::fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn a_line_with_a_multibyte_char_at_the_cut_is_cut_on_a_boundary() {
+        let d = tmp("boundary");
+        let mut log = LogFile::new(d.clone());
+        log.max = 10; // a quarter of it is 2 bytes: inside the first 3-byte char
+        log.append("€€€€").unwrap();
+        assert_eq!(std::fs::read_to_string(log.path()).unwrap(), "\n");
+        let _ = std::fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn the_process_log_records_only_what_it_keeps() {
+        let d = tmp("process");
+        // the only test that sets the process-wide log
+        let _ = FILE.set(LogFile::new(d.clone()));
+        let f = file().expect("log set");
+        set_scrub(Scrub {
+            user: "carol".into(),
+            ..Scrub::default()
+        });
+        record("2026-11-22T10:00:00Z  INFO bookx::x: chatty");
+        record("2026-11-22T10:00:01Z  WARN bookx::x: carol failed");
+        let t = f.tail(10).join("\n");
+        assert!(t.contains("WARN") && !t.contains("chatty") && !t.contains("carol"));
+        assert!(state_dir().is_some() || home_dir_text().is_empty());
+        let _ = std::fs::remove_dir_all(&f.dir);
+    }
+
+    #[test]
+    fn the_start_up_time_is_set_once() {
+        START.get_or_init(Instant::now);
+        mark_started();
+        let first = startup_ms().expect("marked");
+        mark_started();
+        assert_eq!(startup_ms(), Some(first));
+        assert!(first >= 1);
     }
 }

@@ -77,8 +77,12 @@ pub fn channel_of(version: &str) -> Channel {
 
 /// The version the app shows: the real one, except under test (`BOOKX_TEST_VERSION`).
 pub fn version() -> String {
-    match std::env::var("BOOKX_TEST_VERSION") {
-        Ok(v) if !v.trim().is_empty() => v.trim().to_string(),
+    version_from(std::env::var("BOOKX_TEST_VERSION").ok())
+}
+
+fn version_from(test_version: Option<String>) -> String {
+    match test_version {
+        Some(v) if !v.trim().is_empty() => v.trim().to_string(),
         _ => crate::config::VERSION.to_string(),
     }
 }
@@ -150,5 +154,18 @@ mod tests {
         }
         assert_eq!(Channel::Beta.tag(), "Beta");
         assert_eq!(Channel::Stable.tag(), "");
+    }
+
+    #[test]
+    fn the_test_version_replaces_the_real_one_only_when_given() {
+        assert_eq!(version_from(Some(" 9.9.9-beta.1 ".into())), "9.9.9-beta.1");
+        assert_eq!(version_from(Some("  ".into())), crate::config::VERSION);
+        assert_eq!(version_from(None), crate::config::VERSION);
+        assert_eq!(
+            channel_of(&version_from(Some("1.0.0-rc.1".into()))),
+            Channel::Rc
+        );
+        // the process-wide readers agree with each other
+        assert_eq!(channel(), channel_of(&version()));
     }
 }

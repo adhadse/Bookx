@@ -425,4 +425,34 @@ mod tests {
         let t = "ERROR cannot open Dune for alice at /home/alice/Books/My Library/x";
         assert_eq!(s.apply(t), scrub(t, &rules()));
     }
+
+    #[test]
+    fn the_rules_for_the_running_app_come_from_the_settings_and_the_library() {
+        let d = std::env::temp_dir().join(format!("bookx-dl-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&d).unwrap();
+        let mut lib = crate::core::library::Library::in_memory(&d.join("lib")).unwrap();
+        let p = d.join("b.md");
+        std::fs::write(&p, "---\ntitle: \"Zanzibar Nights\"\n---\n# A\n\nHi.\n").unwrap();
+        lib.add_path(&p, true).unwrap();
+        let mut cfg = crate::config::Config::default();
+        cfg.share.kosync = true;
+        let s = scrub_for(&cfg, &lib);
+        assert_eq!(s.library, lib.root.display().to_string());
+        assert_eq!(s.titles, vec!["Zanzibar Nights".to_string()]);
+        let _ = std::fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn the_tee_copies_lines_into_the_ring_without_colour() {
+        use std::io::Write;
+        let mut t = Tee;
+        let line = "\u{1b}[32m INFO\u{1b}[0m teetest-marker-7f3a";
+        t.write_all(format!("{line}\n").as_bytes()).unwrap();
+        t.flush().unwrap();
+        assert!(ring()
+            .lines()
+            .iter()
+            .any(|l| l == " INFO teetest-marker-7f3a"));
+        let _ = tracing_subscriber::fmt::MakeWriter::make_writer(&Tee);
+    }
 }

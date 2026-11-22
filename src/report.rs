@@ -141,13 +141,36 @@ impl Environment {
     pub fn detect() -> Environment {
         use relm4::gtk::prelude::*;
         use relm4::{adw, gtk};
-        let var = |k: &str| std::env::var(k).unwrap_or_default();
-        let os = std::fs::read_to_string("/etc/os-release").unwrap_or_default();
         let scale = gtk::gdk::Display::default()
             .and_then(|d| d.monitors().item(0))
             .and_then(|m: relm4::gtk::glib::Object| m.downcast::<gtk::gdk::Monitor>().ok())
             .map(|m: gtk::gdk::Monitor| m.scale_factor())
             .unwrap_or(1);
+        let versions = (
+            format!(
+                "{}.{}.{}",
+                gtk::major_version(),
+                gtk::minor_version(),
+                gtk::micro_version()
+            ),
+            format!(
+                "{}.{}.{}",
+                adw::major_version(),
+                adw::minor_version(),
+                adw::micro_version()
+            ),
+        );
+        Environment::detect_with(|k| std::env::var(k).unwrap_or_default(), scale, versions)
+    }
+
+    /// [`Environment::detect`] with the environment variables, the display scale and the GTK and
+    /// libadwaita versions given (asking for them needs an initialised toolkit).
+    pub fn detect_with(
+        var: impl Fn(&str) -> String,
+        scale: i32,
+        (gtk, adw): (String, String),
+    ) -> Environment {
+        let os = std::fs::read_to_string("/etc/os-release").unwrap_or_default();
         let session = {
             let t = var("XDG_SESSION_TYPE");
             if !t.is_empty() {
@@ -173,18 +196,8 @@ impl Environment {
                 .to_string(),
             desktop: var("XDG_CURRENT_DESKTOP"),
             session,
-            gtk: format!(
-                "{}.{}.{}",
-                gtk::major_version(),
-                gtk::minor_version(),
-                gtk::micro_version()
-            ),
-            adw: format!(
-                "{}.{}.{}",
-                adw::major_version(),
-                adw::minor_version(),
-                adw::micro_version()
-            ),
+            gtk,
+            adw,
             language: crate::i18n::current(),
             locale: var("LANG"),
             scale,
@@ -868,5 +881,129 @@ mod tests {
         assert_eq!(pretty_name(t).as_deref(), Some("Fedora Linux 43"));
         assert_eq!(os_ids(t).trim(), "fedora rhel centos");
         assert_eq!(pretty_name("X=1"), None);
+    }
+
+    #[test]
+    fn the_environment_is_read_from_the_given_variables() {
+        let vars = |pairs: &'static [(&'static str, &'static str)]| {
+            move |k: &str| {
+                pairs
+                    .iter()
+                    .find(|(n, _)| *n == k)
+                    .map(|(_, v)| v.to_string())
+                    .unwrap_or_default()
+            }
+        };
+        let e = Environment::detect_with(
+            vars(&[
+                ("XDG_SESSION_TYPE", "tty"),
+                ("XDG_CURRENT_DESKTOP", "KDE"),
+                ("LANG", "de_DE.UTF-8"),
+            ]),
+            2,
+            ("4.20.1".into(), "1.8.0".into()),
+        );
+        assert_eq!((e.session.as_str(), e.desktop.as_str()), ("tty", "KDE"));
+        assert_eq!((e.locale.as_str(), e.scale), ("de_DE.UTF-8", 2));
+        assert_eq!((e.gtk.as_str(), e.adw.as_str()), ("4.20.1", "1.8.0"));
+        assert!(!e.version.is_empty() && !e.os.is_empty() && !e.packaging.is_empty());
+        let s = |p| Environment::detect_with(vars(p), 1, Default::default()).session;
+        assert_eq!(
+            s(&[("WAYLAND_DISPLAY", "wayland-0"), ("DISPLAY", ":0")]),
+            "wayland"
+        );
+        assert_eq!(s(&[("DISPLAY", ":0")]), "x11");
+        assert_eq!(s(&[]), "");
+        // does not need a display or an environment
+        let _ = Packaging::detect();
+    }
+
+    #[test]
+    fn packaging_names_are_all_distinct() {
+        let all = [
+            Packaging::Flatpak,
+            Packaging::AppImage,
+            Packaging::Deb,
+            Packaging::Rpm,
+            Packaging::SystemPackage,
+            Packaging::Tarball,
+        ];
+        let names: std::collections::BTreeSet<_> = all.iter().map(packaging_text).collect();
+        assert_eq!(names.len(), all.len());
+    }
+
+    fn tmpdir(name: &str) -> std::path::PathBuf {
+        let d = std::env::temp_dir().join(format!("bookx-report-{name}-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    #[test]
+    fn the_settings_summary_holds_switches_and_no_values() {
+        let d = tmpdir("settings");
+        let mgr = bookx_plugin::PluginManager::new(
+            d.join("plugins"),
+            d.join("state.json"),
+            bookx_plugin::Host::default(),
+        );
+        let mut cfg = crate::config::Config {
+            offline: true,
+            eink: true,
+            ..Default::default()
+        };
+        cfg.share.kosync = true;
+        cfg.tts.engine = "piper".into();
+        let s = summarize(&cfg, &mgr);
+        assert!(s.offline && s.eink && s.sync_server);
+        assert_eq!(s.tts_engine, "piper");
+        assert!(s.plugin_ids.is_empty());
+        assert!(!s.keyring.is_empty());
+        let s = summarize(&crate::config::Config::default(), &mgr);
+        assert!(!s.offline && !s.eink);
+        let _ = std::fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn the_library_stats_count_books_without_titles() {
+        let d = tmpdir("stats");
+        let mut lib = crate::core::library::Library::in_memory(&d.join("lib")).unwrap();
+        for t in ["One", "Two"] {
+            let p = d.join(format!("{t}.md"));
+            std::fs::write(&p, format!("---\ntitle: \"{t}\"\n---\n# A\n\nHi.\n")).unwrap();
+            lib.add_path(&p, true).unwrap();
+        }
+        let st = library_stats(&lib, Some((1, 2)));
+        assert_eq!(st.books, 2);
+        assert_eq!(st.indexed, Some((1, 2)));
+        assert_eq!(st.schema, Some(bookx_store::SCHEMA_VERSION));
+        let _ = std::fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn recent_jobs_are_listed_newest_first_with_their_state() {
+        use crate::jobs;
+        // the job list is per thread, so this test sees only its own jobs
+        let (a, _) = jobs::start(jobs::Kind::Import, "i", false);
+        let (b, _) = jobs::start(jobs::Kind::Backup, "b", true);
+        let (c, _) = jobs::start(jobs::Kind::Export, "e", true);
+        let (_d, _) = jobs::start(jobs::Kind::Fetch, "f", true);
+        jobs::finish(a, Ok(()));
+        jobs::finish(b, Err("no route".into()));
+        assert!(jobs::cancel(c));
+        jobs::finish(c, Ok(()));
+        let v = recent_jobs();
+        let status: Vec<(&str, &str)> = v
+            .iter()
+            .map(|j| (j.kind.as_str(), j.status.as_str()))
+            .collect();
+        assert_eq!(
+            status,
+            [
+                ("Metadata", "running"),
+                ("Export", "cancelled"),
+                ("Backup", "failed: no route"),
+                ("Import", "done"),
+            ]
+        );
     }
 }
