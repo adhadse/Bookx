@@ -17,7 +17,14 @@
 #   KEEP=1 SCENARIOS='_wiki_ed_dialogs2' ...           # add scenes to the previous run instead of starting over
 #   FRAME_ONLY=1 KEEP=1 ...                              # only the framing step again, on the captures of the last run
 #   DRY=1 build-aux/wiki-screenshots.sh                 # shoot into $RESULTS only, leave wiki/docs/assets alone
+#   VIDEOS=0 build-aux/wiki-screenshots.sh              # leave the short videos out (default: they are made too)
+#   SCENARIOS='_wiki_video_ruler' ...                   # one video (_wiki_video_aloud, _wiki_video_speed, _wiki_video_ruler)
 #   JOBS=2                                              # sessions at a time (default 2; each uses ~15 inotify instances)
+#
+# Short videos (read aloud, speed reading, the reading ruler) come from the same sessions: the scenes of
+# build-aux/session/scenarios_wiki_video.py take a series of real screenshots while the feature runs, and build-aux/wiki_video.py
+# encodes them to wiki/docs/assets/<name>-light.webm / -dark.webm (VP9, no sound, <= 960 px, <= 12 s, <= 600 KB) with a
+# <name>-poster-light.webp / -dark.webp poster. Which video belongs on which page: build-aux/wiki-videos.txt.
 #
 # The pictures at the top of README.md and in the AppStream metainfo are NOT separate copies: they point at these same
 # files (README: <picture> with the -dark / -light pair; metainfo: raw.githubusercontent URLs), so a run of this script
@@ -42,9 +49,12 @@ ALL_SCENARIOS="_wiki_shots _wiki_hero _wiki_reading _wiki_strip _wiki_library _w
     _wiki_reader_notes _wiki_reader_aloud _wiki_reader_vocab _wiki_reader_pdf _wiki_reader_comic _wiki_map_detail _wiki_vertical_detail
     _wiki_ed_code _wiki_ed_menus _wiki_ed_dialogs _wiki_ed_dialogs2 _wiki_ed_panels
     _wiki_lib_works _wiki_audiobook _wiki_vocab_own _wiki_reader_comic2"
+VIDEO_SCENARIOS="_wiki_video_aloud _wiki_video_speed _wiki_video_ruler"
+[ "${VIDEOS:-1}" = 0 ] || ALL_SCENARIOS="$ALL_SCENARIOS $VIDEO_SCENARIOS"
 ALL_SCENARIOS=$(echo $ALL_SCENARIOS)
 SCENARIOS=${SCENARIOS:-$ALL_SCENARIOS}
 # the pictures the pages use: build-aux/wiki-pictures.txt ("<page.md>: <name> ..."); a missing one fails the run
+VIDEOS_LIST=$(grep -v '^#' build-aux/wiki-videos.txt | cut -d: -f2- | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')
 PICTURES=$(grep -v '^#' build-aux/wiki-pictures.txt | cut -d: -f2- | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')
 PY=/usr/bin/python3; [ -x "$PY" ] || PY=$(command -v python3)
 # the comic pictures show a real public-domain comic ("Little Nemo in Slumberland", Winsor McCay, 1905; see docs/test-books.md);
@@ -93,6 +103,12 @@ if [ "$SCENARIOS" = "$ALL_SCENARIOS" ] || [ "${KEEP:-0}" = 1 ]; then
             ls "$BASE/$scheme"/_wiki_*-"$name".png >/dev/null 2>&1 || { echo "missing picture: $name ($scheme)"; missing=1; }
         done
     done
+    for scheme in $SCHEMES; do
+        for name in $VIDEOS_LIST; do
+            [ "${VIDEOS:-1}" = 0 ] && break
+            ls "$BASE/$scheme"/_wiki_*-"$name".timing.json >/dev/null 2>&1 || { echo "missing video: $name ($scheme)"; missing=1; }
+        done
+    done
     [ "$missing" = 0 ] || { echo "some pictures were not taken (see the scenario logs in $BASE)"; exit 1; }
 fi
 # no focus ring and no cursor in any picture (build-aux/check-screenshots.py; the scenarios also write a user style sheet that
@@ -112,4 +128,17 @@ for scheme in $SCHEMES; do
         n=$((n + 1))
     done
 done
-echo "$n pictures ($(du -sm "$ROOT/wiki/docs/assets" | cut -f1) MB in wiki/docs/assets)"
+# the videos: the frames of a scene are encoded (build-aux/wiki_video.py), then the size budget is checked
+v=0
+for scheme in $SCHEMES; do
+    for t in "$BASE/$scheme"/_wiki_*-*.timing.json; do
+        [ -e "$t" ] || continue
+        b=$(basename "$t" .timing.json)
+        name=${b#*-}
+        "$PY" build-aux/wiki_video.py encode "$t" "$ROOT/wiki/docs/assets/$name-$scheme.webm" \
+            "$ROOT/wiki/docs/assets/${name}-poster-$scheme.webp" || exit 1
+        v=$((v + 1))
+    done
+done
+[ "$v" = 0 ] || "$PY" build-aux/wiki_video.py check "$ROOT/wiki/docs/assets" || exit 1
+echo "$n pictures, $v videos ($(du -sm "$ROOT/wiki/docs/assets" | cut -f1) MB in wiki/docs/assets)"

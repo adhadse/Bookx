@@ -34,6 +34,10 @@ class Page(HTMLParser):
             self.refs.append(("src", a["src"]))
         elif tag == "link" and a.get("href") and a.get("rel") in ("stylesheet", "icon", "shortcut icon"):
             self.refs.append(("href", a["href"]))
+        elif tag == "video" and a.get("poster"):
+            self.refs.append(("poster", a["poster"]))
+        elif tag == "source" and a.get("src"):
+            self.refs.append(("src", a["src"]))
         elif tag == "script" and a.get("src"):
             self.refs.append(("src", a["src"]))
 
@@ -98,7 +102,7 @@ def main():
         rel = page.relative_to(site)
         srcs = {urldefrag(v)[0] for a, v in info.refs if a == "src"}
         for src in sorted(srcs):
-            for ext in (".png", ".webp"):
+            for ext in (".png", ".webp", ".webm"):
                 for mine, other in ((f"-light{ext}", f"-dark{ext}"), (f"-dark{ext}", f"-light{ext}")):
                     if src.endswith(mine) and src[: -len(mine)] + other not in srcs:
                         errors.append(f"{rel}: {src} is used without its {other} variant")
@@ -116,9 +120,18 @@ def main():
                 errors.append(f"{page.relative_to(site)}: {v} must end with #only-light")
             if a == "src" and re.search(r"-dark\.(png|webp)$", base) and not v.endswith("#only-dark"):
                 errors.append(f"{page.relative_to(site)}: {v} must end with #only-dark")
-    used = {(page.parent / urldefrag(v)[0]).resolve() for page, info in parsed.items() for a, v in info.refs if a == "src"}
+    used = {(page.parent / urldefrag(v)[0]).resolve() for page, info in parsed.items() for a, v in info.refs
+            if a in ("src", "poster")}
+    for f in sorted(site.rglob("*-light.webm")) + sorted(site.rglob("*-dark.webm")):
+        if f.resolve() not in used:
+            errors.append(f"{f.relative_to(site)} is not used by any page (delete it from wiki/docs/assets)")
+    for f in sorted(site.rglob("*-poster-light.webp")) + sorted(site.rglob("*-poster-dark.webp")):
+        if f.resolve() not in used:
+            errors.append(f"{f.relative_to(site)} is not used by any page (delete it from wiki/docs/assets)")
     for ext in (".png", ".webp"):
         for f in sorted(site.rglob(f"*-light{ext}")) + sorted(site.rglob(f"*-dark{ext}")):
+            if "-poster-" in f.name:
+                continue
             if f.resolve() not in used:
                 errors.append(f"{f.relative_to(site)} is not used by any page (delete it from wiki/docs/assets)")
     for e in errors:

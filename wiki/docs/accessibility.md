@@ -41,6 +41,12 @@ The reading area shows a visible focus ring when you use the keyboard.
 
 ## Reading ruler
 
+<figure markdown="1" class="clip">
+<video class="only-light" controls muted loop playsinline preload="none" width="960" height="576" poster="../assets/reading-ruler-demo-poster-light.webp" aria-describedby="reading-ruler-demo-text"><source src="assets/reading-ruler-demo-light.webm" type="video/webm">Your browser cannot play this video: <a href="assets/reading-ruler-demo-light.webm">download it</a>.</video>
+<video class="only-dark" controls muted loop playsinline preload="none" width="960" height="576" poster="../assets/reading-ruler-demo-poster-dark.webp" aria-describedby="reading-ruler-demo-text"><source src="assets/reading-ruler-demo-dark.webm" type="video/webm">Your browser cannot play this video: <a href="assets/reading-ruler-demo-dark.webm">download it</a>.</video>
+<figcaption id="reading-ruler-demo-text" markdown="1">Short video (10 seconds, no sound). The page is dimmed except for a bright band that moves down the lines with Alt+Down and back up with Alt+Up.</figcaption>
+</figure>
+
 *Reading Ruler* (a check item in the reader's Main Menu, the hamburger at the far right of the header bar, or the command palette) dims the page except for a band of one to five
 lines, which keeps your eyes on the line you read. The band follows the pointer; ++alt+up++ and ++alt+down++ move it one
 line at a time (the first press turns it on). On a touch screen, drag the band with a finger, or tap the page to put the
