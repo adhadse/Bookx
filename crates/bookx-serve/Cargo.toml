@@ -10,7 +10,7 @@ license = "GPL-3.0-or-later"
 [dependencies]
 bookx-core = { path = "../bookx-core" }
 anyhow = "1"
-base64 = "0.22"
+base64 = "0.23"
 chrono = { version = "0.4", features = ["serde"] }
 md5 = "0.7"
 argon2 = "0.5"

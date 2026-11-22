@@ -31,7 +31,7 @@ bookx-store = { path = "crates/bookx-store" }
 bookx-text = { path = "crates/bookx-text" }
 bookx-tts = { path = "crates/bookx-tts" }
 anyhow = "1"
-base64 = "0.22"
+base64 = "0.23"
 chrono = { version = "0.4", features = ["serde"] }
 directories = "6"
 regex = "1"
