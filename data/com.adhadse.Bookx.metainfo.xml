@@ -104,6 +104,16 @@
     <mediatype>x-scheme-handler/bookx</mediatype>
   </provides>
   <releases>
+    <release version="0.3.0-beta.2" date="2026-11-23" type="development">
+      <description>
+        <p>Second beta: the Linux packages now run on current Fedora, Ubuntu, Debian and Arch (the first beta only ran on Fedora 45).</p>
+        <ul>
+          <li>Fixed: the .deb, .rpm and tarball needed a newer glibc and OpenSSL than most systems have</li>
+          <li>Every release is now installed and started on real distribution images before it is published</li>
+        </ul>
+      </description>
+      <url type="details">https://github.com/adhadse/Bookx/releases/tag/v0.3.0-beta.2</url>
+    </release>
     <release version="0.3.0-beta.1" date="2026-11-22" type="development">
       <description>
         <p>The first beta. It can have bugs, so keep a backup of anything you care about; Bookx can back up your library for you. Reports help us fix bugs: Main Menu, Report a Problem.</p>
