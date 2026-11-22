@@ -128,7 +128,8 @@ jobs:
           echo "759b4b6aa0d9f77131882162951193f3a0e54bf60e1d8dc4255aa308accab588  /tmp/rar.tgz" | sha256sum -c -
           tar xzf /tmp/rar.tgz -C /tmp rar/unrar
           install -m 755 /tmp/rar/unrar /usr/local/bin/unrar
-          unrar | head -2
+          unrar > /tmp/unrar.txt || true
+          head -2 /tmp/unrar.txt
       - name: Rust ${{ env.RUST_TOOLCHAIN }} with clippy, rustfmt and the LLVM tools of its compiler
         run: |
           rustup-init -y --profile minimal --default-toolchain "$RUST_TOOLCHAIN" -c clippy -c rustfmt -c llvm-tools-preview
