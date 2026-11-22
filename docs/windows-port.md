@@ -58,7 +58,7 @@ Constraint: no standalone `.exe` installer as the primary channel.
    scrutinised. Not started.
 
 Build routes for the dependencies: **MSYS2 UCRT64** (`mingw-w64-ucrt-x86_64-gtk4`, `-libadwaita`, `-gtksourceview5`,
-`-rust`; what `package-windows.yml` uses) is the shorter path; **gvsbuild** builds GTK from source with MSVC and
+`-rust`; what `package-native.yml` uses) is the shorter path; **gvsbuild** builds GTK from source with MSVC and
 is the route if the project wants the MSVC Rust target. The workflow uses MSYS2 and the `x86_64-pc-windows-gnu`
 Rust target of that environment.
 
@@ -70,13 +70,13 @@ Rust target of that environment.
   `MassStorageDriver`, `nix` only on Unix, TLS key writer and free-space gated.
 * `src/main.rs`: GUI subsystem on Windows.
 * Files: `packaging/msys2/PKGBUILD`, `packaging/winget/…`, `packaging/scoop/…`, `build-aux/windows-bundle.sh`,
-  `.github/workflows/package-windows.yml` (manual dispatch only).
+  `.github/workflows/package-native.yml` (manual dispatch only).
 * Offline checks: YAML and JSON parse; shell scripts pass `bash -n`; the winget manifests were **not** run through
   `winget validate` (Windows only) and the PKGBUILD was **not** run through `makepkg`.
 
 ## 5. Owner: accounts and decisions
 
-* A Windows machine or a manual run of `package-windows.yml` to learn what breaks in the build.
+* A Windows machine or a manual run of `package-native.yml` to learn what breaks in the build.
 * winget: a GitHub account to send the pull request to `microsoft/winget-pkgs` (no Microsoft account needed);
   code signing certificate (optional but strongly recommended).
 * Scoop: the bucket repository `adhadse/scoop-bookx`.

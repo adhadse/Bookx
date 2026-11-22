@@ -6,7 +6,7 @@ the release date and the checksum are placeholders.
 Package identifier `adhadse.Bookx`, installer type: a **portable zip** (`InstallerType: zip`,
 `NestedInstallerType: portable`): winget extracts `Bookx-<version>-windows-x64.zip` and links
 `Bookx\bin\bookx.exe` as the command `bookx`. No `.exe` installer download is involved.
-The zip is built by `.github/workflows/package-windows.yml` (manual dispatch).
+The zip is built by `.github/workflows/package-native.yml` (manual dispatch).
 
 ## Per release
 

@@ -1,0 +1,97 @@
+name: Flatpak (reusable)
+
+# Builds the Flatpak bundle once, the way build-aux/flatpak.sh does on a developer machine (offline crates, smoke tests
+# inside the sandbox), and uploads it. Called by ci.yml (pull requests that touch packaging), release.yml (the bundle
+# that is attached to the release) and nightly.yml (a build with a cold cache, to prove the caches are not hiding a
+# problem). Publishes nothing.
+#
+# It runs on the runner itself, not in a container: flatpak inside the flatpak-github-actions container failed with
+# "Invalid cross-device link" while updating the runtime (docs/ci-gates.md, "Why the first runs were red").
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Version in the bundle name (Bookx-VERSION.flatpak); default: the version in Cargo.toml"
+        type: string
+        default: ""
+      lint:
+        description: "Also run the Flathub linter on the manifest and the metainfo"
+        type: boolean
+        default: false
+      cache:
+        description: "Restore and save the runtimes and the flatpak-builder state (false = cold build)"
+        type: boolean
+        default: true
+    outputs:
+      bundle:
+        description: "File name of the bundle"
+        value: ${{ jobs.bundle.outputs.bundle }}
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    name: Flatpak bundle (x86_64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    outputs:
+      bundle: ${{ steps.name.outputs.bundle }}
+    env:
+      FLATPAK_BUILD_DIR: ${{ github.workspace }}/.flatpak-work
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install flatpak and flatpak-builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder appstream desktop-file-utils libxml2-utils python3
+          # Ubuntu blocks unprivileged user namespaces, which bubblewrap (the build sandbox) needs
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - id: name
+        name: Bundle name
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          v=${INPUT_VERSION:-$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)}
+          echo "bundle=Bookx-$v.flatpak" >> "$GITHUB_OUTPUT"
+      - name: Cache the runtimes (GNOME Platform, SDK, Rust extension)
+        if: ${{ inputs.cache }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.local/share/flatpak
+          key: flatpak-runtimes-${{ hashFiles('build-aux/com.adhadse.Bookx.json') }}
+          restore-keys: flatpak-runtimes-
+      - name: Cache the flatpak-builder state (downloaded sources, build cache)
+        if: ${{ inputs.cache }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .flatpak-work/state
+          key: flatpak-state-${{ hashFiles('build-aux/com.adhadse.Bookx.json', 'build-aux/cargo-sources.json', 'Cargo.lock') }}
+          restore-keys: flatpak-state-
+      - name: Runtimes
+        run: |
+          rt=$(python3 -c "import json;m=json.load(open('build-aux/com.adhadse.Bookx.json'));print(m['runtime-version'])")
+          ext=$(python3 -c "import json;m=json.load(open('build-aux/com.adhadse.Bookx.json'));print(m['sdk-extensions'][0])")
+          flatpak install --user -y --noninteractive flathub "org.gnome.Platform//$rt" "org.gnome.Sdk//$rt"
+          # the extension branch is the freedesktop SDK the GNOME SDK is based on
+          base=$(flatpak info --user --show-metadata "org.gnome.Sdk//$rt" | sed -n 's/^runtime=org.freedesktop.Sdk\/[^\/]*\/\(.*\)$/\1/p' | head -1)
+          flatpak install --user -y --noninteractive flathub "$ext//${base:-26.08}"
+      - name: Build, smoke-test and bundle
+        env:
+          BUNDLE: "1"
+          BUNDLE_FILE: ${{ steps.name.outputs.bundle }}
+        run: build-aux/flatpak.sh
+      - name: Flathub linter (manifest and metainfo)
+        if: ${{ inputs.lint }}
+        run: |
+          flatpak install --user -y --noninteractive flathub org.flatpak.Builder
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest build-aux/com.adhadse.Bookx.json
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder appstream data/com.adhadse.Bookx.metainfo.xml
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: flatpak-bundle
+          path: |
+            ${{ steps.name.outputs.bundle }}
+            ${{ steps.name.outputs.bundle }}.sha256
+          retention-days: 7

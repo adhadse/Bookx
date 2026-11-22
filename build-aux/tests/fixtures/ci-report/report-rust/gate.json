@@ -1,0 +1,4 @@
+{"tier":"logic","target":90.0,"tolerance_pp":0.2,"total":{"lines":1000,"covered":930,"pct":93.0},
+ "groups":{"bookx-core":{"lines":600,"covered":570,"pct":95.0,"baseline":94.5,"status":"ok"},
+           "bookx-tts":{"lines":400,"covered":330,"pct":82.5,"baseline":85.8,"status":"DROPPED"}},
+ "failed":["bookx-tts: 82.50% is 3.30 points below the baseline 85.80% (tolerance 0.2)"]}

@@ -62,7 +62,7 @@ Rejected:
   lines, `#:` locations, `#,` flags (`fuzzy` strings are skipped, so a string "Needs editing" shows English), `#|`
   previous strings and `#~` obsolete entries (ignored).
 - Languages in `po/LINGUAS` are the ones Weblate may create/keep; a language reaches the app only when it is also in
-  the table in `build.rs` (it generates `LANGUAGES` in `src/i18n.rs`) and embedded with `include_str!`. CI (`i18n.yml`) checks that both lists agree.
+  the table in `build.rs` (it generates `LANGUAGES` in `src/i18n.rs`) and embedded with `include_str!`. CI (`ci.yml` (Rust job)) checks that both lists agree.
 - Compiled `.mo` files in `/usr/share/locale`, `/app/share/locale` or `BOOKX_LOCALE_DIR` override the embedded text
   (distribution packagers, Weblate's "Generate MO files" add-on if ever wanted). Not needed for the normal flow.
 - GNOME-style `po/LINGUAS` and `po/POTFILES.in` exist so any external tool can work with the tree. `POTFILES.in` is
@@ -147,13 +147,13 @@ only). Every other build keeps all of `po/*.po`. To promote a language, for exam
    language, set it back to `machine-translated` and remove the code from the list in the same change.
 
 Checks: `cargo test -p bookx i18n` and `cargo test -p bookx --features reviewed-locales-only i18n` (CI runs both,
-`.github/workflows/i18n.yml`); `REVIEWED_LOCALES=1 build-aux/flatpak.sh` builds the Flatpak the way Flathub does.
+`.github/workflows/ci.yml`); `REVIEWED_LOCALES=1 build-aux/flatpak.sh` builds the Flatpak the way Flathub does.
 The desktop file and metainfo contain no translated keys on purpose (a test checks it); if translations are added there
 later they follow the same list.
 
 ## CI
 
-`.github/workflows/i18n.yml` (never run before this note was written): the template is up to date
+`.github/workflows/ci.yml` (never run before this note was written): the template is up to date
 (`BOOKX_UPDATE_POT=1 cargo test … the_template_lists_every_marked_string` then `git diff --exit-code po/bookx.pot`),
 `po/POTFILES.in` is current, every shipped language passes `every_shipped_language_translates_every_marked_string`,
 `po/LINGUAS` = the language table in `build.rs`, `po/STATUS.md` matches, each `.po` passes `msgfmt --check-format` (the only complaints of a full `--check` are the missing

@@ -124,8 +124,14 @@ impl Conn {
 
     /// The message body up to the lone dot, with dot-stuffing undone.
     fn data(&mut self) -> Option<Vec<u8>> {
+        // each pass looks only at what arrived since the last one (a rescan of the whole buffer was quadratic)
+        let mut from = 0;
         loop {
-            if let Some(i) = self.buf.windows(5).position(|w| w == b"\r\n.\r\n") {
+            if let Some(i) = self.buf[from..]
+                .windows(5)
+                .position(|w| w == b"\r\n.\r\n")
+                .map(|i| i + from)
+            {
                 let raw: Vec<u8> = self.buf.drain(..i + 5).collect();
                 let mut body = raw[..i + 2].to_vec(); // keep the CRLF that ends the last line
                 let mut out = Vec::with_capacity(body.len());
@@ -144,6 +150,7 @@ impl Conn {
                 body.clear();
                 return Some(out);
             }
+            from = self.buf.len().saturating_sub(4);
             if !self.fill() {
                 return None;
             }

@@ -182,6 +182,19 @@ def main():
     if failed:
         md += ("\n**Below the baseline (advisory in a quick run)**\n\n" if a.partial else "\n**Gate failed**\n\n") + "\n".join(f"- {x}" for x in failed) + "\n"
     open(os.path.join(a.out, "summary.md"), "w", encoding="utf-8").write(md)
+    with open(os.path.join(a.out, "gate.json"), "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "tier": a.tier,
+                "target": target,
+                "tolerance_pp": tol,
+                "total": {"lines": tt, "covered": tc, "pct": round(pct(tc, tt), 2)},
+                "groups": {g: {"lines": t, "covered": c, "pct": round(p, 2), "baseline": b, "status": st} for g, c, t, p, b, st in rows},
+                "failed": failed,
+            },
+            f,
+            indent=1,
+        )
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as f:

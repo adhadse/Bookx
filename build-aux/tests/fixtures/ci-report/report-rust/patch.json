@@ -1,0 +1,1 @@
+{"total_percent_covered":71,"src_stats":{"crates/bookx-core/src/a.rs":{"percent_covered":50,"violation_lines":[10,11,12]},"src/b.rs":{"percent_covered":100,"violation_lines":[]}}}

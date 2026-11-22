@@ -32,7 +32,11 @@ meta=$(sed -n 's/.*<release version="\([^"]*\)".*/\1/p' data/$APP_ID.metainfo.xm
 log=$(sed -n 's/^## \[\([0-9][^]]*\)\].*/\1/p' CHANGELOG.md | head -1)
 [ "$log" = "$version" ] && ok "CHANGELOG newest version: $log" || bad "CHANGELOG newest version is '$log'"
 if [ -n "$tag" ]; then
-    [ "${tag#v}" = "$version" ] && ok "tag $tag matches" || bad "tag $tag does not match version $version"
+    # v0.3.0 for 0.3.0, and v0.3.0-beta.1 / -rc.1 / -alpha.1 are pre-releases of 0.3.0
+    case "${tag#v}" in
+        "$version" | "$version"-alpha* | "$version"-beta* | "$version"-rc*) ok "tag $tag matches" ;;
+        *) bad "tag $tag does not match version $version" ;;
+    esac
 fi
 
 echo "==> Flatpak sources and manifest"

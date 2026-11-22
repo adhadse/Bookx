@@ -1,0 +1,5 @@
+{"jobs":[
+ {"name":"Quick checks","status":"completed","conclusion":"success","started_at":"2026-11-22T10:00:00Z","completed_at":"2026-11-22T10:02:10Z","html_url":"https://github.com/adhadse/Bookx/actions/runs/1/job/1","steps":[{"name":"KOReader plugin tests (LuaJIT and Lua 5.4)","conclusion":"success"}]},
+ {"name":"Rust (format, lint, tests, coverage)","status":"completed","conclusion":"failure","started_at":"2026-11-22T10:00:00Z","completed_at":"2026-11-22T10:14:05Z","html_url":"https://github.com/adhadse/Bookx/actions/runs/1/job/2","steps":[{"name":"clippy (warnings are errors)","conclusion":"failure"},{"name":"po/bookx.pot is up to date","conclusion":"success"}]},
+ {"name":"Evil <img src=x> | @everyone","status":"completed","conclusion":"skipped","html_url":"javascript:alert(1)","steps":[]}
+]}

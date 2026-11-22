@@ -56,6 +56,9 @@ if [ "$RUN" = 1 ]; then
         -E 'not binary(perf_budgets)' || rc_tests=$?
 fi
 t1=$(date +%s)
+# the JUnit file of the run, for the PR report (the profile in .config/nextest.toml writes it)
+junit=$(find "${CARGO_TARGET_DIR:-target}" -path '*nextest/default/junit.xml' -print -quit 2>/dev/null)
+[ -n "$junit" ] && cp "$junit" "$OUT/junit.xml"
 
 cargo llvm-cov report --workspace --lcov --output-path "$OUT/lcov.info" --ignore-filename-regex "$IGNORE" >/dev/null || exit 2
 if [ "$HTML" = 1 ]; then
@@ -77,7 +80,7 @@ if [ -n "$BASE" ]; then
         echo
         echo "coverage: patch coverage against $BASE (lines changed in logic code must be >= 80% covered)"
         diff-cover "$OUT/lcov.filtered.info" --compare-branch "$BASE" --fail-under 80 \
-            --markdown-report "$OUT/patch.md" || rc_patch=$?
+            --format "markdown:$OUT/patch.md,json:$OUT/patch.json" || rc_patch=$?
         [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f "$OUT/patch.md" ] && cat "$OUT/patch.md" >>"$GITHUB_STEP_SUMMARY"
     else
         echo "coverage: diff-cover is not installed (pip install diff-cover): patch coverage skipped" >&2

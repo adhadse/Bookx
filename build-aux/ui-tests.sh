@@ -9,6 +9,7 @@
 #   build-aux/ui-tests.sh            # build (debug) and run all scenarios concurrently
 #   NET=0 build-aux/ui-tests.sh      # skip the scenarios that need internet
 #   JOBS=16 build-aux/ui-tests.sh    # scenarios running at once (default: number of CPU cores; 0 = all)
+#   SHARD=2/6 build-aux/ui-tests.sh  # only the scenarios of shard 2 of 6 (a stable hash of the name; CI runs 1/6 .. 6/6)
 #   ONLY='notes translate' build-aux/ui-tests.sh   # run just these scenarios
 #   SHOW=notes ONLY=notes build-aux/ui-tests.sh     # also print everything the app said in that scenario
 #
@@ -357,6 +358,10 @@ scenario() {
     local name=$1 script=$2 checks=$3
     N=$((N + 1))
     [ -n "${ONLY:-}" ] && [[ " $ONLY " != *" $name "* ]] && return 0
+    if [ -n "${SHARD:-}" ]; then # SHARD=i/n: this process runs the scenarios whose name hashes to i (1-based), CI runs i = 1..n
+        h=$(printf '%s' "$name" | cksum | cut -d' ' -f1)
+        [ $((h % ${SHARD#*/} + 1)) -eq "${SHARD%/*}" ] || return 0
+    fi
     while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do wait -n; done # throttle to $JOBS at once
     SCENARIOS+=("$name")
     (

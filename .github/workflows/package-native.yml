@@ -1,21 +1,22 @@
-# Builds Bookx.app and a .dmg on a macOS runner. MANUAL ONLY and publishes nothing: the .dmg is a workflow
-# artifact. Written without a Mac and never run (docs/macos-port.md): expect the first run to fail somewhere in
-# the build (the app has never been compiled on macOS) or in build-aux/macos-bundle.sh.
+# Builds the native packages that are not Linux: Bookx.app + .dmg (macOS arm64 / x86_64) or a portable zip with the
+# GTK 4 DLLs (Windows, MSYS2 UCRT64). MANUAL ONLY and publishes nothing: the result is a workflow artifact. Written
+# without a Mac or a Windows machine; the app has never been compiled for either (docs/macos-port.md,
+# docs/windows-port.md): the first runs are expected to fail in the build.
 #
-# Signing and notarization need secrets that do not exist yet (Apple Developer ID); without them the app is signed
-# ad hoc. See the "Owner" section of docs/macos-port.md.
-name: package-macos
+# Signing and notarization of the macOS app need secrets that do not exist yet (Apple Developer ID); without them
+# the app is signed ad hoc. See the "Owner" section of docs/macos-port.md.
+name: package-native
 
 on:
   workflow_dispatch:
     inputs:
-      arch:
-        description: "Runner architecture"
+      os:
+        description: "What to build"
         type: choice
-        options: [arm64, x86_64]
-        default: arm64
+        options: [macos-arm64, macos-x64, windows]
+        default: macos-arm64
       sign:
-        description: "Sign and notarize (needs the APPLE_* secrets)"
+        description: "macOS only: sign and notarize (needs the APPLE_* secrets)"
         type: boolean
         default: false
 
@@ -23,10 +24,11 @@ permissions:
   contents: read
 
 jobs:
-  dmg:
-    name: Bookx.app and .dmg (${{ inputs.arch }})
+  macos:
+    name: Bookx.app and .dmg (${{ inputs.os }})
+    if: ${{ startsWith(inputs.os, 'macos') }}
     # macos-14 is Apple silicon; macos-15-intel is the Intel image (macos-13 was retired)
-    runs-on: ${{ inputs.arch == 'arm64' && 'macos-14' || 'macos-15-intel' }}
+    runs-on: ${{ inputs.os == 'macos-arm64' && 'macos-14' || 'macos-15-intel' }}
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -46,7 +48,7 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             target
-          key: macos-${{ inputs.arch }}-cargo-${{ hashFiles('Cargo.lock') }}
+          key: macos-${{ inputs.os }}-cargo-${{ hashFiles('Cargo.lock') }}
       - name: Build
         run: cargo build --release --locked -p bookx -p bookx-cli
       - name: Import the signing certificate
@@ -78,8 +80,48 @@ jobs:
           dist/Bookx.app/Contents/MacOS/bookx-cli --help
       - uses: actions/upload-artifact@v4
         with:
-          name: bookx-macos-${{ inputs.arch }}
+          name: bookx-${{ inputs.os }}
           path: |
             dist/*.dmg
             dist/*.dmg.sha256
+          retention-days: 7
+
+  windows:
+    name: Windows zip (x64, MSYS2 UCRT64)
+    if: ${{ inputs.os == 'windows' }}
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            zip
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-rust
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-gtk4
+            mingw-w64-ucrt-x86_64-libadwaita
+            mingw-w64-ucrt-x86_64-gtksourceview5
+            mingw-w64-ucrt-x86_64-adwaita-icon-theme
+            mingw-w64-ucrt-x86_64-espeak-ng
+      - name: Build
+        run: cargo build --release --locked -p bookx -p bookx-cli
+      - name: Pure-logic tests
+        run: cargo test --release --locked --workspace --lib
+      - name: Bundle
+        run: build-aux/windows-bundle.sh
+      - name: "Smoke test (command line tool only, the runner has no display)"
+        run: dist/Bookx/bin/bookx-cli.exe --help
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bookx-windows-x64
+          path: |
+            dist/*.zip
+            dist/*.zip.sha256
           retention-days: 7

@@ -1,13 +1,16 @@
 name: CI
 
+# One workflow for everything a pull request or a push to main has to pass (docs/ci-gates.md has the map).
+# The only check branch protection needs is the last job, `required`: it fails when any job above it failed or was
+# cancelled, and is green when jobs were skipped on purpose (a docs-only pull request skips the Rust jobs).
+# Actions are pinned by commit SHA (the comment is the tag); update them together with the other workflows.
 on:
   push:
     branches: [main, master]
   pull_request:
   workflow_dispatch:
 
-# Least privilege: no job writes to the repository. Actions are pinned by commit SHA (the comment is the tag);
-# update them together with the other workflows.
+# Least privilege: no job writes to the repository; the wiki deploy job asks for Pages at job level.
 permissions:
   contents: read
 
@@ -15,133 +18,147 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
   CARGO_NET_RETRY: "5"
+  # One toolchain for fmt, clippy, tests and coverage: the coverage baseline (build-aux/coverage-baseline.json) is
+  # a number of this compiler's LLVM, and a new stable clippy must not turn the checks red between two commits.
+  # Bump it on purpose, together with the baseline (docs/ci-gates.md).
+  RUST_TOOLCHAIN: "1.93.1"
+  # rustup-init insists on $HOME being the home of the euid; in a CI container it is not
+  RUSTUP_INIT_SKIP_SUDO_CHECK: "yes"
 
+# Pull requests cancel their own older runs; pushes to main always finish (caches are saved there, releases
+# look at the result).
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  lint:
-    name: Workflow and scenario lint
+  changes:
+    name: Changed paths
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
+    outputs:
+      rust: ${{ steps.f.outputs.rust }}
+      wiki: ${{ steps.f.outputs.wiki }}
+      flatpak: ${{ steps.f.outputs.flatpak }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: f
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: build-aux/ci-changes.sh | tee -a "$GITHUB_OUTPUT"
+
+  quick:
+    name: Quick checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: UI scenarios do not contain vacuous checks (check "...$(...)..." $?)
         run: build-aux/lint-checks.sh
       - name: Workflows (actionlint)
+        if: ${{ !cancelled() }}
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
       - name: Shell syntax of the test scripts
+        if: ${{ !cancelled() }}
         run: for f in build-aux/*.sh; do bash -n "$f"; done
-      - name: Flathub update script (Python unit tests)
+      - name: Python unit tests (Flathub update script, CI report)
+        if: ${{ !cancelled() }}
         run: python3 -m unittest discover -s build-aux/tests -v
-
-  koreader-plugin:
-    name: KOReader plugin (Lua tests, LuaJIT and Lua 5.4)
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install LuaJIT and Lua
+        if: ${{ !cancelled() }}
         run: sudo apt-get update && sudo apt-get install -y luajit lua5.4 curl
-      - name: Plugin tests (fake KOReader, scripted server)
+      - name: KOReader plugin tests (LuaJIT and Lua 5.4, fake KOReader, scripted server)
+        if: ${{ !cancelled() }}
         run: koreader-plugin/tests/run.sh
       - name: The plugin zip can be built
+        if: ${{ !cancelled() }}
         run: SKIP_TESTS=1 build-aux/package-plugin.sh
+      - name: The sync endpoint of the plugin and the server agree
+        if: ${{ !cancelled() }}
+        run: build-aux/check-sync-endpoint.sh
+      - name: Dependency advisories, licences, sources (cargo-deny)
+        if: ${{ !cancelled() }}
+        uses: EmbarkStudios/cargo-deny-action@17aeb3c839e42274e2b8adf721c8c65edfdc74dd # v2.1.3
+        with:
+          command: check advisories bans licenses sources
 
-  check:
-    name: Format, lint, test (stable Rust)
+  rust:
+    name: Rust (format, lint, tests, coverage)
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    # Bookx needs GTK >= 4.20 and libadwaita >= 1.8, which current Fedora ships.
+    # Bookx needs GTK >= 4.20 and libadwaita >= 1.8, which current Fedora ships. The packages install in about
+    # 30 s, so there is no prebuilt image (docs/ci-gates.md, "Caching").
     container: fedora:latest
-    steps:
-      - name: Install system dependencies
-        run: |
-          dnf install -y gcc gcc-c++ make pkgconf-pkg-config rust cargo rustfmt clippy \
-            gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
-            gdk-pixbuf2-devel openssl-devel gettext \
-            dbus-daemon xz tar gzip \
-            desktop-file-utils libappstream-glib appstream libxml2 python3 python3-pyyaml git
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Cache cargo
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target
-          key: cargo-check-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-check-${{ runner.os }}-
-      - name: rustfmt
-        run: cargo fmt --all -- --check
-      - name: clippy
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - name: tests
-        run: cargo test --workspace --locked
-        env:
-          NET: "0"
-          BOOKX_SECRETS: memory
-      - name: Desktop file, metainfo and MIME definitions
-        run: |
-          desktop-file-validate data/com.adhadse.Bookx.desktop
-          appstreamcli validate --no-net data/com.adhadse.Bookx.metainfo.xml
-          xmllint --noout data/com.adhadse.Bookx.mime.xml
-      - name: KOReader plugin against the real sync server on localhost
-        # the Lua tests run in the koreader-plugin job (luajit and Lua 5.4); here they skip when Lua is missing
-        run: build-aux/plugin-tests.sh
-      - name: Translations are in step with the code
-        run: "cargo test -p bookx --locked --quiet i18n::"
-      - name: Release check (versions, changelog, metainfo, golden plugins)
-        run: |
-          git config --global --add safe.directory "$PWD"
-          build-aux/release-check.sh
-      - name: Flatpak sources match Cargo.lock
-        run: python3 build-aux/flatpak-cargo-sources.py --check
-      - name: mockups still render
-        run: cargo run --example mockups --locked
-
-  coverage:
-    # REQUIRED status check (docs/ci-gates.md): fails when a crate's line coverage falls below build-aux/coverage-baseline.json,
-    # when the logic tier is below 90%, or when the lines changed in a PR are covered less than 80%.
-    name: Coverage (cargo-llvm-cov, nextest)
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    container: fedora:latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Install system dependencies
         run: |
           dnf install -y gcc gcc-c++ make pkgconf-pkg-config rustup \
             gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
             gdk-pixbuf2-devel openssl-devel gettext \
-            dbus-daemon xz tar gzip curl python3 python3-pip git
-      - name: Rust with the LLVM tools that match its compiler
-        run: |
-          rustup-init -y --profile minimal --default-toolchain stable -c llvm-tools-preview
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+            dbus-daemon xz tar gzip curl python3 python3-pip python3-pyyaml git diffutils grep \
+            desktop-file-utils libappstream-glib appstream libxml2 luajit lua
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Rust ${{ env.RUST_TOOLCHAIN }} with clippy, rustfmt and the LLVM tools of its compiler
+        run: |
+          rustup-init -y --profile minimal --default-toolchain "$RUST_TOOLCHAIN" -c clippy -c rustfmt -c llvm-tools-preview
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: rust
+          # only main saves: pull requests (also Dependabot's) restore main's cache and stay out of the 10 GB quota
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: taiki-e/install-action@25f51f6b1bf4e18876107cece836f4f77ac17c8c # v2.90.7
         with:
           tool: cargo-llvm-cov,cargo-nextest
-      - name: Cache cargo
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          # the instrumented build is cargo-llvm-cov's own target directory
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target/llvm-cov-target
-          key: cargo-coverage-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-coverage-${{ runner.os }}-
+          path: ~/.cache/pip
+          key: pip-diff-cover-1
       - name: Patch coverage tool
         run: pip install --user diff-cover
-      - name: Coverage gate
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+      - name: clippy (warnings are errors)
+        if: ${{ !cancelled() }}
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: po/bookx.pot is up to date
+        if: ${{ !cancelled() }}
+        run: |
+          git config --global --add safe.directory "$PWD"
+          BOOKX_UPDATE_POT=1 cargo test -p bookx --locked --quiet i18n::tests::the_template_lists_every_marked_string
+          git diff --exit-code po/bookx.pot || { echo "::error::po/bookx.pot is out of date: run build-aux/i18n.sh and commit it"; exit 1; }
+      - name: po/POTFILES.in is up to date
+        if: ${{ !cancelled() }}
+        run: build-aux/gen-potfiles.sh --check
+      - name: po/LINGUAS matches the language table in build.rs and the files in po/
+        if: ${{ !cancelled() }}
+        run: |
+          from_code=$(sed -n '/const ALL/,/^\];/p' build.rs | grep -o '^    ("[a-z_A-Z]*"' | cut -d'"' -f2 | LC_ALL=C sort)
+          from_files=$(grep -v '^#' po/LINGUAS | LC_ALL=C sort)
+          from_dir=$(for f in po/*.po; do b=${f#po/}; echo "${b%.po}"; done | LC_ALL=C sort)
+          [ "$from_code" = "$from_files" ] || { echo "::error::LANGUAGES in build.rs and po/LINGUAS differ"; echo "$from_code"; echo --; echo "$from_files"; exit 1; }
+          [ "$from_dir" = "$from_files" ] || { echo "::error::po/*.po and po/LINGUAS differ"; exit 1; }
+      - name: msgfmt accepts every language file
+        if: ${{ !cancelled() }}
+        run: for f in po/*.po; do msgfmt --check-format -o /dev/null "$f"; done
+      - name: Review state table (po/STATUS.md)
+        if: ${{ !cancelled() }}
+        run: build-aux/i18n-status.sh --check
+      - name: The Flathub build (reviewed languages only) passes the translation tests
+        if: ${{ !cancelled() }}
+        run: "cargo test -p bookx --locked --quiet --features reviewed-locales-only i18n::"
+      - name: Tests with coverage (nextest) and the coverage gate
+        if: ${{ !cancelled() }}
         env:
           EVENT: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
@@ -151,76 +168,173 @@ jobs:
           base=""
           if [ "$EVENT" = pull_request ]; then base="origin/$BASE_REF"; fi
           build-aux/coverage.sh --html ${base:+--base "$base"}
-      - name: Coverage report
-        if: always()
+      - name: Desktop file, metainfo and MIME definitions
+        if: ${{ !cancelled() }}
+        run: |
+          desktop-file-validate data/com.adhadse.Bookx.desktop
+          appstreamcli validate --no-net data/com.adhadse.Bookx.metainfo.xml
+          xmllint --noout data/com.adhadse.Bookx.mime.xml
+      - name: Release check (versions, changelog, metainfo, golden plugins)
+        if: ${{ !cancelled() }}
+        run: |
+          git config --global --add safe.directory "$PWD"
+          build-aux/release-check.sh
+      - name: Flatpak sources match Cargo.lock
+        if: ${{ !cancelled() }}
+        run: python3 build-aux/flatpak-cargo-sources.py --check
+      - name: mockups still render
+        if: ${{ !cancelled() }}
+        run: cargo run --example mockups --locked
+      - name: Test and coverage numbers for the report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: report-rust
+          path: |
+            target/llvm-cov/gate.json
+            target/llvm-cov/summary.md
+            target/llvm-cov/patch.md
+            target/llvm-cov/patch.json
+            target/llvm-cov/junit.xml
+          if-no-files-found: ignore
+      - name: Coverage report (HTML and lcov)
+        if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage
           path: |
             target/llvm-cov/lcov.info
             target/llvm-cov/lcov.filtered.info
-            target/llvm-cov/summary.json
-            target/llvm-cov/summary.md
-            target/llvm-cov/patch.md
             target/llvm-cov/html
           if-no-files-found: ignore
 
   ui:
-    name: UI scenarios (Broadway)
+    name: UI scenarios (Broadway, shard ${{ matrix.shard }}/6)
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 90
     container: fedora:latest
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
+      # gtk4-broadwayd is in the gtk4 package; dbus-run-session in dbus-daemon; zip, unzip and python3 build fixtures
       - name: Install system dependencies
-        # gtk4-broadwayd is in the gtk4 package; dbus-run-session in dbus-daemon
         run: |
-          dnf install -y gcc gcc-c++ make pkgconf-pkg-config rust cargo \
+          dnf install -y gcc gcc-c++ make pkgconf-pkg-config rustup \
             gtk4 gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
             gdk-pixbuf2-devel openssl-devel gettext \
             dbus-daemon xz tar gzip python3 git procps-ng zip unzip
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Cache cargo
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - name: Rust ${{ env.RUST_TOOLCHAIN }}
+        run: |
+          rustup-init -y --profile minimal --default-toolchain "$RUST_TOOLCHAIN"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target
-          key: cargo-ui-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-ui-${{ runner.os }}-
+          shared-key: ui
+          save-if: ${{ github.ref == 'refs/heads/main' && matrix.shard == 1 }}
       - name: Broadway is available
         # ui-tests.sh skips itself (exit 0) when this is missing: fail loudly in CI instead
         run: command -v gtk4-broadwayd && command -v dbus-run-session
-      - name: UI scenarios
-        run: NET=0 BOOKX_SECRETS=memory JOBS=2 build-aux/ui-tests.sh
+      - name: UI scenarios of this shard
+        run: |
+          NET=0 BOOKX_SECRETS=memory JOBS=4 SHARD=${{ matrix.shard }}/6 build-aux/ui-tests.sh 2>&1 | tee ui.log
+      - name: Scenario results for the report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: report-ui-${{ matrix.shard }}
+          path: ui.log
+          if-no-files-found: ignore
+
+  wiki:
+    name: Wiki (build and check)
+    needs: changes
+    if: needs.changes.outputs.wiki == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # The pinned Zensical version lives in build-aux/wiki.sh (ZENSICAL_VERSION).
+      VENV: ${{ github.workspace }}/.cache/wiki-venv
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Cache the Zensical environment
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.VENV }}
+          key: wiki-venv-${{ hashFiles('build-aux/wiki.sh') }}
+      - name: Build the wiki and check links
+        run: build-aux/wiki.sh
+      - name: Upload the site
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: wiki/site
+
+  deploy-wiki:
+    name: Deploy the wiki to GitHub Pages
+    needs: wiki
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    # deployments queue and are never cancelled
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
   flatpak:
-    name: Flatpak build
-    runs-on: ubuntu-latest
-    needs: check
-    timeout-minutes: 120
-    container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
-      options: --privileged
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Static checks
-        run: CHECK_ONLY=1 build-aux/flatpak.sh
-      # TODO(security): pin to a commit SHA once a release is chosen; `master` is the only ref the action documents
-      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6.8
-        with:
-          bundle: bookx.flatpak
-          manifest-path: build-aux/com.adhadse.Bookx.json
-          cache-key: flatpak-builder-${{ hashFiles('Cargo.lock', 'build-aux/com.adhadse.Bookx.json') }}
+    name: Flatpak
+    needs: changes
+    if: needs.changes.outputs.flatpak == 'true'
+    uses: ./.github/workflows/_flatpak.yml
+    with:
+      lint: true
 
-  deny:
-    name: Dependency advisories, licences, sources (cargo-deny)
+  required:
+    # The one check branch protection requires.
+    name: required
+    if: ${{ always() }}
+    needs: [changes, quick, rust, ui, wiki, flatpak]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: EmbarkStudios/cargo-deny-action@17aeb3c839e42274e2b8adf721c8c65edfdc74dd # v2.1.3
-        with:
-          command: check advisories bans licenses sources
+      - name: Every needed job passed (skipped on purpose is fine)
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          if echo "$NEEDS" | jq -e '[.[].result] | any(. == "failure" or . == "cancelled")' >/dev/null; then
+            echo "::error::a job failed or was cancelled"
+            exit 1
+          fi
+      - name: Summary table (the same one the pull request comment shows)
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p report
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" > report/jobs.json
+          gh run download "$GITHUB_RUN_ID" --dir report --pattern 'report-*' || true
+          python3 build-aux/ci-report.py --jobs report/jobs.json --artifacts report --baseline build-aux/coverage-baseline.json \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> "$GITHUB_STEP_SUMMARY"
