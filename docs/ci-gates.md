@@ -5,14 +5,15 @@ entry point for coverage is `build-aux/coverage.sh`; CI runs the same script.
 
 ## The workflows
 
-Before (2026-11-21): 9 workflows, 14 jobs, nothing ever green. After: 7 workflows, 13 job definitions (the UI job is a
-10-way matrix), one required check.
+Before (2026-11-21): 9 workflows, 14 jobs, nothing ever green. After: 6 workflows (`ci`, `_flatpak`, `release`,
+`nightly`, `package-native`, `flathub-update`) plus `dependabot-sources`, 13 job definitions in `ci.yml` and the reusable
+ones (the UI job is a 10-way matrix), one required check.
 
 | Workflow | Runs on | Jobs |
 |---|---|---|
-| `ci.yml` (name **CI**) | push to `main`, pull requests, manual | `changes`, `quick`, `rust`, `build-ui`, `ui` (10 shards), `wiki`, `deploy-wiki` (main only), `flatpak` (calls `_flatpak.yml`), **`required`** |
+| `ci.yml` (name **CI**) | push to `main`, pull requests, manual | `changes`, `quick`, `rust`, `build-ui`, `ui` (10 shards), `wiki`, `deploy-wiki` (main only), `flatpak` (calls `_flatpak.yml`), **`required`**, `report` |
 | `_flatpak.yml` | called by `ci.yml`, `release.yml`, `nightly.yml` | `bundle`: the Flatpak bundle, smoke-tested, Flathub linter optional |
-| `pr-report.yml` | `workflow_run` of CI | `comment`: the one sticky comment on the pull request |
+| `dependabot-sources.yml` | Dependabot pull requests that change Cargo files | `regenerate`: commits `build-aux/cargo-sources.json`, dispatches CI on the new commit |
 | `release.yml` | tags `v*`, manual | `gates`, `version`, `tarball`, `flatpak`, `publish` |
 | `nightly.yml` | 03:17 UTC, manual | `coverage-ui` (UI tier), `flatpak` with cold caches |
 | `package-native.yml` | manual (`os`: macos-arm64, macos-x64, windows) | `macos`, `windows` |
@@ -28,6 +29,7 @@ Old to new:
 | `ci.yml` `check` (fmt, clippy, tests, desktop files, release-check, mockups) | `rust` |
 | `ci.yml` `coverage` | `rust` (the tests ARE the coverage run: `cargo llvm-cov nextest`, no second `cargo test`) |
 | `ci.yml` `ui` | `build-ui` once + `ui` shards |
+| `pr-report.yml` (never merged as a workflow of its own) | the `report` job of `ci.yml` |
 | `ci.yml` `flatpak`, `package-flatpak.yml` | `flatpak` via `_flatpak.yml` |
 | `i18n.yml` | steps of `rust` (pot, POTFILES, LINGUAS, msgfmt, status table, reviewed-locales tests) |
 | `wiki.yml` `build`, `deploy` | `wiki`, `deploy-wiki` |
@@ -53,7 +55,8 @@ UI scenarios (Broadway, shard N/10)          N = 1..10
 Wiki (build and check)
 Deploy the wiki to GitHub Pages              main only
 Flatpak / Flatpak bundle (x86_64)            only when packaging changed
-required
+required                                     <- the only one to require
+Report                                       informational, never required
 ```
 
 Set it (needs admin rights; at the time of writing `main` has no protection):
@@ -85,22 +88,26 @@ UI build. The coverage baseline is a number of that compiler's LLVM; with the di
 1 to 3 points lower, and a new stable clippy would turn the checks red between two commits. Bump it on purpose, together
 with the baseline (`build-aux/coverage.sh --update-baseline` raises it; lowering is done by hand with a reason).
 
-### The pull request comment
+### The pull request report
 
-`pr-report.yml` runs on `workflow_run` of CI and posts ONE comment, found again by the marker
-`<!-- bookx-ci-report -->` and updated in place on every push. Content: all jobs (result, time, link), the tests
-(nextest counts and failed test names, Broadway checks per shard with the first failing check of each failed scenario,
-flaky scenarios that passed on the retry, Lua, translations), the slowest steps of each job, the coverage per crate against
-the baseline with arrows, the logic-tier total against 90%, patch coverage with the uncovered changed lines, the gate
-verdict, and links to the artifacts (HTML coverage, lcov, JUnit). `ci.yml` writes the same table to the job summary of
-`required`.
+The last job of `ci.yml`, `report` (check name `Report`), runs after `required` whatever happened (`if: !cancelled()`) and
+builds ONE Markdown report with `build-aux/ci-report.py`. It always goes to the job summary. For a pull request from this
+repository it is also posted as ONE comment, found again by the marker `<!-- bookx-ci-report -->` and updated in place
+on every push. Content: all jobs (result, time, link), the tests (nextest counts and failed test names, Broadway checks
+per shard with the first failing check of each failed scenario, flaky scenarios that passed on the retry, Lua,
+translations), the slowest steps of each job, the coverage per crate against the baseline with arrows, the logic-tier
+total against 90%, patch coverage with the uncovered changed lines, the gate verdict, and links to the artifacts (HTML
+coverage, lcov, JUnit).
 
-Security: a pull request from a fork or from Dependabot has a read-only token and cannot comment. `workflow_run` runs
-from the default branch with a token that can. It checks out the default branch, never the pull request; the CI artifacts
-(`report-rust`, `report-ui-N`) are data: size-limited, parsed with the standard library, escaped (no HTML, no links, no
-mentions), capped at 60 000 characters. Never add a step that executes something from the downloaded files. The workflow
-only exists once it is on `main` (GitHub runs `workflow_run` workflows from the default branch), so it does not comment on
-the pull request that introduces it.
+It is informational: not a required check, `required` does not wait for it, and the comment step may fail without
+failing CI (`continue-on-error`; the summary step cannot be skipped by it).
+
+Security: no `pull_request_target`, no `workflow_run`. The job-level token has `pull-requests: write`, `contents: read`
+and `actions: read`; for a pull request from a fork or from Dependabot GitHub makes it read-only, and the comment step is
+skipped (`head.repo.full_name != github.repository` or actor `dependabot[bot]`): those get the summary only, as do pushes and
+manual runs. The report is built in a step that has no token; only the next step, which runs `gh api` with the finished
+Markdown file as data, gets it. The CI artifacts are data in any case: size-limited, parsed with the standard library, escaped
+(no HTML, no links, no mentions), capped at 60 000 characters.
 
 The builder is `build-aux/ci-report.py` (standard library), tested by `build-aux/tests/test_ci_report.py` against
 fixtures in `build-aux/tests/fixtures/ci-report/`:
@@ -187,7 +194,7 @@ Nothing in the first runs was flaky; every red job had a cause.
 | Flatpak | `flatpak-builder` inside the `flatpak-github-actions` container died with "Invalid cross-device link" while updating the GNOME SDK (ostree hard links across the container's overlay mounts), then `xvfb-run` crashed (exit 139). | The bundle is built on the runner itself (apt `flatpak`, `flatpak-builder`), with `build-aux/flatpak.sh`, which also runs the smoke tests. |
 | Wiki (once, later) | The colour-scheme check starts headless Firefox and waited 20 s for it; one run on a loaded runner needed longer (`could not start Firefox`). | It waits up to 60 s. |
 | `release-check` | It asserted that every job has `runs-on`; the reusable-workflow job `flatpak` has `uses` instead. | It accepts either. |
-| Dependabot pull requests | The same failures (they ran the same broken CI), plus code changes in the cargo bumps (see the pull requests). Their token is read-only and has no secrets; no job needs either now (the comment is posted by `workflow_run`). | Rebase onto the fixed `main`. |
+| Dependabot pull requests | The same failures (they ran the same broken CI), plus code changes in the cargo bumps (see the pull requests). Their token is read-only and has no secrets; no job needs either now (the report job only comments on pull requests of this repository, see above). | Rebase onto the fixed `main`. |
 
 ## Code coverage
 

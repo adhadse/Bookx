@@ -406,17 +406,13 @@ jobs:
       lint: true
 
   required:
-    # The one check branch protection requires.
+    # The one check branch protection requires. It aggregates the real jobs only: the report below is informational.
     name: required
     if: ${{ always() }}
     needs: [changes, quick, rust, build-ui, ui, wiki, flatpak]
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions:
-      contents: read
-      actions: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Every needed job passed (skipped on purpose is fine)
         env:
           NEEDS: ${{ toJSON(needs) }}
@@ -426,13 +422,50 @@ jobs:
             echo "::error::a job failed or was cancelled"
             exit 1
           fi
-      - name: Summary table (the same one the pull request comment shows)
-        if: ${{ always() }}
+
+  report:
+    # Jobs, tests, coverage, patch coverage and timings as one table: always in the job summary, and for pull requests
+    # of this repository also ONE comment (found by its marker and updated in place). Informational: it is not a
+    # required check and `required` does not wait for it. The token of a pull request from a fork or from Dependabot
+    # is read-only, so those only get the summary (docs/ci-gates.md, "The pull request report").
+    name: Report
+    needs: [required]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: The jobs and the artifacts of this run (data)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p report
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" > report/jobs.json
           gh run download "$GITHUB_RUN_ID" --dir report --pattern 'report-*' || true
+      - name: Build the report (no token in this step)
+        env:
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
           python3 build-aux/ci-report.py --jobs report/jobs.json --artifacts report --baseline build-aux/coverage-baseline.json \
-            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> "$GITHUB_STEP_SUMMARY"
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --sha "$SHA" --pr-comment > report.md
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Comment on the pull request (same repository only; a failure here is not a CI failure)
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          id=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("<!-- bookx-ci-report -->"))) | .id' | head -n 1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@report.md --jq .html_url
+          else
+            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@report.md --jq .html_url
+          fi
