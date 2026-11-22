@@ -4,7 +4,7 @@
 
 **A GNOME-native e-book library, reader and EPUB editor, written in Rust with GTK 4, libadwaita and [Relm4](https://relm4.org).**
 
-> **Beta.** Bookx 0.3.0-beta.1 is beta software. It can have bugs, so keep a backup of anything you care about (Bookx can back up your library for you). Reports help us fix bugs: choose **Main Menu → Report a Problem**, read the log report, then **Open GitHub Issue**. Download it from [GitHub Releases](https://github.com/adhadse/Bookx/releases/latest); there are Linux (x86_64) files only for now.
+> **Beta.** Bookx 0.3.0-beta.2 is beta software. It can have bugs, so keep a backup of anything you care about (Bookx can back up your library for you). Reports help us fix bugs: choose **Main Menu → Report a Problem**, read the log report, then **Open GitHub Issue**. Download it from [GitHub Releases](https://github.com/adhadse/Bookx/releases/latest); there are Linux (x86_64) files only for now.
 
 📖 **Documentation: <https://bookx.adhadse.com>** (features, formats, limits, shortcuts, command line, devices, plugins)
 
@@ -21,7 +21,7 @@ This README is for people working on Bookx. What the app can and cannot do is de
 
 ## Status and scope
 
-- Version `0.3.0-beta.1` (see [CHANGELOG.md](CHANGELOG.md)). Linux and GNOME (GTK ≥ 4.20, libadwaita ≥ 1.8) come first.
+- Version `0.3.0-beta.2` (see [CHANGELOG.md](CHANGELOG.md)). Linux and GNOME (GTK ≥ 4.20, libadwaita ≥ 1.8) come first.
   **GitHub Releases is the official channel** ([latest release](https://github.com/adhadse/Bookx/releases/latest): Flatpak bundle,
   `.deb`, `.rpm`, tarball; signed, see the [install page](https://bookx.adhadse.com/install/)). Flathub and other package
   managers (Homebrew, winget, Scoop) are planned for later, once the project has history ([docs/release-plan.md](docs/release-plan.md)).

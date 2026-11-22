@@ -3,7 +3,8 @@ name: Release
 # Push a tag like v0.3.0 (or v0.3.0-beta.1, -rc.1, -alpha.1: those become GitHub pre-releases). The jobs:
 #   gates     the commit of the tag has to have passed CI already (build-aux/release-gate.py: its `required` check, a green
 #             Nightly, or the merged pull request with a green `required` check and an equal tree)
-#   tarball   release build, tarball, .deb, .rpm
+#   tarball   release build (on Fedora 43: the glibc floor), tarball, .deb, .rpm
+#   distros   installs the .deb/.rpm/tarball in real distribution images and starts the app (build-aux/distro-matrix.sh)
 #   flatpak   the Flatpak bundle (the reusable _flatpak.yml, the same build CI does)
 #   publish   checksums, build provenance, cosign signatures, the GitHub release
 #   wiki      after publish: the public wiki is deployed from the tagged commit (wiki-deploy.yml), pre-releases included
@@ -66,17 +67,28 @@ jobs:
     if: ${{ !inputs.gates_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    container: fedora:latest
+    # The oldest supported base, NOT fedora:latest: a binary needs the glibc of the machine it was built on (Fedora 45 has
+    # 2.44, so the first beta ran nowhere else). Fedora 43 has glibc 2.42, GTK 4.20 and libadwaita 1.8, the minimum Bookx
+    # needs, so the packages run on Fedora 43+, Ubuntu 25.10+, Debian testing, Arch and openSUSE Tumbleweed.
+    # build-aux/distro-matrix.sh proves it before every release (job `distros`).
+    container: fedora:43
+    env:
+      RUST_TOOLCHAIN: "1.93.1"
+      RUSTUP_INIT_SKIP_SUDO_CHECK: "yes"
     defaults:
       run:
         shell: bash
     steps:
       - name: Install system dependencies
         run: |
-          dnf install -y gcc gcc-c++ make pkgconf-pkg-config rust cargo \
+          dnf install -y gcc gcc-c++ make pkgconf-pkg-config rustup \
             gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
             gdk-pixbuf2-devel openssl-devel gettext tar gzip git python3 python3-pyyaml \
             desktop-file-utils appstream libxml2
+      - name: Rust toolchain (the one CI tests with)
+        run: |
+          rustup-init -y --profile minimal --default-toolchain "$RUST_TOOLCHAIN"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Release check (versions, changelog, metainfo, Flatpak sources, golden plugins)
         run: |
@@ -101,6 +113,23 @@ jobs:
         with:
           name: tarball
           path: dist/*
+
+  distros:
+    name: Packages run on the supported distributions
+    needs: tarball
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: build-aux/distro-matrix.sh
+          sparse-checkout-cone-mode: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: tarball
+          path: dist
+      - name: Install the .deb, .rpm and tarball in real distribution images and start the app
+        run: JOBS=3 build-aux/distro-matrix.sh dist
 
   version:
     name: Version from the tag
@@ -127,7 +156,7 @@ jobs:
 
   publish:
     name: Sign and attach to the release
-    needs: [tarball, flatpak, version]
+    needs: [tarball, distros, flatpak, version]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:

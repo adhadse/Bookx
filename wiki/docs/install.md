@@ -2,7 +2,7 @@
 
 !!! warning "Beta"
 
-    Bookx 0.3.0-beta.1 is beta software. It can have bugs, so keep a backup of anything you care about (Bookx can back up your library for you). Reports help us fix bugs: choose **Main Menu → Report a Problem**, read the log report, then **Open GitHub Issue**.
+    Bookx 0.3.0-beta.2 is beta software. It can have bugs, so keep a backup of anything you care about (Bookx can back up your library for you). Reports help us fix bugs: choose **Main Menu → Report a Problem**, read the log report, then **Open GitHub Issue**.
 
 **Download Bookx from [GitHub Releases](https://github.com/adhadse/Bookx/releases/latest).** That is the official and,
 for now, the only way to get Bookx: every release carries ready-made files for Linux that anybody can download, and each
@@ -14,28 +14,29 @@ releases; nothing is promised and there is no date. There are no macOS or Window
 ## Download from GitHub Releases
 
 Open the [latest release](https://github.com/adhadse/Bookx/releases/latest) and look under **Assets**. Each version
-(here 0.3.0-beta.1) has these files:
+(here 0.3.0-beta.2) has these files:
 
 | File | What it is | Choose it when |
 |---|---|---|
-| `bookx-0.3.0-beta.1-x86_64.flatpak` | A single-file Flatpak bundle (x86_64). Runs in a [sandbox](#what-the-sandbox-may-do) with its own GNOME 51 runtime | Any Linux distribution with [Flatpak](https://flatpak.org/setup/) installed. The safest choice and the one that works on older distributions |
-| `bookx-0.3.0-beta.1.x86_64.rpm` | RPM package | Fedora 43 or newer, and other RPM distributions that ship GTK 4.20 and libadwaita 1.8 |
-| `bookx_0.3.0-beta.1_amd64.deb` | Debian package | Debian, Ubuntu and derivatives that ship GTK 4.20 and libadwaita 1.8 (a recent release; older ones cannot install it) |
-| `bookx-0.3.0-beta.1-linux-x86_64.tar.gz` | Plain archive with the same files under `usr/` | Arch and everything else; or when you want no package manager involved |
+| `bookx-0.3.0-beta.2-x86_64.flatpak` | A single-file Flatpak bundle (x86_64). Runs in a [sandbox](#what-the-sandbox-may-do) with its own GNOME 51 runtime | Any Linux distribution with [Flatpak](https://flatpak.org/setup/) installed. The safest choice and the one that works on older distributions |
+| `bookx-0.3.0-beta.2.x86_64.rpm` | RPM package | Fedora 43 or newer, and other RPM distributions that ship GTK 4.20 and libadwaita 1.8 |
+| `bookx_0.3.0-beta.2_amd64.deb` | Debian package | Debian, Ubuntu and derivatives that ship GTK 4.20 and libadwaita 1.8 (a recent release; older ones cannot install it) |
+| `bookx-0.3.0-beta.2-linux-x86_64.tar.gz` | Plain archive with the same files under `usr/` | Arch and everything else; or when you want no package manager involved |
 | `SHA256SUMS` | Checksums of all the files above | [Verifying](#verify-your-download) |
 | `*.sigstore.json` | The signature of the file with the same name (also for `SHA256SUMS`) | [Verifying](#verify-your-download) |
 
-The file names follow each package type (`bookx-<version>-<architecture>.<extension>`, `bookx_<version>_amd64.deb`); the examples below use 0.3.0-beta.1, use the version you downloaded. All builds are
+The file names follow each package type (`bookx-<version>-<architecture>.<extension>`, `bookx_<version>_amd64.deb`); the examples below use 0.3.0-beta.2, use the version you downloaded. All builds are
 for 64-bit Intel/AMD (x86_64); there is no ARM build yet.
 
 ### Which file do I pick?
 
 | Your system | Pick |
 |---|---|
-| Fedora 43 or newer | the `.rpm` (or the Flatpak bundle) |
-| Debian 13+, Ubuntu with GTK 4.20 and libadwaita 1.8 | the `.deb` (or the Flatpak bundle) |
-| Older Debian or Ubuntu, Linux Mint, anything without GTK 4.20 | the Flatpak bundle |
-| Arch, openSUSE, NixOS and others | the Flatpak bundle, or the tarball if your distribution already has GTK 4.20 and libadwaita 1.8 |
+| Fedora 43, 44 or 45 | the `.rpm` (or the Flatpak bundle) |
+| Ubuntu 25.10 or 26.04, Debian testing | the `.deb` (or the Flatpak bundle) |
+| Arch | the tarball (install `gtk4 libadwaita gtksourceview5` first), or the Flatpak bundle |
+| Debian 12 or 13, Ubuntu 24.04 or older, Linux Mint, Fedora 42, anything without GTK 4.20 and libadwaita 1.8 | the Flatpak bundle (the native packages cannot install there) |
+| openSUSE, NixOS and others | the Flatpak bundle |
 | You want the app sandboxed | the Flatpak bundle |
 | You want Bookx to see all your files and devices without permissions | a native package (`.rpm`, `.deb`, tarball) |
 
@@ -55,7 +56,7 @@ Download the file **and** `SHA256SUMS` (and the `.sigstore.json` files if you ve
 
     ```bash
     flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-    flatpak install --user ./bookx-0.3.0-beta.1-x86_64.flatpak
+    flatpak install --user ./bookx-0.3.0-beta.2-x86_64.flatpak
     flatpak run com.adhadse.Bookx
     ```
 
@@ -76,13 +77,13 @@ Download the file **and** `SHA256SUMS` (and the `.sigstore.json` files if you ve
 === "Fedora (.rpm)"
 
     ```bash
-    sudo dnf install ./bookx-0.3.0-beta.1.x86_64.rpm
+    sudo dnf install ./bookx-0.3.0-beta.2.x86_64.rpm
     ```
 
 === "Debian / Ubuntu (.deb)"
 
     ```bash
-    sudo apt install ./bookx_0.3.0-beta.1_amd64.deb
+    sudo apt install ./bookx_0.3.0-beta.2_amd64.deb
     ```
 
 === "Tarball"
@@ -90,11 +91,11 @@ Download the file **and** `SHA256SUMS` (and the `.sigstore.json` files if you ve
     The archive holds a tree starting at `usr/`. Unpack it into a prefix of your choice, for example your home folder:
 
     ```bash
-    tar -xzf bookx-0.3.0-beta.1-linux-x86_64.tar.gz
-    cp -r bookx-0.3.0-beta.1-linux-x86_64/usr/* ~/.local/
+    tar -xzf bookx-0.3.0-beta.2-linux-x86_64.tar.gz
+    cp -r bookx-0.3.0-beta.2-linux-x86_64/usr/* ~/.local/
     ```
 
-    Or system-wide (`sudo cp -r bookx-0.3.0-beta.1-linux-x86_64/usr/* /usr/`). You need GTK 4.20, libadwaita 1.8 and GtkSourceView
+    Or system-wide (`sudo cp -r bookx-0.3.0-beta.2-linux-x86_64/usr/* /usr/`). You need GTK 4.20, libadwaita 1.8 and GtkSourceView
     5 installed; `espeak-ng` and `pacat`/`pw-cat` (PulseAudio or PipeWire) are optional for natural voices in
     [read aloud](read-aloud.md). The tree is the same one `make install` makes, so it contains the desktop file, icons, translations and
     `bookx-cli`.
@@ -104,7 +105,7 @@ Download the file **and** `SHA256SUMS` (and the `.sigstore.json` files if you ve
 Download the next release from [GitHub Releases](https://github.com/adhadse/Bookx/releases/latest) and install it the
 same way; your library and settings stay where they are.
 
-- Flatpak: `flatpak install --user ./bookx-0.3.0-beta.1-x86_64.flatpak` again replaces the old version.
+- Flatpak: `flatpak install --user ./bookx-0.3.0-beta.2-x86_64.flatpak` again replaces the old version.
 - `.rpm` / `.deb`: `sudo dnf install ./new-file.rpm`, `sudo apt install ./new-file.deb` upgrades in place.
 - Tarball: copy the new tree over the old one.
 
@@ -149,12 +150,12 @@ a `.sigstore.json` file next to it (download it into the same folder). Release f
 3. Or with the GitHub CLI, which checks the build-provenance attestation:
 
     ```bash
-    gh attestation verify bookx-0.3.0-beta.1-linux-x86_64.tar.gz --repo adhadse/Bookx
+    gh attestation verify bookx-0.3.0-beta.2-linux-x86_64.tar.gz --repo adhadse/Bookx
     ```
 
 If a check fails, do not install the file and report it as described in the
 [security policy](https://github.com/adhadse/Bookx/blob/main/SECURITY.md). The source you build yourself is the same code
-as the tag: compare `git rev-parse v0.3.0-beta.1` with the commit shown on the release page.
+as the tag: compare `git rev-parse v0.3.0-beta.2` with the commit shown on the release page.
 
 
 ## What the sandbox may do
@@ -192,7 +193,9 @@ Text, HTML and Markdown files are not registered; add them from inside Bookx.
 !!! note "Limitations"
     - Linux x86_64 only. There is no AppImage, no ARM build, and no Windows or macOS build. Flathub, Homebrew, winget and
       Scoop are not available (see [Why is Bookx not on Flathub?](#questions-and-answers)).
-    - The packages have been tested on few distributions; if one does not install on yours, use the Flatpak bundle and
+    - Before every release the `.rpm`, `.deb` and tarball are installed and started on Fedora 43, 44 and 45, Ubuntu
+      25.10 and 26.04, Debian testing and Arch (clean containers; no real desktop session). Anything else is not
+      tested: if a package does not install on your system, use the Flatpak bundle and
       [report it](troubleshooting.md#reporting-a-bug).
     - The Flatpak has been built and started on one machine only; devices and the natural voices are not tested inside
       the sandbox. The Flatpak translations are the built-in ones (see [Translating Bookx](translating.md)).
