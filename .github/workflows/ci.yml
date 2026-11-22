@@ -261,6 +261,10 @@ jobs:
           shared-key: ui
           save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ci-green' }}
       - name: Build (what build-aux/ui-tests.sh would build)
+        env:
+          # a little optimisation: the scenarios that time the app (PDF search, live annotations, big books) failed on
+          # the 4-core runner with an unoptimised build, and the compile time hardly changes
+          CARGO_PROFILE_DEV_OPT_LEVEL: "1"
         run: |
           cargo build --locked -p bookx -p bookx-cli
           cargo build --locked -p bookx-tts --example fake_install
@@ -319,6 +323,7 @@ jobs:
         run: command -v gtk4-broadwayd && command -v dbus-run-session
       - name: UI scenarios of this shard (a failed scenario is run once more, and said so)
         run: |
+          set +e # the step must reach the retry below
           export SKIP_BUILD=1 TIMES_FILE=ui-times.txt NET=0 BOOKX_SECRETS=memory JOBS=2
           SHARD=${{ matrix.shard }}/10 build-aux/ui-tests.sh 2>&1 | tee ui.log
           rc=${PIPESTATUS[0]}

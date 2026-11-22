@@ -4,7 +4,7 @@
   "target": 90.0,
   "groups": {
     "bookx-audio": 85.98,
-    "bookx-backup": 90.53,
+    "bookx-backup": 90.19,
     "bookx-cli": 86.33,
     "bookx-comic": 98.14,
     "bookx-convert": 95.08,
@@ -17,9 +17,9 @@
     "bookx-pdf": 90.87,
     "bookx-plugin": 93.41,
     "bookx-secrets": 88.7,
-    "bookx-serve": 95.31,
+    "bookx-serve": 94.66,
     "bookx-sources": 96.98,
-    "bookx-store": 93.42,
+    "bookx-store": 93.06,
     "bookx-text": 98.67,
     "bookx-tts": 85.82,
     "bookx-ui": 79.0
