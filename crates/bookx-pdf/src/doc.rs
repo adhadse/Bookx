@@ -95,7 +95,9 @@ const MAX_DEPTH: usize = 24;
 pub fn decode_text_string(b: &[u8]) -> String {
     if let Some(rest) = b.strip_prefix(&[0xFE, 0xFF]) {
         let u: Vec<u16> = rest
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|c| u16::from_be_bytes([c[0], c[1]]))
             .collect();
         return String::from_utf16_lossy(&u)
@@ -104,7 +106,9 @@ pub fn decode_text_string(b: &[u8]) -> String {
     }
     if let Some(rest) = b.strip_prefix(&[0xFF, 0xFE]) {
         let u: Vec<u16> = rest
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|c| u16::from_le_bytes([c[0], c[1]]))
             .collect();
         return String::from_utf16_lossy(&u)

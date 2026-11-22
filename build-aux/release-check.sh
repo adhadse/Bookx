@@ -32,7 +32,11 @@ meta=$(sed -n 's/.*<release version="\([^"]*\)".*/\1/p' data/$APP_ID.metainfo.xm
 log=$(sed -n 's/^## \[\([0-9][^]]*\)\].*/\1/p' CHANGELOG.md | head -1)
 [ "$log" = "$version" ] && ok "CHANGELOG newest version: $log" || bad "CHANGELOG newest version is '$log'"
 if [ -n "$tag" ]; then
-    [ "${tag#v}" = "$version" ] && ok "tag $tag matches" || bad "tag $tag does not match version $version"
+    # v0.3.0 for 0.3.0, and v0.3.0-beta.1 / -rc.1 / -alpha.1 are pre-releases of 0.3.0
+    case "${tag#v}" in
+        "$version" | "$version"-alpha* | "$version"-beta* | "$version"-rc*) ok "tag $tag matches" ;;
+        *) bad "tag $tag does not match version $version" ;;
+    esac
 fi
 
 echo "==> Flatpak sources and manifest"
@@ -99,7 +103,7 @@ for f in sorted(glob.glob(".github/workflows/*.yml")):
     d = yaml.safe_load(open(f))
     assert "jobs" in d and d["jobs"], f
     for n, j in d["jobs"].items():
-        assert "runs-on" in j, (f, n)
+        assert "runs-on" in j or "uses" in j, (f, n)  # a job is a runner or a reusable workflow
 PY
     then ok "workflow YAML parses (never run on GitHub from here)"; else bad "workflow YAML"; fi
 else skip "python yaml not installed"; fi

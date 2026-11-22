@@ -1,0 +1,6 @@
+  ok    notes   note page opens
+  FAIL  shelves   a shelf is created
+        | error line
+  FAIL  shelves   second failing check
+
+passed: 10, failed: 2  (3 scenarios in parallel, 5s after start-up)

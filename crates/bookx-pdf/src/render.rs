@@ -26,7 +26,7 @@ impl Bitmap {
 
     /// Inverts the colours (night reading, e-ink with a dark theme); alpha is kept.
     pub fn invert(&mut self) {
-        for px in self.rgba.chunks_exact_mut(4) {
+        for px in self.rgba.as_chunks_mut::<4>().0 {
             px[0] = 255 - px[0];
             px[1] = 255 - px[1];
             px[2] = 255 - px[2];
@@ -40,7 +40,7 @@ impl Bitmap {
         let (mut x0, mut y0, mut x1, mut y1) = (usize::MAX, usize::MAX, 0usize, 0usize);
         for y in 0..h {
             let row = &self.rgba[y * w * 4..(y + 1) * w * 4];
-            for (x, px) in row.chunks_exact(4).enumerate() {
+            for (x, px) in row.as_chunks::<4>().0.iter().enumerate() {
                 if px[0] < threshold || px[1] < threshold || px[2] < threshold {
                     x0 = x0.min(x);
                     x1 = x1.max(x);
@@ -200,7 +200,10 @@ mod tests {
         let bm = r.render(0, 0.5, false).unwrap();
         assert_eq!((bm.width, bm.height), (306, 396));
         assert_eq!(bm.rgba.len(), 306 * 396 * 4);
-        assert!(bm.rgba.chunks_exact(4).any(|p| p[0] < 100), "no ink");
+        assert!(
+            bm.rgba.as_chunks::<4>().0.iter().any(|p| p[0] < 100),
+            "no ink"
+        );
         assert_eq!(&bm.rgba[..4], &[255, 255, 255, 255], "paper is white");
         let inv = r.render(0, 0.5, true).unwrap();
         assert_eq!(&inv.rgba[..4], &[0, 0, 0, 255]);

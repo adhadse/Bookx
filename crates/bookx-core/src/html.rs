@@ -277,10 +277,7 @@ impl<'a> Builder<'a> {
     fn flush(&mut self, ctx: &Ctx) {
         let mut spans = std::mem::take(&mut self.cur);
         if !ctx.pre {
-            loop {
-                let Some(i) = spans.iter().rposition(|s| !matches!(s, Span::Anchor(_))) else {
-                    break;
-                };
+            while let Some(i) = spans.iter().rposition(|s| !matches!(s, Span::Anchor(_))) {
                 match &mut spans[i] {
                     Span::Text { text, .. } => {
                         let t = text.trim_end().len();
@@ -298,10 +295,7 @@ impl<'a> Builder<'a> {
                 }
                 break;
             }
-            loop {
-                let Some(i) = spans.iter().position(|s| !matches!(s, Span::Anchor(_))) else {
-                    break;
-                };
+            while let Some(i) = spans.iter().position(|s| !matches!(s, Span::Anchor(_))) {
                 if let Span::Text { text, .. } = &mut spans[i] {
                     *text = text.trim_start().to_string();
                     if text.is_empty() {

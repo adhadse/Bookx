@@ -15,7 +15,7 @@ and which pages are weak. User-facing content only goes into `wiki/`; this file 
   gitignored): build, `wiki-optimize.py` (WebP, lazy loading), `check-site-links.py` (stdlib only: internal links, anchors,
   images, CSS/JS references, light/dark picture pairs), `wiki-theme-check.py` (the palette toggle in headless Firefox;
   skipped without Firefox, `WIKI_BROWSER=0` skips it). Zensical itself also reports broken links in the Markdown.
-- **Deploy:** `.github/workflows/wiki.yml`. Pull requests that touch `wiki/**` build and check only. Pushes to `main`
+- **Deploy:** `.github/workflows/ci.yml`. Pull requests that touch `wiki/**` build and check only. Pushes to `main`
   that touch `wiki/**`, and manual runs, also upload the Pages artifact and run `actions/deploy-pages`
   (permissions `pages: write`, `id-token: write`). The existing `adhadse/wiki` repository deploys by pushing to a
   `gh-pages` branch with `peaceiris/actions-gh-pages`; this repository uses the newer artifact-based Pages deployment

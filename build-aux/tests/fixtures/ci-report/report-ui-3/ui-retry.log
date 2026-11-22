@@ -1,0 +1,4 @@
+  ok    flakyone   it measured too early
+  FAIL  realbug   always broken
+
+passed: 1, failed: 1  (1 scenarios in parallel, 5s after start-up)

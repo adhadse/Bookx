@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="nextest-run" tests="4" failures="1" errors="0">
+ <testsuite name="bookx-core" tests="4">
+  <testcase name="a" classname="bookx-core"/>
+  <testcase name="b" classname="bookx-core"/>
+  <testcase name="c" classname="bookx-core"><failure message="boom"/></testcase>
+  <testcase name="d" classname="bookx-core"><skipped/></testcase>
+ </testsuite>
+</testsuites>

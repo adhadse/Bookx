@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.10.0.schema.json
 # A portable zip: winget unpacks it, links bookx.exe as the command `bookx`, and removes it again on uninstall.
-# The zip comes from .github/workflows/package-windows.yml (UNTESTED: nobody has run the app on Windows yet).
+# The zip comes from .github/workflows/package-native.yml (UNTESTED: nobody has run the app on Windows yet).
 PackageIdentifier: adhadse.Bookx
 PackageVersion: 0.3.0
 InstallerType: zip

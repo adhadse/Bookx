@@ -252,7 +252,7 @@ pub fn koreader_sidecar(title: &str, chapters: &[String], notes: &Notes) -> Stri
             look: None,
         });
     }
-    entries.sort_by(|a, b| (a.spine, a.order.to_bits()).cmp(&(b.spine, b.order.to_bits())));
+    entries.sort_by_key(|a| (a.spine, a.order.to_bits()));
     let mut s = String::from("-- bookx annotations for KOReader\nreturn {\n");
     s.push_str(&format!(
         "    [\"doc_props\"] = {{\n        [\"title\"] = {},\n    }},\n",

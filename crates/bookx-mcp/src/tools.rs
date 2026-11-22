@@ -803,7 +803,7 @@ fn get_annotations(app: &Arc<App>, a: &Value, ctx: &Ctx) -> Result<ToolOutput, T
             }
         }
     }
-    rows.sort_by(|x, y| y.0.cmp(&x.0));
+    rows.sort_by_key(|x| std::cmp::Reverse(x.0));
     let values: Vec<Value> = rows.into_iter().map(|(_, v)| v).collect();
     let (items, next) = page(&values, offset, limit);
     Ok(ToolOutput::json(with_next(
@@ -853,7 +853,7 @@ fn reading_stats(app: &Arc<App>, a: &Value) -> Result<ToolOutput, ToolError> {
                 bookx_lookup::stats::book_totals(&owned)
                     .into_iter()
                     .collect();
-            per.sort_by(|x, y| y.1.seconds.cmp(&x.1.seconds));
+            per.sort_by_key(|x| std::cmp::Reverse(x.1.seconds));
             let daily = store.daily(&Utc);
             let streak = bookx_lookup::stats::streaks(&daily, Utc::now().date_naive(), 60);
             v["sessions"] = json!({
@@ -889,9 +889,9 @@ fn recent_books(app: &Arc<App>, a: &Value) -> Result<ToolOutput, ToolError> {
         .filter(|b| added || b.last_read.is_some())
         .collect();
     if added {
-        v.sort_by(|x, y| y.added.cmp(&x.added));
+        v.sort_by_key(|x| std::cmp::Reverse(x.added));
     } else {
-        v.sort_by(|x, y| y.last_read.cmp(&x.last_read));
+        v.sort_by_key(|x| std::cmp::Reverse(x.last_read));
     }
     Ok(ToolOutput::json(
         json!({"books": v.iter().take(limit).map(|b| {

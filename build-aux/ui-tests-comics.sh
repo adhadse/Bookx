@@ -3,7 +3,7 @@
 # The comics are synthetic (crates/bookx-comic/examples/make_test_comics.rs).
 
 COMICS=$ROOT/comics
-cargo build --quiet -p bookx-comic --example make_test_comics || exit 1
+[ -n "${SKIP_BUILD:-}" ] || cargo build --quiet -p bookx-comic --example make_test_comics || exit 1
 "${CARGO_TARGET_DIR:-$PWD/target}/debug/examples/make_test_comics" "$COMICS.all" >/dev/null 2>&1
 for f in story manga webtoon spreads bomb corrupt; do
     mkdir -p "$COMICS/$f"

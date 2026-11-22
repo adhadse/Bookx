@@ -1,0 +1,72 @@
+name: Dependabot cargo sources
+
+# A Dependabot cargo update changes Cargo.lock, and build-aux/cargo-sources.json (the offline crate list of the Flatpak
+# build) must follow it: CI's "Flatpak sources match Cargo.lock" step would fail on every such pull request. This
+# regenerates the file, commits it to the Dependabot branch and starts CI on the new commit (a push made with the
+# workflow token does not start workflows by itself, so CI is dispatched by hand: its checks attach to that commit).
+#
+# Security (pull_request_target runs with a write token): only for pull requests that Dependabot opened in this
+# repository and that change nothing but Cargo.toml / Cargo.lock files. The script that runs is the one on the base
+# branch; the pull request's Cargo.lock is only read as data. Nothing from the branch is executed.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    paths:
+      - Cargo.lock
+      - "**/Cargo.toml"
+
+permissions: {}
+
+concurrency:
+  group: dependabot-sources-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  regenerate:
+    name: Regenerate build-aux/cargo-sources.json
+    if: github.actor == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: write
+      pull-requests: read
+    steps:
+      - name: Only Cargo files changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename')
+          echo "$files"
+          if printf '%s\n' "$files" | grep -Evq '^(Cargo\.(toml|lock)|crates/[^/]+/Cargo\.toml)$'; then
+            echo "::error::this pull request changes more than Cargo files: not regenerating automatically"
+            exit 1
+          fi
+      - name: The trusted script (base branch)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: base
+          persist-credentials: false
+      - name: The Dependabot branch (data only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          path: pr
+      - name: Regenerate, commit, run CI on the new commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          python3 base/build-aux/flatpak-cargo-sources.py pr/Cargo.lock -o pr/build-aux/cargo-sources.json
+          cd pr
+          if git diff --quiet -- build-aux/cargo-sources.json; then
+            echo "cargo-sources.json already matches Cargo.lock"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build-aux/cargo-sources.json
+          git commit -m "Regenerate build-aux/cargo-sources.json for the new Cargo.lock"
+          git push origin "HEAD:$HEAD_REF"
+          gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$HEAD_REF"

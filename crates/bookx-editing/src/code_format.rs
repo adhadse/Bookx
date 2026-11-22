@@ -103,10 +103,8 @@ pub fn is_balanced(s: &str) -> bool {
                     stack.push(name);
                 }
             }
-            Event::Close { name, .. } => {
-                if stack.pop().as_deref() != Some(name.as_str()) {
-                    return false;
-                }
+            Event::Close { name, .. } if stack.pop().as_deref() != Some(name.as_str()) => {
+                return false;
             }
             _ => {}
         }

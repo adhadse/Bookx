@@ -424,10 +424,11 @@ mod tests {
         }
         fn xhtml(&self, s: usize) -> Option<String> {
             let body: String = (1..=4).map(|i| format!("<p>para {i} words</p>")).collect();
-            Some(format!(
-                "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><div>{body}</div></body></html>"
-            ))
-            .filter(|_| s < self.weights.len())
+            (s < self.weights.len()).then(|| {
+                format!(
+                    "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><div>{body}</div></body></html>"
+                )
+            })
         }
         fn spine_of_title(&self, key: &str) -> Option<usize> {
             self.titles.iter().position(|t| title_key(t) == key)

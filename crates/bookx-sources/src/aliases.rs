@@ -138,7 +138,7 @@ pub fn group_authors(books: &[Book], aliases: &AliasMap) -> Vec<AuthorGroup> {
             }
         })
         .collect();
-    out.sort_by(|a, b| normalize(&a.canonical).cmp(&normalize(&b.canonical)));
+    out.sort_by_key(|a| normalize(&a.canonical));
     out
 }
 

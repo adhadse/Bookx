@@ -1,4 +1,4 @@
-# Homebrew cask template for the Bookx disk image that .github/workflows/package-macos.yml builds.
+# Homebrew cask template for the Bookx disk image that .github/workflows/package-native.yml builds.
 # Goes into adhadse/homebrew-bookx as Casks/bookx.rb. NOT TESTED (no macOS here), and a cask needs a *signed and
 # notarized* .dmg: Homebrew is removing casks that Gatekeeper rejects. Needs an Apple Developer ID
 # (docs/macos-port.md, "Owner").

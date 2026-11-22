@@ -2,7 +2,7 @@
 # Builds the Flatpak (offline: crates come from build-aux/cargo-sources.json) and smoke-tests it.
 #
 #   build-aux/flatpak.sh              static checks, build, smoke tests
-#   BUNDLE=1 build-aux/flatpak.sh     also write bookx.flatpak next to the repository
+#   BUNDLE=1 build-aux/flatpak.sh     also write bookx.flatpak next to the repository (BUNDLE_FILE=name.flatpak: another name)
 #   CHECK_ONLY=1 build-aux/flatpak.sh only the static checks (manifest, desktop file, metainfo, sources)
 #
 #   REVIEWED_LOCALES=1 build-aux/flatpak.sh   build like Flathub: English plus reviewed languages only
@@ -96,8 +96,9 @@ fi
 
 if [ "${BUNDLE:-0}" = 1 ]; then
     step "Bundle"
-    flatpak build-bundle "$WORK/repo" bookx.flatpak $APP_ID
-    sha256sum bookx.flatpak > bookx.flatpak.sha256
-    ls -l bookx.flatpak
+    BUNDLE_FILE="${BUNDLE_FILE:-bookx.flatpak}"
+    flatpak build-bundle "$WORK/repo" "$BUNDLE_FILE" $APP_ID
+    sha256sum "$BUNDLE_FILE" > "$BUNDLE_FILE.sha256"
+    ls -l "$BUNDLE_FILE"
 fi
 step "Flatpak build finished"

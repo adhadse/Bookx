@@ -222,13 +222,11 @@ pub fn css_errors(css: &str) -> Vec<MarkupError> {
                 }
             }
             b'{' => open.push(i),
-            b'}' => {
-                if open.pop().is_none() {
-                    errs.push(MarkupError {
-                        range: i..i + 1,
-                        kind: ErrorKind::StrayBrace,
-                    });
-                }
+            b'}' if open.pop().is_none() => {
+                errs.push(MarkupError {
+                    range: i..i + 1,
+                    kind: ErrorKind::StrayBrace,
+                });
             }
             _ => {}
         }

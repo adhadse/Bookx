@@ -40,7 +40,7 @@ Size: S under a day, M a few days, L a week or more. "Done" means a Linux-safe c
 | `std::os::unix` code | `crates/bookx-serve/src/cert.rs:58,101`, `bookx-backup/src/repo/*.rs`, `bookx-tts/src/download.rs:529,723`, `bookx-tts/src/sink.rs:208` | Unix permissions, `FileExt` | all work on macOS | none | portable |
 | Dialogs, portals | `gtk::FileDialog`, `show_uri` | xdg-desktop-portal | GTK uses its own (native `NSOpenPanel`) dialogs without portals | none | check |
 | Dark mode | libadwaita `AdwStyleManager` | settings portal | libadwaita follows the macOS appearance only with a recent GTK; check on 4.20+ and otherwise offer the existing theme setting | S | check |
-| Packaging | `build-aux/macos-bundle.sh`, `.github/workflows/package-macos.yml`, `packaging/homebrew/` | n/a | `.app` bundle: dylibbundler, gdk-pixbuf loaders cache, schemas, icons, launcher script, `Info.plist`, icns, codesign, notarize, `create-dmg` | M-L | scaffolded, **never run** |
+| Packaging | `build-aux/macos-bundle.sh`, `.github/workflows/package-native.yml`, `packaging/homebrew/` | n/a | `.app` bundle: dylibbundler, gdk-pixbuf loaders cache, schemas, icons, launcher script, `Info.plist`, icns, codesign, notarize, `create-dmg` | M-L | scaffolded, **never run** |
 | Test suites | `build-aux/ui-tests*.sh` (Broadway), `session-tests.sh` (GNOME Shell) | Linux | none of the UI scenario infrastructure runs on macOS; only `cargo test` (the pure logic) can. Add a macOS job to `ci.yml` that runs `cargo test --workspace` (the test owner edits `ci.yml`). | M | open |
 
 What had to be gated with `cfg`: the Keychain store (`cfg(any(target_os = "macos", windows))` in `bookx-secrets`), the
@@ -53,7 +53,7 @@ macOS build), the TTS sinks (`pacat` and friends), the ONNX catalogue.
 | | Formula (`packaging/homebrew/bookx.rb`) | Cask (`packaging/homebrew/Casks/bookx.rb`) |
 |---|---|---|
 | What the user gets | command-line launcher `bookx`, built on their Mac with `cargo install` | `Bookx.app` from a `.dmg`, Launchpad icon, file associations |
-| Needs from the owner | nothing from Apple | Apple Developer ID certificate (US$99/year), notarization, a working `package-macos.yml` |
+| Needs from the owner | nothing from Apple | Apple Developer ID certificate (US$99/year), notarization, a working `package-native.yml` |
 | Gatekeeper | irrelevant (built locally) | **Homebrew is dropping casks that fail Gatekeeper**, so notarization is required (check the current policy when publishing) |
 | Build time for the user | long (cargo, 10-30 min) | none |
 | Risk | the dependency stack (gtk4, libadwaita 1.8+, gtksourceview5, espeak-ng) must be new enough in Homebrew: formula versions are not checked here | the bundle script is the riskiest file: schemas, pixbuf loaders, dylib paths |

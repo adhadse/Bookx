@@ -244,11 +244,12 @@ fn process_document(
                             }
                         }
                     }
-                    "img" => {
-                        if opts.mark_missing_alt_decorative && tag_attr(&new_tag, "alt").is_none() {
-                            new_tag = set_tag_attr(&new_tag, "alt", "");
-                            alts += 1;
-                        }
+                    "img"
+                        if opts.mark_missing_alt_decorative
+                            && tag_attr(&new_tag, "alt").is_none() =>
+                    {
+                        new_tag = set_tag_attr(&new_tag, "alt", "");
+                        alts += 1;
                     }
                     _ => {}
                 }

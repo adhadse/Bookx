@@ -806,7 +806,7 @@ pub fn fields_of(meta: &crate::core::opf::Metadata) -> BookFields {
         title: meta.title.clone(),
         authors: meta.authors.clone(),
         series: Some(meta.series.clone()).filter(|s| !s.is_empty()),
-        series_index: Some(meta.series_index).filter(|_| !meta.series.is_empty()),
+        series_index: (!meta.series.is_empty()).then_some(meta.series_index),
         language: meta.language.clone(),
     }
 }

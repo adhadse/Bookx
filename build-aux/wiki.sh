@@ -52,8 +52,8 @@ echo "==> Optimising pictures (WebP, lazy loading)"
 
 echo "==> Checking the pictures against build-aux/wiki-pictures.txt (every picture exists, is on its page in both styles, has a scene; no orphans; size budget)"
 python3 build-aux/check-wiki-pictures.py || exit 1
-python3 build-aux/check-wiki-frames.py || exit 1
-python3 build-aux/check-wiki-centred.py || exit 1
+"$VENV/bin/python" build-aux/check-wiki-frames.py || exit 1
+"$VENV/bin/python" build-aux/check-wiki-centred.py || exit 1
 python3 build-aux/check-wiki-contrast.py || exit 1
 
 echo "==> Checking the screenshots for focus rings"

@@ -118,7 +118,7 @@ pub fn image_cache_name(url: &str) -> String {
 /// age rank where a bigger number is older).
 pub fn prune_plan(mut files: Vec<(PathBuf, u64, u64)>, cap: u64) -> Vec<PathBuf> {
     let mut total: u64 = files.iter().map(|f| f.1).sum();
-    files.sort_by(|a, b| b.2.cmp(&a.2));
+    files.sort_by_key(|a| std::cmp::Reverse(a.2));
     let mut out = Vec::new();
     for (p, size, _) in files {
         if total <= cap {

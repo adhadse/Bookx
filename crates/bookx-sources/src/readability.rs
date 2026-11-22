@@ -327,10 +327,7 @@ impl<'a> Page<'a> {
             .max_by(|a, b| a.1.total_cmp(b.1).then_with(|| b.0.cmp(a.0)))
             .map(|(id, s)| (*id, *s))?;
         // content split over sibling blocks: the parent collects half of every child's score
-        loop {
-            let Some(node) = self.doc.tree.get(best_id) else {
-                break;
-            };
+        while let Some(node) = self.doc.tree.get(best_id) {
             let Some(parent) = node.parent() else { break };
             if matches!(el_name(parent), None | Some("html") | Some("body")) {
                 break;

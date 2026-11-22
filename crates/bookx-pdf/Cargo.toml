@@ -9,4 +9,3 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 hayro = "0.9"
-anyhow = "1"
