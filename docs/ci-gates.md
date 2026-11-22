@@ -81,8 +81,8 @@ deploys it: the live site must not describe a feature that no download has yet. 
 * `release.yml` calls it as the last job (`wiki`, `needs: publish`) with the tag, so the docs go live after the release
   assets are out, for pre-release tags too. It is skipped for manual runs without a tag, and a Pages failure leaves the
   release as it is (red job, assets already published).
-* by hand (Actions, Wiki deploy, Run workflow): `ref` empty publishes the latest stable release tag; any other tag or branch,
-  `main` included, only if you type it.
+* by hand (Actions, Wiki deploy, Run workflow) is the owner's override: a manual run deploys whatever ref you pick
+  (default `main`; any branch or tag); a release deploys its tag.
 
 The environment `github-pages` restricts deployments to refs it allows. Its policies are `main`, `master` and the tag
 pattern `v*` (added 2026-11-22 with `gh api -X POST repos/adhadse/Bookx/environments/github-pages/deployment-branch-policies -f name='v*' -f type=tag`); without the tag policy a tag-triggered deploy is refused.

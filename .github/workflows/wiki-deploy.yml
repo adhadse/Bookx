@@ -1,10 +1,11 @@
 name: Wiki deploy
 
-# The public wiki (https://bookx.adhadse.com, GitHub Pages) only changes with a release, so it never describes a feature
-# that no download has. It is deployed
-#   * by release.yml, after the release is published, built from the tagged commit;
-#   * by hand: Actions > Wiki deploy > Run workflow. `ref` empty = the latest release tag (a stable one if there is
-#     one). Typing another tag or a branch (main included) is a conscious choice: it publishes that state of the docs.
+# The public wiki (https://bookx.adhadse.com, GitHub Pages) normally changes with a release, so it describes what a
+# download contains. It is deployed
+#   * by release.yml, after the release is published, built from the TAGGED commit;
+#   * by hand, as the owner's deliberate override: Actions > Wiki deploy > Run workflow deploys WHATEVER REF YOU PICK.
+#     The default is `main`; a tag or another branch is accepted. That publishes that state of the docs, features that
+#     no release has yet included.
 # Pushes to main and pull requests only build and check the wiki (ci.yml, job `wiki`).
 #
 # Settings > Environments > github-pages > Deployment branches and tags must allow the ref: `main`, `master` and the tag
@@ -19,9 +20,9 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Tag or branch to publish (empty: the latest release tag; main only if you mean it)"
+        description: "Branch or tag to publish (override: whatever you pick goes live; default main)"
         type: string
-        default: ""
+        default: main
 
 permissions:
   contents: read
@@ -52,16 +53,7 @@ jobs:
         env:
           INPUT_REF: ${{ inputs.ref }}
         run: |
-          ref=$INPUT_REF
-          if [ -z "$ref" ]; then
-            tags=$(git ls-remote --tags --refs "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" 'v*' | sed 's#.*refs/tags/##')
-            ref=$(printf '%s\n' "$tags" | grep -Ev -- '-(alpha|beta|rc)' | sort -V | tail -n 1)
-            [ -n "$ref" ] || ref=$(printf '%s\n' "$tags" | sort -V | tail -n 1)
-          fi
-          if [ -z "$ref" ]; then
-            echo "::error::there is no release tag yet: run this workflow with a ref (a tag, or main on purpose)"
-            exit 1
-          fi
+          ref=${INPUT_REF:-main}
           echo "Publishing the wiki of: $ref"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
