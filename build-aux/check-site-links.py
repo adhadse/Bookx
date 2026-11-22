@@ -102,7 +102,7 @@ def main():
         rel = page.relative_to(site)
         srcs = {urldefrag(v)[0] for a, v in info.refs if a == "src"}
         for src in sorted(srcs):
-            for ext in (".png", ".webp", ".webm"):
+            for ext in (".png", ".webp", ".webm", ".mp4"):
                 for mine, other in ((f"-light{ext}", f"-dark{ext}"), (f"-dark{ext}", f"-light{ext}")):
                     if src.endswith(mine) and src[: -len(mine)] + other not in srcs:
                         errors.append(f"{rel}: {src} is used without its {other} variant")
@@ -122,7 +122,7 @@ def main():
                 errors.append(f"{page.relative_to(site)}: {v} must end with #only-dark")
     used = {(page.parent / urldefrag(v)[0]).resolve() for page, info in parsed.items() for a, v in info.refs
             if a in ("src", "poster")}
-    for f in sorted(site.rglob("*-light.webm")) + sorted(site.rglob("*-dark.webm")):
+    for f in [g for e in ("webm", "mp4") for k in ("light", "dark") for g in sorted(site.rglob(f"*-{k}.{e}"))]:
         if f.resolve() not in used:
             errors.append(f"{f.relative_to(site)} is not used by any page (delete it from wiki/docs/assets)")
     for f in sorted(site.rglob("*-poster-light.webp")) + sorted(site.rglob("*-poster-dark.webp")):
