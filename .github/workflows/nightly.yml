@@ -41,7 +41,8 @@ jobs:
             dbus-daemon xz tar gzip curl python3 git procps-ng zip unzip \
             espeak-ng pulseaudio-utils xxd \
             google-noto-sans-fonts google-noto-serif-fonts abattis-cantarell-vf-fonts dejavu-sans-fonts \
-            google-noto-sans-cjk-fonts google-noto-sans-arabic-fonts google-noto-sans-devanagari-fonts
+            google-noto-sans-cjk-fonts google-noto-sans-arabic-fonts google-noto-sans-devanagari-fonts \
+            adwaita-sans-fonts adwaita-mono-fonts hunspell-en-US
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Rust with the LLVM tools that match its compiler
         run: |

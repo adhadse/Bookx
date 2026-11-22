@@ -107,14 +107,16 @@ jobs:
     steps:
       - name: Install system dependencies
         run: |
-          dnf install -y gcc gcc-c++ make pkgconf-pkg-config rustup \
+          # calibre (ebook-convert, ebook-meta, calibredb) and chmlib: the parity and import tests compare with them
+          dnf install -y --setopt=install_weak_deps=False gcc gcc-c++ make pkgconf-pkg-config rustup \
             gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
             gdk-pixbuf2-devel openssl-devel gettext \
             dbus-daemon xz tar gzip curl python3 python3-pip python3-pyyaml git diffutils grep \
             desktop-file-utils libappstream-glib appstream libxml2 luajit lua \
-            espeak-ng pulseaudio-utils xxd mold \
+            espeak-ng pulseaudio-utils xxd mold calibre chmlib \
             google-noto-sans-fonts google-noto-serif-fonts abattis-cantarell-vf-fonts dejavu-sans-fonts \
-            google-noto-sans-cjk-fonts google-noto-sans-arabic-fonts google-noto-sans-devanagari-fonts
+            google-noto-sans-cjk-fonts google-noto-sans-arabic-fonts google-noto-sans-devanagari-fonts \
+            adwaita-sans-fonts adwaita-mono-fonts hunspell-en-US
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -143,12 +145,6 @@ jobs:
       - name: clippy (warnings are errors)
         if: ${{ !cancelled() }}
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - name: po/bookx.pot is up to date
-        if: ${{ !cancelled() }}
-        run: |
-          git config --global --add safe.directory "$PWD"
-          BOOKX_UPDATE_POT=1 cargo test -p bookx --locked --quiet i18n::tests::the_template_lists_every_marked_string
-          git diff --exit-code po/bookx.pot || { echo "::error::po/bookx.pot is out of date: run build-aux/i18n.sh and commit it"; exit 1; }
       - name: po/POTFILES.in is up to date
         if: ${{ !cancelled() }}
         run: build-aux/gen-potfiles.sh --check
@@ -172,6 +168,8 @@ jobs:
       - name: Tests with coverage (nextest) and the coverage gate
         if: ${{ !cancelled() }}
         env:
+          # the template test rewrites po/bookx.pot instead of only comparing; the next step fails on a difference
+          BOOKX_UPDATE_POT: "1"
           EVENT: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
         run: |
@@ -180,6 +178,11 @@ jobs:
           base=""
           if [ "$EVENT" = pull_request ]; then base="origin/$BASE_REF"; fi
           build-aux/coverage.sh --html ${base:+--base "$base"}
+      - name: po/bookx.pot is up to date
+        if: ${{ !cancelled() }}
+        run: |
+          git config --global --add safe.directory "$PWD"
+          git diff --exit-code po/bookx.pot || { echo "::error::po/bookx.pot is out of date: run build-aux/i18n.sh and commit it"; exit 1; }
       - name: Desktop file, metainfo and MIME definitions
         if: ${{ !cancelled() }}
         run: |
@@ -270,7 +273,7 @@ jobs:
           compression-level: 0
 
   ui:
-    name: UI scenarios (Broadway, shard ${{ matrix.shard }}/8)
+    name: UI scenarios (Broadway, shard ${{ matrix.shard }}/10)
     needs: [changes, build-ui]
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
@@ -282,18 +285,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
       # Only what the app and the scenarios need at run time (no compiler): gtk4-broadwayd is in the gtk4 package,
       # dbus-run-session in dbus-daemon; zip, unzip, xxd and python3 build fixtures; espeak-ng and the fonts
-      # (Noto Sans/Serif, CJK, Arabic, Devanagari) are what the text and speech scenarios measure with.
+      # (Adwaita Sans is GTK's UI font, Noto Serif the reader's, CJK, Arabic, Devanagari) and hunspell-en are what the text and speech scenarios measure with.
       - name: Install system dependencies
         run: |
           dnf install -y gtk4 libadwaita gtksourceview5 gdk-pixbuf2 pango cairo openssl-libs gettext \
             dbus-daemon tar gzip python3 git procps-ng zip unzip \
             espeak-ng pulseaudio-utils xxd \
             google-noto-sans-fonts google-noto-serif-fonts abattis-cantarell-vf-fonts dejavu-sans-fonts \
-            google-noto-sans-cjk-fonts google-noto-sans-arabic-fonts google-noto-sans-devanagari-fonts
+            google-noto-sans-cjk-fonts google-noto-sans-arabic-fonts google-noto-sans-devanagari-fonts \
+            adwaita-sans-fonts adwaita-mono-fonts hunspell-en-US
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: The machine
         run: build-aux/ci-timing.sh
@@ -307,7 +311,7 @@ jobs:
         run: command -v gtk4-broadwayd && command -v dbus-run-session
       - name: UI scenarios of this shard
         run: |
-          SKIP_BUILD=1 TIMES_FILE=ui-times.txt NET=0 BOOKX_SECRETS=memory JOBS=4 SHARD=${{ matrix.shard }}/8 build-aux/ui-tests.sh 2>&1 | tee ui.log
+          SKIP_BUILD=1 TIMES_FILE=ui-times.txt NET=0 BOOKX_SECRETS=memory JOBS=2 SHARD=${{ matrix.shard }}/10 build-aux/ui-tests.sh 2>&1 | tee ui.log
       - name: Scenario results for the report
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
