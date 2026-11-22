@@ -78,3 +78,14 @@ Recommended order: get `cargo build --release` working on a Mac, then the formul
 * `cargo check -p bookx-secrets --target aarch64-apple-darwin` passes (type-checks `NativeStore` against `keyring`/`security-framework`).
   Nothing was linked or run, and the other crates were not checked for that target.
 * Not verified: any Homebrew file (`brew audit`), the bundle script, the workflow (not even through `actionlint`).
+
+## First run of `package-native.yml` (macos-arm64), 2026-11-22
+
+* `macos-14` is refused by GitHub ("configuration not supported"): the workflow uses `macos-15` (Apple silicon) and
+  `macos-15-intel`.
+* On `macos-15`, with the Homebrew packages of the workflow, the app and `bookx-cli` **compile** (13 minutes cold).
+* `build-aux/macos-bundle.sh` first hung for 48 minutes until the job was cancelled: `dylibbundler` could not find
+  `@rpath/librsvg-2.2.dylib` (the gdk-pixbuf SVG loader) and asked for a path on stdin, for ever. It now gets the Homebrew search
+  paths (`-s`, including librsvg) and stdin is closed, so a missing library fails the step.
+* With that, run 45023832637 produced the `.dmg` (15 minutes). **Not tested**: that the app starts from the `.dmg`
+  (the runner has no display), signing and notarization (no Apple secrets), the Intel build.
