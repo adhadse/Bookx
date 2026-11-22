@@ -10,7 +10,7 @@ jobs.json is the answer of `GET /repos/OWNER/REPO/actions/runs/ID/jobs`.
 
 The artifacts come from a pull request, so everything read from them is data: it is size-limited, parsed, never
 executed, and escaped before it goes into Markdown (no HTML, no links, no mentions). `--pr-comment` adds the marker
-that the sticky comment of .github/workflows/pr-report.yml is found by.
+that the sticky comment of the `report` job of .github/workflows/ci.yml is found by.
 """
 import argparse
 import datetime
@@ -179,6 +179,9 @@ def tests_section(art, jobs_data):
             out.append(f"  - ⚠️ flaky, passed when run again: `{esc(n, 60)}` ({esc(d, 100)})")
     else:
         out.append("- **Broadway scenarios:** no result (skipped or not reached)")
+    decision = read(os.path.join(art, "report-changes", "ui-decision.txt"))
+    if decision:
+        out.append(f"- **{esc(decision.strip().splitlines()[0], 300)}**")
     steps = {}
     for job in (jobs_data or {}).get("jobs", []):
         for s in job.get("steps", []):
@@ -262,7 +265,7 @@ def build(args):
         problems += [f"coverage: {x}" for x in gate.get("failed", [])]
     if isinstance(patch_pct, (int, float)) and patch_pct < 80:
         problems.append(f"patch coverage {patch_pct}% is below 80%")
-    running = any(j.get("status") != "completed" for j in (jobs_data or {}).get("jobs", []) if j.get("name") != "required")
+    running = any(j.get("status") != "completed" for j in (jobs_data or {}).get("jobs", []) if j.get("name") not in ("required", "Report"))
     if problems:
         verdict = "❌ **CI is red**"
     elif running:

@@ -8,9 +8,17 @@ on:
   push:
     branches: [main, master]
   pull_request:
+    # `labeled`: adding the run-ui-tests label starts CI again, with the UI scenarios forced on
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
+    inputs:
+      force_ui:
+        description: "Run the Broadway UI scenarios (a manual run always does; this is for documentation of the intent)"
+        type: boolean
+        default: false
 
-# Least privilege: no job writes to the repository; the wiki deploy job asks for Pages at job level.
+# Least privilege: no job writes to the repository. Nothing here deploys the wiki: the live site only changes with a
+# release or by hand (wiki-deploy.yml).
 permissions:
   contents: read
 
@@ -47,6 +55,7 @@ jobs:
       rust: ${{ steps.f.outputs.rust }}
       wiki: ${{ steps.f.outputs.wiki }}
       flatpak: ${{ steps.f.outputs.flatpak }}
+      ui: ${{ steps.f.outputs.ui }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -55,7 +64,18 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha }}
-        run: build-aux/ci-changes.sh | tee -a "$GITHUB_OUTPUT"
+          # the label run-ui-tests on the pull request, or the force_ui input of a manual run
+          FORCE_UI: ${{ (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-ui-tests')) || inputs.force_ui }}
+        run: |
+          build-aux/ci-changes.sh | tee decision.txt
+          cat decision.txt >> "$GITHUB_OUTPUT"
+          grep '^ui_reason=' decision.txt | sed 's/^ui_reason=/UI scenarios: /' > ui-decision.txt
+          cat ui-decision.txt >> "$GITHUB_STEP_SUMMARY"
+      - name: The decision for the report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: report-changes
+          path: ui-decision.txt
 
   quick:
     name: Quick checks
@@ -237,7 +257,7 @@ jobs:
     # compiling the workspace eight times.
     name: Build the app for the UI scenarios
     needs: changes
-    if: needs.changes.outputs.rust == 'true'
+    if: needs.changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     container: fedora:latest
@@ -289,7 +309,7 @@ jobs:
   ui:
     name: UI scenarios (Broadway, shard ${{ matrix.shard }}/10)
     needs: [changes, build-ui]
-    if: needs.changes.outputs.rust == 'true'
+    if: needs.changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     container: fedora:latest
@@ -372,30 +392,6 @@ jobs:
           key: wiki-venv-${{ hashFiles('build-aux/wiki.sh') }}
       - name: Build the wiki and check links
         run: build-aux/wiki.sh
-      - name: Upload the site
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-        with:
-          path: wiki/site
-
-  deploy-wiki:
-    name: Deploy the wiki to GitHub Pages
-    needs: wiki
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    # deployments queue and are never cancelled
-    concurrency:
-      group: pages
-      cancel-in-progress: false
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
   flatpak:
     name: Flatpak
@@ -406,17 +402,13 @@ jobs:
       lint: true
 
   required:
-    # The one check branch protection requires.
+    # The one check branch protection requires. It aggregates the real jobs only: the report below is informational.
     name: required
     if: ${{ always() }}
     needs: [changes, quick, rust, build-ui, ui, wiki, flatpak]
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions:
-      contents: read
-      actions: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Every needed job passed (skipped on purpose is fine)
         env:
           NEEDS: ${{ toJSON(needs) }}
@@ -426,13 +418,50 @@ jobs:
             echo "::error::a job failed or was cancelled"
             exit 1
           fi
-      - name: Summary table (the same one the pull request comment shows)
-        if: ${{ always() }}
+
+  report:
+    # Jobs, tests, coverage, patch coverage and timings as one table: always in the job summary, and for pull requests
+    # of this repository also ONE comment (found by its marker and updated in place). Informational: it is not a
+    # required check and `required` does not wait for it. The token of a pull request from a fork or from Dependabot
+    # is read-only, so those only get the summary (docs/ci-gates.md, "The pull request report").
+    name: Report
+    needs: [required]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: The jobs and the artifacts of this run (data)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p report
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" > report/jobs.json
           gh run download "$GITHUB_RUN_ID" --dir report --pattern 'report-*' || true
+      - name: Build the report (no token in this step)
+        env:
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
           python3 build-aux/ci-report.py --jobs report/jobs.json --artifacts report --baseline build-aux/coverage-baseline.json \
-            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> "$GITHUB_STEP_SUMMARY"
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --sha "$SHA" --pr-comment > report.md
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Comment on the pull request (same repository only; a failure here is not a CI failure)
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          id=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("<!-- bookx-ci-report -->"))) | .id' | head -n 1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@report.md --jq .html_url
+          else
+            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@report.md --jq .html_url
+          fi
