@@ -185,6 +185,7 @@ Nothing in the first runs was flaky; every red job had a cause.
 | Translations | `actions/checkout` ran before git was installed in the container, so the checkout was not a repository and `git diff po/bookx.pot` printed its usage; `po/POTFILES.in` was out of date. | git is installed first; `POTFILES.in` regenerated. |
 | Wiki | `check-wiki-frames.py` and `check-wiki-centred.py` import Pillow but were run with the system Python; Pillow lives in the wiki virtualenv. | They run with the virtualenv's Python. |
 | Flatpak | `flatpak-builder` inside the `flatpak-github-actions` container died with "Invalid cross-device link" while updating the GNOME SDK (ostree hard links across the container's overlay mounts), then `xvfb-run` crashed (exit 139). | The bundle is built on the runner itself (apt `flatpak`, `flatpak-builder`), with `build-aux/flatpak.sh`, which also runs the smoke tests. |
+| Wiki (once, later) | The colour-scheme check starts headless Firefox and waited 20 s for it; one run on a loaded runner needed longer (`could not start Firefox`). | It waits up to 60 s. |
 | `release-check` | It asserted that every job has `runs-on`; the reusable-workflow job `flatpak` has `uses` instead. | It accepts either. |
 | Dependabot pull requests | The same failures (they ran the same broken CI), plus code changes in the cargo bumps (see the pull requests). Their token is read-only and has no secrets; no job needs either now (the comment is posted by `workflow_run`). | Rebase onto the fixed `main`. |
 
