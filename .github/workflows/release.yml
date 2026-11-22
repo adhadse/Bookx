@@ -102,7 +102,8 @@ jobs:
       - name: Checksums of everything
         run: |
           cd dist
-          find . -maxdepth 1 -type f ! -name '*.sha256' ! -name SHA256SUMS -printf '%f\n' | LC_ALL=C sort | xargs -d '\n' sha256sum > SHA256SUMS
+          sums=$(find . -maxdepth 1 -type f ! -name '*.sha256' ! -name SHA256SUMS -printf '%f\n' | LC_ALL=C sort | xargs -d '\n' sha256sum)
+          printf '%s\n' "$sums" > SHA256SUMS
           cat SHA256SUMS
       - name: Build provenance attestation
         uses: actions/attest-build-provenance@v2
