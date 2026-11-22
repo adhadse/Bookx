@@ -4,6 +4,8 @@
 
 **A GNOME-native e-book library, reader and EPUB editor, written in Rust with GTK 4, libadwaita and [Relm4](https://relm4.org).**
 
+> **Beta.** Bookx 0.3.0-beta.1 is beta software. It can have bugs, so keep a backup of anything you care about (Bookx can back up your library for you). Reports help us fix bugs: choose **Main Menu → Report a Problem**, read the log report, then **Open GitHub Issue**. Download it from [GitHub Releases](https://github.com/adhadse/Bookx/releases/latest); there are Linux (x86_64) files only for now.
+
 📖 **Documentation: <https://bookx.adhadse.com>** (features, formats, limits, shortcuts, command line, devices, plugins)
 
 
@@ -19,7 +21,7 @@ This README is for people working on Bookx. What the app can and cannot do is de
 
 ## Status and scope
 
-- Version `0.3.0` (see [CHANGELOG.md](CHANGELOG.md)). Linux and GNOME (GTK ≥ 4.20, libadwaita ≥ 1.8) come first.
+- Version `0.3.0-beta.1` (see [CHANGELOG.md](CHANGELOG.md)). Linux and GNOME (GTK ≥ 4.20, libadwaita ≥ 1.8) come first.
   **GitHub Releases is the official channel** ([latest release](https://github.com/adhadse/Bookx/releases/latest): Flatpak bundle,
   `.deb`, `.rpm`, tarball; signed, see the [install page](https://bookx.adhadse.com/install/)). Flathub and other package
   managers (Homebrew, winget, Scoop) are planned for later, once the project has history ([docs/release-plan.md](docs/release-plan.md)).
@@ -33,6 +35,7 @@ Where the work is going (details in the linked files, not repeated here):
 - The feature roadmap and the owner's decisions: [docs/bookx-feature-roadmap.md](docs/bookx-feature-roadmap.md), progress in [docs/roadmap-status.md](docs/roadmap-status.md).
 - UI polish and usability: [docs/human_interface_backlog.md](docs/human_interface_backlog.md), [docs/ux-gaps-notes.md](docs/ux-gaps-notes.md).
 - Testing on real hardware (e-readers, phones, Kindle): [docs/hardware-test-plan.md](docs/hardware-test-plan.md).
+- **How a release is made** (tag, workflows and their order, `.deb`/`.rpm`/Flatpak, verification): [docs/releasing.md](docs/releasing.md).
 - Release plan and distribution (GitHub Releases first, Flathub later): [docs/release-plan.md](docs/release-plan.md); packaging details (deb/rpm, Flatpak, macOS, Windows): [docs/packaging-notes.md](docs/packaging-notes.md).
 - Known bugs and enhancement ideas: [docs/bugs.md](docs/bugs.md), [docs/enhancements.md](docs/enhancements.md).
 
@@ -132,7 +135,6 @@ Other pointers:
 - Translations: [Translating Bookx](https://bookx.adhadse.com/translating/), hosting notes in [docs/translations-hosting.md](docs/translations-hosting.md).
 - Security reports go through [SECURITY.md](SECURITY.md), never a public issue.
 - Packaging: [packaging/](packaging/) (Flathub manifest), [build-aux/](build-aux/) (Flatpak, tarball, macOS and Windows bundles).
-- The 2023 prototype's Meson setup is kept in [`_legacy/`](_legacy/) for reference.
 - Follow the [GNOME HIG](https://developer.gnome.org/hig/) for UI changes; design mockups are in [`mockups/`](mockups/) (`cargo run --example mockups`).
 
 ## Licence

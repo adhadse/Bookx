@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Packs the already built release binaries into bookx-<version>-linux-<arch>.tar.gz plus a .sha256 file.
+# Packs the already built release binaries into Bookx-<version>-linux-<arch>.tar.gz plus a .sha256 file.
 #
 #   cargo build --release --locked -p bookx -p bookx-cli
 #   build-aux/tarball.sh [OUTDIR]       # default OUTDIR=dist
@@ -15,7 +15,7 @@ out="${1:-dist}"
 target="${TARGET_DIR:-target/release}"
 version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
 arch=$(uname -m)
-name="bookx-$version-linux-$arch"
+name="Bookx-$version-linux-$arch"
 epoch="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || echo 0)}"
 
 [ -x "$target/bookx" ] || { echo "no $target/bookx: run cargo build --release first" >&2; exit 1; }

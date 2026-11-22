@@ -267,3 +267,6 @@ scrolledwindow.library-grid, gridview.library-grid, gridview.library-grid.view {
 list.problems-list { background: transparent; }
 list.problems-list > row, window.touch list.problems-list > row { min-height: 0; padding: 0; margin: 0; }
 list.problems-list > row:not(:last-child) { border-bottom: none; }
+
+/* Report a Problem: the beta notice and the "closed unexpectedly" notice above the library */
+.report-notice { padding: 10px 12px; background-color: alpha(@accent_bg_color, .16); border-bottom: 1px solid alpha(currentColor, .12); }

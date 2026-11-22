@@ -4455,7 +4455,7 @@ const WELCOME_FORMATS: &str = N_("EPUB, PDF, MOBI, FB2, comics, audiobooks, plai
 /// The entries of the main (hamburger) menu; an empty entry is a separator between groups. Eight
 /// entries (Saved Searches live in the sidebar and in the search tips): the destinations (Reading Statistics, Vocabulary, ...) are in `LIBRARY_MENU`, imports in
 /// the + menu, Copy Diagnostics in About.
-const MAIN_MENU: [(&str, &str); 11] = [
+const MAIN_MENU: [(&str, &str); 12] = [
     (N_("Open Library Folder"), "lib.open-folder"),
     ("", ""),
     (N_("Sync"), "app.sync"),
@@ -4466,6 +4466,7 @@ const MAIN_MENU: [(&str, &str); 11] = [
     (N_("Preferences"), "app.preferences"),
     (N_("Keyboard Shortcuts"), "app.shortcuts"),
     (N_("Help"), "app.help"),
+    (N_("Report a Problem"), "app.report-problem"),
     (N_("About Bookx"), "app.about"),
 ];
 
@@ -8236,7 +8237,7 @@ mod main_menu_tests {
 
     #[test]
     fn the_main_menu_is_short_and_ends_with_the_standard_group() {
-        assert_eq!(count(&MAIN_MENU), 8);
+        assert_eq!(count(&MAIN_MENU), 9);
         assert!(count(&MAIN_MENU) <= 12 && count(&LIBRARY_MENU) <= 12);
         let labels: Vec<&str> = MAIN_MENU
             .iter()
@@ -8245,8 +8246,14 @@ mod main_menu_tests {
             .collect();
         let n = labels.len();
         assert_eq!(
-            &labels[n - 4..],
-            ["Preferences", "Keyboard Shortcuts", "Help", "About Bookx"]
+            &labels[n - 5..],
+            [
+                "Preferences",
+                "Keyboard Shortcuts",
+                "Help",
+                "Report a Problem",
+                "About Bookx"
+            ]
         );
         assert!(MAIN_MENU.contains(&("Help", "app.help")));
         assert!(!MAIN_MENU.iter().any(|(l, _)| *l == "Copy Diagnostics"));

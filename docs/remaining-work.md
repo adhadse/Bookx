@@ -15,7 +15,7 @@ Runbook for the owner: `docs/release-0.3.0.md`. Nothing is committed, tagged or 
 | `build-aux/release-check.sh`, `cargo-sources.json` (ours = official generator, same 584 crates) | done (passes; `actionlint` not installed, one skip) |
 | `cargo deny check` (advisories, bans, licenses, sources) | done, all ok (cargo-deny 0.21) |
 | `cargo audit` | done: 0 vulnerabilities, 7 "unmaintained" notices, all already justified in `deny.toml` |
-| NOTICE.md covers non-crate assets (5 action icons, app icon, mockups, legacy prototype) | done; owner confirms the origin of the icons and decides on `mockups/legacy` + `_legacy` (GNOME-derived art, see runbook §10) |
+| NOTICE.md covers non-crate assets (5 action icons, app icon, mockups, legacy prototype) | done; owner confirms the origin of the icons (legacy prototype removed)|
 | Release build, CLI smoke test (init/add/list/check/convert/backup), headless GUI start and clean exit | done (release 2m13s, `bookx` 81 MiB, `bookx-cli` 39 MiB, unstripped) |
 | `desktop-file-validate`, `appstreamcli validate --pedantic`, `msgfmt -c` (4 po files) | done (only the unavoidable `cid-contains-uppercase-letter`; po headers incomplete, Weblate fills) |
 | Tarball, `.deb`, `.rpm` built locally and listed | done (48 MB / 30 MB / 36 MB; no man pages or shell completions exist) |
@@ -27,11 +27,13 @@ Runbook for the owner: `docs/release-0.3.0.md`. Nothing is committed, tagged or 
 | `pin-screenshots.sh v0.3.0`, commit, tag, push, watch `release.yml` | needs owner |
 | Verify artifacts (cosign, attestation), install tests on other distributions | needs owner |
 | GitHub social preview image upload, announcement | needs owner |
-| Flathub: account, AI disclosure, hand-written manifest and PR, domain token on adhadse.com | needs owner |
+| Flathub: account, AI disclosure, hand-written manifest and PR, domain token on adhadse.com | **deferred** (2026-11-22, `docs/release-plan.md`) |
 | Weblate project, branch protection with required `coverage` check, tag protection | needs owner |
 | Full gates (`cargo test --workspace`, `coverage.sh`, `ui-tests.sh`, `session-tests.sh`, `i18n`) | not run by this pass (other agents are editing `src/`); owner runs them in runbook §1 |
 
 ## Top 10 next priorities
+
+Channel decision (2026-11-22): **GitHub Releases only for now**; Flathub and the other stores come after the project has history. Plan, cadence and exit criteria: `docs/release-plan.md` (the Flathub documents are marked DEFERRED).
 
 | # | What | Why | Who |
 |---|---|---|---|
@@ -39,7 +41,7 @@ Runbook for the owner: `docs/release-0.3.0.md`. Nothing is committed, tagged or 
 | 2 | **Run the GitHub workflows once** (ci with coverage, release signing, wiki, i18n, package-*), then enable branch protection with the coverage check (command in `docs/ci-gates.md`) | nothing has ever run on GitHub; gates are paper until then | owner |
 | 3 | **X18 performance**: windowed layout, first chapter off the main thread, 100k-book cold start, perf budgets | biggest open product risk for large books and libraries | agent |
 | 4 | **Real ed25519 plugin signature verification** (needs a crate decision) + trust UI on top of the existing sheet | the signature format exists, verification does not (G10) | owner decides, agent |
-| 5 | **Flathub submission** (hand-written manifest and PR by the owner because of the AI policy; GNOME 51; tagged release; domain verification) | main distribution channel | owner |
+| 5 | **GitHub Releases plan** (`docs/release-plan.md`): tag 0.3.0 and verify, patch releases 0.3.x about every 2 weeks, monthly minors, SBOM in `release.yml`, issue triage and Discussions, public roadmap. Flathub only when the exit criteria there are met (hand-written manifest and PR by the owner: AI policy) | builds the history Flathub reviewers look for | owner + agent |
 | 6 | **Test the new secrets paths by hand**: master-password dialogs, GNOME Keyring, Flatpak portal; rotate passwords from old plaintext configs | security fix is unit-tested but never tried by a human | owner |
 | 7 | **Real-file tests for CBR (unrar/7z) and DJVU (ddjvu)**, RAR5/DjVu | both are subprocess paths never run on real archives | owner + agent |
 | 8 | **R1 real table layout, positioned text, hanging punctuation, `word-break`, fixed-layout spreads (R46/R51)** | largest reader fidelity gap left | agent (L) |
@@ -181,14 +183,14 @@ Devices window redesign and compact grid: `src/ui/devices.rs`, `devices_list.rs`
 
 | What | Evidence |
 |---|---|
-| de, es, **fr, hi complete** (machine-translated, unreviewed), test-enforced | `po/*.po`, `po/STATUS.md`, `build-aux/i18n-status.sh`, `.github/workflows/i18n.yml` |
+| de, es, **fr, hi complete** (machine-translated, unreviewed), test-enforced | `po/*.po`, `po/STATUS.md`, `build-aux/i18n-status.sh`, `.github/workflows/ci.yml` |
 | Weblate chosen, no translator credits for AI text | `docs/translations-hosting.md`, `wiki/docs/translating.md` |
 
 ## 1.14 Distribution scaffolding (written, **never built or run** on the target platform)
 
 | What | Evidence |
 |---|---|
-| Flathub draft, `flathub.json`, `prepare.sh`, bundle workflow | `packaging/flathub/`, `docs/flathub-submission.md`, `.github/workflows/package-flatpak.yml` |
+| Flathub draft, `flathub.json`, `prepare.sh`, bundle workflow | `packaging/flathub/`, `docs/flathub-submission.md`, `.github/workflows/_flatpak.yml` |
 | Homebrew, winget, Scoop, MSYS2 scaffolds and bundle scripts | `packaging/{homebrew,winget,scoop,msys2}/`, `build-aux/{macos,windows}-bundle.sh`, `docs/macos-port.md`, `windows-port.md` |
 
 ## 1.15 README, wiki, docs
@@ -307,7 +309,7 @@ B2 (custom columns) and B6 (passphrase change in place) are **resolved**: custom
 
 | Item | Size | Who |
 |---|---|---|
-| `ci.yml` (incl. coverage), `release.yml`, `wiki.yml`, package workflows never ran on GitHub; `actionlint` skipped; branch protection not applied | S | owner |
+| `ci.yml` (incl. coverage), `release.yml`, `ci.yml`, package workflows never ran on GitHub; `actionlint` skipped; branch protection not applied | S | owner |
 | `session-tests.sh` never in CI; ~~no session scenario for live updates and the new dialogs~~ **added and passed 2026-11-22** (`scenarios_wave11.py`: live updates, banner, activity window, master-password dialogs, Custom Columns, Settings Backup preview, plugin trust sheet, safe mode; the file choosers of Export/Import Settings are the portal's and are not driven, the hooks open the real preview); `tts_player_card_real` and 3+ concurrent sessions flaky (inotify) | M | owner + agent |
 | Recheck: `koreader_annotations.rs::the_real_plugin_registers_and_syncs_against_a_real_server` (14 vs 15 highlights) | S | agent |
 | No scenario: touch/long-press, `show_action` toast, `book_formats::merge` undo, metadata provenance UI | M | agent |

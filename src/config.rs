@@ -10,6 +10,12 @@ use crate::ui::canvas::{CanvasStyle, LayoutMode, Palette};
 pub const APP_ID: &str = "com.adhadse.Bookx";
 pub const APP_NAME: &str = "Bookx";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+/// `stable`, `alpha`, `beta`, `rc` or `prerelease`, from the version's pre-release part (build.rs).
+pub const CHANNEL: &str = env!("BOOKX_CHANNEL");
+/// The short git commit of the build; empty when the build had no git (see build.rs).
+pub const COMMIT: &str = env!("BOOKX_GIT_COMMIT");
+/// `debug` or `release`.
+pub const PROFILE: &str = env!("BOOKX_PROFILE");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ReaderTheme {
@@ -381,6 +387,8 @@ pub struct Config {
     pub dictionaries: crate::dict_auto::Prefs,
     /// Offline mode: nothing is downloaded or looked up online (`crate::privacy`).
     pub offline: bool,
+    /// The version whose beta notice the user has seen or dismissed (`crate::beta`); empty = none.
+    pub beta_notice_seen: String,
     /// The reading ruler of the reader (`crate::reading_ruler`).
     pub ruler: crate::reading_ruler::RulerPrefs,
     /// Which sidebar entries the library shows and in what order, per library folder
@@ -474,6 +482,7 @@ impl Default for Config {
             footer_pos_migrated: true,
             dictionaries: Default::default(),
             offline: false,
+            beta_notice_seen: String::new(),
             ruler: Default::default(),
             sidebar_layouts: Default::default(),
         }

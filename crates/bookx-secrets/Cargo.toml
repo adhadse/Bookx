@@ -1,10 +1,11 @@
 [package]
 name = "bookx-secrets"
-version = "0.3.0"
+version = "0.3.0-beta.1"
 authors = ["Anurag Dhadse <hello@adhadse.com>"]
 edition = "2021"
 rust-version = "1.85"
 description = "Passwords in the Secret Service (GNOME Keyring, KWallet, the Flatpak portal) with a testable store trait"
+publish = false
 license = "GPL-3.0-or-later"
 
 [dependencies]

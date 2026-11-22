@@ -514,6 +514,19 @@ pub fn log(id: u64, line: &str) {
 }
 
 pub fn finish(id: u64, result: Result<(), String>) {
+    if let Err(e) = &result {
+        let kind = HUB.with(|h| {
+            h.borrow()
+                .jobs()
+                .iter()
+                .find(|j| j.id == id)
+                .map(|j| j.kind)
+        });
+        tracing::warn!(
+            "{} job failed: {e}",
+            kind.map_or("background", |k| k.label())
+        );
+    }
     HUB.with(|h| h.borrow_mut().finish(id, result, now_ms()));
     changed();
 }
@@ -788,5 +801,40 @@ mod tests {
         assert!(can_retry(777) && retry(777));
         assert_eq!(hits.get(), 1);
         assert!(!retry(778));
+    }
+
+    #[test]
+    fn a_failed_job_is_logged_as_a_warning_with_its_kind() {
+        use std::sync::{Arc, Mutex};
+        #[derive(Clone, Default)]
+        struct Buf(Arc<Mutex<Vec<u8>>>);
+        impl std::io::Write for Buf {
+            fn write(&mut self, b: &[u8]) -> std::io::Result<usize> {
+                self.0.lock().unwrap().extend_from_slice(b);
+                Ok(b.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for Buf {
+            type Writer = Buf;
+            fn make_writer(&'a self) -> Buf {
+                self.clone()
+            }
+        }
+        let buf = Buf::default();
+        let sub = tracing_subscriber::fmt()
+            .with_writer(buf.clone())
+            .with_ansi(false)
+            .finish();
+        tracing::subscriber::with_default(sub, || {
+            let (id, _) = start(Kind::Backup, "b", false);
+            finish(id, Err("no route".into()));
+            finish(9_999_999, Err("orphan".into()));
+        });
+        let out = String::from_utf8(buf.0.lock().unwrap().clone()).unwrap();
+        assert!(out.contains("Backup job failed: no route"), "{out}");
+        assert!(out.contains("background job failed: orphan"), "{out}");
     }
 }

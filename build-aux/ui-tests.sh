@@ -475,6 +475,24 @@ scenario() {
                 "$CLI" --library "$d/lib" library add "$d/w$n.md" >/dev/null 2>&1
             done
             ;;
+        report_privacy*)
+            # a book whose title, a server, accounts and a password must never reach a report or the log
+            sed 's/UI Test Book/SENT-Title Book/; s/Test Author/SENT-Author/' "$ROOT/src/book.md" >"$d/senttitle.md"
+            "$CLI" --library "$d/lib" library add "$d/senttitle.md" >/dev/null 2>&1
+            mkdir -p "$d/cfg/bookx"
+            printf '{"kosync":{"server":"http://sentinel-host.example:1/bookx","user":"sentuser","password":"SENT-pw-4242"},"email":{"host":"smtp.sentinel-mail.example","user":"sentmail@sentinel-mail.example","password":"SENT-mail-5555"}}' >"$d/cfg/bookx/config.json"
+            ;;
+        report_crash_start)
+            # the crash file of a previous run
+            mkdir -p -m 700 "$d/state/bookx"
+            printf 'Bookx 0.3.0 closed unexpectedly at 2026-11-22 10:00:00 UTC\nthread: main\nmessage: SENT-crash-message\n' >"$d/state/bookx/crash-20261122-100000.txt"
+            chmod 600 "$d/state/bookx/crash-20261122-100000.txt"
+            ;;
+        report_beta_seen)
+            # the beta notice of this version was dismissed in an earlier run
+            mkdir -p "$d/cfg/bookx"
+            printf '{"beta_notice_seen":"0.3.0-beta.1"}' >"$d/cfg/bookx/config.json"
+            ;;
         library_switcher)
             # a second library with one other book
             "$CLI" --library "$d/lib2" library add "$ROOT/src/second.md" >/dev/null 2>&1
@@ -927,7 +945,7 @@ PY
         # gtk4-broadwayd itself sometimes segfaults (GLib-CRITICAL g_ref_count_inc) when a window closes under load:
         # that is the test display, not the app, so such a run is repeated from the saved state (seven times at most)
         snap=$d/.snap; mkdir -p "$snap"
-        for x in lib cfg cache mounts plugins patches userdicts tts; do [ -e "$d/$x" ] && cp -a "$d/$x" "$snap/"; done
+        for x in lib cfg cache state mounts plugins patches userdicts tts; do [ -e "$d/$x" ] && cp -a "$d/$x" "$snap/"; done
         for attempt in $(seq 1 "${MAX_ATTEMPTS:-8}"); do
         bwstate=
         OUT=$(
@@ -935,11 +953,13 @@ PY
             [[ "$name" == wiki_image_cached || "$name" == wiki_image_offline ]] && export BOOKX_OFFLINE=1
             [[ "$name" == dict_offline ]] && export BOOKX_OFFLINE=1
             [[ "$name" == *safe_mode* ]] && export BOOKX_SAFE_MODE=1
+            [[ "$name" == report_beta* ]] && export BOOKX_TEST_VERSION=0.3.0-beta.1
+            [[ "$name" == report_stable* ]] && export BOOKX_TEST_VERSION=0.3.0
             [[ "$name" == grid_stalls_* || "$name" == big_book_* || "$name" == scale_library_* ]] && export BOOKX_STALL_WATCH=${STALL_WATCH_MS:-100}
             # automatic dictionary downloads are off in every scenario but the ones that test them
             if [ -n "${dictauto-off}" ]; then export BOOKX_DICT_AUTO=${dictauto-off}; fi
             [ -n "${dictcat:-}" ] && export BOOKX_DICT_CATALOG=$dictcat
-            BOOKX_HUNSPELL_USER=$d/userdicts BOOKX_SMTP_PORT=$(cat "$d/smtp-port" 2>/dev/null) GDK_BACKEND=broadway BROADWAY_DISPLAY=":$disp" XDG_CONFIG_HOME=$d/cfg XDG_CACHE_HOME=$d/cache \
+            BOOKX_HUNSPELL_USER=$d/userdicts BOOKX_SMTP_PORT=$(cat "$d/smtp-port" 2>/dev/null) GDK_BACKEND=broadway BROADWAY_DISPLAY=":$disp" XDG_CONFIG_HOME=$d/cfg XDG_CACHE_HOME=$d/cache XDG_STATE_HOME=$d/state \
                 BOOKX_SECRETS=$sec BOOKX_READWISE_URL=$rwurl BOOKX_TTS_MOCK=$ttsdelay BOOKX_TTS_MOCK_DOWNLOAD=$ttsdl BOOKX_TTS_MOCK_ESPEAK=$ttsespeak BOOKX_TTS_PLAYER=$ttsplayer BOOKX_TTS_DIR=$d/tts BOOKX_LIBRARY=$d/lib BOOKX_DICTIONARIES=$dicts BOOKX_DEVICE_ROOTS=$d/mounts BOOKX_SOURCES_MOCK=$d/mock BOOKX_SOURCES_CACHE=$srccache BOOKX_WEB_MOCK=$d/webmock BOOKX_OPDS_MOCK=$d/opdsmock BOOKX_LANG=$lang BOOKX_SIZE=$bsize BOOKX_PLUGINS=$d/plugins BOOKX_PATCHES=$d/patches BOOKX_DEV_SCRIPT="$PREAMBLE,${script%quit}wait:1200,quit" \
                 timeout 120 dbus-run-session -- "$BIN" 2>&1 | grep -v 'Gdk-WARNING\|^$\|dbus-daemon\|portal\|fusermount\|fuse init\|bus can.t be made\|Non-compatible\|oo7\|xdg-desktop'
         )
@@ -955,7 +975,7 @@ PY
             OUT="$OUT"$'\n'"broadwayd (dead): $(tail -3 "$d/broadwayd.log" | tr '\n' ' ')"
         fi
         if [ "${bwstate:-}" = dead ] && [ "$attempt" -lt "${MAX_ATTEMPTS:-8}" ]; then
-            for x in lib cfg cache mounts plugins patches userdicts tts; do rm -rf "${d:?}/$x"; [ -e "$snap/$x" ] && cp -a "$snap/$x" "$d/"; done
+            for x in lib cfg cache state mounts plugins patches userdicts tts; do rm -rf "${d:?}/$x"; [ -e "$snap/$x" ] && cp -a "$snap/$x" "$d/"; done
             rm -f "$rtd/broadway$((disp + 1)).socket"
             gtk4-broadwayd ":$disp" >"$d/broadwayd.log" 2>&1 &
             bw=$!
@@ -3313,6 +3333,7 @@ scenario language 'library:language=es,library:menus-tr,library:opds=open,wait:5
 . "$HERE/ui-tests-reader8.sh"
 . "$HERE/ui-tests-editor8.sh"
 . "$HERE/ui-tests-prefs8.sh"
+. "$HERE/ui-tests-report.sh"
 . "$HERE/ui-tests-win8.sh"
 . "$HERE/ui-tests-bigbook.sh"
 . "$HERE/ui-tests-i18n.sh"

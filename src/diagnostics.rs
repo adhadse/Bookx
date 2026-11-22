@@ -58,25 +58,48 @@ fn rx(cell: &'static OnceLock<Regex>, pattern: &str) -> &'static Regex {
 }
 
 /// Removes personal data from a text: the home folder (`~`), the user name, e-mail addresses,
-/// passwords inside URLs, IP and MAC addresses, values after `password:`/`token=`-like keys and
-/// long random-looking strings (keys, tokens).
+/// passwords inside URLs and in query strings, `Bearer`/`Basic` credentials, IP addresses (those of the
+/// local network become `<lan-ip>`, the others `<ip>`), MAC addresses, values after
+/// `password:`/`token=`-like keys and long random-looking strings (keys, tokens, hashes).
 pub fn redact(text: &str, home: &str, user: &str) -> String {
     static EMAIL: OnceLock<Regex> = OnceLock::new();
     static URL_CRED: OnceLock<Regex> = OnceLock::new();
     static IPV4: OnceLock<Regex> = OnceLock::new();
+    static IPV6: OnceLock<Regex> = OnceLock::new();
     static MAC: OnceLock<Regex> = OnceLock::new();
     static KEYED: OnceLock<Regex> = OnceLock::new();
+    static BEARER: OnceLock<Regex> = OnceLock::new();
+    static QUERY: OnceLock<Regex> = OnceLock::new();
     static TOKEN: OnceLock<Regex> = OnceLock::new();
+    static B64: OnceLock<Regex> = OnceLock::new();
+    static HOMES: OnceLock<Regex> = OnceLock::new();
+    static MEDIA: OnceLock<Regex> = OnceLock::new();
 
     let mut s = text.to_string();
     let home = home.trim_end_matches('/');
     if home.len() > 1 {
         s = s.replace(home, "~");
     }
+    // other people's or other machines' home folders and mounted drives (labels name people and devices)
+    s = rx(&HOMES, r"/(?:home|Users)/[^/\s:]+")
+        .replace_all(&s, "~")
+        .into_owned();
+    s = rx(&MEDIA, r"/(?:run/media|media)/[^/\s:]+(?:/[^/\s:]+)?")
+        .replace_all(&s, "<media>")
+        .into_owned();
     // Credentials in URLs first, so the user part is not taken for a name below.
     s = rx(&URL_CRED, r"([A-Za-z][A-Za-z0-9+.\-]*://)[^/\s@]+@")
         .replace_all(&s, "${1}<redacted>@")
         .into_owned();
+    s = rx(&BEARER, r"(?i)\b(bearer|basic)\s+[A-Za-z0-9._~+/=\-]{6,}")
+        .replace_all(&s, "${1} <redacted>")
+        .into_owned();
+    s = rx(
+        &QUERY,
+        r"(?i)([?&;][A-Za-z0-9_\-]*(?:token|key|secret|pass(?:word)?|sig(?:nature)?|auth|code|session|credential)[A-Za-z0-9_\-]*=)[^&\s#]+",
+    )
+    .replace_all(&s, "${1}<redacted>")
+    .into_owned();
     s = rx(
         &KEYED,
         r"(?i)\b(pass(?:word|phrase|wd)?|secret|token|api[_\- ]?key|authorization|cookie)(\s*[:=]\s*)\S+",
@@ -89,11 +112,47 @@ pub fn redact(text: &str, home: &str, user: &str) -> String {
     s = rx(&MAC, r"\b(?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b")
         .replace_all(&s, "<mac>")
         .into_owned();
+    s = rx(
+        &IPV6,
+        r"(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}:){1,7}:(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,6})?|::(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4}){0,6})?",
+    )
+    .replace_all(&s, |c: &regex::Captures| {
+        let m = &c[0];
+        let t = c.get(0).map(|m| m.start()).unwrap_or(0);
+        // `a::b` in a Rust path is hex letters only: an address has a digit (or is `::1`)
+        let before = if t > 0 { s.as_bytes()[t - 1] } else { b' ' };
+        let word_before = before.is_ascii_alphanumeric() || before == b'_';
+        if word_before || !(m.bytes().any(|b| b.is_ascii_digit())) {
+            return m.to_string();
+        }
+        ipv6_label(m).to_string()
+    })
+    .into_owned();
     s = rx(&IPV4, r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
-        .replace_all(&s, "<ip>")
+        .replace_all(&s, |c: &regex::Captures| {
+            let octets: Vec<u32> = c[0].split('.').filter_map(|p| p.parse().ok()).collect();
+            if octets.len() != 4 || octets.iter().any(|&o| o > 255) {
+                return c[0].to_string();
+            }
+            ipv4_label(&octets).to_string()
+        })
         .into_owned();
     s = rx(&TOKEN, r"\b[A-Za-z0-9_\-]{28,}\b")
         .replace_all(&s, "<secret>")
+        .into_owned();
+    s = rx(&B64, r"[A-Za-z0-9+/]{20,}={0,2}")
+        .replace_all(&s, |c: &regex::Captures| {
+            let m = &c[0];
+            let mixed = m.bytes().any(|b| b.is_ascii_uppercase())
+                && m.bytes().any(|b| b.is_ascii_lowercase())
+                && m.bytes().any(|b| b.is_ascii_digit());
+            let marked = m.contains('+') || m.ends_with('=');
+            if mixed && marked && !m.starts_with('/') {
+                "<secret>".to_string()
+            } else {
+                m.to_string()
+            }
+        })
         .into_owned();
     let user = user.trim();
     if user.len() >= 3 && user != "root" {
@@ -105,6 +164,38 @@ pub fn redact(text: &str, home: &str, user: &str) -> String {
         s = s.replace(KEEP, crate::config::APP_ID);
     }
     s
+}
+
+/// `<lan-ip>` for loopback, private and link-local IPv4 addresses, `<ip>` for the others.
+fn ipv4_label(o: &[u32]) -> &'static str {
+    let private = o[0] == 10
+        || o[0] == 127
+        || o[0] == 0
+        || (o[0] == 172 && (16..=31).contains(&o[1]))
+        || (o[0] == 192 && o[1] == 168)
+        || (o[0] == 169 && o[1] == 254);
+    if private {
+        "<lan-ip>"
+    } else {
+        "<ip>"
+    }
+}
+
+/// The same for IPv6: loopback, unique-local (`fc00::/7`) and link-local (`fe80::/10`).
+fn ipv6_label(a: &str) -> &'static str {
+    let l = a.to_ascii_lowercase();
+    if l == "::1"
+        || l.starts_with("fc")
+        || l.starts_with("fd")
+        || l.starts_with("fe8")
+        || l.starts_with("fe9")
+        || l.starts_with("fea")
+        || l.starts_with("feb")
+    {
+        "<lan-ip>"
+    } else {
+        "<ip>"
+    }
 }
 
 fn os_name() -> String {
@@ -277,5 +368,73 @@ mod tests {
         assert!(r.contains("Library: ~/Documents/Bookx Library (12 books)"));
         assert!(r.contains("E-ink mode: off"));
         assert!(!r.contains("alice"));
+    }
+
+    #[test]
+    fn private_addresses_are_labelled_and_public_ones_removed() {
+        let r = redact(
+            "a 192.168.1.20 b 10.0.0.5 c 172.16.4.4 d 172.32.0.1 e 8.8.8.8 f 127.0.0.1 g 999.1.1.1 h 1.2.3",
+            "/home/x",
+            "xyz",
+        );
+        assert_eq!(
+            r,
+            "a <lan-ip> b <lan-ip> c <lan-ip> d <ip> e <ip> f <lan-ip> g 999.1.1.1 h 1.2.3"
+        );
+    }
+
+    #[test]
+    fn ipv6_addresses_are_removed_but_times_and_paths_are_kept() {
+        let r = redact(
+            "v6 2001:db8::8a2e:370:7334 lan fd12:3456::1 ll fe80::1 loop ::1 full 2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+            "/home/x",
+            "xyz",
+        );
+        assert_eq!(
+            r,
+            "v6 <ip> lan <lan-ip> ll <lan-ip> loop <lan-ip> full <ip>"
+        );
+        let keep = "12:30:45 bookx_core::add::dec and fe::ad at 10:00";
+        assert_eq!(redact(keep, "/home/x", "xyz"), keep);
+    }
+
+    #[test]
+    fn bearer_headers_and_query_tokens_are_removed() {
+        let r = redact(
+            "Authorization: Bearer abc.def-123_xyz and https://h.example/p?user=1&access_token=SENTINEL9&x=2 and X-Api-Key=SENTINEL8",
+            "/home/x",
+            "xyz",
+        );
+        assert!(!r.contains("abc.def") && !r.contains("SENTINEL"), "{r}");
+        assert!(r.contains("x=2"), "{r}");
+        let b = redact("sent Bearer abcdef123456 here", "/home/x", "xyz");
+        assert_eq!(b, "sent Bearer <redacted> here");
+    }
+
+    #[test]
+    fn other_home_folders_and_drives_are_removed() {
+        let r = redact(
+            "/home/bob/x.epub /Users/carol/y /run/media/dave/KOBOeReader/books /media/erin/USB",
+            "/home/alice",
+            "alice",
+        );
+        assert_eq!(r, "~/x.epub ~/y <media>/books <media>");
+    }
+
+    #[test]
+    fn long_hex_and_base64_strings_are_removed_but_words_are_not() {
+        let r = redact(
+            "k 0123456789abcdef0123456789abcdef b QWxhZGRpbjpvcGVuIHNlc2FtZQ== p /usr/share/applications/org.gnome.Bookx.desktop",
+            "/home/x",
+            "xyz",
+        );
+        assert!(
+            !r.contains("0123456789abcdef") && !r.contains("QWxhZGRp"),
+            "{r}"
+        );
+        assert!(
+            r.contains("/usr/share/applications/org.gnome.Bookx.desktop"),
+            "{r}"
+        );
     }
 }

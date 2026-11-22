@@ -1,10 +1,11 @@
 [package]
 name = "bookx-cli"
-version = "0.3.0"
+version = "0.3.0-beta.1"
 authors = ["Anurag Dhadse <hello@adhadse.com>"]
 edition = "2021"
 rust-version = "1.85"
 description = "Command-line tool of Bookx: convert, inspect, check, manage a library and serve it over OPDS"
+publish = false
 license = "GPL-3.0-or-later"
 
 [lib]

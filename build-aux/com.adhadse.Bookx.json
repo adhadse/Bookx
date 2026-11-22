@@ -72,7 +72,6 @@
                         "target",
                         ".git",
                         ".flatpak-builder",
-                        "_legacy",
                         "mockups",
                         "wiki",
                         "docs",

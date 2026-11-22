@@ -14,8 +14,8 @@
 #   searchph      prints `searchph: placeholder="..."` (the search entry placeholder)
 
 scenario lib8_menus 'library:wide,wait:300,library:menus,quit' '
-    has "^mainmenu: Open Library Folder \\[lib.open-folder\\] \\| Sync \\[app.sync\\] \\| Devices \\[app.devices\\] \\| Library Health \\[lib.health\\] \\| Preferences \\[app.preferences\\] \\| Keyboard Shortcuts \\[app.shortcuts\\] \\| Help \\[app.help\\] \\| About Bookx \\[app.about\\]$"; check "the main menu has the eight entries (Saved Searches live in the sidebar) in the decided order, Help before About" $?
-    has "^menu_counts: main=8 library=8 add=8 "; check "main menu 8 entries, Library menu 8, + menu 8 (all within 3-12)" $?
+    has "^mainmenu: Open Library Folder \\[lib.open-folder\\] \\| Sync \\[app.sync\\] \\| Devices \\[app.devices\\] \\| Library Health \\[lib.health\\] \\| Preferences \\[app.preferences\\] \\| Keyboard Shortcuts \\[app.shortcuts\\] \\| Help \\[app.help\\] \\| Report a Problem \\[app.report-problem\\] \\| About Bookx \\[app.about\\]$"; check "the main menu has the nine entries (Saved Searches live in the sidebar) in the decided order, Help and Report a Problem before About" $?
+    has "^menu_counts: main=9 library=8 add=8 "; check "main menu 9 entries, Library menu 8, + menu 8 (all within 3-12)" $?
     has "^librarymenu: Reading Statistics \\[app.stats\\] \\| Vocabulary \\[app.vocab\\] \\| Reading Trackers \\[lib.trackers\\] \\| Audiobooks \\[lib.audiobooks\\] \\| Online Catalogues \\[lib.opds\\] \\| Subscribe to News \\[lib.news\\] \\| Export as Calibre Library \\[lib.export-calibre\\] \\| Export Citations \\[lib.citations\\]"; check "the Library menu holds the destinations and the library-wide exports" $?
     ! has "^mainmenu: .*(Copy Diagnostics|Import Calibre|Import Highlights|Export All Annotations)"; check "diagnostics, imports and annotation export left the main menu" $?
     has "^menu_counts: .*main_keys=_Open Library Folder\\|"; check "the menu is built as a gio::Menu with access keys" $?

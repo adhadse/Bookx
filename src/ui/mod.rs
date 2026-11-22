@@ -83,6 +83,8 @@ pub mod reader_theme_row;
 pub mod reader_tts;
 pub mod reading_ruler;
 pub mod replace_fields;
+pub mod report_dialog;
+pub mod report_notices;
 pub mod rsvp;
 pub mod saved;
 pub mod secrets_unlock;

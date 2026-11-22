@@ -602,10 +602,14 @@ pub mod repo {
             if let Some(d) = settings.destinations.iter_mut().find(|d| d.id == o.id) {
                 match &o.result {
                     Ok(_) => {
+                        tracing::info!(target: "bookx_crumb", "backup to a {:?} place: ok", d.kind);
                         d.record_ok(now);
                         d.auto_ok = true;
                     }
-                    Err(e) => d.record_error(e, now),
+                    Err(e) => {
+                        tracing::warn!("backup to a {:?} place failed: {e}", d.kind);
+                        d.record_error(e, now)
+                    }
                 }
             }
         }

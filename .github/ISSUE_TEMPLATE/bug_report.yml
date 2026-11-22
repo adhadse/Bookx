@@ -28,8 +28,7 @@ body:
     attributes:
       label: Diagnostics
       description: |
-        Open **Main menu → About Bookx → Troubleshooting** (or press Ctrl+Shift+P and run **Copy Diagnostics**) and paste
-        the text here. It has no book titles, accounts or passwords; read it once before posting.
+        Use **Main Menu → Report a Problem → Open GitHub Issue**, then paste the report here. (Older route: **About Bookx → Troubleshooting**.) It has no book titles, accounts or passwords; read it once before posting.
       render: text
     validations:
       required: true
@@ -37,7 +36,7 @@ body:
     id: install
     attributes:
       label: How did you install Bookx?
-      options: [Flatpak, Flathub, tarball, .deb, .rpm, built from source, other]
+      options: [Flatpak bundle from GitHub Releases, tarball from GitHub Releases, .deb from GitHub Releases, .rpm from GitHub Releases, built from source, other]
     validations:
       required: true
   - type: input

@@ -127,27 +127,18 @@
 [data-md-color-scheme="slate"] .md-typeset h2,
 [data-md-color-scheme="slate"] .md-typeset .hero h1.hero-title,
 [data-md-color-scheme="slate"] .md-typeset .home .section-title {
-  font-family: "Source Serif 4", "Charis SIL", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
   color: #f6efe0;
 }
 
-[data-md-color-scheme="slate"] .md-typeset h1 {
-  font-weight: 300;
-  letter-spacing: -0.01em;
-}
-
 [data-md-color-scheme="slate"] .md-typeset h3 {
-  font-weight: 400;
   color: #f6efe0;
 }
 
 [data-md-color-scheme="slate"] .md-typeset h4 {
-  font-weight: 700;
   color: #f6efe0;
 }
 
 [data-md-color-scheme="slate"] .md-typeset h2 {
-  font-weight: 300;
   border-bottom: 1px solid var(--bx-line);
   padding-bottom: 0.25em;
 }

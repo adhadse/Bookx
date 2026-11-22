@@ -22,7 +22,7 @@ hide:
 [GitHub](https://github.com/adhadse/Bookx){ .md-button }
 
 </div>
-<p class="hero-note">Free software, GPL-3.0-or-later. Needs GNOME 49 or newer. Build from source; a Flatpak manifest is included.</p>
+<p class="hero-note">Free software, GPL-3.0-or-later. Download it from GitHub Releases (Linux: Flatpak, .deb, .rpm, tarball). Native builds need GNOME 49 or newer.</p>
 <div class="hero-shot">
 <img class="only-light" src="assets/library-banner-hero-light.png#only-light" alt="The Bookx library: a Continue Reading banner above a grid of book covers, with the sidebar on the left" width="1612" height="1160" fetchpriority="high">
 <img class="only-dark" src="assets/library-banner-hero-dark.png#only-dark" alt="The Bookx library: a Continue Reading banner above a grid of book covers, with the sidebar on the left" width="1612" height="1160" fetchpriority="high">
@@ -209,7 +209,7 @@ in step with KOReader. Device support is new: so far it has been tried on real h
 
 <div class="cta" markdown>
 <h2 class="section-title" style="margin-top:0">Try Bookx</h2>
-<p class="section-lead">Build it from source, or use the Flatpak manifest. Prebuilt packages are not published yet.</p>
+<p class="section-lead">Download it from <a href="https://github.com/adhadse/Bookx/releases/latest">GitHub Releases</a>: a Flatpak bundle, a .deb, an .rpm or a tarball for Linux. Or build it from source.</p>
 
 [Install](install.md){ .md-button .md-button--primary }
 [Read the guide](getting-started.md){ .md-button }

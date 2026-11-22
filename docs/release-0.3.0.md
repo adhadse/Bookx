@@ -1,6 +1,10 @@
-# Release 0.3.0: runbook for the owner
+# Release 0.3.0: runbook for the owner (GitHub Releases first)
 
-Internal (not for the wiki). Copy-paste top to bottom; tick the boxes. Everything an agent could do is already done
+> The authoritative procedure is [releasing.md](releasing.md) (workflows, order, tags, naming scheme `Bookx-<version>-linux-<arch>.<ext>`). This file is the 0.3.0 checklist.
+
+Internal (not for the wiki). **Channel: GitHub Releases only** (owner decision 2026-11-22; Flathub and the other stores are
+deferred, see `docs/release-plan.md`). Order: pre-flight (1), version (2), tag (3), `release.yml` (4), verify (5), release
+notes (6), announce (7), after (8), later: Flathub (10). Copy-paste top to bottom; tick the boxes. Everything an agent could do is already done
 and listed in section 0; the steps below are the ones that need you (a tag, accounts, a decision, a GitHub setting).
 Nothing here has ever run on GitHub: the first tag is also the first run of `release.yml`, so read section 6 first.
 
@@ -79,12 +83,12 @@ Trigger: a push of a tag `v*` (or `workflow_dispatch`, which builds but does not
 1. **tarball** (`fedora:latest` container): installs GTK 4, libadwaita, GtkSourceView 5 and the toolchain;
    runs `build-aux/release-check.sh v0.3.0` (the tag, `Cargo.toml`, metainfo and `CHANGELOG.md` must agree, the Flatpak
    sources must match `Cargo.lock`, golden plugin files unchanged); `cargo build --release --locked -p bookx -p bookx-cli`;
-   `build-aux/tarball.sh dist` writes `bookx-0.3.0-linux-x86_64.tar.gz` (+ `.sha256`; deterministic packing, installs the
+   `build-aux/tarball.sh dist` writes `Bookx-0.3.0-beta.1-linux-x86_64.tar.gz` (+ `.sha256`; deterministic packing, installs the
    tree under `usr/`: both binaries, desktop file, metainfo, MIME XML, icons, locale `.mo` files, README, LICENSE, NOTICE, CHANGELOG);
-   `cargo deb --no-build` writes `bookx_0.3.0-1_amd64.deb`; `cargo generate-rpm` writes `bookx-0.3.0-1.x86_64.rpm`.
+   `cargo deb --no-build` writes `Bookx-0.3.0-beta.1-linux-x86_64.deb`; `cargo generate-rpm` writes `Bookx-0.3.0-beta.1-linux-x86_64.rpm`.
 2. **flatpak** (`ghcr.io/flathub-infra/flatpak-github-actions:gnome-51`): regenerates `cargo-sources.json`, builds
-   `build-aux/com.adhadse.Bookx.json` with `flatpak/flatpak-github-actions/flatpak-builder@v6.8`, writes `bookx.flatpak` and
-   `bookx.flatpak.sha256`.
+   `build-aux/com.adhadse.Bookx.json` with the reusable `_flatpak.yml` (flatpak-builder on the runner), writes `Bookx-0.3.0-beta.1-linux-x86_64.flatpak` and
+   `Bookx-0.3.0-beta.1-linux-x86_64.flatpak.sha256`.
 3. **publish** (needs both; only for tags): downloads the artifacts, writes `SHA256SUMS` of every file;
    `actions/attest-build-provenance` (GitHub build-provenance attestation, SLSA style, for every file);
    `cosign sign-blob --yes --bundle FILE.sigstore.json FILE` for **every file including `SHA256SUMS`** (keyless: the
@@ -92,11 +96,11 @@ Trigger: a push of a tag `v*` (or `workflow_dispatch`, which builds but does not
    Rekor; no secret exists); then **`cosign verify-blob` of every file** with the same identity regexp users use (the job
    fails if this fails); finally `softprops/action-gh-release` creates the GitHub release with all files and
    *generated* release notes.
-4. Release assets after a green run (7 files and one `.sigstore.json` bundle for each): `bookx-0.3.0-linux-x86_64.tar.gz`, `bookx_0.3.0-1_amd64.deb`,
-   `bookx-0.3.0-1.x86_64.rpm`, `bookx.flatpak`, the `.sha256` files, `SHA256SUMS`, and one `*.sigstore.json` per file.
+4. Release assets after a green run (7 files and one `.sigstore.json` bundle for each): `Bookx-0.3.0-beta.1-linux-x86_64.tar.gz`, `Bookx-0.3.0-beta.1-linux-x86_64.deb`,
+   `Bookx-0.3.0-beta.1-linux-x86_64.rpm`, `Bookx-0.3.0-beta.1-linux-x86_64.flatpak`, the `.sha256` files, `SHA256SUMS`, and one `*.sigstore.json` per file.
 
-Other workflows are independent: `wiki.yml` deploys the wiki on changes under `wiki/`; `package-*.yml` build the
-Flatpak/macOS/Windows artifacts without publishing; `coverage-ui.yml` is the nightly UI tier; `i18n.yml` checks strings.
+Other workflows are independent: `ci.yml` deploys the wiki on changes under `wiki/`; `package-*.yml` build the
+Flatpak/macOS/Windows artifacts without publishing; `nightly.yml` is the nightly UI tier; `ci.yml` (Rust job) checks strings.
 
 - [ ] Watch it: `gh run watch -R adhadse/Bookx` (the release job log shows the cosign verify lines)
 - [ ] If a job fails **before publish**, fix, delete the tag and tag again (nothing was published). If it fails **in** publish
@@ -111,14 +115,14 @@ sha256sum -c SHA256SUMS --ignore-missing
 cosign verify-blob --bundle SHA256SUMS.sigstore.json \
   --certificate-identity-regexp '^https://github\.com/adhadse/Bookx/\.github/workflows/release\.yml@refs/tags/v' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com SHA256SUMS      # Verified OK
-gh attestation verify bookx-0.3.0-linux-x86_64.tar.gz --repo adhadse/Bookx
+gh attestation verify Bookx-0.3.0-beta.1-linux-x86_64.tar.gz --repo adhadse/Bookx
 git rev-parse v0.3.0^{commit}      # same commit as on the release page
 ```
 
 - [ ] Checksums, cosign and attestation all pass for the tarball, deb, rpm and Flatpak bundle
 - [ ] Install test, at least once each, on a machine that is not the build machine:
-      `flatpak install --user bookx.flatpak && flatpak run com.adhadse.Bookx`; `sudo dnf install ./bookx-0.3.0-1.x86_64.rpm` (Fedora 43+: GTK 4.20, libadwaita 1.8);
-      `sudo apt install ./bookx_0.3.0-1_amd64.deb` (needs a distribution that ships GTK 4.20 and libadwaita 1.8; **older ones cannot install it**: check `apt policy libgtk-4-1 libadwaita-1-0` first)
+      `flatpak install --user Bookx-0.3.0-beta.1-linux-x86_64.flatpak && flatpak run com.adhadse.Bookx`; `sudo dnf install ./Bookx-0.3.0-beta.1-linux-x86_64.rpm` (Fedora 43+: GTK 4.20, libadwaita 1.8);
+      `sudo apt install ./Bookx-0.3.0-beta.1-linux-x86_64.deb` (needs a distribution that ships GTK 4.20 and libadwaita 1.8; **older ones cannot install it**: check `apt policy libgtk-4-1 libadwaita-1-0` first)
 - [ ] Open a book, add the library, quit (the first-run path), and `flatpak run --command=bookx-cli com.adhadse.Bookx --version`
 
 ## 6. Release notes (GitHub release body)
@@ -139,9 +143,9 @@ A GNOME e-book library, reader and EPUB editor written in Rust (GTK 4, libadwait
 - EPUB editor with syntax highlighting, live preview, a Problems panel and a command palette
 - Spanish, German, French and Hindi translations (machine-assisted; native review welcome)
 
-**Install**: the Flatpak bundle below, a `.deb`, an `.rpm` or the tarball. Every file is signed
+**Install**: download from this page: the Flatpak bundle (`Bookx-0.3.0-beta.1-linux-x86_64.flatpak`), a `.deb`, an `.rpm` or the tarball. Every file is signed
 (Sigstore, keyless) and has a build-provenance attestation: [Verify your download](https://bookx.adhadse.com/install/#verify-your-download).
-Not on Flathub yet. Needs GTK 4.20 and libadwaita 1.8 (the Flatpak brings its own).
+GitHub Releases is the only official channel for now (no Flathub, Homebrew, winget or Scoop). Needs GTK 4.20 and libadwaita 1.8 (the Flatpak brings its own).
 
 **Please note**: this is a young project. Back up your library before you let Bookx write to an e-reader. Sync with a
 Kobo/KOReader has had limited hardware testing. Report problems with *About → Troubleshooting → Copy Diagnostics*:
@@ -159,22 +163,8 @@ Full list of changes: [CHANGELOG.md](https://github.com/adhadse/Bookx/blob/v0.3.
 - [ ] Announce where you want to: Mastodon / Fediverse, r/gnome, r/ebooks, r/kobo, MobileRead forum (Kobo and KOReader sub-forums), This Week in GNOME (submit through their matrix room after Flathub), Hacker News "Show HN". Keep it honest: young project, AI-assisted development (see `AGENTS.md`), what is untested (hardware sync)
 - [ ] Enable GitHub **Discussions** (optional, off now) or say in the README that issues are the channel
 
-## 8. Flathub
+## 8. After the release
 
-Read `docs/flathub-submission.md` (blockers, permissions, step by step); the AI policy (blocker 1) means **you** write the
-manifest and the pull request. The agent prepared: runtime 51 build verified, `packaging/flathub/` reference files with an
-official-generator `cargo-sources.json`, the linter results (§5 there), and `packaging/flathub/prepare.sh v0.3.0` which
-prints the pinned tag and commit after the tag exists.
-
-- [ ] Flathub account (log in with GitHub; 2FA on GitHub)
-- [ ] Decide the open points: AI disclosure text, which permissions to keep (`/run/media`, gvfs), ONNX Runtime download, translations (ship English-only first?), aarch64
-- [ ] `packaging/flathub/prepare.sh v0.3.0`, write your manifest by hand from it, `flatpak-builder-lint manifest/repo`, then the PR against `flathub/flathub` branch `new-pr`
-- [ ] Tell reviewers about the project history: the repository dates from 2023, 0.2.0 was a rewrite, 0.3.0 is the first tagged release
-
-## 9. After the release
-
-- [ ] **Flathub verification token** (when the PR is accepted): developer portal gives a token; publish it at
-      `https://adhadse.com/.well-known/org.flathub.VerifiedApps.txt` (apex domain, HTTPS). Link the app on <https://bookx.adhadse.com> as visible proof
 - [ ] **Weblate**: create the project `bookx` on hosted.weblate.org (libre-project request), component `bookx` on `po/*.po`
       with `po/bookx.pot`, add the webhook (`docs/translations-hosting.md`); update the wiki Translating page once it is live
 - [ ] **Branch protection with the required `coverage` check**, after the first green CI run (check names first):
@@ -189,14 +179,33 @@ prints the pinned tag and commit after the tag exists.
 - [ ] Watch issues for the first week; keep `[Unreleased]` in `CHANGELOG.md` filling; next version: bump, tag, repeat from section 1
 - [ ] Hardware checks that are still open (`docs/hardware-test-plan.md`, `docs/remaining-work.md` A): Kobo sync, Kindle, MTP, natural voices inside the Flatpak
 
-## 10. Notes the agent could not settle (decide before the tag)
+## 9. Notes the agent could not settle (decide before the tag)
 
-- **Third-party artwork in `mockups/legacy/` and `_legacy/`** (the 2023 prototype): the two legacy mockup SVGs were started from GNOME
-  design mockups (Inkscape export paths in the files name them). They are not built or shipped. To be safe for a public
-  release, either keep them and accept the CC BY-SA origin (NOTICE.md says so), or `git rm -r mockups/legacy _legacy`
-  (history keeps them). Nothing else in `_legacy` is needed.
+- **Legacy prototype and its mockups**: removed (`mockups/legacy`, `_legacy`); history keeps them.
 - **Binaries are not stripped** (`bookx` is 81 MiB, `bookx-cli` 39 MiB). `cargo deb` strips, the tarball and Flatpak do not.
   A `strip = "symbols"` line in `[profile.release]` would shrink them a lot; it was not added because it changes the
   build for everybody and backtraces in bug reports become useless. Your call.
 - **`.po` headers** lack `Last-Translator`, `Language-Team`, `MIME-Version`, `Content-Transfer-Encoding` (`msgfmt -c` warns,
   does not fail). Weblate fills them on the first commit.
+
+## 10. Later: Flathub (deferred, 2026-11-22)
+
+Owner decision: **GitHub Releases is the only channel for now** (README and `wiki/docs/install.md` say so); package stores
+come after the project has built a credible history. The plan, the criteria for "ready to approach Flathub" and the
+disclosure draft are in `docs/release-plan.md`. Do **not** start this section before those criteria are met. The details
+are in `docs/flathub-submission.md` (and `docs/flathub-automation.md` after acceptance).
+
+What must be true first (from `docs/release-plan.md`, section 5): several tagged releases over a few months, an active and
+answered issue tracker, the AI-disclosure text reviewed by you, the permissions decision (`/run/media`, gvfs), the ONNX
+Runtime download decision, translations either reviewed or English-only, and the runtime still the newest on the day.
+
+The AI policy means **you** write the manifest and the pull request. The agent prepared: runtime 51 build verified,
+`packaging/flathub/` reference files, the linter results (§5 of the submission doc) and `packaging/flathub/prepare.sh vX.Y.Z`.
+
+- [ ] Criteria of `docs/release-plan.md` section 5 met
+- [ ] Flathub account (log in with GitHub; 2FA on GitHub)
+- [ ] Decide the open points: AI disclosure text, which permissions to keep, ONNX Runtime download, translations, aarch64
+- [ ] `packaging/flathub/prepare.sh vX.Y.Z`, write your manifest by hand from it, `flatpak-builder-lint manifest/repo`, then the PR against `flathub/flathub` branch `new-pr`
+- [ ] Tell reviewers about the project history (repository from 2023, 0.2.0 a rewrite, 0.3.0 the first tagged release, the releases since)
+- [ ] **Flathub verification token** (when the PR is accepted): developer portal gives a token; publish it at
+      `https://adhadse.com/.well-known/org.flathub.VerifiedApps.txt` (apex domain, HTTPS). Link the app on <https://bookx.adhadse.com> as visible proof

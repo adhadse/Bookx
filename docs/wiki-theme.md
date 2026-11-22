@@ -40,11 +40,11 @@ Code highlighting (`--md-code-hl-*`) uses a muted set of the same warmth (terrac
 functions, lilac constants). Admonition families: note/info blue `#8fc0e0`, tip/success sage `#a7c98a`, question
 (the `???` blocks) amber, warning orange `#ee9a52`, danger/bug red `#ec7b74`, example lilac `#b79be0`, quote faint.
 
-Other choices: headings h1/h2 and the home page titles in a system serif stack (no web fonts: the privacy page promises
-no third-party requests), underlined amber links, cards with an amber hover border, a soft amber glow behind the hero
+Other choices: the same fonts and heading weights as the light palette (one system stack, no web fonts: the privacy
+page promises no third-party requests; only colours differ between the palettes), underlined amber links, cards with an amber hover border, a soft amber glow behind the hero
 and a gradient "Try Bookx" panel (CSS only, no images), `::selection` in amber, a 2px amber `:focus-visible` ring, brown
-scrollbars, transitions only under `prefers-reduced-motion: no-preference`. The serif is dark-only so that the light
-palette stays exactly as it was.
+scrollbars, transitions only under `prefers-reduced-motion: no-preference`. Do not set `font-family` or `font-weight`
+inside a `[data-md-color-scheme="slate"]` rule: both palettes must read the same.
 
 ## Things that must not move
 

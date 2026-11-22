@@ -124,6 +124,8 @@ pub enum Msg {
     DevicesChanged,
     ShowVocab,
     ShowAbout,
+    /// Report a Problem (the dialog); `Crash` fills in the first line after a crash.
+    ReportProblem(crate::ui::report_dialog::Prefill),
     /// Copy the diagnostics report to the clipboard.
     CopyDiagnostics,
     /// A `bookx://` link (from the desktop, another Bookx process or the command line).
@@ -196,9 +198,16 @@ impl SimpleComponent for App {
             sharing: RefCell::new(crate::sharing::Sharing::default()),
             plugins: RefCell::new({
                 let mut m = crate::plugins::new_manager(crate::web_import::fetcher());
-                for (id, e) in crate::plugins::reload(&mut m) {
+                let failed = crate::plugins::reload(&mut m);
+                for (id, e) in &failed {
                     tracing::warn!("plugin {id} could not be loaded: {e}");
                 }
+                tracing::info!(
+                    target: "bookx_crumb",
+                    "plugins: {} found, {} failed to load",
+                    m.list().len(),
+                    failed.len()
+                );
                 m
             }),
             vocab: RefCell::new(crate::vocabulary::VocabHub::load(
@@ -208,6 +217,14 @@ impl SimpleComponent for App {
             guard: RefCell::new(guard),
         });
         shared.start_indexing();
+        crate::applog::set_scrub(crate::ui::report_dialog::scrub_rules(&shared));
+        tracing::info!(
+            target: "bookx_crumb",
+            "library opened: {} books (settings: offline {}, safe mode {})",
+            shared.lib.borrow().books.len(),
+            cfg.offline,
+            crate::safe_mode::active()
+        );
         {
             let tx = sender.input_sender().clone();
             crate::ui::secrets_unlock::install(
@@ -307,8 +324,18 @@ impl SimpleComponent for App {
             });
         }
         let toasts = adw::ToastOverlay::new();
-        toasts.set_child(Some(&nav));
+        let notices = {
+            let tx = sender.input_sender().clone();
+            crate::ui::report_notices::install(
+                &shared,
+                &nav,
+                Rc::new(move |p| tx.emit(Msg::ReportProblem(p))),
+            )
+        };
+        toasts.set_child(Some(&notices));
         root.set_content(Some(&toasts));
+        // the first idle run is when the window has its content: the start-up time of the report
+        glib::idle_add_local_once(crate::applog::mark_started);
 
         // Collapse the sidebars of the library on narrow windows.
         let bp = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
@@ -363,6 +390,13 @@ impl SimpleComponent for App {
             add_action("vocab", Rc::new(move || tx.emit(Msg::ShowVocab)));
             let tx = sender.input_sender().clone();
             add_action("about", Rc::new(move || tx.emit(Msg::ShowAbout)));
+            let tx = sender.input_sender().clone();
+            add_action(
+                "report-problem",
+                Rc::new(move || {
+                    tx.emit(Msg::ReportProblem(crate::ui::report_dialog::Prefill::None))
+                }),
+            );
             let tx = sender.input_sender().clone();
             add_action(
                 "copy-diagnostics",
@@ -1733,6 +1767,15 @@ impl SimpleComponent for App {
                         eprintln!("diag: {}", text.replace('\n', " | "));
                     }
                     "a11y-audit" => crate::ui::audit::report(),
+                    "report" => {
+                        if !crate::ui::report_notices::dev_command(arg) {
+                            crate::ui::report_dialog::dev_command(
+                                &self.shared,
+                                &self.front_window(),
+                                arg,
+                            );
+                        }
+                    }
                     "palette" => match arg {
                         "open" => sender.input(Msg::ShowPalette),
                         a => {
@@ -1768,6 +1811,9 @@ impl SimpleComponent for App {
                 self.window.clipboard().set_text(&text);
                 sender.input(Msg::Toast(tr("Diagnostics Copied")));
             }
+            Msg::ReportProblem(prefill) => {
+                crate::ui::report_dialog::show(&self.shared, &self.front_window(), prefill)
+            }
             Msg::OpenUri(uri) => match crate::links::parse(&uri) {
                 Some(link) => {
                     let found = crate::links::resolve(&link, &self.shared.lib.borrow());
@@ -1787,8 +1833,8 @@ impl SimpleComponent for App {
                     .application_name(APP_NAME)
                     .application_icon(APP_ID)
                     .developer_name("Anurag Dhadse")
-                    .version(VERSION)
-                    .comments(tr("A modern library, reader and editor for e-books — written entirely in Rust."))
+                    .version(about_version(&crate::beta::version()))
+                    .comments(about_comments(&crate::beta::version()))
                     .website("https://github.com/adhadse/Bookx")
                     .issue_url("https://github.com/adhadse/Bookx/issues")
                     .license_type(gtk::License::Gpl30)
@@ -1803,9 +1849,45 @@ impl SimpleComponent for App {
                     ))
                     .debug_info_filename("bookx-debug-log.txt")
                     .build();
+                d.add_link(&tr("Report a Problem"), REPORT_LINK);
+                {
+                    let tx = sender.input_sender().clone();
+                    d.connect_activate_link(move |dlg, uri| {
+                        if uri != REPORT_LINK {
+                            return false;
+                        }
+                        dlg.close();
+                        tx.emit(Msg::ReportProblem(crate::ui::report_dialog::Prefill::None));
+                        true
+                    });
+                }
                 d.present(Some(&self.front_window()));
             }
         }
+    }
+}
+
+/// The About dialog's link that opens Report a Problem instead of a web page.
+const REPORT_LINK: &str = "bookx://report-problem";
+
+/// The version line of About: a pre-release carries its channel ("0.3.0-beta.1 · Beta").
+fn about_version(version: &str) -> String {
+    match crate::beta::channel_of(version) {
+        c if c.is_prerelease() => format!("{version} · {}", tr(c.tag())),
+        _ => version.to_string(),
+    }
+}
+
+/// The description in About; a pre-release says that it can have bugs.
+fn about_comments(version: &str) -> String {
+    let base = tr("A modern library, reader and editor for e-books — written entirely in Rust.");
+    if crate::beta::channel_of(version).is_prerelease() {
+        format!(
+            "{base}\n\n{}",
+            tr("Beta software: it can have bugs. Please report problems (Main Menu → Report a Problem).")
+        )
+    } else {
+        base
     }
 }
 
@@ -2193,5 +2275,26 @@ mod about_tests {
             translator_credits("Ana <ana@example.org>"),
             "Ana <ana@example.org>"
         );
+    }
+}
+
+#[cfg(test)]
+mod about_beta_tests {
+    use super::{about_comments, about_version};
+
+    #[test]
+    fn a_beta_says_so_in_the_version_and_the_description() {
+        assert_eq!(about_version("0.3.0-beta.1"), "0.3.0-beta.1 · Beta");
+        assert_eq!(
+            about_version("0.3.0-rc.1"),
+            "0.3.0-rc.1 · Release Candidate"
+        );
+        assert!(about_comments("0.3.0-beta.1").contains("Beta software: it can have bugs."));
+    }
+
+    #[test]
+    fn a_stable_version_is_shown_plainly() {
+        assert_eq!(about_version("0.3.0"), "0.3.0");
+        assert!(!about_comments("0.3.0").contains("Beta"));
     }
 }

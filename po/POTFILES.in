@@ -8,6 +8,7 @@ src/audiobook.rs
 src/audiobook_link.rs
 src/authors_view.rs
 src/backups.rs
+src/beta.rs
 src/bulk_fetch.rs
 src/config.rs
 src/crate_labels.rs
@@ -185,6 +186,8 @@ src/ui/reader_tts.rs
 src/ui/reader_vocab.rs
 src/ui/reading_ruler.rs
 src/ui/replace_fields.rs
+src/ui/report_dialog.rs
+src/ui/report_notices.rs
 src/ui/rsvp.rs
 src/ui/saved.rs
 src/ui/secrets_unlock.rs
