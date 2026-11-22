@@ -1,5 +1,8 @@
 # Flathub submission
 
+> **DEFERRED (2026-11-22): do this after the project has built history; see `docs/release-plan.md`.**
+> GitHub Releases is the only channel for now.
+
 Owner decision (2026-11): **Flathub is the first-class distribution channel.** This page is the internal checklist
 (not for the public wiki). Rules come from <https://docs.flathub.org/docs/for-app-authors/requirements> and
 `/submission`, read on 2026-11-21. Re-read them on the day you submit; they change.
@@ -22,14 +25,14 @@ Owner decision (2026-11): **Flathub is the first-class distribution channel.** T
 
 | File | Purpose |
 |---|---|
-| `build-aux/com.adhadse.Bookx.json` | Development manifest (local directory source). Used by `build-aux/flatpak.sh`, `release.yml`, `package-flatpak.yml`. **Not** what Flathub gets. |
+| `build-aux/com.adhadse.Bookx.json` | Development manifest (local directory source). Used by `build-aux/flatpak.sh`, `release.yml`, `_flatpak.yml`. **Not** what Flathub gets. |
 | `build-aux/cargo-sources.json`, `build-aux/flatpak-cargo-sources.py` | Offline crates from `Cargo.lock` (our own generator, pure stdlib). `release-check.sh` fails when stale. Regenerated in this change: `keyring` and its target crates were added to the lock file. |
 | `packaging/flathub/com.adhadse.Bookx.yml` | **Reference draft** of the Flathub manifest (git source, `x-checker-data`). See blocker 1: re-type it yourself. |
 | `packaging/flathub/flathub.json` | `only-arches: [x86_64]`. |
 | `packaging/flathub/prepare.sh vX.Y.Z` | Clones the tag, writes manifest + `cargo-sources.json` + `flathub.json` into a directory (default `/tmp/opencode/flathub-bookx`). Tested against a throw-away local tag only. |
 | `build-aux/flathub-update.py`, `.github/workflows/flathub-update.yml`, `build-aux/tests/` | Update pull requests for the Flathub repository after a release (`docs/flathub-automation.md`). |
 | `po/reviewed-locales.txt`, `build.rs`, cargo feature `reviewed-locales-only` | The Flathub build embeds English and only these reviewed languages (blocker 5). `REVIEWED_LOCALES=1 build-aux/flatpak.sh` builds the development manifest that way. |
-| `.github/workflows/package-flatpak.yml` | Builds the bundle in CI (artifact, no publishing) and runs the Flathub linter (`continue-on-error` until it has run once). |
+| `.github/workflows/_flatpak.yml` | Builds the bundle in CI (artifact, no publishing) and runs the Flathub linter (`continue-on-error` until it has run once). |
 | `data/com.adhadse.Bookx.{desktop,metainfo.xml,mime.xml}` | Metadata. Metainfo validates with `appstreamcli validate --pedantic` (only the unavoidable `cid-contains-uppercase-letter` pedantic note remains: the ID is fixed). |
 
 Changes made for Flathub in this pass: summary shortened to 34 characters ("E-book library, reader and editor"; the
@@ -125,7 +128,7 @@ development manifest `build-aux/com.adhadse.Bookx.json` and `packaging/flathub/c
 | `flatpak-builder-lint repo` on the local build repository | only `appstream-external-screenshot-url` / `appstream-screenshots-not-mirrored-in-ostree`, which is what a local build without `--mirror-screenshots-url=https://dl.flathub.org/media` always shows; Flathub's builder mirrors them |
 | Official `flatpak-cargo-generator.py` output vs ours | same 584 crates with identical URLs and sha256 (1169 entries each); the official file is committed as `packaging/flathub/cargo-sources.json`; ours stays in `build-aux/` for CI |
 | GUI inside the sandbox, headless | **not verified**: the sandbox's GTK could not initialise the Broadway backend against the host `gtk4-broadwayd` (the runtime has no broadwayd), and a Wayland window on the owner's desktop was not opened during the real-session test run. Run `flatpak run com.adhadse.Bookx` once by hand |
-| `release.yml` / `package-flatpak.yml` / `ci.yml` | updated to the `gnome-51` image and `flatpak/flatpak-github-actions/flatpak-builder@v6.8` (the old `flathub-infra/flatpak-github-actions` repository is archived; the images now come from `flathub-infra/actions-images`, which lists `gnome-51`). **Never run on GitHub.** |
+| `release.yml` / `_flatpak.yml` / `ci.yml` | updated to the `gnome-51` image and `flatpak/flatpak-github-actions/flatpak-builder@v6.8` (the old `flathub-infra/flatpak-github-actions` repository is archived; the images now come from `flathub-infra/actions-images`, which lists `gnome-51`). **Never run on GitHub.** |
 | Natural voices (ONNX Runtime download), devices, secrets portal inside the sandbox | not tested (remaining-work A) |
 
 What remains for the owner (everything else is done): the AI disclosure and decision (blocker 1), the Flathub account and
@@ -159,7 +162,7 @@ aarch64. The tag `v0.3.0` must exist before `packaging/flathub/prepare.sh v0.3.0
 
 Flathub account, the domain token on `adhadse.com`, the AI disclosure and decision (blocker 1), writing and submitting the
 PR, the tag and GitHub release, native review of translations, hardware and sandbox tests (remaining-work A), and the
-run of `package-flatpak.yml` on GitHub (the container image tag `gnome-50` and the linter call are from memory; with
+run of `_flatpak.yml` on GitHub (the container image tag `gnome-50` and the linter call are from memory; with
 GNOME 51 the image tag changes to `gnome-51` once the manifest moves).
 
 ## 8. Fallback channel if Flathub says no
@@ -168,8 +171,8 @@ If Flathub rejects the submission (generative-AI policy, development history, pe
 without it. Documentation only, nothing below is implemented. The in-app text and the wiki install page must then say
 where the builds come from.
 
-1. **GitHub release bundles (exists).** `release.yml` attaches `bookx.flatpak` (x86_64) with a checksum to every release.
-   Install: `flatpak install --user bookx.flatpak` (the GNOME runtime comes from Flathub as a dependency). No updates;
+1. **GitHub release bundles (exists).** `release.yml` attaches `Bookx-VERSION-linux-x86_64.flatpak` (x86_64) with a checksum to every release.
+   Install: `flatpak install --user Bookx-VERSION-linux-x86_64.flatpak` (the GNOME runtime comes from Flathub as a dependency). No updates;
    the user installs the next bundle by hand.
 2. **Self-hosted Flatpak repository on GitHub Pages (to build).** Gives `flatpak update`:
    - Create a signing key **held by the owner only** (`gpg --quick-gen-key "Bookx Flatpak <hello@adhadse.com>" ed25519 sign 3y`),

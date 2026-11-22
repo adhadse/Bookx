@@ -3,7 +3,7 @@ name: Release
 # Push a tag like v0.3.0 (or v0.3.0-beta.1, -rc.1, -alpha.1: those become GitHub pre-releases). The jobs:
 #   gates     the commit of the tag has to have passed CI already (the `required` check of ci.yml)
 #   tarball   release build, tarball, .deb, .rpm
-#   flatpak   Bookx-VERSION.flatpak (the reusable _flatpak.yml, the same build CI does)
+#   flatpak   the Flatpak bundle (the reusable _flatpak.yml, the same build CI does)
 #   publish   checksums, build provenance, cosign signatures, the GitHub release
 #   wiki      after publish: the public wiki is deployed from the tagged commit (wiki-deploy.yml), pre-releases included
 # Nothing here creates or pushes a tag.
@@ -127,6 +127,14 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: build-aux/release-names.sh
+          sparse-checkout-cone-mode: false
+      - name: Same name scheme for every file (Bookx-VERSION-linux-ARCH.EXT)
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: build-aux/release-names.sh dist "$VERSION"
       - name: Checksums of everything
         run: |
           cd dist
