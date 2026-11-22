@@ -8,7 +8,10 @@
   * every scene named in the manifest's scene list exists in the scenario files and every picture's scene is run by
     build-aux/wiki-screenshots.sh;
   * the feature pages each have the pictures they should (a minimum per page);
-  * the assets stay below the size budget (25 MB).
+  * the assets stay below the size budget (25 MB);
+  * the short videos of build-aux/wiki-videos.txt: each exists as -light/-dark .webm with a poster, is shown by its page in both
+    styles in a <video controls muted> (never autoplay) with a description (aria-describedby -> the figcaption), has a scene in
+    build-aux/session/scenarios_wiki_video.py, and no clip is orphaned or over its size budget (build-aux/wiki_video.py).
 
   build-aux/check-wiki-pictures.py [--budget-mb 25]
 """
@@ -37,6 +40,77 @@ def manifest():
         page, _, names = line.partition(":")
         pages[page.strip()] = names.split()
     return pages
+
+
+def video_manifest():
+    pages = {}
+    path = os.path.join(ROOT, "build-aux", "wiki-videos.txt")
+    for line in open(path, encoding="utf8"):
+        line = line.strip()
+        if line and not line.startswith("#"):
+            page, _, names = line.partition(":")
+            pages[page.strip()] = names.split()
+    return pages
+
+
+def video_problems():
+    """The video rules (see the module docstring); returns (problems, number of clips shown)."""
+    sys.path.insert(0, os.path.dirname(__file__))
+    import wiki_video
+    problems = []
+    pages = video_manifest()
+    listed = {n for v in pages.values() for n in v}
+    shown = {}
+    for f in sorted(os.listdir(DOCS)):
+        if not f.endswith(".md"):
+            continue
+        text = open(os.path.join(DOCS, f), encoding="utf8").read()
+        for tag in re.findall(r"^<video\b[^>]*>", text, re.M):
+            m = re.search(r'<source src="assets/([a-z0-9-]+)-(light|dark)\.webm"', text[text.index(tag):])
+            if not m:
+                problems.append(f"{f}: a <video> without a <source src=assets/NAME-light|dark.webm>")
+                continue
+            name, style = m.groups()
+            shown.setdefault(f, {}).setdefault(name, set()).add(style)
+            for attr in ("controls", "muted", "playsinline", "poster=", "aria-describedby="):
+                if attr not in tag:
+                    problems.append(f"{f}: the video {name} has no {attr.rstrip('=')}")
+            if "autoplay" in tag:
+                problems.append(f"{f}: the video {name} autoplays; it must wait for the reader")
+            if f'poster="../assets/{name}-poster-{style}.webp"' not in tag:
+                problems.append(f"{f}: the video {name} ({style}) must use ../assets/{name}-poster-{style}.webp as poster")
+            d = re.search(r'aria-describedby="([^"]+)"', tag)
+            if d and f'id="{d.group(1)}"' not in text:
+                problems.append(f"{f}: the video {name} describes itself with #{d.group(1)}, which is not on the page")
+    for page, names in pages.items():
+        for n in names:
+            for style in ("light", "dark"):
+                for fn in (f"{n}-{style}.webm", f"{n}-poster-{style}.webp"):
+                    if not os.path.exists(os.path.join(ASSETS, fn)):
+                        problems.append(f"{page}: assets/{fn} is missing (run build-aux/wiki-screenshots.sh)")
+                if style not in shown.get(page, {}).get(n, set()):
+                    problems.append(f"{page}: the manifest lists the video {n} but the page does not show its {style} variant")
+    for page, vids in shown.items():
+        for n in vids:
+            if n not in pages.get(page, []):
+                problems.append(f"{page}: shows the video {n}, which build-aux/wiki-videos.txt does not list for this page")
+    used = {n for v in shown.values() for n in v}
+    for f in sorted(os.listdir(ASSETS)):
+        m = re.match(r"^([a-z0-9-]+?)(-poster)?-(light|dark)\.(webm|webp)$", f)
+        if m and (f.endswith(".webm") or m.group(2)) and m.group(1) not in used:
+            problems.append(f"assets/{f} is not used by any page (orphan)")
+    scenes = open(os.path.join(SCENES, "scenarios_wiki_video.py"), encoding="utf8").read()
+    for n in sorted(listed):
+        if f'"{n}"' not in scenes:
+            problems.append(f"no scene records the video {n}")
+    sizes = []
+    for f in sorted(os.listdir(ASSETS)):
+        if f.endswith(".webm"):
+            sizes.append(os.path.getsize(os.path.join(ASSETS, f)))
+            if sizes[-1] > wiki_video.MAX_CLIP_BYTES:
+                problems.append(f"assets/{f}: {sizes[-1] / 1024:.0f} KB is over the {wiki_video.MAX_CLIP_BYTES // 1024} KB budget")
+    problems += wiki_video.total_problems(sizes)
+    return problems, len(sizes)
 
 
 def main():
@@ -126,6 +200,8 @@ def main():
     total = sum(os.path.getsize(os.path.join(ASSETS, f)) for f in os.listdir(ASSETS)) / 1e6
     if total > budget:
         problems.append(f"the assets are {total:.1f} MB, over the {budget:.0f} MB budget")
+    vp, n_clips = video_problems()
+    problems += vp
     print(f"wiki pictures: {len(listed)} listed, {sum(len(v) for v in shown.values())} shown on pages, "
           f"assets {total:.1f} MB (budget {budget:.0f} MB)")
     for p in problems:

@@ -1,0 +1,8 @@
+# The short videos of the public wiki, per page: every one is made by build-aux/wiki-screenshots.sh (scenes in
+# build-aux/session/scenarios_wiki_video.py, encoded by build-aux/wiki_video.py) as <name>-light.webm and <name>-dark.webm plus
+# <name>-poster-light.webp and <name>-poster-dark.webp in wiki/docs/assets/. check-wiki-pictures.py (run by wiki.sh) checks
+# that each is on its page in both styles with a description, and the size budget (600 KB a clip, 4 MB together, 12 s, 960 px).
+# Format: <page.md>: <name> <name> ...
+read-aloud.md: read-aloud-demo
+reading.md: speed-read-demo reading-ruler-demo
+accessibility.md: reading-ruler-demo
