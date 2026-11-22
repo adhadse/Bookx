@@ -28,6 +28,31 @@ Open the [latest release](https://github.com/adhadse/Bookx/releases/latest) and 
 The file names follow each package type (`bookx-<version>-<architecture>.<extension>`, `bookx_<version>_amd64.deb`); the examples below use 0.3.0-beta.2, use the version you downloaded. All builds are
 for 64-bit Intel/AMD (x86_64); there is no ARM build yet.
 
+### Supported distributions
+
+What is checked before a release: the `.rpm`, `.deb` and tarball are installed in a clean container of each system
+below and Bookx is started. The Flatpak bundle needs only Flatpak.
+
+| Distribution | Native package (`.rpm`, `.deb`, tarball) | Flatpak bundle |
+|---|---|---|
+| Fedora 43, 44, 45 | works (`.rpm`) | works |
+| Ubuntu 25.10, 26.04 | works (`.deb`) | works |
+| Debian testing (forky) | works (`.deb`) | works |
+| Arch Linux | works (tarball) | works |
+| openSUSE Tumbleweed | not checked every release | works |
+| **Debian 13 (trixie)**, Debian 12 | **does not work**: GTK 4.18 / 4.8 is too old | **use this** |
+| **Ubuntu 24.04 LTS**, Linux Mint 22 | **does not work**: GTK 4.14 is too old | **use this** |
+| Fedora 42 and older | **does not work**: GTK too old | **use this** |
+
+Why: the native packages need GTK 4.20, libadwaita 1.8 and glibc 2.42 or newer, which only recent distributions have.
+The Flatpak brings its own GNOME 51 runtime, so it runs on any distribution with
+[Flatpak](https://flatpak.org/setup/), including the ones marked above.
+
+!!! note "Version 0.3.0-beta.1"
+
+    The packages of the first beta (0.3.0-beta.1) were built on Fedora 45 and install **only there**. On any other
+    system use that release's Flatpak bundle, or update to 0.3.0-beta.2, which has the support listed above.
+
 ### Which file do I pick?
 
 | Your system | Pick |
