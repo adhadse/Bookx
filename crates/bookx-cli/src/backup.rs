@@ -164,7 +164,7 @@ pub enum BackupCmd {
 
 fn store(spec: &str, r: &RemoteArgs) -> Result<Box<dyn RepoStore>> {
     if spec.starts_with("http://") || spec.starts_with("https://") {
-        let pw = std::env::var("BOOKX_WEBDAV_PASSWORD").unwrap_or_default();
+        let pw = crate::var("BOOKX_WEBDAV_PASSWORD").unwrap_or_default();
         return Ok(Box::new(DavStore::new(
             spec,
             r.user.as_deref().unwrap_or(""),
@@ -181,7 +181,7 @@ fn store(spec: &str, r: &RemoteArgs) -> Result<Box<dyn RepoStore>> {
 }
 
 fn secrets() -> Secrets {
-    Secrets::passphrase(&std::env::var("BOOKX_BACKUP_PASSPHRASE").unwrap_or_default())
+    Secrets::passphrase(&crate::var("BOOKX_BACKUP_PASSPHRASE").unwrap_or_default())
 }
 
 fn kdf() -> Kdf {
