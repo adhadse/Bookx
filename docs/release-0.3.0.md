@@ -1,6 +1,6 @@
 # Release 0.3.0: runbook for the owner (GitHub Releases first)
 
-> The authoritative procedure is [releasing.md](releasing.md) (workflows, order, tags, naming scheme `Bookx-<version>-linux-<arch>.<ext>`). This file is the 0.3.0 checklist.
+> The authoritative procedure is [releasing.md](releasing.md) (workflows, order, tags, naming scheme (native file names, `bookx-<version>-...`)). This file is the 0.3.0 checklist.
 
 Internal (not for the wiki). **Channel: GitHub Releases only** (owner decision 2026-11-22; Flathub and the other stores are
 deferred, see `docs/release-plan.md`). Order: pre-flight (1), version (2), tag (3), `release.yml` (4), verify (5), release
@@ -83,12 +83,12 @@ Trigger: a push of a tag `v*` (or `workflow_dispatch`, which builds but does not
 1. **tarball** (`fedora:latest` container): installs GTK 4, libadwaita, GtkSourceView 5 and the toolchain;
    runs `build-aux/release-check.sh v0.3.0` (the tag, `Cargo.toml`, metainfo and `CHANGELOG.md` must agree, the Flatpak
    sources must match `Cargo.lock`, golden plugin files unchanged); `cargo build --release --locked -p bookx -p bookx-cli`;
-   `build-aux/tarball.sh dist` writes `Bookx-0.3.0-beta.1-linux-x86_64.tar.gz` (+ `.sha256`; deterministic packing, installs the
+   `build-aux/tarball.sh dist` writes `bookx-0.3.0-beta.1-linux-x86_64.tar.gz` (+ `.sha256`; deterministic packing, installs the
    tree under `usr/`: both binaries, desktop file, metainfo, MIME XML, icons, locale `.mo` files, README, LICENSE, NOTICE, CHANGELOG);
-   `cargo deb --no-build` writes `Bookx-0.3.0-beta.1-linux-x86_64.deb`; `cargo generate-rpm` writes `Bookx-0.3.0-beta.1-linux-x86_64.rpm`.
+   `cargo deb --no-build` writes `bookx_0.3.0-beta.1_amd64.deb`; `cargo generate-rpm` writes `bookx-0.3.0-beta.1.x86_64.rpm`.
 2. **flatpak** (`ghcr.io/flathub-infra/flatpak-github-actions:gnome-51`): regenerates `cargo-sources.json`, builds
-   `build-aux/com.adhadse.Bookx.json` with the reusable `_flatpak.yml` (flatpak-builder on the runner), writes `Bookx-0.3.0-beta.1-linux-x86_64.flatpak` and
-   `Bookx-0.3.0-beta.1-linux-x86_64.flatpak.sha256`.
+   `build-aux/com.adhadse.Bookx.json` with the reusable `_flatpak.yml` (flatpak-builder on the runner), writes `bookx-0.3.0-beta.1-x86_64.flatpak` and
+   `bookx-0.3.0-beta.1-x86_64.flatpak.sha256`.
 3. **publish** (needs both; only for tags): downloads the artifacts, writes `SHA256SUMS` of every file;
    `actions/attest-build-provenance` (GitHub build-provenance attestation, SLSA style, for every file);
    `cosign sign-blob --yes --bundle FILE.sigstore.json FILE` for **every file including `SHA256SUMS`** (keyless: the
@@ -96,8 +96,8 @@ Trigger: a push of a tag `v*` (or `workflow_dispatch`, which builds but does not
    Rekor; no secret exists); then **`cosign verify-blob` of every file** with the same identity regexp users use (the job
    fails if this fails); finally `softprops/action-gh-release` creates the GitHub release with all files and
    *generated* release notes.
-4. Release assets after a green run (7 files and one `.sigstore.json` bundle for each): `Bookx-0.3.0-beta.1-linux-x86_64.tar.gz`, `Bookx-0.3.0-beta.1-linux-x86_64.deb`,
-   `Bookx-0.3.0-beta.1-linux-x86_64.rpm`, `Bookx-0.3.0-beta.1-linux-x86_64.flatpak`, the `.sha256` files, `SHA256SUMS`, and one `*.sigstore.json` per file.
+4. Release assets after a green run (7 files and one `.sigstore.json` bundle for each): `bookx-0.3.0-beta.1-linux-x86_64.tar.gz`, `bookx_0.3.0-beta.1_amd64.deb`,
+   `bookx-0.3.0-beta.1.x86_64.rpm`, `bookx-0.3.0-beta.1-x86_64.flatpak`, the `.sha256` files, `SHA256SUMS`, and one `*.sigstore.json` per file.
 
 Other workflows are independent: `ci.yml` deploys the wiki on changes under `wiki/`; `package-*.yml` build the
 Flatpak/macOS/Windows artifacts without publishing; `nightly.yml` is the nightly UI tier; `ci.yml` (Rust job) checks strings.
@@ -115,14 +115,14 @@ sha256sum -c SHA256SUMS --ignore-missing
 cosign verify-blob --bundle SHA256SUMS.sigstore.json \
   --certificate-identity-regexp '^https://github\.com/adhadse/Bookx/\.github/workflows/release\.yml@refs/tags/v' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com SHA256SUMS      # Verified OK
-gh attestation verify Bookx-0.3.0-beta.1-linux-x86_64.tar.gz --repo adhadse/Bookx
+gh attestation verify bookx-0.3.0-beta.1-linux-x86_64.tar.gz --repo adhadse/Bookx
 git rev-parse v0.3.0^{commit}      # same commit as on the release page
 ```
 
 - [ ] Checksums, cosign and attestation all pass for the tarball, deb, rpm and Flatpak bundle
 - [ ] Install test, at least once each, on a machine that is not the build machine:
-      `flatpak install --user Bookx-0.3.0-beta.1-linux-x86_64.flatpak && flatpak run com.adhadse.Bookx`; `sudo dnf install ./Bookx-0.3.0-beta.1-linux-x86_64.rpm` (Fedora 43+: GTK 4.20, libadwaita 1.8);
-      `sudo apt install ./Bookx-0.3.0-beta.1-linux-x86_64.deb` (needs a distribution that ships GTK 4.20 and libadwaita 1.8; **older ones cannot install it**: check `apt policy libgtk-4-1 libadwaita-1-0` first)
+      `flatpak install --user bookx-0.3.0-beta.1-x86_64.flatpak && flatpak run com.adhadse.Bookx`; `sudo dnf install ./bookx-0.3.0-beta.1.x86_64.rpm` (Fedora 43+: GTK 4.20, libadwaita 1.8);
+      `sudo apt install ./bookx_0.3.0-beta.1_amd64.deb` (needs a distribution that ships GTK 4.20 and libadwaita 1.8; **older ones cannot install it**: check `apt policy libgtk-4-1 libadwaita-1-0` first)
 - [ ] Open a book, add the library, quit (the first-run path), and `flatpak run --command=bookx-cli com.adhadse.Bookx --version`
 
 ## 6. Release notes (GitHub release body)
@@ -143,7 +143,7 @@ A GNOME e-book library, reader and EPUB editor written in Rust (GTK 4, libadwait
 - EPUB editor with syntax highlighting, live preview, a Problems panel and a command palette
 - Spanish, German, French and Hindi translations (machine-assisted; native review welcome)
 
-**Install**: download from this page: the Flatpak bundle (`Bookx-0.3.0-beta.1-linux-x86_64.flatpak`), a `.deb`, an `.rpm` or the tarball. Every file is signed
+**Install**: download from this page: the Flatpak bundle (`bookx-0.3.0-beta.1-x86_64.flatpak`), a `.deb`, an `.rpm` or the tarball. Every file is signed
 (Sigstore, keyless) and has a build-provenance attestation: [Verify your download](https://bookx.adhadse.com/install/#verify-your-download).
 GitHub Releases is the only official channel for now (no Flathub, Homebrew, winget or Scoop). Needs GTK 4.20 and libadwaita 1.8 (the Flatpak brings its own).
 

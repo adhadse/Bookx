@@ -171,8 +171,8 @@ If Flathub rejects the submission (generative-AI policy, development history, pe
 without it. Documentation only, nothing below is implemented. The in-app text and the wiki install page must then say
 where the builds come from.
 
-1. **GitHub release bundles (exists).** `release.yml` attaches `Bookx-VERSION-linux-x86_64.flatpak` (x86_64) with a checksum to every release.
-   Install: `flatpak install --user Bookx-VERSION-linux-x86_64.flatpak` (the GNOME runtime comes from Flathub as a dependency). No updates;
+1. **GitHub release bundles (exists).** `release.yml` attaches `bookx-VERSION-x86_64.flatpak` (x86_64) with a checksum to every release.
+   Install: `flatpak install --user bookx-VERSION-x86_64.flatpak` (the GNOME runtime comes from Flathub as a dependency). No updates;
    the user installs the next bundle by hand.
 2. **Self-hosted Flatpak repository on GitHub Pages (to build).** Gives `flatpak update`:
    - Create a signing key **held by the owner only** (`gpg --quick-gen-key "Bookx Flatpak <hello@adhadse.com>" ed25519 sign 3y`),

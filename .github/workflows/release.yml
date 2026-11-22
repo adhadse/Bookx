@@ -133,7 +133,7 @@ jobs:
         with:
           sparse-checkout: build-aux/release-names.sh
           sparse-checkout-cone-mode: false
-      - name: Same name scheme for every file (Bookx-VERSION-linux-ARCH.EXT)
+      - name: Native file names (build-aux/release-names.sh)
         env:
           VERSION: ${{ needs.version.outputs.version }}
         run: build-aux/release-names.sh dist "$VERSION"

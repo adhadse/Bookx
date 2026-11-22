@@ -18,14 +18,14 @@ Open the [latest release](https://github.com/adhadse/Bookx/releases/latest) and 
 
 | File | What it is | Choose it when |
 |---|---|---|
-| `Bookx-0.3.0-beta.1-linux-x86_64.flatpak` | A single-file Flatpak bundle (x86_64). Runs in a [sandbox](#what-the-sandbox-may-do) with its own GNOME 51 runtime | Any Linux distribution with [Flatpak](https://flatpak.org/setup/) installed. The safest choice and the one that works on older distributions |
-| `Bookx-0.3.0-beta.1-linux-x86_64.rpm` | RPM package | Fedora 43 or newer, and other RPM distributions that ship GTK 4.20 and libadwaita 1.8 |
-| `Bookx-0.3.0-beta.1-linux-x86_64.deb` | Debian package | Debian, Ubuntu and derivatives that ship GTK 4.20 and libadwaita 1.8 (a recent release; older ones cannot install it) |
-| `Bookx-0.3.0-beta.1-linux-x86_64.tar.gz` | Plain archive with the same files under `usr/` | Arch and everything else; or when you want no package manager involved |
+| `bookx-0.3.0-beta.1-x86_64.flatpak` | A single-file Flatpak bundle (x86_64). Runs in a [sandbox](#what-the-sandbox-may-do) with its own GNOME 51 runtime | Any Linux distribution with [Flatpak](https://flatpak.org/setup/) installed. The safest choice and the one that works on older distributions |
+| `bookx-0.3.0-beta.1.x86_64.rpm` | RPM package | Fedora 43 or newer, and other RPM distributions that ship GTK 4.20 and libadwaita 1.8 |
+| `bookx_0.3.0-beta.1_amd64.deb` | Debian package | Debian, Ubuntu and derivatives that ship GTK 4.20 and libadwaita 1.8 (a recent release; older ones cannot install it) |
+| `bookx-0.3.0-beta.1-linux-x86_64.tar.gz` | Plain archive with the same files under `usr/` | Arch and everything else; or when you want no package manager involved |
 | `SHA256SUMS` | Checksums of all the files above | [Verifying](#verify-your-download) |
 | `*.sigstore.json` | The signature of the file with the same name (also for `SHA256SUMS`) | [Verifying](#verify-your-download) |
 
-Every file is named `Bookx-<version>-linux-<architecture>.<extension>`; the examples below use 0.3.0-beta.1, use the version you downloaded. All builds are
+The file names follow each package type (`bookx-<version>-<architecture>.<extension>`, `bookx_<version>_amd64.deb`); the examples below use 0.3.0-beta.1, use the version you downloaded. All builds are
 for 64-bit Intel/AMD (x86_64); there is no ARM build yet.
 
 ### Which file do I pick?
@@ -55,7 +55,7 @@ Download the file **and** `SHA256SUMS` (and the `.sigstore.json` files if you ve
 
     ```bash
     flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-    flatpak install --user ./Bookx-0.3.0-beta.1-linux-x86_64.flatpak
+    flatpak install --user ./bookx-0.3.0-beta.1-x86_64.flatpak
     flatpak run com.adhadse.Bookx
     ```
 
@@ -65,7 +65,7 @@ Download the file **and** `SHA256SUMS` (and the `.sigstore.json` files if you ve
     `flatpak run --command=bookx-cli com.adhadse.Bookx --help`.
 
     **Updating:** a beta has no automatic updates. When a new beta is out, download its bundle and run the same
-    `flatpak install --user ./Bookx-<new version>-linux-x86_64.flatpak` again: it replaces the old one and keeps your
+    `flatpak install --user ./bookx-<new version>-x86_64.flatpak` again: it replaces the old one and keeps your
     settings. Watch the [releases page](https://github.com/adhadse/Bookx/releases) (or use "Watch → Custom → Releases"
     on GitHub) to hear about new betas.
 
@@ -76,13 +76,13 @@ Download the file **and** `SHA256SUMS` (and the `.sigstore.json` files if you ve
 === "Fedora (.rpm)"
 
     ```bash
-    sudo dnf install ./Bookx-0.3.0-beta.1-linux-x86_64.rpm
+    sudo dnf install ./bookx-0.3.0-beta.1.x86_64.rpm
     ```
 
 === "Debian / Ubuntu (.deb)"
 
     ```bash
-    sudo apt install ./Bookx-0.3.0-beta.1-linux-x86_64.deb
+    sudo apt install ./bookx_0.3.0-beta.1_amd64.deb
     ```
 
 === "Tarball"
@@ -90,11 +90,11 @@ Download the file **and** `SHA256SUMS` (and the `.sigstore.json` files if you ve
     The archive holds a tree starting at `usr/`. Unpack it into a prefix of your choice, for example your home folder:
 
     ```bash
-    tar -xzf Bookx-0.3.0-beta.1-linux-x86_64.tar.gz
-    cp -r Bookx-0.3.0-beta.1-linux-x86_64/usr/* ~/.local/
+    tar -xzf bookx-0.3.0-beta.1-linux-x86_64.tar.gz
+    cp -r bookx-0.3.0-beta.1-linux-x86_64/usr/* ~/.local/
     ```
 
-    Or system-wide (`sudo cp -r Bookx-0.3.0-beta.1-linux-x86_64/usr/* /usr/`). You need GTK 4.20, libadwaita 1.8 and GtkSourceView
+    Or system-wide (`sudo cp -r bookx-0.3.0-beta.1-linux-x86_64/usr/* /usr/`). You need GTK 4.20, libadwaita 1.8 and GtkSourceView
     5 installed; `espeak-ng` and `pacat`/`pw-cat` (PulseAudio or PipeWire) are optional for natural voices in
     [read aloud](read-aloud.md). The tree is the same one `make install` makes, so it contains the desktop file, icons, translations and
     `bookx-cli`.
@@ -104,7 +104,7 @@ Download the file **and** `SHA256SUMS` (and the `.sigstore.json` files if you ve
 Download the next release from [GitHub Releases](https://github.com/adhadse/Bookx/releases/latest) and install it the
 same way; your library and settings stay where they are.
 
-- Flatpak: `flatpak install --user ./Bookx-0.3.0-beta.1-linux-x86_64.flatpak` again replaces the old version.
+- Flatpak: `flatpak install --user ./bookx-0.3.0-beta.1-x86_64.flatpak` again replaces the old version.
 - `.rpm` / `.deb`: `sudo dnf install ./new-file.rpm`, `sudo apt install ./new-file.deb` upgrades in place.
 - Tarball: copy the new tree over the old one.
 
@@ -149,7 +149,7 @@ a `.sigstore.json` file next to it (download it into the same folder). Release f
 3. Or with the GitHub CLI, which checks the build-provenance attestation:
 
     ```bash
-    gh attestation verify Bookx-0.3.0-beta.1-linux-x86_64.tar.gz --repo adhadse/Bookx
+    gh attestation verify bookx-0.3.0-beta.1-linux-x86_64.tar.gz --repo adhadse/Bookx
     ```
 
 If a check fails, do not install the file and report it as described in the

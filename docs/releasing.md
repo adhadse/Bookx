@@ -10,23 +10,31 @@ Policy first: **GitHub Releases is the only official channel.** Flathub, Homebre
 
 | File | Built by | Notes |
 |---|---|---|
-| `Bookx-<version>-linux-x86_64.tar.gz` | `release.yml` job `tarball` (`build-aux/tarball.sh`) | deterministic packing; unpacks to a folder of the same name |
-| `Bookx-<version>-linux-x86_64.deb` | `tarball` (`cargo deb`) | Debian, Ubuntu. Inside, the package version is `0.3.0~beta.1` (cargo-deb rewrites `-` so the final release sorts higher): check on the first beta |
-| `Bookx-<version>-linux-x86_64.rpm` | `tarball` (`cargo generate-rpm`) | Fedora, openSUSE. The release job passes `0.3.0~beta.1` to cargo-generate-rpm (a hyphen is invalid in an RPM version; found on the first tag run): check with `rpm -qip` |
-| `Bookx-<version>-linux-x86_64.flatpak` | `flatpak` (reusable `_flatpak.yml`) | single-file bundle, GNOME 51 runtime from Flathub |
+| `bookx-<version>-linux-x86_64.tar.gz` | `release.yml` job `tarball` (`build-aux/tarball.sh`) | deterministic packing; unpacks to a folder of the same name |
+| `bookx_<version>_amd64.deb` | `tarball` (`cargo deb`) | Debian, Ubuntu. Inside, the package version is `0.3.0~beta.1` (cargo-deb rewrites `-` so the final release sorts higher): check on the first beta |
+| `bookx-<version>.x86_64.rpm` | `tarball` (`cargo generate-rpm`) | Fedora, openSUSE. The release job passes `0.3.0~beta.1` to cargo-generate-rpm (a hyphen is invalid in an RPM version; found on the first tag run): check with `rpm -qip` |
+| `bookx-<version>-x86_64.flatpak` | `flatpak` (reusable `_flatpak.yml`) | single-file bundle, GNOME 51 runtime from Flathub |
 | `SHA256SUMS` | job `publish` | covers every file above |
 | `<file>.sigstore.json` | job `publish` | cosign keyless signature per file |
 | build provenance attestation | job `publish` | verify with `gh attestation verify` |
 
 ### Naming scheme
 
-**Every package is `Bookx-<version>-linux-<arch>.<ext>`**, with the version exactly as in the tag without the `v`
-(`0.3.0-beta.1`), `<arch>` = `x86_64` (also for the `.deb`, whose control file says `amd64`), and `<ext>` one of
-`tar.gz`, `deb`, `rpm`, `flatpak`. The tools produce their own names (`bookx_0.3.0~beta.1-1_amd64.deb` and so on);
-`build-aux/release-names.sh` renames them in the `publish` job before the checksums and signatures are made, fails if a
-kind is missing or doubled, and has a test (`build-aux/tests/test_release_names.py`). Docs, the install page and the
-verification examples use this scheme: change it in one place (the script) and in `wiki/docs/install.md`.
-A future macOS or Windows file would be `Bookx-<version>-macos-<arch>.dmg` / `Bookx-<version>-windows-x64.zip`.
+Each file is named the way its ecosystem names its own (ripgrep, bat and KOReader do the same), always with the version
+exactly as in the tag without the `v` (`0.3.0-beta.1`):
+
+| Kind | Name |
+|---|---|
+| tarball | `bookx-<version>-linux-<arch>.tar.gz` |
+| Debian/Ubuntu | `bookx_<version>_<amd64\|arm64>.deb` |
+| Fedora/openSUSE | `bookx-<version>.<x86_64\|aarch64>.rpm` |
+| Flatpak bundle | `bookx-<version>-<arch>.flatpak` |
+
+The tools write their own names (`bookx_0.3.0~beta.1-1_amd64.deb`); `build-aux/release-names.sh` renames them in the
+`publish` job before checksums and signatures are made, fails if a kind is missing or doubled, and has a test
+(`build-aux/tests/test_release_names.py`). **No `~` in a file name:** GitHub rewrites it to `.` on upload, so the name in
+`SHA256SUMS` would not match the download. The packages inside still carry `0.3.0~beta.1` (so the final 0.3.0 sorts
+higher). A future macOS or Windows file would be `bookx-<version>-<arch>.dmg` / `bookx-<version>-windows-x64.zip`.
 
 **There is no AppImage.** Nothing in the repository builds one and we do not promise one: the Flatpak bundle is the
 portable, sandboxed single file. An AppImage would be a new packaging task (GTK 4 + libadwaita bundling, GSettings
@@ -70,7 +78,7 @@ tag v0.3.0-beta.1 pushed
    │      │
    │      ├── tarball   release-check.sh <tag> → cargo build --release → tarball.sh → .deb → .rpm
    │      └── version   derives "0.3.0-beta.1" and prerelease=true from the tag
-   │             └── flatpak   _flatpak.yml → Bookx-0.3.0-beta.1-linux-x86_64.flatpak
+   │             └── flatpak   _flatpak.yml → bookx-0.3.0-beta.1-x86_64.flatpak
    │
    └── publish    (after tarball + flatpak) SHA256SUMS → attestation → cosign sign + verify
           │       → GitHub release, generated notes, flagged pre-release when the tag says so
@@ -112,12 +120,12 @@ Do the steps in this order. Everything before step 7 is reversible; the tag is n
 9. **Verify the artifacts** from the release page, on a machine that is not the build machine:
    ```bash
    sha256sum -c SHA256SUMS
-   gh attestation verify Bookx-0.3.0-beta.1-linux-x86_64.flatpak --repo adhadse/Bookx
-   cosign verify-blob --bundle Bookx-0.3.0-beta.1-linux-x86_64.flatpak.sigstore.json \
+   gh attestation verify bookx-0.3.0-beta.1-x86_64.flatpak --repo adhadse/Bookx
+   cosign verify-blob --bundle bookx-0.3.0-beta.1-x86_64.flatpak.sigstore.json \
      --certificate-identity-regexp '^https://github\.com/adhadse/Bookx/\.github/workflows/release\.yml@refs/tags/v' \
-     --certificate-oidc-issuer https://token.actions.githubusercontent.com Bookx-0.3.0-beta.1-linux-x86_64.flatpak
-   flatpak install --user ./Bookx-0.3.0-beta.1-linux-x86_64.flatpak      # starts, About says "Beta"
-   sudo apt install ./Bookx-*-linux-x86_64.deb                      # or: sudo dnf install ./Bookx-*-linux-x86_64.rpm
+     --certificate-oidc-issuer https://token.actions.githubusercontent.com bookx-0.3.0-beta.1-x86_64.flatpak
+   flatpak install --user ./bookx-0.3.0-beta.1-x86_64.flatpak      # starts, About says "Beta"
+   sudo apt install ./bookx_*_amd64.deb                      # or: sudo dnf install ./bookx-*.x86_64.rpm
    ```
 10. **Edit the release page:** replace the generated notes with the plain-words notes, add the beta warning and the
     "Report a Problem" steps, keep it marked **pre-release** for any `-alpha`/`-beta`/`-rc`.

@@ -24,7 +24,12 @@ RAW = [
     "bookx-0.3.0-beta.1-1.x86_64.rpm",
     "Bookx-0.3.0-beta.1.flatpak",
 ]
-WANT = [f"Bookx-0.3.0-beta.1-linux-x86_64.{e}" for e in ("deb", "flatpak", "rpm", "tar.gz")]
+WANT = sorted([
+    "bookx-0.3.0-beta.1-linux-x86_64.tar.gz",
+    "bookx_0.3.0-beta.1_amd64.deb",
+    "bookx-0.3.0-beta.1.x86_64.rpm",
+    "bookx-0.3.0-beta.1-x86_64.flatpak",
+])
 
 
 class ReleaseNames(unittest.TestCase):
@@ -59,7 +64,8 @@ class ReleaseNames(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             touch(d, *RAW)
             self.assertEqual(run(d, arch="aarch64").returncode, 0)
-            self.assertIn("Bookx-0.3.0-beta.1-linux-aarch64.flatpak", os.listdir(d))
+            self.assertIn("bookx-0.3.0-beta.1-aarch64.flatpak", os.listdir(d))
+            self.assertIn("bookx_0.3.0-beta.1_arm64.deb", os.listdir(d))
 
 
 if __name__ == "__main__":
