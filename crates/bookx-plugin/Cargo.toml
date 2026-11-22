@@ -9,7 +9,7 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 anyhow = "1"
-base64 = "0.22"
+base64 = "0.23"
 bookx-core = { path = "../bookx-core" }
 regex = "1"
 serde = { version = "1", features = ["derive"] }
