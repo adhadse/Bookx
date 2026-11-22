@@ -332,3 +332,12 @@ Below the 90% goal today: bookx-audio (real audio device code), bookx-cli (devic
 * Region and function coverage are in `summary.json` and the HTML report, not gated.
 * Inline test modules are found by their `#[cfg(test)]` attribute at column 0 up to the closing `}` at column 0.
 * `NET=0` skips the loopback server tests, so the gate runs without it; the offline figure is a little lower.
+
+## Scenarios that measure a speed
+
+A scenario that checks "drawn within 1.5 seconds" (`koreader_annotations_live_reader`) waits for the app's own signal
+(`until:sync-repaint>=N`, counters from `devtools::bump`) and then checks the measured time (`until_ms:` line) against
+1500 ms times `UI_LATENCY_SLACK` (1 on a developer machine, 3 when `CI=true`, set in `build-aux/ui-tests.sh`). The state
+is never read after a fixed sleep: that read the page before the app had finished on a slow or busy machine and failed
+every time there (found when the scenario failed on a developer machine and flaked in CI). Do not use `wait:` where a
+`until:` counter exists; add a `devtools::bump` where the app does the thing you wait for.

@@ -202,10 +202,14 @@ LT3='Paragraph 3 of chapter 1 talks about functionality'
 LT5='Paragraph 5 of chapter 3 talks about functionality'
 LT7='Paragraph 7 of chapter 3 talks about functionality'
 
-scenario koreader_annotations_live_reader "koannot:start,wait:600,read:1,until:page-ready:30000,wait:300,reader:live-state,koannot:push=1|$LT3|purple|first,wait:1500,reader:live-state,koannot:push=1|$LT3|green|first,wait:1500,reader:live-state,koannot:pushdel=1|$LT3,wait:1500,reader:live-state,koannot:events,quit" '
+scenario koreader_annotations_live_reader "koannot:start,wait:600,read:1,until:page-ready:30000,wait:300,reader:live-state,koannot:push=1|$LT3|purple|first,until:sync-repaint>=1:20000,wait:400,reader:live-state,koannot:push=1|$LT3|green|first,until:sync-repaint>=2:20000,wait:400,reader:live-state,koannot:pushdel=1|$LT3,until:sync-repaint>=3:20000,wait:400,reader:live-state,koannot:events,quit" '
     L=$(grep "^live_state: " <<<"$OUT")
     sed -n 1p <<<"$L" | grep -q "highlights=0 notes=0 .*painted=0 .*events=0 "; check "the book opens with nothing painted and nothing heard" $?
-    sed -n 2p <<<"$L" | grep -q "highlights=1 notes=1 .*colours=purple painted=1 .*events=1 .*repaints=1 "; check "a highlight the e-reader made is drawn on the open page within 1.5 seconds, once, with its note and colour" $?
+    sed -n 2p <<<"$L" | grep -q "highlights=1 notes=1 .*colours=purple painted=1 .*events=1 .*repaints=1 "; check "a highlight the e-reader made is drawn on the open page once, with its note and colour" $?
+    # the app is waited for (not slept for), so a slow or busy machine cannot make the state be read too early; the speed
+    # is its own check: 1.5 s from the push to the painted page, times UI_LATENCY_SLACK on a machine that is known to be slow
+    ms=$(grep "^until_ms: sync-repaint>=1 " <<<"$OUT" | awk "{print \$3}")
+    [ -n "$ms" ] && [ "$ms" -le $((1500 * ${UI_LATENCY_SLACK:-1})) ]; check "it was drawn within 1.5 seconds of the push (took ${ms:-?} ms)" $?
     sed -n 3p <<<"$L" | grep -q "highlights=1 .*colours=green painted=1 .*events=2 .*repaints=2 "; check "the colour changed on the e-reader changes the open page without reopening" $?
     [ "$(sed -n 2p <<<"$L" | grep -o "looks=[^ ]*")" != "$(sed -n 3p <<<"$L" | grep -o "looks=[^ ]*")" ]; check "the painted colour really differs (not only the stored one)" $?
     sed -n 4p <<<"$L" | grep -q "highlights=0 notes=0 .*painted=0 .*events=3 "; check "a highlight deleted on the e-reader disappears from the page" $?
