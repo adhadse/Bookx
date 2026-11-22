@@ -12,7 +12,7 @@ Policy first: **GitHub Releases is the only official channel.** Flathub, Homebre
 |---|---|---|
 | `Bookx-<version>-linux-x86_64.tar.gz` | `release.yml` job `tarball` (`build-aux/tarball.sh`) | deterministic packing; unpacks to a folder of the same name |
 | `Bookx-<version>-linux-x86_64.deb` | `tarball` (`cargo deb`) | Debian, Ubuntu. Inside, the package version is `0.3.0~beta.1` (cargo-deb rewrites `-` so the final release sorts higher): check on the first beta |
-| `Bookx-<version>-linux-x86_64.rpm` | `tarball` (`cargo generate-rpm`) | Fedora, openSUSE. Pre-release version handling in RPM is untested: confirm on the first beta (`rpm -qip`) |
+| `Bookx-<version>-linux-x86_64.rpm` | `tarball` (`cargo generate-rpm`) | Fedora, openSUSE. The release job passes `0.3.0~beta.1` to cargo-generate-rpm (a hyphen is invalid in an RPM version; found on the first tag run): check with `rpm -qip` |
 | `Bookx-<version>-linux-x86_64.flatpak` | `flatpak` (reusable `_flatpak.yml`) | single-file bundle, GNOME 51 runtime from Flathub |
 | `SHA256SUMS` | job `publish` | covers every file above |
 | `<file>.sigstore.json` | job `publish` | cosign keyless signature per file |
