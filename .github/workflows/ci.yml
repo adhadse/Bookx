@@ -139,7 +139,7 @@ jobs:
           shared-key: rust
           cache-on-failure: true
           # only main saves: pull requests (also Dependabot's) restore main's cache and stay out of the 10 GB quota
-          save-if: ${{ github.ref == 'refs/heads/main' || github.head_ref == 'ci-green' }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: taiki-e/install-action@25f51f6b1bf4e18876107cece836f4f77ac17c8c # v2.90.7
         with:
           tool: cargo-llvm-cov,cargo-nextest
@@ -261,7 +261,7 @@ jobs:
         with:
           shared-key: ui
           cache-on-failure: true
-          save-if: ${{ github.ref == 'refs/heads/main' || github.head_ref == 'ci-green' }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Build (what build-aux/ui-tests.sh would build)
         env:
           # a little optimisation: the scenarios that time the app (PDF search, live annotations, big books) failed on
