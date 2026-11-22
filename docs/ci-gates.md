@@ -76,12 +76,46 @@ JSON
 
 | Job | What | Locally |
 |---|---|---|
-| `changes` | `build-aux/ci-changes.sh`: which of rust / wiki / flatpak the changed files need. Everything but a pull request runs everything | `FILES="docs/a.md" build-aux/ci-changes.sh` |
+| `changes` | `build-aux/ci-changes.sh`: which of rust / wiki / flatpak / ui the changed files need. Everything but a pull request runs everything | `FILES="docs/a.md" build-aux/ci-changes.sh` |
 | `quick` | `lint-checks.sh`, actionlint, `bash -n`, `python3 -m unittest discover -s build-aux/tests`, KOReader plugin tests (LuaJIT, Lua 5.4), plugin zip, sync endpoint check, cargo-deny. Every step has `if: !cancelled()`, so all report even after a failure; the job is red if any failed | `build-aux/lint-checks.sh`, `actionlint`, `koreader-plugin/tests/run.sh` |
 | `rust` | rustfmt, clippy `-D warnings`, i18n gates, `build-aux/coverage.sh --html --base origin/main` (all tests under nextest + the coverage gate + patch coverage), desktop file/metainfo, `release-check.sh`, Flatpak sources vs `Cargo.lock`, mockups | `cargo fmt`, `cargo clippy --workspace --all-targets -- -D warnings`, `build-aux/coverage.sh` |
 | `build-ui`, `ui` | one debug build of the app, then 10 shards of the Broadway scenarios | `build-aux/ui-tests.sh` (all) or `SHARD=3/10 SKIP_BUILD=1 build-aux/ui-tests.sh` |
 | `wiki` | `build-aux/wiki.sh` | the same |
 | `flatpak` | `build-aux/flatpak.sh` with `BUNDLE=1` on the runner | `BUNDLE=1 build-aux/flatpak.sh` |
+
+### When the UI scenarios run
+
+`build-ui` and the 10 `ui` shards are the expensive part (about 85 runner-minutes, 8 minutes of wall time after the
+build). `build-aux/ci-changes.sh` calls `build-aux/ci-ui-scope.py`, which decides `ui=true|false` from the changed files
+(`git diff base...head` of a pull request). Main, tags, nightly and manual runs always run them: a full run on `main` is the
+safety net for anything a pull request skipped.
+
+| Changed path | UI scenarios |
+|---|---|
+| `src/**`, `build.rs`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain*`, `data/**`, `po/**` (strings are on screen) | run |
+| any file (not `*.md`) of a workspace crate the app depends on, tests and fixtures included | run |
+| `build-aux/ui-tests*`, `ui-shard*`, `session/`, `coverage-ui*`, `.github/workflows/ci.yml` | run |
+| `docs/`, `wiki/`, `*.md`, `packaging/`, `koreader-plugin/`, `.github/` templates, other workflows, release/Flatpak/wiki/i18n/CI scripts, tool settings | skipped |
+| a workspace crate the app does not depend on | skipped |
+| anything else, an empty change | run (fail safe: a path nobody classified, or a change that cannot be shown harmless) |
+
+"Crates the app depends on" is read from the `Cargo.toml` files, not from a list: the roots are `bookx` (the app) and the
+programs the scenarios call (`bookx-cli`, and the example programs of `bookx-tts`, `bookx-plugin`, `bookx-comic`,
+`bookx-pdf`), followed through normal, build and dev dependencies. A bug in `bookx-core`, `bookx-text` or `bookx-formats`
+shows up in the reader and editor scenarios because the app links them, so a short `src/ui/**` list would be wrong. Today
+every crate of the workspace is in that set; the rule only skips a crate that nothing the scenarios use depends on.
+
+The decision, with the first matching file, is printed in the `changes` job log and summary and shown in the PR report as
+`UI scenarios: skipped: ...` or `UI scenarios: ran because <file> (<area>)`. To force the scenarios on a pull request that
+would skip them, add the label **`run-ui-tests`** (adding it starts CI again) or run CI by hand with `force_ui`. `required`
+treats the skipped jobs as fine, and it is code that decides, never a label: a label can only add a run.
+
+Rust (format, lint, tests, coverage) has its own, unchanged path rule (`ci-changes.sh`, `rust=`). Cases the classifier is
+tested on (`build-aux/tests/test_ci_ui_scope.py`): docs only, wiki only, `po/` only, `src/ui`, a library crate, `Cargo.lock`
+only, other workflows, unknown paths, an empty change, a crate outside the graph (synthetic workspace), forcing.
+Saving: a pull request that only touches `packaging/`, `build-aux/flatpak.sh`, `release.yml` or similar skips about 85
+runner-minutes of UI work (the Rust job, about 10 minutes, still runs: those paths are not text-only); docs/wiki/Markdown
+pull requests already skipped Rust as well.
 
 One Rust toolchain (`RUST_TOOLCHAIN` in `ci.yml`, installed with rustup) is used for fmt, clippy, tests, coverage and the
 UI build. The coverage baseline is a number of that compiler's LLVM; with the distribution's newer rustc every crate read
