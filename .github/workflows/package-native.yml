@@ -27,8 +27,8 @@ jobs:
   macos:
     name: Bookx.app and .dmg (${{ inputs.os }})
     if: ${{ startsWith(inputs.os, 'macos') }}
-    # macos-14 is Apple silicon; macos-15-intel is the Intel image (macos-13 was retired)
-    runs-on: ${{ inputs.os == 'macos-arm64' && 'macos-14' || 'macos-15-intel' }}
+    # macos-15 is Apple silicon (macos-14 is deprecated and refused); macos-15-intel is the Intel image (macos-13 was retired)
+    runs-on: ${{ inputs.os == 'macos-arm64' && 'macos-15' || 'macos-15-intel' }}
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
