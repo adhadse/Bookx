@@ -83,3 +83,18 @@ Rust target of that environment.
 * MSYS2: a maintainer account and agreement to maintain a recipe.
 * Whether Windows ships without read aloud/audiobooks until the `cpal` sink exists.
 * Windows-specific security review of the library share server (certificate key permissions, firewall prompt).
+
+## 6. First run of `package-native.yml` (windows), 2026-11-22
+
+Run 45005893652 on `main`: the workflow itself works (MSYS2 UCRT64 installs GTK 4, libadwaita, GtkSourceView 5, Rust), and
+the build stops in the first crate that uses Unix-only APIs. It is the expected failure, not a workflow problem:
+
+```
+error[E0432]: unresolved import `std::os::fd`            (crates/bookx-serve)
+error[E0599]: no method named `as_fd` found for reference `&tokio::net::TcpStream`
+error: could not compile `bookx-serve` (lib) due to 2 previous errors
+```
+
+So the next step of the port is `bookx-serve` (descriptor accounting and `as_fd` on sockets behind `cfg(unix)`, a
+Windows counterpart for the descriptor-leak soak test), then whatever the crates after it report. The workflow stays
+manual-only until a build and the pure-logic tests (`cargo test --release --lib`) pass there.
