@@ -179,6 +179,9 @@ def tests_section(art, jobs_data):
             out.append(f"  - ⚠️ flaky, passed when run again: `{esc(n, 60)}` ({esc(d, 100)})")
     else:
         out.append("- **Broadway scenarios:** no result (skipped or not reached)")
+    decision = read(os.path.join(art, "report-changes", "ui-decision.txt"))
+    if decision:
+        out.append(f"- **{esc(decision.strip().splitlines()[0], 300)}**")
     steps = {}
     for job in (jobs_data or {}).get("jobs", []):
         for s in job.get("steps", []):

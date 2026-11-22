@@ -52,6 +52,9 @@ class Report(unittest.TestCase):
         self.assertNotIn("@everyone", md)
         self.assertEqual(cr.esc("a|b\nc`d<e>"), "a\\|b c'd&lt;e&gt;")
 
+    def test_the_ui_decision_is_shown(self):
+        self.assertIn("UI scenarios: skipped: no UI-relevant change: docs", report())
+
     def test_the_marker_is_only_in_a_comment(self):
         self.assertNotIn(cr.MARKER, report())
 
@@ -68,7 +71,7 @@ class Report(unittest.TestCase):
         def run(files):
             out = subprocess.run([os.path.join(ROOT, "build-aux", "ci-changes.sh")], env={**os.environ, "FILES": files},
                                  check=True, capture_output=True, text=True).stdout
-            return dict(line.split("=") for line in out.split())
+            return dict(line.split("=", 1) for line in out.splitlines())
         self.assertEqual(run("docs/a.md wiki/docs/x.md")["rust"], "false")
         self.assertEqual(run("docs/a.md wiki/docs/x.md")["wiki"], "true")
         self.assertEqual(run("src/a.rs")["rust"], "true")
