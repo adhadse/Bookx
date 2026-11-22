@@ -826,7 +826,8 @@ pub fn html5_to_xhtml(src: &str) -> Option<String> {
     if body.contains(" xlink:") && !body.contains("xmlns:xlink") {
         decl.push_str(" xmlns:xlink=\"http://www.w3.org/1999/xlink\"");
     }
-    if let Some(at) = body.find("<html") {
+    {
+        let at = body.find("<html")?;
         let end = at + body[at..].find('>')?;
         let tag = &body[at..end];
         let mut tag = tag.to_string();
@@ -835,8 +836,6 @@ pub fn html5_to_xhtml(src: &str) -> Option<String> {
         }
         tag.push_str(&decl);
         body = format!("{}{}{}", &body[..at], tag, &body[end..]);
-    } else {
-        return None;
     }
     let out = format!("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n{body}\n");
     parse_xml(&out).is_ok().then_some(out)

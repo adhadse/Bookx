@@ -537,7 +537,7 @@ impl Library {
             .filter_map(|e| std::fs::read(e.path().join("entry.json")).ok())
             .filter_map(|b| serde_json::from_slice(&b).ok())
             .collect();
-        out.sort_by(|a, b| b.at.cmp(&a.at));
+        out.sort_by_key(|a| std::cmp::Reverse(a.at));
         out
     }
 

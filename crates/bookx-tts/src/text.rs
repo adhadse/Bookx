@@ -276,7 +276,7 @@ pub fn detect_language(sample: &str) -> Option<String> {
         .iter()
         .map(|(lang, list)| (words.iter().filter(|w| list.contains(w)).count(), *lang))
         .collect();
-    scored.sort_by(|a, b| b.0.cmp(&a.0));
+    scored.sort_by_key(|a| std::cmp::Reverse(a.0));
     let (best, second) = (scored[0].0, scored[1].0);
     (best >= 3 && best * 10 >= second * 13).then(|| scored[0].1.to_string())
 }

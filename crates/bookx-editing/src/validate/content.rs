@@ -281,7 +281,8 @@ pub(super) fn check_xhtml(cx: &mut Cx, it: &Item) {
         let ns = n.tag_name().namespace();
         let nm = name(n);
         let pos = node_pos(&doc, n);
-        for key in ["id"] {
+        {
+            let key = "id";
             if let Some(id) = n.attribute(key) {
                 if !ids.insert(id.to_string()) {
                     cx.emit(

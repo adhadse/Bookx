@@ -157,13 +157,32 @@ fn connect(url: &url::Url, timeout: Duration, trusted_pem: Option<&[u8]>) -> Res
     let port = url
         .port_or_known_default()
         .unwrap_or(if tls { 443 } else { 80 });
-    let addr = (host, port)
+    let addrs: Vec<_> = (host, port)
         .to_socket_addrs()
         .with_context(|| format!("looking up {host}"))?
-        .next()
-        .ok_or_else(|| anyhow!("{host} has no address"))?;
-    let tcp = TcpStream::connect_timeout(&addr, timeout.min(Duration::from_secs(15)))
-        .with_context(|| format!("connecting to {host}:{port}"))?;
+        .collect();
+    if addrs.is_empty() {
+        bail!("{host} has no address");
+    }
+    // every address in turn: "localhost" may resolve to ::1 first while the server listens on IPv4 only
+    let mut last = None;
+    let mut found = None;
+    for addr in &addrs {
+        match TcpStream::connect_timeout(addr, timeout.min(Duration::from_secs(15))) {
+            Ok(t) => {
+                found = Some(t);
+                break;
+            }
+            Err(e) => last = Some(e),
+        }
+    }
+    let tcp = match (found, last) {
+        (Some(t), _) => t,
+        (None, e) => {
+            return Err(anyhow::Error::from(e.expect("one address was tried")))
+                .with_context(|| format!("connecting to {host}:{port}"))
+        }
+    };
     tcp.set_nodelay(true).ok();
     tcp.set_read_timeout(Some(timeout.min(Duration::from_secs(30))))?;
     tcp.set_write_timeout(Some(timeout.min(Duration::from_secs(30))))?;

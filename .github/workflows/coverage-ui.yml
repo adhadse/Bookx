@@ -31,7 +31,7 @@ jobs:
           dnf install -y gcc gcc-c++ make pkgconf-pkg-config rustup \
             gtk4 gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
             gdk-pixbuf2-devel openssl-devel gettext \
-            dbus-daemon xz tar gzip curl python3 git procps-ng
+            dbus-daemon xz tar gzip curl python3 git procps-ng zip unzip
       - name: Rust with the LLVM tools that match its compiler
         run: |
           rustup-init -y --profile minimal --default-toolchain stable -c llvm-tools-preview

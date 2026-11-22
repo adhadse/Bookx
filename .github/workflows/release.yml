@@ -36,7 +36,7 @@ jobs:
         run: |
           git config --global --add safe.directory "$PWD"
           case "$GITHUB_REF" in refs/tags/*) tag="$GITHUB_REF_NAME" ;; *) tag="" ;; esac
-          build-aux/release-check.sh $tag
+          build-aux/release-check.sh ${tag:+"$tag"}
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -102,7 +102,7 @@ jobs:
       - name: Checksums of everything
         run: |
           cd dist
-          sha256sum $(ls | grep -v -e '\.sha256$' -e '^SHA256SUMS$') > SHA256SUMS
+          find . -maxdepth 1 -type f ! -name '*.sha256' ! -name SHA256SUMS -printf '%f\n' | LC_ALL=C sort | xargs -d '\n' sha256sum > SHA256SUMS
           cat SHA256SUMS
       - name: Build provenance attestation
         uses: actions/attest-build-provenance@v2
@@ -113,14 +113,16 @@ jobs:
       - name: Sign every file with cosign (keyless, bundle next to the file)
         run: |
           cd dist
-          for f in $(ls | grep -v '\.sigstore\.json$'); do
+          for f in *; do
+            case "$f" in *.sigstore.json) continue ;; esac
             cosign sign-blob --yes --bundle "$f.sigstore.json" "$f"
           done
           ls -l
       - name: Verify what was just signed (same check users run)
         run: |
           cd dist
-          for f in $(ls | grep -v '\.sigstore\.json$'); do
+          for f in *; do
+            case "$f" in *.sigstore.json) continue ;; esac
             cosign verify-blob \
               --bundle "$f.sigstore.json" \
               --certificate-identity-regexp '^https://github\.com/adhadse/Bookx/\.github/workflows/release\.yml@refs/tags/v' \

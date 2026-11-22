@@ -312,11 +312,9 @@ pub fn unwrap_sentences(xhtml: &str) -> String {
                     last = range.end;
                 }
             }
-            Event::Close { name, range } if name == "span" => {
-                if spans.pop() == Some(true) {
-                    out.push_str(&xhtml[last..range.start]);
-                    last = range.end;
-                }
+            Event::Close { name, range } if name == "span" && spans.pop() == Some(true) => {
+                out.push_str(&xhtml[last..range.start]);
+                last = range.end;
             }
             _ => {}
         }

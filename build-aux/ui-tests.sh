@@ -22,6 +22,10 @@ build-aux/lint-checks.sh || exit 1
 for t in gtk4-broadwayd dbus-run-session; do
     command -v "$t" >/dev/null || { echo "$t not found — skipping UI tests"; exit 0; }
 done
+# tools the scenarios use to build their fixtures: missing ones fail here, with a name, not in 3000 checks
+for t in zip unzip python3; do
+    command -v "$t" >/dev/null || { echo "ui-tests: '$t' is needed to build the test fixtures (install it)" >&2; exit 1; }
+done
 cargo build --quiet -p bookx -p bookx-cli || exit 1
 cargo build --quiet -p bookx-tts --example fake_install || exit 1
 cargo build --quiet -p bookx-plugin --example make_test_plugin --example make_test_plugins || exit 1
@@ -37,6 +41,11 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(mktemp -d)
 RES=$ROOT/results
 mkdir -p "$RES"
+# gtk4-broadwayd puts its sockets in the runtime directory: containers and CI have no /run/user/UID
+if [ ! -d "${XDG_RUNTIME_DIR:-/run/user/$UID}" ]; then
+    export XDG_RUNTIME_DIR=$ROOT/run
+    mkdir -m 700 "$XDG_RUNTIME_DIR"
+fi
 trap 'pkill -P $$ 2>/dev/null; rm -rf "$ROOT"' EXIT
 
 # A small book, generated through the app's own Markdown importer.

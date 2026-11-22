@@ -227,7 +227,9 @@ pub fn pcm_from_s16le(bytes: &[u8], rate: u32) -> Pcm {
     Pcm {
         rate,
         samples: bytes
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|b| i16::from_le_bytes([b[0], b[1]]) as f32 / 32768.0)
             .collect(),
     }

@@ -123,8 +123,8 @@ pub fn read_info<R: Read + Seek>(r: &mut R) -> Option<Mp4Info> {
         } else {
             (be32(mvhd, 12)? as u64, be32(mvhd, 16)? as u64)
         };
-        if ts > 0 {
-            info.duration_ms = dur.saturating_mul(1000) / ts;
+        if let Some(ms) = dur.saturating_mul(1000).checked_div(ts) {
+            info.duration_ms = ms;
         }
     }
     let mut chpl: Vec<ChapterMark> = Vec::new();

@@ -483,7 +483,7 @@ pub fn apply_rule(src: &str, rule: &HtmlRule) -> Result<(String, usize)> {
     if count == 0 {
         return Ok((src.to_string(), 0));
     }
-    edits.sort_by(|a, b| (b.start, b.seq).cmp(&(a.start, a.seq)));
+    edits.sort_by_key(|e| std::cmp::Reverse((e.start, e.seq)));
     let mut out = src.to_string();
     for e in edits {
         out.replace_range(e.start..e.end, &e.text);

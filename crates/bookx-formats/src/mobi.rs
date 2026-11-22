@@ -774,10 +774,9 @@ pub fn convert_mobi(bytes: &[u8]) -> Result<Archive> {
         let base = base?;
         let n = if let Some(n) = src.strip_prefix("mobi-img-") {
             n.parse::<usize>().ok()?
-        } else if let Some(rest) = src.strip_prefix("kindle:embed:") {
-            base32_index(rest.split('?').next()?)?
         } else {
-            return None;
+            let rest = src.strip_prefix("kindle:embed:")?;
+            base32_index(rest.split('?').next()?)?
         };
         let idx = base.checked_add(n.checked_sub(1)?)?;
         let rec = pdb.record(idx).ok()?;

@@ -177,7 +177,7 @@ jobs:
           dnf install -y gcc gcc-c++ make pkgconf-pkg-config rust cargo \
             gtk4 gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
             gdk-pixbuf2-devel openssl-devel gettext \
-            dbus-daemon xz tar gzip python3 git procps-ng
+            dbus-daemon xz tar gzip python3 git procps-ng zip unzip
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Cache cargo
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

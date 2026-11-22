@@ -404,7 +404,7 @@ pub fn run(cmd: ToolsCmd, root: &Path, out: &mut dyn Write, err: &mut dyn Write)
                 &dir,
                 copy,
                 &mut |stage, done, total| {
-                    let pct = if total == 0 { 100 } else { done * 100 / total };
+                    let pct = (done * 100).checked_div(total).unwrap_or(100);
                     if last.0 != Some(stage) || last.1 != pct {
                         let what = match stage {
                             bookx_store::Stage::Reading => "reading",
@@ -426,7 +426,7 @@ pub fn run(cmd: ToolsCmd, root: &Path, out: &mut dyn Write, err: &mut dyn Write)
                 root,
                 &dir,
                 &mut |done, total| {
-                    let pct = if total == 0 { 100 } else { done * 100 / total };
+                    let pct = (done * 100).checked_div(total).unwrap_or(100);
                     if pct != last {
                         last = pct;
                         let _ = writeln!(err, "exporting: {done}/{total}");

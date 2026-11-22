@@ -20,7 +20,9 @@ This README is for people working on Bookx. What the app can and cannot do is de
 ## Status and scope
 
 - Version `0.3.0` (see [CHANGELOG.md](CHANGELOG.md)). Linux and GNOME (GTK ≥ 4.20, libadwaita ≥ 1.8) come first.
-  A Flathub submission is being prepared ([docs/flathub-submission.md](docs/flathub-submission.md)).
+  **GitHub Releases is the official channel** ([latest release](https://github.com/adhadse/Bookx/releases/latest): Flatpak bundle,
+  `.deb`, `.rpm`, tarball; signed, see the [install page](https://bookx.adhadse.com/install/)). Flathub and other package
+  managers (Homebrew, winget, Scoop) are planned for later, once the project has history ([docs/release-plan.md](docs/release-plan.md)).
   macOS and Windows have bundling scaffolding only ([docs/macos-port.md](docs/macos-port.md),
   [docs/windows-port.md](docs/windows-port.md)).
 - Pronounced "Books" with the "s" replaced by "x" (an extension of something that manages your books), not "Book-ex".
@@ -31,7 +33,7 @@ Where the work is going (details in the linked files, not repeated here):
 - The feature roadmap and the owner's decisions: [docs/bookx-feature-roadmap.md](docs/bookx-feature-roadmap.md), progress in [docs/roadmap-status.md](docs/roadmap-status.md).
 - UI polish and usability: [docs/human_interface_backlog.md](docs/human_interface_backlog.md), [docs/ux-gaps-notes.md](docs/ux-gaps-notes.md).
 - Testing on real hardware (e-readers, phones, Kindle): [docs/hardware-test-plan.md](docs/hardware-test-plan.md).
-- Packaging and distribution (Flathub, deb/rpm, macOS, Windows): [docs/packaging-notes.md](docs/packaging-notes.md).
+- Release plan and distribution (GitHub Releases first, Flathub later): [docs/release-plan.md](docs/release-plan.md); packaging details (deb/rpm, Flatpak, macOS, Windows): [docs/packaging-notes.md](docs/packaging-notes.md).
 - Known bugs and enhancement ideas: [docs/bugs.md](docs/bugs.md), [docs/enhancements.md](docs/enhancements.md).
 
 Non-goals (decided by the owner, see the roadmap Part 2): DRM removal; a cloud service run by the project;

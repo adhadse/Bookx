@@ -780,7 +780,7 @@ impl Editor {
             Ok(()) => {
                 self.modified.clear();
                 self.structure_dirty = false;
-                for (_, (_, dot)) in self.file_rows.iter() {
+                for (_, dot) in self.file_rows.values() {
                     dot.set_visible(false);
                 }
                 let _ = self.book.borrow_mut().reload_package();

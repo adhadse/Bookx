@@ -201,10 +201,8 @@ pub fn parse_flac(data: &[u8]) -> Comments {
                     out.cover = c.cover;
                 }
             }
-            6 => {
-                if out.cover.is_none() {
-                    out.cover = parse_picture(body);
-                }
+            6 if out.cover.is_none() => {
+                out.cover = parse_picture(body);
             }
             _ => {}
         }

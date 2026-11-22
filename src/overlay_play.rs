@@ -257,11 +257,18 @@ impl OverlaySynth {
         let order = (self.cursor..n).chain(0..self.cursor.min(n));
         for i in order {
             let mut acc = String::new();
-            for j in i..n.min(i + 40) {
+            for (j, clip) in self
+                .overlay
+                .clips
+                .iter()
+                .enumerate()
+                .take(n.min(i + 40))
+                .skip(i)
+            {
                 if !acc.is_empty() {
                     acc.push(' ');
                 }
-                acc.push_str(&self.overlay.clips[j].text);
+                acc.push_str(&clip.text);
                 if acc == want {
                     return Some((i, j + 1));
                 }

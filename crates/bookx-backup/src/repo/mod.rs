@@ -449,7 +449,7 @@ impl Repository {
                 })
             })
             .collect();
-        v.sort_by(|a, b| b.name.seq.cmp(&a.name.seq));
+        v.sort_by_key(|a| std::cmp::Reverse(a.name.seq));
         Ok(v)
     }
 

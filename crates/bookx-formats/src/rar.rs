@@ -57,12 +57,20 @@ fn find_tool_in(dirs: &[&str]) -> Option<Tool> {
     }
     for n in ["7zz", "7z"] {
         if let Some(p) = find_in(dirs, n) {
-            if banner(&p, &[]).contains("7-Zip") {
+            if banner(&p, &[]).contains("7-Zip") && lists_rar(&banner(&p, &["i"])) {
                 return Some(Tool::SevenZip(p));
             }
         }
     }
     None
+}
+
+/// Whether the `7z i` format listing includes RAR (7-Zip 26 builds without it, and then cannot open any RAR).
+fn lists_rar(formats: &str) -> bool {
+    formats.lines().any(|l| {
+        l.split_whitespace()
+            .any(|w| w.eq_ignore_ascii_case("rar") || w.eq_ignore_ascii_case("rar5"))
+    })
 }
 
 /// A listed file of the archive.
@@ -358,6 +366,15 @@ pub(crate) mod tests {
             .collect();
         assert!(check_listing(&sum).is_err());
         assert!(check_listing(&[]).is_err());
+    }
+
+    #[test]
+    fn a_7zip_without_the_rar_format_is_not_a_helper() {
+        let with = "Formats:\n  0   C  Rar5 rar r00 \n  0  Zip zip\n";
+        let without = "Formats:\n  0  Zip zip jar\n  0  7z 7z\nCodecs:\n";
+        assert!(lists_rar(with));
+        assert!(!lists_rar(without));
+        assert!(!lists_rar(""));
     }
 
     #[test]

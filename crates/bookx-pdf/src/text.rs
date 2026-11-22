@@ -147,8 +147,14 @@ impl PageText {
             })?;
         let mut best = line.start;
         let mut best_d = f32::MAX;
-        for i in line.start..line.end {
-            let r = self.chars[i].rect;
+        for (i, ch) in self
+            .chars
+            .iter()
+            .enumerate()
+            .take(line.end)
+            .skip(line.start)
+        {
+            let r = ch.rect;
             let d = if x < r[0] {
                 r[0] - x
             } else if x > r[2] {
