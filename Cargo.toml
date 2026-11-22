@@ -4,7 +4,7 @@ exclude = ["fuzz"]
 
 [package]
 name = "bookx"
-version = "0.3.0-beta.1"
+version = "0.3.0-beta.2"
 authors = ["Anurag Dhadse <hello@adhadse.com>"]
 edition = "2021"
 rust-version = "1.85"
@@ -85,7 +85,7 @@ section = "gnome"
 priority = "optional"
 extended-description = """\
 Bookx is a native GNOME application for your e-books, written entirely in Rust: a Calibre-style library, a reader and an EPUB editor."""
-depends = "libc6, libgtk-4-1 (>= 4.20), libadwaita-1-0 (>= 1.8), libgtksourceview-5-0"
+depends = "libc6 (>= 2.42), libgtk-4-1 (>= 4.20), libadwaita-1-0 (>= 1.8), libgtksourceview-5-0"
 recommends = "espeak-ng, pulseaudio-utils | pipewire-bin"
 assets = [
     ["target/release/bookx", "usr/bin/", "755"],
@@ -103,6 +103,9 @@ assets = [
 # `cargo generate-rpm` (cargo-generate-rpm), after the same release build.
 [package.metadata.generate-rpm]
 name = "bookx"
+# No automatic requirements: they list every library the binary reaches with the exact soname of the BUILD machine
+# (libcrypto.so.4 and so on) and make the package uninstallable on any other release. The needed packages are named below.
+auto-req = "no"
 license = "GPL-3.0-or-later"
 summary = "A modern e-book library, reader and editor for GNOME"
 url = "https://bookx.adhadse.com"
@@ -121,6 +124,7 @@ assets = [
 ]
 
 [package.metadata.generate-rpm.requires]
+glibc = ">= 2.42"
 gtk4 = ">= 4.20"
 libadwaita = ">= 1.8"
 gtksourceview5 = "*"

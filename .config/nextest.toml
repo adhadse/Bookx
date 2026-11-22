@@ -13,3 +13,11 @@ path = "junit.xml"
 [[profile.default.overrides]]
 filter = "binary(soak)"
 threads-required = "num-cpus"
+
+# calibredb refuses to start while another calibre program (also another calibredb) runs: these two take turns
+[test-groups]
+calibredb = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = "binary(calibre_export) & (test(calibredb_opens_the_export) | test(custom_columns_go_to_calibre_and_come_back))"
+test-group = "calibredb"

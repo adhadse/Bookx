@@ -18,10 +18,23 @@ Policy first: **GitHub Releases is the only official channel.** Flathub, Homebre
 | `<file>.sigstore.json` | job `publish` | cosign keyless signature per file |
 | build provenance attestation | job `publish` | verify with `gh attestation verify` |
 
+### Supported distributions (and how it is proved)
+
+The packages are built on **Fedora 43** (glibc 2.42, GTK 4.20, libadwaita 1.8, the minimum Bookx needs): a binary runs on
+its build machine's glibc or newer, never older, so the build image is the floor. Never build the release on
+`fedora:latest`: the first beta did, needed glibc 2.44 and OpenSSL 4 and ran on Fedora 45 only. The `.rpm` has
+`auto-req = "no"` (otherwise it requires the exact sonames of the build machine) and the `.deb` requires `libc6 (>= 2.42)`.
+The `distros` job of `release.yml` runs `build-aux/distro-matrix.sh dist`: it installs the package of each supported
+image (Fedora 43/44/45, Ubuntu 25.10/26.04, Debian testing, Arch) in a container, runs `bookx-cli --version` and starts
+`bookx` on Broadway until it logs `library opened`. `publish` needs it, so a package that does not run blocks the release.
+Run it yourself: `build-aux/distro-matrix.sh DIR` (podman or docker; `ONLY="fedora:43"` for one image).
+Not supported by the native packages (GTK too old): Debian 12/13, Ubuntu 24.04, Fedora 42: they use the Flatpak. When a
+new distribution release comes out, add it to the list in the script and to the install page.
+
 ### Naming scheme
 
 Each file is named the way its ecosystem names its own (ripgrep, bat and KOReader do the same), always with the version
-exactly as in the tag without the `v` (`0.3.0-beta.1`):
+exactly as in the tag without the `v` (`0.3.0-beta.2`):
 
 | Kind | Name |
 |---|---|
@@ -42,7 +55,7 @@ schemas, pixbuf loaders), tracked in `docs/enhancements.md` if wanted. Do not me
 
 ## Tags and versions
 
-- One tag per release, **annotated**, named `v` + the version in `Cargo.toml`: `v0.3.0-beta.1`, `v0.3.0-beta.2`,
+- One tag per release, **annotated**, named `v` + the version in `Cargo.toml`: `v0.3.0-beta.2`, `v0.3.0-beta.2`,
   `v0.3.0-rc.1`, `v0.3.0`.
 - A tag with `-alpha`, `-beta` or `-rc` in it becomes a **GitHub pre-release** automatically (job `version` in
   `release.yml`). A plain `vX.Y.Z` is a normal release and becomes "Latest".
@@ -72,14 +85,14 @@ You never start the build jobs by hand: **pushing the tag is the one action that
 ### Order inside `release.yml`
 
 ```
-tag v0.3.0-beta.1 pushed
+tag v0.3.0-beta.2 pushed
    │
    ├── gates      the tagged commit passed CI: its `required` check, a green Nightly on it, or the merged pull request
    │              with a green `required` and an identical tree (build-aux/release-gate.py), else stop
    │      │
    │      ├── tarball   release-check.sh <tag> → cargo build --release → tarball.sh → .deb → .rpm
-   │      └── version   derives "0.3.0-beta.1" and prerelease=true from the tag
-   │             └── flatpak   _flatpak.yml → bookx-0.3.0-beta.1-x86_64.flatpak
+   │      └── version   derives "0.3.0-beta.2" and prerelease=true from the tag
+   │             └── flatpak   _flatpak.yml → bookx-0.3.0-beta.2-x86_64.flatpak
    │
    └── publish    (after tarball + flatpak) SHA256SUMS → attestation → cosign sign + verify
           │       → GitHub release, generated notes, flagged pre-release when the tag says so
@@ -105,7 +118,7 @@ Do the steps in this order. Everything before step 7 is reversible; the tag is n
    `build-aux/pin-screenshots.sh` before the tag exists: the Flatpak job validates the metainfo screenshot URLs and
    they 404 until the tag is pushed, so CI goes red (found on the first beta). Pin only for a Flathub submission, as a
    follow-up commit after the tag.
-5. **Run the local gate:** `build-aux/release-check.sh v0.3.0-beta.1` (or `make release-check`), then the usual
+5. **Run the local gate:** `build-aux/release-check.sh v0.3.0-beta.2` (or `make release-check`), then the usual
    `cargo fmt`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`,
    `build-aux/lint-checks.sh`, `build-aux/ui-tests.sh`, `build-aux/wiki.sh` (AGENTS.md §4).
 6. **Commit and push to `main` through a PR** (or direct push while there is no branch protection). Wait for CI to be
@@ -113,8 +126,8 @@ Do the steps in this order. Everything before step 7 is reversible; the tag is n
 7. **Tag and push** (the only irreversible step; ask the owner first):
    ```bash
    git switch main && git pull --ff-only
-   git tag -a v0.3.0-beta.1 -m "Bookx 0.3.0-beta.1"
-   git push origin v0.3.0-beta.1
+   git tag -a v0.3.0-beta.2 -m "Bookx 0.3.0-beta.2"
+   git push origin v0.3.0-beta.2
    ```
 8. **Watch `release.yml`** (Actions → Release): `gates` → `tarball` and `flatpak` → `publish`. Expect roughly
    30 to 60 minutes cold. If a job fails, fix forward: do not move the tag; make a new commit and tag
@@ -123,11 +136,11 @@ Do the steps in this order. Everything before step 7 is reversible; the tag is n
 9. **Verify the artifacts** from the release page, on a machine that is not the build machine:
    ```bash
    sha256sum -c SHA256SUMS
-   gh attestation verify bookx-0.3.0-beta.1-x86_64.flatpak --repo adhadse/Bookx
-   cosign verify-blob --bundle bookx-0.3.0-beta.1-x86_64.flatpak.sigstore.json \
+   gh attestation verify bookx-0.3.0-beta.2-x86_64.flatpak --repo adhadse/Bookx
+   cosign verify-blob --bundle bookx-0.3.0-beta.2-x86_64.flatpak.sigstore.json \
      --certificate-identity-regexp '^https://github\.com/adhadse/Bookx/\.github/workflows/release\.yml@refs/tags/v' \
-     --certificate-oidc-issuer https://token.actions.githubusercontent.com bookx-0.3.0-beta.1-x86_64.flatpak
-   flatpak install --user ./bookx-0.3.0-beta.1-x86_64.flatpak      # starts, About says "Beta"
+     --certificate-oidc-issuer https://token.actions.githubusercontent.com bookx-0.3.0-beta.2-x86_64.flatpak
+   flatpak install --user ./bookx-0.3.0-beta.2-x86_64.flatpak      # starts, About says "Beta"
    sudo apt install ./bookx_*_amd64.deb                      # or: sudo dnf install ./bookx-*.x86_64.rpm
    ```
 10. **Edit the release page:** replace the generated notes with the plain-words notes, add the beta warning and the
@@ -151,7 +164,7 @@ Do the steps in this order. Everything before step 7 is reversible; the tag is n
 ## Run the pieces locally
 
 ```bash
-build-aux/release-check.sh v0.3.0-beta.1        # versions, changelog, metainfo, Flatpak sources, plugin golden files
+build-aux/release-check.sh v0.3.0-beta.2        # versions, changelog, metainfo, Flatpak sources, plugin golden files
 cargo build --release --locked -p bookx -p bookx-cli && build-aux/tarball.sh dist
 cargo deb --no-build -p bookx --output dist/ && cargo generate-rpm -p . -o dist/
 build-aux/flatpak.sh                              # Flatpak build with smoke tests

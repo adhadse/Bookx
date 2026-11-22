@@ -334,8 +334,14 @@ fn duplicate_names_and_empty_fields_are_valid() {
 }
 
 /// Calibre itself (when installed) opens the export. Skipped without `calibredb`.
+/// calibredb refuses to start while another calibre program is running ("Another calibre program ... is running"),
+/// also when it is another calibredb of a parallel test: the tests that start it take turns (nextest: the `calibredb`
+/// test group in .config/nextest.toml; `cargo test`: this lock).
+static CALIBREDB: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[test]
 fn calibredb_opens_the_export() {
+    let _turn = CALIBREDB.lock().unwrap_or_else(|e| e.into_inner());
     let Ok(out) = std::process::Command::new("calibredb")
         .arg("--version")
         .output()
@@ -448,6 +454,7 @@ fn custom_defs() -> Vec<bookx_core::custom::ColumnDef> {
 
 #[test]
 fn custom_columns_go_to_calibre_and_come_back() {
+    let _turn = CALIBREDB.lock().unwrap_or_else(|e| e.into_inner());
     let src = Tmp::new();
     let out = Tmp::new();
     let mut books = sample(src.path());

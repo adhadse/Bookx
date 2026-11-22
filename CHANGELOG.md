@@ -6,6 +6,17 @@ versioned heading, `Cargo.toml` and the AppStream metainfo disagree.
 
 ## [Unreleased]
 
+## [0.3.0-beta.2] - 2026-11-23
+
+### Fixed
+- The packages of 0.3.0-beta.1 were built on Fedora 45 and ran only there (glibc 2.44, OpenSSL 4 in the .rpm
+  requirements). They are now built on Fedora 43 (glibc 2.42), the .rpm lists only the packages it needs, and the .deb
+  requires glibc 2.42.
+
+### Added
+- The release pipeline installs the .deb, .rpm and tarball on Fedora 43/44/45, Ubuntu 25.10/26.04, Debian testing and
+  Arch and starts the app before it publishes (`build-aux/distro-matrix.sh`).
+
 ## [0.3.0-beta.1] - 2026-11-22
 
 The first beta of 0.3.0, published on GitHub Releases only. Bugs are expected; please report them.
@@ -128,7 +139,8 @@ editor.
 - `bookx://` links and a diagnostics report for bug reports.
 - Flatpak manifest (GNOME 50 runtime, offline crates), CI workflow.
 
-[Unreleased]: https://github.com/adhadse/Bookx/compare/v0.3.0-beta.1...HEAD
+[Unreleased]: https://github.com/adhadse/Bookx/compare/v0.3.0-beta.2...HEAD
+[0.3.0-beta.2]: https://github.com/adhadse/Bookx/releases/tag/v0.3.0-beta.2
 [0.3.0-beta.1]: https://github.com/adhadse/Bookx/releases/tag/v0.3.0-beta.1
 [0.3.0]: https://github.com/adhadse/Bookx/releases/tag/v0.3.0
 [0.2.0]: https://github.com/adhadse/Bookx/releases/tag/v0.2.0
