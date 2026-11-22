@@ -137,6 +137,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: rust
+          cache-on-failure: true
           # only main saves: pull requests (also Dependabot's) restore main's cache and stay out of the 10 GB quota
           save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ci-green' }}
       - uses: taiki-e/install-action@25f51f6b1bf4e18876107cece836f4f77ac17c8c # v2.90.7
@@ -259,6 +260,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: ui
+          cache-on-failure: true
           save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ci-green' }}
       - name: Build (what build-aux/ui-tests.sh would build)
         env:
