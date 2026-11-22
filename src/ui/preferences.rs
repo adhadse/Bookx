@@ -647,13 +647,8 @@ impl View {
             Some(i) => {
                 if !current_ok {
                     self.select(i);
-                } else {
-                    match self.list.selected_row() {
-                        Some(r) => {
-                            self.show_section(r.index() as usize);
-                        }
-                        _ => {}
-                    }
+                } else if let Some(r) = self.list.selected_row() {
+                    self.show_section(r.index() as usize);
                 }
             }
         }

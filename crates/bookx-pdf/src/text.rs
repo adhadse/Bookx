@@ -425,15 +425,16 @@ fn push_segment(chars: &mut Vec<TextChar>, s: &Seg) {
     let mut prev_space = true;
     for g in &s.glyphs {
         let r = [g.x, s.rect[1], g.x + g.width, s.rect[3]];
-        if let Some(pe) = prev_end {
-            if g.x - pe > 0.18 * g.size.max(s.size * 0.7) && !prev_space && !g.text.starts_with(' ')
-            {
-                chars.push(TextChar {
-                    ch: ' ',
-                    rect: [pe, s.rect[1], g.x.max(pe), s.rect[3]],
-                });
-                prev_space = true;
-            }
+        if let Some(pe) = prev_end
+            && g.x - pe > 0.18 * g.size.max(s.size * 0.7)
+            && !prev_space
+            && !g.text.starts_with(' ')
+        {
+            chars.push(TextChar {
+                ch: ' ',
+                rect: [pe, s.rect[1], g.x.max(pe), s.rect[3]],
+            });
+            prev_space = true;
         }
         let n = g.text.chars().count().max(1) as f32;
         for (k, ch) in g.text.chars().enumerate() {

@@ -271,14 +271,14 @@ impl Session {
                 }
             }
         }
-        if let Some(e) = engine.take_error() {
-            if self.state != State::Stopped {
-                engine.stop();
-                self.state = State::Stopped;
-                self.queued.clear();
-                out.push(Update::Error(e));
-                return out;
-            }
+        if let Some(e) = engine.take_error()
+            && self.state != State::Stopped
+        {
+            engine.stop();
+            self.state = State::Stopped;
+            self.queued.clear();
+            out.push(Update::Error(e));
+            return out;
         }
         if self.state == State::Playing {
             out.extend(self.top_up(engine));
@@ -393,10 +393,10 @@ impl Engine for MockEngine {
 
     fn resume(&mut self) {
         self.note("resume");
-        if let Some(left) = self.paused.take() {
-            if let Some(c) = self.current.as_mut() {
-                c.1 = Instant::now() + left;
-            }
+        if let Some(left) = self.paused.take()
+            && let Some(c) = self.current.as_mut()
+        {
+            c.1 = Instant::now() + left;
         }
     }
 

@@ -137,12 +137,13 @@ pub(super) fn top_level_labels(menu: &gio::MenuModel) -> Vec<String> {
             Some(s) => {
                 out.extend(top_level_labels(&s));
             }
-            _ => match menu.item_attribute_value(i, "label", Some(glib::VariantTy::STRING)) {
-                Some(v) => {
+            _ => {
+                if let Some(v) =
+                    menu.item_attribute_value(i, "label", Some(glib::VariantTy::STRING))
+                {
                     out.push(v.str().unwrap_or_default().to_string());
                 }
-                _ => {}
-            },
+            }
         }
     }
     out

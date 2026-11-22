@@ -449,13 +449,13 @@ fn fetch_into(
             // the part stays for the next attempt
             bail!("cancelled");
         }
-        if let Some(d) = dog.as_mut() {
-            if d.too_slow(std::time::Instant::now(), total) {
-                bail!(
-                    "too slow: {url} gives less than {} KB/s",
-                    tuning.min_speed.map_or(0, |m| m.0 / 1000)
-                );
-            }
+        if let Some(d) = dog.as_mut()
+            && d.too_slow(std::time::Instant::now(), total)
+        {
+            bail!(
+                "too slow: {url} gives less than {} KB/s",
+                tuning.min_speed.map_or(0, |m| m.0 / 1000)
+            );
         }
         let n = reader
             .read(&mut buf)
@@ -656,17 +656,17 @@ fn segmented(
         while finished.load(Ordering::SeqCst) < segs.len() {
             std::thread::sleep(Duration::from_millis(40));
             let total: u64 = done.iter().map(|d| d.load(Ordering::SeqCst)).sum();
-            if let Some(d) = dog.as_mut() {
-                if d.too_slow(std::time::Instant::now(), total) {
-                    let mut f = failure.lock().unwrap();
-                    if f.is_none() {
-                        *f = Some(format!(
-                            "too slow: {url} gives less than {} KB/s",
-                            tuning.min_speed.map_or(0, |m| m.0 / 1000)
-                        ));
-                    }
-                    abort.store(true, Ordering::SeqCst);
+            if let Some(d) = dog.as_mut()
+                && d.too_slow(std::time::Instant::now(), total)
+            {
+                let mut f = failure.lock().unwrap();
+                if f.is_none() {
+                    *f = Some(format!(
+                        "too slow: {url} gives less than {} KB/s",
+                        tuning.min_speed.map_or(0, |m| m.0 / 1000)
+                    ));
                 }
+                abort.store(true, Ordering::SeqCst);
             }
             if total > reported {
                 on_bytes(total - reported);

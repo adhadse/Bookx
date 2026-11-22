@@ -375,10 +375,10 @@ fn worker_loop(
                             speed,
                             cancel: &cancel,
                         });
-                        if let (Ok(p), Some(c)) = (&r, &cache) {
-                            if !cancel.is_cancelled() {
-                                c.put(&scope, &key, p);
-                            }
+                        if let (Ok(p), Some(c)) = (&r, &cache)
+                            && !cancel.is_cancelled()
+                        {
+                            c.put(&scope, &key, p);
                         }
                         r
                     }

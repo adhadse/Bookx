@@ -229,23 +229,23 @@ fn tool_target(loaded: &Loaded, t: &dyn Transform) -> &'static Target {
 /// Output formats of the enabled writer plugins, for the *Convert To* menu.
 pub fn writer_targets() -> Vec<&'static Target> {
     let loaded = current();
-    let targets = loaded
+
+    loaded
         .writers
         .iter()
         .map(|w| writer_target(&loaded, w))
-        .collect();
-    targets
+        .collect()
 }
 
 /// One entry per enabled transform plugin: converting with it saves a transformed copy as EPUB.
 pub fn tool_targets() -> Vec<&'static Target> {
     let loaded = current();
-    let targets = loaded
+
+    loaded
         .transforms
         .iter()
         .map(|t| tool_target(&loaded, t))
-        .collect();
-    targets
+        .collect()
 }
 
 /// The plugin target with this id (`plugin:<id>` or `plugin-tool:<id>`), if that plugin is enabled.
@@ -259,12 +259,12 @@ pub fn target(id: &str) -> Option<&'static Target> {
             .map(|w| writer_target(&loaded, w));
     }
     let tid = id.strip_prefix(TOOL_PREFIX)?;
-    let found = loaded
+
+    loaded
         .transforms
         .iter()
         .find(|t| t.id() == tid)
-        .map(|t| tool_target(&loaded, t));
-    found
+        .map(|t| tool_target(&loaded, t))
 }
 
 /// Runs the transform plugin `id` on `book`: `(files changed, notes)`.
