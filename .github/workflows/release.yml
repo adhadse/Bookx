@@ -1,7 +1,8 @@
 name: Release
 
 # Push a tag like v0.3.0 (or v0.3.0-beta.1, -rc.1, -alpha.1: those become GitHub pre-releases). The jobs:
-#   gates     the commit of the tag has to have passed CI already (the `required` check of ci.yml)
+#   gates     the commit of the tag has to have passed CI already (build-aux/release-gate.py: its `required` check, a green
+#             Nightly, or the merged pull request with a green `required` check and an equal tree)
 #   tarball   release build, tarball, .deb, .rpm
 #   flatpak   the Flatpak bundle (the reusable _flatpak.yml, the same build CI does)
 #   publish   checksums, build provenance, cosign signatures, the GitHub release
@@ -22,6 +23,10 @@ on:
         description: "Emergency only: build even though CI is not green for this commit"
         type: boolean
         default: false
+      gates_only:
+        description: "Dry run: only decide whether this commit could be released (nothing is built or published)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -31,30 +36,34 @@ env:
 
 jobs:
   gates:
+    # Pushes to main do not run the full CI any more (docs/ci-gates.md): the pull request that was merged did, on a branch
+    # that had to be up to date. build-aux/release-gate.py decides (tested in build-aux/tests/test_release_gate.py).
     name: CI passed for this commit
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       checks: read
+      actions: read
+      pull-requests: read
       contents: read
     steps:
-      - name: The `required` check of CI is green on this commit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: The commit passed CI (its `required` check, a green Nightly, or the merged pull request with an equal tree)
         env:
           GH_TOKEN: ${{ github.token }}
           SKIP: ${{ inputs.skip_gates }}
         run: |
-          if [ "$SKIP" = true ]; then echo "::warning::skip_gates: CI was not checked"; exit 0; fi
-          result=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100" \
-            --jq '[.check_runs[] | select(.name == "required")] | sort_by(.started_at) | last | .conclusion // "missing"')
-          echo "CI required check on $GITHUB_SHA: $result"
-          if [ "$result" != success ]; then
-            echo "::error::CI has not passed for $GITHUB_SHA ($result). Push the tag on a commit whose CI is green, or run this workflow by hand with skip_gates for an emergency."
-            exit 1
-          fi
+          args=()
+          if [ "$SKIP" = true ]; then args+=(--skip); fi
+          python3 build-aux/release-gate.py --repo "$GITHUB_REPOSITORY" --sha "$GITHUB_SHA" "${args[@]}"
 
   tarball:
     name: Release build and tarball
     needs: gates
+    if: ${{ !inputs.gates_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     container: fedora:latest
@@ -96,6 +105,7 @@ jobs:
   version:
     name: Version from the tag
     needs: gates
+    if: ${{ !inputs.gates_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:

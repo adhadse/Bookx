@@ -1,8 +1,12 @@
 name: CI
 
-# One workflow for everything a pull request or a push to main has to pass (docs/ci-gates.md has the map).
+# One workflow for everything a pull request has to pass (docs/ci-gates.md has the map).
 # The only check branch protection needs is the last job, `required`: it fails when any job above it failed or was
 # cancelled, and is green when jobs were skipped on purpose (a docs-only pull request skips the Rust jobs).
+# A push to main runs only `warm-rust` and `build-ui`, which refill the caches that pull requests restore: the pull
+# request that was merged already ran the full pipeline on a branch that was up to date, so the same tree is not tested
+# again. There is NO `required` check on such a push on purpose (it would be green with nothing tested): the full suite
+# runs on main every night (nightly.yml calls this workflow) and release.yml decides from the merged pull request.
 # Actions are pinned by commit SHA (the comment is the tag); update them together with the other workflows.
 on:
   push:
@@ -10,10 +14,20 @@ on:
   pull_request:
     # `labeled`: adding the run-ui-tests label starts CI again, with the UI scenarios forced on
     types: [opened, synchronize, reopened, labeled]
+  # nightly.yml: the full pipeline on main (everything runs for any event that is not a pull request)
+  workflow_call:
+    inputs:
+      warm_only:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       force_ui:
         description: "Run the Broadway UI scenarios (a manual run always does; this is for documentation of the intent)"
+        type: boolean
+        default: false
+      warm_only:
+        description: "Only refill the caches, like a push to main does (to try the warm-up on a branch)"
         type: boolean
         default: false
 
@@ -40,10 +54,10 @@ env:
   CARGO_PROFILE_TEST_DEBUG: line-tables-only
   RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
 
-# Pull requests cancel their own older runs; pushes to main always finish (caches are saved there, releases
-# look at the result).
+# Pull requests cancel their own older runs; runs on main always finish (the caches are saved there). The event is in
+# the group so that a nightly run is not replaced by a warm-up that is queued behind it.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -56,6 +70,7 @@ jobs:
       wiki: ${{ steps.f.outputs.wiki }}
       flatpak: ${{ steps.f.outputs.flatpak }}
       ui: ${{ steps.f.outputs.ui }}
+      warm: ${{ steps.w.outputs.warm }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -71,7 +86,15 @@ jobs:
           cat decision.txt >> "$GITHUB_OUTPUT"
           grep '^ui_reason=' decision.txt | sed 's/^ui_reason=/UI scenarios: /' > ui-decision.txt
           cat ui-decision.txt >> "$GITHUB_STEP_SUMMARY"
+      - id: w
+        name: Only refill the caches? (a push to main, or warm_only)
+        env:
+          EVENT: ${{ github.event_name }}
+          WARM_ONLY: ${{ inputs.warm_only }}
+        run: |
+          if [ "$EVENT" = push ] || [ "$WARM_ONLY" = true ]; then echo "warm=true" >> "$GITHUB_OUTPUT"; else echo "warm=false" >> "$GITHUB_OUTPUT"; fi
       - name: The decision for the report
+        if: ${{ github.event_name != 'push' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: report-changes
@@ -79,6 +102,8 @@ jobs:
 
   quick:
     name: Quick checks
+    needs: changes
+    if: needs.changes.outputs.warm != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -115,7 +140,7 @@ jobs:
   rust:
     name: Rust (format, lint, tests, coverage)
     needs: changes
-    if: needs.changes.outputs.rust == 'true'
+    if: needs.changes.outputs.rust == 'true' && needs.changes.outputs.warm != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     # Bookx needs GTK >= 4.20 and libadwaita >= 1.8, which current Fedora ships. The packages install in about
@@ -252,9 +277,46 @@ jobs:
             target/llvm-cov/html
           if-no-files-found: ignore
 
+  warm-rust:
+    # A push to main: build what the Rust job of a pull request restores (the clippy build and the instrumented test build),
+    # run nothing. Nothing depends on it.
+    name: Warm the Rust caches
+    needs: changes
+    if: needs.changes.outputs.warm == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container: fedora:latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install system dependencies
+        run: |
+          dnf install -y --setopt=install_weak_deps=False gcc gcc-c++ make pkgconf-pkg-config rustup mold \
+            gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
+            gdk-pixbuf2-devel openssl-devel gettext tar gzip git
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Rust ${{ env.RUST_TOOLCHAIN }} with clippy, rustfmt and the LLVM tools of its compiler
+        run: |
+          rustup-init -y --profile minimal --default-toolchain "$RUST_TOOLCHAIN" -c clippy -c rustfmt -c llvm-tools-preview
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: rust
+          cache-on-failure: true
+          # a push to main saves; a warm_only run on a branch only tries it
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: taiki-e/install-action@25f51f6b1bf4e18876107cece836f4f77ac17c8c # v2.90.7
+        with:
+          tool: cargo-llvm-cov,cargo-nextest
+      - name: clippy build (what the lint step of a pull request reuses)
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Instrumented test build, not run (what the coverage step of a pull request reuses)
+        run: cargo llvm-cov nextest --workspace --locked --no-report --no-run
+
   build-ui:
     # The debug app and the helper programs the scenarios use, built once; the shards download them instead of
-    # compiling the workspace eight times.
+    # compiling the workspace eight times. On a push to main only the build runs, to refill the cache.
     name: Build the app for the UI scenarios
     needs: changes
     if: needs.changes.outputs.ui == 'true'
@@ -294,12 +356,14 @@ jobs:
           cargo build --locked -p bookx-comic --example make_test_comics
           cargo build --locked -p bookx-pdf --example make_test_pdfs
       - name: Pack the binaries
+        if: needs.changes.outputs.warm != 'true'
         run: |
           tar czf ui-bin.tgz -C target debug/bookx debug/bookx-cli \
             debug/examples/fake_install debug/examples/make_test_plugin debug/examples/make_test_plugins \
             debug/examples/make_test_comics debug/examples/make_test_pdfs
           ls -l ui-bin.tgz
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: needs.changes.outputs.warm != 'true'
         with:
           name: ui-bin
           path: ui-bin.tgz
@@ -309,7 +373,7 @@ jobs:
   ui:
     name: UI scenarios (Broadway, shard ${{ matrix.shard }}/10)
     needs: [changes, build-ui]
-    if: needs.changes.outputs.ui == 'true'
+    if: needs.changes.outputs.ui == 'true' && needs.changes.outputs.warm != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     container: fedora:latest
@@ -376,7 +440,7 @@ jobs:
   wiki:
     name: Wiki (build and check)
     needs: changes
-    if: needs.changes.outputs.wiki == 'true'
+    if: needs.changes.outputs.wiki == 'true' && needs.changes.outputs.warm != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -398,7 +462,7 @@ jobs:
   flatpak:
     name: Flatpak
     needs: changes
-    if: needs.changes.outputs.flatpak == 'true'
+    if: needs.changes.outputs.flatpak == 'true' && needs.changes.outputs.warm != 'true'
     uses: ./.github/workflows/_flatpak.yml
     with:
       lint: true
@@ -406,7 +470,7 @@ jobs:
   required:
     # The one check branch protection requires. It aggregates the real jobs only: the report below is informational.
     name: required
-    if: ${{ always() }}
+    if: ${{ always() && needs.changes.outputs.warm != 'true' }}
     needs: [changes, quick, rust, build-ui, ui, wiki, flatpak]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -427,8 +491,8 @@ jobs:
     # required check and `required` does not wait for it. The token of a pull request from a fork or from Dependabot
     # is read-only, so those only get the summary (docs/ci-gates.md, "The pull request report").
     name: Report
-    needs: [required]
-    if: ${{ !cancelled() }}
+    needs: [changes, required]
+    if: ${{ !cancelled() && needs.changes.outputs.warm != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
