@@ -181,10 +181,7 @@ Full list of changes: [CHANGELOG.md](https://github.com/adhadse/Bookx/blob/v0.3.
 
 ## 9. Notes the agent could not settle (decide before the tag)
 
-- **Third-party artwork in `mockups/legacy/` and `_legacy/`** (the 2023 prototype): the two legacy mockup SVGs were started from GNOME
-  design mockups (Inkscape export paths in the files name them). They are not built or shipped. To be safe for a public
-  release, either keep them and accept the CC BY-SA origin (NOTICE.md says so), or `git rm -r mockups/legacy _legacy`
-  (history keeps them). Nothing else in `_legacy` is needed.
+- **Legacy prototype and its mockups**: removed (`mockups/legacy`, `_legacy`); history keeps them.
 - **Binaries are not stripped** (`bookx` is 81 MiB, `bookx-cli` 39 MiB). `cargo deb` strips, the tarball and Flatpak do not.
   A `strip = "symbols"` line in `[profile.release]` would shrink them a lot; it was not added because it changes the
   build for everybody and backtraces in bug reports become useless. Your call.

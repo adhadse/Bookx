@@ -1,5 +1,9 @@
 # Install
 
+!!! warning "Beta"
+
+    Bookx 0.3.0-beta.1 is beta software. It can have bugs, so keep a backup of anything you care about (Bookx can back up your library for you). Reports help us fix bugs: choose **Main Menu → Report a Problem**, read the log report, then **Open GitHub Issue**.
+
 **Download Bookx from [GitHub Releases](https://github.com/adhadse/Bookx/releases/latest).** That is the official and,
 for now, the only way to get Bookx: every release carries ready-made files for Linux that anybody can download, and each
 file is signed so you can check that it is the one the project built ([Verify your download](#verify-your-download)).
@@ -150,7 +154,7 @@ a `.sigstore.json` file next to it (download it into the same folder). Release f
 
 If a check fails, do not install the file and report it as described in the
 [security policy](https://github.com/adhadse/Bookx/blob/main/SECURITY.md). The source you build yourself is the same code
-as the tag: compare `git rev-parse v0.3.0` with the commit shown on the release page.
+as the tag: compare `git rev-parse v0.3.0-beta.1` with the commit shown on the release page.
 
 
 ## What the sandbox may do

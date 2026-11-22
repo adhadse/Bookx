@@ -6,6 +6,19 @@ versioned heading, `Cargo.toml` and the AppStream metainfo disagree.
 
 ## [Unreleased]
 
+## [0.3.0-beta.1] - 2026-11-22
+
+The first beta of 0.3.0, published on GitHub Releases only. Bugs are expected; please report them.
+
+### Added
+- Report a Problem (Main Menu): a readable log report and a GitHub issue; a beta notice in About.
+
+### Changed
+- Release files are named `Bookx-<version>-linux-<arch>.<ext>`; docs install from GitHub Releases first.
+- The wiki dark theme uses the same fonts as the light one.
+
+Everything below under 0.3.0 is part of this beta.
+
 ## [0.3.0] - 2026-11-22
 
 The first public release. Everything since 0.2.0 (waves 5 to 11), grouped by what you see.
@@ -115,6 +128,7 @@ editor.
 - `bookx://` links and a diagnostics report for bug reports.
 - Flatpak manifest (GNOME 50 runtime, offline crates), CI workflow.
 
-[Unreleased]: https://github.com/adhadse/Bookx/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/adhadse/Bookx/compare/v0.3.0-beta.1...HEAD
+[0.3.0-beta.1]: https://github.com/adhadse/Bookx/releases/tag/v0.3.0-beta.1
 [0.3.0]: https://github.com/adhadse/Bookx/releases/tag/v0.3.0
 [0.2.0]: https://github.com/adhadse/Bookx/releases/tag/v0.2.0

@@ -15,7 +15,7 @@ Runbook for the owner: `docs/release-0.3.0.md`. Nothing is committed, tagged or 
 | `build-aux/release-check.sh`, `cargo-sources.json` (ours = official generator, same 584 crates) | done (passes; `actionlint` not installed, one skip) |
 | `cargo deny check` (advisories, bans, licenses, sources) | done, all ok (cargo-deny 0.21) |
 | `cargo audit` | done: 0 vulnerabilities, 7 "unmaintained" notices, all already justified in `deny.toml` |
-| NOTICE.md covers non-crate assets (5 action icons, app icon, mockups, legacy prototype) | done; owner confirms the origin of the icons and decides on `mockups/legacy` + `_legacy` (GNOME-derived art, see runbook §10) |
+| NOTICE.md covers non-crate assets (5 action icons, app icon, mockups, legacy prototype) | done; owner confirms the origin of the icons (legacy prototype removed)|
 | Release build, CLI smoke test (init/add/list/check/convert/backup), headless GUI start and clean exit | done (release 2m13s, `bookx` 81 MiB, `bookx-cli` 39 MiB, unstripped) |
 | `desktop-file-validate`, `appstreamcli validate --pedantic`, `msgfmt -c` (4 po files) | done (only the unavoidable `cid-contains-uppercase-letter`; po headers incomplete, Weblate fills) |
 | Tarball, `.deb`, `.rpm` built locally and listed | done (48 MB / 30 MB / 36 MB; no man pages or shell completions exist) |

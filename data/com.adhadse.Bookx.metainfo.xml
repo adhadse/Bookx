@@ -104,6 +104,18 @@
     <mediatype>x-scheme-handler/bookx</mediatype>
   </provides>
   <releases>
+    <release version="0.3.0-beta.1" date="2026-11-22" type="development">
+      <description>
+        <p>The first beta. It can have bugs, so keep a backup of anything you care about; Bookx can back up your library for you. Reports help us fix bugs: Main Menu, Report a Problem.</p>
+        <ul>
+          <li>New: Report a Problem collects a log report you can read, then opens a GitHub issue</li>
+          <li>Everything in 0.3.0: a bigger library, reader and editor, KOReader sync, backups and read aloud</li>
+          <li>Not tested on real hardware yet: some e-reader models, sound cards, WebDAV and NAS backups, CBR and DJVU files</li>
+          <li>Linux (x86_64) only; translations to German, Spanish, French and Hindi are machine-made</li>
+        </ul>
+      </description>
+      <url type="details">https://github.com/adhadse/Bookx/releases/tag/v0.3.0-beta.1</url>
+    </release>
     <release version="0.3.0" date="2026-11-22">
       <description>
         <p>The first public release: a much bigger library, reader and editor, KOReader sync, backups and read aloud.</p>

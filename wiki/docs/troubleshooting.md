@@ -1,5 +1,15 @@
 # Troubleshooting and FAQ
 
+!!! warning "Beta"
+
+    Bookx 0.3.0-beta.1 is beta software. It can have bugs, so keep a backup of anything you care about (Bookx can back up your library for you). Reports help us fix bugs: choose **Main Menu → Report a Problem**, read the log report, then **Open GitHub Issue**.
+
+## How to report a problem
+
+1. Open **Main Menu → Report a Problem**.
+2. Read the log report it shows. It has no book titles, accounts or passwords.
+3. Choose **Open GitHub Issue**, describe what you did and what you expected, and paste the report.
+
 ## The library opens read-only
 
 Another running Bookx (or `bookx-cli`) has the library open. The message names who has it. Close the other one and
