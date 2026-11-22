@@ -11,12 +11,12 @@ ones (the UI job is a 10-way matrix), one required check.
 
 | Workflow | Runs on | Jobs |
 |---|---|---|
-| `ci.yml` (name **CI**) | push to `main`, pull requests, manual | `changes`, `quick`, `rust`, `build-ui`, `ui` (10 shards), `wiki` (build and check only), `flatpak` (calls `_flatpak.yml`), **`required`**, `report` |
+| `ci.yml` (name **CI**) | pull requests, manual, called by `nightly.yml`; a push to `main` only runs the cache warm-up (below) | `changes`, `quick`, `rust`, `build-ui`, `ui` (10 shards), `wiki` (build and check only), `flatpak` (calls `_flatpak.yml`), **`required`**, `report` |
 | `_flatpak.yml` | called by `ci.yml`, `release.yml`, `nightly.yml` | `bundle`: the Flatpak bundle, smoke-tested, Flathub linter optional |
 | `dependabot-sources.yml` | Dependabot pull requests that change Cargo files | `regenerate`: commits `build-aux/cargo-sources.json`, dispatches CI on the new commit |
 | `wiki-deploy.yml` (name **Wiki deploy**) | called by `release.yml`, manual (`ref`) | `deploy`: builds the wiki of a ref and publishes it to GitHub Pages |
 | `release.yml` | tags `v*`, manual | `gates`, `version`, `tarball`, `flatpak`, `publish`, `wiki` (after `publish`, tags only) |
-| `nightly.yml` | 03:17 UTC, manual | `coverage-ui` (UI tier), `flatpak` with cold caches |
+| `nightly.yml` | 03:17 UTC, manual | `ci` (the whole of `ci.yml` on main), `coverage-ui` (UI tier), `flatpak` with cold caches, `notify` (the issue "Nightly failed") |
 | `package-native.yml` | manual (`os`: macos-arm64, macos-x64, windows) | `macos`, `windows` |
 | `flathub-update.yml` | unchanged | dry-run/PR against the Flathub repository |
 
@@ -98,11 +98,31 @@ pattern `v*` (added 2026-11-22 with `gh api -X POST repos/adhadse/Bookx/environm
 | `wiki` | `build-aux/wiki.sh` | the same |
 | `flatpak` | `build-aux/flatpak.sh` with `BUNDLE=1` on the runner | `BUNDLE=1 build-aux/flatpak.sh` |
 
+### What runs where
+
+| Event | What runs | Why |
+|---|---|---|
+| pull request | the full pipeline of `ci.yml` (quick, Rust + coverage, UI shards unless the classifier skips them, wiki, Flatpak when packaging changed), `required`, `Report` | branch protection forces the branch to be up to date with `main`, so the merge ref is the tree that `main` will get |
+| push to `main` (a merge) | only `warm-rust` and `build-ui` (build, no tests; `build-ui` builds the app and does not pack it): they refill the caches that pull requests restore | the same tree was tested on the pull request; about 110 of the 125 runner-minutes of a merge are saved |
+| nightly (03:17 UTC) and manual `nightly.yml` | the whole of `ci.yml` as for any non-PR event (everything on, UI forced), the UI-tier coverage, the cold-cache Flatpak build, and the issue "Nightly failed" | the full suite on `main`; a red run is visible and opens or updates one issue, a green run closes it |
+| manual `ci.yml` | everything, or with `warm_only` only the warm-up (to try it on a branch) | |
+| tag `v*` | `release.yml`: `gates` first | see below |
+
+A push to `main` has **no `required` check on purpose**: with every job skipped it would be green with nothing tested,
+and anything that looks at `required` on a commit (including `release.yml`) would be fooled.
+
+`release.yml` `gates` (`build-aux/release-gate.py`, tested offline in `build-aux/tests/test_release_gate.py`) accepts a commit when, in this order:
+`skip_gates` is set (emergency); or its `required` check succeeded (a rerun, a manual CI run on it; a red one refuses at once);
+or the latest Nightly run on it succeeded; or it is the merge commit of a pull request whose head has a green `required` check AND
+whose head tree equals the tree of the commit (a squash merge of an up-to-date branch). A different tree means the branch was
+not up to date when it was merged, nothing proved the result, and the gate says so. A direct push without any of these is
+refused. Dry run without building anything: run `release.yml` by hand with `gates_only` on `main`.
+
 ### When the UI scenarios run
 
 `build-ui` and the 10 `ui` shards are the expensive part (about 85 runner-minutes, 8 minutes of wall time after the
 build). `build-aux/ci-changes.sh` calls `build-aux/ci-ui-scope.py`, which decides `ui=true|false` from the changed files
-(`git diff base...head` of a pull request). Main, tags, nightly and manual runs always run them: a full run on `main` is the
+(`git diff base...head` of a pull request). Nightly and manual runs always run them: the nightly full run on `main` is the
 safety net for anything a pull request skipped.
 
 | Changed path | UI scenarios |

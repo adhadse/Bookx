@@ -59,7 +59,7 @@ schemas, pixbuf loaders), tracked in `docs/enhancements.md` if wanted. Do not me
 
 | Workflow | Trigger | What it does | Publishes? |
 |---|---|---|---|
-| `ci.yml` | every push and pull request | quick checks, Rust (fmt, clippy, i18n, tests, coverage gate), UI shards, wiki build and check (never a deploy), Flatpak (only when packaging changed), final `required` check | no |
+| `ci.yml` | pull requests (a push to `main` only warms the caches), manual, and every night through `nightly.yml` | quick checks, Rust (fmt, clippy, i18n, tests, coverage gate), UI shards, wiki build and check (never a deploy), Flatpak (only when packaging changed), final `required` check | no |
 | `_flatpak.yml` | called by `ci.yml`, `release.yml`, `nightly.yml` | builds the bundle once (`Bookx-<version>.flatpak`, renamed by `publish`), smoke-tests it | no |
 | `wiki-deploy.yml` | called by `release.yml` after `publish`, or manual (`ref`) | builds the wiki of one ref and publishes it to GitHub Pages (https://bookx.adhadse.com) | **the live docs** |
 | `nightly.yml` | schedule, manual | UI coverage tier, cold-cache Flatpak build | no |
@@ -74,7 +74,8 @@ You never start the build jobs by hand: **pushing the tag is the one action that
 ```
 tag v0.3.0-beta.1 pushed
    │
-   ├── gates      the `required` check of ci.yml must be green on the tagged commit, else stop
+   ├── gates      the tagged commit passed CI: its `required` check, a green Nightly on it, or the merged pull request
+   │              with a green `required` and an identical tree (build-aux/release-gate.py), else stop
    │      │
    │      ├── tarball   release-check.sh <tag> → cargo build --release → tarball.sh → .deb → .rpm
    │      └── version   derives "0.3.0-beta.1" and prerelease=true from the tag
@@ -92,8 +93,10 @@ The docs go live after the release assets are out, also for pre-releases (beta u
 
 Do the steps in this order. Everything before step 7 is reversible; the tag is not.
 
-1. **Start from a green `main`.** The `required` check of `ci.yml` is green on the commit you will tag (check the PR
-   or the commit's checks page).
+1. **Start from a green `main`.** Pushes to `main` do not run the full CI (the pull request did, on an up-to-date branch).
+   The commit you tag is the squash merge of a pull request whose `required` check is green, and the last Nightly run
+   (Actions, Nightly) is green. `release.yml` `gates` checks the first for you (below); if a Nightly is red, fix that first.
+   Dry run: Actions, Release, Run workflow, `gates_only`.
 2. **Bump the version** everywhere listed above. Regenerate the Flatpak crate list and the lock file:
    `cargo update -w` (workspace only), then `python3 build-aux/flatpak-cargo-sources.py`.
 3. **Write the notes:** a `<release version="X" date="YYYY-MM-DD">` block in the metainfo (user-visible changes in
@@ -158,7 +161,7 @@ build-aux/flatpak.sh                              # Flatpak build with smoke tes
 
 | Symptom | Cause and fix |
 |---|---|
-| `gates` fails with "CI has not passed" | the tagged commit has no green `required` check: wait for CI or tag a green commit |
+| `gates` is refused | the message says which: no pull request (a direct push), the pull request's tree differs from the tagged tree (it was not up to date when merged), or its `required` check is not green. Tag a squash-merge commit of a green, up-to-date pull request, wait for a green Nightly on the commit, or use `skip_gates` in an emergency |
 | `release-check` fails on the tag | tag and `Cargo.toml` version differ, or a crate/metainfo/changelog was not bumped |
 | `flatpak` fails on crates | `build-aux/cargo-sources.json` is stale: regenerate it after any `Cargo.lock` change |
 | `publish` fails at cosign verify | the workflow file was renamed: the identity regex in `release.yml` and `wiki/docs/install.md` must match |

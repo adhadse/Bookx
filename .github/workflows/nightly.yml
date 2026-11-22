@@ -1,8 +1,13 @@
 name: Nightly
 
-# Slow checks that do not belong in every pull request:
+# The full suite on main. A push to main only refills the caches (ci.yml, `warm-rust` and `build-ui`), because the pull
+# request that was merged already ran everything on an up-to-date branch; this run is the safety net and also what
+# release.yml accepts as proof for a commit.
+#   ci           the whole of ci.yml as for a pull request with the UI scenarios forced (quick checks, Rust with coverage,
+#                UI shards, wiki build, Flatpak), its `required` job is the verdict
 #   coverage-ui  how much of src/ui/** the Broadway scenarios reach (docs/ci-gates.md, "UI tier")
 #   flatpak      a Flatpak build with cold caches, so a build that only works thanks to a stale cache shows up
+#   notify       one GitHub issue, "Nightly failed", opened or commented on when something is red and closed when green
 on:
   schedule:
     - cron: "17 3 * * *"
@@ -24,6 +29,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  ci:
+    name: CI on main
+    uses: ./.github/workflows/ci.yml
+    # a called workflow cannot ask for more than this: its `report` job wants to comment on pull requests
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+
   coverage-ui:
     name: UI coverage (Broadway scenarios, instrumented)
     runs-on: ubuntu-latest
@@ -78,3 +92,32 @@ jobs:
     with:
       cache: false
       lint: true
+
+  notify:
+    name: Report the result
+    needs: [ci, coverage-ui, flatpak]
+    if: ${{ always() && github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Open, update or close the issue "Nightly failed"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEEDS: ${{ toJSON(needs) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Nightly failed"
+          num=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number,title \
+            --jq "[.[] | select(.title == \"$title\")][0].number // empty")
+          summary=$(echo "$NEEDS" | jq -r 'to_entries[] | "- \(.key): \(.value.result)"')
+          if echo "$NEEDS" | jq -e '[.[].result] | any(. == "failure" or . == "cancelled")' >/dev/null; then
+            body=$(printf 'The nightly run is red: %s\n\n%s\n' "$RUN_URL" "$summary")
+            if [ -n "$num" ]; then gh issue comment "$num" --repo "$GITHUB_REPOSITORY" --body "$body"
+            else gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"; fi
+          elif [ -n "$num" ]; then
+            gh issue comment "$num" --repo "$GITHUB_REPOSITORY" --body "Green again: $RUN_URL"
+            gh issue close "$num" --repo "$GITHUB_REPOSITORY"
+          fi
