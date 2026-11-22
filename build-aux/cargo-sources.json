@@ -7982,15 +7982,15 @@
   {
     "type": "archive",
     "archive-type": "tar-gzip",
-    "url": "https://static.crates.io/crates/zeroize/zeroize-1.9.1.crate",
-    "sha256": "e13084392c5e4bc371903e2935a5eaeed24905a7511356b883835e18a78f6879",
+    "url": "https://static.crates.io/crates/zeroize/zeroize-1.9.2.crate",
+    "sha256": "85ccff8a4805aba1eaa4cd4afcd49f7557dd2cf5fd79ffc37f8959466effc5aa",
     "strip-components": 1,
-    "dest": "cargo/vendor/zeroize-1.9.1"
+    "dest": "cargo/vendor/zeroize-1.9.2"
   },
   {
     "type": "inline",
-    "contents": "{\"package\": \"e13084392c5e4bc371903e2935a5eaeed24905a7511356b883835e18a78f6879\", \"files\": {}}",
-    "dest": "cargo/vendor/zeroize-1.9.1",
+    "contents": "{\"package\": \"85ccff8a4805aba1eaa4cd4afcd49f7557dd2cf5fd79ffc37f8959466effc5aa\", \"files\": {}}",
+    "dest": "cargo/vendor/zeroize-1.9.2",
     "dest-filename": ".cargo-checksum.json"
   },
   {

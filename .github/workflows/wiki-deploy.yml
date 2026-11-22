@@ -1,0 +1,79 @@
+name: Wiki deploy
+
+# The public wiki (https://bookx.adhadse.com, GitHub Pages) normally changes with a release, so it describes what a
+# download contains. It is deployed
+#   * by release.yml, after the release is published, built from the TAGGED commit;
+#   * by hand, as the owner's deliberate override: Actions > Wiki deploy > Run workflow deploys WHATEVER REF YOU PICK.
+#     The default is `main`; a tag or another branch is accepted. That publishes that state of the docs, features that
+#     no release has yet included.
+# Pushes to main and pull requests only build and check the wiki (ci.yml, job `wiki`).
+#
+# Settings > Environments > github-pages > Deployment branches and tags must allow the ref: `main`, `master` and the tag
+# pattern `v*` (docs/ci-gates.md).
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Tag, branch or commit to publish"
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch or tag to publish (override: whatever you pick goes live; default main)"
+        type: string
+        default: main
+
+permissions:
+  contents: read
+
+env:
+  # The pinned Zensical version lives in build-aux/wiki.sh (ZENSICAL_VERSION).
+  VENV: ${{ github.workspace }}/.cache/wiki-venv
+
+jobs:
+  deploy:
+    name: Build and deploy the wiki
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    # deployments queue and are never cancelled
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: ref
+        name: Which ref
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          ref=${INPUT_REF:-main}
+          echo "Publishing the wiki of: $ref"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.ref.outputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Cache the Zensical environment
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.VENV }}
+          key: wiki-venv-${{ hashFiles('build-aux/wiki.sh') }}
+      - name: Build the wiki and check it (the browser check ran in CI on this commit)
+        env:
+          WIKI_BROWSER: "0"
+        run: build-aux/wiki.sh
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: wiki/site
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
