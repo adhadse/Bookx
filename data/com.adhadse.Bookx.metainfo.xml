@@ -33,35 +33,35 @@
   <launchable type="desktop-id">com.adhadse.Bookx.desktop</launchable>
   <screenshots>
     <screenshot type="default">
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/library-banner-hero-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/v0.3.0-beta.1/wiki/docs/assets/library-banner-hero-light.png</image>
       <caption>Your library as covers, with search and the tag browser</caption>
     </screenshot>
     <screenshot>
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/library-table-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/v0.3.0-beta.1/wiki/docs/assets/library-table-light.png</image>
       <caption>The library as a table, sorted and filtered</caption>
     </screenshot>
     <screenshot>
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/reader-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/v0.3.0-beta.1/wiki/docs/assets/reader-light.png</image>
       <caption>The reader on a light page</caption>
     </screenshot>
     <screenshot>
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/reader-dark.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/v0.3.0-beta.1/wiki/docs/assets/reader-dark.png</image>
       <caption>The reader in the dark theme</caption>
     </screenshot>
     <screenshot>
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/editor-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/v0.3.0-beta.1/wiki/docs/assets/editor-light.png</image>
       <caption>The built-in EPUB editor with live preview</caption>
     </screenshot>
     <screenshot>
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/device-window-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/v0.3.0-beta.1/wiki/docs/assets/device-window-light.png</image>
       <caption>Send books to an e-reader and bring reading progress back</caption>
     </screenshot>
     <screenshot>
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/read-aloud-reading-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/v0.3.0-beta.1/wiki/docs/assets/read-aloud-reading-light.png</image>
       <caption>Read aloud with the sentence highlighted</caption>
     </screenshot>
     <screenshot>
-      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/main/wiki/docs/assets/preferences-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/adhadse/Bookx/v0.3.0-beta.1/wiki/docs/assets/preferences-light.png</image>
       <caption>Preferences, with a search box</caption>
     </screenshot>
   </screenshots>
