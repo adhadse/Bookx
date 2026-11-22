@@ -24,6 +24,13 @@ env:
   RUST_TOOLCHAIN: "1.93.1"
   # rustup-init insists on $HOME being the home of the euid; in a CI container it is not
   RUSTUP_INIT_SKIP_SUDO_CHECK: "yes"
+  # the scenarios and some tests compare UTF-8 text (curly quotes, narrow spaces) with grep: a container has no LANG
+  LANG: C.UTF-8
+  # Build speed (docs/ci-gates.md, "Speed"): line tables are enough for a backtrace in a test, the linker is the
+  # fast one (mold), every core is used (cargo and nextest default to the number of CPUs; nothing lowers it).
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
+  CARGO_PROFILE_TEST_DEBUG: line-tables-only
+  RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
 
 # Pull requests cancel their own older runs; pushes to main always finish (caches are saved there, releases
 # look at the result).
@@ -104,10 +111,15 @@ jobs:
             gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
             gdk-pixbuf2-devel openssl-devel gettext \
             dbus-daemon xz tar gzip curl python3 python3-pip python3-pyyaml git diffutils grep \
-            desktop-file-utils libappstream-glib appstream libxml2 luajit lua
+            desktop-file-utils libappstream-glib appstream libxml2 luajit lua \
+            espeak-ng pulseaudio-utils xxd mold \
+            google-noto-sans-fonts google-noto-serif-fonts abattis-cantarell-vf-fonts dejavu-sans-fonts \
+            google-noto-sans-cjk-fonts google-noto-sans-arabic-fonts google-noto-sans-devanagari-fonts
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: The machine
+        run: build-aux/ci-timing.sh
       - name: Rust ${{ env.RUST_TOOLCHAIN }} with clippy, rustfmt and the LLVM tools of its compiler
         run: |
           rustup-init -y --profile minimal --default-toolchain "$RUST_TOOLCHAIN" -c clippy -c rustfmt -c llvm-tools-preview
@@ -208,9 +220,58 @@ jobs:
             target/llvm-cov/html
           if-no-files-found: ignore
 
-  ui:
-    name: UI scenarios (Broadway, shard ${{ matrix.shard }}/6)
+  build-ui:
+    # The debug app and the helper programs the scenarios use, built once; the shards download them instead of
+    # compiling the workspace eight times.
+    name: Build the app for the UI scenarios
     needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container: fedora:latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install system dependencies
+        run: |
+          dnf install -y gcc gcc-c++ make pkgconf-pkg-config rustup mold \
+            gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
+            gdk-pixbuf2-devel openssl-devel gettext tar gzip git
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: The machine
+        run: build-aux/ci-timing.sh
+      - name: Rust ${{ env.RUST_TOOLCHAIN }}
+        run: |
+          rustup-init -y --profile minimal --default-toolchain "$RUST_TOOLCHAIN"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: ui
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Build (what build-aux/ui-tests.sh would build)
+        run: |
+          cargo build --locked -p bookx -p bookx-cli
+          cargo build --locked -p bookx-tts --example fake_install
+          cargo build --locked -p bookx-plugin --example make_test_plugin --example make_test_plugins
+          cargo build --locked -p bookx-comic --example make_test_comics
+          cargo build --locked -p bookx-pdf --example make_test_pdfs
+      - name: Pack the binaries
+        run: |
+          tar czf ui-bin.tgz -C target debug/bookx debug/bookx-cli \
+            debug/examples/fake_install debug/examples/make_test_plugin debug/examples/make_test_plugins \
+            debug/examples/make_test_comics debug/examples/make_test_pdfs
+          ls -l ui-bin.tgz
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-bin
+          path: ui-bin.tgz
+          retention-days: 1
+          compression-level: 0
+
+  ui:
+    name: UI scenarios (Broadway, shard ${{ matrix.shard }}/8)
+    needs: [changes, build-ui]
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -221,36 +282,40 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
-      # gtk4-broadwayd is in the gtk4 package; dbus-run-session in dbus-daemon; zip, unzip and python3 build fixtures
+      # Only what the app and the scenarios need at run time (no compiler): gtk4-broadwayd is in the gtk4 package,
+      # dbus-run-session in dbus-daemon; zip, unzip, xxd and python3 build fixtures; espeak-ng and the fonts
+      # (Noto Sans/Serif, CJK, Arabic, Devanagari) are what the text and speech scenarios measure with.
       - name: Install system dependencies
         run: |
-          dnf install -y gcc gcc-c++ make pkgconf-pkg-config rustup \
-            gtk4 gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
-            gdk-pixbuf2-devel openssl-devel gettext \
-            dbus-daemon xz tar gzip python3 git procps-ng zip unzip
+          dnf install -y gtk4 libadwaita gtksourceview5 gdk-pixbuf2 pango cairo openssl-libs gettext \
+            dbus-daemon tar gzip python3 git procps-ng zip unzip \
+            espeak-ng pulseaudio-utils xxd \
+            google-noto-sans-fonts google-noto-serif-fonts abattis-cantarell-vf-fonts dejavu-sans-fonts \
+            google-noto-sans-cjk-fonts google-noto-sans-arabic-fonts google-noto-sans-devanagari-fonts
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Rust ${{ env.RUST_TOOLCHAIN }}
-        run: |
-          rustup-init -y --profile minimal --default-toolchain "$RUST_TOOLCHAIN"
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: The machine
+        run: build-aux/ci-timing.sh
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          shared-key: ui
-          save-if: ${{ github.ref == 'refs/heads/main' && matrix.shard == 1 }}
+          name: ui-bin
+      - name: Unpack the binaries
+        run: mkdir -p target && tar xzf ui-bin.tgz -C target
       - name: Broadway is available
         # ui-tests.sh skips itself (exit 0) when this is missing: fail loudly in CI instead
         run: command -v gtk4-broadwayd && command -v dbus-run-session
       - name: UI scenarios of this shard
         run: |
-          NET=0 BOOKX_SECRETS=memory JOBS=4 SHARD=${{ matrix.shard }}/6 build-aux/ui-tests.sh 2>&1 | tee ui.log
+          SKIP_BUILD=1 TIMES_FILE=ui-times.txt NET=0 BOOKX_SECRETS=memory JOBS=4 SHARD=${{ matrix.shard }}/8 build-aux/ui-tests.sh 2>&1 | tee ui.log
       - name: Scenario results for the report
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: report-ui-${{ matrix.shard }}
-          path: ui.log
+          path: |
+            ui.log
+            ui-times.txt
           if-no-files-found: ignore
 
   wiki:
@@ -311,7 +376,7 @@ jobs:
     # The one check branch protection requires.
     name: required
     if: ${{ always() }}
-    needs: [changes, quick, rust, ui, wiki, flatpak]
+    needs: [changes, quick, rust, build-ui, ui, wiki, flatpak]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

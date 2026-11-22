@@ -9,7 +9,9 @@
 #   build-aux/ui-tests.sh            # build (debug) and run all scenarios concurrently
 #   NET=0 build-aux/ui-tests.sh      # skip the scenarios that need internet
 #   JOBS=16 build-aux/ui-tests.sh    # scenarios running at once (default: number of CPU cores; 0 = all)
-#   SHARD=2/6 build-aux/ui-tests.sh  # only the scenarios of shard 2 of 6 (a stable hash of the name; CI runs 1/6 .. 6/6)
+#   SHARD=2/6 build-aux/ui-tests.sh  # only the scenarios of shard 2 of 6 (balanced by build-aux/ui-shard-weights.json, else a hash)
+#   SKIP_BUILD=1 build-aux/ui-tests.sh  # use the binaries that are already in the target directory (CI shards download them)
+#   TIMES_FILE=times.txt ...            # also write "scenario seconds" lines (build-aux/ui-shard.py --update reads them)
 #   ONLY='notes translate' build-aux/ui-tests.sh   # run just these scenarios
 #   SHOW=notes ONLY=notes build-aux/ui-tests.sh     # also print everything the app said in that scenario
 #
@@ -27,9 +29,9 @@ done
 for t in zip unzip python3; do
     command -v "$t" >/dev/null || { echo "ui-tests: '$t' is needed to build the test fixtures (install it)" >&2; exit 1; }
 done
-cargo build --quiet -p bookx -p bookx-cli || exit 1
-cargo build --quiet -p bookx-tts --example fake_install || exit 1
-cargo build --quiet -p bookx-plugin --example make_test_plugin --example make_test_plugins || exit 1
+[ -n "${SKIP_BUILD:-}" ] || cargo build --quiet -p bookx -p bookx-cli || exit 1
+[ -n "${SKIP_BUILD:-}" ] || cargo build --quiet -p bookx-tts --example fake_install || exit 1
+[ -n "${SKIP_BUILD:-}" ] || cargo build --quiet -p bookx-plugin --example make_test_plugin --example make_test_plugins || exit 1
 PLUG=${CARGO_TARGET_DIR:-$PWD/target}/debug/examples/make_test_plugin
 FAKEPACK=${CARGO_TARGET_DIR:-$PWD/target}/debug/examples/fake_install
 PLUGS=${CARGO_TARGET_DIR:-$PWD/target}/debug/examples/make_test_plugins
@@ -39,6 +41,8 @@ BIN=${CARGO_TARGET_DIR:-$PWD/target}/${PROFILE:-debug}/bookx # PROFILE=release r
 # the catalogue is a SQLite database; the CLI dumps it as JSON for the checks
 CLI=${CARGO_TARGET_DIR:-$PWD/target}/debug/bookx-cli
 HERE=$(cd "$(dirname "$0")" && pwd)
+SHARD_NAMES=
+[ -n "${SHARD:-}" ] && [ -f "$HERE/ui-shard-weights.json" ] && SHARD_NAMES=" $(python3 "$HERE/ui-shard.py" "$SHARD" | tr '\n' ' ') "
 ROOT=$(mktemp -d)
 RES=$ROOT/results
 mkdir -p "$RES"
@@ -358,14 +362,19 @@ scenario() {
     local name=$1 script=$2 checks=$3
     N=$((N + 1))
     [ -n "${ONLY:-}" ] && [[ " $ONLY " != *" $name "* ]] && return 0
-    if [ -n "${SHARD:-}" ]; then # SHARD=i/n: this process runs the scenarios whose name hashes to i (1-based), CI runs i = 1..n
-        h=$(printf '%s' "$name" | cksum | cut -d' ' -f1)
-        [ $((h % ${SHARD#*/} + 1)) -eq "${SHARD%/*}" ] || return 0
+    if [ -n "${SHARD:-}" ]; then # SHARD=i/n: this process runs shard i of n (1-based); CI runs i = 1..n
+        if [ -n "$SHARD_NAMES" ]; then # balanced by measured seconds (build-aux/ui-shard.py)
+            [[ "$SHARD_NAMES" == *" $name "* ]] || return 0
+        else # no weights file: a stable hash of the name
+            h=$(printf '%s' "$name" | cksum | cut -d' ' -f1)
+            [ $((h % ${SHARD#*/} + 1)) -eq "${SHARD%/*}" ] || return 0
+        fi
     fi
     while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do wait -n; done # throttle to $JOBS at once
     SCENARIOS+=("$name")
     (
         d=$ROOT/$name
+        t0=$SECONDS
         mkdir -p "$d"
         script=${script//@D@/$d} # the scenario's own folder, known only here
         if [ "$name" = migrate_json ]; then
@@ -970,6 +979,7 @@ PY
         }
         has() { grep -Eq -- "$1" <<<"$OUT"; }
         eval "$checks"
+        if [ -n "${TIMES_FILE:-}" ]; then echo "$name $((SECONDS - t0))" >>"$TIMES_FILE"; fi
         [ -n "$srvpid" ] && kill "$srvpid" 2>/dev/null
     ) &
 }

@@ -17,6 +17,7 @@ env:
   CARGO_NET_RETRY: "5"
   RUST_TOOLCHAIN: "1.93.1"
   RUSTUP_INIT_SKIP_SUDO_CHECK: "yes"
+  LANG: C.UTF-8
 
 concurrency:
   group: nightly-${{ github.ref }}
@@ -37,7 +38,10 @@ jobs:
           dnf install -y gcc gcc-c++ make pkgconf-pkg-config rustup \
             gtk4 gtk4-devel libadwaita-devel gtksourceview5-devel pango-devel cairo-devel \
             gdk-pixbuf2-devel openssl-devel gettext \
-            dbus-daemon xz tar gzip curl python3 git procps-ng zip unzip
+            dbus-daemon xz tar gzip curl python3 git procps-ng zip unzip \
+            espeak-ng pulseaudio-utils xxd \
+            google-noto-sans-fonts google-noto-serif-fonts abattis-cantarell-vf-fonts dejavu-sans-fonts \
+            google-noto-sans-cjk-fonts google-noto-sans-arabic-fonts google-noto-sans-devanagari-fonts
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Rust with the LLVM tools that match its compiler
         run: |

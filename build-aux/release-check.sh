@@ -103,7 +103,7 @@ for f in sorted(glob.glob(".github/workflows/*.yml")):
     d = yaml.safe_load(open(f))
     assert "jobs" in d and d["jobs"], f
     for n, j in d["jobs"].items():
-        assert "runs-on" in j, (f, n)
+        assert "runs-on" in j or "uses" in j, (f, n)  # a job is a runner or a reusable workflow
 PY
     then ok "workflow YAML parses (never run on GitHub from here)"; else bad "workflow YAML"; fi
 else skip "python yaml not installed"; fi

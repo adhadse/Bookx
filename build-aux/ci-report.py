@@ -181,6 +181,21 @@ def tests_section(art, jobs_data):
     return "\n".join(out) + "\n"
 
 
+def timing_section(data):
+    """The slowest steps of every job that did something: where the wall time goes."""
+    rows = ["| job | slowest steps |", "|---|---|"]
+    for j in (data or {}).get("jobs", []):
+        steps = []
+        for st in j.get("steps", []):
+            sec = seconds(st)
+            if sec is not None and sec >= 5 and not st.get("name", "").startswith(("Set up", "Complete", "Post ", "Initialize", "Stop")):
+                steps.append((sec, st.get("name", "?")))
+        if steps:
+            top = sorted(steps, reverse=True)[:4]
+            rows.append(f"| {esc(j.get('name', '?'), 50)} | " + "; ".join(f"{esc(n, 45)} {dur(sec)}" for sec, n in top) + " |")
+    return "\n".join(rows) + "\n" if len(rows) > 2 else ""
+
+
 def arrow(d):
     if d is None:
         return ""
@@ -254,6 +269,9 @@ def build(args):
     if problems:
         parts.append("### Gate verdict\n\n" + "\n".join(f"- {esc(x, 300)}" for x in problems) + "\n")
     parts += ["### Tests", tests_section(args.artifacts, jobs_data), "### Coverage", cov_md, patch_md]
+    t = timing_section(jobs_data)
+    if t:
+        parts += ["### Where the time goes", t]
     if args.run_url:
         parts.append(f"[Artifacts (HTML coverage report, lcov, test results)]({args.run_url}#artifacts) · [This run]({args.run_url})")
     md = "\n".join(parts) + "\n"

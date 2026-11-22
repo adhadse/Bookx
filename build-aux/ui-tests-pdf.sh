@@ -2,7 +2,7 @@
 # Sourced by ui-tests.sh (uses its `scenario`, `check`, `has`, $ROOT, $CLI, $BIN).
 
 PDFS=$ROOT/pdf
-cargo build --quiet -p bookx-pdf --example make_test_pdfs || exit 1
+[ -n "${SKIP_BUILD:-}" ] || cargo build --quiet -p bookx-pdf --example make_test_pdfs || exit 1
 MKPDF=${CARGO_TARGET_DIR:-$PWD/target}/debug/examples/make_test_pdfs
 "$MKPDF" "$PDFS.all" >/dev/null 2>&1
 for f in story locked scan margins big; do
