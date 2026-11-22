@@ -515,6 +515,7 @@ import scenarios_library  # noqa: E402,F401  (library sidebar, selection clicks,
 import scenarios_reader_ux  # noqa: E402,F401  (reader sidebar, footer, selection handles with real input)
 import scenarios_wiki  # noqa: E402,F401  (public wiki screenshots, WIKI_SCHEME=light|dark)
 import scenarios_wiki_ext  # noqa: E402,F401  (more wiki screenshots: details and usage steps)
+import scenarios_wiki_video  # noqa: E402,F401  (short videos for the public wiki)
 import scenarios_editor_code  # noqa: E402,F401  (code editing helpers with real input)
 import scenarios_anchor  # noqa: E402,F401  (imported highlights are painted where their text is)
 import scenarios_scale  # noqa: E402,F401  (20,000 book grid scroll with the real frame clock and wheel)
