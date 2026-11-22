@@ -357,6 +357,12 @@ as `fn1`, and the text is short. Links to chapters and headings are followed as 
 <figcaption markdown="1">The reading ruler keeps one line bright and dims the rest.</figcaption>
 </figure>
 
+<figure markdown="1" class="clip">
+<video class="only-light" controls muted loop playsinline preload="none" width="960" height="576" poster="../assets/reading-ruler-demo-poster-light.webp" aria-describedby="reading-ruler-demo-text"><source src="assets/reading-ruler-demo-light.webm" type="video/webm">Your browser cannot play this video: <a href="assets/reading-ruler-demo-light.webm">download it</a>.</video>
+<video class="only-dark" controls muted loop playsinline preload="none" width="960" height="576" poster="../assets/reading-ruler-demo-poster-dark.webp" aria-describedby="reading-ruler-demo-text"><source src="assets/reading-ruler-demo-dark.webm" type="video/webm">Your browser cannot play this video: <a href="assets/reading-ruler-demo-dark.webm">download it</a>.</video>
+<figcaption id="reading-ruler-demo-text" markdown="1">Short video (10 seconds, no sound). The page is dimmed except for a bright band that moves down the lines with Alt+Down and back up with Alt+Up.</figcaption>
+</figure>
+
 
 While you read, the header and the bottom panel get out of the way: a few seconds after your last interaction they fade
 and only the page is left, and they come back as soon as you move the pointer, press a key or open a menu (they never
@@ -375,6 +381,12 @@ the status line). With an e-ink display the bars stay.
 ![The speed reading card](assets/reader-speed-card-light.png#only-light)
 ![The speed reading card](assets/reader-speed-card-dark.png#only-dark)
 <figcaption markdown="1">Speed reading: one word at a time at the speed you set; Space pauses.</figcaption>
+</figure>
+
+<figure markdown="1" class="clip">
+<video class="only-light" controls muted loop playsinline preload="none" width="960" height="576" poster="../assets/speed-read-demo-poster-light.webp" aria-describedby="speed-read-demo-text"><source src="assets/speed-read-demo-light.webm" type="video/webm">Your browser cannot play this video: <a href="assets/speed-read-demo-light.webm">download it</a>.</video>
+<video class="only-dark" controls muted loop playsinline preload="none" width="960" height="576" poster="../assets/speed-read-demo-poster-dark.webp" aria-describedby="speed-read-demo-text"><source src="assets/speed-read-demo-dark.webm" type="video/webm">Your browser cannot play this video: <a href="assets/speed-read-demo-dark.webm">download it</a>.</video>
+<figcaption id="speed-read-demo-text" markdown="1">Short video (8 seconds, no sound). One word after the other lights up on the page, with a red letter to rest your eye on, while a small card shows the word and the speed.</figcaption>
 </figure>
 
 

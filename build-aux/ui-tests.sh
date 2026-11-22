@@ -20,6 +20,10 @@
 # Separate processes with separate displays and D-Bus sessions are the way to use many cores.
 set -uo pipefail
 cd "$(dirname "$(readlink -f "$0")")/.."
+# Scenarios that measure a latency ("drawn within 1.5 s") allow this many times the budget: 3 on CI (shared 4-core
+# runners running several scenarios at once), 1 on a developer machine. Override: UI_LATENCY_SLACK=1 build-aux/ui-tests.sh
+if [ -z "${UI_LATENCY_SLACK:-}" ]; then if [ "${CI:-}" = true ]; then UI_LATENCY_SLACK=3; else UI_LATENCY_SLACK=1; fi; fi
+export UI_LATENCY_SLACK
 build-aux/lint-checks.sh || exit 1
 
 for t in gtk4-broadwayd dbus-run-session; do

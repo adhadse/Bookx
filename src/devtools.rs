@@ -17,6 +17,13 @@ type Probe = Rc<dyn Fn() -> bool>;
 
 thread_local! {
     static PROBES: RefCell<HashMap<String, Probe>> = RefCell::new(HashMap::new());
+    static COUNTERS: RefCell<HashMap<String, u64>> = RefCell::new(HashMap::new());
+}
+
+/// Counts something the app did (a repaint, an event heard). A dev script waits for it with `until:<name>>=<n>`
+/// instead of sleeping a fixed time and hoping the app was quick enough.
+pub fn bump(name: &str) {
+    COUNTERS.with(|c| *c.borrow_mut().entry(name.to_string()).or_insert(0) += 1);
 }
 
 /// Registers a condition that `until:<name>[:<timeout ms>]` in a dev script waits for (the newest
@@ -29,6 +36,11 @@ fn probe_holds(name: &str) -> bool {
     // `!name` holds while the probe does not (an unknown probe does not hold)
     if let Some(rest) = name.strip_prefix('!') {
         return !probe_holds(rest);
+    }
+    // `name>=n` holds once the counter `name` (see `bump`) has reached n
+    if let Some((counter, n)) = name.split_once(">=") {
+        let n: u64 = n.parse().unwrap_or(u64::MAX);
+        return COUNTERS.with(|c| c.borrow().get(counter).copied().unwrap_or(0) >= n);
     }
     let f = PROBES.with(|p| p.borrow().get(name).cloned());
     f.is_some_and(|f| f())
@@ -105,6 +117,7 @@ pub fn run_script(cmds: Vec<String>, run: impl Fn(&str) + 'static) {
         let ok = probe_holds(&name);
         if ok || start.elapsed().as_millis() as u64 >= ms {
             eprintln!("until: {name} {}", if ok { "ok" } else { "timeout" });
+            eprintln!("until_ms: {name} {}", start.elapsed().as_millis());
             step(cmds, run);
             return;
         }
@@ -162,5 +175,22 @@ pub fn screenshot(path: &str, which: usize) {
         eprintln!("screenshot failed: {e}");
     } else {
         eprintln!("screenshot saved: {path} ({w}x{h})");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn a_counter_probe_holds_once_the_count_is_reached() {
+        assert!(!super::probe_holds("t-count>=2"));
+        super::bump("t-count");
+        assert!(!super::probe_holds("t-count>=2"));
+        super::bump("t-count");
+        assert!(super::probe_holds("t-count>=2"));
+        assert!(!super::probe_holds("!t-count>=2"));
+        assert!(
+            !super::probe_holds("t-count>=x"),
+            "an unreadable number never holds"
+        );
     }
 }

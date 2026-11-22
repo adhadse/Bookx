@@ -398,12 +398,28 @@
   margin-inline: auto;
 }
 
+/* ---- short videos (read aloud, speed reading, the reading ruler): a window without the top bar, so it gets the corners and
+   shadow the framed screenshots have; the controls are always shown and nothing starts by itself ---- */
+.md-typeset video.only-light,
+.md-typeset video.only-dark {
+  display: block;
+  width: 100%;
+  max-width: 48rem;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(128, 128, 128, 0.3);
+  background: #000;
+}
+
 /* ---- screenshots: light and dark variants, the window shadow is part of the picture ---- */
 img.only-light,
 img.only-dark {
   height: auto;
 }
 
+[data-md-color-scheme="slate"] video.only-light,
+[data-md-color-scheme="default"] video.only-dark,
 [data-md-color-scheme="slate"] img.only-light,
 [data-md-color-scheme="default"] img.only-dark,
 [data-md-color-scheme="slate"] .md-typeset figure img[src$="#only-light"],

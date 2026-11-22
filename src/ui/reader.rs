@@ -684,6 +684,7 @@ impl Reader {
         use crate::sync_bus::Kinds;
         let (heard, repaints) = self.sync_stats.get();
         self.sync_stats.set((heard + 1, repaints));
+        crate::devtools::bump("sync-heard");
         if ev.kinds.annotations() {
             let after = self
                 .shared
@@ -699,6 +700,7 @@ impl Reader {
                 self.refresh_highlights();
                 let (heard, repaints) = self.sync_stats.get();
                 self.sync_stats.set((heard, repaints + 1));
+                crate::devtools::bump("sync-repaint");
             } else {
                 *self.sync_sigs.borrow_mut() = after;
             }

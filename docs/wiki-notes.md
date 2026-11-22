@@ -21,6 +21,31 @@ and which pages are weak. User-facing content only goes into `wiki/`; this file 
   `gh-pages` branch with `peaceiris/actions-gh-pages`; this repository uses the newer artifact-based Pages deployment
   instead, so no extra branch is needed.
 
+## Videos
+
+Read aloud, speed reading and the reading ruler have a short video next to their screenshots (`read-aloud-demo`,
+`speed-read-demo`, `reading-ruler-demo`; pages in `build-aux/wiki-videos.txt`). They are real footage, never mock-ups:
+
+- The scenes in `build-aux/session/scenarios_wiki_video.py` run the feature in the sandboxed GNOME session (read aloud with the
+  silent mock engine `BOOKX_TTS_MOCK`, so no sound card, voice or network) and `record()` takes screenshots in a loop
+  (about 10 per second, window without the top bar, no pointer, scaled to 960 px) with the time of each one
+  (`*.fNNNN.frame` + `*.timing.json` in the results folder; the extension keeps them out of the picture framing loop).
+- `build-aux/wiki_video.py encode` turns them into `<name>-light|dark.webm` (ffmpeg concat list with the real gaps as frame
+  durations, resampled to 15 fps, VP9 CRF 36, no audio, at most 12 s) and a `<name>-poster-light|dark.webp` (middle frame).
+  The poster is WebP on purpose: `wiki-optimize.py` drops every `-light|dark.png` from the built site.
+- `build-aux/wiki-screenshots.sh` makes them with the pictures (`VIDEOS=0` leaves them out; `SCENARIOS='_wiki_video_ruler'`
+  makes one). Needs `ffmpeg` with libvpx-vp9 (the pictures alone do not).
+- Budget (`wiki_video.py`, checked by `check-wiki-pictures.py` and `wiki.sh`): 600 KB a clip, 4 MB together, 12 s, 960 px.
+  The first run was about 1.3 MB for all six clips and posters excluded.
+- Markup: a raw `<video class="only-light|only-dark" controls muted loop playsinline preload="none" poster=...>` in a
+  `<figure markdown="1">` (md_in_html; Zensical rewrites `<source src>` but not `poster`, so the poster is written `../assets/...`), the figcaption is the text description (`aria-describedby`). Never `autoplay`: nothing
+  moves until the reader presses play, which also respects `prefers-reduced-motion`. Local files only (no third-party request).
+  `check-site-links.py` follows `<video poster>` and `<source src>` and flags unused clips.
+- No MP4/H.264 fallback: WebM/VP9 plays in current Firefox, Chrome, Edge and Safari 14.1+ on macOS 11.3+ / iOS 17.4+; older
+  Safari shows the poster and the download link inside the `<video>`.
+- Not done: the clips do not show the pointer (it is hidden in screenshots), so the ruler video shows the keyboard way
+  (Alt+Down / Alt+Up), not the pointer-following band.
+
 ## What the owner must do by hand
 
 None of this could be done or verified from the repository.
