@@ -125,14 +125,15 @@ jobs:
       id-token: write       # keyless signing: the workflow's OIDC token
       attestations: write   # build provenance
     steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          path: dist
-          merge-multiple: true
+      # checkout first: it cleans the workspace and would delete the downloaded files
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: build-aux/release-names.sh
           sparse-checkout-cone-mode: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dist
+          merge-multiple: true
       - name: Native file names (build-aux/release-names.sh)
         env:
           VERSION: ${{ needs.version.outputs.version }}
