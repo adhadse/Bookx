@@ -13,7 +13,7 @@ argon2 = "0.5"
 chacha20poly1305 = "0.10"
 getrandom = "0.2"
 hmac = "0.12"
-sha2 = "0.10"
+sha2 = "0.11"
 zeroize = "1"
 
 # Secret Service and the Flatpak portal: Linux and the other Unixes (not macOS, not Windows).
