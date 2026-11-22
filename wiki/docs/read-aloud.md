@@ -17,9 +17,9 @@ computer, unless you point Bookx at a server somewhere else.
 ![The sentence being read is highlighted](assets/read-aloud-reading-dark.png#only-dark)
 
 <figure markdown="1" class="clip">
-<video class="only-light" controls muted loop playsinline preload="none" width="960" height="576" poster="../assets/read-aloud-demo-poster-light.webp" aria-describedby="read-aloud-demo-text"><source src="assets/read-aloud-demo-light.webm" type="video/webm">Your browser cannot play this video: <a href="assets/read-aloud-demo-light.webm">download it</a>.</video>
-<video class="only-dark" controls muted loop playsinline preload="none" width="960" height="576" poster="../assets/read-aloud-demo-poster-dark.webp" aria-describedby="read-aloud-demo-text"><source src="assets/read-aloud-demo-dark.webm" type="video/webm">Your browser cannot play this video: <a href="assets/read-aloud-demo-dark.webm">download it</a>.</video>
-<figcaption id="read-aloud-demo-text" markdown="1">Short video (10 seconds, no sound). The highlight moves from sentence to sentence across the page while the small player card stays at the bottom.</figcaption>
+<video class="only-light" data-clip muted loop playsinline controls preload="none" width="960" height="576" poster="../assets/read-aloud-demo-poster-light.webp" aria-describedby="read-aloud-demo-text"><source src="assets/read-aloud-demo-light.mp4" type="video/mp4"><source src="assets/read-aloud-demo-light.webm" type="video/webm">Your browser cannot play this video: <a href="assets/read-aloud-demo-light.mp4">download it</a>.</video>
+<video class="only-dark" data-clip muted loop playsinline controls preload="none" width="960" height="576" poster="../assets/read-aloud-demo-poster-dark.webp" aria-describedby="read-aloud-demo-text"><source src="assets/read-aloud-demo-dark.mp4" type="video/mp4"><source src="assets/read-aloud-demo-dark.webm" type="video/webm">Your browser cannot play this video: <a href="assets/read-aloud-demo-dark.mp4">download it</a>.</video>
+<figcaption id="read-aloud-demo-text" markdown="1">The highlight moves from sentence to sentence across the page while the small player card stays at the bottom. A short video without sound: it plays by itself unless your system asks for less motion, and its controls pause it.</figcaption>
 </figure>
 
 ## The first time: the voice downloads by itself

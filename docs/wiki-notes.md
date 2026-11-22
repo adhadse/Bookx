@@ -24,27 +24,41 @@ and which pages are weak. User-facing content only goes into `wiki/`; this file 
 ## Videos
 
 Read aloud, speed reading and the reading ruler have a short video next to their screenshots (`read-aloud-demo`,
-`speed-read-demo`, `reading-ruler-demo`; pages in `build-aux/wiki-videos.txt`). They are real footage, never mock-ups:
+`speed-read-demo`, `reading-ruler-demo`; pages in `build-aux/wiki-videos.txt`). They are real screen recordings of the real
+app, never mock-ups and never a series of screenshots (a first version, built from stills, jumped between sentences and was
+replaced):
 
-- The scenes in `build-aux/session/scenarios_wiki_video.py` run the feature in the sandboxed GNOME session (read aloud with the
-  silent mock engine `BOOKX_TTS_MOCK`, so no sound card, voice or network) and `record()` takes screenshots in a loop
-  (about 10 per second, window without the top bar, no pointer, scaled to 960 px) with the time of each one
-  (`*.fNNNN.frame` + `*.timing.json` in the results folder; the extension keeps them out of the picture framing loop).
-- `build-aux/wiki_video.py encode` turns them into `<name>-light|dark.webm` (ffmpeg concat list with the real gaps as frame
-  durations, resampled to 15 fps, VP9 CRF 36, no audio, at most 12 s) and a `<name>-poster-light|dark.webp` (middle frame).
-  The poster is WebP on purpose: `wiki-optimize.py` drops every `-light|dark.png` from the built site.
+- **Recorder** (`build-aux/session/screencast.py`): GNOME Shell's own `org.gnome.Shell.Screencast` is **not** exported by the
+  headless nested shell (it is not on the session bus), but Mutter's `org.gnome.Mutter.ScreenCast` is. The recorder starts a
+  private `pipewire` + `pipewire-media-session` in the sandbox's runtime folder (without the session manager `pipewiresrc`
+  stays in PAUSED), asks Mutter for `RecordArea(0, 32, 1280, 768)` (the window without the top bar, pointer not drawn),
+  waits for the `PipeWireStreamAdded` signal and records that node with `gst-launch-1.0 -e pipewiresrc ! videoconvert !
+  videorate ! 30 fps ! x264enc (quantizer 10) ! matroskamux` into `<scene>-<name>.raw.mkv`. Mutter only sends a frame when
+  something changed; `keepalive-time` and `videorate` make the time line constant. Needs `gst-launch-1.0` with
+  `pipewiresrc` and `x264enc`, `pipewire`, `pipewire-media-session` (or wireplumber) and `ffmpeg` with libx264 and libvpx-vp9.
+- **Scenes** (`build-aux/session/scenarios_wiki_video.py`): `record()` runs the feature while recording: read aloud with the
+  silent mock engine (`BOOKX_TTS_MOCK`, no sound card, voice or network), speed reading at 300 words per minute, the ruler with
+  Alt+Down / Alt+Up and then a pointer glide (the pointer is hidden, the band follows it).
+- **Encoding** (`build-aux/wiki_video.py encode`): `<name>-light|dark.mp4` (H.264 high, yuv420p, `-movflags +faststart`, CRF 26)
+  and `.webm` (VP9, CRF 34), both without an audio track, at most 12 s, 960 px wide, 30 fps, each at most 900 KB (the CRF
+  goes up by itself when a file is too big), and `<name>-poster-light|dark.webp` (middle frame; WebP because `wiki-optimize.py`
+  drops every `-light|dark.png` from the built site). `wiki_video.py stats FILE` prints distinct / total frames (framemd5):
+  the first version had 66 distinct frames in 164; a recording of motion has one per change on screen.
 - `build-aux/wiki-screenshots.sh` makes them with the pictures (`VIDEOS=0` leaves them out; `SCENARIOS='_wiki_video_ruler'`
-  makes one). Needs `ffmpeg` with libvpx-vp9 (the pictures alone do not).
-- Budget (`wiki_video.py`, checked by `check-wiki-pictures.py` and `wiki.sh`): 600 KB a clip, 4 MB together, 12 s, 960 px.
-  The first run was about 1.3 MB for all six clips and posters excluded.
-- Markup: a raw `<video class="only-light|only-dark" controls muted loop playsinline preload="none" poster=...>` in a
-  `<figure markdown="1">` (md_in_html; Zensical rewrites `<source src>` but not `poster`, so the poster is written `../assets/...`), the figcaption is the text description (`aria-describedby`). Never `autoplay`: nothing
-  moves until the reader presses play, which also respects `prefers-reduced-motion`. Local files only (no third-party request).
+  makes one).
+- **Budget** (`wiki_video.py`, checked by `check-wiki-pictures.py` and `wiki.sh`): 900 KB per file (so per format), 6 MB for all
+  clips together, 12 s, 960 px, 24 to 30 fps, yuv420p, faststart MP4, both formats present.
+- **Markup**: a raw `<video class="only-light|only-dark" data-clip muted loop playsinline controls preload="none" poster=...>`
+  with an MP4 `<source>` first (Safari) and a WebM one, in a `<figure markdown="1">` (md_in_html; Zensical rewrites
+  `<source src>` but not `poster`, so the poster is written `../assets/...`); the figcaption is the text description
+  (`aria-describedby`). There is **no `autoplay` attribute**: `wiki/docs/assets/videos.js` (`extra_javascript` in
+  `zensical.toml`, no library, no third-party request) plays a clip like an animated picture while it is on screen and
+  visible, pauses it when it scrolls away or the light/dark twin is hidden (so the hidden twin is never downloaded), and does
+  nothing when the system asks for `prefers-reduced-motion: reduce` (poster and controls stay, the reader decides). It
+  re-runs after instant navigation through `document$`. Without JavaScript the poster and controls work as usual.
   `check-site-links.py` follows `<video poster>` and `<source src>` and flags unused clips.
-- No MP4/H.264 fallback: WebM/VP9 plays in current Firefox, Chrome, Edge and Safari 14.1+ on macOS 11.3+ / iOS 17.4+; older
-  Safari shows the poster and the download link inside the `<video>`.
-- Not done: the clips do not show the pointer (it is hidden in screenshots), so the ruler video shows the keyboard way
-  (Alt+Down / Alt+Up), not the pointer-following band.
+- Limits: the pointer is not in the recordings; read aloud highlights whole sentences, so it changes once per sentence by
+  design; the poster is only the loading placeholder.
 
 ## What the owner must do by hand
 

@@ -9,8 +9,8 @@
     build-aux/wiki-screenshots.sh;
   * the feature pages each have the pictures they should (a minimum per page);
   * the assets stay below the size budget (25 MB);
-  * the short videos of build-aux/wiki-videos.txt: each exists as -light/-dark .webm with a poster, is shown by its page in both
-    styles in a <video controls muted> (never autoplay) with a description (aria-describedby -> the figcaption), has a scene in
+  * the short videos of build-aux/wiki-videos.txt: each exists as -light/-dark .mp4 and .webm with a poster, is shown by its page in
+    both styles in a <video controls muted loop data-clip> (assets/videos.js plays it; no autoplay attribute, so reduced motion holds) with a description (aria-describedby -> the figcaption), has a scene in
     build-aux/session/scenarios_wiki_video.py, and no clip is orphaned or over its size budget (build-aux/wiki_video.py).
 
   build-aux/check-wiki-pictures.py [--budget-mb 25]
@@ -65,18 +65,21 @@ def video_problems():
         if not f.endswith(".md"):
             continue
         text = open(os.path.join(DOCS, f), encoding="utf8").read()
-        for tag in re.findall(r"^<video\b[^>]*>", text, re.M):
-            m = re.search(r'<source src="assets/([a-z0-9-]+)-(light|dark)\.webm"', text[text.index(tag):])
-            if not m:
-                problems.append(f"{f}: a <video> without a <source src=assets/NAME-light|dark.webm>")
+        for m in re.finditer(r"^(<video\b[^>]*>)(.*?)</video>", text, re.M | re.S):
+            tag, inner = m.groups()
+            srcs = re.findall(r'<source src="assets/([a-z0-9-]+)-(light|dark)\.(mp4|webm)"', inner)
+            if not srcs:
+                problems.append(f"{f}: a <video> without <source src=assets/NAME-light|dark.mp4|webm>")
                 continue
-            name, style = m.groups()
+            name, style = srcs[0][0], srcs[0][1]
             shown.setdefault(f, {}).setdefault(name, set()).add(style)
-            for attr in ("controls", "muted", "playsinline", "poster=", "aria-describedby="):
+            if sorted(e for _, _, e in srcs) != ["mp4", "webm"] or any(n != name or s != style for n, s, _ in srcs):
+                problems.append(f"{f}: the video {name} ({style}) needs one .mp4 and one .webm source of the same clip")
+            for attr in ("controls", "muted", "loop", "playsinline", "data-clip", "poster=", "aria-describedby="):
                 if attr not in tag:
                     problems.append(f"{f}: the video {name} has no {attr.rstrip('=')}")
             if "autoplay" in tag:
-                problems.append(f"{f}: the video {name} autoplays; it must wait for the reader")
+                problems.append(f"{f}: the video {name} has autoplay; assets/videos.js starts it (and not for prefers-reduced-motion)")
             if f'poster="../assets/{name}-poster-{style}.webp"' not in tag:
                 problems.append(f"{f}: the video {name} ({style}) must use ../assets/{name}-poster-{style}.webp as poster")
             d = re.search(r'aria-describedby="([^"]+)"', tag)
@@ -85,7 +88,7 @@ def video_problems():
     for page, names in pages.items():
         for n in names:
             for style in ("light", "dark"):
-                for fn in (f"{n}-{style}.webm", f"{n}-poster-{style}.webp"):
+                for fn in (f"{n}-{style}.mp4", f"{n}-{style}.webm", f"{n}-poster-{style}.webp"):
                     if not os.path.exists(os.path.join(ASSETS, fn)):
                         problems.append(f"{page}: assets/{fn} is missing (run build-aux/wiki-screenshots.sh)")
                 if style not in shown.get(page, {}).get(n, set()):
@@ -96,8 +99,8 @@ def video_problems():
                 problems.append(f"{page}: shows the video {n}, which build-aux/wiki-videos.txt does not list for this page")
     used = {n for v in shown.values() for n in v}
     for f in sorted(os.listdir(ASSETS)):
-        m = re.match(r"^([a-z0-9-]+?)(-poster)?-(light|dark)\.(webm|webp)$", f)
-        if m and (f.endswith(".webm") or m.group(2)) and m.group(1) not in used:
+        m = re.match(r"^([a-z0-9-]+?)(-poster)?-(light|dark)\.(webm|mp4|webp)$", f)
+        if m and (not f.endswith(".webp") or m.group(2)) and m.group(1) not in used:
             problems.append(f"assets/{f} is not used by any page (orphan)")
     scenes = open(os.path.join(SCENES, "scenarios_wiki_video.py"), encoding="utf8").read()
     for n in sorted(listed):
@@ -105,11 +108,16 @@ def video_problems():
             problems.append(f"no scene records the video {n}")
     sizes = []
     for f in sorted(os.listdir(ASSETS)):
-        if f.endswith(".webm"):
+        if f.endswith((".webm", ".mp4")):
             sizes.append(os.path.getsize(os.path.join(ASSETS, f)))
             if sizes[-1] > wiki_video.MAX_CLIP_BYTES:
                 problems.append(f"assets/{f}: {sizes[-1] / 1024:.0f} KB is over the {wiki_video.MAX_CLIP_BYTES // 1024} KB budget")
     problems += wiki_video.total_problems(sizes)
+    js = open(os.path.join(ASSETS, "videos.js"), encoding="utf8").read() if os.path.exists(os.path.join(ASSETS, "videos.js")) else ""
+    if "prefers-reduced-motion" not in js:
+        problems.append("assets/videos.js must keep videos paused for prefers-reduced-motion: reduce")
+    if "assets/videos.js" not in open(os.path.join(ROOT, "wiki", "zensical.toml"), encoding="utf8").read():
+        problems.append("wiki/zensical.toml does not load assets/videos.js (extra_javascript)")
     return problems, len(sizes)
 
 

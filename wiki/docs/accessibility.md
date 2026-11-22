@@ -42,9 +42,9 @@ The reading area shows a visible focus ring when you use the keyboard.
 ## Reading ruler
 
 <figure markdown="1" class="clip">
-<video class="only-light" controls muted loop playsinline preload="none" width="960" height="576" poster="../assets/reading-ruler-demo-poster-light.webp" aria-describedby="reading-ruler-demo-text"><source src="assets/reading-ruler-demo-light.webm" type="video/webm">Your browser cannot play this video: <a href="assets/reading-ruler-demo-light.webm">download it</a>.</video>
-<video class="only-dark" controls muted loop playsinline preload="none" width="960" height="576" poster="../assets/reading-ruler-demo-poster-dark.webp" aria-describedby="reading-ruler-demo-text"><source src="assets/reading-ruler-demo-dark.webm" type="video/webm">Your browser cannot play this video: <a href="assets/reading-ruler-demo-dark.webm">download it</a>.</video>
-<figcaption id="reading-ruler-demo-text" markdown="1">Short video (10 seconds, no sound). The page is dimmed except for a bright band that moves down the lines with Alt+Down and back up with Alt+Up.</figcaption>
+<video class="only-light" data-clip muted loop playsinline controls preload="none" width="960" height="576" poster="../assets/reading-ruler-demo-poster-light.webp" aria-describedby="reading-ruler-demo-text"><source src="assets/reading-ruler-demo-light.mp4" type="video/mp4"><source src="assets/reading-ruler-demo-light.webm" type="video/webm">Your browser cannot play this video: <a href="assets/reading-ruler-demo-light.mp4">download it</a>.</video>
+<video class="only-dark" data-clip muted loop playsinline controls preload="none" width="960" height="576" poster="../assets/reading-ruler-demo-poster-dark.webp" aria-describedby="reading-ruler-demo-text"><source src="assets/reading-ruler-demo-dark.mp4" type="video/mp4"><source src="assets/reading-ruler-demo-dark.webm" type="video/webm">Your browser cannot play this video: <a href="assets/reading-ruler-demo-dark.mp4">download it</a>.</video>
+<figcaption id="reading-ruler-demo-text" markdown="1">The page is dimmed except for a bright band that moves down the lines with Alt+Down and back up with Alt+Up, then follows the pointer down and up the page. A short video without sound: it plays by itself unless your system asks for less motion, and its controls pause it.</figcaption>
 </figure>
 
 *Reading Ruler* (a check item in the reader's Main Menu, the hamburger at the far right of the header bar, or the command palette) dims the page except for a band of one to five
