@@ -375,7 +375,12 @@ fn calibredb_opens_the_export() {
         "{text}\n{}",
         String::from_utf8_lossy(&l.stderr)
     );
-    let rows: serde_json::Value = serde_json::from_str(&text).unwrap();
+    // calibre 9 prints "Upgrading database to version N..." after the JSON when it migrates an older database
+    let rows: serde_json::Value = serde_json::Deserializer::from_str(&text)
+        .into_iter::<serde_json::Value>()
+        .next()
+        .expect("calibredb printed JSON")
+        .unwrap();
     let rows = rows.as_array().unwrap();
     assert_eq!(rows.len(), 3, "{text}");
     let dune = rows

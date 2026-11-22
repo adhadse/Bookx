@@ -153,6 +153,7 @@ def tests_section(art, jobs_data):
         out.append("- **Unit and integration tests (nextest):** no result file (the job did not get that far, or was skipped)")
     p = f = 0
     bad = []
+    flaky = []
     shards = 0
     for log in sorted(glob.glob(os.path.join(art, "report-ui-*", "ui.log"))):
         text = read(log)
@@ -160,6 +161,13 @@ def tests_section(art, jobs_data):
             continue
         shards += 1
         a, b, c = ui_log(text)
+        retry = read(os.path.join(os.path.dirname(log), "ui-retry.log"))
+        if retry is not None:
+            _, _, again = ui_log(retry)
+            still = {n for n, _ in again}
+            flaky += [x for x in c if x[0] not in still]
+            c = [x for x in c if x[0] in still]
+            b = len(c)
         p, f, bad = p + a, f + b, bad + c
     if shards:
         out.append(f"- **Broadway scenarios:** {p} checks passed, {f} failed ({shards} shards)")
@@ -167,6 +175,8 @@ def tests_section(art, jobs_data):
             out.append(f"  - ❌ `{esc(n, 60)}`: {esc(d)}")
         if len(bad) > LIST_CAP:
             out.append(f"  - … and {len(bad) - LIST_CAP} more scenarios")
+        for n, d in flaky[:LIST_CAP]:
+            out.append(f"  - ⚠️ flaky, passed when run again: `{esc(n, 60)}` ({esc(d, 100)})")
     else:
         out.append("- **Broadway scenarios:** no result (skipped or not reached)")
     steps = {}

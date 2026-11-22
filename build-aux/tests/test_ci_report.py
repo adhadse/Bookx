@@ -32,7 +32,9 @@ class Report(unittest.TestCase):
     def test_tests_and_scenarios_are_counted(self):
         md = report()
         self.assertIn("2 passed, 1 failed, 1 skipped, 4 in all", md.replace("**", ""))
-        self.assertIn("15 checks passed, 2 failed (2 shards)", md.replace("**", ""))
+        self.assertIn("16 checks passed, 3 failed (3 shards)", md.replace("**", ""))
+        self.assertIn("flaky, passed when run again: `flakyone`", md)
+        self.assertIn("`realbug`", md)
         self.assertIn("`shelves`: a shelf is created", md)
         self.assertNotIn("second failing check", md)  # only the first failing check of a scenario
 
