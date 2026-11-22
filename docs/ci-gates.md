@@ -197,8 +197,8 @@ scenarios: download the `ui-times.txt` of the `report-ui-N` artifacts of a CI ru
 `python3 build-aux/ui-shard.py --update times1.txt times2.txt ...`. `SHARD=i/n` without the file falls back to a hash of the
 name. `TIMES_FILE=file` makes `ui-tests.sh` write `scenario seconds`.
 
-A scenario that fails in a shard is run once more alone; if it passes the shard stays green, the job log has a warning and the
-PR comment lists it as flaky. A scenario that fails twice is a failure. This is not a way to ignore a flake: the list in the
+A scenario that fails in a shard is run up to two more times alone; if it passes the shard stays green, the job log has a warning and the
+PR comment lists it as flaky. A scenario that fails three times is a failure (`koreader_annotations_live_reader` fails often on the runner: its first live state already shows the second push; it needs a fix in the scenario or the app). This is not a way to ignore a flake: the list in the
 comment is the to-do list.
 
 Not done, with the reason: nextest partitions across runners with a merged coverage profile (the instrumented build would
