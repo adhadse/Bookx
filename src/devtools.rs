@@ -188,6 +188,9 @@ mod tests {
         super::bump("t-count");
         assert!(super::probe_holds("t-count>=2"));
         assert!(!super::probe_holds("!t-count>=2"));
-        assert!(!super::probe_holds("t-count>=x"), "an unreadable number never holds");
+        assert!(
+            !super::probe_holds("t-count>=x"),
+            "an unreadable number never holds"
+        );
     }
 }
