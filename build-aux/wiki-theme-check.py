@@ -122,7 +122,7 @@ def main():
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     errors = []
     try:
-        for _ in range(100):
+        for _ in range(300):
             try:
                 m = Marionette(mport)
                 break
