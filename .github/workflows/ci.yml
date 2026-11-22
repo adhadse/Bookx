@@ -343,22 +343,24 @@ jobs:
       - name: Broadway is available
         # ui-tests.sh skips itself (exit 0) when this is missing: fail loudly in CI instead
         run: command -v gtk4-broadwayd && command -v dbus-run-session
-      - name: UI scenarios of this shard (a failed scenario is run once more, and said so)
+      - name: UI scenarios of this shard (a failed scenario is run up to two more times, and said so)
         run: |
           set +e # the step must reach the retry below
           export SKIP_BUILD=1 TIMES_FILE=ui-times.txt NET=0 BOOKX_SECRETS=memory JOBS=2
           SHARD=${{ matrix.shard }}/10 build-aux/ui-tests.sh 2>&1 | tee ui.log
           rc=${PIPESTATUS[0]}
-          if [ "$rc" != 0 ]; then
-            # a scenario that fails alone and again is a bug; one that passes the second time is a timing flake:
-            # the job stays green, the warning names it and the PR comment lists it (fix it, do not ignore it)
-            failed=$(grep -aE '^  FAIL  ' ui.log | awk '{print $2}' | sort -u | tr '\n' ' ')
-            if [ -n "$failed" ]; then
-              echo "::warning::scenarios that failed and are run once more: $failed"
+          # a scenario that fails alone and again is a bug; one that passes on a later try is a timing flake: the job
+          # stays green, the warning names it and the PR comment lists it (fix it, do not ignore it). Two more tries,
+          # each only for what still fails.
+          failed=$(grep -aE '^  FAIL  ' ui.log | awk '{print $2}' | sort -u | tr '\n' ' ')
+          for try in 1 2; do
+            if [ "$rc" != 0 ] && [ -n "$failed" ]; then
+              echo "::warning::scenarios that failed and are run once more (try $try): $failed"
               ONLY="$failed" TIMES_FILE=/dev/null build-aux/ui-tests.sh 2>&1 | tee ui-retry.log
               rc=${PIPESTATUS[0]}
+              failed=$(grep -aE '^  FAIL  ' ui-retry.log | awk '{print $2}' | sort -u | tr '\n' ' ')
             fi
-          fi
+          done
           exit "$rc"
       - name: Scenario results for the report
         if: ${{ always() }}

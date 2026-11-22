@@ -57,7 +57,11 @@ jobs:
       - name: Broadway is available
         run: command -v gtk4-broadwayd && command -v dbus-run-session
       - name: UI coverage
-        run: JOBS=4 BOOKX_SECRETS=memory build-aux/coverage-ui.sh --html
+        # two scenarios with a time budget (pdf_big, big_book_editor) failed on the unoptimised instrumented build with
+        # 4 scenarios at once; a little optimisation and 2 at once, as in the shards of ci.yml
+        env:
+          CARGO_PROFILE_DEV_OPT_LEVEL: "1"
+        run: JOBS=2 BOOKX_SECRETS=memory build-aux/coverage-ui.sh --html
       - name: Coverage report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

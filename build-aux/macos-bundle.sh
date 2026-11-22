@@ -51,16 +51,16 @@ exec "$here/bookx-bin" "$@"
 LAUNCH
 chmod +x "$C/MacOS/bookx"
 
-echo "==> shared libraries (dylibbundler rewrites the install names)"
-dylibbundler -od -b -x "$C/MacOS/bookx-bin" -x "$C/MacOS/bookx-cli" \
-    -d "$C/Frameworks" -p @executable_path/../Frameworks/ >/dev/null
+echo "==> shared libraries (dylibbundler rewrites the install names; stdin is closed so a library it cannot find fails instead of prompting for ever)"
+dylibbundler -od -b -s "$BREW/lib" -s "$BREW/opt/librsvg/lib" -x "$C/MacOS/bookx-bin" -x "$C/MacOS/bookx-cli" \
+    -d "$C/Frameworks" -p @executable_path/../Frameworks/ >/dev/null </dev/null
 
 echo "==> gdk-pixbuf loaders"
 LOADERS="$(find "$BREW/lib/gdk-pixbuf-2.0" -name loaders -type d | head -1)"
 mkdir -p "$C/Resources/lib/gdk-pixbuf-2.0/loaders"
 cp "$LOADERS"/*.so "$C/Resources/lib/gdk-pixbuf-2.0/loaders/" 2>/dev/null || true
 for so in "$C"/Resources/lib/gdk-pixbuf-2.0/loaders/*.so; do
-    dylibbundler -od -b -x "$so" -d "$C/Frameworks" -p @executable_path/../Frameworks/ >/dev/null || true
+    dylibbundler -od -b -s "$BREW/lib" -s "$BREW/opt/librsvg/lib" -x "$so" -d "$C/Frameworks" -p @executable_path/../Frameworks/ >/dev/null </dev/null || true
 done
 GDK_PIXBUF_MODULEDIR="$C/Resources/lib/gdk-pixbuf-2.0/loaders" \
     gdk-pixbuf-query-loaders "$C"/Resources/lib/gdk-pixbuf-2.0/loaders/*.so \
@@ -78,7 +78,7 @@ gtk4-update-icon-cache -f -t "$C/Resources/share/icons/Adwaita" 2>/dev/null || t
 cp -R "$BREW/share/gtksourceview-5" "$C/Resources/share/"
 cp -R "$BREW/share/espeak-ng-data" "$C/Resources/share/"
 cp "$BREW/bin/espeak-ng" "$C/MacOS/espeak-ng"
-dylibbundler -od -b -x "$C/MacOS/espeak-ng" -d "$C/Frameworks" -p @executable_path/../Frameworks/ >/dev/null
+dylibbundler -od -b -s "$BREW/lib" -s "$BREW/opt/librsvg/lib" -x "$C/MacOS/espeak-ng" -d "$C/Frameworks" -p @executable_path/../Frameworks/ >/dev/null </dev/null
 
 echo "==> icon"
 ICONSET="$(mktemp -d)/Bookx.iconset"
