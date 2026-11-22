@@ -85,7 +85,9 @@ jobs:
         run: |
           cargo install --locked cargo-deb cargo-generate-rpm
           cargo deb --no-build -p bookx --output dist/
-          cargo generate-rpm -p . -o dist/
+          # RPM versions cannot contain '-': 0.3.0-beta.1 becomes 0.3.0~beta.1 (sorts before 0.3.0, like the .deb)
+          rpm_version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1 | tr '-' '~')
+          cargo generate-rpm -p . -o dist/ -s "version = \"$rpm_version\""
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: tarball
@@ -131,7 +133,7 @@ jobs:
         with:
           sparse-checkout: build-aux/release-names.sh
           sparse-checkout-cone-mode: false
-      - name: Same name scheme for every file (Bookx-VERSION-linux-ARCH.EXT)
+      - name: Native file names (build-aux/release-names.sh)
         env:
           VERSION: ${{ needs.version.outputs.version }}
         run: build-aux/release-names.sh dist "$VERSION"
