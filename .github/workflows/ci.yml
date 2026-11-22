@@ -312,7 +312,7 @@ jobs:
       - name: clippy build (what the lint step of a pull request reuses)
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Instrumented test build, not run (what the coverage step of a pull request reuses)
-        run: cargo llvm-cov nextest --workspace --locked --no-report --no-run
+        run: cargo llvm-cov nextest --workspace --locked --no-run
 
   build-ui:
     # The debug app and the helper programs the scenarios use, built once; the shards download them instead of
