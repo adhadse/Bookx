@@ -12,7 +12,7 @@ bookx-core = { path = "../bookx-core" }
 bookx-pdf = { path = "../bookx-pdf" }
 bookx-comic = { path = "../bookx-comic" }
 anyhow = "1"
-base64 = "0.22"
+base64 = "0.23"
 ego-tree = "0.11"
 encoding_rs = "0.8"
 flate2 = "1"
