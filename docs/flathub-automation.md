@@ -1,5 +1,8 @@
 # Flathub update automation
 
+> **DEFERRED (2026-11-22): do this after the project has built history; see `docs/release-plan.md`.**
+> GitHub Releases is the only channel for now.
+
 Internal (not for the wiki). After Flathub accepted Bookx, every release needs a pull request in
 `flathub/com.adhadse.Bookx`. `.github/workflows/flathub-update.yml` opens it. It is a custom workflow in the sense of the
 Flathub docs (<https://docs.flathub.org/docs/for-app-authors/updates>), allowed as long as it is not auto-merged.
@@ -78,7 +81,7 @@ python3 -m unittest discover -s build-aux/tests -v        # the script's tests, 
 The workflow never touches the runtime. When a new GNOME runtime is out (and before the old one is end-of-life):
 
 1. Build and test locally with the new runtime (`build-aux/flatpak.sh`, manifests `runtime-version`, the
-   `rust-stable` extension version that matches, `package-flatpak.yml` container tag) in the Bookx repository first.
+   `rust-stable` extension version that matches, `_flatpak.yml` container tag) in the Bookx repository first.
 2. In the Flathub repository open a pull request that changes `runtime-version` and `sdk-extensions` by hand; let the
    Flathub test build pass; merge.
 3. Update `packaging/flathub/com.adhadse.Bookx.yml` and the development manifest in Bookx so `release-check.sh` stays green.

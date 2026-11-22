@@ -31,10 +31,12 @@ mod annotation_import;
 mod annotation_sync;
 mod annotation_sync_ui;
 mod app;
+mod applog;
 mod audiobook;
 mod audiobook_link;
 mod authors_view;
 mod backups;
+mod beta;
 mod book_formats;
 mod bookmark_sync;
 mod bulk_fetch;
@@ -136,6 +138,7 @@ mod reading_stats;
 mod readwise_sync;
 mod release_consistency;
 mod remove_undo;
+mod report;
 mod rsvp_view;
 mod safe_mode;
 mod saved_searches;
@@ -181,6 +184,7 @@ fn main() {
         .with_ansi(false)
         .with_writer(debug_log::Tee)
         .init();
+    applog::init();
     safe_mode::init();
 
     // File arguments are handled by the app itself, not by GApplication.

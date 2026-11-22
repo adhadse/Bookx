@@ -70,7 +70,9 @@ impl Write for Tee {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let text = String::from_utf8_lossy(buf);
         for line in text.lines() {
-            ring().push(&strip_ansi(line));
+            let line = strip_ansi(line);
+            ring().push(&line);
+            crate::applog::record(&line);
         }
         std::io::stderr().write(buf)
     }
@@ -104,36 +106,83 @@ pub struct Scrub {
     pub titles: Vec<String>,
     /// Exact secret values (passwords, tokens): become `<secret>`.
     pub secrets: Vec<String>,
+    /// Host names of the servers the user set up (sync, mail, backup, ...): become `<host>`.
+    pub hosts: Vec<String>,
+    /// Account names the user typed (sync user, mail login, ...): become `<account>`.
+    pub accounts: Vec<String>,
 }
 
-/// Cleans `text`. The order matters: exact secrets and the library folder go first, while they are still
-/// whole, then titles, then the general patterns.
-pub fn scrub(text: &str, s: &Scrub) -> String {
-    let mut out = text.to_string();
-    let mut secrets: Vec<&String> = s.secrets.iter().filter(|v| v.len() >= 4).collect();
-    secrets.sort_by_key(|v| std::cmp::Reverse(v.len()));
-    for v in secrets {
-        out = out.replace(v.as_str(), "<secret>");
-    }
-    let lib = s.library.trim_end_matches('/');
-    if lib.len() > 1 {
-        out = out.replace(lib, "<library>");
-    }
-    let mut titles: Vec<&String> = s.titles.iter().filter(|t| t.chars().count() >= 3).collect();
-    titles.sort_by_key(|t| std::cmp::Reverse(t.len()));
-    titles.dedup();
-    titles.truncate(MAX_TITLES);
-    if !titles.is_empty() {
-        let alt = titles
+/// A [`Scrub`] with its title pattern compiled, for text that is cleaned many times (the log file).
+pub struct Scrubber {
+    rules: Scrub,
+    titles: Option<Regex>,
+}
+
+impl Scrubber {
+    pub fn new(rules: Scrub) -> Scrubber {
+        let mut titles: Vec<&String> = rules
+            .titles
             .iter()
-            .map(|t| regex::escape(t))
-            .collect::<Vec<_>>()
-            .join("|");
-        if let Ok(re) = regex::RegexBuilder::new(&alt).size_limit(32 << 20).build() {
+            .filter(|t| t.chars().count() >= 3)
+            .collect();
+        titles.sort_by_key(|t| std::cmp::Reverse(t.len()));
+        titles.dedup();
+        titles.truncate(MAX_TITLES);
+        let titles = if titles.is_empty() {
+            None
+        } else {
+            let alt = titles
+                .iter()
+                .map(|t| regex::escape(t))
+                .collect::<Vec<_>>()
+                .join("|");
+            regex::RegexBuilder::new(&alt)
+                .size_limit(32 << 20)
+                .build()
+                .ok()
+        };
+        Scrubber { rules, titles }
+    }
+
+    /// Cleans `text`. The order matters: exact secrets, hosts and the library folder go first, while
+    /// they are still whole, then titles, then the general patterns.
+    pub fn apply(&self, text: &str) -> String {
+        let s = &self.rules;
+        let mut out = text.to_string();
+        let mut secrets: Vec<&String> = s.secrets.iter().filter(|v| v.len() >= 4).collect();
+        secrets.sort_by_key(|v| std::cmp::Reverse(v.len()));
+        for v in secrets {
+            out = out.replace(v.as_str(), "<secret>");
+        }
+        let lib = s.library.trim_end_matches('/');
+        if lib.len() > 1 {
+            out = out.replace(lib, "<library>");
+        }
+        for (list, label) in [(&s.hosts, "<host>"), (&s.accounts, "<account>")] {
+            let mut v: Vec<&String> = list.iter().filter(|h| h.chars().count() >= 3).collect();
+            v.sort_by_key(|h| std::cmp::Reverse(h.len()));
+            for h in v {
+                out = replace_ci(&out, h, label);
+            }
+        }
+        if let Some(re) = &self.titles {
             out = re.replace_all(&out, "<title>").into_owned();
         }
+        crate::diagnostics::redact(&out, &s.home, &s.user)
     }
-    crate::diagnostics::redact(&out, &s.home, &s.user)
+}
+
+/// Replaces every occurrence of `needle` (ASCII case-insensitive; host names are) in `hay`.
+fn replace_ci(hay: &str, needle: &str, with: &str) -> String {
+    match Regex::new(&format!("(?i){}", regex::escape(needle))) {
+        Ok(re) => re.replace_all(hay, with).into_owned(),
+        Err(_) => hay.to_string(),
+    }
+}
+
+/// Cleans `text` once (see [`Scrubber::apply`]).
+pub fn scrub(text: &str, s: &Scrub) -> String {
+    Scrubber::new(s.clone()).apply(text)
 }
 
 /// The text of the Debug Information page: the report, then the recent log, all scrubbed.
@@ -160,6 +209,7 @@ pub fn scrub_for(cfg: &crate::config::Config, lib: &crate::core::library::Librar
         .map(|(_, v)| v.clone())
         .filter(|v| !v.is_empty())
         .collect();
+    let (hosts, accounts) = configured_identifiers(cfg);
     Scrub {
         home: directories::BaseDirs::new()
             .map(|d| d.home_dir().display().to_string())
@@ -168,7 +218,67 @@ pub fn scrub_for(cfg: &crate::config::Config, lib: &crate::core::library::Librar
         library: lib.root.display().to_string(),
         titles: lib.books.iter().map(|b| b.meta.title.clone()).collect(),
         secrets,
+        hosts,
+        accounts,
     }
+}
+
+/// The host names and account names inside the settings (read from their JSON form, so a new server
+/// setting is covered without a list to keep up to date): values under keys such as `server`, `host`,
+/// `url`, `user`, `email`, and the host part of every string that is a URL.
+pub fn identifiers_of(settings: &serde_json::Value) -> (Vec<String>, Vec<String>) {
+    fn host_of(v: &str) -> Option<String> {
+        let rest = v.split_once("://").map(|(_, r)| r).unwrap_or(v);
+        let rest = rest.rsplit('@').next().unwrap_or(rest);
+        let h = rest.split(['/', '?', '#', ':']).next().unwrap_or("").trim();
+        (h.contains('.') && !h.contains(' ') && h.len() >= 3).then(|| h.to_string())
+    }
+    fn walk(v: &serde_json::Value, key: &str, hosts: &mut Vec<String>, accts: &mut Vec<String>) {
+        match v {
+            serde_json::Value::Object(m) => {
+                for (k, x) in m {
+                    walk(x, k, hosts, accts);
+                }
+            }
+            serde_json::Value::Array(a) => {
+                for x in a {
+                    walk(x, key, hosts, accts);
+                }
+            }
+            serde_json::Value::String(s) if !s.is_empty() => {
+                let k = key.to_ascii_lowercase();
+                if s.contains("://")
+                    || ["server", "host", "url", "address", "endpoint"]
+                        .iter()
+                        .any(|w| k.contains(w))
+                {
+                    // a folder path is not a host
+                    if !s.starts_with('/') {
+                        hosts.extend(host_of(s));
+                    }
+                } else if ["user", "login", "account", "email", "username"]
+                    .iter()
+                    .any(|w| k == *w || k.ends_with(w))
+                {
+                    accts.push(s.clone());
+                }
+            }
+            _ => {}
+        }
+    }
+    let (mut hosts, mut accts) = (Vec::new(), Vec::new());
+    walk(settings, "", &mut hosts, &mut accts);
+    hosts.sort();
+    hosts.dedup();
+    accts.sort();
+    accts.dedup();
+    (hosts, accts)
+}
+
+fn configured_identifiers(cfg: &crate::config::Config) -> (Vec<String>, Vec<String>) {
+    serde_json::to_value(cfg)
+        .map(|v| identifiers_of(&v))
+        .unwrap_or_default()
 }
 
 /// The finished Debug Information text of the running app.
@@ -198,6 +308,7 @@ mod tests {
                 "A".into(),
             ],
             secrets: vec!["hunter2-pass".into(), "xy".into()],
+            ..Scrub::default()
         }
     }
 
@@ -270,5 +381,48 @@ mod tests {
     #[test]
     fn an_empty_log_says_so() {
         assert!(compose("r", &[], &Scrub::default()).contains("(nothing logged)"));
+    }
+
+    #[test]
+    fn configured_servers_and_accounts_are_found_in_the_settings_and_removed() {
+        let v = serde_json::json!({
+            "kosync": {"server": "https://sync.example.org:8443/bookx", "user": "alice_reads", "password": "x"},
+            "email": {"host": "smtp.mail.example", "port": 587, "user": "me@mail.example"},
+            "backup": {"destinations": [{"kind": "webdav", "location": "https://cloud.example.net/dav", "user": "dav-user"},
+                                          {"kind": "folder", "location": "/mnt/usb/backup"}]},
+            "title": "not a host.example",
+        });
+        let (hosts, accts) = identifiers_of(&v);
+        assert_eq!(
+            hosts,
+            ["cloud.example.net", "smtp.mail.example", "sync.example.org"]
+        );
+        assert_eq!(accts, ["alice_reads", "dav-user", "me@mail.example"]);
+        let s = Scrub {
+            hosts,
+            accounts: accts,
+            ..Scrub::default()
+        };
+        let out = scrub(
+            "login Alice_Reads at SYNC.example.org failed; mail smtp.mail.example, dav-user@cloud.example.net",
+            &s,
+        );
+        for bad in [
+            "alice_reads",
+            "sync.example",
+            "smtp.mail",
+            "dav-user",
+            "cloud.example",
+        ] {
+            assert!(!out.to_lowercase().contains(bad), "{bad}: {out}");
+        }
+        assert!(out.contains("<host>") && out.contains("<account>"));
+    }
+
+    #[test]
+    fn a_compiled_scrubber_gives_the_same_text_as_the_one_shot_function() {
+        let s = Scrubber::new(rules());
+        let t = "ERROR cannot open Dune for alice at /home/alice/Books/My Library/x";
+        assert_eq!(s.apply(t), scrub(t, &rules()));
     }
 }

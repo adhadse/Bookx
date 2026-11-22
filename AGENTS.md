@@ -23,6 +23,9 @@ Whenever you add a feature, change behaviour or fix a bug, add or update tests *
   option, file format, plugin or patch format, sharing/device behaviour, keyboard or dev-hook-free workflow), update
   or add the matching wiki page **in the same change**, with up-to-date screenshots/mockups where the page has them.
   Write for users: how to do it, what to expect, limits. No internal status, no agent notes.
+  **The live site only changes with a release**: pushes to `main` build and check the wiki but never deploy it. It is
+  deployed from a release tag (`release.yml`) or by an explicit manual run of the wiki deploy workflow, so the
+  documentation never describes a feature that no download has yet (`docs/releasing.md`).
 - **Internal notes (`docs/`)**: progress logs, roadmap and decisions, research, gap analyses, bugs
   (`docs/bugs.md`), enhancements (`docs/enhancements.md`), caveats, untested-on-hardware lists, performance
   numbers, design drafts. Never put these on the wiki. Record work progress and caveats here, not in the wiki.

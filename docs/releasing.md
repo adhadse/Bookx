@@ -51,8 +51,9 @@ schemas, pixbuf loaders), tracked in `docs/enhancements.md` if wanted. Do not me
 
 | Workflow | Trigger | What it does | Publishes? |
 |---|---|---|---|
-| `ci.yml` | every push and pull request | quick checks, Rust (fmt, clippy, i18n, tests, coverage gate), UI shards, wiki, Flatpak (only when packaging changed), final `required` check | no |
+| `ci.yml` | every push and pull request | quick checks, Rust (fmt, clippy, i18n, tests, coverage gate), UI shards, wiki build and check (never a deploy), Flatpak (only when packaging changed), final `required` check | no |
 | `_flatpak.yml` | called by `ci.yml`, `release.yml`, `nightly.yml` | builds the bundle once (`Bookx-<version>.flatpak`, renamed by `publish`), smoke-tests it | no |
+| `wiki-deploy.yml` | called by `release.yml` after `publish`, or manual (`ref`) | builds the wiki of one ref and publishes it to GitHub Pages (https://bookx.adhadse.com) | **the live docs** |
 | `nightly.yml` | schedule, manual | UI coverage tier, cold-cache Flatpak build | no |
 | `release.yml` | **push of a `v*` tag**, or manual (`skip_gates`) | the release (below) | **yes** |
 | `package-native.yml` | manual only | macOS `.app/.dmg` or Windows zip; scaffold, never part of a release | no (artifact only) |
@@ -72,10 +73,12 @@ tag v0.3.0-beta.1 pushed
    │             └── flatpak   _flatpak.yml → Bookx-0.3.0-beta.1-linux-x86_64.flatpak
    │
    └── publish    (after tarball + flatpak) SHA256SUMS → attestation → cosign sign + verify
-                  → GitHub release, generated notes, flagged pre-release when the tag says so
+          │       → GitHub release, generated notes, flagged pre-release when the tag says so
+          └── wiki      (after publish, tags only) wiki-deploy.yml builds the TAGGED commit and publishes it
 ```
 
-`gates` is why a tag on a red commit does nothing. Emergency only: run the workflow manually with `skip_gates`.
+The docs go live after the release assets are out, also for pre-releases (beta users need them). A Pages failure turns
+`wiki` red but changes nothing about the release. `gates` is why a tag on a red commit does nothing. Emergency only: run the workflow manually with `skip_gates`.
 
 ## Procedure
 
@@ -119,6 +122,12 @@ Do the steps in this order. Everything before step 7 is reversible; the tag is n
 11. **Announce** only after step 9 passed.
 
 ## After the release
+
+- **The wiki is already live** (the `wiki` job built it from the tag). Pushes to `main` never deploy it: the site only
+  describes what a download contains. Documentation fixes between releases reach the site by a manual **Wiki deploy** run
+  (Actions, Wiki deploy, Run workflow): leave `ref` empty to publish the latest stable release tag (use it only when the tagged
+  content is right and only the deploy was missed), or type a tag. A docs hotfix needs a new tag; publishing `main` by hand
+  (`ref` = `main`) puts unreleased features on the public site, so do it only knowingly.
 
 - Open a new `[Unreleased]` section in `CHANGELOG.md`; bump `main` to the next pre-release version when the next work
   starts, not before.

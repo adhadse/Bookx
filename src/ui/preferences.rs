@@ -1194,6 +1194,7 @@ fn build_sections(
     app.add(&scheme);
     page.add(&app);
     page.add(&super::settings_io::group(parent, shared));
+    page.add(&super::report_dialog::preferences_group(parent, shared));
 
     // --- reader -----------------------------------------------------------
     let reader = adw::PreferencesGroup::builder()

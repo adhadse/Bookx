@@ -107,7 +107,8 @@ running window does it. `bookx --doc file.epub` adds the book if needed and open
 ## Reporting a bug
 
 Open an issue at [github.com/adhadse/Bookx/issues](https://github.com/adhadse/Bookx/issues) and paste the
-[diagnostics](#copy-diagnostics). Say what you did and what you expected. For a crash, start Bookx from a terminal with
+[diagnostics](#copy-diagnostics). Include the version from *About Bookx → Troubleshooting* and say where you got Bookx
+(a GitHub Releases file, which one, or built from source). Say what you did and what you expected. For a crash, start Bookx from a terminal with
 `RUST_LOG=bookx=debug bookx` (Flatpak: `flatpak run --env=RUST_LOG=bookx=debug com.adhadse.Bookx`) and attach the output.
 
 ## bookx:// links
@@ -123,14 +124,14 @@ Put them in a note, a launcher or a script: `xdg-open 'bookx://book/isbn:9780441
 says so in a message. Characters in an identifier can be written as `%XX` (`doi%3A10.1000%2F182`).
 
 !!! note "Limitations"
-    - There is no automatic update check; rebuild from source to update.
+    - There is no automatic update check; download the next release from [GitHub Releases](https://github.com/adhadse/Bookx/releases/latest) (see [Install](install.md#update)) or rebuild from source.
     - Accessibility for screen readers is incomplete in the reader view (the text is drawn by Bookx itself).
 
 ## Questions and answers
 
 ??? question "How do I report a bug with the right information?"
     Open the main menu → **About Bookx** → **Troubleshooting**, copy the diagnostics (or use **Copy Diagnostics** in the
-    command palette, ++ctrl+shift+p++) and paste it into a new issue on GitHub. It contains no book titles, passwords or
+    command palette, ++ctrl+shift+p++) and paste it into a new issue on GitHub; it starts with the Bookx version. It contains no book titles, passwords or
     account names. For a crash, start Bookx from a terminal with `RUST_LOG=bookx=debug bookx` and attach the output.
 
 ??? question "Why is my library read-only?"

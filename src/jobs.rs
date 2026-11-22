@@ -514,6 +514,19 @@ pub fn log(id: u64, line: &str) {
 }
 
 pub fn finish(id: u64, result: Result<(), String>) {
+    if let Err(e) = &result {
+        let kind = HUB.with(|h| {
+            h.borrow()
+                .jobs()
+                .iter()
+                .find(|j| j.id == id)
+                .map(|j| j.kind)
+        });
+        tracing::warn!(
+            "{} job failed: {e}",
+            kind.map_or("background", |k| k.label())
+        );
+    }
     HUB.with(|h| h.borrow_mut().finish(id, result, now_ms()));
     changed();
 }

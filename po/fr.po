@@ -11990,3 +11990,114 @@ msgstr "{} : au plus {} lignes."
 
 msgid "“{}” is the name of the library password; choose another name."
 msgstr "« {} » est le nom du mot de passe de la bibliothèque ; choisissez un autre nom."
+
+msgid "Alpha"
+msgstr "Alpha"
+
+msgid "Beta"
+msgstr "Bêta"
+
+msgid "Beta notice"
+msgstr "Avis bêta"
+
+msgid "Beta software: it can have bugs. Please report problems (Main Menu → Report a Problem)."
+msgstr "Logiciel en version bêta : il peut contenir des bugs. Merci de signaler les problèmes (Menu principal → Signaler un problème)."
+
+msgid "Bookx closed unexpectedly last time. Report the problem?"
+msgstr "Bookx s’est fermé de façon inattendue la dernière fois. Signaler le problème ?"
+
+msgid "Bookx closed unexpectedly.\n\n"
+msgstr "Bookx s’est fermé de façon inattendue.\n\n"
+
+msgid "Bookx is in beta and can have bugs. Reports help us fix them."
+msgstr "Bookx est en version bêta et peut contenir des bugs. Vos signalements nous aident à les corriger."
+
+msgid "Bookx is in beta. Reports help us fix bugs. This report contains no book titles, passwords or personal paths."
+msgstr "Bookx est en version bêta. Vos signalements nous aident à corriger les bugs. Ce rapport ne contient ni titres de livres, ni mots de passe, ni chemins personnels."
+
+msgid "Bookx sends nothing by itself: you decide where the report goes."
+msgstr "Bookx n’envoie rien de lui-même : c’est vous qui décidez où va le rapport."
+
+msgid "Copy Log Folder Path"
+msgstr "Copier le chemin du dossier des journaux"
+
+msgid "Copy Report"
+msgstr "Copier le rapport"
+
+msgid "Could not save the report: {}"
+msgstr "Impossible d’enregistrer le rapport : {}"
+
+msgid "Crash notice"
+msgstr "Avis de plantage"
+
+msgid "How many books and which formats, never titles."
+msgstr "Le nombre de livres et leurs formats, jamais les titres."
+
+msgid "Include library statistics"
+msgstr "Inclure les statistiques de la bibliothèque"
+
+msgid "Include recent log"
+msgstr "Inclure le journal récent"
+
+msgid "Included in the Report"
+msgstr "Contenu du rapport"
+
+msgid "Log Folder"
+msgstr "Dossier des journaux"
+
+msgid "Open GitHub Issue"
+msgstr "Ouvrir un ticket GitHub"
+
+msgid "Open Log Folder"
+msgstr "Ouvrir le dossier des journaux"
+
+msgid "Path Copied"
+msgstr "Chemin copié"
+
+msgid "Pre-release"
+msgstr "Préversion"
+
+msgid "Release Candidate"
+msgstr "Version candidate"
+
+msgid "Report Copied"
+msgstr "Rapport copié"
+
+msgid "Report Saved"
+msgstr "Rapport enregistré"
+
+msgid "Report a Problem"
+msgstr "Signaler un problème"
+
+msgid "Report preview"
+msgstr "Aperçu du rapport"
+
+msgid "Reports help us fix bugs. This report contains no book titles, passwords or personal paths."
+msgstr "Vos signalements nous aident à corriger les bugs. Ce rapport ne contient ni titres de livres, ni mots de passe, ni chemins personnels."
+
+msgid "Save Report"
+msgstr "Enregistrer le rapport"
+
+msgid "See exactly what a report contains before you share it."
+msgstr "Voyez exactement ce que contient un rapport avant de le partager."
+
+msgid "Thanks for trying the Bookx beta. It can have bugs, so keep a backup of anything you care about. Reporting problems helps a lot."
+msgstr "Merci d’essayer la version bêta de Bookx. Elle peut contenir des bugs : faites une sauvegarde de tout ce qui compte pour vous. Signaler les problèmes nous aide beaucoup."
+
+msgid "The report is on your clipboard: paste it into the issue."
+msgstr "Le rapport est dans votre presse-papiers : collez-le dans le ticket."
+
+msgid "This is exactly what will be shared."
+msgstr "Voici exactement ce qui sera partagé."
+
+msgid "Troubleshooting"
+msgstr "Dépannage"
+
+msgid "Warnings, errors and a few start-up notes."
+msgstr "Avertissements, erreurs et quelques notes de démarrage."
+
+msgid "What happened?"
+msgstr "Que s’est-il passé ?"
+
+msgid "Your own words are shared exactly as you type them: leave out anything private."
+msgstr "Vos propres mots sont partagés tels que vous les saisissez : n’y mettez rien de privé."

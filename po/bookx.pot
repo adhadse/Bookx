@@ -697,6 +697,9 @@ msgstr ""
 msgid "Allowed host names"
 msgstr ""
 
+msgid "Alpha"
+msgstr ""
+
 msgid "Already EPUB 3"
 msgstr ""
 
@@ -1078,6 +1081,15 @@ msgstr ""
 msgid "Best day"
 msgstr ""
 
+msgid "Beta"
+msgstr ""
+
+msgid "Beta notice"
+msgstr ""
+
+msgid "Beta software: it can have bugs. Please report problems (Main Menu → Report a Problem)."
+msgstr ""
+
 msgid "Bibliography"
 msgstr ""
 
@@ -1276,13 +1288,28 @@ msgstr ""
 msgid "Bookx cannot write this format, so the book can only be saved as an EPUB."
 msgstr ""
 
+msgid "Bookx closed unexpectedly last time. Report the problem?"
+msgstr ""
+
+msgid "Bookx closed unexpectedly.\n\n"
+msgstr ""
+
 msgid "Bookx has no telemetry, no account and no update check. It only connects when you use a feature that needs it."
+msgstr ""
+
+msgid "Bookx is in beta and can have bugs. Reports help us fix them."
+msgstr ""
+
+msgid "Bookx is in beta. Reports help us fix bugs. This report contains no book titles, passwords or personal paths."
 msgstr ""
 
 msgid "Bookx plugin for KOReader"
 msgstr ""
 
 msgid "Bookx remembers a SHA-256 checksum of every book file and tells you when a file changed without being edited, which is what a failing disk or a bad sync looks like."
+msgstr ""
+
+msgid "Bookx sends nothing by itself: you decide where the report goes."
 msgstr ""
 
 msgid "Bookx signs in with HTTP Basic authentication, only to the exact site you name and only over https. Passwords are kept in your keyring, never in the settings file."
@@ -2277,6 +2304,12 @@ msgstr ""
 msgid "Copy Install Command"
 msgstr ""
 
+msgid "Copy Log Folder Path"
+msgstr ""
+
+msgid "Copy Report"
+msgstr ""
+
 msgid "Copy Selection"
 msgstr ""
 
@@ -2535,6 +2568,9 @@ msgstr ""
 msgid "Could not save the plugin: {}"
 msgstr ""
 
+msgid "Could not save the report: {}"
+msgstr ""
+
 msgid "Could not save the word: {}"
 msgstr ""
 
@@ -2626,6 +2662,9 @@ msgid "Covers"
 msgstr ""
 
 msgid "Covers and catalogue, no book files"
+msgstr ""
+
+msgid "Crash notice"
 msgstr ""
 
 msgid "Create"
@@ -4174,6 +4213,9 @@ msgstr ""
 msgid "How books are read aloud. The first time you press Read Aloud, Bookx offers to download the default voice."
 msgstr ""
 
+msgid "How many books and which formats, never titles."
+msgstr ""
+
 msgid "How many books are converted together. More is faster and uses more memory."
 msgstr ""
 
@@ -4433,7 +4475,16 @@ msgstr ""
 msgid "Include images"
 msgstr ""
 
+msgid "Include library statistics"
+msgstr ""
+
+msgid "Include recent log"
+msgstr ""
+
 msgid "Include your books in backups"
+msgstr ""
+
+msgid "Included in the Report"
 msgstr ""
 
 msgid "Included: book files, covers and the catalogue (titles, tags, collections, reading progress, bookmarks, highlights and notes)."
@@ -4893,6 +4944,9 @@ msgid "Location {}"
 msgstr ""
 
 msgid "Location {} of {}"
+msgstr ""
+
+msgid "Log Folder"
 msgstr ""
 
 msgid "Log in"
@@ -6337,6 +6391,9 @@ msgstr ""
 msgid "Open Folder as Library"
 msgstr ""
 
+msgid "Open GitHub Issue"
+msgstr ""
+
 msgid "Open Library"
 msgstr ""
 
@@ -6347,6 +6404,9 @@ msgid "Open Library and Google Books are asked only when you ask, or after an im
 msgstr ""
 
 msgid "Open Licence Page"
+msgstr ""
+
+msgid "Open Log Folder"
 msgstr ""
 
 msgid "Open My Vocabulary"
@@ -6655,6 +6715,9 @@ msgstr ""
 msgid "Path"
 msgstr ""
 
+msgid "Path Copied"
+msgstr ""
+
 msgid "Path template"
 msgstr ""
 
@@ -6779,6 +6842,9 @@ msgid "Position in the chapter"
 msgstr ""
 
 msgid "Position in the reading order"
+msgstr ""
+
+msgid "Pre-release"
 msgstr ""
 
 msgid "Preface"
@@ -7291,6 +7357,9 @@ msgstr ""
 msgid "Related Books"
 msgstr ""
 
+msgid "Release Candidate"
+msgstr ""
+
 msgid "Reload"
 msgstr ""
 
@@ -7674,7 +7743,22 @@ msgstr ""
 msgid "Report"
 msgstr ""
 
+msgid "Report Copied"
+msgstr ""
+
+msgid "Report Saved"
+msgstr ""
+
+msgid "Report a Problem"
+msgstr ""
+
+msgid "Report preview"
+msgstr ""
+
 msgid "Reports"
+msgstr ""
+
+msgid "Reports help us fix bugs. This report contains no book titles, passwords or personal paths."
 msgstr ""
 
 msgid "Request refused"
@@ -7909,6 +7993,9 @@ msgid "Save Note"
 msgstr ""
 
 msgid "Save Note (Ctrl+Enter)"
+msgstr ""
+
+msgid "Save Report"
 msgstr ""
 
 msgid "Save Search"
@@ -8203,6 +8290,9 @@ msgid "Section title"
 msgstr ""
 
 msgid "Sections"
+msgstr ""
+
+msgid "See exactly what a report contains before you share it."
 msgstr ""
 
 msgid "Sees all books"
@@ -9313,6 +9403,9 @@ msgstr ""
 msgid "Textual"
 msgstr ""
 
+msgid "Thanks for trying the Bookx beta. It can have bugs, so keep a backup of anything you care about. Reporting problems helps a lot."
+msgstr ""
+
 msgid "That entry cannot go there"
 msgstr ""
 
@@ -9688,6 +9781,9 @@ msgstr ""
 msgid "The reading order is unchanged"
 msgstr ""
 
+msgid "The report is on your clipboard: paste it into the issue."
+msgstr ""
+
 msgid "The rules are already in order"
 msgstr ""
 
@@ -9966,6 +10062,9 @@ msgstr ""
 msgid "This is about a device plugged in with a USB cable (or mounted in Files).\n\nWhen you plug in a Kobo, Kindle or similar reader, Bookx reads the reading progress and the highlights and notes the device keeps: from the Kobo’s own database, or from KOReader’s “.sdr” files if KOReader is installed on it. It merges them with your library. Progress only moves forward, highlights and notes are united, and nothing is deleted on either side.\n\nA Kobo needs no KOReader for this; its own reading state is read. A Kindle’s own state is not readable, only KOReader’s files. If the device has no readable state, nothing happens. Reading progress is never written to the device; notes go to it only as a new KOReader notes file where there is none.\n\nOff by default: the connection banner offers a one-time Sync. Answering it never changes this setting. Turn the switch on to sync on every connection without asking."
 msgstr ""
 
+msgid "This is exactly what will be shared."
+msgstr ""
+
 msgid "This is not a site address."
 msgstr ""
 
@@ -10165,6 +10264,9 @@ msgid "Trigger word, for example fn"
 msgstr ""
 
 msgid "Trim Cover to 2:3"
+msgstr ""
+
+msgid "Troubleshooting"
 msgstr ""
 
 msgid "Trusted proxy addresses"
@@ -10657,6 +10759,9 @@ msgstr ""
 msgid "Warmth"
 msgstr ""
 
+msgid "Warnings, errors and a few start-up notes."
+msgstr ""
+
 msgid "Watched folder"
 msgstr ""
 
@@ -10694,6 +10799,9 @@ msgid "What Would Change"
 msgstr ""
 
 msgid "What each sync type needs"
+msgstr ""
+
+msgid "What happened?"
 msgstr ""
 
 msgid "What is in a backup"
@@ -10937,6 +11045,9 @@ msgid "Your own fields for every book: numbers, dates, yes or no, lists and more
 msgstr ""
 
 msgid "Your own schemes (GtkSourceView .xml files) go into the styles folder of the Bookx configuration."
+msgstr ""
+
+msgid "Your own words are shared exactly as you type them: leave out anything private."
 msgstr ""
 
 msgid "Your passwords are saved in an encrypted store"

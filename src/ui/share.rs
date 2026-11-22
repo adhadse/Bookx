@@ -98,6 +98,11 @@ pub fn apply(
                 .map_err(|e| format!("{e:#}"))
         }
     };
+    match &r {
+        Ok(_) if on => tracing::info!(target: "bookx_crumb", "sync server started"),
+        Ok(_) => tracing::info!(target: "bookx_crumb", "sync server stopped"),
+        Err(e) => tracing::warn!("sync server could not start: {e}"),
+    }
     LAST_ERROR.with(|e| *e.borrow_mut() = r.as_ref().err().cloned().unwrap_or_default());
     crate::settings_bus::sync().notify();
     r

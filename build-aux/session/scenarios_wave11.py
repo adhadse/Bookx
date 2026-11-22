@@ -798,3 +798,45 @@ def safe_mode_start(c):
     bad = unnamed(c)
     c.check("every control is named", not bad, describe(bad))
     c.check("the app is alive", c.is_alive())
+
+
+@scenario
+def report_problem_dialog(c):
+    """Main Menu -> Report a Problem, reached with the keyboard: the dialog opens with the focus in "What happened?",
+    the preview is named, Tab reaches the three buttons and Escape closes it."""
+    c.start(books=("alice",))
+    menu = c.wait_node("toggle button", rx="^Main Menu", timeout=6)
+    if not c.check("the Main Menu button is there", menu):
+        return
+    c.click_node(menu)
+    time.sleep(0.8)
+    item = [n for n in has(c, r"Report a Problem", "menu item") if n.box[2] > 0]
+    if not c.check("the menu lists Report a Problem", item):
+        return
+    c.sb.key("Escape")
+    time.sleep(0.4)
+    # keyboard path: open the menu with its button focused, go down to the entry with the arrow keys
+    c.click_node(menu)
+    time.sleep(0.6)
+    for _ in range(12):
+        f = focus_of(c)
+        if f and re.search(r"Report a Problem", f.name or ""):
+            break
+        c.sb.key("Down")
+        time.sleep(0.12)
+    c.sb.key("Return")
+    c.check("Return on the entry opens the dialog", wait_text(c, r"^Report a Problem$", 6.0))
+    c.shot("report-1-open")
+    f = focus_of(c)
+    c.check("the What happened entry has the keyboard focus", f and "What happened" in (f.name or ""), str(f))
+    c.sb.type("it broke")
+    time.sleep(0.8)
+    c.check("the preview is a named control", has(c, r"^Report preview$"))
+    for name in ("Copy Report", "Save Report", "Open GitHub Issue", "Open Log Folder"):
+        ok, walked = tab_to(c, "^" + name + "$", limit=30)
+        c.check(f"{name} can be reached with Tab alone", ok, " > ".join(walked[-6:]))
+    bad = unnamed(c)
+    c.check("every control is named", not bad, describe(bad))
+    c.sb.key("Escape")
+    c.check("Escape closes the dialog", c.wait(lambda: not has(c, r"^Open GitHub Issue$"), 4.0))
+    c.check("the app is alive", c.is_alive())

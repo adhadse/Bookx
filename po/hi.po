@@ -11910,3 +11910,114 @@ msgstr "{}: अधिकतम {} पंक्तियाँ।"
 
 msgid "“{}” is the name of the library password; choose another name."
 msgstr "“{}” लाइब्रेरी पासवर्ड का नाम है; कोई और नाम चुनें।"
+
+msgid "Alpha"
+msgstr "अल्फा"
+
+msgid "Beta"
+msgstr "बीटा"
+
+msgid "Beta notice"
+msgstr "बीटा सूचना"
+
+msgid "Beta software: it can have bugs. Please report problems (Main Menu → Report a Problem)."
+msgstr "बीटा सॉफ़्टवेयर: इसमें बग हो सकते हैं। कृपया समस्याओं की रिपोर्ट करें (मुख्य मेनू → समस्या की रिपोर्ट करें)।"
+
+msgid "Bookx closed unexpectedly last time. Report the problem?"
+msgstr "Bookx पिछली बार अप्रत्याशित रूप से बंद हो गया था। क्या समस्या की रिपोर्ट करें?"
+
+msgid "Bookx closed unexpectedly.\n\n"
+msgstr "Bookx अप्रत्याशित रूप से बंद हो गया।\n\n"
+
+msgid "Bookx is in beta and can have bugs. Reports help us fix them."
+msgstr "Bookx बीटा में है और इसमें बग हो सकते हैं। रिपोर्ट से हमें उन्हें ठीक करने में मदद मिलती है।"
+
+msgid "Bookx is in beta. Reports help us fix bugs. This report contains no book titles, passwords or personal paths."
+msgstr "Bookx बीटा में है। रिपोर्ट से हमें बग ठीक करने में मदद मिलती है। इस रिपोर्ट में पुस्तकों के शीर्षक, पासवर्ड या निजी पथ शामिल नहीं हैं।"
+
+msgid "Bookx sends nothing by itself: you decide where the report goes."
+msgstr "Bookx अपने आप कुछ नहीं भेजता: रिपोर्ट कहाँ जाएगी, यह आप तय करते हैं।"
+
+msgid "Copy Log Folder Path"
+msgstr "लॉग फ़ोल्डर का पथ कॉपी करें"
+
+msgid "Copy Report"
+msgstr "रिपोर्ट कॉपी करें"
+
+msgid "Could not save the report: {}"
+msgstr "रिपोर्ट सहेजी नहीं जा सकी: {}"
+
+msgid "Crash notice"
+msgstr "क्रैश सूचना"
+
+msgid "How many books and which formats, never titles."
+msgstr "कितनी पुस्तकें और कौन-से फ़ॉर्मैट, शीर्षक कभी नहीं।"
+
+msgid "Include library statistics"
+msgstr "लाइब्रेरी के आँकड़े शामिल करें"
+
+msgid "Include recent log"
+msgstr "हाल का लॉग शामिल करें"
+
+msgid "Included in the Report"
+msgstr "रिपोर्ट में शामिल"
+
+msgid "Log Folder"
+msgstr "लॉग फ़ोल्डर"
+
+msgid "Open GitHub Issue"
+msgstr "GitHub इश्यू खोलें"
+
+msgid "Open Log Folder"
+msgstr "लॉग फ़ोल्डर खोलें"
+
+msgid "Path Copied"
+msgstr "पथ कॉपी किया गया"
+
+msgid "Pre-release"
+msgstr "प्री-रिलीज़"
+
+msgid "Release Candidate"
+msgstr "रिलीज़ कैंडिडेट"
+
+msgid "Report Copied"
+msgstr "रिपोर्ट कॉपी की गई"
+
+msgid "Report Saved"
+msgstr "रिपोर्ट सहेजी गई"
+
+msgid "Report a Problem"
+msgstr "समस्या की रिपोर्ट करें"
+
+msgid "Report preview"
+msgstr "रिपोर्ट का पूर्वावलोकन"
+
+msgid "Reports help us fix bugs. This report contains no book titles, passwords or personal paths."
+msgstr "रिपोर्ट से हमें बग ठीक करने में मदद मिलती है। इस रिपोर्ट में पुस्तकों के शीर्षक, पासवर्ड या निजी पथ शामिल नहीं हैं।"
+
+msgid "Save Report"
+msgstr "रिपोर्ट सहेजें"
+
+msgid "See exactly what a report contains before you share it."
+msgstr "साझा करने से पहले देखें कि रिपोर्ट में ठीक-ठीक क्या है।"
+
+msgid "Thanks for trying the Bookx beta. It can have bugs, so keep a backup of anything you care about. Reporting problems helps a lot."
+msgstr "Bookx बीटा आज़माने के लिए धन्यवाद। इसमें बग हो सकते हैं, इसलिए जो आपके लिए ज़रूरी है उसका बैकअप रखें। समस्याओं की रिपोर्ट करने से बहुत मदद मिलती है।"
+
+msgid "The report is on your clipboard: paste it into the issue."
+msgstr "रिपोर्ट आपके क्लिपबोर्ड पर है: इसे इश्यू में चिपकाएँ।"
+
+msgid "This is exactly what will be shared."
+msgstr "ठीक यही साझा किया जाएगा।"
+
+msgid "Troubleshooting"
+msgstr "समस्या निवारण"
+
+msgid "Warnings, errors and a few start-up notes."
+msgstr "चेतावनियाँ, त्रुटियाँ और प्रारंभ के कुछ नोट।"
+
+msgid "What happened?"
+msgstr "क्या हुआ?"
+
+msgid "Your own words are shared exactly as you type them: leave out anything private."
+msgstr "आपके अपने शब्द वैसे ही साझा किए जाते हैं जैसे आप टाइप करते हैं: निजी जानकारी न लिखें।"

@@ -672,6 +672,13 @@ pub const COMMANDS: &[Command] = &[
         "bug report support version troubleshoot",
         None
     ),
+    cmd!(
+        "app.report-problem",
+        N_("Report a Problem"),
+        "",
+        "bug issue feedback crash log beta support",
+        None
+    ),
     cmd!("app.quit", N_("Quit"), "<Control>q", "exit close", None),
 ];
 

@@ -13,6 +13,8 @@ When you start Bookx for the first time the library is empty and shows a welcome
 folder, by default `~/Documents/Bookx Library`. It holds your book files and a SQLite catalogue,
 `bookx-library.db`. You can move the folder, copy it or back it up like any other folder.
 
+The paths here are for a native install. The Flatpak bundle keeps its settings under `~/.var/app/com.adhadse.Bookx/` and uses the same library folder; see [Install](install.md#where-things-are-stored).
+
 To use another folder, open the main menu (the hamburger button at the top right of the library, ++f10++), choose **Preferences** (++ctrl+comma++), go to *Library* and press *Change* next to *Library folder*. Preferences has sections and a search (++ctrl+f++ inside it, see [Preferences](preferences.md)), and
 the command palette (++ctrl+k++) finds every command, book and setting; see [Accessibility](accessibility.md).
 

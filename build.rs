@@ -14,7 +14,50 @@ const ALL: [(&str, &str); 4] = [
     ("hi", "हिन्दी"),
 ];
 
+/// The release channel from the pre-release part of the version (`0.3.0-beta.1` is `beta`): the same
+/// rule as `src/beta.rs`, which a test checks against this constant.
+fn channel_of(pre: &str) -> &'static str {
+    let p = pre.to_ascii_lowercase();
+    if p.is_empty() {
+        "stable"
+    } else if p.starts_with("alpha") {
+        "alpha"
+    } else if p.starts_with("beta") {
+        "beta"
+    } else if p.starts_with("rc") {
+        "rc"
+    } else {
+        "prerelease"
+    }
+}
+
+/// The short git commit of the build, from `BOOKX_GIT_COMMIT` (packagers without a `.git` set it) or git.
+fn git_commit() -> String {
+    if let Ok(c) = env::var("BOOKX_GIT_COMMIT") {
+        return c.trim().chars().take(12).collect();
+    }
+    std::process::Command::new("git")
+        .args(["rev-parse", "--short=9", "HEAD"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .filter(|c| c.chars().all(|ch| ch.is_ascii_hexdigit()))
+        .unwrap_or_default()
+}
+
 fn main() {
+    println!("cargo:rerun-if-env-changed=BOOKX_GIT_COMMIT");
+    println!("cargo:rerun-if-changed=.git/HEAD");
+    println!(
+        "cargo:rustc-env=BOOKX_CHANNEL={}",
+        channel_of(&env::var("CARGO_PKG_VERSION_PRE").unwrap_or_default())
+    );
+    println!("cargo:rustc-env=BOOKX_GIT_COMMIT={}", git_commit());
+    println!(
+        "cargo:rustc-env=BOOKX_PROFILE={}",
+        env::var("PROFILE").unwrap_or_default()
+    );
     let root = env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
     let list = Path::new(&root).join("po/reviewed-locales.txt");
     println!("cargo:rerun-if-changed=build.rs");

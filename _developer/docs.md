@@ -181,7 +181,7 @@ old form. The CSS in `wiki/docs/assets/extra.css` centres the figure and its cap
 `wiki.sh`) fails when the window of a picture is more than 2 px off-centre; the crops of `wshot` keep equal padding on both sides
 (`scenarios_wiki.centred_box`, tested by `build-aux/session/selftest.py`). The comic pictures show a real public-domain comic when it can be
 downloaded (`build-aux/make-real-comic.py`, `docs/test-books.md`).
-`.github/workflows/wiki.yml` runs the same script on pull requests and deploys on pushes to `main`.
+`.github/workflows/ci.yml` runs the same script on pull requests and deploys on pushes to `main`.
 
 ## Devices, sharing over HTTPS
 
@@ -243,6 +243,7 @@ Dev hooks (`library:` / `reader:` / `stats:` prefixes):
 | `library:language=CODE`, `library:menus-tr` | switch language, print the translated main menu |
 | `ntr:N` | prints `ntr: <N books in the current language> | <1234567 formatted>` (plurals and number grouping); give `library:language=…` a `wait:400` first |
 | `diag:` | prints the redacted diagnostics report on one line (`diag: …`); `action:copy-diagnostics` copies it |
+| `report:<cmd>` | Report a Problem (`src/ui/report_dialog.rs`, `report_notices.rs`; list in `build-aux/ui-tests-report.sh`): `open`, `type=`, `log=on\|off`, `library=on\|off`, `preview`, `dump`, `copy`, `save=PATH`, `github` (prints `report_open: URL`, nothing is opened under a dev script), `log-line=`, `crash-sim=`, `notices`, `recheck`, `dismiss-beta`, `dismiss-crash`, `report-from-*`. Env: `BOOKX_TEST_VERSION` replaces the version (beta notice tests), `XDG_STATE_HOME` holds `bookx/bookx.log` and `crash-*.txt` |
 | `open-uri:bookx://…`, `resolve-uri:bookx://…` | open a link as the desktop would / print `resolve_uri: book N\|no book\|invalid` |
 | `stats:goal:MINUTES:BOOKS` | set the reading goals and print their text; `stats:dump` also prints the yearly review |
 | `reader:link=ARCHIVE/PATH#frag` | follow a link as a click would (footnote popup or jump); `reader:dump` prints `footnote_popup:` |
