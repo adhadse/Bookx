@@ -13,7 +13,7 @@ use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
 use serde::Deserialize;
 
 /// Schema version written to `PRAGMA user_version` by the newest migration.
-pub const SCHEMA_VERSION: i32 = 9;
+pub const SCHEMA_VERSION: i32 = 10;
 
 /// Catalogue persisted in SQLite. Cheap to share between threads (`Send + Sync`).
 pub struct SqliteStore {
@@ -108,6 +108,7 @@ fn migrate(conn: &mut Connection) -> Result<()> {
             7 => crate::works::migrate_v7(&tx)?,
             8 => crate::custom::migrate_v8(&tx)?,
             9 => crate::notes::migrate_v9(&tx)?,
+            10 => crate::annotation_history::migrate_v10(&tx)?,
             _ => bail!("no migration to schema version {v}"),
         }
         tx.execute_batch(&format!("PRAGMA user_version = {v}"))?;
@@ -280,7 +281,24 @@ fn index_formats(conn: &Connection, b: &Book) -> Result<()> {
 }
 
 pub(crate) fn put_row(conn: &Connection, b: &Book) -> Result<()> {
+    put_row_as(
+        conn,
+        b,
+        &bookx_core::annotation_journal::Source::You,
+        &crate::annotation_history::GroupId::default(),
+    )
+}
+
+/// Stores a book row and, in the same transaction, journals what changed in its annotations
+/// ([`crate::annotation_history`]), attributed to `source`.
+pub(crate) fn put_row_as(
+    conn: &Connection,
+    b: &Book,
+    source: &bookx_core::annotation_journal::Source,
+    group: &crate::annotation_history::GroupId,
+) -> Result<()> {
     let id = to_i64(b.id)?;
+    crate::annotation_history::record_changes(conn, b, source, group, Utc::now())?;
     let data = serde_json::to_string(b)?;
     conn.prepare_cached(
         "INSERT INTO books(id, title, title_sort, author_sort, series, series_index,
@@ -457,6 +475,7 @@ impl SqliteStore {
         conn.query_row("PRAGMA journal_mode = WAL", [], |_| Ok(()))?;
         conn.execute_batch("PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON;")?;
         migrate(&mut conn)?;
+        crate::annotation_history::on_open(&conn);
         Ok(SqliteStore {
             conn: Mutex::new(conn),
         })
@@ -597,7 +616,7 @@ impl SqliteStore {
     /// Stores many books in one transaction (all or nothing).
     pub fn put_many(&self, books: &[Book]) -> Result<()> {
         let mut conn = self.lock();
-        let tx = conn.transaction()?;
+        let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         for b in books {
             put_row(&tx, b)?;
         }
@@ -608,8 +627,26 @@ impl SqliteStore {
     /// Atomically applies a catalogue change: stores `upserts`, deletes `removed` (with their
     /// search rows) and records the id counter. All or nothing.
     pub fn commit_catalog(&self, next_id: u64, upserts: &[&Book], removed: &[u64]) -> Result<()> {
+        self.commit_catalog_as(
+            next_id,
+            upserts,
+            removed,
+            &bookx_core::annotation_journal::WriteContext::default(),
+        )
+    }
+
+    /// [`commit_catalog`](Self::commit_catalog) that says who is responsible for each book's
+    /// changes; the annotation history records it. All the books of one call are one group.
+    pub fn commit_catalog_as(
+        &self,
+        next_id: u64,
+        upserts: &[&Book],
+        removed: &[u64],
+        ctx: &bookx_core::annotation_journal::WriteContext,
+    ) -> Result<()> {
+        let group = crate::annotation_history::GroupId::default();
         let mut conn = self.lock();
-        let tx = conn.transaction()?;
+        let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         for id in removed {
             let Ok(id) = i64::try_from(*id) else {
                 continue;
@@ -619,7 +656,7 @@ impl SqliteStore {
             tx.execute("DELETE FROM fts_text WHERE rowid = ?1", [id])?;
         }
         for b in upserts {
-            put_row(&tx, b)?;
+            put_row_as(&tx, b, ctx.source_for(b.id), &group)?;
         }
         tx.execute(
             "UPDATE meta SET value = max(value, ?1) WHERE key = 'next_id'",
@@ -808,7 +845,7 @@ impl SqliteStore {
         let cat: JsonCatalog = serde_json::from_str(&text).context("corrupt library catalogue")?;
         let mut report = JsonImportReport::default();
         let mut conn = self.lock();
-        let tx = conn.transaction()?;
+        let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         for b in &cat.books {
             if exists(&tx, b.id)? {
                 report.skipped += 1;
@@ -1128,7 +1165,7 @@ impl Store for SqliteStore {
 
     fn put(&self, book: Book) -> Result<()> {
         let mut conn = self.lock();
-        let tx = conn.transaction()?;
+        let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         put_row(&tx, &book)?;
         tx.commit()?;
         Ok(())

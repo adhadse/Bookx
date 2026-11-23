@@ -12021,3 +12021,165 @@ msgstr "क्या हुआ?"
 
 msgid "Your own words are shared exactly as you type them: leave out anything private."
 msgstr "आपके अपने शब्द वैसे ही साझा किए जाते हैं जैसे आप टाइप करते हैं: निजी जानकारी न लिखें।"
+
+msgid "a device"
+msgstr "एक डिवाइस"
+
+msgid "you"
+msgstr "आप"
+
+msgid "an import"
+msgstr "एक आयात"
+
+msgid "a merge"
+msgstr "एक विलय"
+
+msgid "Nothing to restore: it is already in the book"
+msgstr "पुनर्स्थापित करने के लिए कुछ नहीं: यह पहले से पुस्तक में है"
+
+msgid "“{}” is already highlighted at that place, so it was not added again"
+msgstr "“{}” उस जगह पहले से हाइलाइट है, इसलिए उसे दोबारा नहीं जोड़ा गया"
+
+msgid "“{}” belongs to “{}”, which is not in the library any more"
+msgstr "“{}” “{}” से जुड़ा है, जो अब लाइब्रेरी में नहीं है"
+
+msgid "Deleted by {}"
+msgstr "{} द्वारा हटाया गया"
+
+msgid "Edited by {}"
+msgstr "{} द्वारा संपादित"
+
+msgid "Added by {}"
+msgstr "{} द्वारा जोड़ा गया"
+
+msgid "{} removed {} from {}"
+msgstr "{} ने {} को {} से हटाया"
+
+msgid "{} changed {} in {}"
+msgstr "{} ने {} को {} में बदला"
+
+msgid "{} added {} to {}"
+msgstr "{} ने {} को {} में जोड़ा"
+
+msgid "{} deleted from {}"
+msgstr "{} को {} से हटाया गया"
+
+msgid "{} edited in {}"
+msgstr "{} को {} में संपादित किया गया"
+
+msgid "{} added to {}"
+msgstr "{} को {} में जोड़ा गया"
+
+msgid "{} (and {} more in other books)"
+msgstr "{} (और अन्य पुस्तकों में {} और)"
+
+msgid "Restored {}"
+msgstr "पुनर्स्थापित: {}"
+
+msgid "{} ({} were skipped)"
+msgstr "{} ({} छोड़े गए)"
+
+msgid "Yesterday"
+msgstr "कल"
+
+msgid "Highlight"
+msgstr "हाइलाइट"
+
+msgid "Back in the book"
+msgstr "पुस्तक में वापस"
+
+msgid "Current version"
+msgstr "वर्तमान संस्करण"
+
+msgid "Already marked there"
+msgstr "वहाँ पहले से चिह्नित"
+
+msgid "Book not in library"
+msgstr "पुस्तक लाइब्रेरी में नहीं है"
+
+msgid "Everyone"
+msgstr "सभी"
+
+msgid "You"
+msgstr "आप"
+
+msgid "Open in Book"
+msgstr "पुस्तक में खोलें"
+
+msgid "Restore All"
+msgstr "सभी पुनर्स्थापित करें"
+
+msgid "Restore undone"
+msgstr "पुनर्स्थापना पूर्ववत की गई"
+
+msgid "Clear History?"
+msgstr "इतिहास साफ़ करें?"
+
+msgid "Clear History"
+msgstr "इतिहास साफ़ करें"
+
+msgid "History cleared"
+msgstr "इतिहास साफ़ किया गया"
+
+msgid "the library is busy, try again in a moment"
+msgstr "लाइब्रेरी व्यस्त है, थोड़ी देर में फिर कोशिश करें"
+
+msgid "Select Entries"
+msgstr "प्रविष्टियाँ चुनें"
+
+msgid "History menu"
+msgstr "इतिहास मेनू"
+
+msgid "Search History"
+msgstr "इतिहास में खोजें"
+
+msgid "Edited"
+msgstr "संपादित"
+
+msgid "Show changes"
+msgstr "बदलाव दिखाएँ"
+
+msgid "Changed by"
+msgstr "किसने बदला"
+
+msgid "No History Yet"
+msgstr "अभी कोई इतिहास नहीं"
+
+msgid "When a highlight, note or bookmark is deleted or changed, you can find it here and restore it."
+msgstr "जब कोई हाइलाइट, नोट या बुकमार्क हटाया या बदला जाता है, तो वह आपको यहाँ मिलेगा और आप उसे पुनर्स्थापित कर सकते हैं।"
+
+msgid "No Matches"
+msgstr "कोई मेल नहीं"
+
+msgid "Try another search or filter."
+msgstr "कोई दूसरी खोज या फ़िल्टर आज़माएँ।"
+
+msgid "Restore Selected"
+msgstr "चुने हुए पुनर्स्थापित करें"
+
+msgid "Showing the newest {} changes"
+msgstr "सबसे नए {} बदलाव दिखाए जा रहे हैं"
+
+msgid "Note: {}"
+msgstr "नोट: {}"
+
+msgid "Restore {}"
+msgstr "{} पुनर्स्थापित करें"
+
+msgid "Open {} in Book"
+msgstr "{} को पुस्तक में खोलें"
+
+msgid "Select all: {}"
+msgstr "सभी चुनें: {}"
+
+msgid "Restore all: {}"
+msgstr "सभी पुनर्स्थापित करें: {}"
+
+msgid "This permanently deletes the history of {} changes for all books, so deleted highlights, notes and bookmarks can no longer be restored. Your books and everything now in them are not affected. This cannot be undone."
+msgstr "यह सभी पुस्तकों के {} बदलावों का इतिहास स्थायी रूप से हटा देता है, इसलिए हटाए गए हाइलाइट, नोट और बुकमार्क फिर पुनर्स्थापित नहीं किए जा सकेंगे। आपकी पुस्तकें और उनमें अभी जो कुछ है, उस पर कोई असर नहीं पड़ता। इसे पूर्ववत नहीं किया जा सकता।"
+
+msgid "Annotation History"
+msgstr "एनोटेशन इतिहास"
+
+msgid "History of Deleted and Changed Notes"
+msgstr "हटाए और बदले गए नोट का इतिहास"

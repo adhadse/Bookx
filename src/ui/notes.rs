@@ -1458,6 +1458,22 @@ pub fn build(
     toolbar.append(&search);
     toolbar.append(&filter_btn);
     toolbar.append(&view_btn);
+    let history_btn = gtk::Button::from_icon_name("document-open-recent-symbolic");
+    history_btn.set_tooltip_text(Some(&tr("History of Deleted and Changed Notes")));
+    super::audit::label(&history_btn, &tr("History"));
+    {
+        let (shared, open) = (shared.clone(), open.clone());
+        history_btn.connect_clicked(move |b| {
+            let open = open.clone();
+            super::annotation_history::show(
+                &shared,
+                b,
+                None,
+                Some(Rc::new(move |book, _| open(book))),
+            );
+        });
+    }
+    toolbar.append(&history_btn);
 
     // the type of entry: a segmented control of four toggle buttons, the choice is remembered
     let saved_kind = KindFilter::parse(&shared.cfg.borrow().notes_kind);

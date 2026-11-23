@@ -656,6 +656,8 @@ pub enum Act {
     Favourite,
     /// Open the Properties dialog of the selected book.
     Properties,
+    /// Open the History of deleted and changed highlights, notes and bookmarks of the selected book.
+    History,
     Convert(ExportFormat),
     /// Convert to an e-book format (`crate::export::TARGETS` id).
     ConvertTo(String),
@@ -3786,6 +3788,16 @@ impl LibraryView {
                 self.requery();
             }
             Act::Properties => self.show_properties(),
+            Act::History => {
+                if let Some(id) = ids.first().copied() {
+                    super::annotation_history::show(
+                        &self.shared,
+                        &self.root,
+                        Some(id),
+                        Some(Rc::new(|book, _| super::sync_activity::open_book(book))),
+                    );
+                }
+            }
             Act::LinkEditions => {
                 if ids.len() < 2 {
                     self.sender
@@ -4422,6 +4434,7 @@ impl LibraryView {
         if !multi {
             let s = gio::Menu::new();
             s.append(Some(&tr("Properties")), Some("book.properties"));
+            s.append(Some(&tr("Annotation History")), Some("book.history"));
             s.append(Some(&tr("Show in Files")), Some("book.show-folder"));
             menu.append_section(None, &s);
         }
@@ -5621,6 +5634,7 @@ impl SimpleComponent for LibraryView {
         simple("delete", Act::Delete);
         simple("favourite", Act::Favourite);
         simple("properties", Act::Properties);
+        simple("history", Act::History);
         simple("replace", Act::Replace);
         simple("mark", Act::Mark);
         simple("clear-marks", Act::ClearMarks);

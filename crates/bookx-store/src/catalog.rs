@@ -43,6 +43,16 @@ impl CatalogBackend for SqliteCatalog {
         self.store.commit_catalog(next_id, upserts, removed)
     }
 
+    fn commit_as(
+        &mut self,
+        next_id: u64,
+        upserts: &[&Book],
+        removed: &[u64],
+        ctx: &bookx_core::annotation_journal::WriteContext,
+    ) -> Result<()> {
+        self.store.commit_catalog_as(next_id, upserts, removed, ctx)
+    }
+
     fn load_columns(&mut self) -> Result<Vec<bookx_core::custom::ColumnDef>> {
         Ok(self.store.custom_columns())
     }

@@ -29,6 +29,42 @@ text really is, and one whose text is nowhere in the book becomes a note without
 lost: the text, colour and note stay, the old position stays in the record, and the whole pass is **one step in the
 library’s history: Undo restores every highlight as it was.**
 
+## History and restoring { #history }
+
+Bookx keeps a **history** of your highlights, notes and bookmarks. Whenever one is **added, edited or deleted**, the history
+remembers what it looked like before (its text, place, colour, style, note and date), who changed it (**you**, a **device**
+such as *Kobo Libra*, an import, a merge, or *Undo*) and when. So a highlight is not lost when you delete it by mistake,
+when an e-reader’s sync deletes it, or when a sync overwrites your note.
+
+**Open it:** in the reader, the **Notes** tab of the sidebar has a *History* button (clock icon); in the library, **Notes &
+Highlights** has the same button; right-click a book → **Annotation History** shows only that book. After an e-reader’s sync
+removed annotations, the message that appears also has **Undo** and **Review**.
+
+In the History window:
+
+- Changes are listed **by day**, newest first. A row shows what it was, *Deleted by Kobo Libra* or *Edited by you*, and how
+  long ago. A sync that removed 40 highlights is **one entry** (“Kobo Libra removed 40 highlights from *Dune*”) that you open to
+  see the 40.
+- **Restore** puts one back; **Restore All** on a group puts back the whole group. A message says “Restored 3 highlights” and
+  has **Undo**. A restore is itself recorded, so it can be taken back.
+- The **select** button (top left) lets you tick several entries and press **Restore Selected**.
+- **All / Deleted / Edited**, the *Changed by* list (you or a device) and the search box narrow the list. The search looks in the quote,
+  the note and the book’s title.
+- A row says in words when it cannot be restored: *Back in the book* (already restored), *Already marked there* (the same
+  passage is highlighted again under another entry, so nothing is added twice) or *Book not in library*.
+- The arrow on a row opens the book at that highlight.
+- **Clear History** (menu at the top right) erases the history after you confirm. It cannot be undone; your books and what
+  is in them now are not affected.
+
+Restoring a highlight a device deleted does **not** bring the deletion back on the next sync: the highlight is yours again, and the
+next sync sends it to the device as a new highlight. A note a device overwrote goes back to your text, and the older version on
+the device does not win again (the device keeps its own version until you change it there).
+
+**How long it is kept:** changes from the last **90 days** and always at least the **latest 500 changes**; the history never grows
+without limit (at most 20,000 entries). The history stays **on your computer**, in the library’s catalogue, so it is part of your
+[library backups](backup-and-restore.md); see [Privacy](privacy.md#annotation-history). Deleting a book does not remove its
+history; the entries stay (with the book’s title), but cannot be restored until the book is back.
+
 ## Colours and styles from your e-reader
 
 A highlight keeps the colour and style it had on the device, and a re-import or sync keeps them up to date:
@@ -177,6 +213,10 @@ See also [Devices and sharing](devices-and-sharing.md) for syncing notes with a 
 
 ??? question "Where do I see all my highlights?"
     Click **Notes & Highlights** in the sidebar. They are grouped by book; click one to open the book at that passage.
+
+??? question "I deleted a highlight, or my e-reader’s sync did. Can I get it back?"
+    Yes, for 90 days at least: see [History and restoring](#history). Open **Notes & Highlights** → *History*, find the entry
+    (*Deleted by …*) and press **Restore**.
 
 ??? question "Where do I see my bookmarks?"
     Click **Notes & Highlights** in the sidebar and choose **Bookmarks** in the row of buttons at the top (*All*,

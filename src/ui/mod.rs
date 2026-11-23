@@ -1,4 +1,5 @@
 pub mod accounts;
+pub mod annotation_history;
 pub mod annotations;
 pub mod audiobook_player;
 pub mod audiobooks;

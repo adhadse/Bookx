@@ -68,6 +68,9 @@ Stock Kobo and Kindle firmware has no wireless sync with Bookx; those readers sy
 
 - Highlights, the notes you wrote on them and bookmarks go from KOReader to Bookx. A highlight you delete in KOReader is
   removed in Bookx too, but only if it came from KOReader in the first place and you have not changed its note in Bookx.
+  **You can get it back:** a message says “Kobo Libra removed 3 highlights from *Dune*” with **Undo**, and the
+  [History](annotations.md#history) lists every removal so you can restore it later. A restored highlight is not deleted by
+  the next sync; it is sent to the device as a new highlight.
 - Highlights are **placed by their text**, not by KOReader’s internal position. Bookx looks the quote up in its own copy of the
   book. A quote it cannot find is kept as a note *without a place*: it appears in **Notes & Highlights** as “Could not be located
   in the book” (you can try to locate it again), and is never painted on the wrong page.

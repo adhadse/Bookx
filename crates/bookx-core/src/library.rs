@@ -32,6 +32,18 @@ pub trait CatalogBackend: Send {
     fn load(&mut self) -> Result<(u64, Vec<Book>)>;
     /// Atomically stores `upserts`, deletes `removed` and records `next_id`.
     fn commit(&mut self, next_id: u64, upserts: &[&Book], removed: &[u64]) -> Result<()>;
+    /// Like [`commit`](Self::commit), and says who is responsible for the changes so that a backend
+    /// with an annotation history (`bookx-store`) can record who deleted or changed what. Backends
+    /// without a history ignore `ctx`.
+    fn commit_as(
+        &mut self,
+        next_id: u64,
+        upserts: &[&Book],
+        removed: &[u64],
+        _ctx: &crate::annotation_journal::WriteContext,
+    ) -> Result<()> {
+        self.commit(next_id, upserts, removed)
+    }
     /// The custom column definitions (empty for a backend that cannot keep them).
     fn load_columns(&mut self) -> Result<Vec<crate::custom::ColumnDef>> {
         Ok(Vec::new())
@@ -389,6 +401,8 @@ pub struct Library {
     pub(crate) ops: Vec<crate::history::Op>,
     /// True while an undo runs, so it is not logged as an operation of its own.
     pub(crate) replaying: bool,
+    /// Who is responsible for what [`save`](Library::save) writes (the annotation history).
+    pub(crate) source: std::sync::Mutex<crate::annotation_journal::Source>,
 }
 
 /// Reads a book file and gathers everything needed to add it (thread-safe, no library state).
@@ -497,6 +511,7 @@ impl Library {
             columns,
             ops: crate::history::load_ops(root),
             replaying: false,
+            source: std::sync::Mutex::new(crate::annotation_journal::Source::You),
         })
     }
 
@@ -516,6 +531,32 @@ impl Library {
     /// Cheap when nothing changed, and proportional to the changes (not the library size) in the
     /// database.
     pub fn save(&self) -> Result<()> {
+        let source = self
+            .source
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        self.save_with(&crate::annotation_journal::WriteContext::by(source))
+    }
+
+    /// Runs `f` with `source` as the one responsible for every [`save`](Self::save) inside it (the
+    /// annotation history says "deleted by Kobo Libra" instead of "deleted by you").
+    pub fn with_source<T>(
+        &self,
+        source: crate::annotation_journal::Source,
+        f: impl FnOnce() -> T,
+    ) -> T {
+        let old = std::mem::replace(
+            &mut *self.source.lock().unwrap_or_else(|e| e.into_inner()),
+            source,
+        );
+        let r = f();
+        *self.source.lock().unwrap_or_else(|e| e.into_inner()) = old;
+        r
+    }
+
+    /// [`save`](Self::save) with an explicit responsibility per book.
+    pub fn save_with(&self, ctx: &crate::annotation_journal::WriteContext) -> Result<()> {
         if self.read_only {
             return Ok(());
         }
@@ -542,7 +583,7 @@ impl Library {
         self.backend
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .commit(self.next_id, &upserts, &removed)?;
+            .commit_as(self.next_id, &upserts, &removed, ctx)?;
         for id in &removed {
             saved.hashes.remove(id);
         }

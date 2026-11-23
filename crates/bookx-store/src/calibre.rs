@@ -263,7 +263,7 @@ impl SqliteStore {
         let report = &mut out.report;
         let total = rows.len();
         let mut conn = self.lock();
-        let tx = conn.transaction()?;
+        let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         // the columns of the Calibre library join the ones already defined; one with the same label
         // but another type is left alone and its values are not imported
         let mut have = crate::custom::load_columns(&tx);

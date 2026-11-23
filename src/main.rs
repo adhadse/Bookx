@@ -26,6 +26,7 @@ mod a11y;
 mod account_model;
 mod aids_prefs;
 mod annotation_export;
+mod annotation_history;
 mod annotation_ids;
 mod annotation_import;
 mod annotation_sync;

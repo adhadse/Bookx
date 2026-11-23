@@ -30,6 +30,7 @@ pub enum Cmd {
     Recolor(String, String),
     Restyle(String, String),
     Properties,
+    History,
 }
 
 #[derive(Debug, Clone)]
@@ -510,6 +511,14 @@ impl Side {
         filter_btn.set_label(&tr("Filter"));
         filter_btn.set_tooltip_text(Some(&tr("Filter by Colour, Style or Notes")));
         bar.append(&filter_btn);
+        let history_btn = gtk::Button::from_icon_name("document-open-recent-symbolic");
+        history_btn.set_tooltip_text(Some(&tr("History of Deleted and Changed Notes")));
+        super::audit::label(&history_btn, &tr("History"));
+        {
+            let send = send.clone();
+            history_btn.connect_clicked(move |_| send(Cmd::History));
+        }
+        bar.append(&history_btn);
         notes_page.append(&bar);
         let summary = gtk::Label::new(None);
         summary.add_css_class("dim-label");

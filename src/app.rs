@@ -1405,6 +1405,10 @@ impl SimpleComponent for App {
                     }
                     // `koannot:<command>`: the KOReader highlight and note sync (see `annotation_sync_ui::dev_command`)
                     "koannot" => crate::annotation_sync_ui::dev_command(&self.shared, arg),
+                    // `history:<command>`: the annotation History dialog (see `ui::annotation_history::dev_command`)
+                    "history" => {
+                        crate::ui::annotation_history::dev_command(&self.shared, &self.window, arg)
+                    }
                     // `wallabag:<command>`: the Wallabag import form (see `ui::wallabag::dev_command`)
                     "wallabag" => crate::ui::wallabag::dev_command(
                         &self.shared,

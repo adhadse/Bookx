@@ -188,6 +188,10 @@ pub fn sync_once(shared: &SharedRef, force: bool) -> Option<Report> {
         SEEN.with(|s| s.set(seq));
         return None;
     }
+    // what the reader changed so far is theirs; what the merge changes is the device's
+    let store = shared.guard.borrow().store.clone();
+    let _ = lib.save();
+    let mark = store.history_mark();
     let before = crate::sync_bus::Snapshot::take(&lib.books);
     let report = run(&mut lib, &ann, &mut ledger);
     publish_report(&before, &lib.books, &report);
@@ -202,8 +206,9 @@ pub fn sync_once(shared: &SharedRef, force: bool) -> Option<Report> {
         + report.bookmarks
         > 0
     {
-        let _ = lib.save();
+        let _ = lib.save_with(&crate::annotation_history::context_for(&report));
     }
+    crate::ui::annotation_history::note_removed(store.history_since(mark).unwrap_or_default());
     SOURCES.with(|s| *s.borrow_mut() = Some(sync::sources(&ledger)));
     drop(lib);
     set_status(&report.text());
@@ -398,6 +403,7 @@ pub fn arrivals(
 /// A sync arrived while Bookx is open: a toast with a button that opens Notes & Highlights for the book,
 /// and the library views (and the counts in the sidebar) read the highlights again.
 fn announce(shared: &SharedRef, report: &Report) {
+    crate::ui::annotation_history::announce_removed(shared);
     let arrived = arrivals(&shared.lib.borrow(), report);
     if arrived.is_empty() && report.looks + report.notes + report.removed == 0 {
         return;

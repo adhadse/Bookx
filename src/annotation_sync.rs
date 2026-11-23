@@ -1616,6 +1616,48 @@ mod tests {
     }
 
     #[test]
+    fn a_restored_device_deletion_is_not_deleted_again_and_goes_to_the_device() {
+        let (mut books, mut l, loc) = setup();
+        merge_incoming(
+            &mut books,
+            &[change("a", "Fear is the mind-killer.", "", 100, 1)],
+            &mut l,
+            &loc,
+            now(),
+        );
+        let gone = books[0].highlights[0].clone();
+        merge_incoming(&mut books, &[deleted("a", 200, 2)], &mut l, &loc, now());
+        assert!(books[0].highlights.is_empty());
+        // the reader restores it from the history
+        let entry = bookx_core::annotation_journal::Entry {
+            id: 1,
+            at: Utc::now(),
+            group: 1,
+            book: 1,
+            title: "Dune".into(),
+            authors: "Frank Herbert".into(),
+            kind: bookx_core::annotation_journal::Kind::Highlight,
+            action: bookx_core::annotation_journal::Action::Deleted,
+            source: bookx_core::annotation_journal::Source::Device("Kobo".into()),
+            record: bookx_core::annotation_journal::Record::Highlight(gone.clone()),
+        };
+        assert!(bookx_core::annotation_journal::restore(&entry, Some(&mut books[0])).changed());
+        crate::annotation_history::settle_ledger(&mut l, &entry, 300);
+        // the same tombstone again, a newer tombstone and the whole history again: it stays
+        for c in [deleted("a", 200, 2), deleted("a", 400, 3)] {
+            let r = merge_incoming(&mut books, &[c], &mut l, &loc, now());
+            assert_eq!(r.removed, 0);
+            assert_eq!(books[0].highlights, vec![gone.clone()]);
+        }
+        // and it is sent to the device as a new annotation (never as a deletion)
+        let out = outgoing(&books, &l, 500);
+        let sent: Vec<_> = out.iter().flat_map(|(_, list, _)| list).collect();
+        assert_eq!(sent.len(), 1);
+        assert_eq!(sent[0].id, gone.id);
+        assert!(!sent[0].deleted && sent[0].text == gone.text);
+    }
+
+    #[test]
     fn a_deletion_older_than_the_last_change_is_ignored() {
         let (mut books, mut l, loc) = setup();
         merge_incoming(

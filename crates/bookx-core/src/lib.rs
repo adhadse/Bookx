@@ -2,6 +2,7 @@
 //! GUI-independent engine: EPUB parsing/editing, conversion, library catalogue.
 
 pub mod anchor;
+pub mod annotation_journal;
 pub mod annotations;
 pub mod archive;
 pub mod archive_books;
