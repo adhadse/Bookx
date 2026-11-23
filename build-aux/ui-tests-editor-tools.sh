@@ -1,4 +1,4 @@
-# Scenarios of the editor's Tools dialogs, file browser extras and window features (docs/calibre-editor-gap-analysis.md
+# Scenarios of the editor's Tools dialogs, file browser extras and window features (docs/archive/calibre-editor-gap-analysis.md
 # CE-020..CE-046, CE-130..CE-146, CE-005..CE-018). Sourced by ui-tests.sh (uses its `scenario`, `check`, `has`, $ROOT).
 # Dev commands are `editor:x:<name>=<args>` (src/ui/editor/ext_dev.rs); a comma in a text is written §.
 

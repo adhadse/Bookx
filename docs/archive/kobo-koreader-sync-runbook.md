@@ -1,3 +1,5 @@
+> Archived 2026-11-23: Finished verification record; the protocol and the plugin are described in `koreader-annotation-sync.md`, the live checklist is in `koreader-plugin-testing.md`. Living document: [koreader-annotation-sync.md](../koreader-annotation-sync.md).
+
 # Kobo + KOReader sync: runbook and verification record (2026-11-20)
 
 Internal. For the user text see `wiki/docs/koreader-sync.md`; design in `docs/koreader-annotation-sync.md`.

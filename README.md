@@ -32,9 +32,9 @@ This README is for people working on Bookx. What the app can and cannot do is de
 
 Where the work is going (details in the linked files, not repeated here):
 
-- Open work items and caveats: [docs/remaining-work.md](docs/remaining-work.md).
+- Open work items and caveats: [docs/remaining.md](docs/remaining.md); index of all internal documents: [docs/README.md](docs/README.md).
 - The feature roadmap and the owner's decisions: [docs/bookx-feature-roadmap.md](docs/bookx-feature-roadmap.md), progress in [docs/roadmap-status.md](docs/roadmap-status.md).
-- UI polish and usability: [docs/human_interface_backlog.md](docs/human_interface_backlog.md), [docs/ux-gaps-notes.md](docs/ux-gaps-notes.md).
+- UI polish and usability: [docs/archive/human_interface_backlog.md](docs/archive/human_interface_backlog.md), [docs/archive/ux-gaps-notes.md](docs/archive/ux-gaps-notes.md).
 - Testing on real hardware (e-readers, phones, Kindle): [docs/hardware-test-plan.md](docs/hardware-test-plan.md).
 - **How a release is made** (tag, workflows and their order, `.deb`/`.rpm`/Flatpak, verification): [docs/releasing.md](docs/releasing.md).
 - Release plan and distribution (GitHub Releases first, Flathub later): [docs/release-plan.md](docs/release-plan.md); packaging details (deb/rpm, Flatpak, macOS, Windows): [docs/packaging-notes.md](docs/packaging-notes.md).

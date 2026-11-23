@@ -1,3 +1,5 @@
+> Archived 2026-11-23: Finished feature notes. Living document: [remaining.md](../remaining.md).
+
 # Spelling panel, Reports window, special characters (internal notes)
 
 Date: 2026-11-13. Rows CE-270..CE-281, CE-300..CE-311 of `docs/calibre-editor-gap-analysis.md`. Public docs: `wiki/docs/editing.md`.

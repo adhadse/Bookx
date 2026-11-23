@@ -3,7 +3,7 @@
 # the runbook) mentions the removed `/kosync` address, or when the wiki page lacks the account section.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-if grep -rnI -- '/kosync' wiki/docs README.md koreader-plugin/bookx.koplugin koreader-plugin/README.md docs/kobo-koreader-sync-runbook.md; then
+if grep -rnI -- '/kosync' wiki/docs README.md koreader-plugin/bookx.koplugin koreader-plugin/README.md docs/archive/kobo-koreader-sync-runbook.md; then
     echo "check-sync-endpoint: '/kosync' must not appear in user-facing text (use /bookx)" >&2
     exit 1
 fi

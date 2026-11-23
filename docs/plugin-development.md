@@ -3,6 +3,8 @@
 Bookx can be extended in two ways, both **off until the user switches them on** (Preferences → Plugins)
 and both **sandboxed**:
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 | | Plugins | Patches |
 |---|---|---|
 | What | WebAssembly modules (any language) | small TOML files with regex / CSS rules |
@@ -122,7 +124,7 @@ A complete example in Rust (no dependencies, about 150 lines) is `examples/plugi
 
 Before a user can switch a plugin on, Bookx shows a capability sheet built from `permissions`; their approval is pinned to the SHA-256 of
 `plugin.toml` and the `.wasm`, so **shipping a new build means the user is asked again**. An optional detached `plugin.sig` (format in
-`docs/editor-plugins-design.md`) is read; this build cannot verify ed25519 yet and shows such a plugin as "signed, not verified". Unsigned plugins
+`docs/archive/editor-plugins-design.md`) is read; this build cannot verify ed25519 yet and shows such a plugin as "signed, not verified". Unsigned plugins
 are allowed with a warning.
 
 An editor action can be tried on many books: `bookx-cli plugin run <plugin folder> <action id> [search] [--apply]`. Without `--apply` it reports

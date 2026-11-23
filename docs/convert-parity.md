@@ -4,6 +4,8 @@ How the Bookx converters compare with Calibre's `ebook-convert` (9.15 on the tes
 what differs on purpose and what is still open. Internal notes; the user-facing summary is in
 `wiki/docs/converting.md`.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## How it is tested
 
 * **Harness**: `build-aux/convert-parity.sh` (full matrix, `--smoke`, `--report`, `--fixtures`, `--update-doc`) drives

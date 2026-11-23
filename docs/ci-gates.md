@@ -3,6 +3,17 @@
 Internal notes (not for the wiki). Everything a pull request has to pass is one workflow, `ci.yml`. The single
 entry point for coverage is `build-aux/coverage.sh`; CI runs the same script.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: CI agent, reviewed by @adhadse
+
+## Contents
+
+- [The workflows](#the-workflows)
+- [What a job does, and how to run it locally](#what-a-job-does-and-how-to-run-it-locally)
+- [Caching, speed, parallelism](#caching-speed-parallelism)
+- [Why the first runs were red (2026-11-22)](#why-the-first-runs-were-red-2026-11-22)
+- [Code coverage](#code-coverage)
+- [Scenarios that measure a speed](#scenarios-that-measure-a-speed)
+
 ## The workflows
 
 Before (2026-11-21): 9 workflows, 14 jobs, nothing ever green. After: 7 workflows (`ci`, `_flatpak`, `wiki-deploy`, `release`,

@@ -4,6 +4,8 @@
 EPUB validator, AGPL-3.0, used only as an external test tool, see `NOTICE.md`) in
 `crates/bookx-editing/tests/epubveri_oracle.rs`. No Java is involved.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 Install (user-local, no system changes):
 
 ```bash
