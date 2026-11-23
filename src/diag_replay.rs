@@ -715,6 +715,34 @@ mod tests {
         }
     }
 
+    /// The Python triage tool and the report's own summary read one table: they must agree.
+    #[test]
+    fn the_python_tool_and_the_summary_block_name_the_same_cause() {
+        let script = concat!(env!("CARGO_MANIFEST_DIR"), "/build-aux/triage-report.py");
+        let Ok(probe) = std::process::Command::new("python3").arg("--version").output() else {
+            return; // no Python here: the CI job that has it runs this
+        };
+        if !probe.status.success() {
+            return;
+        }
+        for c in cases().iter().filter(|c| c.verdict != Verdict::No) {
+            let r = build_report(c, Options::default());
+            let want = crate::triage::headline(&crate::triage::analyse(&r)).map(|f| (f.id.clone(), f.area.clone()));
+            let mut child = std::process::Command::new("python3")
+                .args([script, "--json"])
+                .stdin(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::piped())
+                .spawn()
+                .unwrap();
+            use std::io::Write;
+            child.stdin.take().unwrap().write_all(r.as_bytes()).unwrap();
+            let out = child.wait_with_output().unwrap();
+            let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+            let got = v["headline"]["id"].as_str().map(|id| (id.to_string(), v["headline"]["area"].as_str().unwrap_or("").to_string()));
+            assert_eq!(got, want, "{}", c.name);
+        }
+    }
+
     #[test]
     fn the_terminal_output_of_a_package_for_another_release_is_recognised() {
         let t = "bookx: /lib64/libc.so.6: version `GLIBC_2.43' not found (required by bookx)\nbookx: error while loading shared libraries: libcrypto.so.3: cannot open shared object file";
