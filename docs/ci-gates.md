@@ -90,7 +90,7 @@ JSON
 deploys it: the live site must not describe a feature that no download has yet. `wiki-deploy.yml` publishes it:
 
 * `release.yml` calls it as the last job (`wiki`, `needs: publish`) with the tag, so the docs go live after the release
-  assets are out, for pre-release tags too. It is skipped for manual runs without a tag, and a Pages failure leaves the
+  assets are out, for beta tags too. It is skipped for manual runs without a tag, and a Pages failure leaves the
   release as it is (red job, assets already published).
 * by hand (Actions, Wiki deploy, Run workflow) is the owner's override: a manual run deploys whatever ref you pick
   (default `main`; any branch or tag); a release deploys its tag.

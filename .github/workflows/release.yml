@@ -1,13 +1,14 @@
 name: Release
 
-# Push a tag like v0.3.0 (or v0.3.0-beta.1, -rc.1, -alpha.1: those become GitHub pre-releases). The jobs:
+# Push a tag like v0.3.0 (or v0.3.0-beta.1, -rc.1, -alpha.1; every release is a normal release marked Latest, never a GitHub pre-release,
+# so it shows in the repository's Releases section). The jobs:
 #   gates     the commit of the tag has to have passed CI already (build-aux/release-gate.py: its `required` check, a green
 #             Nightly, or the merged pull request with a green `required` check and an equal tree)
 #   tarball   release build (on Fedora 43: the glibc floor), tarball, .deb, .rpm
 #   distros   installs the .deb/.rpm/tarball in real distribution images and starts the app (build-aux/distro-matrix.sh)
 #   flatpak   the Flatpak bundle (the reusable _flatpak.yml, the same build CI does)
 #   publish   checksums, build provenance, cosign signatures, the GitHub release
-#   wiki      after publish: the public wiki is deployed from the tagged commit (wiki-deploy.yml), pre-releases included
+#   wiki      after publish: the public wiki is deployed from the tagged commit (wiki-deploy.yml), betas included
 # Nothing here creates or pushes a tag.
 # Signing (docs/security.md, "Release signing"): there is no signing key to keep. The publish job signs every file with
 # Sigstore cosign "keyless" (the GitHub Actions OIDC identity of this workflow, recorded in the public Rekor log) and
@@ -139,13 +140,11 @@ jobs:
     timeout-minutes: 5
     outputs:
       version: ${{ steps.v.outputs.version }}
-      prerelease: ${{ steps.v.outputs.prerelease }}
     steps:
       - id: v
         run: |
           case "$GITHUB_REF" in refs/tags/v*) v=${GITHUB_REF_NAME#v} ;; *) v="" ;; esac
           echo "version=$v" >> "$GITHUB_OUTPUT"
-          case "$v" in *-alpha* | *-beta* | *-rc*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;; *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;; esac
 
   flatpak:
     name: Flatpak bundle
@@ -212,7 +211,9 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
-          prerelease: ${{ needs.version.outputs.prerelease == 'true' }}
+          # never a pre-release: GitHub keeps those out of the Releases box of the repository page. The newest release is "Latest".
+          prerelease: false
+          make_latest: true
 
   wiki:
     # The documentation goes live with the release, after the assets are out: a failure here is red but changes nothing
