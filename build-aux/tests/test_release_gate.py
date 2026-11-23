@@ -39,6 +39,18 @@ class Gate(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("failure", msg)
 
+    def test_a_skipped_required_check_on_the_commit_is_no_check_so_the_merged_pull_request_decides(self):
+        # a push to main reports `required` as skipped (it only warms the caches): found when v0.3.0-beta.3 was refused
+        green = {HEAD: [run("required", "success")]}
+        ok, msg = rg.decide(SHA, False, [run("required", "skipped")], [], [pull()], green, trees(**{SHA: "t", HEAD: "t"}))
+        self.assertTrue(ok, msg)
+        self.assertIn("#7", msg)
+        # and without a pull request behind it a skipped check proves nothing
+        self.assertFalse(rg.decide(SHA, False, [run("required", "skipped")], [], [], {}, trees())[0])
+        # cancelled and timed out are red, not skipped
+        for bad in ("cancelled", "timed_out", "failure"):
+            self.assertFalse(rg.decide(SHA, False, [run("required", bad)], [], [pull()], green, trees(**{SHA: "t", HEAD: "t"}))[0], bad)
+
     def test_the_newest_required_check_counts(self):
         runs = [run("required", "failure", "2026-11-22T10:00:00Z"), run("required", "success", "2026-11-22T10:30:00Z")]
         self.assertTrue(rg.decide(SHA, False, runs, [], [], {}, trees())[0])
