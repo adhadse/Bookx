@@ -703,6 +703,12 @@ mod tests {
     }
 
     #[test]
+    fn the_keyring_names_its_items_by_application_and_key() {
+        assert_eq!(attrs("webdav"), vec![APP_ATTR, ("key", "webdav")]);
+        assert_eq!(Oo7Store.describe(), "the system keyring");
+    }
+
+    #[test]
     fn the_environment_picks_the_store() {
         let m = open_for(Some("memory"));
         assert!(m.available());
