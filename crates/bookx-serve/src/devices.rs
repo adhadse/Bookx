@@ -8,7 +8,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::contracts::{DeviceDriver, DeviceInfo};
 
 /// The kinds of reader this driver understands.

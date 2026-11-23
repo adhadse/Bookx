@@ -3,7 +3,7 @@
 mod common;
 
 use bookx_core::book::OpenBook;
-use bookx_editing::links::{arrange_files, move_file, ArrangeOptions};
+use bookx_editing::links::{ArrangeOptions, arrange_files, move_file};
 
 struct Lcg(u64);
 impl Lcg {

@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use bookx_core::custom::{register_composite_renderer, ColumnDef, ColumnKind};
+use bookx_core::custom::{ColumnDef, ColumnKind, register_composite_renderer};
 use bookx_core::library::{AddOutcome, Book, Library, MemoryBackend, SortKey};
 use bookx_core::query::Query;
 
@@ -162,22 +162,25 @@ fn definitions_values_search_sort_and_undo() {
 fn bad_definitions_are_refused() {
     let dir = tmp();
     let mut lib = Library::in_memory(&dir.join("lib")).unwrap();
-    assert!(lib
-        .set_columns(vec![col("title", ColumnKind::Text)])
-        .is_err());
-    assert!(lib
-        .set_columns(vec![col("a", ColumnKind::Text), col("a", ColumnKind::Text)])
-        .is_err());
-    assert!(lib
-        .set_columns(vec![col("e", ColumnKind::Enumeration)])
-        .is_err());
+    assert!(
+        lib.set_columns(vec![col("title", ColumnKind::Text)])
+            .is_err()
+    );
+    assert!(
+        lib.set_columns(vec![col("a", ColumnKind::Text), col("a", ColumnKind::Text)])
+            .is_err()
+    );
+    assert!(
+        lib.set_columns(vec![col("e", ColumnKind::Enumeration)])
+            .is_err()
+    );
     assert!(lib.columns().is_empty());
     let _ = std::fs::remove_dir_all(dir);
 }
 
 #[test]
 fn search_and_replace_previews_applies_and_undoes() {
-    use bookx_core::replace::{apply, preview, Rule, Target};
+    use bookx_core::replace::{Rule, Target, apply, preview};
     let dir = tmp();
     let mut lib = Library::in_memory(&dir.join("lib")).unwrap();
     let a = add(&mut lib, &dir, "The Alpha");
@@ -274,11 +277,13 @@ fn search_and_replace_previews_applies_and_undoes() {
     };
     let p = preview(&lib, &ids, &bad, 9).unwrap();
     assert_eq!((p.total, p.problems), (1, 1));
-    assert!(p.changes[0]
-        .problem
-        .as_deref()
-        .unwrap()
-        .contains("whole number"));
+    assert!(
+        p.changes[0]
+            .problem
+            .as_deref()
+            .unwrap()
+            .contains("whole number")
+    );
     assert_eq!(apply(&mut lib, &ids, &bad).unwrap(), (0, 1));
     assert_eq!(lib.get(b).unwrap().custom_value("pages"), "12");
     let _ = std::fs::remove_dir_all(dir);

@@ -6,7 +6,7 @@ use std::io::Read;
 use bookx_core::archive::Archive;
 use bookx_core::book::OpenBook;
 use bookx_sources::fetch::MockFetcher;
-use bookx_sources::recipe::{build_news_epub, is_due, next_run, Recipe, Schedule};
+use bookx_sources::recipe::{Recipe, Schedule, build_news_epub, is_due, next_run};
 use chrono::{TimeZone, Utc};
 
 const RECIPE: &str = r#"
@@ -166,9 +166,10 @@ fn recipe_to_nested_epub() {
     assert!(!text.contains("Related links"));
     assert!(text.contains("Second opinion in full"));
     assert!(!text.contains("Daily quiz") && !text.contains("Last week"));
-    assert!(book
-        .cover_bytes()
-        .is_some_and(|c| c.starts_with(b"\x89PNG")));
+    assert!(
+        book.cover_bytes()
+            .is_some_and(|c| c.starts_with(b"\x89PNG"))
+    );
 }
 
 #[test]

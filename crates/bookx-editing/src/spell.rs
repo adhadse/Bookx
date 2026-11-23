@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::book::OpenBook;
 use spellbook::Dictionary;
 
@@ -470,7 +470,9 @@ pub(crate) mod tests {
         let words: Vec<&str> = w.iter().map(|w| w.word.as_str()).collect();
         assert_eq!(
             words,
-            vec!["Hello", "wörld", "fox", "es", "café", "Der", "Hund", "after"]
+            vec![
+                "Hello", "wörld", "fox", "es", "café", "Der", "Hund", "after"
+            ]
         );
         let de: Vec<&str> = w
             .iter()
@@ -567,9 +569,10 @@ pub(crate) mod tests {
         c.add_dictionary_files("de", &dir.join("de.aff"), &dir.join("de.dic"))
             .unwrap();
         assert_eq!(c.check_word("de", "hund"), Some(true));
-        assert!(c
-            .add_dictionary_files("fr", &dir.join("nope.aff"), &dir.join("de.dic"))
-            .is_err());
+        assert!(
+            c.add_dictionary_files("fr", &dir.join("nope.aff"), &dir.join("de.dic"))
+                .is_err()
+        );
         std::fs::remove_dir_all(dir).ok();
     }
 
@@ -694,11 +697,12 @@ pub(crate) mod tests {
             replace_in_book(&mut book, "OEBPS/chapter-1.xhtml", "tehe", "the").unwrap(),
             2
         );
-        assert!(book
-            .archive
-            .get_string("OEBPS/chapter-1.xhtml")
-            .unwrap()
-            .contains("<p>the the</p>"));
+        assert!(
+            book.archive
+                .get_string("OEBPS/chapter-1.xhtml")
+                .unwrap()
+                .contains("<p>the the</p>")
+        );
         assert_eq!(
             replace_in_book(&mut book, "OEBPS/chapter-1.xhtml", "zzz", "the").unwrap(),
             0

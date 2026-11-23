@@ -19,7 +19,7 @@ use std::collections::{BTreeMap, HashMap};
 use bookx_core::library::Book;
 use bookx_core::query::Query;
 use chrono::{DateTime, NaiveDate, Utc};
-use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
+use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use uuid::Uuid;
 
 use crate::http::mime_for_extension;
@@ -1296,10 +1296,11 @@ mod tests {
         };
         let doc = opensearch_description(&c);
         let d = parse(&doc);
-        assert!(d
-            .root_element()
-            .descendants()
-            .any(|n| n.text() == Some("A & <B>")));
+        assert!(
+            d.root_element()
+                .descendants()
+                .any(|n| n.text() == Some("A & <B>"))
+        );
     }
 
     #[test]

@@ -3,8 +3,8 @@
 
 use std::io::Cursor;
 
-use anyhow::{bail, Context, Result};
-use image::{imageops::FilterType, ImageReader, Limits};
+use anyhow::{Context, Result, bail};
+use image::{ImageReader, Limits, imageops::FilterType};
 
 use crate::panels::{self, Gray, Rect};
 
@@ -175,7 +175,7 @@ pub fn decode_page(bytes: &[u8], o: &Opts) -> Result<Page> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testgen::{bomb_png, jpeg, png, Layout};
+    use crate::testgen::{Layout, bomb_png, jpeg, png};
 
     #[test]
     fn decodes_png_and_jpeg_and_finds_panels() {

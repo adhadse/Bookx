@@ -13,7 +13,7 @@ use bookx_sources::trackers::{TrackerStatus, TrackerUpdate};
 use bookx_store::{ReadingStatus, SqliteStore};
 
 use crate::core::library::{Book, Library};
-use crate::tracker_sync::{self, to_status, Applied};
+use crate::tracker_sync::{self, Applied, to_status};
 
 /// The tag a Want to Read book gets, the same word the tracker import uses.
 pub const TO_READ_TAG: &str = "to-read";
@@ -311,13 +311,14 @@ mod tests {
         let (dune, emma) = (id_of(&lib, "Dune"), id_of(&lib, "Emma"));
         assert_eq!(store.get_status(dune), Some(ReadingStatus::Finished));
         assert_eq!(lib.get(dune).unwrap().meta.rating, 10);
-        assert!(lib
-            .get(emma)
-            .unwrap()
-            .meta
-            .tags
-            .iter()
-            .any(|t| t == "to-read"));
+        assert!(
+            lib.get(emma)
+                .unwrap()
+                .meta
+                .tags
+                .iter()
+                .any(|t| t == "to-read")
+        );
         assert!(undo(&mut lib, &store, &undo_token).unwrap());
         assert_eq!(store.get_status(dune), Some(ReadingStatus::New));
         assert_eq!(lib.get(dune).unwrap().meta.rating, 0);

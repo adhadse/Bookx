@@ -306,7 +306,9 @@ pub fn start_export_all(parent: &gtk::Window, shared: &SharedRef, toast: Rc<dyn 
     let drop = gtk::DropDown::from_strings(&labels);
     let d = adw::AlertDialog::new(
         Some(&tr("Export All Annotations")),
-        Some(&tr("Writes one file per book that has highlights, notes or bookmarks, into a folder you choose.")),
+        Some(&tr(
+            "Writes one file per book that has highlights, notes or bookmarks, into a folder you choose.",
+        )),
     );
     d.set_extra_child(Some(&drop));
     d.add_responses(&[("cancel", &tr("Cancel")), ("ok", &tr("Choose Folder"))]);

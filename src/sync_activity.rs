@@ -7,7 +7,7 @@
 
 use std::collections::{BTreeSet, HashMap};
 
-use bookx_serve::activity::{Device, Event, Presence, What, UNKNOWN_DEVICE};
+use bookx_serve::activity::{Device, Event, Presence, UNKNOWN_DEVICE, What};
 
 use crate::i18n::{ntr, tr, trf};
 
@@ -258,7 +258,9 @@ pub fn today_line(events: &[Event], since: i64) -> String {
 
 /// The text of the empty list.
 pub fn empty_text(address: Option<&str>) -> String {
-    let mut s = tr("Nothing has synced yet. On your e-reader open a book, then More tools, Bookx Sync, Sync now.");
+    let mut s = tr(
+        "Nothing has synced yet. On your e-reader open a book, then More tools, Bookx Sync, Sync now.",
+    );
     match address {
         Some(a) => {
             s.push(' ');

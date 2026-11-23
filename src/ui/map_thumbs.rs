@@ -26,7 +26,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use bookx_lookup::thumbs::{
-    group_by_chapter, locate, nearest, prefetch_order, Debounce, Latest, Lru,
+    Debounce, Latest, Lru, group_by_chapter, locate, nearest, prefetch_order,
 };
 use relm4::gtk::{self, glib};
 
@@ -354,7 +354,8 @@ impl Thumbs {
             return;
         };
         #[allow(deprecated)]
-        let Some(pb) = gtk::gdk::pixbuf_get_from_surface(&t.surface, 0, 0, t.size.0, t.size.1) else {
+        let Some(pb) = gtk::gdk::pixbuf_get_from_surface(&t.surface, 0, 0, t.size.0, t.size.1)
+        else {
             return;
         };
         let meta = format!(

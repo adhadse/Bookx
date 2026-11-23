@@ -5,7 +5,7 @@
 //! The engine edits the source text in place, so everything a rule does not touch stays byte for byte as it
 //! was: entities, quotes, comments, namespace prefixes, whitespace.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_core::book::OpenBook;
 use bookx_core::util::parse_xml;
 use serde::{Deserialize, Serialize};
@@ -682,7 +682,9 @@ mod tests {
 
     #[test]
     fn namespaced_attributes_are_matched_as_written() {
-        let src = format!("<html {NS} xmlns:epub=\"http://www.idpf.org/2007/ops\"><body><section epub:type=\"chapter\"><p>x</p></section></body></html>");
+        let src = format!(
+            "<html {NS} xmlns:epub=\"http://www.idpf.org/2007/ops\"><body><section epub:type=\"chapter\"><p>x</p></section></body></html>"
+        );
         let rule = HtmlRule::SetAttr {
             selector: "//section".into(),
             name: "epub:type".into(),
@@ -808,12 +810,16 @@ mod tests {
     fn invalid_rules_are_refused() {
         assert!(HtmlRuleKind::RenameTag.build("b", &["1x".into()]).is_err());
         assert!(HtmlRuleKind::RenameTag.build("", &["i".into()]).is_err());
-        assert!(HtmlRuleKind::SetAttr
-            .build("p", &["a b".into(), "v".into()])
-            .is_err());
-        assert!(HtmlRuleKind::ReplaceAttr
-            .build("p", &["href".into(), "".into(), "x".into()])
-            .is_err());
+        assert!(
+            HtmlRuleKind::SetAttr
+                .build("p", &["a b".into(), "v".into()])
+                .is_err()
+        );
+        assert!(
+            HtmlRuleKind::ReplaceAttr
+                .build("p", &["href".into(), "".into(), "x".into()])
+                .is_err()
+        );
         assert!(HtmlRuleKind::AddClass.build("p", &["a b".into()]).is_err());
         assert!(HtmlRuleKind::Wrap.build("p", &["<div".into()]).is_err());
         assert!(HtmlRuleKind::RenameTag.build("b", &["i".into()]).is_ok());
@@ -859,11 +865,12 @@ mod tests {
         let r = transform_book(&mut b, &rules, &[], false);
         assert_eq!(r.total(), 1);
         let f = &r.changed[0].0;
-        assert!(b
-            .archive
-            .get_string(f)
-            .unwrap()
-            .contains("<strong>x</strong>"));
+        assert!(
+            b.archive
+                .get_string(f)
+                .unwrap()
+                .contains("<strong>x</strong>")
+        );
         let r = transform_book(&mut b, &rules, &[], false);
         assert_eq!(r.total(), 0, "a second run finds nothing");
     }

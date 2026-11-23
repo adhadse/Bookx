@@ -3,9 +3,9 @@
 use bookx_editing::fixes::{fix_missing_namespace, repair_xhtml};
 use bookx_editing::markup::*;
 use bookx_editing::spell::extract_words;
-use bookx_editing::split_merge::{split_points, PageBreakRules, SplitSpec};
+use bookx_editing::split_merge::{PageBreakRules, SplitSpec, split_points};
 use bookx_editing::transform_css::{
-    transform_declarations, transform_stylesheet, CssTransform, Unit,
+    CssTransform, Unit, transform_declarations, transform_stylesheet,
 };
 
 struct Lcg(u64);

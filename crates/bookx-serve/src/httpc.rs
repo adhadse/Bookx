@@ -8,7 +8,7 @@ use std::net::{TcpStream, ToSocketAddrs};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 
 /// What came back.
 #[derive(Debug)]
@@ -180,7 +180,7 @@ fn connect(url: &url::Url, timeout: Duration, trusted_pem: Option<&[u8]>) -> Res
         (Some(t), _) => t,
         (None, e) => {
             return Err(anyhow::Error::from(e.expect("one address was tried")))
-                .with_context(|| format!("connecting to {host}:{port}"))
+                .with_context(|| format!("connecting to {host}:{port}"));
         }
     };
     tcp.set_nodelay(true).ok();
@@ -365,7 +365,7 @@ pub fn request_stream(
             Ok(0) => {
                 return Err(send_error.unwrap_or_else(|| {
                     anyhow!("the server closed the connection without answering")
-                }))
+                }));
             }
             Ok(n) => buf.extend_from_slice(&chunk[..n]),
             Err(e) => return Err(send_error.unwrap_or_else(|| anyhow!("reading the answer: {e}"))),
@@ -444,7 +444,7 @@ pub fn request_stream(
                         put(&chunk[..n])?;
                     }
                     Err(e) if length.is_none() && e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                        break
+                        break;
                     }
                     Err(e) => return Err(anyhow!("reading the answer: {e}")),
                 }
@@ -620,10 +620,12 @@ mod tests {
         }
         // a size line that never ends is cut off instead of buffered for ever
         let long = vec![b'1'; 5000];
-        assert!(feed_all(&[&long])
-            .unwrap_err()
-            .to_string()
-            .contains("malformed"));
+        assert!(
+            feed_all(&[&long])
+                .unwrap_err()
+                .to_string()
+                .contains("malformed")
+        );
         // an error from the receiver (the disk is full) stops the decoding
         let mut d = ChunkedDecoder::default();
         let e = d
@@ -711,14 +713,16 @@ mod tests {
     #[test]
     fn header_injection_is_refused() {
         let u = url::Url::parse("http://127.0.0.1:9/").unwrap();
-        assert!(request(
-            "GET",
-            &u,
-            &[("X", "a\r\nEvil: 1")],
-            b"",
-            Duration::from_secs(1)
-        )
-        .is_err());
+        assert!(
+            request(
+                "GET",
+                &u,
+                &[("X", "a\r\nEvil: 1")],
+                b"",
+                Duration::from_secs(1)
+            )
+            .is_err()
+        );
     }
 
     #[test]

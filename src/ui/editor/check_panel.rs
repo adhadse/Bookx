@@ -894,7 +894,12 @@ impl Editor {
                     self.problems.list.len(),
                     self.problems.hidden,
                     self.problems.selected.map_or(-1, |i| i as i32),
-                    self.problems.ignored.iter().cloned().collect::<Vec<_>>().join(","),
+                    self.problems
+                        .ignored
+                        .iter()
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join(","),
                     self.problems.accessibility,
                     self.problems.stale_files.len(),
                     self.w.problems.root.reveals_child(),

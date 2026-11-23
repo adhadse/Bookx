@@ -728,7 +728,9 @@ mod tests {
 
     #[test]
     fn of_several_occurrences_the_one_closest_to_the_hint_wins() {
-        let hay = chars("the same sentence here. xxxxxxxx the same sentence here. yyyyyyyy the same sentence here.");
+        let hay = chars(
+            "the same sentence here. xxxxxxxx the same sentence here. yyyyyyyy the same sentence here.",
+        );
         let all = occurrences(&hay, &chars("the same sentence here."));
         assert_eq!(all.len(), 3);
         for (i, want) in all.iter().enumerate() {
@@ -749,7 +751,9 @@ mod tests {
 
     #[test]
     fn a_slightly_different_quote_is_found_fuzzily_and_a_different_one_is_not() {
-        let hay = chars("Intro text. Independent deployability is the idea that we can make a change to a microservice, deploy it, and release that change to our users, without having to deploy any other microservices. More text follows.");
+        let hay = chars(
+            "Intro text. Independent deployability is the idea that we can make a change to a microservice, deploy it, and release that change to our users, without having to deploy any other microservices. More text follows.",
+        );
         let device = "Independent deployability is the idea that we can make a change to a microservice, deploy it and release that change to our users, without having to deploy any other microservices";
         let f = locate(&hay, device, Some(0)).unwrap();
         assert!(matches!(f.kind, Match::Fuzzy(s) if s > 0.9));
@@ -761,7 +765,9 @@ mod tests {
 
     #[test]
     fn a_device_that_changed_a_word_at_either_end_still_finds_the_passage() {
-        let hay = chars("Before. Paragraph 15 of chapter 1 talks about functionality, readers and the world around them in plain words. After it comes more text.");
+        let hay = chars(
+            "Before. Paragraph 15 of chapter 1 talks about functionality, readers and the world around them in plain words. After it comes more text.",
+        );
         let end_changed = "Paragraph 15 of chapter 1 talks about functionality, readers and the world around them in simple words.";
         let f = locate(&hay, end_changed, Some(0)).unwrap();
         assert!(matches!(f.kind, Match::Fuzzy(_)));

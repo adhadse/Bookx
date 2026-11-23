@@ -2,7 +2,7 @@
 //! built from the user's current bindings (rebuilt whenever they change).
 
 use super::*;
-use crate::editor_keymap::{Cmd as KeyCmd, COMMANDS};
+use crate::editor_keymap::{COMMANDS, Cmd as KeyCmd};
 use crate::shortcuts;
 use bookx_editing::code_format::Format;
 use bookx_editing::code_style::{Align, ColourKind};

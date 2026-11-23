@@ -14,7 +14,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::history::STATE_DIR;
-use crate::library::{collect_book_files, AddOutcome, Library, Prepared};
+use crate::library::{AddOutcome, Library, Prepared, collect_book_files};
 
 /// How long a file must be unchanged before it counts as fully copied.
 pub const SETTLE: Duration = Duration::from_secs(3);
@@ -281,14 +281,16 @@ mod tests {
             ..Default::default()
         };
         // not settled yet
-        assert!(scan(
-            &st,
-            &lib,
-            SystemTime::now() - Duration::from_secs(30),
-            SETTLE,
-            &prepare
-        )
-        .is_empty());
+        assert!(
+            scan(
+                &st,
+                &lib,
+                SystemTime::now() - Duration::from_secs(30),
+                SETTLE,
+                &prepare
+            )
+            .is_empty()
+        );
         let found = scan(&st, &lib, later(), SETTLE, &prepare);
         assert_eq!(found.len(), 2);
         let known = found.iter().find(|c| c.title == "Known").unwrap();

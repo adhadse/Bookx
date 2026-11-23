@@ -1,7 +1,7 @@
 //! Offline mode blocks the real HTTP client before it sends anything. Own test binary: the switch
 //! is process-wide, so it must not share a process with tests that expect the network.
 
-use bookx_sources::fetch::{is_offline, set_offline, FetchError, Fetcher, UreqFetcher};
+use bookx_sources::fetch::{FetchError, Fetcher, UreqFetcher, is_offline, set_offline};
 
 #[test]
 fn offline_mode_refuses_without_sending() {

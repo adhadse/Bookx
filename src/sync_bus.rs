@@ -14,8 +14,8 @@
 //! The data structures are plain Rust and unit tested; the glib glue at the bottom is small.
 
 use std::cell::{Cell, RefCell};
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};

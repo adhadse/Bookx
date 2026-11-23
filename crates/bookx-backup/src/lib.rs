@@ -26,11 +26,11 @@ pub mod settings;
 pub mod target;
 
 pub use push::{
-    fetch_to_file, list_backups, open_file, prune, push, summarize, Cancelled, Progress,
-    PushOptions, PushReport, PushStage, Summary,
+    Cancelled, Progress, PushOptions, PushReport, PushStage, Summary, fetch_to_file, list_backups,
+    open_file, prune, push, summarize,
 };
 pub use settings::{BackupSettings, DestKind, DestStatus, Destination, Trigger};
 pub use target::{
-    parse_remote_name, remote_name, FolderTarget, MemTarget, RemoteFile, RemoteName, Target,
-    WebDavTarget,
+    FolderTarget, MemTarget, RemoteFile, RemoteName, Target, WebDavTarget, parse_remote_name,
+    remote_name,
 };

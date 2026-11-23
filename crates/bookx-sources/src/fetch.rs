@@ -651,8 +651,8 @@ mod tests {
 
     #[test]
     fn polite_fetcher_spaces_requests_and_retries() {
-        use std::sync::atomic::{AtomicU64, Ordering};
         use std::sync::Arc;
+        use std::sync::atomic::{AtomicU64, Ordering};
         let now = Arc::new(AtomicU64::new(10_000));
         let slept = Arc::new(Mutex::new(Vec::<u64>::new()));
         let (n2, s2) = (now.clone(), slept.clone());
@@ -765,9 +765,12 @@ mod tests {
     fn a_redirect_to_a_private_address_is_not_followed() {
         // the first hop is trusted (the user typed it), the Location is not
         let (target_port, target_hits) = local_server("127.0.0.2", ok_reply("internal"));
-        let (port, _) = local_server("127.0.0.12", format!(
-            "HTTP/1.1 302 Found\r\nLocation: http://127.0.0.2:{target_port}/\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
-        ));
+        let (port, _) = local_server(
+            "127.0.0.12",
+            format!(
+                "HTTP/1.1 302 Found\r\nLocation: http://127.0.0.2:{target_port}/\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            ),
+        );
         let first = format!("http://127.0.0.12:{port}/start");
         crate::netguard::trust_url(&first);
         let f = UreqFetcher::with_limits(Duration::from_secs(5), 1024);

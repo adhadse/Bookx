@@ -546,9 +546,10 @@ mod tests {
         assert_eq!(p.len(), 10, "{p:?}");
         assert!(p[0].starts_with("font_size 2 is outside 6..=72"));
         assert!(p.iter().any(|m| m.contains("font_family is empty")));
-        assert!(p
-            .iter()
-            .any(|m| m.starts_with("font_weight 50 is outside 100..=900")));
+        assert!(
+            p.iter()
+                .any(|m| m.starts_with("font_weight 50 is outside 100..=900"))
+        );
         assert!(!bad.is_valid());
     }
 
@@ -788,26 +789,34 @@ mod tests {
     #[test]
     fn trigger_collection_book_language() {
         let c = ctx();
-        assert!(Trigger::Collection {
-            name: "sci-fi".into()
-        }
-        .matches(&c));
-        assert!(Trigger::Collection {
-            name: " To Read ".into()
-        }
-        .matches(&c));
-        assert!(!Trigger::Collection {
-            name: "Horror".into()
-        }
-        .matches(&c));
+        assert!(
+            Trigger::Collection {
+                name: "sci-fi".into()
+            }
+            .matches(&c)
+        );
+        assert!(
+            Trigger::Collection {
+                name: " To Read ".into()
+            }
+            .matches(&c)
+        );
+        assert!(
+            !Trigger::Collection {
+                name: "Horror".into()
+            }
+            .matches(&c)
+        );
         assert!(Trigger::Book { id: "b1".into() }.matches(&c));
         assert!(!Trigger::Book { id: "b2".into() }.matches(&c));
         assert!(!Trigger::Book { id: "b1".into() }.matches(&ProfileContext::default()));
         assert!(Trigger::Language { code: "en".into() }.matches(&c));
-        assert!(Trigger::Language {
-            code: "EN-us".into()
-        }
-        .matches(&c));
+        assert!(
+            Trigger::Language {
+                code: "EN-us".into()
+            }
+            .matches(&c)
+        );
         assert!(!Trigger::Language { code: "de".into() }.matches(&c));
         assert!(!Trigger::Language { code: "en".into() }.matches(&ProfileContext::default()));
         assert!(
@@ -984,10 +993,10 @@ mod tests {
         );
         let back = ProfileSet::from_json(&set.to_json()).unwrap();
         assert_eq!(back, set);
-        assert!(ProfileSet::from_json(
-            r#"{"rules":[{"profile":"a","triggers":[{"type":"moon"}]}]}"#
-        )
-        .is_err());
+        assert!(
+            ProfileSet::from_json(r#"{"rules":[{"profile":"a","triggers":[{"type":"moon"}]}]}"#)
+                .is_err()
+        );
         assert!(ProfileSet::from_json("").is_err());
         assert_eq!(ProfileSet::from_json("{}").unwrap(), ProfileSet::default());
     }

@@ -6,9 +6,9 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
-use bookx_mcp::http::{start, HttpConfig};
+use bookx_mcp::http::{HttpConfig, start};
 use common::*;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 const TOKEN: &str = "0123456789abcdef0123456789abcdef";
 

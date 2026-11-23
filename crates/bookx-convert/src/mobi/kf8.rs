@@ -20,7 +20,7 @@
 
 use std::collections::HashMap;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_core::book::OpenBook;
 use bookx_core::contracts::FormatWriter;
 use bookx_core::toc::TocEntry;
@@ -28,15 +28,15 @@ use bookx_core::util::{extension, is_external, parent_dir, resolve_href};
 use regex::Regex;
 
 use super::html::{doc_title, thumbnail};
-use super::indx::{build_index, vwi, Cncx, RawEntry, TagDef};
+use super::indx::{Cncx, RawEntry, TagDef, build_index, vwi};
 use super::palmdoc;
 use super::{
-    assemble_pdb, exth_record, locale_for, pad4, put_u32, split_text, NO_VALUE, TEXT_RECORD,
+    NO_VALUE, TEXT_RECORD, assemble_pdb, exth_record, locale_for, pad4, put_u32, split_text,
 };
 use crate::markup::{
-    body_range, decode_entities, get_attr, remove_attr, set_attr, tag_info, tokenize, Tok,
+    Tok, body_range, decode_entities, get_attr, remove_attr, set_attr, tag_info, tokenize,
 };
-use crate::transforms::css::{parse_css, CssItem};
+use crate::transforms::css::{CssItem, parse_css};
 
 const KF8_HEADER_LEN: usize = 264;
 const B32: &[u8; 32] = b"0123456789ABCDEFGHIJKLMNOPQRSTUV";

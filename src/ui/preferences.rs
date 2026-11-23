@@ -1,7 +1,7 @@
 //! Preferences dialog.
 
 use crate::i18n::ntr;
-use crate::i18n::{tr, trf, N_};
+use crate::i18n::{N_, tr, trf};
 use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -9,7 +9,7 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio, glib};
 
-use super::{window_of, SharedRef};
+use super::{SharedRef, window_of};
 use crate::config::{ReaderTheme, Scheme};
 use crate::ui::canvas::LayoutMode;
 
@@ -483,7 +483,9 @@ pub fn dev(arg: &str) {
             "prefs_fit: section={sel} natural_w={} alloc_w={} dialog={dw}x{dh} window={ww}x{wh} fits={}",
             page.0,
             page.1,
-            page.0 <= if page.1 > 0 { page.1 } else { dw * 6 / 10 } && dw <= ww.max(900) && dh <= wh.max(600)
+            page.0 <= if page.1 > 0 { page.1 } else { dw * 6 / 10 }
+                && dw <= ww.max(900)
+                && dh <= wh.max(600)
         );
     } else if arg == "titles" {
         let mut rows = 0;

@@ -7,7 +7,7 @@ use std::sync::LazyLock;
 use regex::Regex;
 use roxmltree::{Document, Node};
 
-use super::{content, css, resolve, resolve_refs, Cx, Item, Pos, Target};
+use super::{Cx, Item, Pos, Target, content, css, resolve, resolve_refs};
 
 pub(super) const DC_NS: &str = "http://purl.org/dc/elements/1.1/";
 

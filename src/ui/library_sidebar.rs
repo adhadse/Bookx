@@ -10,8 +10,8 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
 
-use super::preferences::register_group;
 use super::SharedRef;
+use super::preferences::register_group;
 use crate::i18n::{tr, trf};
 use crate::library_nav::{SidebarItem, SidebarLayout};
 

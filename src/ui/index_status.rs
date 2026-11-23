@@ -8,8 +8,8 @@ use std::time::Duration;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
 
-use super::preferences::{register_group, PrefCtx};
 use super::SharedRef;
+use super::preferences::{PrefCtx, register_group};
 
 pub fn register() {
     register_group("library", 50, group);

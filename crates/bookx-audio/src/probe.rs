@@ -4,10 +4,10 @@ use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 
-use crate::format::{detect, Format};
+use crate::format::{Format, detect};
 use crate::limits::*;
 use crate::text::decode_text;
 

@@ -26,7 +26,9 @@ fn ch2_body(files: &mut Files, body: &str) {
         "OEBPS/ch2.xhtml",
         xhtml3(
             "<title>Two</title><link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\"/>",
-            &format!("<section epub:type=\"chapter\" id=\"sec\"><h1>Two</h1>{body}<a href=\"ch1.xhtml\">back</a></section>"),
+            &format!(
+                "<section epub:type=\"chapter\" id=\"sec\"><h1>Two</h1>{body}<a href=\"ch1.xhtml\">back</a></section>"
+            ),
         ),
     );
 }
@@ -203,11 +205,7 @@ pub(crate) fn xfaults() -> Vec<XFault> {
 }
 
 fn clean(v: u8) -> Files {
-    if v == 2 {
-        clean_epub2()
-    } else {
-        clean_epub3()
-    }
+    if v == 2 { clean_epub2() } else { clean_epub3() }
 }
 
 #[test]
@@ -293,10 +291,11 @@ fn accessibility_checks_run_only_when_asked() {
         render_text(&r)
     );
     assert!(r.passed);
-    assert!(r
-        .of("ACC-902")
-        .iter()
-        .any(|m| m.text.contains("doc-chapter")));
+    assert!(
+        r.of("ACC-902")
+            .iter()
+            .any(|m| m.text.contains("doc-chapter"))
+    );
     // with the metadata present they go away
     let mut g = clean_epub3();
     rep(
@@ -434,7 +433,9 @@ fn style_sheets_and_style_elements_are_checked_for_declarations() {
     set(
         &mut f,
         "OEBPS/style.css",
-        format!("{STYLE}@media print {{ p {{ margin: 0 }} }}\n@font-face {{ font-family: X; font-display: swap; unicode-range: U+0-7F; src: url(fonts/f.ttf); }}\n"),
+        format!(
+            "{STYLE}@media print {{ p {{ margin: 0 }} }}\n@font-face {{ font-family: X; font-display: swap; unicode-range: U+0-7F; src: url(fonts/f.ttf); }}\n"
+        ),
     );
     let r = ext(&f);
     assert!(

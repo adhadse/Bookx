@@ -4,14 +4,14 @@
 //! Every change is the open book's own (it is part of the book's automatic look, see
 //! `crate::reading_profiles`); the values live in [`crate::tweaks`].
 
-use crate::i18n::{tr, N_};
+use crate::i18n::{N_, tr};
 use std::cell::Cell;
 use std::rc::Rc;
 
 use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 
-use crate::tweaks::{StyleTweaks, HYPHEN_LANGUAGES};
+use crate::tweaks::{HYPHEN_LANGUAGES, StyleTweaks};
 
 type Get = Rc<dyn Fn() -> StyleTweaks>;
 type Change = Rc<dyn Fn(StyleTweaks)>;

@@ -4,13 +4,13 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::library::Book;
 use bookx_core::opf::{Identifier, Metadata};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use rusqlite::{Connection, OpenFlags};
 
-use crate::store::{all_books_conn, alloc_id, put_row, SqliteStore};
+use crate::store::{SqliteStore, all_books_conn, alloc_id, put_row};
 
 /// What [`SqliteStore::import_calibre`] did.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]

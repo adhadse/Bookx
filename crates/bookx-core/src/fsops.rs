@@ -9,7 +9,7 @@ use std::collections::{HashMap, HashSet};
 use std::io;
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 
 /// One file to move. Both paths are absolute (or relative to the same base).
@@ -290,11 +290,13 @@ mod tests {
         let b = file(&d, "b.txt", "B");
         assert!(apply(&[FileMove::new(&a, &b)]).is_err(), "target exists");
         assert!(apply(&[FileMove::new(d.join("none"), d.join("x"))]).is_err());
-        assert!(apply(&[
-            FileMove::new(&a, d.join("same")),
-            FileMove::new(&b, d.join("same"))
-        ])
-        .is_err());
+        assert!(
+            apply(&[
+                FileMove::new(&a, d.join("same")),
+                FileMove::new(&b, d.join("same"))
+            ])
+            .is_err()
+        );
         assert!(a.exists() && b.exists());
         let _ = std::fs::remove_dir_all(d);
     }

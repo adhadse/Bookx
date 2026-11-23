@@ -605,7 +605,9 @@ impl Ui {
     fn add_catalog_dialog(self: &Rc<Self>) {
         let d = adw::AlertDialog::new(
             Some(&tr("Add a Catalogue")),
-            Some(&tr("The address of an OPDS catalogue, such as a Calibre server (http://host:8080/opds) or another Bookx. A user name and password are only needed when the server asks for them.")),
+            Some(&tr(
+                "The address of an OPDS catalogue, such as a Calibre server (http://host:8080/opds) or another Bookx. A user name and password are only needed when the server asks for them.",
+            )),
         );
         let group = adw::PreferencesGroup::new();
         let mk = |title: &str| {

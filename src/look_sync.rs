@@ -306,7 +306,7 @@ mod tests {
 
     // -- through the real readers, the plan and the library ---------------------------------------
 
-    use crate::core::convert::{create_epub, Chapter};
+    use crate::core::convert::{Chapter, create_epub};
     use crate::core::library::{AddOutcome, Library};
     use crate::core::opf::Metadata;
     use std::path::{Path, PathBuf};
@@ -431,7 +431,10 @@ mod tests {
         let d = tmp();
         let (mut lib, id) = library(&d);
         let entry = |n: usize, color: &str, drawer: &str| {
-            format!("  [{n}] = {{ [\"text\"] = {:?}, [\"color\"] = \"{color}\", [\"drawer\"] = \"{drawer}\", [\"pos0\"] = \"/body/DocFragment[1]/body/p[{n}]/text().0\", [\"datetime\"] = \"2026-08-17 11:22:15\" }},\n", para(n + 7))
+            format!(
+                "  [{n}] = {{ [\"text\"] = {:?}, [\"color\"] = \"{color}\", [\"drawer\"] = \"{drawer}\", [\"pos0\"] = \"/body/DocFragment[1]/body/p[{n}]/text().0\", [\"datetime\"] = \"2026-08-17 11:22:15\" }},\n",
+                para(n + 7)
+            )
         };
         let lua = format!(
             "return {{\n [\"annotations\"] = {{\n{}{}{}{}{} }},\n [\"doc_props\"] = {{ [\"title\"] = \"Micro\", [\"authors\"] = \"Sam\" }},\n}}\n",
@@ -579,7 +582,7 @@ mod tests {
 
     #[test]
     fn dedupe_of_an_import_file_keeps_the_same_words_in_two_colours() {
-        use bookx_lookup::import::{dedupe, Imported};
+        use bookx_lookup::import::{Imported, dedupe};
         let mk = |c: Option<&str>| Imported {
             book_title: "Micro".into(),
             book_author: None,

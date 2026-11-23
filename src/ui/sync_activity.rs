@@ -12,9 +12,9 @@ use bookx_serve::activity::{ActivityLog, MAX_EVENTS};
 use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 
-use super::share::follow;
 use super::SharedRef;
-use crate::annotation_sync::{ledger_path, Ledger};
+use super::share::follow;
+use crate::annotation_sync::{Ledger, ledger_path};
 use crate::i18n::{ntr, tr, trf};
 use crate::sync_activity as model;
 

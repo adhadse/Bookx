@@ -6,7 +6,7 @@ use bookx_core::doc::{BlockKind, Span};
 use bookx_core::toc::FlatToc;
 use bookx_core::util::{file_name, is_external, parent_dir, resolve_href};
 
-use crate::markup::{plain_text, scan, tag_attr, Event};
+use crate::markup::{Event, plain_text, scan, tag_attr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TocSource {
@@ -291,14 +291,16 @@ mod tests {
         );
         assert_eq!(titles(&l), vec![(0, "One".into()), (0, "Two b".into())]);
         assert_eq!(l[1].href, "OEBPS/chapter-2.xhtml#x");
-        assert!(generate(
-            &b,
-            &TocOptions {
-                source: TocSource::Links,
-                ..Default::default()
-            }
-        )
-        .is_empty());
+        assert!(
+            generate(
+                &b,
+                &TocOptions {
+                    source: TocSource::Links,
+                    ..Default::default()
+                }
+            )
+            .is_empty()
+        );
     }
 
     #[test]
@@ -318,14 +320,14 @@ mod tests {
             title: "Mine".into(),
             href: "OEBPS/chapter-1.xhtml".into(),
         }];
-        let gen = generate(&b, &TocOptions::default());
-        let out = combine(&existing, gen.clone(), TocMode::Append);
+        let r#gen = generate(&b, &TocOptions::default());
+        let out = combine(&existing, r#gen.clone(), TocMode::Append);
         assert_eq!(out[0].title, "Mine");
         assert_eq!(out.len(), 2);
         assert_eq!(out[1].title, "Part Two");
         assert_eq!(
-            combine(&existing, gen.clone(), TocMode::Replace).len(),
-            gen.len()
+            combine(&existing, r#gen.clone(), TocMode::Replace).len(),
+            r#gen.len()
         );
     }
 }

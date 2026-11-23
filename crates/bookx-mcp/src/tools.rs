@@ -6,11 +6,11 @@ use std::time::Instant;
 
 use bookx_core::library::{Book, SortKey};
 use bookx_core::query::Query;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
-use crate::app::{fail, redact, App, Config, ToolError, ToolOutput};
+use crate::app::{App, Config, ToolError, ToolOutput, fail, redact};
 use crate::schema;
-use crate::server::{decode_cursor, encode_cursor, Ctx, RpcError, LOG_LEVELS};
+use crate::server::{Ctx, LOG_LEVELS, RpcError, decode_cursor, encode_cursor};
 use crate::tools_write;
 
 /// An answer larger than this (bytes of JSON) is refused instead of sent.
@@ -112,89 +112,220 @@ fn book_id() -> Value {
 /// Every tool this configuration offers. Write tools are absent unless writing is allowed.
 pub fn defs(cfg: &Config) -> Vec<ToolDef> {
     let mut v = vec![
-        read("search_books", "Search books",
+        read(
+            "search_books",
+            "Search books",
             "Search the library with the Bookx query language: free words match title/author/tags; fields are title:, author:, tag:, series:, publisher:, language:, format:, identifier:/isbn:, comments:, rating:>=4 (stars), progress:>50, status:new|reading|finished, size:, drm:, weak:; `=` after the colon means exact (author:=\"Ann Lee\"), `-` negates, OR joins groups. Returns book summaries, newest page first by the chosen sort.",
-            obj(paging(json!({
+            obj(
+                paging(json!({
                 "query":{"type":"string","maxLength":500,"description":"Search expression; empty lists everything."},
                 "sort":{"type":"string","enum":["title","author","added","last_read","rating","series","progress","size","published"],"description":"Default title."},
-                "descending":{"type":"boolean"}})), &[]),
-            out(json!({"total":{"type":"integer"},"books":{"type":"array"},"next_cursor":{"type":"string"}}))),
-        read("get_book", "Get one book",
+                "descending":{"type":"boolean"}})),
+                &[],
+            ),
+            out(
+                json!({"total":{"type":"integer"},"books":{"type":"array"},"next_cursor":{"type":"string"}}),
+            ),
+        ),
+        read(
+            "get_book",
+            "Get one book",
             "Full metadata of a book: authors, series, tags, rating (stars), description, identifiers, formats, where each field came from (provenance), reading progress and status, shelves, counts of highlights and bookmarks.",
             obj(json!({"book_id":book_id()}), &["book_id"]),
-            out(json!({"book":{"type":"object"}}))),
-        read("list_collections", "List shelves",
+            out(json!({"book":{"type":"object"}})),
+        ),
+        read(
+            "list_collections",
+            "List shelves",
             "Lists the shelves (collections) with their book counts; with collection_id lists the books on that shelf.",
-            obj(paging(json!({"collection_id":{"type":"integer","description":"List the books of this shelf."}})), &[]),
-            out(json!({"collections":{"type":"array"},"books":{"type":"array"},"next_cursor":{"type":"string"}}))),
-        read("list_series", "List series",
+            obj(
+                paging(
+                    json!({"collection_id":{"type":"integer","description":"List the books of this shelf."}}),
+                ),
+                &[],
+            ),
+            out(
+                json!({"collections":{"type":"array"},"books":{"type":"array"},"next_cursor":{"type":"string"}}),
+            ),
+        ),
+        read(
+            "list_series",
+            "List series",
             "Series in the library with how many books each has and their first volumes.",
-            obj(paging(json!({"query":{"type":"string","maxLength":200},"sort":{"type":"string","enum":["name","count"]}})), &[]),
-            out(json!({"total":{"type":"integer"},"series":{"type":"array"},"next_cursor":{"type":"string"}}))),
-        read("list_authors", "List authors",
+            obj(
+                paging(
+                    json!({"query":{"type":"string","maxLength":200},"sort":{"type":"string","enum":["name","count"]}}),
+                ),
+                &[],
+            ),
+            out(
+                json!({"total":{"type":"integer"},"series":{"type":"array"},"next_cursor":{"type":"string"}}),
+            ),
+        ),
+        read(
+            "list_authors",
+            "List authors",
             "Authors in the library with their number of books.",
-            obj(paging(json!({"query":{"type":"string","maxLength":200},"sort":{"type":"string","enum":["name","count"]}})), &[]),
-            out(json!({"total":{"type":"integer"},"authors":{"type":"array"},"next_cursor":{"type":"string"}}))),
-        read("list_tags", "List tags",
+            obj(
+                paging(
+                    json!({"query":{"type":"string","maxLength":200},"sort":{"type":"string","enum":["name","count"]}}),
+                ),
+                &[],
+            ),
+            out(
+                json!({"total":{"type":"integer"},"authors":{"type":"array"},"next_cursor":{"type":"string"}}),
+            ),
+        ),
+        read(
+            "list_tags",
+            "List tags",
             "Tags in the library with their number of books.",
-            obj(paging(json!({"query":{"type":"string","maxLength":200},"sort":{"type":"string","enum":["name","count"]}})), &[]),
-            out(json!({"total":{"type":"integer"},"tags":{"type":"array"},"next_cursor":{"type":"string"}}))),
-        read("get_toc", "Table of contents",
+            obj(
+                paging(
+                    json!({"query":{"type":"string","maxLength":200},"sort":{"type":"string","enum":["name","count"]}}),
+                ),
+                &[],
+            ),
+            out(
+                json!({"total":{"type":"integer"},"tags":{"type":"array"},"next_cursor":{"type":"string"}}),
+            ),
+        ),
+        read(
+            "get_toc",
+            "Table of contents",
             "The table of contents of a book and its chapters (index, title, length). Chapter indexes are 0-based and are what read_book_text and search_in_book use.",
             obj(json!({"book_id":book_id()}), &["book_id"]),
-            out(json!({"toc":{"type":"array"},"chapters":{"type":"array"}}))),
-        read("read_book_text", "Read book text",
+            out(json!({"toc":{"type":"array"},"chapters":{"type":"array"}})),
+        ),
+        read(
+            "read_book_text",
+            "Read book text",
             "Plain text of a book, one piece at a time (at most max_chars characters). Give chapter (0-based) and optionally offset, or pass the next_cursor of the last answer to continue, also across chapters. Copy-protected books are refused.",
-            obj(json!({"book_id":book_id(),
+            obj(
+                json!({"book_id":book_id(),
                 "chapter":{"type":"integer","minimum":0,"description":"0-based chapter index; default 0."},
                 "offset":{"type":"integer","minimum":0,"description":"Character offset inside the chapter."},
                 "max_chars":{"type":"integer","minimum":200,"maximum":20000,"description":"Default 8000."},
-                "cursor":{"type":"string","description":"next_cursor of the previous answer (overrides chapter and offset)."}}), &["book_id"]),
-            out(json!({"text":{"type":"string"},"chapter":{"type":"integer"},"next_cursor":{"type":"string"}}))),
-        read("search_in_book", "Search inside a book",
+                "cursor":{"type":"string","description":"next_cursor of the previous answer (overrides chapter and offset)."}}),
+                &["book_id"],
+            ),
+            out(
+                json!({"text":{"type":"string"},"chapter":{"type":"integer"},"next_cursor":{"type":"string"}}),
+            ),
+        ),
+        read(
+            "search_in_book",
+            "Search inside a book",
             "Finds words or a phrase (or a regular expression) inside one book and returns snippets with their chapter and offset.",
-            obj(paging(json!({"book_id":book_id(),
+            obj(
+                paging(json!({"book_id":book_id(),
                 "query":{"type":"string","minLength":1,"maxLength":300},
-                "whole_word":{"type":"boolean"},"case_sensitive":{"type":"boolean"},"regex":{"type":"boolean"}})), &["book_id","query"]),
-            out(json!({"hits":{"type":"array"},"truncated":{"type":"boolean"},"next_cursor":{"type":"string"}}))),
-        read("search_all_books_text", "Search the text of all books",
+                "whole_word":{"type":"boolean"},"case_sensitive":{"type":"boolean"},"regex":{"type":"boolean"}})),
+                &["book_id", "query"],
+            ),
+            out(
+                json!({"hits":{"type":"array"},"truncated":{"type":"boolean"},"next_cursor":{"type":"string"}}),
+            ),
+        ),
+        read(
+            "search_all_books_text",
+            "Search the text of all books",
             "Full-text search over the indexed text of every book (stemmed; every word must occur). Returns the books and a snippet each. Books whose text is not indexed yet (the app indexes while idle) are not found.",
-            obj(paging(json!({"query":{"type":"string","minLength":1,"maxLength":300}})), &["query"]),
-            out(json!({"hits":{"type":"array"},"indexed_books":{"type":"integer"},"next_cursor":{"type":"string"}}))),
-        read("get_annotations", "Highlights and notes",
+            obj(
+                paging(json!({"query":{"type":"string","minLength":1,"maxLength":300}})),
+                &["query"],
+            ),
+            out(
+                json!({"hits":{"type":"array"},"indexed_books":{"type":"integer"},"next_cursor":{"type":"string"}}),
+            ),
+        ),
+        read(
+            "get_annotations",
+            "Highlights and notes",
             "Highlights, notes and bookmarks of one book or of all books, newest first.",
-            obj(paging(json!({"book_id":book_id(),
+            obj(
+                paging(json!({"book_id":book_id(),
                 "kind":{"type":"string","enum":["all","highlight","note","bookmark"],"description":"note = highlights that carry a note."},
-                "color":{"type":"string"},"query":{"type":"string","maxLength":200,"description":"Only annotations containing this text."}})), &[]),
-            out(json!({"total":{"type":"integer"},"annotations":{"type":"array"},"next_cursor":{"type":"string"}}))),
-        read("export_annotations", "Export annotations as text",
+                "color":{"type":"string"},"query":{"type":"string","maxLength":200,"description":"Only annotations containing this text."}})),
+                &[],
+            ),
+            out(
+                json!({"total":{"type":"integer"},"annotations":{"type":"array"},"next_cursor":{"type":"string"}}),
+            ),
+        ),
+        read(
+            "export_annotations",
+            "Export annotations as text",
             "The highlights, notes and bookmarks of a book as Markdown, plain text or JSON (returned, nothing is written to disk).",
-            obj(json!({"book_id":book_id(),"format":{"type":"string","enum":["markdown","text","json"]}}), &["book_id"]),
-            out(json!({"format":{"type":"string"},"content":{"type":"string"}}))),
-        read("get_reading_stats", "Reading statistics",
+            obj(
+                json!({"book_id":book_id(),"format":{"type":"string","enum":["markdown","text","json"]}}),
+                &["book_id"],
+            ),
+            out(json!({"format":{"type":"string"},"content":{"type":"string"}})),
+        ),
+        read(
+            "get_reading_stats",
+            "Reading statistics",
             "How much the user reads: library counts by status and, when the app recorded sessions, time, words and pages read in the last days, streak and per-book totals.",
-            obj(json!({"days":{"type":"integer","minimum":1,"maximum":3650,"description":"Window for the totals; default 30."}}), &[]),
-            out(json!({"library":{"type":"object"},"sessions":{"type":"object"}}))),
-        read("recent_books", "Recent books",
+            obj(
+                json!({"days":{"type":"integer","minimum":1,"maximum":3650,"description":"Window for the totals; default 30."}}),
+                &[],
+            ),
+            out(json!({"library":{"type":"object"},"sessions":{"type":"object"}})),
+        ),
+        read(
+            "recent_books",
+            "Recent books",
             "Books last read, or last added.",
-            obj(json!({"kind":{"type":"string","enum":["read","added"]},"limit":{"type":"integer","minimum":1,"maximum":100}}), &[]),
-            out(json!({"books":{"type":"array"}}))),
-        read("find_duplicates", "Find duplicates",
+            obj(
+                json!({"kind":{"type":"string","enum":["read","added"]},"limit":{"type":"integer","minimum":1,"maximum":100}}),
+                &[],
+            ),
+            out(json!({"books":{"type":"array"}})),
+        ),
+        read(
+            "find_duplicates",
+            "Find duplicates",
             "Groups of books that are probably the same work (same ISBN, or very similar title and author).",
-            obj(paging(json!({"threshold":{"type":"number","minimum":0.5,"maximum":1,"description":"Similarity needed; default 0.9."}})), &[]),
-            out(json!({"total":{"type":"integer"},"groups":{"type":"array"},"next_cursor":{"type":"string"}}))),
-        read("similar_books", "Similar books",
+            obj(
+                paging(
+                    json!({"threshold":{"type":"number","minimum":0.5,"maximum":1,"description":"Similarity needed; default 0.9."}}),
+                ),
+                &[],
+            ),
+            out(
+                json!({"total":{"type":"integer"},"groups":{"type":"array"},"next_cursor":{"type":"string"}}),
+            ),
+        ),
+        read(
+            "similar_books",
+            "Similar books",
             "Books like this one by shared author, series, tags, language and publisher, with the reasons.",
-            obj(json!({"book_id":book_id(),"limit":{"type":"integer","minimum":1,"maximum":50}}), &["book_id"]),
-            out(json!({"books":{"type":"array"}}))),
-        read("check_book", "Check a book",
+            obj(
+                json!({"book_id":book_id(),"limit":{"type":"integer","minimum":1,"maximum":50}}),
+                &["book_id"],
+            ),
+            out(json!({"books":{"type":"array"}})),
+        ),
+        read(
+            "check_book",
+            "Check a book",
             "Runs the EPUB validator and returns the counts and the first problems (broken links, missing files, bad metadata).",
             obj(json!({"book_id":book_id()}), &["book_id"]),
-            out(json!({"errors":{"type":"integer"},"warnings":{"type":"integer"},"issues":{"type":"array"}}))),
-        read("convert_preview", "Preview a conversion",
+            out(
+                json!({"errors":{"type":"integer"},"warnings":{"type":"integer"},"issues":{"type":"array"}}),
+            ),
+        ),
+        read(
+            "convert_preview",
+            "Preview a conversion",
             "What converting the book to another format would lose (images, cover, table of contents, links, series), without converting.",
-            obj(json!({"book_id":book_id(),"format":{"type":"string","minLength":2,"maxLength":10,"description":"Target extension such as mobi, fb2, txt, kepub."}}), &["book_id","format"]),
-            out(json!({"format":{"type":"string"},"lost":{"type":"array"}}))),
+            obj(
+                json!({"book_id":book_id(),"format":{"type":"string","minLength":2,"maxLength":10,"description":"Target extension such as mobi, fb2, txt, kepub."}}),
+                &["book_id", "format"],
+            ),
+            out(json!({"format":{"type":"string"},"lost":{"type":"array"}})),
+        ),
     ];
     if cfg.can_write() {
         v.extend(tools_write::defs(cfg));
@@ -427,11 +558,7 @@ fn sort_books(v: &mut [&Book], key: SortKey, asc: bool) {
                 .to_lowercase()
                 .cmp(&b.meta.title_sort.to_lowercase())
         });
-        if asc {
-            o
-        } else {
-            o.reverse()
-        }
+        if asc { o } else { o.reverse() }
     });
 }
 
@@ -482,40 +609,47 @@ pub fn book_json(app: &Arc<App>, b: &Book) -> Result<Value, ToolError> {
     v["publisher"] = json!(m.publisher);
     v["published"] = json!(m.published);
     v["rights"] = json!(m.rights);
-    v["identifiers"] = json!(m
-        .identifiers
-        .iter()
-        .map(|i| json!({"scheme": i.scheme, "value": i.value}))
-        .collect::<Vec<_>>());
-    v["formats"] = json!(b
-        .all_formats()
-        .iter()
-        .map(|f| json!({"format": f.format, "size": f.size,
+    v["identifiers"] = json!(
+        m.identifiers
+            .iter()
+            .map(|i| json!({"scheme": i.scheme, "value": i.value}))
+            .collect::<Vec<_>>()
+    );
+    v["formats"] = json!(
+        b.all_formats()
+            .iter()
+            .map(|f| json!({"format": f.format, "size": f.size,
             "name": f.file.rsplit('/').next().unwrap_or(&f.file)}))
-        .collect::<Vec<_>>());
+            .collect::<Vec<_>>()
+    );
     v["size"] = json!(b.size);
     v["added"] = json!(b.added.to_rfc3339());
     v["modified"] = json!(b.modified.to_rfc3339());
     v["last_read"] = json!(b.last_read.map(|t| t.to_rfc3339()));
-    v["position"] = json!(b
-        .position
-        .map(|p| json!({"chapter": p.spine, "fraction": p.frac})));
+    v["position"] = json!(
+        b.position
+            .map(|p| json!({"chapter": p.spine, "fraction": p.frac}))
+    );
     v["highlights"] = json!(b.highlights.len());
     v["bookmarks"] = json!(b.bookmarks.len());
     v["protection"] = json!(b.drm);
     v["reading_status"] = json!(store.get_status(b.id).map(|s| s.as_str()));
     let shelves = store.list_collections().unwrap_or_default();
     let mine = store.collections_of(b.id);
-    v["shelves"] = json!(shelves
-        .iter()
-        .filter(|c| mine.contains(&c.id))
-        .map(|c| c.name.clone())
-        .collect::<Vec<_>>());
-    v["provenance"] = json!(store
-        .provenance(b.id)
-        .iter()
-        .map(|p| json!({"field": p.field, "source": p.source, "at": p.at}))
-        .collect::<Vec<_>>());
+    v["shelves"] = json!(
+        shelves
+            .iter()
+            .filter(|c| mine.contains(&c.id))
+            .map(|c| c.name.clone())
+            .collect::<Vec<_>>()
+    );
+    v["provenance"] = json!(
+        store
+            .provenance(b.id)
+            .iter()
+            .map(|p| json!({"field": p.field, "source": p.source, "at": p.at}))
+            .collect::<Vec<_>>()
+    );
     Ok(v)
 }
 

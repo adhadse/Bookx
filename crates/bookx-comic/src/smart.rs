@@ -2,7 +2,7 @@
 //! stops of a screen for the next/previous panel keys.
 
 use crate::layout::Placed;
-use crate::panels::{panel_at, Rect};
+use crate::panels::{Rect, panel_at};
 
 /// One stop of guided view.
 #[derive(Debug, Clone, Copy, PartialEq)]

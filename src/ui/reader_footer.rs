@@ -7,7 +7,7 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, pango};
 
-use super::preferences::{register_group, PrefCtx};
+use super::preferences::{PrefCtx, register_group};
 use crate::footer_stats::{Align, FooterConfig, Preset, SEPARATORS};
 use crate::i18n::tr;
 

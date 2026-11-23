@@ -7,15 +7,15 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
+use bookx_backup::Cancelled;
 use bookx_backup::crypto::Kdf;
 use bookx_backup::repo::manifest::SnapName;
 use bookx_backup::repo::{
-    CatalogueAction, DavStore, FolderStore, MemStore, Phase, Report, Repository, RestoreMode,
-    RestoreOptions, RestoreReport, RunOptions, Scope, Secrets, REPO_DIR,
+    CatalogueAction, DavStore, FolderStore, MemStore, Phase, REPO_DIR, Report, Repository,
+    RestoreMode, RestoreOptions, RestoreReport, RunOptions, Scope, Secrets,
 };
-use bookx_backup::Cancelled;
 use chrono::{Duration, TimeZone, Utc};
-use common::{dav, tmp, tree, Lib};
+use common::{Lib, dav, tmp, tree};
 
 fn no() -> AtomicBool {
     AtomicBool::new(false)
@@ -456,15 +456,16 @@ fn a_hostile_manifest_cannot_write_outside_the_target() {
         .lock()
         .unwrap()
         .insert(path.clone(), serde_json::to_vec(&doc).unwrap());
-    assert!(repo
-        .restore(
+    assert!(
+        repo.restore(
             None,
             &tmp("h2").join("l"),
             &RestoreOptions::default(),
             &|_| {},
             &no()
         )
-        .is_err());
+        .is_err()
+    );
     // a manifest with a link in the way: the target has a symlink where a folder should be
     #[cfg(unix)]
     {
@@ -822,9 +823,11 @@ fn restore_modes_never_overwrite_silently_and_a_dry_run_changes_nothing() {
     assert_eq!(std::fs::read(to.join(&fa)).unwrap(), orig_a);
     assert_eq!(rep.skipped_same, 1);
     // the old catalogue was snapshotted first
-    assert!(bookx_store::health::list_snapshots(&to)
-        .iter()
-        .any(|s| s.kind == bookx_store::health::SnapshotKind::PreRestore));
+    assert!(
+        bookx_store::health::list_snapshots(&to)
+            .iter()
+            .any(|s| s.kind == bookx_store::health::SnapshotKind::PreRestore)
+    );
 }
 
 #[test]
@@ -923,7 +926,7 @@ fn leftover_temporary_objects_are_cleaned_by_gc() {
 
 #[test]
 fn the_old_whole_catalogue_backups_still_list_and_restore_next_to_the_repository() {
-    use bookx_backup::{list_backups, FolderTarget};
+    use bookx_backup::{FolderTarget, list_backups};
     let mut lib = Lib::new("legacy");
     lib.add("Alpha", 100);
     let place = tmp("legacy-place");
@@ -1038,12 +1041,13 @@ fn webdav_runs_with_move_and_without_and_cancels_mid_file() {
         );
         // nothing the server holds is readable
         let book = std::fs::read(lib.book_file(a)).unwrap();
-        assert!(d
-            .files
-            .lock()
-            .unwrap()
-            .values()
-            .all(|v| !v.windows(8).any(|w| w == &book[..8])));
+        assert!(
+            d.files
+                .lock()
+                .unwrap()
+                .values()
+                .all(|v| !v.windows(8).any(|w| w == &book[..8]))
+        );
         // second run: no uploads
         let blob_puts = |d: &common::Dav| {
             d.log
@@ -1147,9 +1151,10 @@ fn hostile_repository_settings_are_refused_without_doing_the_work() {
     let e = Repository::open(Box::new(mem()), &Secrets::none())
         .err()
         .unwrap();
-    assert!(e
-        .downcast_ref::<bookx_backup::repo::NoRepository>()
-        .is_some());
+    assert!(
+        e.downcast_ref::<bookx_backup::repo::NoRepository>()
+            .is_some()
+    );
 }
 
 #[test]

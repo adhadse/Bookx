@@ -449,10 +449,12 @@ mod tests {
         let line = "\u{1b}[32m INFO\u{1b}[0m teetest-marker-7f3a";
         t.write_all(format!("{line}\n").as_bytes()).unwrap();
         t.flush().unwrap();
-        assert!(ring()
-            .lines()
-            .iter()
-            .any(|l| l == " INFO teetest-marker-7f3a"));
+        assert!(
+            ring()
+                .lines()
+                .iter()
+                .any(|l| l == " INFO teetest-marker-7f3a")
+        );
         let _ = tracing_subscriber::fmt::MakeWriter::make_writer(&Tee);
     }
 }

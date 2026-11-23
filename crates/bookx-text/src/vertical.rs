@@ -49,20 +49,12 @@ impl Frame {
 
     /// How much of the flow the frame shows: its extent along the block axis.
     pub fn block_extent(&self) -> f64 {
-        if self.is_vertical() {
-            self.w
-        } else {
-            self.h
-        }
+        if self.is_vertical() { self.w } else { self.h }
     }
 
     /// How long a line is: its extent along the inline axis.
     pub fn line_extent(&self) -> f64 {
-        if self.is_vertical() {
-            self.h
-        } else {
-            self.w
-        }
+        if self.is_vertical() { self.h } else { self.w }
     }
 
     /// Screen position of the logical point `(u, v)`.
@@ -387,11 +379,7 @@ pub fn combine_ranges(text: &str, mode: TextCombine) -> Vec<(usize, usize)> {
 /// Font size factor that makes `chars` characters of width `advance` (in em) fit into one em.
 pub fn combine_scale(chars: usize, advance: f64) -> f64 {
     let w = chars as f64 * advance;
-    if w <= 1.0 || w <= 0.0 {
-        1.0
-    } else {
-        1.0 / w
-    }
+    if w <= 1.0 || w <= 0.0 { 1.0 } else { 1.0 / w }
 }
 
 // ---------------------------------------------------------------------------------------------

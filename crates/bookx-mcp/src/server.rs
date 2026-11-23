@@ -10,9 +10,9 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use base64::Engine;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
-use crate::app::{lock, App};
+use crate::app::{App, lock};
 use crate::{prompts, resources, tools};
 
 pub const LATEST_VERSION: &str = "2025-11-25";

@@ -8,7 +8,7 @@
 
 use std::collections::HashMap;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::contracts::FormatReader;
 use bookx_core::convert::Chapter;
@@ -677,25 +677,33 @@ pub(crate) mod tests {
     fn errors() {
         assert!(convert_odt(b"junk").is_err());
         let z = make_zip(&[("a.txt", b"x")]);
-        assert!(convert_odt(&z)
-            .unwrap_err()
-            .to_string()
-            .contains("content.xml"));
+        assert!(
+            convert_odt(&z)
+                .unwrap_err()
+                .to_string()
+                .contains("content.xml")
+        );
         let z = make_zip(&[("content.xml", b"<office:document-content")]);
         assert!(convert_odt(&z).is_err());
         let z = make_zip(&[("content.xml", format!("<office:document-content {NS}><office:body><office:spreadsheet/></office:body></office:document-content>").as_bytes())]);
-        assert!(convert_odt(&z)
-            .unwrap_err()
-            .to_string()
-            .contains("not a text document"));
+        assert!(
+            convert_odt(&z)
+                .unwrap_err()
+                .to_string()
+                .contains("not a text document")
+        );
         let z = make_zip(&[("content.xml", format!("<office:document-content {NS}><office:body><office:text><text:p/></office:text></office:body></office:document-content>").as_bytes())]);
         assert!(convert_odt(&z).unwrap_err().to_string().contains("no text"));
     }
 
     #[test]
     fn initial_creator_is_used_when_there_is_no_creator() {
-        let content = format!("<office:document-content {NS}><office:body><office:text><text:p>x</text:p></office:text></office:body></office:document-content>");
-        let meta = format!("<office:document-meta {NS}><office:meta><meta:initial-creator>Only Initial</meta:initial-creator></office:meta></office:document-meta>");
+        let content = format!(
+            "<office:document-content {NS}><office:body><office:text><text:p>x</text:p></office:text></office:body></office:document-content>"
+        );
+        let meta = format!(
+            "<office:document-meta {NS}><office:meta><meta:initial-creator>Only Initial</meta:initial-creator></office:meta></office:document-meta>"
+        );
         let z = make_zip(&[
             ("content.xml", content.as_bytes()),
             ("meta.xml", meta.as_bytes()),

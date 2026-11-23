@@ -7,7 +7,7 @@ mod common;
 use std::collections::BTreeSet;
 
 use bookx_editing::fonts::{subset_font_data, subset_font_report};
-use bookx_editing::testfont::{layout_glyphs as g, tiny_otf, tiny_ttf_layout, TINY_OTF_GLYPHS};
+use bookx_editing::testfont::{TINY_OTF_GLYPHS, layout_glyphs as g, tiny_otf, tiny_ttf_layout};
 use ttf_parser::gpos::{PairAdjustment, PositioningSubtable};
 use ttf_parser::gsub::SubstitutionSubtable;
 use ttf_parser::{Face, GlyphId, Tag};

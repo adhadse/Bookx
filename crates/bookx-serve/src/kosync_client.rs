@@ -25,8 +25,8 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use std::time::Duration;
 
-use anyhow::{anyhow, bail, Context, Result};
-use serde_json::{json, Value};
+use anyhow::{Context, Result, anyhow, bail};
+use serde_json::{Value, json};
 
 use crate::kosync::md5_hex;
 

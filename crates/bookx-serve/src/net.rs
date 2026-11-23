@@ -47,7 +47,7 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::task::{Context, Poll};
 use std::time::{Duration, Instant};
 
-use anyhow::{bail, Context as _, Result};
+use anyhow::{Context as _, Result, bail};
 use http_body_util::{BodyExt, Full};
 use hyper::body::{Bytes, Incoming};
 use hyper::header::{HeaderName, HeaderValue};
@@ -57,7 +57,7 @@ use hyper_util::rt::TokioIo;
 use rustls_pki_types::pem::PemObject;
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf};
-use tokio::sync::{watch, Semaphore};
+use tokio::sync::{Semaphore, watch};
 use tokio::time::Sleep;
 use tokio_rustls::TlsAcceptor;
 
@@ -1634,25 +1634,37 @@ mod tests {
 
     #[test]
     fn proxy_nets_parse_and_match() {
-        assert!(ProxyNet::parse("10.0.0.0/8")
-            .unwrap()
-            .contains("10.9.8.7".parse().unwrap()));
-        assert!(!ProxyNet::parse("10.0.0.0/8")
-            .unwrap()
-            .contains("11.0.0.1".parse().unwrap()));
-        assert!(ProxyNet::parse("192.0.2.1")
-            .unwrap()
-            .contains("192.0.2.1".parse().unwrap()));
-        assert!(!ProxyNet::parse("192.0.2.1")
-            .unwrap()
-            .contains("192.0.2.2".parse().unwrap()));
-        assert!(ProxyNet::parse("fd00::/8")
-            .unwrap()
-            .contains("fd12::1".parse().unwrap()));
+        assert!(
+            ProxyNet::parse("10.0.0.0/8")
+                .unwrap()
+                .contains("10.9.8.7".parse().unwrap())
+        );
+        assert!(
+            !ProxyNet::parse("10.0.0.0/8")
+                .unwrap()
+                .contains("11.0.0.1".parse().unwrap())
+        );
+        assert!(
+            ProxyNet::parse("192.0.2.1")
+                .unwrap()
+                .contains("192.0.2.1".parse().unwrap())
+        );
+        assert!(
+            !ProxyNet::parse("192.0.2.1")
+                .unwrap()
+                .contains("192.0.2.2".parse().unwrap())
+        );
+        assert!(
+            ProxyNet::parse("fd00::/8")
+                .unwrap()
+                .contains("fd12::1".parse().unwrap())
+        );
         // an IPv4-mapped peer matches the IPv4 entry
-        assert!(ProxyNet::parse("127.0.0.1")
-            .unwrap()
-            .contains("::ffff:127.0.0.1".parse().unwrap()));
+        assert!(
+            ProxyNet::parse("127.0.0.1")
+                .unwrap()
+                .contains("::ffff:127.0.0.1".parse().unwrap())
+        );
         for bad in [
             "",
             "0.0.0.0/0",

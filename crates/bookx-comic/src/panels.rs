@@ -348,7 +348,7 @@ pub fn step(count: usize, cur: Option<usize>, forward: bool) -> Step {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testgen::{page_gray, Layout};
+    use crate::testgen::{Layout, page_gray};
 
     fn near(a: f64, b: f64) -> bool {
         (a - b).abs() < 0.03

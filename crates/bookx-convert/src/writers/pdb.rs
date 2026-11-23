@@ -13,15 +13,15 @@ use std::io::Write;
 use anyhow::Result;
 use bookx_core::book::OpenBook;
 use bookx_core::contracts::FormatWriter;
-use flate2::write::ZlibEncoder;
 use flate2::Compression;
+use flate2::write::ZlibEncoder;
 use serde::{Deserialize, Serialize};
 
 use crate::charset::to_cp1252_lossy;
 use crate::mobi::palmdoc;
 use crate::model::Model;
 
-use super::pml::{render_pml, PmlText};
+use super::pml::{PmlText, render_pml};
 
 /// Text record compression of eReader files.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]

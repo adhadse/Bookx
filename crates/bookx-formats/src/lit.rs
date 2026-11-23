@@ -4,7 +4,7 @@
 //! `.lit` file (or any file starting with the `ITOLITLS` magic) is identified and rejected with
 //! a clear message instead of being opened by the plain text reader.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::contracts::FormatReader;
 

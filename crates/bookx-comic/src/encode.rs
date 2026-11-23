@@ -1,8 +1,8 @@
 //! Writing a page as JPEG, for readers that produce raw pixels (DjVu).
 
-use anyhow::{bail, Result};
-use image::codecs::jpeg::JpegEncoder;
+use anyhow::{Result, bail};
 use image::ExtendedColorType;
+use image::codecs::jpeg::JpegEncoder;
 
 /// Most pixels of a page that is encoded (a 200 megapixel scan is not a page).
 pub const MAX_PIXELS: u64 = 120_000_000;

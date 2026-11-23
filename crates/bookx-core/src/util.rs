@@ -511,15 +511,17 @@ mod tests {
             "{:?}",
             t.elapsed()
         );
-        assert!(parse_html_document("<p class='a'>hi</p>")
-            .root_element()
-            .text()
-            .any(|t| t == "hi"));
+        assert!(
+            parse_html_document("<p class='a'>hi</p>")
+                .root_element()
+                .text()
+                .any(|t| t == "hi")
+        );
         // normal documents, odd quoting and `=` in text are fine
-        assert!(parse_xml(
-            "<r a='1' b=\"x>y=z\"><!-- <a b='1' c='2'> --><![CDATA[<x y='1'>]]>k=v</r>"
-        )
-        .is_ok());
+        assert!(
+            parse_xml("<r a='1' b=\"x>y=z\"><!-- <a b='1' c='2'> --><![CDATA[<x y='1'>]]>k=v</r>")
+                .is_ok()
+        );
         let many_ok = format!(
             "<r {}/>",
             (0..200)
@@ -537,11 +539,13 @@ mod tests {
     fn absurd_html_nesting_is_refused_before_the_parser_can_overflow() {
         let deep = format!("{}x{}", "<div>".repeat(100_000), "</div>".repeat(100_000));
         assert!(has_excessive_nesting(&deep));
-        assert!(parse_html_document(&deep)
-            .root_element()
-            .text()
-            .next()
-            .is_none());
+        assert!(
+            parse_html_document(&deep)
+                .root_element()
+                .text()
+                .next()
+                .is_none()
+        );
         assert!(has_excessive_nesting(&"<div><p><span><b>".repeat(50_000)));
         assert!(has_excessive_nesting(&format!(
             "{}x",
@@ -557,10 +561,12 @@ mod tests {
         assert!(!has_excessive_nesting(&"<div>x</div>".repeat(100_000)));
         assert!(!has_excessive_nesting(&"<div/>".repeat(100_000)));
         assert!(!has_excessive_nesting(&nested_ok(1500)));
-        assert!(parse_html_document("<p>hi</p>")
-            .root_element()
-            .text()
-            .any(|t| t == "hi"));
+        assert!(
+            parse_html_document("<p>hi</p>")
+                .root_element()
+                .text()
+                .any(|t| t == "hi")
+        );
     }
 
     fn nested_ok(n: usize) -> String {

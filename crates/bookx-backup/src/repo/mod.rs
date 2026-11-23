@@ -33,23 +33,23 @@ pub mod store;
 use std::io::Write;
 use std::sync::atomic::AtomicBool;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::crypto::{self, Kdf};
 use manifest::{
-    Manifest, SnapName, MAX_CATALOGUE_BYTES, MAX_JOURNAL_BYTES, MAX_MANIFEST_BYTES, MAX_STATE_BYTES,
+    MAX_CATALOGUE_BYTES, MAX_JOURNAL_BYTES, MAX_MANIFEST_BYTES, MAX_STATE_BYTES, Manifest, SnapName,
 };
-use seal::{ids_equal, Crypto, IdHasher, Keys};
+use seal::{Crypto, IdHasher, Keys, ids_equal};
 use store::RepoStore;
 
 pub use lock::{LockInfo, LockLost, RepoLocked};
 pub use maint::{GcReport, VerifyReport};
 pub use rekey::{RekeyOptions, RekeyPending, RekeyProgress, RekeyReport};
 pub use restore::{CatalogueAction, ReplayReport, RestoreMode, RestoreOptions, RestoreReport};
-pub use run::{estimate_new, JournalAppend, Phase, Plan, Report, RunOptions, RunProgress};
+pub use run::{JournalAppend, Phase, Plan, Report, RunOptions, RunProgress, estimate_new};
 pub use source::{LibrarySource, Scope};
 pub use store::{DavStore, FolderStore, MemStore, REPO_DIR};
 
@@ -395,7 +395,11 @@ impl Repository {
         if r.is_encrypted() != encrypt {
             bail!(
                 "the backup place already has {} repository; use another folder or switch encryption {} for this destination",
-                if r.is_encrypted() { "an encrypted" } else { "an unencrypted" },
+                if r.is_encrypted() {
+                    "an encrypted"
+                } else {
+                    "an unencrypted"
+                },
                 if r.is_encrypted() { "on" } else { "off" }
             );
         }
@@ -607,7 +611,9 @@ impl Repository {
             })?;
         if Sha256::digest(&back) != Sha256::digest(&sealed) {
             let _ = self.store.delete(path);
-            bail!("the copy does not match the original (it was removed); the place may be full or unreliable");
+            bail!(
+                "the copy does not match the original (it was removed); the place may be full or unreliable"
+            );
         }
         Ok(())
     }

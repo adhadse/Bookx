@@ -71,10 +71,10 @@ impl SentenceCache {
             return;
         }
         let p = self.path(scope, key);
-        if let Some(d) = p.parent() {
-            if fs::create_dir_all(d).is_err() {
-                return;
-            }
+        if let Some(d) = p.parent()
+            && fs::create_dir_all(d).is_err()
+        {
+            return;
         }
         let tmp = p.with_extension("tmp");
         let write = || -> std::io::Result<()> {
@@ -133,10 +133,10 @@ fn collect(dir: &Path, out: &mut Vec<(SystemTime, u64, PathBuf)>) {
         let p = e.path();
         if p.is_dir() {
             collect(&p, out);
-        } else if p.extension().is_some_and(|x| x == "pcm") {
-            if let Ok(m) = e.metadata() {
-                out.push((m.modified().unwrap_or(SystemTime::UNIX_EPOCH), m.len(), p));
-            }
+        } else if p.extension().is_some_and(|x| x == "pcm")
+            && let Ok(m) = e.metadata()
+        {
+            out.push((m.modified().unwrap_or(SystemTime::UNIX_EPOCH), m.len(), p));
         }
     }
 }

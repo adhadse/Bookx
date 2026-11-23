@@ -2,20 +2,20 @@
 //! book, month, colour or tag, searchable, filterable, editable and exportable. A click opens the
 //! book at the passage. The query is `bookx_lookup::notes_query`, the glue `crate::notes_view`.
 
+use crate::i18n::{N_, tr};
 use crate::i18n::{ntr, trf};
-use crate::i18n::{tr, N_};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
 use bookx_lookup::notes_query::{self as nq, Filter, Group, KindFilter, NoteRow, RowKind, Sort};
+use relm4::RelmWidgetExt;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio, glib, pango};
-use relm4::RelmWidgetExt;
 
-use super::note_row::{NoteActions, NoteCard, NoteData};
 use super::SharedRef;
+use super::note_row::{NoteActions, NoteCard, NoteData};
 use crate::annotation_export as export;
 use crate::notes_view as nv;
 use crate::readwise_sync as rw;
@@ -377,11 +377,15 @@ impl State {
         let (title, text) = match self.filter.borrow().kind {
             KindFilter::Bookmarks => (
                 tr("No bookmarks"),
-                tr("Bookmarks you add while reading, and the ones synced from your e-reader, appear here."),
+                tr(
+                    "Bookmarks you add while reading, and the ones synced from your e-reader, appear here.",
+                ),
             ),
             _ => (
                 tr("No highlights"),
-                tr("Highlights and notes you make while reading appear here, with the books they come from."),
+                tr(
+                    "Highlights and notes you make while reading appear here, with the books they come from.",
+                ),
             ),
         };
         self.empty.set_title(&title);
@@ -516,17 +520,17 @@ impl State {
             .collect();
         let (title, body) = if marks.is_empty() {
             (
-                ntr(
-                    "Delete {} Highlight?",
-                    "Delete {} Highlights?",
-                    keys.len(),
+                ntr("Delete {} Highlight?", "Delete {} Highlights?", keys.len()),
+                tr(
+                    "The highlights and their notes are removed from their books. This cannot be undone.",
                 ),
-                tr("The highlights and their notes are removed from their books. This cannot be undone."),
             )
         } else {
             (
                 ntr("Delete {} Entry?", "Delete {} Entries?", keys.len()),
-                tr("The highlights, notes and bookmarks are removed from their books. This cannot be undone."),
+                tr(
+                    "The highlights, notes and bookmarks are removed from their books. This cannot be undone.",
+                ),
             )
         };
         super::alert(&self.host, &title, &body, &tr("Delete"), true, move || {
@@ -1226,28 +1230,32 @@ impl State {
             let _ = tx.send(Msg::Done(r));
         });
         let toast = self.toast.clone();
-        glib::timeout_add_local(std::time::Duration::from_millis(60), move || loop {
-            match rx.try_recv() {
-                Ok(Msg::Progress(d, t)) => {
-                    crate::jobs::progress(
-                        job,
-                        Some(d as f64 / t.max(1) as f64),
-                        &format!("{d} of {t}"),
-                    );
+        glib::timeout_add_local(std::time::Duration::from_millis(60), move || {
+            loop {
+                match rx.try_recv() {
+                    Ok(Msg::Progress(d, t)) => {
+                        crate::jobs::progress(
+                            job,
+                            Some(d as f64 / t.max(1) as f64),
+                            &format!("{d} of {t}"),
+                        );
+                    }
+                    Ok(Msg::Done(r)) => {
+                        let msg = match &r {
+                            Ok(o) => rw::summary(o),
+                            Err(e) => e.clone(),
+                        };
+                        crate::jobs::log(job, &msg);
+                        crate::jobs::finish(job, r.map(|_| ()));
+                        eprintln!("readwise: {msg}");
+                        toast(msg);
+                        return glib::ControlFlow::Break;
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Empty) => {
+                        return glib::ControlFlow::Continue;
+                    }
+                    Err(_) => return glib::ControlFlow::Break,
                 }
-                Ok(Msg::Done(r)) => {
-                    let msg = match &r {
-                        Ok(o) => rw::summary(o),
-                        Err(e) => e.clone(),
-                    };
-                    crate::jobs::log(job, &msg);
-                    crate::jobs::finish(job, r.map(|_| ()));
-                    eprintln!("readwise: {msg}");
-                    toast(msg);
-                    return glib::ControlFlow::Break;
-                }
-                Err(std::sync::mpsc::TryRecvError::Empty) => return glib::ControlFlow::Continue,
-                Err(_) => return glib::ControlFlow::Break,
             }
         });
     }
@@ -2020,7 +2028,10 @@ pub fn build(
                         st.selected.borrow().len(),
                         titles.join(";"),
                         first,
-                        shown.iter().filter(|&&i| rows[i].kind == RowKind::Bookmark).count(),
+                        shown
+                            .iter()
+                            .filter(|&&i| rows[i].kind == RowKind::Bookmark)
+                            .count(),
                         st.filter.borrow().kind.name()
                     );
                 }

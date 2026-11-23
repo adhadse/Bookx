@@ -5,10 +5,10 @@
 use std::collections::{BTreeMap, HashSet};
 use std::io::{Read, Write};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_serve::webdav::WebDav;
 
 use crate::push::Cancelled;
@@ -832,12 +832,14 @@ mod tests {
         assert!(s.get_bytes("blobs/ab/x1", 4).is_err(), "bounded");
         assert_eq!(s.list("blobs").unwrap()[0].name, "ab");
         // wrong length: nothing visible, nothing left behind
-        assert!(s
-            .put("blobs/ab/x2", &mut std::io::Cursor::new(b"abc"), 5, &no)
-            .is_err());
-        assert!(s
-            .put("blobs/ab/x2", &mut std::io::Cursor::new(b"abcdef"), 5, &no)
-            .is_err());
+        assert!(
+            s.put("blobs/ab/x2", &mut std::io::Cursor::new(b"abc"), 5, &no)
+                .is_err()
+        );
+        assert!(
+            s.put("blobs/ab/x2", &mut std::io::Cursor::new(b"abcdef"), 5, &no)
+                .is_err()
+        );
         let names: Vec<String> = s
             .list("blobs/ab")
             .unwrap()
@@ -868,9 +870,10 @@ mod tests {
         let s = FolderStore::new(d.join("R"));
         assert!(s.get_bytes("blobs/leak", 100).is_err());
         assert!(s.list("blobs").unwrap().is_empty(), "links are not listed");
-        assert!(s
-            .put_bytes("journal/j1", b"x", &AtomicBool::new(false))
-            .is_err());
+        assert!(
+            s.put_bytes("journal/j1", b"x", &AtomicBool::new(false))
+                .is_err()
+        );
         assert!(!d.join("elsewhere/j1").exists());
         let _ = std::fs::remove_dir_all(d);
     }

@@ -5,7 +5,7 @@ use std::io::Cursor;
 
 use zip::CompressionMethod;
 
-use super::{rule, Cx, Message};
+use super::{Cx, Message, rule};
 
 fn message(id: &'static str, file: &str, text: String) -> Message {
     Message {

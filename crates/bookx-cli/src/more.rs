@@ -6,7 +6,7 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_core::archive::Archive;
 use clap::Subcommand;
 
@@ -152,11 +152,12 @@ pub fn catalog(
             "series" => json!(b.meta.series),
             "index" => json!(b.meta.series_index),
             "tags" => json!(b.meta.tags),
-            "formats" => json!(b
-                .all_formats()
-                .iter()
-                .map(|f| f.format.clone())
-                .collect::<Vec<_>>()),
+            "formats" => json!(
+                b.all_formats()
+                    .iter()
+                    .map(|f| f.format.clone())
+                    .collect::<Vec<_>>()
+            ),
             "publisher" => json!(b.meta.publisher),
             "language" => json!(b.meta.language),
             "published" => json!(b.meta.published),

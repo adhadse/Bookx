@@ -8,14 +8,14 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use bookx_lookup::own::{
-    export_csv, export_stardict, import_glossary, parse_glossary, GlossaryItem,
+    GlossaryItem, export_csv, export_stardict, import_glossary, parse_glossary,
 };
-use bookx_lookup::vocab::{export_anki_tsv, AnkiOptions, Scope, Source, VocabEntry};
+use bookx_lookup::vocab::{AnkiOptions, Scope, Source, VocabEntry, export_anki_tsv};
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio, glib};
 
-use super::vocab_own::{self, Ctx};
 use super::SharedRef;
+use super::vocab_own::{self, Ctx};
 use crate::i18n::{ntr, tr, trf};
 
 /// Largest glossary file read.

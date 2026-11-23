@@ -10,7 +10,7 @@ use std::ops::Range;
 
 use bookx_core::doc::{Block, BlockKind, Doc, Span};
 
-use crate::markup::{decode_entities, scan, Event};
+use crate::markup::{Event, decode_entities, scan};
 
 /// Prefix of the anchor names the editor puts on the preview's blocks (`bxs12` = block 12).
 pub const ANCHOR_PREFIX: &str = "bxs";

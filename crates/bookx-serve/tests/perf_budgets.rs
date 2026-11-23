@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use bookx_core::library::Book;
 use bookx_core::opf::Metadata;
-use bookx_serve::opds::{route, OpdsConfig};
+use bookx_serve::opds::{OpdsConfig, route};
 use chrono::Utc;
 
 fn budget(ms: u64) -> Duration {

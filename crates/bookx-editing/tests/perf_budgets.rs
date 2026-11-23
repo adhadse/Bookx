@@ -7,9 +7,9 @@ mod common;
 use std::time::{Duration, Instant};
 
 use bookx_core::book::OpenBook;
-use bookx_editing::compare::{archive_unified_diff, compare_books, CompareOptions};
-use bookx_editing::reports::{build_report, ReportOptions};
-use bookx_editing::spell::{check_book_spelling, SpellChecker};
+use bookx_editing::compare::{CompareOptions, archive_unified_diff, compare_books};
+use bookx_editing::reports::{ReportOptions, build_report};
+use bookx_editing::spell::{SpellChecker, check_book_spelling};
 
 const DEBUG_FACTOR: f64 = 30.0;
 
@@ -118,10 +118,11 @@ fn spell_check_on_a_5mb_book() {
     let r = check_book_spelling(&book, &checker);
     check("spell check", t.elapsed(), budget(500));
     assert!(r.words_checked > 500_000);
-    assert!(r
-        .misspellings
-        .iter()
-        .all(|m| m.file.contains("nav") || m.file.contains("chapter")));
+    assert!(
+        r.misspellings
+            .iter()
+            .all(|m| m.file.contains("nav") || m.file.contains("chapter"))
+    );
 }
 
 /// The editor's live pass runs these on every pause in typing: the change bar and the tag pair at
@@ -169,7 +170,7 @@ fn validate_a_5mb_book() {
 /// The Reports window builds a tab when it is first shown: every tab on a 5 MB book.
 #[test]
 fn report_tables_on_a_5mb_book() {
-    use bookx_editing::reports_tables::{build_table, TableKind};
+    use bookx_editing::reports_tables::{TableKind, build_table};
     let book = big_book();
     for k in TableKind::ALL {
         let t = Instant::now();
@@ -335,7 +336,7 @@ fn rename_class_across_200_files() {
 /// Transform HTML over every page of a 5 MB book (three rules: rename, class, attribute), and its dry run.
 #[test]
 fn transform_html_on_a_5mb_book() {
-    use bookx_editing::transform_html::{transform_book, HtmlRule};
+    use bookx_editing::transform_html::{HtmlRule, transform_book};
     let mut book = big_book();
     let rules = vec![
         HtmlRule::RenameTag {
@@ -367,7 +368,7 @@ fn transform_html_on_a_5mb_book() {
 #[test]
 fn contents_drag_and_drop_on_a_long_contents() {
     use bookx_core::toc::FlatToc;
-    use bookx_editing::toc_ops::{drop_entry, normalize, problems, DropPos};
+    use bookx_editing::toc_ops::{DropPos, drop_entry, normalize, problems};
     let mut toc: Vec<FlatToc> = (0..2000)
         .map(|i| FlatToc {
             depth: if i % 10 == 0 { 0 } else { 1 + (i % 3) / 2 },

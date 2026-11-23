@@ -5,7 +5,7 @@
 //! the issue and the images. The schedule stays with the subscription form. No GTK in here, so it
 //! is unit tested; the view is `ui/news_recipes.rs`.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_sources::recipe::{FeedSpec, Recipe};
 
 use crate::i18n::{tr, trf};

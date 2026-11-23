@@ -12,7 +12,7 @@
 //! `on <i>a</i> word` and replacing it with `X` gives `X<i></i>`. The replacement is escaped (`&`, `<`, `>`).
 //! Line breaks contributed by block tags are never deleted, so a match that spans two paragraphs keeps both.
 
-use crate::markup::{decode_with_offsets, scan, Event, BLOCK_TAGS, DEFAULT_SKIP};
+use crate::markup::{BLOCK_TAGS, DEFAULT_SKIP, Event, decode_with_offsets, scan};
 
 #[derive(Debug, Clone, Copy)]
 struct PChar {

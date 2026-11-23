@@ -6,8 +6,8 @@ use crate::i18n::trf;
 use std::collections::BTreeMap;
 
 use bookx_lookup::stats::{
-    daily_goal_progress, daily_totals, heatmap, streaks, yearly_goal_progress, Goals, Heatmap,
-    Progress, StatsStore, Totals,
+    Goals, Heatmap, Progress, StatsStore, Totals, daily_goal_progress, daily_totals, heatmap,
+    streaks, yearly_goal_progress,
 };
 use chrono::{DateTime, Datelike, NaiveDate, TimeZone, Utc, Weekday};
 use serde::{Deserialize, Serialize};
@@ -230,9 +230,11 @@ mod tests {
         assert_eq!(r.longest_streak, 3);
         assert_eq!(r.best_day.unwrap().1, 45 * 60);
         let lines = review_lines(&r);
-        assert!(lines
-            .iter()
-            .any(|(k, v)| k == "Best day" && v.starts_with("11 November")));
+        assert!(
+            lines
+                .iter()
+                .any(|(k, v)| k == "Best day" && v.starts_with("11 November"))
+        );
         let empty = review(
             &StatsStore::new(StatsConfig::default()).unwrap(),
             at(1, 2, 3),

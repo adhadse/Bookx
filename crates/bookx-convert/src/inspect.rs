@@ -6,7 +6,7 @@
 use std::collections::{HashMap, HashSet};
 
 use bookx_core::book::OpenBook;
-use bookx_core::toc::{flatten, TocEntry};
+use bookx_core::toc::{TocEntry, flatten};
 use bookx_core::util::{is_external, parent_dir, resolve_href};
 use scraper::{Html, Node, Selector};
 

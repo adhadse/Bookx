@@ -6,7 +6,7 @@
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio};
 
-use crate::i18n::{tr, N_};
+use crate::i18n::{N_, tr};
 
 /// An entry of a menu: label (msgid), action. An empty label is the end of a section.
 pub type Entry = (&'static str, &'static str);

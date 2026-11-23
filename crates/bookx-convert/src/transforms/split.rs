@@ -10,7 +10,7 @@ use bookx_core::util::{extension, file_name, join_path, parent_dir, relative_hre
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::markup::{body_range, is_void, remove_attr, tag_info, tokenize, Tok};
+use crate::markup::{Tok, body_range, is_void, remove_attr, tag_info, tokenize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -340,7 +340,9 @@ mod tests {
     use bookx_core::toc::flatten;
 
     fn para(i: usize) -> String {
-        format!("<p id=\"p{i}\">Paragraph number {i} with some filler text to take up room in the file.</p>\n")
+        format!(
+            "<p id=\"p{i}\">Paragraph number {i} with some filler text to take up room in the file.</p>\n"
+        )
     }
 
     fn big_chapter(n: usize) -> String {
@@ -454,11 +456,12 @@ mod tests {
         );
         // the target file really holds the id
         let target_file = format!("OEBPS/{}", link.split('#').next().unwrap());
-        assert!(b
-            .archive
-            .get_string(&target_file)
-            .unwrap()
-            .contains("id=\"p50\""));
+        assert!(
+            b.archive
+                .get_string(&target_file)
+                .unwrap()
+                .contains("id=\"p50\"")
+        );
         let last_part = b.archive.get_string(&spine[spine.len() - 2]).unwrap();
         // back-link to the first part uses a relative file reference or stays a fragment
         assert!(last_part.contains(">back</a>"));

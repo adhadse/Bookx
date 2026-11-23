@@ -4,9 +4,9 @@
 use std::collections::{HashMap, HashSet};
 use std::io::{Cursor, Read};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::archive::Archive;
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::opf::{Identifier, Metadata};
 use bookx_core::util::{media_type_for, xml_escape};
 use regex::Regex;
@@ -626,7 +626,9 @@ pub fn zip_names(head: &[u8]) -> Option<Vec<String>> {
     if head.len() >= 30 {
         let n = u16::from_le_bytes([head[26], head[27]]) as usize;
         if head.len() >= 30 + n {
-            return Some(vec![String::from_utf8_lossy(&head[30..30 + n]).into_owned()]);
+            return Some(vec![
+                String::from_utf8_lossy(&head[30..30 + n]).into_owned(),
+            ]);
         }
     }
     Some(Vec::new())
@@ -1210,16 +1212,46 @@ mod tests {
     #[test]
     fn legacy_encodings_are_detected() {
         let cases: &[(&str, &'static encoding_rs::Encoding)] = &[
-            ("Все смешалось в доме Облонских. Жена узнала, что муж был в связи с бывшею в их доме француженкою-гувернанткой, и объявила мужу, что не может жить с ним в одном доме.", encoding_rs::WINDOWS_1251),
-            ("Все смешалось в доме Облонских. Жена узнала, что муж был в связи с бывшею в их доме француженкою-гувернанткой, и объявила мужу, что не может жить с ним в одном доме.", encoding_rs::KOI8_R),
-            ("吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。", encoding_rs::SHIFT_JIS),
-            ("吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。", encoding_rs::EUC_JP),
-            ("天下大势，分久必合，合久必分。周末七国分争，并入于秦。及秦灭之后，楚、汉分争，又并入于汉。", encoding_rs::GBK),
-            ("天下大勢，分久必合，合久必分。周末七國分爭，並入於秦。及秦滅之後，楚、漢分爭，又並入於漢。", encoding_rs::BIG5),
-            ("한국어 텍스트는 이렇게 인코딩되어 있습니다. 모든 사람은 태어날 때부터 자유로우며 그 존엄과 권리에 있어 동등하다.", encoding_rs::EUC_KR),
-            ("Η γλώσσα μου έδωσαν ελληνική, το σπίτι φτωχικό στις αμμουδιές του Ομήρου.", encoding_rs::WINDOWS_1253),
-            ("בראשית ברא אלהים את השמים ואת הארץ. והארץ היתה תהו ובהו וחשך על פני תהום.", encoding_rs::WINDOWS_1255),
-            ("كان يا ما كان في قديم الزمان ملك عادل يحكم مدينة جميلة على ضفة النهر", encoding_rs::WINDOWS_1256),
+            (
+                "Все смешалось в доме Облонских. Жена узнала, что муж был в связи с бывшею в их доме француженкою-гувернанткой, и объявила мужу, что не может жить с ним в одном доме.",
+                encoding_rs::WINDOWS_1251,
+            ),
+            (
+                "Все смешалось в доме Облонских. Жена узнала, что муж был в связи с бывшею в их доме француженкою-гувернанткой, и объявила мужу, что не может жить с ним в одном доме.",
+                encoding_rs::KOI8_R,
+            ),
+            (
+                "吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。",
+                encoding_rs::SHIFT_JIS,
+            ),
+            (
+                "吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。",
+                encoding_rs::EUC_JP,
+            ),
+            (
+                "天下大势，分久必合，合久必分。周末七国分争，并入于秦。及秦灭之后，楚、汉分争，又并入于汉。",
+                encoding_rs::GBK,
+            ),
+            (
+                "天下大勢，分久必合，合久必分。周末七國分爭，並入於秦。及秦滅之後，楚、漢分爭，又並入於漢。",
+                encoding_rs::BIG5,
+            ),
+            (
+                "한국어 텍스트는 이렇게 인코딩되어 있습니다. 모든 사람은 태어날 때부터 자유로우며 그 존엄과 권리에 있어 동등하다.",
+                encoding_rs::EUC_KR,
+            ),
+            (
+                "Η γλώσσα μου έδωσαν ελληνική, το σπίτι φτωχικό στις αμμουδιές του Ομήρου.",
+                encoding_rs::WINDOWS_1253,
+            ),
+            (
+                "בראשית ברא אלהים את השמים ואת הארץ. והארץ היתה תהו ובהו וחשך על פני תהום.",
+                encoding_rs::WINDOWS_1255,
+            ),
+            (
+                "كان يا ما كان في قديم الزمان ملك عادل يحكم مدينة جميلة على ضفة النهر",
+                encoding_rs::WINDOWS_1256,
+            ),
         ];
         for (text, enc) in cases {
             let (bytes, _, bad) = enc.encode(text);
@@ -1268,7 +1300,10 @@ mod tests {
     #[test]
     fn fix_links_rewrites_only_cross_chapter_anchors() {
         let mut chapters = vec![
-            ch("a", "<a id=\"x\"></a><a href=\"#x\">own</a><a href=\"#y\">other</a><a href=\"#nope\">none</a>"),
+            ch(
+                "a",
+                "<a id=\"x\"></a><a href=\"#x\">own</a><a href=\"#y\">other</a><a href=\"#nope\">none</a>",
+            ),
             ch("b", "<p id=\"y\">t</p><a href=\"#x\">back</a>"),
         ];
         fix_links(&mut chapters);
@@ -1334,19 +1369,22 @@ mod tests {
         let opf = arc.get_string("OEBPS/content.opf").unwrap();
         assert!(opf.contains("page-progression-direction=\"rtl\""));
         assert!(opf.contains("<meta property=\"x:test\">1</meta>"));
-        assert!(arc
-            .get_string("OEBPS/style.css")
-            .unwrap()
-            .contains(".extra{color:red}"));
+        assert!(
+            arc.get_string("OEBPS/style.css")
+                .unwrap()
+                .contains(".extra{color:red}")
+        );
         assert_eq!(book.cover_bytes(), Some(PNG));
     }
 
     #[test]
     fn build_rejects_empty_books_and_defaults_the_title() {
-        assert!(build(Parts::default())
-            .unwrap_err()
-            .to_string()
-            .contains("no readable text"));
+        assert!(
+            build(Parts::default())
+                .unwrap_err()
+                .to_string()
+                .contains("no readable text")
+        );
         let arc = build(Parts {
             chapters: vec![ch("t", "<p>x</p>")],
             ..Default::default()

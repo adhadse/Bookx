@@ -14,11 +14,11 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::contracts::{DeviceDriver, DeviceInfo};
 
 use crate::devfs;
-use crate::devices::{classify, sanitize_file_name, unique_name, DeviceKind};
+use crate::devices::{DeviceKind, classify, sanitize_file_name, unique_name};
 
 /// Folders books go to, first existing one wins; `Books` is created when none exists.
 const BOOK_FOLDERS: &[&str] = &["Books", "books", "eBooks", "Documents", "Download"];

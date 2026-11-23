@@ -4,13 +4,13 @@ use std::collections::HashMap;
 use std::io::{Cursor, Read, Write};
 use std::sync::Arc;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_core::archive::Archive;
 use serde::{Deserialize, Serialize};
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
-use crate::compare::{compare_archives, ArchiveDiff, CompareOptions};
+use crate::compare::{ArchiveDiff, CompareOptions, compare_archives};
 
 #[derive(Debug, Clone)]
 struct Snapshot {

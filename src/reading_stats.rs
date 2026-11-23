@@ -7,8 +7,8 @@ use std::path::PathBuf;
 use chrono::{DateTime, Duration, NaiveDate, TimeZone, Utc};
 
 use bookx_lookup::stats::{
-    book_totals, daily_totals, reading_day, reading_speed_wpm, streaks, ActiveSession, Session,
-    StatsConfig, StatsStore, Totals,
+    ActiveSession, Session, StatsConfig, StatsStore, Totals, book_totals, daily_totals,
+    reading_day, reading_speed_wpm, streaks,
 };
 
 /// No page turn for this long ends the session (the book was probably put down).

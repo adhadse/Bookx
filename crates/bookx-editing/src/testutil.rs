@@ -1,7 +1,7 @@
 //! Fixtures shared by unit tests.
 
 use bookx_core::book::OpenBook;
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::opf::Metadata;
 
 /// Parses XML that may carry a doctype.

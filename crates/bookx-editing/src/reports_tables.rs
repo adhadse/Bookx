@@ -3,7 +3,7 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use bookx_convert::transforms::css::{parse_css, split_selectors, CssItem};
+use bookx_convert::transforms::css::{CssItem, parse_css, split_selectors};
 use bookx_core::book::OpenBook;
 use bookx_core::util::{is_external, parent_dir, resolve_href};
 
@@ -144,11 +144,7 @@ impl Table {
     pub fn sort(&self, idx: &mut [usize], col: usize, descending: bool) {
         idx.sort_by(|a, b| {
             let ord = self.compare(col, *a, *b);
-            if descending {
-                ord.reverse()
-            } else {
-                ord
-            }
+            if descending { ord.reverse() } else { ord }
         });
     }
 
@@ -809,10 +805,11 @@ mod tests {
         assert_eq!(src[..s].matches('\n').count() as u32 + 1, the.locs[0].line);
         let hund = t.rows.iter().find(|r| r.key == "hund").unwrap();
         assert_eq!(hund.cells[1].text, "de");
-        assert!(t
-            .rows
-            .iter()
-            .any(|r| r.key == "café" && r.cells[2].text == "2"));
+        assert!(
+            t.rows
+                .iter()
+                .any(|r| r.key == "café" && r.cells[2].text == "2")
+        );
         assert!(
             !t.rows.iter().any(|r| r.key == "amp"),
             "entities are decoded"

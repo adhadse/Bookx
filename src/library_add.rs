@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn a_prepared_book_is_rewritten_with_the_guess() {
-        use crate::core::convert::{create_epub, Chapter};
+        use crate::core::convert::{Chapter, create_epub};
         let md = meta("Tolkien - The Hobbit", &["Unknown"]);
         let ch = Chapter {
             title: "One".into(),

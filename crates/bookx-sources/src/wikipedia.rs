@@ -7,15 +7,15 @@
 
 use std::sync::OnceLock;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_core::archive::Archive;
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::opf::{Identifier, Metadata};
 use bookx_core::util::xml_escape;
 use regex::Regex;
 use serde_json::Value;
 
-use crate::fetch::{url_encode, Fetcher};
+use crate::fetch::{Fetcher, url_encode};
 use crate::readability::clean_fragment;
 
 /// Most articles in one book.
@@ -278,11 +278,13 @@ mod tests {
             assert_eq!(parse_spec(other).unwrap(), None, "{other}");
         }
         assert!(parse_spec("wikipedia:").is_err());
-        assert!(parse_spec(&format!(
-            "wikipedia:{}",
-            vec!["a"; MAX_TITLES + 1].join("|")
-        ))
-        .is_err());
+        assert!(
+            parse_spec(&format!(
+                "wikipedia:{}",
+                vec!["a"; MAX_TITLES + 1].join("|")
+            ))
+            .is_err()
+        );
     }
 
     #[test]

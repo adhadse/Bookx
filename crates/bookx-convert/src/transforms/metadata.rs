@@ -1,6 +1,6 @@
 //! Metadata override applied during conversion (C15).
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use base64::Engine;
 use bookx_core::book::OpenBook;
 use bookx_core::contracts::{Transform, TransformReport};

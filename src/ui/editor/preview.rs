@@ -1312,7 +1312,12 @@ impl Editor {
                 canvas.scroll_top(),
                 self.pv.sync_steps.get(),
                 self.pv.sync_us.get(),
-                self.pv.scroll_map.borrow().as_ref().map(|m| m.2.len()).unwrap_or(0)
+                self.pv
+                    .scroll_map
+                    .borrow()
+                    .as_ref()
+                    .map(|m| m.2.len())
+                    .unwrap_or(0)
             );
         } else if c == "pv-code-sel" {
             // `editor_pv: code_sel="…"` the selected text of the code view (first 60 characters) and its length

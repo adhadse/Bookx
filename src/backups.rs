@@ -3,7 +3,7 @@
 //! Health window. No GTK in here, so it is unit tested; the window is `ui/health.rs` and
 //! `ui/backup.rs`.
 
-use crate::i18n::{tr, trf, N_};
+use crate::i18n::{N_, tr, trf};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
@@ -354,8 +354,8 @@ pub mod repo {
     use super::*;
 
     use bookx_backup::repo::{
-        estimate_new, LibrarySource, Phase, Plan, Report, Repository, RestoreMode, RestoreOptions,
-        RestoreReport, RunOptions, RunProgress, Secrets,
+        LibrarySource, Phase, Plan, Report, Repository, RestoreMode, RestoreOptions, RestoreReport,
+        RunOptions, RunProgress, Secrets, estimate_new,
     };
     use bookx_backup::{RemoteFile, RemoteName};
 
@@ -1217,7 +1217,9 @@ pub mod repo {
     }
 
     /// What to ask before taking over.
-    pub const TAKE_OVER_BODY: &str = N_("Do this only when you are sure that the other computer is not backing up to this place right now, for example because it was switched off in the middle of a copy. Two computers writing at the same time can damage the backup.");
+    pub const TAKE_OVER_BODY: &str = N_(
+        "Do this only when you are sure that the other computer is not backing up to this place right now, for example because it was switched off in the middle of a copy. Two computers writing at the same time can damage the backup.",
+    );
 
     /// The sentence for a place that is busy.
     pub fn busy_text(names: &[String]) -> String {
@@ -1297,7 +1299,9 @@ pub mod repo {
     /// The message after a change.
     pub fn rekey_text(outcomes: &[RekeyOutcome], stopped: bool) -> String {
         if stopped || outcomes.iter().any(|o| o.cancelled) {
-            return tr("Passphrase change stopped. Nothing is lost: change it again with the same passphrases to finish.");
+            return tr(
+                "Passphrase change stopped. Nothing is lost: change it again with the same passphrases to finish.",
+            );
         }
         let failed: Vec<String> = outcomes
             .iter()
@@ -1315,7 +1319,9 @@ pub mod repo {
             .filter(|o| !o.empty && o.result.is_ok())
             .count();
         if changed == 0 {
-            tr("The new passphrase is saved. No encrypted backup exists yet, so nothing had to be re-encrypted.")
+            tr(
+                "The new passphrase is saved. No encrypted backup exists yet, so nothing had to be re-encrypted.",
+            )
         } else {
             trf(
                 "The backup passphrase was changed at {}. Keep the new one safe: it cannot be recovered.",
@@ -1505,15 +1511,17 @@ mod tests {
         apply(&mut st, &out, now);
         // nothing new: not copied again, even on exit after a while
         let later = now + chrono::Duration::hours(2);
-        assert!(run_due(
-            &root,
-            &st,
-            Trigger::Exit,
-            later,
-            Kdf::TEST,
-            &AtomicBool::new(false)
-        )
-        .is_empty());
+        assert!(
+            run_due(
+                &root,
+                &st,
+                Trigger::Exit,
+                later,
+                Kdf::TEST,
+                &AtomicBool::new(false)
+            )
+            .is_empty()
+        );
         let _ = std::fs::remove_dir_all(root);
     }
 
@@ -1622,9 +1630,11 @@ mod tests {
         assert!(uri_problem("smb://nas/books").is_none());
         assert!(uri_problem("sftp://me@host/home").is_none());
         assert!(uri_problem("").is_some());
-        assert!(uri_problem("https://cloud.example")
-            .unwrap()
-            .contains("WebDAV"));
+        assert!(
+            uri_problem("https://cloud.example")
+                .unwrap()
+                .contains("WebDAV")
+        );
         assert!(uri_problem("//nas/books").is_some());
         assert!(!is_mountable_uri("smb://"));
     }
@@ -1743,11 +1753,13 @@ mod tests {
         // an encrypted place without the passphrase is a clear message, not a plain copy
         let mut enc = folder("e", &usb);
         enc.encrypt = true;
-        assert!(estimate_for(&lib, &[enc], "", &no)[0]
-            .plan
-            .as_ref()
-            .unwrap_err()
-            .contains("passphrase"));
+        assert!(
+            estimate_for(&lib, &[enc], "", &no)[0]
+                .plan
+                .as_ref()
+                .unwrap_err()
+                .contains("passphrase")
+        );
         let _ = std::fs::remove_dir_all(root);
     }
 
@@ -1993,11 +2005,13 @@ mod tests {
         };
         assert!(banner_text(&[later]).is_none());
         // an empty library has nothing to announce
-        assert!(banner_text(&[Plan {
-            first_run: true,
-            ..Plan::default()
-        }])
-        .is_none());
+        assert!(
+            banner_text(&[Plan {
+                first_run: true,
+                ..Plan::default()
+            }])
+            .is_none()
+        );
         assert!(banner_text(&[]).is_none());
         // with two places the bigger one is named
         let small = Plan {
@@ -2318,23 +2332,28 @@ mod tests {
         assert!(r[0].result.is_ok() && !r[0].empty);
         assert!(r[1].empty);
         assert!(rekey_complete(&r));
-        assert!(seen
-            .lock()
-            .unwrap()
-            .iter()
-            .any(|(n, t)| n == "enc" && *t > 0));
+        assert!(
+            seen.lock()
+                .unwrap()
+                .iter()
+                .any(|(n, t)| n == "enc" && *t > 0)
+        );
         assert!(rekey_text(&r, false).contains('1'));
         // the new passphrase opens it, the old one does not
-        assert!(Repository::open(
-            enc.repo_store().unwrap(),
-            &Secrets::passphrase("new-pass-2")
-        )
-        .is_ok());
-        assert!(Repository::open(
-            enc.repo_store().unwrap(),
-            &Secrets::passphrase("old-pass-1")
-        )
-        .is_err());
+        assert!(
+            Repository::open(
+                enc.repo_store().unwrap(),
+                &Secrets::passphrase("new-pass-2")
+            )
+            .is_ok()
+        );
+        assert!(
+            Repository::open(
+                enc.repo_store().unwrap(),
+                &Secrets::passphrase("old-pass-1")
+            )
+            .is_err()
+        );
         // a second go (a place of the same account that was already done) is not an error
         let again = change_passphrase(
             &places,

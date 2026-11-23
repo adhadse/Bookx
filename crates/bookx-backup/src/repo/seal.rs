@@ -17,10 +17,10 @@
 
 use std::io::{Read, Write};
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
+use chacha20poly1305::aead::Payload;
 use chacha20poly1305::aead::generic_array::GenericArray;
 use chacha20poly1305::aead::stream::{DecryptorBE32, EncryptorBE32};
-use chacha20poly1305::aead::Payload;
 use chacha20poly1305::{ChaCha20Poly1305, KeyInit};
 use hmac::{Hmac, Mac};
 use sha2::{Digest, Sha256};

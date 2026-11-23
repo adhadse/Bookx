@@ -6,13 +6,13 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::library::Book;
-use bookx_store::{ReadingStatus, SqliteStore, LIBRARY_DB};
+use bookx_store::{LIBRARY_DB, ReadingStatus, SqliteStore};
 use serde::{Deserialize, Serialize};
 
 use super::manifest::{
-    validate_rel, BookNotes, CollectionState, LibraryState, Role, FORMAT, MAX_FILES,
+    BookNotes, CollectionState, FORMAT, LibraryState, MAX_FILES, Role, validate_rel,
 };
 
 /// Where the local backup state lives, inside the library's own state folder.

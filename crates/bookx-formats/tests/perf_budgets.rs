@@ -148,7 +148,7 @@ fn rb_book_converts_within_budget() {
 #[test]
 fn rar_listing_and_stream_cutting_of_the_largest_accepted_archive_stay_fast() {
     use bookx_formats::rar::{
-        check_listing, parse_7z_list, parse_unrar_list, split_stream, MAX_LISTED,
+        MAX_LISTED, check_listing, parse_7z_list, parse_unrar_list, split_stream,
     };
     let mut seven = String::new();
     let mut unrar = String::new();

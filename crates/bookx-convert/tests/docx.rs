@@ -319,7 +319,9 @@ fn internal_links_point_at_existing_unique_bookmarks() {
 #[test]
 fn drawing_ids_are_unique_and_extents_positive() {
     let book = book_with(
-        &["<p><img src=\"pic.png\" alt=\"one\"/> <img src=\"pic.jpg\"/> <img src=\"anim.gif\"/> <img src=\"pic.png\"/></p>"],
+        &[
+            "<p><img src=\"pic.png\" alt=\"one\"/> <img src=\"pic.jpg\"/> <img src=\"anim.gif\"/> <img src=\"pic.png\"/></p>",
+        ],
         true,
     );
     let files = write(&book);
@@ -361,7 +363,9 @@ fn drawing_ids_are_unique_and_extents_positive() {
 #[test]
 fn run_formatting_is_written_in_schema_order() {
     let book = book_with(
-        &["<p><b>b</b><i>i</i><u>u</u><s>s</s><sup>p</sup><sub>q</sub><code>c</code><b><i><u>all</u></i></b></p>"],
+        &[
+            "<p><b>b</b><i>i</i><u>u</u><s>s</s><sup>p</sup><sub>q</sub><code>c</code><b><i><u>all</u></i></b></p>",
+        ],
         false,
     );
     let files = write(&book);
@@ -417,7 +421,9 @@ fn run_formatting_is_written_in_schema_order() {
 #[test]
 fn paragraph_property_order_follows_the_schema() {
     let book = book_with(
-        &["<h1 style=\"text-align:center\">H</h1><blockquote><p>q</p></blockquote><ul><li>x</li></ul><hr/><p style=\"text-align:right\">r</p>"],
+        &[
+            "<h1 style=\"text-align:center\">H</h1><blockquote><p>q</p></blockquote><ul><li>x</li></ul><hr/><p style=\"text-align:right\">r</p>",
+        ],
         false,
     );
     let files = write(&book);
@@ -458,7 +464,9 @@ fn paragraph_property_order_follows_the_schema() {
 #[test]
 fn lists_use_numbering_definitions_and_ordered_lists_restart() {
     let book = book_with(
-        &["<ul><li>a<ul><li>nested</li></ul></li><li>b</li></ul><ol><li>one</li><li>two</li></ol><ol><li>again</li></ol>"],
+        &[
+            "<ul><li>a<ul><li>nested</li></ul></li><li>b</li></ul><ol><li>one</li><li>two</li></ol><ol><li>again</li></ol>",
+        ],
         false,
     );
     let files = write(&book);
@@ -545,7 +553,9 @@ fn lists_use_numbering_definitions_and_ordered_lists_restart() {
 #[test]
 fn tables_have_grid_cells_spans_and_header_rows() {
     let book = book_with(
-        &["<table><tr><th>H1</th><th>H2</th><th>H3</th></tr><tr><td colspan=\"2\">wide</td><td>x</td></tr><tr><td>only</td></tr></table><p>after</p>"],
+        &[
+            "<table><tr><th>H1</th><th>H2</th><th>H3</th></tr><tr><td colspan=\"2\">wide</td><td>x</td></tr><tr><td>only</td></tr></table><p>after</p>",
+        ],
         false,
     );
     let files = write(&book);
@@ -608,9 +618,11 @@ fn chapters_start_on_new_pages() {
         .descendants()
         .find(|n| n.has_tag_name((W, "p")))
         .unwrap();
-    assert!(!first_p
-        .descendants()
-        .any(|n| n.has_tag_name((W, "pageBreakBefore"))));
+    assert!(
+        !first_p
+            .descendants()
+            .any(|n| n.has_tag_name((W, "pageBreakBefore")))
+    );
 
     let with_cover = book_with(&["<p>one</p>", "<p>two</p>"], true);
     let doc_text = doc_xml(&write(&with_cover));
@@ -737,7 +749,9 @@ fn table_of_contents_field_is_optional() {
 #[test]
 fn awkward_text_cannot_break_the_xml() {
     let book = book_with(
-        &["<p>&lt;tag&gt; &amp; \"quotes\" 'single' \u{1}\u{8}ctl\u{0b} \u{feff}bom \u{fffe} 😀 עברית</p><pre>tab\there\nline two</pre>"],
+        &[
+            "<p>&lt;tag&gt; &amp; \"quotes\" 'single' \u{1}\u{8}ctl\u{0b} \u{feff}bom \u{fffe} 😀 עברית</p><pre>tab\there\nline two</pre>",
+        ],
         false,
     );
     let files = write(&book);
@@ -779,9 +793,11 @@ fn metadata_goes_to_the_doc_properties() {
     );
     assert_eq!(get("keywords").as_deref(), Some("testing, fiction"));
     assert_eq!(get("language").as_deref(), Some("en"));
-    assert!(get("description")
-        .unwrap()
-        .contains("short description & more"));
+    assert!(
+        get("description")
+            .unwrap()
+            .contains("short description & more")
+    );
     let created = get("created").unwrap();
     assert!(
         chrono::DateTime::parse_from_rfc3339(&created).is_ok(),
@@ -889,7 +905,9 @@ fn calibre_reads_our_docx() {
 #[test]
 fn calibre_reads_lists_and_tables_of_our_docx() {
     let book = book_with(
-        &["<h1>H</h1><ul><li>apple</li><li>pear</li></ul><ol><li>first</li><li>second</li></ol><table><tr><th>K</th><th>V</th></tr><tr><td>a</td><td>b</td></tr></table>"],
+        &[
+            "<h1>H</h1><ul><li>apple</li><li>pear</li></ul><ol><li>first</li><li>second</li></ol><table><tr><th>K</th><th>V</th></tr><tr><td>a</td><td>b</td></tr></table>",
+        ],
         false,
     );
     let bytes = DocxWriter::default().write(&book).unwrap();

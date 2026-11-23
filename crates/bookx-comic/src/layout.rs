@@ -141,11 +141,7 @@ pub enum Turn {
 /// What an arrow key (or a tap on the right or left side) does: in a right to left book the left
 /// side goes forward.
 pub fn horizontal_turn(rtl: bool, right: bool) -> Turn {
-    if right != rtl {
-        Turn::Next
-    } else {
-        Turn::Prev
-    }
+    if right != rtl { Turn::Next } else { Turn::Prev }
 }
 
 /// A click at `x` of `width`: the outer thirds turn the page, the middle shows the bars.

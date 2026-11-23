@@ -3,7 +3,7 @@
 use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 
-use super::preferences::{register_group, PrefCtx};
+use super::preferences::{PrefCtx, register_group};
 use crate::i18n::{self, tr};
 
 thread_local! {

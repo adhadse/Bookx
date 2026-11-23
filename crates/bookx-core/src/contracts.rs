@@ -12,7 +12,7 @@
 
 use std::path::PathBuf;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 use super::archive::Archive;
 use super::book::OpenBook;
@@ -170,7 +170,7 @@ pub fn pick_reader<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::convert::{create_epub, Chapter};
+    use crate::convert::{Chapter, create_epub};
 
     struct Upper;
     impl Transform for Upper {

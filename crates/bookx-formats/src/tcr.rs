@@ -4,7 +4,7 @@
 //! that many bytes), then the payload in which every byte is an index into the dictionary. The
 //! text is Windows-1252 / UTF-8 (auto detected) and goes through the plain text importer.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::contracts::FormatReader;
 

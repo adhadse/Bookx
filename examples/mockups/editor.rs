@@ -1,5 +1,5 @@
 use crate::kit::*;
-use crate::reader::{color_controls, Colors};
+use crate::reader::{Colors, color_controls};
 
 pub struct E {
     pub tab: &'static str,
@@ -1450,10 +1450,15 @@ pub fn run(s: &mut Svg) {
             image: false,
         },
     );
-    note(s, 90.0, 1316.0, &[
-        "Opens in its own window from the library (Edit Book…, or Ctrl+E on a selection). Changes stay in memory until Save (Ctrl+S); closing with unsaved changes asks first.",
-        "Files: grouped by type, with the reading-order number, an accent dot on edited files, add / rename (updates links) / delete / move up-down in the spine.",
-    ]);
+    note(
+        s,
+        90.0,
+        1316.0,
+        &[
+            "Opens in its own window from the library (Edit Book…, or Ctrl+E on a selection). Changes stay in memory until Save (Ctrl+S); closing with unsaved changes asks first.",
+            "Files: grouped by type, with the reading-order number, an accent dot on edited files, add / rename (updates links) / delete / move up-down in the spine.",
+        ],
+    );
 
     label(s, 1930.0, 300.0, "3.b Contents — table-of-contents editor");
     editor_window(
@@ -1500,10 +1505,15 @@ pub fn run(s: &mut Svg) {
             image: false,
         },
     );
-    note(s, 90.0, 2426.0, &[
-        "Ctrl+H / Ctrl+F toggles the bar. F3 / Shift+F3 step through matches. Replace, Replace All and Find All; Find All lists every hit and jumps to it.",
-        "Replacements are single undo steps (Ctrl+Z). In regex mode $1, $2 … refer to capture groups.",
-    ]);
+    note(
+        s,
+        90.0,
+        2426.0,
+        &[
+            "Ctrl+H / Ctrl+F toggles the bar. F3 / Shift+F3 step through matches. Replace, Replace All and Find All; Find All lists every hit and jumps to it.",
+            "Replacements are single undo steps (Ctrl+Z). In regex mode $1, $2 … refer to capture groups.",
+        ],
+    );
 
     label(
         s,

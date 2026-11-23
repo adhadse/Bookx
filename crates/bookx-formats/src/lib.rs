@@ -42,7 +42,7 @@ mod testutil;
 
 use anyhow::Result;
 use bookx_core::archive::Archive;
-use bookx_core::contracts::{pick_reader, FormatReader, Registry};
+use bookx_core::contracts::{FormatReader, Registry, pick_reader};
 
 /// Registry with every reader of this crate.
 pub fn default_readers() -> Registry<dyn FormatReader> {

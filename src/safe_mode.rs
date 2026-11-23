@@ -41,9 +41,8 @@ pub fn enter() {
     let patches = empty.join("patches");
     let _ = std::fs::create_dir_all(&plugins);
     let _ = std::fs::create_dir_all(&patches);
-    // Only this process (and children) see these: plugin and patch discovery read them (`plugins::plugins_dir`).
-    std::env::set_var("BOOKX_PLUGINS", &plugins);
-    std::env::set_var("BOOKX_PATCHES", &patches);
+    // plugin and patch discovery ask `plugins::plugins_dir` / `patches_dir`, which now answer with these
+    crate::plugins::override_dirs(plugins, patches);
     crate::privacy::apply(true);
 }
 

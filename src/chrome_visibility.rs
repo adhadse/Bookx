@@ -15,11 +15,7 @@ pub const IDLE_MS: u64 = 4000;
 pub const IDLE_PLAYING_MS: u64 = 1500;
 
 pub fn idle_delay_ms(playing: bool) -> u64 {
-    if playing {
-        IDLE_PLAYING_MS
-    } else {
-        IDLE_MS
-    }
+    if playing { IDLE_PLAYING_MS } else { IDLE_MS }
 }
 
 /// Should the bars be faded now? `busy` is the reader's own rule (a popover open, the pointer on a bar

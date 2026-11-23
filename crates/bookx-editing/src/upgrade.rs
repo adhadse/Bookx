@@ -10,7 +10,7 @@ use regex::Regex;
 
 use crate::markup::*;
 use crate::opf_edit::*;
-use crate::semantics::{read_semantics, write_semantics, SemanticsTarget};
+use crate::semantics::{SemanticsTarget, read_semantics, write_semantics};
 
 #[derive(Debug, Clone)]
 pub struct UpgradeOptions {
@@ -377,7 +377,7 @@ mod tests {
     use super::*;
     use crate::semantics::{Semantic, SemanticEntry};
     use bookx_core::archive::Archive;
-    use bookx_core::check::{check_book, Severity};
+    use bookx_core::check::{Severity, check_book};
 
     const OPF2: &str = r#"<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="uid">
@@ -485,10 +485,11 @@ mod tests {
         .unwrap();
         assert!(b.package.is_epub3());
         assert!(r.changes.iter().any(|c| c.contains("navigation document")));
-        assert!(r
-            .changes
-            .iter()
-            .any(|c| c.contains("dcterms:modified 2026-11-12T10:00:00Z")));
+        assert!(
+            r.changes
+                .iter()
+                .any(|c| c.contains("dcterms:modified 2026-11-12T10:00:00Z"))
+        );
         let nav = b.package.nav_item().unwrap();
         assert_eq!(nav.href, "nav.xhtml");
         // nav document: independent check
@@ -544,23 +545,26 @@ mod tests {
         assert!(opf.contains("version=\"3.0\""));
         assert!(!opf.contains("<guide"));
         assert!(opf.contains("<meta property=\"dcterms:modified\">2026-11-12T10:00:00Z</meta>"));
-        assert!(b
-            .package
-            .item_by_id("img")
-            .unwrap()
-            .properties
-            .contains("cover-image"));
+        assert!(
+            b.package
+                .item_by_id("img")
+                .unwrap()
+                .properties
+                .contains("cover-image")
+        );
         // doctype
-        assert!(b
-            .archive
-            .get_string("OEBPS/c1.xhtml")
-            .unwrap()
-            .contains("<!DOCTYPE html>\n<html"));
-        assert!(!b
-            .archive
-            .get_string("OEBPS/c1.xhtml")
-            .unwrap()
-            .contains("PUBLIC"));
+        assert!(
+            b.archive
+                .get_string("OEBPS/c1.xhtml")
+                .unwrap()
+                .contains("<!DOCTYPE html>\n<html")
+        );
+        assert!(
+            !b.archive
+                .get_string("OEBPS/c1.xhtml")
+                .unwrap()
+                .contains("PUBLIC")
+        );
         // NCX kept by default and still valid
         assert!(b.package.ncx_item().is_some());
         assert_eq!(b.toc().len(), 2);
@@ -594,21 +598,25 @@ mod tests {
         .unwrap();
         assert!(b.package.ncx_item().is_none());
         assert!(!b.archive.contains("OEBPS/toc.ncx"));
-        assert!(!b
-            .archive
-            .get_string("OEBPS/content.opf")
-            .unwrap()
-            .contains("toc=\"ncx\""));
-        assert!(b
-            .archive
-            .get_string("OEBPS/content.opf")
-            .unwrap()
-            .contains("<guide"));
+        assert!(
+            !b.archive
+                .get_string("OEBPS/content.opf")
+                .unwrap()
+                .contains("toc=\"ncx\"")
+        );
+        assert!(
+            b.archive
+                .get_string("OEBPS/content.opf")
+                .unwrap()
+                .contains("<guide")
+        );
         assert!(r.changes.iter().any(|c| c.starts_with("Removed the NCX")));
         assert_eq!(b.toc().len(), 2, "TOC now comes from the nav document");
-        assert!(check_book(&b.archive)
-            .iter()
-            .all(|i| i.severity != Severity::Error));
+        assert!(
+            check_book(&b.archive)
+                .iter()
+                .all(|i| i.severity != Severity::Error)
+        );
         let sem = read_semantics(&b);
         assert!(sem.contains(&SemanticEntry {
             semantic: Semantic::Cover,

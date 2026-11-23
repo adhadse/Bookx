@@ -15,7 +15,7 @@ use regex::Regex;
 use roxmltree::{Document, Node};
 
 use super::package::{node_pos, prepare_xml};
-use super::{offset_pos, r, resolve, Cx, Item, Pos, Rule, Severity, Target};
+use super::{Cx, Item, Pos, Rule, Severity, Target, offset_pos, r, resolve};
 use super::{Severity::Error as E, Severity::Usage as U, Severity::Warning as W};
 
 /// What [`super::validate_with`] checks on top of the classic rules.
@@ -844,7 +844,7 @@ fn check_link(cx: &mut Cx, from: &str, raw: &str, pos: Pos, is_a: bool) {
     }
     match resolve(from, href) {
         Target::Remote | Target::Ignored => {
-            use crate::links::{classify_link, validate_url, LinkKind};
+            use crate::links::{LinkKind, classify_link, validate_url};
             if classify_link(href) != LinkKind::Other {
                 if let Err(why) = validate_url(href) {
                     cx.emit(
@@ -885,7 +885,9 @@ fn check_link(cx: &mut Cx, from: &str, raw: &str, pos: Pos, is_a: bool) {
                         "BKX-023",
                         from,
                         pos,
-                        format!("the link \"{href}\" points to \"{path}\", which is not a text document"),
+                        format!(
+                            "the link \"{href}\" points to \"{path}\", which is not a text document"
+                        ),
                     );
                 }
                 return;

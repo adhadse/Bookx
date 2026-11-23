@@ -4,16 +4,16 @@
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_store::health::{self, SnapshotKind};
-use bookx_store::{ReadingStatus, SqliteStore, LIBRARY_DB};
+use bookx_store::{LIBRARY_DB, ReadingStatus, SqliteStore};
 use chrono::{DateTime, Utc};
 
-use super::manifest::{validate_rel, FileEntry, Manifest, MAX_FILES, MAX_TOTAL_BYTES};
-use super::run::{parallel_for, Phase, Reporter, RunProgress};
+use super::manifest::{FileEntry, MAX_FILES, MAX_TOTAL_BYTES, Manifest, validate_rel};
+use super::run::{Phase, Reporter, RunProgress, parallel_for};
 use super::seal::ids_equal;
 use super::source::TMP_DIR;
 use super::{Repository, RolledBack};

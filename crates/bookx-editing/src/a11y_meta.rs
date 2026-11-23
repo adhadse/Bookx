@@ -9,9 +9,9 @@ use anyhow::Result;
 use bookx_core::book::OpenBook;
 use bookx_core::util::{parse_xml, xml_escape};
 
-use crate::accessibility::{alt_text_report, AltKind};
+use crate::accessibility::{AltKind, alt_text_report};
 use crate::book_tools::{
-    read_access_meta, write_access_meta, AccessMeta, ACCESS_FEATURES, ACCESS_HAZARDS, ACCESS_MODES,
+    ACCESS_FEATURES, ACCESS_HAZARDS, ACCESS_MODES, AccessMeta, read_access_meta, write_access_meta,
 };
 use crate::markup::{markup_files, plain_text};
 use crate::opf_edit::{append_to_section, edit_opf, require_epub3};
@@ -645,9 +645,11 @@ mod tests {
         let mut c = A11yForm::default();
         c.meta.hazards.insert("sound".into());
         c.meta.hazards.insert("noSoundHazard".into());
-        assert!(validate(&c)
-            .iter()
-            .any(|x| x.message.contains("contradict")));
+        assert!(
+            validate(&c)
+                .iter()
+                .any(|x| x.message.contains("contradict"))
+        );
         let mut g = preset("text").unwrap().form;
         g.certifier_report = "https://example.org/report.html".into();
         assert!(validate(&g).iter().all(|x| x.severity == Severity::Warning));

@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use bookx_editing::fonts::{
     analyze_fonts, embed_referenced_fonts, remove_unused_fonts, subset_embedded_fonts,
 };
-use bookx_editing::images::{optimize_images, ImageOptions};
+use bookx_editing::images::{ImageOptions, optimize_images};
 use bookx_editing::testfont::tiny_ttf;
 
 #[test]
@@ -30,10 +30,12 @@ fn embed_subset_and_clean_up_fonts() {
 
     let report = analyze_fonts(&book);
     assert_eq!(report.embedded.len(), 2);
-    assert!(report
-        .embedded
-        .iter()
-        .all(|f| !f.unused && f.info.as_ref().unwrap().family.as_deref() == Some("Tiny Test")));
+    assert!(
+        report
+            .embedded
+            .iter()
+            .all(|f| !f.unused && f.info.as_ref().unwrap().family.as_deref() == Some("Tiny Test"))
+    );
     assert!(report.undeclared_families.is_empty());
 
     let before: usize = report.embedded.iter().map(|f| f.size).sum();
@@ -62,11 +64,13 @@ fn embed_subset_and_clean_up_fonts() {
     book.archive.set_string("OEBPS/chapter-1.xhtml", &ch);
     let removed = remove_unused_fonts(&mut book).unwrap();
     assert_eq!(removed.len(), 2);
-    assert!(!book
-        .archive
-        .get_string("OEBPS/style.css")
-        .unwrap()
-        .contains("@font-face"));
+    assert!(
+        !book
+            .archive
+            .get_string("OEBPS/style.css")
+            .unwrap()
+            .contains("@font-face")
+    );
     common::validate_epub(&book.archive.to_bytes().unwrap());
 }
 

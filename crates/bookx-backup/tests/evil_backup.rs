@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use bookx_backup::crypto::{self, Kdf, Meta};
 use bookx_backup::push;
-use bookx_backup::repo::manifest::{validate_rel, Manifest};
+use bookx_backup::repo::manifest::{Manifest, validate_rel};
 
 fn meta() -> Meta {
     Meta {

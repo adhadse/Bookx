@@ -153,13 +153,15 @@ mod tests {
                 PathBuf::from("/x.epub")
             ]
         );
-        assert!(p(&[
-            "file://otherhost/x.epub",
-            "https://x/y.epub",
-            "file:///a%zz.epub"
-        ])
-        .files
-        .is_empty());
+        assert!(
+            p(&[
+                "file://otherhost/x.epub",
+                "https://x/y.epub",
+                "file:///a%zz.epub"
+            ])
+            .files
+            .is_empty()
+        );
     }
 
     #[test]

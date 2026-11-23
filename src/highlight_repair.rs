@@ -116,7 +116,7 @@ pub fn relocate_one(lib: &mut Library, book_id: u64, highlight_id: &str) -> bool
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::convert::{create_epub, Chapter};
+    use crate::core::convert::{Chapter, create_epub};
     use crate::core::library::{AddOutcome, Highlight};
     use crate::core::opf::Metadata;
 
@@ -276,7 +276,7 @@ mod tests {
         .unwrap();
         // KOReader: xpointers into crengine's DOM next to the text
         let lua = String::from(
-            "return {\n [\"annotations\"] = {\n  [1] = { [\"text\"] = \"Paragraph number 31 has some words in it.\", [\"pos0\"] = \"/body/DocFragment[1]/body/p[33]/text().0\", [\"pos1\"] = \"/body/DocFragment[1]/body/p[33]/text().40\", [\"datetime\"] = \"2026-08-17 11:22:15\" },\n },\n [\"doc_props\"] = { [\"title\"] = \"Micro\", [\"authors\"] = \"Sam\" },\n}\n"
+            "return {\n [\"annotations\"] = {\n  [1] = { [\"text\"] = \"Paragraph number 31 has some words in it.\", [\"pos0\"] = \"/body/DocFragment[1]/body/p[33]/text().0\", [\"pos1\"] = \"/body/DocFragment[1]/body/p[33]/text().40\", [\"datetime\"] = \"2026-08-17 11:22:15\" },\n },\n [\"doc_props\"] = { [\"title\"] = \"Micro\", [\"authors\"] = \"Sam\" },\n}\n",
         );
         let sdr = d.join("Micro.sdr");
         std::fs::create_dir_all(&sdr).unwrap();

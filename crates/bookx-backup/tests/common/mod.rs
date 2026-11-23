@@ -11,10 +11,10 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use bookx_backup::repo::LibrarySource;
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::library::Highlight;
 use bookx_core::opf::Metadata;
-use bookx_store::{open_library, OpenedLibrary};
+use bookx_store::{OpenedLibrary, open_library};
 
 pub fn tmp(name: &str) -> PathBuf {
     let d = std::env::temp_dir().join(format!("bookx-bkt-{name}-{}", uuid::Uuid::new_v4()));

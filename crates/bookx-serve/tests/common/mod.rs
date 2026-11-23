@@ -129,7 +129,7 @@ impl Client {
                     return !matches!(
                         e.kind(),
                         std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
-                    )
+                    );
                 }
             }
         }

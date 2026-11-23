@@ -31,4 +31,4 @@ pub mod vorbis;
 
 pub use format::Format;
 pub use model::{AudioBook, Chapter, Part};
-pub use probe::{probe_file, FileInfo};
+pub use probe::{FileInfo, probe_file};

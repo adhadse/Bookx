@@ -79,7 +79,12 @@ pub fn builtins() -> Vec<Snippet> {
             "<aside epub:type=\"footnote\" id=\"${1:note1}\">\n\t<p>${2:text}</p>\n</aside>$0",
             "markup",
         ),
-        Snippet::new("Any tag (wraps the selection)", "<<", "<${1:p}>${2*}</$1>$0", "markup"),
+        Snippet::new(
+            "Any tag (wraps the selection)",
+            "<<",
+            "<${1:p}>${2*}</$1>$0",
+            "markup",
+        ),
         Snippet::new(
             "Tag with a class (wraps the selection)",
             "<c",
@@ -602,10 +607,12 @@ mod tests {
         for t in ["p", "h", "img", "link", "sec"] {
             assert!(b.iter().any(|s| s.trigger == t), "{t}");
         }
-        assert!(find(&b, "sec", false)
-            .unwrap()
-            .body
-            .contains("epub:type=\"${1:chapter}\""));
+        assert!(
+            find(&b, "sec", false)
+                .unwrap()
+                .body
+                .contains("epub:type=\"${1:chapter}\"")
+        );
         assert!(
             find(&b, "rule", false).is_none(),
             "CSS snippets are not offered in markup"

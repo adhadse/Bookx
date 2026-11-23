@@ -22,11 +22,11 @@ mod corpus;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-use bookx_convert::inspect::{compare, regressions, score, Digest, Score, Tolerance};
-use bookx_convert::{convert, read_input, ConvertOptions};
+use bookx_convert::inspect::{Digest, Score, Tolerance, compare, regressions, score};
+use bookx_convert::{ConvertOptions, convert, read_input};
 use bookx_core::contracts::{FormatReader, Registry};
 
 const TARGETS: &[&str] = &[
@@ -484,21 +484,23 @@ fn calibre_parity_matrix() {
     let cells = Mutex::new(Vec::<Cell>::new());
     std::thread::scope(|sc| {
         for _ in 0..n_threads {
-            sc.spawn(|| loop {
-                let i = next.fetch_add(1, Ordering::SeqCst);
-                let Some((si, t)) = jobs.get(i) else { break };
-                let (s, p) = &sources[*si];
-                let Some(truth) = &truths[*si] else {
-                    cells.lock().unwrap().push(Cell {
-                        sample: s.name.to_string(),
-                        target: t.clone(),
-                        diffs: BTreeMap::new(),
-                        notes: vec!["calibre-cannot-read-source: no yardstick".into()],
-                    });
-                    continue;
-                };
-                let cell = run_cell(s, p, truth, t, &work);
-                cells.lock().unwrap().push(cell);
+            sc.spawn(|| {
+                loop {
+                    let i = next.fetch_add(1, Ordering::SeqCst);
+                    let Some((si, t)) = jobs.get(i) else { break };
+                    let (s, p) = &sources[*si];
+                    let Some(truth) = &truths[*si] else {
+                        cells.lock().unwrap().push(Cell {
+                            sample: s.name.to_string(),
+                            target: t.clone(),
+                            diffs: BTreeMap::new(),
+                            notes: vec!["calibre-cannot-read-source: no yardstick".into()],
+                        });
+                        continue;
+                    };
+                    let cell = run_cell(s, p, truth, t, &work);
+                    cells.lock().unwrap().push(cell);
+                }
             });
         }
     });

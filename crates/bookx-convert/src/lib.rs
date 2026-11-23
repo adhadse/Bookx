@@ -16,7 +16,7 @@ pub(crate) mod testutil;
 pub mod transforms;
 pub mod writers;
 
-pub use options::{builtin_presets, ConvertOptions, Preset, PresetStore};
-pub use pipeline::{convert, convert_file, read_input, Cancelled, Converted, Progress};
+pub use options::{ConvertOptions, Preset, PresetStore, builtin_presets};
+pub use pipeline::{Cancelled, Converted, Progress, convert, convert_file, read_input};
 pub use transforms::default_transforms;
 pub use writers::default_writers;

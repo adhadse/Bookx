@@ -4,12 +4,12 @@ use bookx_text::css::{Hyphens, StyleSheetSet, TextAlign};
 use bookx_text::highlight::{Highlight, HighlightColor, HighlightSet, HighlightStyle, Range};
 use bookx_text::hyphenate::Hyphenator;
 use bookx_text::linebreak::{
-    break_greedy, break_paragraph, items_from_text, paginate_lines, total_demerits, Params,
+    Params, break_greedy, break_paragraph, items_from_text, paginate_lines, total_demerits,
 };
 use bookx_text::pages::{PageMap, PageSource, PageTarget, SpineItem};
 use bookx_text::typography::{
-    pick_profile, ProfileContext, ProfileRule, ProfileSet, ReadingProfile, Trigger,
-    TypographyOverride, TypographySettings,
+    ProfileContext, ProfileRule, ProfileSet, ReadingProfile, Trigger, TypographyOverride,
+    TypographySettings, pick_profile,
 };
 use scraper::{Html, Selector};
 
@@ -137,8 +137,10 @@ fn profiles_settings_and_pages_work_together() {
     assert_eq!((spine, off), (2, 0.0));
     assert_eq!(map.page_at(spine, off).unwrap().number, 21);
 
-    let listed = vec![SpineItem::new(100.0)
-        .with_targets(vec![PageTarget::new("i", 0.0), PageTarget::new("ii", 50.0)])];
+    let listed = vec![
+        SpineItem::new(100.0)
+            .with_targets(vec![PageTarget::new("i", 0.0), PageTarget::new("ii", 50.0)]),
+    ];
     let map = PageMap::new(&listed, 2000.0, PageSource::Auto);
     assert_eq!(map.page_at(0, 75.0).unwrap().label, "ii");
 }

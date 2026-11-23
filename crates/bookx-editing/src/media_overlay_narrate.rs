@@ -12,16 +12,16 @@
 
 use std::collections::HashSet;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_core::book::OpenBook;
 use bookx_core::util::{join_path, parent_dir, relative_href, resolve_href};
 
 use crate::media_overlay::{
-    build_smil, parse_smil, unwrap_sentences, wrap_sentences, Par, SmilDoc,
+    Par, SmilDoc, build_smil, parse_smil, unwrap_sentences, wrap_sentences,
 };
 use crate::media_overlay_opf::{
-    add_chapter_overlay, remove_items, remove_overlays, set_total_duration, ChapterOverlay,
-    SMIL_TYPE,
+    ChapterOverlay, SMIL_TYPE, add_chapter_overlay, remove_items, remove_overlays,
+    set_total_duration,
 };
 
 /// 16-bit mono audio of one sentence.
@@ -328,11 +328,7 @@ fn sanitize(s: &str) -> String {
             }
         })
         .collect();
-    if t.is_empty() {
-        "chapter".into()
-    } else {
-        t
-    }
+    if t.is_empty() { "chapter".into() } else { t }
 }
 
 /// Sum of the per-chapter durations declared in the package.
@@ -703,17 +699,19 @@ mod tests {
                 Ok(Audio::default())
             }
         }
-        assert!(narrate_chapter(
-            "<body><p>Hi.</p></body>",
-            "a",
-            "b",
-            "c",
-            &mut Bad,
-            0,
-            &never,
-            &mut |_, _| {}
-        )
-        .is_err());
+        assert!(
+            narrate_chapter(
+                "<body><p>Hi.</p></body>",
+                "a",
+                "b",
+                "c",
+                &mut Bad,
+                0,
+                &never,
+                &mut |_, _| {}
+            )
+            .is_err()
+        );
     }
 
     #[test]

@@ -6,11 +6,11 @@ use crate::i18n::tr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use bookx_store::SqliteStore;
 use bookx_store::guard::{
-    open_library_guarded, FsWarning, GuardedLibrary, LibraryLock, LockHolder,
+    FsWarning, GuardedLibrary, LibraryLock, LockHolder, open_library_guarded,
 };
 use bookx_store::health::{self, Finding, Severity, Snapshot};
-use bookx_store::SqliteStore;
 use chrono::{DateTime, Local, Utc};
 use serde::{Deserialize, Serialize};
 

@@ -253,7 +253,7 @@ mod tests {
     use super::super::testutil::*;
     use super::*;
 
-    fn gen(w: u32, h: u32, fmt: ImageFormat) -> Vec<u8> {
+    fn r#gen(w: u32, h: u32, fmt: ImageFormat) -> Vec<u8> {
         let img = image::RgbImage::from_fn(w, h, |x, y| {
             image::Rgb([(x % 251) as u8, (y % 241) as u8, ((x + y) % 199) as u8])
         });
@@ -291,7 +291,7 @@ mod tests {
 
     #[test]
     fn large_png_is_downscaled_keeping_aspect_ratio() {
-        let data = gen(400, 200, ImageFormat::Png);
+        let data = r#gen(400, 200, ImageFormat::Png);
         let out = small_profile().fit_image(&data, "png").unwrap();
         assert_eq!(dims(&out), (100, 50));
         assert!(out.starts_with(&[0x89, b'P', b'N', b'G']));
@@ -299,7 +299,7 @@ mod tests {
 
     #[test]
     fn large_jpeg_is_downscaled_and_stays_jpeg() {
-        let data = gen(150, 300, ImageFormat::Jpeg);
+        let data = r#gen(150, 300, ImageFormat::Jpeg);
         let out = small_profile().fit_image(&data, "jpg").unwrap();
         assert_eq!(dims(&out), (50, 100));
         assert!(out.starts_with(&[0xff, 0xd8]));
@@ -307,7 +307,7 @@ mod tests {
 
     #[test]
     fn small_images_untouched() {
-        let data = gen(100, 100, ImageFormat::Png);
+        let data = r#gen(100, 100, ImageFormat::Png);
         assert!(small_profile().fit_image(&data, "png").is_none());
         assert!(small_profile().fit_image(b"garbage", "png").is_none());
         let gif = b"GIF89a....".to_vec();
@@ -318,12 +318,13 @@ mod tests {
     fn formats_list_limits_what_is_touched() {
         let mut p = small_profile();
         p.formats = vec!["jpeg".into()];
-        let data = gen(400, 200, ImageFormat::Png);
+        let data = r#gen(400, 200, ImageFormat::Png);
         assert!(p.fit_image(&data, "png").is_none());
         p.max_width = 0;
-        assert!(p
-            .fit_image(&gen(400, 200, ImageFormat::Jpeg), "jpg")
-            .is_none());
+        assert!(
+            p.fit_image(&r#gen(400, 200, ImageFormat::Jpeg), "jpg")
+                .is_none()
+        );
     }
 
     #[test]
@@ -359,11 +360,11 @@ mod tests {
 
     fn book_with_images() -> OpenBook {
         let mut b = book_with(&[("A", "<p>x</p>"), ("B", "<p>y</p>")]);
-        b.set_cover(gen(300, 500, ImageFormat::Jpeg), "jpg")
+        b.set_cover(r#gen(300, 500, ImageFormat::Jpeg), "jpg")
             .unwrap();
         let pkg = b.package.clone();
         b.archive
-            .set("OEBPS/images/pic.png", gen(250, 120, ImageFormat::Png));
+            .set("OEBPS/images/pic.png", r#gen(250, 120, ImageFormat::Png));
         pkg.add_manifest_item(
             &mut b.archive,
             "pic",
@@ -387,14 +388,17 @@ mod tests {
             dims(b.archive.get("OEBPS/images/pic.png").unwrap()),
             (100, 48)
         );
-        assert!(b
-            .archive
-            .get_string("OEBPS/bookx-device.css")
-            .unwrap()
-            .contains("Georgia"));
+        assert!(
+            b.archive
+                .get_string("OEBPS/bookx-device.css")
+                .unwrap()
+                .contains("Georgia")
+        );
         assert!(b.package.item_by_path("OEBPS/bookx-device.css").is_some());
-        assert!(chapter(&b, 0)
-            .contains("<link rel=\"stylesheet\" type=\"text/css\" href=\"bookx-device.css\"/>"));
+        assert!(
+            chapter(&b, 0)
+                .contains("<link rel=\"stylesheet\" type=\"text/css\" href=\"bookx-device.css\"/>")
+        );
         assert!(chapter(&b, 1).contains("bookx-device.css"));
     }
 

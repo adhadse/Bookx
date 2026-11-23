@@ -62,11 +62,7 @@ pub fn fmt_int_for(code: &str, n: i64) -> String {
     parts.push(rest);
     parts.reverse();
     let body = parts.join(sep);
-    if n < 0 {
-        format!("-{body}")
-    } else {
-        body
-    }
+    if n < 0 { format!("-{body}") } else { body }
 }
 
 /// A decimal number with the language's separator.

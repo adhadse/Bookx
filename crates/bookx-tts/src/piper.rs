@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use ort::environment::Environment;
 use ort::session::Session;
 use ort::value::Tensor;
@@ -302,9 +302,11 @@ mod tests {
         assert_eq!(pick("", "de-AT").unwrap(), "de_DE-thorsten-medium");
         assert_eq!(pick("", "").unwrap(), "de_DE-thorsten-medium");
         assert!(pick("", "fr").unwrap_err().to_string().contains("\"fr\""));
-        assert!(pick_voice(&[], "", "en")
-            .unwrap_err()
-            .to_string()
-            .contains("no Piper voice"));
+        assert!(
+            pick_voice(&[], "", "en")
+                .unwrap_err()
+                .to_string()
+                .contains("no Piper voice")
+        );
     }
 }

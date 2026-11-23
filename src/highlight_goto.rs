@@ -414,7 +414,9 @@ mod tests {
 
     fn page(paras: &[&str]) -> String {
         let body: String = paras.iter().map(|p| format!("<p>{p}</p>")).collect();
-        format!("<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>t</title></head><body><div>{body}</div></body></html>")
+        format!(
+            "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>t</title></head><body><div>{body}</div></body></html>"
+        )
     }
 
     fn fake(chapters: &[&[&str]]) -> Fake {
@@ -651,7 +653,7 @@ mod tests {
 
     #[test]
     fn go_to_keeps_the_place_it_found_and_nothing_else() {
-        use crate::core::convert::{create_epub, Chapter};
+        use crate::core::convert::{Chapter, create_epub};
         use crate::core::library::AddOutcome;
         use crate::core::opf::Metadata;
         let dir = std::env::temp_dir().join(format!("bookx-goto-{}", uuid::Uuid::new_v4()));

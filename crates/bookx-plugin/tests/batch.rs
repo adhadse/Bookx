@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use bookx_core::archive::Archive;
-use bookx_plugin::{batch::run_on_archive, Host, Manifest, Plugin};
+use bookx_plugin::{Host, Manifest, Plugin, batch::run_on_archive};
 
 fn example() -> Plugin {
     let dir =

@@ -9,7 +9,7 @@
 
 use crate::core::library::Book;
 use crate::i18n::{tr, trf};
-use crate::sharing::{ShareSettings, SharedAccount, MIN_PASSWORD, USER};
+use crate::sharing::{MIN_PASSWORD, ShareSettings, SharedAccount, USER};
 
 /// Longest account name, in characters.
 pub const MAX_NAME: usize = 48;

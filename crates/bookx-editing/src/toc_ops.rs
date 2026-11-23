@@ -238,7 +238,7 @@ pub fn drop_zone(y: f64, height: f64) -> DropPos {
 /// before `offset` (a byte offset in `src`), and a title taken from it (a heading's text, otherwise the first
 /// words after it).
 pub fn nearest_anchor(src: &str, offset: usize) -> Option<(String, String)> {
-    use crate::markup::{plain_text, scan, tag_attr, Event};
+    use crate::markup::{Event, plain_text, scan, tag_attr};
     let mut best: Option<(String, String, usize)> = None;
     for ev in scan(src) {
         if let Event::Open { name, range, .. } = ev {

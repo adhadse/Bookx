@@ -10,7 +10,7 @@
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
 /// Entries looked at; a larger archive is not treated as a bundle of books.
 pub const MAX_ENTRIES: usize = 20_000;

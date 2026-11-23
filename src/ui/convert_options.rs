@@ -7,8 +7,8 @@ use crate::i18n::tr;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use bookx_convert::writers::EpubVersion;
 use bookx_convert::ConvertOptions;
+use bookx_convert::writers::EpubVersion;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 

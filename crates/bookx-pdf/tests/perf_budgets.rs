@@ -4,7 +4,7 @@
 use std::time::{Duration, Instant};
 
 use bookx_pdf::testpdf::{OutlineEntry, Page, TestPdf};
-use bookx_pdf::{reflow, Document};
+use bookx_pdf::{Document, reflow};
 
 fn budget(release_ms: u64) -> Duration {
     let scale: f64 = std::env::var("BOOKX_PERF_SCALE")

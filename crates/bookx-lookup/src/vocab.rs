@@ -1,7 +1,7 @@
 //! Vocabulary builder: saved words with context, SM-2 spaced repetition,
 //! flashcard sessions and Anki-compatible exports. All time is injected.
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use chrono::{DateTime, Duration, Utc};
 use regex::RegexBuilder;
 use serde::{Deserialize, Serialize};
@@ -770,10 +770,12 @@ mod tests {
             last = c.interval_days;
         }
         assert!(review(&mut c, 6, t0()).is_err());
-        assert!(review(&mut c, 255, t0())
-            .unwrap_err()
-            .to_string()
-            .contains("0..=5"));
+        assert!(
+            review(&mut c, 255, t0())
+                .unwrap_err()
+                .to_string()
+                .contains("0..=5")
+        );
         assert_eq!(c.lapses, 0, "rejected review changes nothing");
     }
 
@@ -802,20 +804,23 @@ mod tests {
     fn add_words_contexts_and_duplicates() {
         let mut s = VocabStore::new();
         assert!(s.is_empty());
-        assert!(s
-            .add(" Ephemeral ", Some("An ephemeral joy."), Some("b1"), t0())
-            .unwrap());
-        assert!(!s
-            .add(
+        assert!(
+            s.add(" Ephemeral ", Some("An ephemeral joy."), Some("b1"), t0())
+                .unwrap()
+        );
+        assert!(
+            !s.add(
                 "ephemeral",
                 Some("Another ephemeral thing."),
                 Some("b2"),
                 t0()
             )
-            .unwrap());
-        assert!(!s
-            .add("EPHEMERAL", Some("An ephemeral joy."), Some("b1"), t0())
-            .unwrap());
+            .unwrap()
+        );
+        assert!(
+            !s.add("EPHEMERAL", Some("An ephemeral joy."), Some("b1"), t0())
+                .unwrap()
+        );
         assert!(!s.add("ephemeral", Some("   "), None, t0()).unwrap());
         assert_eq!(s.len(), 1);
         let e = s.find("EPHEMERAL").unwrap();
@@ -841,11 +846,12 @@ mod tests {
         );
         s.set_definition("a", " ").unwrap();
         assert!(s.find("a").unwrap().definition.is_none());
-        assert!(s
-            .set_definition("zz", "x")
-            .unwrap_err()
-            .to_string()
-            .contains("not in"));
+        assert!(
+            s.set_definition("zz", "x")
+                .unwrap_err()
+                .to_string()
+                .contains("not in")
+        );
         assert!(s.remove("A"));
         assert!(!s.remove("a"));
         assert!(s.is_empty());
@@ -904,11 +910,12 @@ mod tests {
         assert!(f.is_finished());
         assert_eq!(f.current(), None);
         assert_eq!(f.progress(), (3, 2, 2));
-        assert!(f
-            .answer(&mut s, 3, now)
-            .unwrap_err()
-            .to_string()
-            .contains("finished"));
+        assert!(
+            f.answer(&mut s, 3, now)
+                .unwrap_err()
+                .to_string()
+                .contains("finished")
+        );
         assert_eq!(s.find("one").unwrap().card.lapses, 1);
         assert_eq!(s.find("two").unwrap().card.repetitions, 0, "outside limit");
     }
@@ -942,9 +949,11 @@ mod tests {
         s.save(&p).unwrap();
         assert!(!p.with_extension("json.tmp").exists());
         assert_eq!(VocabStore::load(&p).unwrap(), s);
-        assert!(VocabStore::load(&t.path().join("none.json"))
-            .unwrap()
-            .is_empty());
+        assert!(
+            VocabStore::load(&t.path().join("none.json"))
+                .unwrap()
+                .is_empty()
+        );
         std::fs::write(&p, "{ not json").unwrap();
         assert!(VocabStore::load(&p).is_err());
         assert!(VocabStore::from_json("[]").is_err());

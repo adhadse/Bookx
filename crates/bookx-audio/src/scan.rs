@@ -8,12 +8,12 @@ use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
 use crate::format::has_audio_extension;
 use crate::limits::*;
 use crate::model::{AudioBook, Part};
-use crate::probe::{probe_file, ChapterMark, Cover, FileInfo};
+use crate::probe::{ChapterMark, Cover, FileInfo, probe_file};
 use crate::text::{natural_key, title_from_file_name};
 
 /// The result of a scan.

@@ -12,11 +12,11 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::contracts::FormatReader;
 
-use crate::helper::{find_in, run, TempFile, DIRS};
+use crate::helper::{DIRS, TempFile, find_in, run};
 
 /// `AT&TFORM` + length + `DJVU` (one page) or `DJVM` (several).
 pub fn is_djvu(head: &[u8]) -> bool {

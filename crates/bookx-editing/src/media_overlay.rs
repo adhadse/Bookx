@@ -11,10 +11,10 @@
 
 use std::ops::Range;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_core::util::{parent_dir, relative_href, xml_escape};
 
-use crate::markup::{scan, tag_attr, Event};
+use crate::markup::{Event, scan, tag_attr};
 
 /// Id prefix of the spans this module adds (`bxs1`, `bxs2`, ...).
 pub const SPAN_PREFIX: &str = "bxs";
@@ -741,10 +741,11 @@ mod tests {
     fn aria_hidden_ruby_and_svg_are_skipped() {
         let src = "<html><body><p aria-hidden=\"true\">Skip me.</p><p><ruby>漢<rt>kan</rt></ruby>字 read.</p><svg><text>No.</text></svg><p>Yes.</p></body></html>";
         let w = wrap_sentences(src).unwrap();
-        assert!(!w
-            .sentences
-            .iter()
-            .any(|s| s.text == "Skip me." || s.text == "kan"));
+        assert!(
+            !w.sentences
+                .iter()
+                .any(|s| s.text == "Skip me." || s.text == "kan")
+        );
         assert!(w.sentences.iter().any(|s| s.text == "Yes."));
     }
 
@@ -850,7 +851,9 @@ mod tests {
     #[test]
     fn hostile_references_are_dropped() {
         let par = |t: &str, a: &str, b: &str, e: &str| {
-            format!("<par><text src=\"{t}\"/><audio src=\"{a}\" clipBegin=\"{b}\" clipEnd=\"{e}\"/></par>")
+            format!(
+                "<par><text src=\"{t}\"/><audio src=\"{a}\" clipBegin=\"{b}\" clipEnd=\"{e}\"/></par>"
+            )
         };
         let xml = format!(
             "<smil xmlns=\"http://www.w3.org/ns/SMIL\"><body><seq>{}{}{}{}{}{}{}{}</seq></body></smil>",

@@ -761,9 +761,11 @@ mod tests {
             &d,
         );
         assert_eq!(tags[0].label, "blockquote");
-        assert!(candidates(&Context::TagName { prefix: "H".into() }, &d)
-            .iter()
-            .any(|t| t.label == "h1"));
+        assert!(
+            candidates(&Context::TagName { prefix: "H".into() }, &d)
+                .iter()
+                .any(|t| t.label == "h1")
+        );
         let attrs = candidates(
             &Context::AttrName {
                 tag: "img".into(),
@@ -845,13 +847,15 @@ mod tests {
             }),
             2
         );
-        assert!(candidates(
-            &Context::LinkValue {
-                prefix: "https://x".into()
-            },
-            &d
-        )
-        .is_empty());
+        assert!(
+            candidates(
+                &Context::LinkValue {
+                    prefix: "https://x".into()
+                },
+                &d
+            )
+            .is_empty()
+        );
     }
 
     #[test]
@@ -890,12 +894,14 @@ mod tests {
             &d,
         );
         assert_eq!(cand[0].label.to_lowercase(), "quickly");
-        assert!(candidates(
-            &Context::Word {
-                prefix: "qu".into()
-            },
-            &d
-        )
-        .is_empty());
+        assert!(
+            candidates(
+                &Context::Word {
+                    prefix: "qu".into()
+                },
+                &d
+            )
+            .is_empty()
+        );
     }
 }

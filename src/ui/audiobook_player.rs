@@ -5,18 +5,18 @@
 //!
 //! Dev hooks: see `dev` (`audio:...` commands of `BOOKX_DEV_SCRIPT`).
 
-use crate::i18n::{tr, trf, N_};
+use crate::i18n::{N_, tr, trf};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use bookx_audio::model::clock;
 use bookx_tts::SleepTimer;
+use relm4::RelmWidgetExt;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
-use relm4::RelmWidgetExt;
 
-use super::{audit, covers, SharedRef};
+use super::{SharedRef, audit, covers};
 use crate::audiobook::{self as ab, Listening, Sleep};
 use crate::core::formats::AUDIOBOOK;
 use crate::core::library::Book;
@@ -1015,7 +1015,11 @@ impl Inner {
             sleep,
             l.state.bookmarks.len(),
             l.book.total_ms,
-            self.mpris.borrow().as_ref().map(|m| m.name.clone()).unwrap_or_default(),
+            self.mpris
+                .borrow()
+                .as_ref()
+                .map(|m| m.name.clone())
+                .unwrap_or_default(),
             self.play.icon_name().unwrap_or_default(),
             self.progress.label(),
             st.error.unwrap_or_default(),
@@ -1196,7 +1200,9 @@ pub fn pick(parent: Option<gtk::Window>, done: Rc<dyn Fn(Vec<std::path::PathBuf>
     let Some(parent) = parent else { return };
     let dlg = adw::AlertDialog::new(
         Some(&tr("Add Audiobook")),
-        Some(&tr("Choose the folder of an audiobook, or one audio file (MP3, M4B, OGG, FLAC, WAV) or zip. The audio stays where it is.")),
+        Some(&tr(
+            "Choose the folder of an audiobook, or one audio file (MP3, M4B, OGG, FLAC, WAV) or zip. The audio stays where it is.",
+        )),
     );
     dlg.add_response("cancel", &tr("Cancel"));
     dlg.add_response("file", &tr("Choose File"));

@@ -5,8 +5,8 @@
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 
-use bookx_sources::authors::{keep_as_written, NameOrder};
-use bookx_sources::sources::{Field, FieldPriority, SourceSet, SOURCE_IDS};
+use bookx_sources::authors::{NameOrder, keep_as_written};
+use bookx_sources::sources::{Field, FieldPriority, SOURCE_IDS, SourceSet};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

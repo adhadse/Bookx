@@ -139,7 +139,7 @@ pub fn acquire_with(
                         "cannot take the lock {} (is the folder read-only?)",
                         path.display()
                     )
-                })
+                });
             }
         }
     }

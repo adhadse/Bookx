@@ -3,7 +3,7 @@
 
 use crate::factory::language_name;
 use crate::models::{
-    catalog, install_plan, kokoro_model_pack, kokoro_paths, Pack, PackKind, Store,
+    Pack, PackKind, Store, catalog, install_plan, kokoro_model_pack, kokoro_paths,
 };
 use crate::prefs::TtsPrefs;
 

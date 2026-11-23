@@ -3,7 +3,7 @@ mod common;
 use std::sync::Arc;
 
 use bookx_core::contracts::Store;
-use bookx_store::{Order, SqliteStore, SCHEMA_VERSION};
+use bookx_store::{Order, SCHEMA_VERSION, SqliteStore};
 use common::*;
 use rusqlite::Connection;
 

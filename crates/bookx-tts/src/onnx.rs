@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use ort::environment::Environment;
 use ort::session::Session;
 

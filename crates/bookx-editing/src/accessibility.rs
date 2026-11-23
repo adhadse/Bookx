@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::markup::*;
 use crate::opf_edit::*;
-use crate::semantics::{read_semantics, write_semantics, Semantic, SemanticEntry, SemanticsTarget};
+use crate::semantics::{Semantic, SemanticEntry, SemanticsTarget, read_semantics, write_semantics};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AltKind {
@@ -463,7 +463,7 @@ pub fn make_accessible(
 mod tests {
     use super::*;
     use crate::testutil::make_book;
-    use bookx_core::check::{check_book, Severity};
+    use bookx_core::check::{Severity, check_book};
 
     fn book_with_content() -> OpenBook {
         let mut b = make_book(&[
@@ -575,10 +575,12 @@ mod tests {
             c2[0].contains("language"),
             "chapter 2 only needs xml:lang: {c2:?}"
         );
-        assert!(check_book(&b.archive)
-            .iter()
-            .filter(|i| i.severity == Severity::Error)
-            .all(|i| i.message.contains("Broken link")));
+        assert!(
+            check_book(&b.archive)
+                .iter()
+                .filter(|i| i.severity == Severity::Error)
+                .all(|i| i.message.contains("Broken link"))
+        );
     }
 
     #[test]
@@ -589,14 +591,16 @@ mod tests {
             ..Default::default()
         };
         let rep = make_accessible(&mut b, &opts).unwrap();
-        assert!(rep
-            .changes
-            .iter()
-            .any(|c| c.starts_with("Added accessibility metadata")));
-        assert!(rep
-            .changes
-            .iter()
-            .any(|c| c == "Added landmarks: toc, bodymatter"));
+        assert!(
+            rep.changes
+                .iter()
+                .any(|c| c.starts_with("Added accessibility metadata"))
+        );
+        assert!(
+            rep.changes
+                .iter()
+                .any(|c| c == "Added landmarks: toc, bodymatter")
+        );
         let opf = b.archive.get_string(&b.package.opf_path).unwrap();
         let doc = roxmltree::Document::parse(&opf).unwrap();
         let metas: Vec<(String, String)> = doc
@@ -649,24 +653,27 @@ mod tests {
             },
         )
         .unwrap();
-        assert!(rep
-            .changes
-            .iter()
-            .any(|c| c.contains("marked 1 image(s) as decorative")));
-        assert!(b
-            .archive
-            .get_string("OEBPS/chapter-1.xhtml")
-            .unwrap()
-            .contains("<img src=\"a.png\" alt=\"\"/>"));
+        assert!(
+            rep.changes
+                .iter()
+                .any(|c| c.contains("marked 1 image(s) as decorative"))
+        );
+        assert!(
+            b.archive
+                .get_string("OEBPS/chapter-1.xhtml")
+                .unwrap()
+                .contains("<img src=\"a.png\" alt=\"\"/>")
+        );
         assert_eq!(rep.alt_issues.len(), 1);
         assert_eq!(rep.alt_issues[0].kind, AltKind::Empty);
         let opf = b.archive.get_string(&b.package.opf_path).unwrap();
         assert!(opf.contains(">alternativeText<"));
-        assert!(!b
-            .archive
-            .get_string("OEBPS/nav.xhtml")
-            .unwrap()
-            .contains("landmarks"));
+        assert!(
+            !b.archive
+                .get_string("OEBPS/nav.xhtml")
+                .unwrap()
+                .contains("landmarks")
+        );
     }
 
     #[test]

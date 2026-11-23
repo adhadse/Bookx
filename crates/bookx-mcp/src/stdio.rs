@@ -15,7 +15,7 @@ use serde_json::Value;
 
 use crate::app::lock;
 use crate::server::{
-    changes, error_message, snapshot, RpcError, Server, Session, INVALID_REQUEST, PARSE_ERROR,
+    INVALID_REQUEST, PARSE_ERROR, RpcError, Server, Session, changes, error_message, snapshot,
 };
 
 /// Longest accepted input line.

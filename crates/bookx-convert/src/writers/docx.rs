@@ -17,8 +17,8 @@ use bookx_core::contracts::FormatWriter;
 use bookx_core::util::xml_escape;
 use serde::{Deserialize, Serialize};
 
-use crate::images::{image_size, kind_of, to_png, Kind};
-use crate::model::{flat_inlines, split_lines, Align, Block, Cell, Fmt, Inline, Link, Model};
+use crate::images::{Kind, image_size, kind_of, to_png};
+use crate::model::{Align, Block, Cell, Fmt, Inline, Link, Model, flat_inlines, split_lines};
 
 use super::flat::zip_files;
 
@@ -562,7 +562,9 @@ impl<'a> Docx<'a> {
 }
 
 fn content_types(media_exts: &[&str]) -> String {
-    let mut s = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/>");
+    let mut s = String::from(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/>",
+    );
     for e in media_exts {
         let ct = match *e {
             "png" => "image/png",
@@ -613,7 +615,9 @@ fn root_rels() -> String {
 fn core_xml(book: &OpenBook) -> String {
     let md = book.metadata();
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ");
-    let mut s = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<cp:coreProperties xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:dcmitype=\"http://purl.org/dc/dcmitype/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">");
+    let mut s = String::from(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<cp:coreProperties xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:dcmitype=\"http://purl.org/dc/dcmitype/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">",
+    );
     let _ = write!(s, "<dc:title>{}</dc:title>", clean(&md.title));
     if !md.authors.is_empty() {
         let _ = write!(
@@ -648,7 +652,9 @@ fn core_xml(book: &OpenBook) -> String {
 
 fn app_xml(book: &OpenBook) -> String {
     let md = book.metadata();
-    let mut s = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Properties xmlns=\"http://schemas.openxmlformats.org/officeDocument/2006/extended-properties\"><Application>Bookx</Application>");
+    let mut s = String::from(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Properties xmlns=\"http://schemas.openxmlformats.org/officeDocument/2006/extended-properties\"><Application>Bookx</Application>",
+    );
     if !md.publisher.is_empty() {
         let _ = write!(s, "<Company>{}</Company>", clean(&md.publisher));
     }
@@ -659,7 +665,9 @@ fn app_xml(book: &OpenBook) -> String {
 fn styles_xml(o: &DocxOptions) -> String {
     let font = clean(&o.font);
     let sz = o.half_points();
-    let mut s = format!("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:styles xmlns:w=\"{NS_W}\"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii=\"{font}\" w:hAnsi=\"{font}\" w:eastAsia=\"{font}\" w:cs=\"{font}\"/><w:sz w:val=\"{sz}\"/><w:szCs w:val=\"{sz}\"/><w:lang w:val=\"en-US\" w:eastAsia=\"en-US\" w:bidi=\"ar-SA\"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after=\"120\" w:line=\"276\" w:lineRule=\"auto\"/></w:pPr></w:pPrDefault></w:docDefaults>");
+    let mut s = format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:styles xmlns:w=\"{NS_W}\"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii=\"{font}\" w:hAnsi=\"{font}\" w:eastAsia=\"{font}\" w:cs=\"{font}\"/><w:sz w:val=\"{sz}\"/><w:szCs w:val=\"{sz}\"/><w:lang w:val=\"en-US\" w:eastAsia=\"en-US\" w:bidi=\"ar-SA\"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after=\"120\" w:line=\"276\" w:lineRule=\"auto\"/></w:pPr></w:pPrDefault></w:docDefaults>"
+    );
     s.push_str("<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\"><w:name w:val=\"Normal\"/><w:qFormat/></w:style>");
     s.push_str("<w:style w:type=\"character\" w:default=\"1\" w:styleId=\"DefaultParagraphFont\"><w:name w:val=\"Default Paragraph Font\"/><w:uiPriority w:val=\"1\"/><w:semiHidden/></w:style>");
     s.push_str("<w:style w:type=\"table\" w:default=\"1\" w:styleId=\"TableNormal\"><w:name w:val=\"Normal Table\"/><w:uiPriority w:val=\"99\"/><w:semiHidden/><w:tblPr><w:tblInd w:w=\"0\" w:type=\"dxa\"/><w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/><w:left w:w=\"108\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/><w:right w:w=\"108\" w:type=\"dxa\"/></w:tblCellMar></w:tblPr></w:style>");
@@ -692,10 +700,15 @@ fn styles_xml(o: &DocxOptions) -> String {
 }
 
 fn numbering_xml(nums: &[(u32, bool)]) -> String {
-    let mut s = format!("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:numbering xmlns:w=\"{NS_W}\">");
+    let mut s = format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:numbering xmlns:w=\"{NS_W}\">"
+    );
     // abstractNum 0: bullets, abstractNum 1: decimal / letters / roman by level
     for (abs, ordered) in [(0u32, false), (1u32, true)] {
-        let _ = write!(s, "<w:abstractNum w:abstractNumId=\"{abs}\"><w:multiLevelType w:val=\"hybridMultilevel\"/>");
+        let _ = write!(
+            s,
+            "<w:abstractNum w:abstractNumId=\"{abs}\"><w:multiLevelType w:val=\"hybridMultilevel\"/>"
+        );
         for lvl in 0..9u32 {
             let (fmt, text, font) = if ordered {
                 let f = ["decimal", "lowerLetter", "lowerRoman"][(lvl % 3) as usize];
@@ -713,7 +726,11 @@ fn numbering_xml(nums: &[(u32, bool)]) -> String {
                 s,
                 "<w:lvl w:ilvl=\"{lvl}\"><w:start w:val=\"1\"/><w:numFmt w:val=\"{fmt}\"/><w:lvlText w:val=\"{text}\"/><w:lvlJc w:val=\"left\"/><w:pPr><w:ind w:left=\"{}\" w:hanging=\"360\"/></w:pPr>{}</w:lvl>",
                 720 * (lvl + 1),
-                if font.is_empty() { String::new() } else { format!("<w:rPr>{font}</w:rPr>") }
+                if font.is_empty() {
+                    String::new()
+                } else {
+                    format!("<w:rPr>{font}</w:rPr>")
+                }
             );
         }
         s.push_str("</w:abstractNum>");

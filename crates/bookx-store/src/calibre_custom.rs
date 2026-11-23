@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, HashMap};
 use anyhow::Result;
 use bookx_core::custom::{ColumnDef, ColumnKind};
 use bookx_core::library::Book;
-use rusqlite::{params, types::Value, Connection};
+use rusqlite::{Connection, params, types::Value};
 
 use crate::calibre::parse_date;
 

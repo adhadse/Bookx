@@ -237,11 +237,7 @@ pub fn attach_drag(widget: &impl IsA<gtk::Widget>) {
         let id: u64 = w.upgrade()?.widget_name().parse().ok()?;
         let ids = SELECTION.with(|s| {
             let s = s.borrow();
-            if s.contains(&id) {
-                s.clone()
-            } else {
-                vec![id]
-            }
+            if s.contains(&id) { s.clone() } else { vec![id] }
         });
         Some(gdk::ContentProvider::for_value(
             &shelves::encode_drag(&ids).to_value(),

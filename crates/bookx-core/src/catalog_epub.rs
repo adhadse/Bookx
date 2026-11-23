@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use anyhow::Result;
 
-use super::convert::{create_epub, Chapter};
+use super::convert::{Chapter, create_epub};
 use super::library::Book;
 use super::opf::Metadata;
 use super::util::xml_escape;

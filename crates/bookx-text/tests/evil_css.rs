@@ -5,7 +5,7 @@
 use std::time::{Duration, Instant};
 
 use bookx_text::css::{
-    parse_declaration_text, parse_selector_list, parse_stylesheet, MediaEnv, StyleSheetSet,
+    MediaEnv, StyleSheetSet, parse_declaration_text, parse_selector_list, parse_stylesheet,
 };
 
 fn quick<T>(label: &str, f: impl FnOnce() -> T) -> T {

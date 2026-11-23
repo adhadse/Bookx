@@ -3,12 +3,12 @@
 mod common;
 
 use std::io::{Read, Write};
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::time::{Duration, Instant};
 
 use bookx_backup::crypto::Kdf;
-use bookx_backup::repo::manifest::{BlobRef, FileEntry, Manifest, Role, SnapName, FORMAT};
+use bookx_backup::repo::manifest::{BlobRef, FORMAT, FileEntry, Manifest, Role, SnapName};
 use bookx_backup::repo::seal::{Crypto, Keys};
 use bookx_backup::repo::{MemStore, Repository, RunOptions, Secrets};
 use chrono::{TimeZone, Utc};

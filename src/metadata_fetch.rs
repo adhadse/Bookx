@@ -649,12 +649,14 @@ mod tests {
         assert_eq!(f.meta.title, "Dune", "the book's own values stay");
         assert_eq!(f.sources, vec!["plugin p.source"]);
         // without the plugin the same situation is an error
-        assert!(fetch_with(
-            &md(),
-            Arc::new(mock_from(&d)),
-            &crate::plugins::Loaded::default()
-        )
-        .is_err());
+        assert!(
+            fetch_with(
+                &md(),
+                Arc::new(mock_from(&d)),
+                &crate::plugins::Loaded::default()
+            )
+            .is_err()
+        );
         let _ = std::fs::remove_dir_all(d);
     }
 

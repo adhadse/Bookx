@@ -1263,12 +1263,16 @@ mod tests {
     #[test]
     fn the_banner_setting_overrides_the_visit() {
         assert!(banner_plan("hidden", BannerKind::Hero, 1000.0, 1000.0).is_none());
-        assert!(!banner_plan("compact", BannerKind::Hero, 1400.0, 2000.0)
-            .unwrap()
-            .hero());
-        assert!(banner_plan("large", BannerKind::Strip, 1000.0, 1000.0)
-            .unwrap()
-            .hero());
+        assert!(
+            !banner_plan("compact", BannerKind::Hero, 1400.0, 2000.0)
+                .unwrap()
+                .hero()
+        );
+        assert!(
+            banner_plan("large", BannerKind::Strip, 1000.0, 1000.0)
+                .unwrap()
+                .hero()
+        );
         assert_eq!(
             banner_plan("whatever", BannerKind::Strip, 900.0, 900.0),
             banner_plan("", BannerKind::Strip, 900.0, 900.0)

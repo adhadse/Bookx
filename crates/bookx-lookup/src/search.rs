@@ -1,7 +1,7 @@
 //! In-book text search with whole-word, case and regex options, context snippets,
 //! a result limit and cooperative cancellation.
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use regex::{Regex, RegexBuilder};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -394,10 +394,12 @@ mod tests {
         };
         assert!(search(&["x"], "((a{100}){100}){100}", &o, None).is_err());
         let long = "a".repeat(MAX_QUERY_CHARS + 1);
-        assert!(search(&["x"], &long, &SearchOptions::default(), None)
-            .unwrap_err()
-            .to_string()
-            .contains("longer"));
+        assert!(
+            search(&["x"], &long, &SearchOptions::default(), None)
+                .unwrap_err()
+                .to_string()
+                .contains("longer")
+        );
         let ok = "a".repeat(MAX_QUERY_CHARS);
         assert!(search(&["x"], &ok, &SearchOptions::default(), None).is_ok());
     }
@@ -416,10 +418,12 @@ mod tests {
             ..Default::default()
         };
         assert!(search(&["abc"], "x*", &ro, None).unwrap().hits.is_empty());
-        assert!(search(&["日本"], "(?:)", &ro, None)
-            .unwrap()
-            .hits
-            .is_empty());
+        assert!(
+            search(&["日本"], "(?:)", &ro, None)
+                .unwrap()
+                .hits
+                .is_empty()
+        );
     }
 
     #[test]

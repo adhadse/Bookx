@@ -4,7 +4,7 @@
 //! runs on zbus' own thread; calls arrive as [`Control`] values on a channel the reader polls.
 
 use std::collections::HashMap;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
 
 use zbus::zvariant::{ObjectPath, OwnedValue, Value};

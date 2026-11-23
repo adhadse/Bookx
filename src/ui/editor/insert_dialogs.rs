@@ -411,8 +411,7 @@ impl Editor {
                 if let Some(r) = list.selected_row() {
                     let file = r.widget_name().to_string();
                     let ids = if bookx_editing::markup::is_markup_path(&file) {
-                        let t = comp
-                            .borrow()
+                        comp.borrow()
                             .edited_snips
                             .get(&file)
                             .cloned()
@@ -422,8 +421,7 @@ impl Editor {
                                     .get_string(&file)
                                     .map(|t| bookx_editing::code_marks::anchor_snippets(&t))
                                     .unwrap_or_default()
-                            });
-                        t
+                            })
                     } else {
                         Vec::new()
                     };

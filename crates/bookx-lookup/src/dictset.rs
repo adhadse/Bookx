@@ -2,7 +2,7 @@
 //! lookup history and web lookup URL templates.
 
 use crate::stardict::{Entry, StarDict};
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
@@ -421,7 +421,7 @@ impl WebSource {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testutil::{write_dict, DictSpec, TmpDir};
+    use crate::testutil::{DictSpec, TmpDir, write_dict};
 
     fn open(t: &TmpDir, name: &str, words: &[(&str, &str)]) -> StarDict {
         let spec = DictSpec::new(

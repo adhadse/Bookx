@@ -1,6 +1,6 @@
 //! RSVP speed-reading schedule and the back/forward jump history.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 pub const MIN_WPM: u32 = 50;
 pub const MAX_WPM: u32 = 2000;
@@ -465,40 +465,48 @@ mod tests {
 
     #[test]
     fn invalid_wpm_and_empty_text() {
-        assert!(schedule(
-            "x",
-            &RsvpConfig {
-                wpm: 49,
-                ..Default::default()
-            }
-        )
-        .unwrap_err()
-        .to_string()
-        .contains("wpm"));
-        assert!(schedule(
-            "x",
-            &RsvpConfig {
-                wpm: 2001,
-                ..Default::default()
-            }
-        )
-        .is_err());
-        assert!(schedule(
-            "x",
-            &RsvpConfig {
-                wpm: 0,
-                ..Default::default()
-            }
-        )
-        .is_err());
-        assert!(schedule(
-            "x",
-            &RsvpConfig {
-                wpm: 50,
-                ..Default::default()
-            }
-        )
-        .is_ok());
+        assert!(
+            schedule(
+                "x",
+                &RsvpConfig {
+                    wpm: 49,
+                    ..Default::default()
+                }
+            )
+            .unwrap_err()
+            .to_string()
+            .contains("wpm")
+        );
+        assert!(
+            schedule(
+                "x",
+                &RsvpConfig {
+                    wpm: 2001,
+                    ..Default::default()
+                }
+            )
+            .is_err()
+        );
+        assert!(
+            schedule(
+                "x",
+                &RsvpConfig {
+                    wpm: 0,
+                    ..Default::default()
+                }
+            )
+            .is_err()
+        );
+        assert!(
+            schedule(
+                "x",
+                &RsvpConfig {
+                    wpm: 50,
+                    ..Default::default()
+                }
+            )
+            .is_ok()
+        );
         assert!(schedule("   ", &RsvpConfig::default()).unwrap().is_empty());
     }
 

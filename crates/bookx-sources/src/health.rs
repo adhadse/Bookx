@@ -11,7 +11,7 @@ use std::time::Instant;
 
 use anyhow::Result;
 
-use crate::fetch::{backoff_delay_ms, FetchError, Fetcher};
+use crate::fetch::{FetchError, Fetcher, backoff_delay_ms};
 
 /// How a source is doing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

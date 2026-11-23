@@ -9,10 +9,10 @@ use std::rc::Rc;
 use relm4::adw;
 use relm4::gtk::{self, gdk, glib, prelude::*};
 
-use super::reader_tts::{sleep_of, Cmd, SLEEP};
+use super::reader_tts::{Cmd, SLEEP, sleep_of};
 use crate::i18n::{tr, trf};
 use crate::tts::Voice;
-use crate::tts_player::{speed_label, step_speed, view, Model, Phase};
+use crate::tts_player::{Model, Phase, speed_label, step_speed, view};
 
 /// How long the seek bar waits for the pointer to rest before the reading jumps.
 const SEEK_SETTLE_MS: u64 = 250;
@@ -747,7 +747,11 @@ impl PlayerCard {
             self.position.text(),
             self.speed.text(),
             self.voice_label.text(),
-            if self.status.is_visible() { self.status_text.text().to_string() } else { String::new() },
+            if self.status.is_visible() {
+                self.status_text.text().to_string()
+            } else {
+                String::new()
+            },
             self.status_bar.fraction(),
             v.preparing,
             self.sentence.text(),

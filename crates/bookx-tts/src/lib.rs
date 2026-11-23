@@ -34,6 +34,6 @@ pub mod text;
 
 pub use prefs::{ServerPrefs, TtsPrefs};
 pub use session::{
-    voices_for, Engine, Event, EventKind, MockEngine, Session, SleepTimer, State, Update, Voice,
+    Engine, Event, EventKind, MockEngine, Session, SleepTimer, State, Update, Voice, voices_for,
 };
-pub use text::{split_sentences, Sentence};
+pub use text::{Sentence, split_sentences};

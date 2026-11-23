@@ -5,7 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::library::{AddOutcome, Highlight, Library};
 use bookx_core::opf::Metadata;
 use bookx_serve::look_repair as repair;
@@ -86,9 +86,11 @@ fn a_library_where_everything_is_yellow_gets_the_looks_of_the_device_once() {
     let d = tmp();
     let (mut lib, id) = library(&d);
     seed_wrong(&mut lib, id);
-    assert!(looks(&lib, id)
-        .iter()
-        .all(|l| l == &("yellow".into(), "".into())));
+    assert!(
+        looks(&lib, id)
+            .iter()
+            .all(|l| l == &("yellow".into(), "".into()))
+    );
     let truths = repair::truths_from_folder(&device_folder(&d));
     assert_eq!(truths.len(), 36);
 
@@ -98,9 +100,11 @@ fn a_library_where_everything_is_yellow_gets_the_looks_of_the_device_once() {
     assert_eq!(plan.report.fixed, 35);
     assert_eq!(plan.report.no_highlight, 0, "nothing is created");
     // a dry run changes nothing
-    assert!(looks(&lib, id)
-        .iter()
-        .all(|l| l == &("yellow".into(), "".into())));
+    assert!(
+        looks(&lib, id)
+            .iter()
+            .all(|l| l == &("yellow".into(), "".into()))
+    );
 
     assert_eq!(repair::apply(&mut lib, &plan).unwrap(), 35);
     let want: Vec<(&str, &str)> = {
@@ -145,9 +149,11 @@ fn a_library_where_everything_is_yellow_gets_the_looks_of_the_device_once() {
     let before = lib.history().len();
     assert!(lib.undo_last().unwrap().is_some());
     assert!(lib.history().len() >= before);
-    assert!(looks(&lib, id)
-        .iter()
-        .all(|l| l == &("yellow".into(), "".into())));
+    assert!(
+        looks(&lib, id)
+            .iter()
+            .all(|l| l == &("yellow".into(), "".into()))
+    );
     // an undone repair can be run again: nothing was left behind that says "the reader changed it"
     let ledger = bookx_core::devstyle::DeviceLooks::load(&lib.root);
     let again = repair::plan(&lib.books, &ledger, &truths);
@@ -189,9 +195,11 @@ fn the_one_time_pass_waits_for_a_source_then_never_runs_again() {
         h.style = String::new();
     }
     assert!(repair::one_time(&mut lib, &truths).is_none());
-    assert!(looks(&lib, id)
-        .iter()
-        .all(|l| l == &("yellow".into(), "".into())));
+    assert!(
+        looks(&lib, id)
+            .iter()
+            .all(|l| l == &("yellow".into(), "".into()))
+    );
     let _ = std::fs::remove_dir_all(d);
 }
 

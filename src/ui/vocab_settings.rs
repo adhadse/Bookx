@@ -7,7 +7,7 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 
-use super::preferences::{register_group, PrefCtx};
+use super::preferences::{PrefCtx, register_group};
 use crate::i18n::{tr, trf};
 use crate::settings_bus::{Bus, Subscription};
 

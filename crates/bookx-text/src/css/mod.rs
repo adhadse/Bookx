@@ -15,8 +15,8 @@ mod sheet;
 mod values;
 
 pub use cascade::{ComputedStyle, StyleSheetSet, UA_CSS};
-pub use selector::{parse_selector_list, Selector};
-pub use sheet::{media_applies, parse_declaration_text, parse_stylesheet, MediaEnv, Rule};
+pub use selector::{Selector, parse_selector_list};
+pub use sheet::{MediaEnv, Rule, media_applies, parse_declaration_text, parse_stylesheet};
 pub use values::{
     Color, Decl, Display, Edges, Float, FontStyle, Hyphens, Len, LineHeight, LineHeightSpec,
     PageBreak, Side, Size, TextAlign, TextCombine, TextDecoration, TextOrientation, Val,

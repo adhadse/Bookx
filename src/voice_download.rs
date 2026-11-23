@@ -6,11 +6,11 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::mpsc::{channel, Receiver};
+use std::sync::mpsc::{Receiver, channel};
 use std::time::{Duration, Instant};
 
 use bookx_tts::models::Pack;
-use bookx_tts::setup::{progress_line, Failure, Throughput};
+use bookx_tts::setup::{Failure, Throughput, progress_line};
 use relm4::gtk::glib;
 
 use crate::i18n::tr;
@@ -271,10 +271,11 @@ mod tests {
         // a switch of origin is logged once
         let (_, _, log) = t.on_progress(2500, "voices.bin", 100, 100_000_000, 1);
         assert!(log.unwrap().contains("Switching to the next origin"));
-        assert!(t
-            .on_progress(2600, "voices.bin", 200, 100_000_000, 1)
-            .2
-            .is_none());
+        assert!(
+            t.on_progress(2600, "voices.bin", 200, 100_000_000, 1)
+                .2
+                .is_none()
+        );
         assert_eq!(t.on_progress(3000, "x", 5, 0, 0).0, 0.0);
         assert_eq!(t.on_progress(4000, "x", 500, 100, 0).0, 1.0);
     }

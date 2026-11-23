@@ -8,7 +8,7 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 /// Where the built-in players (`pacat`, `pw-cat`, `aplay`) may live.
 pub const SYSTEM_DIRS: &[&str] = &["/usr/bin", "/bin", "/usr/local/bin", "/app/bin"];
@@ -45,7 +45,7 @@ pub fn split_words(spec: &str) -> Result<Vec<String>> {
                                 cur.push(o);
                             }
                             None => {
-                                return Err(anyhow!("unterminated quote in the player command"))
+                                return Err(anyhow!("unterminated quote in the player command"));
                             }
                         },
                         Some(c) => cur.push(c),

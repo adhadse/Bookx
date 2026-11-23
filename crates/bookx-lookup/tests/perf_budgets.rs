@@ -4,8 +4,8 @@
 use std::sync::atomic::AtomicBool;
 use std::time::{Duration, Instant};
 
-use bookx_lookup::search::{search, SearchOptions};
-use bookx_lookup::stats::{daily_totals, Session, StatsConfig};
+use bookx_lookup::search::{SearchOptions, search};
+use bookx_lookup::stats::{Session, StatsConfig, daily_totals};
 use chrono::{TimeZone, Utc};
 
 fn budget(release_ms: u64) -> Duration {

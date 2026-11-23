@@ -10,11 +10,11 @@
 //! client of the user's account), or the user pastes an access token. Nothing here stores
 //! anything: the caller keeps the secrets (the keyring) and the list of entries already imported.
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use serde_json::Value;
 
-use crate::fetch::{url_encode, FetchError, Fetcher};
-use crate::readability::{clean_fragment, Article};
+use crate::fetch::{FetchError, Fetcher, url_encode};
+use crate::readability::{Article, clean_fragment};
 use crate::sources::normalize_date;
 
 /// Most pages asked for in one run (with 30 entries each).
@@ -114,7 +114,9 @@ pub fn parse_token(body: &[u8]) -> Result<String> {
 /// Signs in with the API client and the account.
 pub fn sign_in(fetcher: &dyn Fetcher, base: &str, c: &Credentials) -> Result<String> {
     if !c.complete() {
-        bail!("Fill in the client ID, client secret, user name and password, or paste an access token.");
+        bail!(
+            "Fill in the client ID, client secret, user name and password, or paste an access token."
+        );
     }
     crate::netguard::trust_url(base);
     let body = fetcher
@@ -431,12 +433,14 @@ mod tests {
         assert!(sign_in(&none, "https://w.example.org", &Credentials::default()).is_err());
         assert!(none.posts().is_empty());
         // an error document inside a 200 answer
-        assert!(parse_token(
-            br#"{"error":"invalid_grant","error_description":"Invalid username and password"}"#
-        )
-        .unwrap_err()
-        .to_string()
-        .contains("Invalid username"));
+        assert!(
+            parse_token(
+                br#"{"error":"invalid_grant","error_description":"Invalid username and password"}"#
+            )
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid username")
+        );
         assert!(parse_token(b"<html>").is_err());
         assert!(parse_token(br#"{"access_token":""}"#).is_err());
     }
@@ -495,9 +499,11 @@ mod tests {
         // everything already imported: nothing, and the walk stops at the last page
         let q2 = Query::default();
         let f = MockFetcher::new().with_body(&entries_url(base, &q2, 1), page_json(&[1, 2], 1, 1));
-        assert!(fetch_entries(&f, base, "T", &q2, &|_| true)
-            .unwrap()
-            .is_empty());
+        assert!(
+            fetch_entries(&f, base, "T", &q2, &|_| true)
+                .unwrap()
+                .is_empty()
+        );
         assert_eq!(f.requests().len(), 1);
     }
 

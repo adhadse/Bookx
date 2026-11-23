@@ -2,7 +2,7 @@
 name = "bookx-serve"
 version = "0.3.0-beta.2"
 authors = ["Anurag Dhadse <hello@adhadse.com>"]
-edition = "2021"
+edition = "2024"
 rust-version = "1.85"
 description = "Devices and servers for Bookx: USB e-reader driver, OPDS server/client, KOSync server, send by email"
 publish = false

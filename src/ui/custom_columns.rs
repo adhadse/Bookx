@@ -3,7 +3,7 @@
 //! and the columns of the table view. The decisions are in `library_custom.rs`; the engine
 //! (types, storage, search) is `bookx_core::custom` and `bookx-store`.
 
-use crate::i18n::{tr, trf, N_};
+use crate::i18n::{N_, tr, trf};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -11,8 +11,8 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
 
-use super::preferences::{register_group, PrefChange, PrefCtx};
 use super::SharedRef;
+use super::preferences::{PrefChange, PrefCtx, register_group};
 use crate::core::custom::{ColumnDef, ColumnKind};
 use crate::core::library::{Book, Library};
 use crate::library_custom as lc;

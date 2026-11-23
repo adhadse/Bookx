@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use bookx_lookup::stardict::{decode_fields, parse_ifo, parse_index, strip_markup, StarDict};
+use bookx_lookup::stardict::{StarDict, decode_fields, parse_ifo, parse_index, strip_markup};
 
 fn tmp(tag: &str) -> PathBuf {
     let d = std::env::temp_dir().join(format!(
@@ -29,7 +29,9 @@ fn noise(seed: u64, len: usize) -> Vec<u8> {
 }
 
 fn ifo(words: usize, extra: &str) -> String {
-    format!("StarDict's dict ifo file\nversion=2.4.2\nbookname=Evil\nwordcount={words}\nidxfilesize=0\n{extra}")
+    format!(
+        "StarDict's dict ifo file\nversion=2.4.2\nbookname=Evil\nwordcount={words}\nidxfilesize=0\n{extra}"
+    )
 }
 
 #[test]

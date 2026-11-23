@@ -22,7 +22,7 @@
 
 use std::ops::Range;
 
-use crate::markup::{self, rewrite_tag_attrs, scan, Event};
+use crate::markup::{self, Event, rewrite_tag_attrs, scan};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Op {

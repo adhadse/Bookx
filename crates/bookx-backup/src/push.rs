@@ -4,13 +4,13 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_store::health::{self, Snapshot};
 use chrono::{DateTime, Utc};
 use sha2::{Digest, Sha256};
 
 use crate::crypto::{self, Kdf, Meta};
-use crate::target::{parse_remote_name, remote_name, RemoteFile, RemoteName, Target};
+use crate::target::{RemoteFile, RemoteName, Target, parse_remote_name, remote_name};
 
 /// The error of a backup the user cancelled.
 #[derive(Debug)]
@@ -150,7 +150,9 @@ pub fn push(
         .map_err(|e| cleanup(anyhow!("could not read the copy back: {e:#}")))?;
     if sha(&back) != sha(&data) {
         let _ = target.delete(&name);
-        bail!("the copy does not match the original (it was removed); the place may be full or unreliable");
+        bail!(
+            "the copy does not match the original (it was removed); the place may be full or unreliable"
+        );
     }
     step(PushStage::Pruning, 0.9)?;
     let pruned = prune(target, keep, now)?;
@@ -455,10 +457,12 @@ mod tests {
         std::fs::create_dir_all(&d).unwrap();
         let f = d.join("x.db");
         std::fs::write(&f, b"hello").unwrap();
-        assert!(open_file(&f, None, &d.join("o"))
-            .unwrap_err()
-            .to_string()
-            .contains("not a Bookx backup"));
+        assert!(
+            open_file(&f, None, &d.join("o"))
+                .unwrap_err()
+                .to_string()
+                .contains("not a Bookx backup")
+        );
         let _ = std::fs::remove_dir_all(d);
     }
 }

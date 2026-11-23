@@ -5,7 +5,7 @@ use std::sync::Arc;
 use bookx_core::archive::Archive;
 use bookx_core::book::OpenBook;
 use bookx_core::contracts::{MetadataQuery, MetadataSource};
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_sources::cover::generate_cover;
 use bookx_sources::fetch::{MockFetcher, MockReply};
 use bookx_sources::sources::SourceSet;
@@ -83,9 +83,10 @@ fn lookup_merge_and_apply_to_a_book() {
     book.set_metadata(md).unwrap();
     let bytes = set.fetch_cover(&best).unwrap().expect("cover downloaded");
     book.set_cover(bytes, "png").unwrap();
-    assert!(book
-        .cover_bytes()
-        .is_some_and(|c| c.starts_with(b"\x89PNG")));
+    assert!(
+        book.cover_bytes()
+            .is_some_and(|c| c.starts_with(b"\x89PNG"))
+    );
     assert_eq!(book.metadata().authors, vec!["Roald Dahl"]);
     assert_eq!(book.metadata().identifier("isbn"), Some("0140328726"));
 }

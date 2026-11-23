@@ -366,9 +366,10 @@ mod tests {
         let mut c2 = cands.clone();
         c2[2].author_guess = "J. R. R. Tolkien".into();
         let p = pair(&books, &c2, &dir);
-        assert!(p
-            .iter()
-            .any(|x| x.book == 3 && x.reason == "same title and author"));
+        assert!(
+            p.iter()
+                .any(|x| x.book == 3 && x.reason == "same title and author")
+        );
         // an ISBN in the name wins over everything but the folder
         let mut b2 = books.clone();
         b2[1].meta.identifiers.push(bookx_core::opf::Identifier {

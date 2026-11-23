@@ -8,9 +8,9 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Write as _;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_core::archive::Archive;
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::opf::Metadata;
 use bookx_core::util::xml_escape;
 use chrono::{DateTime, Datelike, Duration, NaiveDate, Timelike, Utc, Weekday};
@@ -19,11 +19,11 @@ use scraper::Selector;
 use serde::{Deserialize, Serialize};
 
 use crate::cover::generate_cover;
-use crate::feed::{decode_text, parse_feed, Entry, Feed};
+use crate::feed::{Entry, Feed, decode_text, parse_feed};
 use crate::fetch::Fetcher;
 use crate::readability::{
-    add_images_to_epub, clean_fragment, extract_with, fetch_images, rewrite_images,
-    write_full_metadata, ExtractOptions, ImageLimits,
+    ExtractOptions, ImageLimits, add_images_to_epub, clean_fragment, extract_with, fetch_images,
+    rewrite_images, write_full_metadata,
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -333,11 +333,7 @@ fn parse_field(
             (value(a)?, value(b)?)
         } else {
             let v = value(range)?;
-            if item.contains('/') {
-                (v, max)
-            } else {
-                (v, v)
-            }
+            if item.contains('/') { (v, max) } else { (v, v) }
         };
         if lo > hi || lo < min || hi > max {
             bail!("{what} value out of range in `{item}` (allowed {min}-{max})");
@@ -1076,15 +1072,19 @@ minute = 30
     #[test]
     fn invalid_documents_are_errors() {
         assert!(Recipe::from_toml("title = ").is_err());
-        assert!(Recipe::from_toml("title = \"x\"")
-            .unwrap_err()
-            .to_string()
-            .contains("invalid recipe TOML"));
+        assert!(
+            Recipe::from_toml("title = \"x\"")
+                .unwrap_err()
+                .to_string()
+                .contains("invalid recipe TOML")
+        );
         assert!(Recipe::from_json("{}").is_err());
-        assert!(Recipe::from_json("{\"title\":\"t\",\"feeds\":[]}")
-            .unwrap_err()
-            .to_string()
-            .contains("no feeds"));
+        assert!(
+            Recipe::from_json("{\"title\":\"t\",\"feeds\":[]}")
+                .unwrap_err()
+                .to_string()
+                .contains("no feeds")
+        );
         assert!(Recipe::from_toml("title=\"t\"\n[[feeds]]\nurl=\"https://x.org\"\n[schedule]\nkind=\"hourly\"\nminute=99\n").is_err());
     }
 
@@ -1249,11 +1249,13 @@ minute = 30
         let never = Schedule::Cron {
             expr: "0 0 31 2 *".into(),
         };
-        assert!(never
-            .next_after(t(2024, 1, 1, 0, 0))
-            .unwrap_err()
-            .to_string()
-            .contains("never fires"));
+        assert!(
+            never
+                .next_after(t(2024, 1, 1, 0, 0))
+                .unwrap_err()
+                .to_string()
+                .contains("never fires")
+        );
     }
 
     #[test]
@@ -1321,13 +1323,15 @@ minute = 30
         let bad = Schedule::Hourly { minute: 75 };
         assert!(next_run(&bad, None, t(2024, 1, 1, 0, 0)).is_err());
         assert!(next_run(&bad, Some(t(2024, 1, 1, 0, 0)), t(2024, 1, 2, 0, 0)).is_err());
-        assert!(Schedule::Weekly {
-            weekday: Weekday::Sun,
-            hour: 1,
-            minute: 99
-        }
-        .to_cron()
-        .is_err());
+        assert!(
+            Schedule::Weekly {
+                weekday: Weekday::Sun,
+                hour: 1,
+                minute: 99
+            }
+            .to_cron()
+            .is_err()
+        );
     }
 
     // ---- build ----
@@ -1367,7 +1371,9 @@ minute = 30
     }
 
     fn page(body: &str) -> String {
-        format!("<html><head><title>x</title></head><body><nav>menu junk</nav><article>{body}<aside class=\"ad\">BUY</aside></article></body></html>")
+        format!(
+            "<html><head><title>x</title></head><body><nav>menu junk</nav><article>{body}<aside class=\"ad\">BUY</aside></article></body></html>"
+        )
     }
 
     fn mock() -> MockFetcher {
@@ -1466,15 +1472,17 @@ minute = 30
             "no age limit keeps the old entry; the empty entry is dropped"
         );
         r.include = vec!["(".into()];
-        assert!(select_entries(
-            &r,
-            &feed,
-            1,
-            now(),
-            &mut HashSet::new(),
-            &mut NewsStats::default()
-        )
-        .is_err());
+        assert!(
+            select_entries(
+                &r,
+                &feed,
+                1,
+                now(),
+                &mut HashSet::new(),
+                &mut NewsStats::default()
+            )
+            .is_err()
+        );
     }
 
     fn open(n: &NewsEpub) -> OpenBook {
@@ -1565,10 +1573,11 @@ minute = 30
         assert!(rust.contains("2024-03-09"));
         assert!(rust.contains("https://alpha.example/rust-2024"));
         assert!(rust.contains("src=\"images/news1.png\""), "{rust}");
-        assert!(book
-            .file_list()
-            .iter()
-            .any(|f| f.ends_with("images/news1.png")));
+        assert!(
+            book.file_list()
+                .iter()
+                .any(|f| f.ends_with("images/news1.png"))
+        );
         let beta = spine
             .iter()
             .filter_map(|p| book.chapter_source(p))
@@ -1605,14 +1614,16 @@ minute = 30
         let n = build_news_epub(&r, &f, now()).unwrap();
         assert_eq!(n.stats.full_articles, 2);
         assert_eq!(n.errors.len(), 2, "{:?}", n.errors);
-        assert!(n
-            .errors
-            .iter()
-            .any(|e| e.contains("shared.example") && e.contains("HTTP error 500")));
-        assert!(n
-            .errors
-            .iter()
-            .any(|e| e.contains("beta.example/only") && e.contains("no readable content")));
+        assert!(
+            n.errors
+                .iter()
+                .any(|e| e.contains("shared.example") && e.contains("HTTP error 500"))
+        );
+        assert!(
+            n.errors
+                .iter()
+                .any(|e| e.contains("beta.example/only") && e.contains("no readable content"))
+        );
         let book = open(&n);
         let all: String = book
             .spine_paths()
@@ -1632,9 +1643,10 @@ minute = 30
         );
         assert_eq!(n.stats.articles, 4);
         // the full article fetched the page, not just the feed
-        assert!(f
-            .urls()
-            .contains(&"https://alpha.example/rust-2024".to_string()));
+        assert!(
+            f.urls()
+                .contains(&"https://alpha.example/rust-2024".to_string())
+        );
     }
 
     #[test]
@@ -1652,9 +1664,10 @@ minute = 30
         let f = pages(mock());
         let n = build_news_epub(&r, &f, now()).unwrap();
         assert!(n.stats.full_articles >= 1);
-        assert!(f
-            .urls()
-            .contains(&"https://alpha.example/rust-2024".to_string()));
+        assert!(
+            f.urls()
+                .contains(&"https://alpha.example/rust-2024".to_string())
+        );
         assert!(
             !f.urls().contains(&"https://beta.example/only".to_string()),
             "the second feed follows the recipe"
@@ -1665,9 +1678,10 @@ minute = 30
         r.feeds[1].full_article = Some(false);
         let f = pages(mock());
         build_news_epub(&r, &f, now()).unwrap();
-        assert!(f
-            .urls()
-            .contains(&"https://alpha.example/rust-2024".to_string()));
+        assert!(
+            f.urls()
+                .contains(&"https://alpha.example/rust-2024".to_string())
+        );
         assert!(!f.urls().contains(&"https://beta.example/only".to_string()));
         // nothing written when there is no override, and it round-trips
         let t = recipe().to_toml().unwrap();
@@ -1737,10 +1751,12 @@ minute = 30
         // invalid recipe
         let mut bad = recipe();
         bad.feeds.clear();
-        assert!(build_news_epub(&bad, &mock(), now())
-            .unwrap_err()
-            .to_string()
-            .contains("no feeds"));
+        assert!(
+            build_news_epub(&bad, &mock(), now())
+                .unwrap_err()
+                .to_string()
+                .contains("no feeds")
+        );
     }
 
     #[test]

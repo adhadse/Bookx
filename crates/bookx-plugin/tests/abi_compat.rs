@@ -11,8 +11,8 @@ mod common;
 use std::path::PathBuf;
 
 use bookx_plugin::{
-    EditorLimits, EditorSession, Host, Manifest, MemBook, Permission, Plugin, PluginKind,
-    API_VERSION, API_VERSION_EDITOR,
+    API_VERSION, API_VERSION_EDITOR, EditorLimits, EditorSession, Host, Manifest, MemBook,
+    Permission, Plugin, PluginKind,
 };
 use common::*;
 use serde_json::json;

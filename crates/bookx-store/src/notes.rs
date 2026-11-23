@@ -1,8 +1,8 @@
 //! Notes attached to an author, a series, a tag or a publisher (roadmap L20). Plain text, kept in
 //! the catalogue database so they travel with the library, its snapshots and its backups.
 
-use anyhow::{bail, Result};
-use rusqlite::{params, Connection, OptionalExtension};
+use anyhow::{Result, bail};
+use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::store::SqliteStore;
 
@@ -137,9 +137,10 @@ mod tests {
         let s = SqliteStore::open_in_memory().unwrap();
         assert!(s.set_item_note("book", "x", "y").is_err());
         assert!(s.set_item_note("tag", " ", "y").is_err());
-        assert!(s
-            .set_item_note("tag", "t", &"x".repeat(MAX_NOTE_CHARS + 1))
-            .is_err());
+        assert!(
+            s.set_item_note("tag", "t", &"x".repeat(MAX_NOTE_CHARS + 1))
+                .is_err()
+        );
         s.set_item_note("tag", "old", "about old").unwrap();
         s.rename_item_note("tag", "old", "new").unwrap();
         assert_eq!(s.item_note("tag", "old"), None);

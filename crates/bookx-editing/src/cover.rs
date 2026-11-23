@@ -2,7 +2,7 @@
 //! make the cover page that shows it, and keep every place that names the cover consistent (OPF `cover-image`
 //! property and `<meta name="cover">`, guide, navigation landmarks, spine).
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::book::OpenBook;
 use bookx_core::util::{extension, relative_href, xml_escape};
 use image::{DynamicImage, ImageFormat};
@@ -11,7 +11,7 @@ use crate::files::add_file;
 use crate::images;
 use crate::markup::is_markup_path;
 use crate::opf_edit::edit_item_properties;
-use crate::semantics::{read_semantics, set_semantic, Semantic};
+use crate::semantics::{Semantic, read_semantics, set_semantic};
 
 /// Largest image the cover dialog opens, in bytes and in pixels (guards against decompression bombs).
 pub const MAX_COVER_BYTES: usize = 40 * 1024 * 1024;
@@ -361,13 +361,15 @@ mod tests {
         assert!((c.w - 0.25).abs() < 1e-9 && c.h == 1.0 && (c.x - 0.375).abs() < 1e-9);
         let c = centered_crop(100, 400, 1.0);
         assert_eq!(c.pixels(100, 400), Some((0, 150, 100, 100)));
-        assert!(Crop {
-            x: 0.0,
-            y: 0.0,
-            w: 1.0,
-            h: 1.0
-        }
-        .is_whole());
+        assert!(
+            Crop {
+                x: 0.0,
+                y: 0.0,
+                w: 1.0,
+                h: 1.0
+            }
+            .is_whole()
+        );
         assert_eq!(
             Crop {
                 x: 0.9,
@@ -448,9 +450,10 @@ mod tests {
             "{src}"
         );
         let sem = read_semantics(&b);
-        assert!(sem
-            .iter()
-            .any(|e| e.semantic == Semantic::Cover && e.href == page));
+        assert!(
+            sem.iter()
+                .any(|e| e.semantic == Semantic::Cover && e.href == page)
+        );
         let opf = b.archive.get_string(&b.package.opf_path).unwrap();
         assert!(opf.contains("cover-image"), "{opf}");
         // doing it again reuses the page and adds nothing
@@ -515,36 +518,44 @@ mod tests {
         let r = set_cover(&mut b, &o).unwrap();
         assert!(r.page.is_none());
         assert!(b.package.cover_path().is_some());
-        assert!(!read_semantics(&b)
-            .iter()
-            .any(|e| e.semantic == Semantic::Cover));
+        assert!(
+            !read_semantics(&b)
+                .iter()
+                .any(|e| e.semantic == Semantic::Cover)
+        );
     }
 
     #[test]
     fn bad_sources_are_refused_and_nothing_changes() {
         let mut b = book_with_image();
         let before = b.archive.to_bytes().unwrap();
-        assert!(set_cover(
-            &mut b,
-            &CoverOptions::new(CoverSource::Existing("OEBPS/none.png".into()))
-        )
-        .is_err());
-        assert!(set_cover(
-            &mut b,
-            &CoverOptions::new(CoverSource::New {
-                data: b"x".to_vec(),
-                ext: "png".into()
-            })
-        )
-        .is_err());
-        assert!(set_cover(
-            &mut b,
-            &CoverOptions::new(CoverSource::New {
-                data: png(10, 10),
-                ext: "exe".into()
-            })
-        )
-        .is_err());
+        assert!(
+            set_cover(
+                &mut b,
+                &CoverOptions::new(CoverSource::Existing("OEBPS/none.png".into()))
+            )
+            .is_err()
+        );
+        assert!(
+            set_cover(
+                &mut b,
+                &CoverOptions::new(CoverSource::New {
+                    data: b"x".to_vec(),
+                    ext: "png".into()
+                })
+            )
+            .is_err()
+        );
+        assert!(
+            set_cover(
+                &mut b,
+                &CoverOptions::new(CoverSource::New {
+                    data: png(10, 10),
+                    ext: "exe".into()
+                })
+            )
+            .is_err()
+        );
         assert_eq!(b.archive.to_bytes().unwrap(), before);
     }
 
@@ -565,9 +576,11 @@ mod tests {
             !opf.contains("cover-image") && !opf.contains("name=\"cover\""),
             "{opf}"
         );
-        assert!(!read_semantics(&b)
-            .iter()
-            .any(|e| e.semantic == Semantic::Cover));
+        assert!(
+            !read_semantics(&b)
+                .iter()
+                .any(|e| e.semantic == Semantic::Cover)
+        );
     }
 
     #[test]

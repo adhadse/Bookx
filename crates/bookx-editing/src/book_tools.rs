@@ -5,15 +5,15 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use anyhow::{bail, Context, Result};
-use bookx_convert::transforms::punctuation::{smarten_html_with, unsmarten_html, SmartenOptions};
+use anyhow::{Context, Result, bail};
+use bookx_convert::transforms::punctuation::{SmartenOptions, smarten_html_with, unsmarten_html};
 use bookx_core::book::OpenBook;
 use bookx_core::opf::SpineItem;
 use bookx_core::util::{extension, file_name, parse_xml, xml_escape};
 
 use crate::markup::*;
 use crate::opf_edit::{append_to_section, edit_opf};
-use crate::semantics::{set_semantic, Semantic};
+use crate::semantics::{Semantic, set_semantic};
 
 // ---------------------------------------------------------------------------
 // spine
@@ -38,11 +38,7 @@ pub fn move_index<T>(v: &mut Vec<T>, from: usize, to: usize) -> bool {
 /// (`after` = false) or "after row `target`".
 pub fn drop_index(from: usize, target: usize, after: bool) -> usize {
     let at = if after { target + 1 } else { target };
-    if from < at {
-        at - 1
-    } else {
-        at
-    }
+    if from < at { at - 1 } else { at }
 }
 
 /// Puts the spine file `path` at position `to` of the reading order (0 based).
@@ -391,7 +387,7 @@ pub fn punctuation_styled(
 
 /// Drops the CSS rules no page uses. Returns `(file, bytes before, bytes after)` for the sheets that shrank.
 pub fn remove_unused_css(book: &mut OpenBook) -> Vec<(String, usize, usize)> {
-    use bookx_convert::transforms::css::{css_paths, parse_documents, prune_css, Usage};
+    use bookx_convert::transforms::css::{Usage, css_paths, parse_documents, prune_css};
     let mut usage = Usage::new(parse_documents(book));
     let mut out = Vec::new();
     for p in css_paths(book) {
@@ -696,7 +692,7 @@ pub fn beautify_markup(src: &str) -> String {
 
 /// Lays out a stylesheet one declaration per line, rules separated by a blank line. Comments stay where they are.
 pub fn beautify_css(css: &str) -> String {
-    use bookx_convert::transforms::css::{parse_css, CssItem};
+    use bookx_convert::transforms::css::{CssItem, parse_css};
     fn block(inner: &str, indent: &str) -> String {
         let mut o = String::new();
         for seg in crate::transform_css::split_declarations(inner) {
@@ -1225,11 +1221,12 @@ mod tests {
         );
         let back = punctuation(&mut b, &[], Punctuation::Unsmarten);
         assert!(!back.is_empty());
-        assert!(b
-            .archive
-            .get_string(&s[0])
-            .unwrap()
-            .contains("\"Hi\" -- ok..."));
+        assert!(
+            b.archive
+                .get_string(&s[0])
+                .unwrap()
+                .contains("\"Hi\" -- ok...")
+        );
     }
 
     #[test]
@@ -1302,7 +1299,12 @@ mod tests {
     fn beautify_markup_is_safe_and_idempotent() {
         let src = "<?xml version=\"1.0\"?>\n<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>T</title></head><body><div><p>a <b>b</b>  <i>c</i></p><p>two</p></div>\n\n\n<pre>  keep\n   this </pre></body></html>";
         let out = beautify_markup(src);
-        assert!(out.contains("<body>\n    <div>\n      <p>a <b>b</b>  <i>c</i></p>\n      <p>two</p>\n    </div>"), "{out}");
+        assert!(
+            out.contains(
+                "<body>\n    <div>\n      <p>a <b>b</b>  <i>c</i></p>\n      <p>two</p>\n    </div>"
+            ),
+            "{out}"
+        );
         assert!(out.contains("<pre>  keep\n   this </pre>"));
         assert!(out.contains("<b>b</b>  <i>c</i>"));
         assert_eq!(beautify_markup(&out), out);
@@ -1315,7 +1317,9 @@ mod tests {
         assert_eq!(beautify_markup("<p>x"), "<p>x");
         // a self-closing tag before a closing tag is not an empty element
         assert_eq!(
-            beautify_markup("<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><p> </p></body></html>"),
+            beautify_markup(
+                "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><p> </p></body></html>"
+            ),
             "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n  <body>\n    <p> </p>\n  </body>\n</html>"
         );
         let head = "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><meta charset=\"utf-8\"/></head><body><p></p></body></html>";
@@ -1327,7 +1331,9 @@ mod tests {
 
     #[test]
     fn beautify_css_layout() {
-        let out = beautify_css("p{color:red;margin:0}\n\n\n@media print{ p{display:none} }\n@font-face{font-family:X;src:url(a.ttf)}");
+        let out = beautify_css(
+            "p{color:red;margin:0}\n\n\n@media print{ p{display:none} }\n@font-face{font-family:X;src:url(a.ttf)}",
+        );
         assert_eq!(
             out,
             "p {\n  color: red;\n  margin: 0;\n}\n\n@media print {\n  p {\n    display: none;\n  }\n}\n\n@font-face {\n  font-family: X;\n  src: url(a.ttf);\n}\n"

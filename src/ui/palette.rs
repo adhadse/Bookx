@@ -8,7 +8,7 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gdk, glib};
 
-use crate::palette::{rank, Entry};
+use crate::palette::{Entry, rank};
 
 const MAX_RESULTS: usize = 40;
 
@@ -63,10 +63,13 @@ impl State {
         for i in &idx {
             self.list.append(&row(&self.entries[*i]));
         }
-        if let Some(first) = self.list.row_at_index(0) {
-            self.list.select_row(Some(&first));
-        } else {
-            self.list.append(&empty_row());
+        match self.list.row_at_index(0) {
+            Some(first) => {
+                self.list.select_row(Some(&first));
+            }
+            _ => {
+                self.list.append(&empty_row());
+            }
         }
         *self.shown.borrow_mut() = idx;
     }

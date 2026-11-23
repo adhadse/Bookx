@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
-use bookx_convert::transforms::css::{parse_css, CssItem};
+use bookx_convert::transforms::css::{CssItem, parse_css};
 use bookx_core::book::OpenBook;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -362,11 +362,7 @@ fn fmt_num(v: f64, decimals: usize) -> String {
     } else {
         s
     };
-    if s == "-0" {
-        "0".into()
-    } else {
-        s
-    }
+    if s == "-0" { "0".into() } else { s }
 }
 
 fn length_re() -> &'static Regex {
@@ -959,7 +955,10 @@ mod tests {
                 value: "NONE".into(),
             },
         ];
-        let (out, n) = transform_declarations(" margin: 0; margin-left: 1em; color: red; display: none !important; display: block; padding:0 ", &ts);
+        let (out, n) = transform_declarations(
+            " margin: 0; margin-left: 1em; color: red; display: none !important; display: block; padding:0 ",
+            &ts,
+        );
         assert_eq!(n, 3);
         assert_eq!(out, " color: red; display: block; padding:0 ");
         let (same, n) = transform_declarations(&out, &ts);
@@ -972,9 +971,15 @@ mod tests {
             from: "red".into(),
             to: "#0000ff".into(),
         }];
-        let (out, n) = transform_declarations("color: #F00; background: url(red.png) rgb(255,0,0); border: 1px solid RED; font-family: red; fill: #00f", &ts);
+        let (out, n) = transform_declarations(
+            "color: #F00; background: url(red.png) rgb(255,0,0); border: 1px solid RED; font-family: red; fill: #00f",
+            &ts,
+        );
         assert_eq!(n, 3);
-        assert_eq!(out, "color: #0000ff; background: url(red.png) #0000ff; border: 1px solid #0000ff; font-family: red; fill: #00f");
+        assert_eq!(
+            out,
+            "color: #0000ff; background: url(red.png) #0000ff; border: 1px solid #0000ff; font-family: red; fill: #00f"
+        );
         let bad = [CssTransform::ReplaceColor {
             from: "nonsense".into(),
             to: "x".into(),
@@ -993,9 +998,15 @@ mod tests {
             base_px: 16.0,
             properties: vec![],
         }];
-        let (out, n) = transform_declarations("font-size: 12pt; margin: 0 .75pt -3pt; width: 10em; background: url(a.5pt.png); line-height:1.5", &ts);
+        let (out, n) = transform_declarations(
+            "font-size: 12pt; margin: 0 .75pt -3pt; width: 10em; background: url(a.5pt.png); line-height:1.5",
+            &ts,
+        );
         assert_eq!(n, 2);
-        assert_eq!(out, "font-size: 16px; margin: 0 1px -4px; width: 10em; background: url(a.5pt.png); line-height:1.5");
+        assert_eq!(
+            out,
+            "font-size: 16px; margin: 0 1px -4px; width: 10em; background: url(a.5pt.png); line-height:1.5"
+        );
         let em = [CssTransform::ConvertUnits {
             from: Unit::Px,
             to: Unit::Em,
@@ -1065,9 +1076,15 @@ mod tests {
             from: "Times New Roman".into(),
             to: "Georgia".into(),
         }];
-        let (out, n) = transform_declarations("font-family: 'Times New Roman', Times, serif; font: italic 12px/1.5 \"times new roman\", serif; color: red", &ts);
+        let (out, n) = transform_declarations(
+            "font-family: 'Times New Roman', Times, serif; font: italic 12px/1.5 \"times new roman\", serif; color: red",
+            &ts,
+        );
         assert_eq!(n, 2);
-        assert_eq!(out, "font-family: 'Georgia', Times, serif; font: italic 12px/1.5 \"Georgia\", serif; color: red");
+        assert_eq!(
+            out,
+            "font-family: 'Georgia', Times, serif; font: italic 12px/1.5 \"Georgia\", serif; color: red"
+        );
         let to_space = [CssTransform::RenameFontFamily {
             from: "Arial".into(),
             to: "Open Sans".into(),
@@ -1095,9 +1112,15 @@ mod tests {
     #[test]
     fn font_size_scaling() {
         let ts = [CssTransform::ScaleFontSizes { factor: 1.25 }];
-        let (out, n) = transform_declarations("font-size: 12px; font-size: 1.2em !important; font-size: larger; font: bold 10pt/14pt serif; margin: 10px", &ts);
+        let (out, n) = transform_declarations(
+            "font-size: 12px; font-size: 1.2em !important; font-size: larger; font: bold 10pt/14pt serif; margin: 10px",
+            &ts,
+        );
         assert_eq!(n, 3);
-        assert_eq!(out, "font-size: 15px; font-size: 1.5em !important; font-size: larger; font: bold 12.5pt/14pt serif; margin: 10px");
+        assert_eq!(
+            out,
+            "font-size: 15px; font-size: 1.5em !important; font-size: larger; font: bold 12.5pt/14pt serif; margin: 10px"
+        );
         assert_eq!(
             transform_declarations("font-size: 100%", &ts).0,
             "font-size: 125%"
@@ -1177,7 +1200,10 @@ mod tests {
         ];
         let (out, n) = transform_stylesheet(css, &ts);
         assert_eq!(n, 4);
-        assert_eq!(out, "/* c */\n@import url(x.css);\nbody {\n  color: green;\n}\n@media print {\n  p { color: green }\n}\n@page { }\n");
+        assert_eq!(
+            out,
+            "/* c */\n@import url(x.css);\nbody {\n  color: green;\n}\n@media print {\n  p { color: green }\n}\n@page { }\n"
+        );
         let (again, n2) = transform_stylesheet(&out, &ts);
         assert_eq!((again.as_str(), n2), (out.as_str(), 0));
         assert_eq!(transform_stylesheet("", &ts).1, 0);
