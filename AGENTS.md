@@ -99,6 +99,10 @@ All four must pass. Then rebuild and reinstall for the user with `./run.sh --no-
 - Dev hooks (`BOOKX_DEV_SCRIPT`, `reader:*`, `library:*`, `editor:*`) are test infrastructure: keep them working.
 - Do not leave debug output (`eprintln!`, custom panic hooks) in committed code.
 
+- **Schema changes migrate by themselves, safely** (`docs/design-audit.md`, section 4): a numbered migration in one transaction
+  on open, with the pre-update copy and the check that `SqliteStore::open` already does, and a test that proves no book and
+  no annotation is lost going from the previous version. Never a change that needs the user to do something.
+
 ## 6. Security
 
 Bookx reads files it did not create and runs network services, so a change that touches untrusted input

@@ -3,6 +3,24 @@
 Date: 2026-11-13, updated 2026-11-22 (gap table and counts re-checked against the tree: G5, G10, G11, G13, unsafe recount). Status: audit + programme plan; section 4.2 tracks what is done. Companion to `SECURITY.md` (the public disclosure policy) and `AGENTS.md` (the working
 agreement).
 
+Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse
+
+## Contents
+
+- [1. The failure patterns this design avoids](#1-the-failure-patterns-this-design-avoids)
+- [2. Scope and adversary model](#2-scope-and-adversary-model)
+- [3. Assets](#3-assets)
+- [4. Current state (audited 2026-11-13)](#4-current-state-audited-2026-11-13)
+- [5. The rule for each vulnerability class](#5-the-rule-for-each-vulnerability-class)
+- [6. Vulnerability handling: how Bookx keeps the number small](#6-vulnerability-handling-how-bookx-keeps-the-number-small)
+- [7. Roadmap](#7-roadmap)
+- [8. Per-change security checklist](#8-per-change-security-checklist)
+- [9. Anti-patterns Bookx will not adopt](#9-anti-patterns-bookx-will-not-adopt)
+- [10. Change records](#10-change-records)
+- [11. GitHub settings and ownership (applied 2026-11-21)](#11-github-settings-and-ownership-applied-2026-11-21)
+- [12. Fuzzing and hostile inputs](#12-fuzzing-and-hostile-inputs)
+- [13. Release signing and key custody (decision 2026-11-21)](#13-release-signing-and-key-custody-decision-2026-11-21)
+
 Bookx reads files it did not create and runs network services on the user's machine. This document
 states what it trusts, what it does not, what it does when something goes wrong, and how the code gets
 harder to break over time.

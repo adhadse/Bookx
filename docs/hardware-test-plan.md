@@ -4,6 +4,8 @@ What to run on real devices before a release. Nothing here can be automated in C
 PocketBook, a Boox, a touch screen and an e-ink panel. Everything the computer side can verify is verified by
 `bookx-cli device-check`, so run that first and attach its output to every report.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse
+
 ## 0. Setup for every device
 
 1. Build or install the release: `./run.sh --no-run` (installs `bookx` and `bookx-cli`).
@@ -121,3 +123,32 @@ to check the behaviour, ghosting needs a real panel).
 One file per device: `hw-<device>-<yyyy-mm-dd>.md` with the header (model, firmware, Bookx version), a table of the
 test ids with PASS / FAIL / SKIPPED, and for each failure the data under *Collect on failure*. Attach the
 `device-check --json` output for every device, before and after the copy. Product bugs go to `docs/bugs.md`.
+
+## 8. Device zoo (emulated, no hardware)
+
+`crates/bookx-serve/tests/common/zoo.rs` lists popular readers as fixtures (`ZOO`); `tests/device_zoo.rs` and
+`tests/sync_rule.rs` run them against the real server and the real device drivers. **Everything is emulated.
+Nothing in the zoo was observed on a real device**, except that the Kobo Libra Colour model id (`...390`) and
+database schema in the repository were read from the owner's real device earlier; every `reported` name comes from
+KOReader's source (`Device.model`: `koreader/frontend/device/<brand>/device.lua`, `android-luajit-launcher`
+`DeviceInfo.kt`) or, for `Onyx Scubapilot-IDP`, from the report of issue #39.
+
+| Family | Entries | Looks like | Sync client sends |
+|---|---|---|---|
+| Boox (Android) | Leaf 2 (as in issue #39 and as KOReader names it), Go 7, Palma 2, Note Air 3C, Tab Ultra C | MTP (gvfs tree `mtp:host=ONYX_...`) | `Device.model` (Build.PRODUCT) |
+| Kobo | Clara 2E, Libra 2, Libra Colour, Sage, Elipsa, Clara BW | `.kobo/KoboReader.sqlite` + `.kobo/version` (ids other than 390 are placeholders, shown as "model id") | `Kobo_<codename>` |
+| Kindle | Paperwhite 5, Oasis 3, Scribe | `documents/` + `system/version.txt` | `KindlePaperWhite5` ... |
+| PocketBook | Verse, InkPad 3, Era | `system/config` + `Books/` | `PB629` ... |
+| reMarkable | 2 | no disk | `reMarkable 2.0` |
+| Unknown | an Android phone, an unlisted Kobo codename | MTP / none | shown as reported, never guessed |
+
+Each entry is synced twice: as the Bookx plugin does (headers `X-Bookx-*`, annotations) and as stock KOReader
+*Progress sync* does (no Bookx headers). The checks: the device row shows the name on the box
+(`device_names::friendly_name`), the raw name is kept, a rename wins and survives the next sync, the USB layouts are
+detected and books go to the right folder and format, and no sync action touches a library file.
+
+**Add a device:** one `r(...)` entry in `ZOO` with the slug, family, the name Bookx must show, what KOReader
+reports, its `Usb` layout and the source of the reported string; add the model to the tables of
+`crates/bookx-serve/src/device_names.rs` (with its source) when Bookx should know it. Test it on the real device
+and set `seen_on_hardware` only then (the zoo test currently asserts none are).
+

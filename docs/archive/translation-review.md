@@ -1,3 +1,5 @@
+> Archived 2026-11-23: One-time review that was applied; the translation process is `translations-hosting.md`, the status `po/STATUS.md`. Living document: [translations-hosting.md](../translations-hosting.md).
+
 # Translation review (agent review, 2026-11-21)
 
 Scope: `po/de.po` and `po/es.po` (complete, 3339 strings), `po/fr.po` (254) and `po/hi.po` (177) as they were at

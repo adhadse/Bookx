@@ -2,6 +2,41 @@
 
 Research for `docs/enhancements.md` item 1. Date: 2026-11-12. Research only: no code was changed.
 
+Status: finished, pending move to archive/ (still pointed to from enhancements.md or source comments) | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
+## Contents
+
+- [How to read this](#how-to-read-this)
+- [Ranking at a glance](#ranking-at-a-glance)
+- [Audit 2026-11-20 (current status; the paragraphs below are the research-time state)](#audit-2026-11-20-current-status-the-paragraphs-below-are-the-research-time-state)
+- [PP-C-1 Dated, cluttered, hard to discover UI](#pp-c-1-dated-cluttered-hard-to-discover-ui)
+- [PP-C-2 `metadata.db` fragility and corruption](#pp-c-2-metadatadb-fragility-and-corruption)
+- [PP-C-3 Network drives, NAS and cloud-synced folders](#pp-c-3-network-drives-nas-and-cloud-synced-folders)
+- [PP-C-4 Metadata download is unreliable and often wrong](#pp-c-4-metadata-download-is-unreliable-and-often-wrong)
+- [PP-C-5 Conversion quality and failures](#pp-c-5-conversion-quality-and-failures)
+- [PP-C-6 Kindle: format churn, KFX and DRM](#pp-c-6-kindle-format-churn-kfx-and-drm)
+- [PP-C-7 Forced `Author/Title` folder layout; files move on every edit](#pp-c-7-forced-authortitle-folder-layout-files-move-on-every-edit)
+- [PP-C-8 Governance, bus factor, AI features, telemetry](#pp-c-8-governance-bus-factor-ai-features-telemetry)
+- [PP-C-9 Plugin breakage on Python, Qt and Calibre upgrades](#pp-c-9-plugin-breakage-on-python-qt-and-calibre-upgrades)
+- [PP-C-10 Not made for several users or processes](#pp-c-10-not-made-for-several-users-or-processes)
+- [PP-C-11 Startup and large-library speed](#pp-c-11-startup-and-large-library-speed)
+- [PP-C-12 Kobo: KEPUB, plugins and device sync](#pp-c-12-kobo-kepub-plugins-and-device-sync)
+- [PP-C-13 Qt look, Wayland, HiDPI and dark mode](#pp-c-13-qt-look-wayland-hidpi-and-dark-mode)
+- [PP-C-14 Content server is basic and open by default](#pp-c-14-content-server-is-basic-and-open-by-default)
+- [PP-C-15 Duplicate handling](#pp-c-15-duplicate-handling)
+- [PP-C-16 No automatic backups; slow restore on big libraries](#pp-c-16-no-automatic-backups-slow-restore-on-big-libraries)
+- [PP-C-17 No official mobile reader](#pp-c-17-no-official-mobile-reader)
+- [PP-C-18 Database as a black box; lock-in and migration](#pp-c-18-database-as-a-black-box-lock-in-and-migration)
+- [PP-C-19 Installation and update friction](#pp-c-19-installation-and-update-friction)
+- [PP-C-20 Weak built-in reader](#pp-c-20-weak-built-in-reader)
+- [PP-C-21 Reading progress does not follow you](#pp-c-21-reading-progress-does-not-follow-you)
+- [PP-C-22 Security record and phone-home](#pp-c-22-security-record-and-phone-home)
+- [PP-C-23 Accessibility](#pp-c-23-accessibility)
+- [PP-C-24 Risky merge and delete, no library undo](#pp-c-24-risky-merge-and-delete-no-library-undo)
+- [PP-C-25 News recipes are clunky and Python-bound](#pp-c-25-news-recipes-are-clunky-and-python-bound)
+- [Top 10 things Bookx should do next](#top-10-things-bookx-should-do-next)
+- [Claims I could not verify](#claims-i-could-not-verify)
+
 How this was made: web searches and page reads across the Calibre bug tracker (Launchpad), MobileRead, r/calibre, r/selfhosted, r/kindle, Hacker News, LWN, blog posts, and the issue trackers of Calibre-Web, Calibre-Web-Automated, DeDRM and Flathub. Then the Bookx code and `docs/bookx-feature-roadmap.md` were checked to see what already exists.
 
 Constraints respected (roadmap Part 2): D1 everything in, D2 SQLite via `rusqlite` is fine, D3 PDF later, D4 only formats Calibre supports, D5 plugins after Wave 2, D7 CLI and server are first class, D9 no exclusions (LIT excluded). Rust only, GTK4/libadwaita, tests with every change (`AGENTS.md`).

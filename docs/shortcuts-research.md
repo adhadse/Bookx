@@ -3,6 +3,8 @@
 Internal notes: which keys other readers use, what Bookx took over, and what it left alone. Public list:
 `wiki/docs/shortcuts.md`. The registry is `src/shortcuts.rs` + `src/palette.rs` (`COMMANDS`).
 
+Status: finished, pending move to archive/ (still pointed to from enhancements.md or source comments) | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## What the other readers do
 
 Sources: Calibre viewer manual, "Keyboard shortcuts" table (https://manual.calibre-ebook.com/viewer.html, read on

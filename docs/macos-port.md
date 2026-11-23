@@ -3,6 +3,8 @@
 Owner decision (2026-11): macOS is distributed through **Homebrew** (first class): a formula that builds from source and
 a cask with a `.dmg`. This page is the honest state of that work.
 
+Status: living, platform not supported yet | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 > **Nothing in this port has been run on macOS.** No Mac was available. The Rust changes compile and pass on Linux only
 > (`cargo test --workspace`); the macOS-only code paths (`cfg(target_os = "macos")`), the Homebrew files, the bundle
 > script and the workflow are **untested**. Do not announce macOS support before someone has built and used it on a Mac.

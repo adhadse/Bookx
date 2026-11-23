@@ -1,9 +1,44 @@
+> Superseded 2026-11-23 by [remaining.md](remaining.md) (open work) and kept in place for now because `enhancements.md` points to it; the wave-11 completion record (Part 1) is history. Part 2 below is partly stale (bugs 27 and 29 are fixed, CI has run on GitHub, branch protection is set).
+
 # Remaining work: status at the end of wave 11 (2026-11-21)
 
 Internal, not for the wiki. One document: **Part 1 = completed**, **Part 2 = not completed**. "Completed" lines were checked against
 the tree (file, test, workflow or doc exists) and against the wave 11 agents' reports. Sources: `git log`, `docs/*notes*.md`, `src/`, `crates/`.
-Wave 11 is **about to be committed** (HEAD is still `40b357a`; the tree is modified and untracked). Details per area: `docs/library-t3-notes.md`,
+Wave 11 is **about to be committed** (HEAD is still `40b357a`; the tree is modified and untracked). Details per area: `docs/archive/library-t3-notes.md`,
 `serve-sources-notes.md`, `comic-notes.md`, `audiobook-notes.md`, `editor-*-notes.md`, `windows-ui-notes.md`, `ci-gates.md`, `test-notes.md`.
+
+Status: finished, pending move to archive/ (still pointed to from enhancements.md or source comments) | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
+## Contents
+
+- [Release 0.3.0 readiness (2026-11-22)](#release-030-readiness-2026-11-22)
+- [Top 10 next priorities](#top-10-next-priorities)
+- [How to read](#how-to-read)
+- [Counts (done vs open per area)](#counts-done-vs-open-per-area)
+- [1.1 Sync, KOReader plugin, live updates](#11-sync-koreader-plugin-live-updates)
+- [1.2 Highlights, bookmarks, notes](#12-highlights-bookmarks-notes)
+- [1.3 Reader typography and behaviour (wave 11, T1)](#13-reader-typography-and-behaviour-wave-11-t1)
+- [1.4 Library and store (wave 11, T3)](#14-library-and-store-wave-11-t3)
+- [1.5 Formats, comics, audiobooks (wave 11, T4/T5)](#15-formats-comics-audiobooks-wave-11-t4t5)
+- [1.6 Serve, devices, sources (wave 11, T6/T8)](#16-serve-devices-sources-wave-11-t6t8)
+- [1.7 Editor, app, plugins (wave 11, T7/T9/T10)](#17-editor-app-plugins-wave-11-t7t9t10)
+- [1.8 Backups (D9) and TTS extras](#18-backups-d9-and-tts-extras)
+- [1.9 Devices window and GNOME HIG waves 6-11 (rows addressed: 213 of 213)](#19-devices-window-and-gnome-hig-waves-6-11-rows-addressed-213-of-213)
+- [1.10 Secrets (wave 11)](#110-secrets-wave-11)
+- [1.11 Security](#111-security)
+- [1.12 Tests, coverage, CI](#112-tests-coverage-ci)
+- [1.13 Translations](#113-translations)
+- [1.14 Distribution scaffolding (written, **never built or run** on the target platform)](#114-distribution-scaffolding-written-never-built-or-run-on-the-target-platform)
+- [1.15 README, wiki, docs](#115-readme-wiki-docs)
+- [A. Needs the owner's hardware or accounts](#a-needs-the-owners-hardware-or-accounts)
+- [B. Owner decisions](#b-owner-decisions)
+- [C. Remaining HIG rows](#c-remaining-hig-rows)
+- [D. Features not built (re-checked 2026-11-21)](#d-features-not-built-re-checked-2026-11-21)
+- [E. Known bugs and verification gaps (all rows of `docs/bugs.md` up to id 26 and id 28 are `fixed`; 27 and 29 are open)](#e-known-bugs-and-verification-gaps-all-rows-of-docsbugsmd-up-to-id-26-and-id-28-are-fixed-27-and-29-are-open)
+- [F. Security roadmap (after the wave)](#f-security-roadmap-after-the-wave)
+- [G. Test and CI gaps](#g-test-and-ci-gaps)
+- [H. Release, packaging, docs, wiki gaps](#h-release-packaging-docs-wiki-gaps)
+- [I. Stale docs to clean](#i-stale-docs-to-clean)
 
 ## Release 0.3.0 readiness (2026-11-22)
 
@@ -45,7 +80,7 @@ Channel decision (2026-11-22): **GitHub Releases only for now**; Flathub and the
 | 6 | **Test the new secrets paths by hand**: master-password dialogs, GNOME Keyring, Flatpak portal; rotate passwords from old plaintext configs | security fix is unit-tested but never tried by a human | owner |
 | 7 | **Real-file tests for CBR (unrar/7z) and DJVU (ddjvu)**, RAR5/DjVu | both are subprocess paths never run on real archives | owner + agent |
 | 8 | **R1 real table layout, positioned text, hanging punctuation, `word-break`, fixed-layout spreads (R46/R51)** | largest reader fidelity gap left | agent (L) |
-| 9 | ~~Screens for features that only exist in CLI/engine~~ **built (wave 12)**: per-user accounts, Hardcover, S4 recipe editor + Basic-auth site accounts, lookup order / custom web sites / history. What is left (bookmark/other engine-only rows, the owner's real-service checks): `docs/screens-notes.md` | | agent |
+| 9 | ~~Screens for features that only exist in CLI/engine~~ **built (wave 12)**: per-user accounts, Hardcover, S4 recipe editor + Basic-auth site accounts, lookup order / custom web sites / history. What is left (bookmark/other engine-only rows, the owner's real-service checks): `docs/archive/screens-notes.md` | | agent |
 | 10 | **Screenshot capture run and `.po` refresh**, then 0.3.x release (`release-check.sh`, pin screenshots), plus a session scenario for live updates and the new dialogs | wiki screenshots stale, msgids drifted, release blocked | agent + owner |
 
 ## How to read
@@ -80,7 +115,7 @@ Channel decision (2026-11-22): **GitHub Releases only for now**; Flathub and the
 | `/bookx` endpoint, server and login remembered, Host/Origin guard; **KOSync key Argon2id-hashed server side** | `crates/bookx-serve/tests/server_integration.rs`, `build-aux/check-sync-endpoint.sh` |
 | Sync activity UX | `src/ui/sync_activity.rs`, `docs/sync-ux-notes.md`, `ui-tests-sync.sh` |
 | **Live reader updates on sync**: event bus, reader / sidebar / library refresh, "device is ahead" banner, edit-conflict banner | `docs/koreader-annotation-sync.md` (Live updates), `docs/sync-ux-notes.md`, `ui-tests-koannot.sh`; real-session scenarios `live_sync_highlight`, `live_sync_ahead_banner`, `sync_activity_window` (`scenarios_wave11.py`, passed 2026-11-22) |
-| Real-data accuracy report and runbook (Kobo, 406 highlights) | `docs/kobo-koreader-sync-runbook.md`, `kobo-real-device-report.md`, `koreader-annotation-sync.md` |
+| Real-data accuracy report and runbook (Kobo, 406 highlights) | `docs/archive/kobo-koreader-sync-runbook.md`, `kobo-real-device-report.md`, `koreader-annotation-sync.md` |
 
 ## 1.2 Highlights, bookmarks, notes
 
@@ -88,7 +123,7 @@ Channel decision (2026-11-22): **GitHub Releases only for now**; Flathub and the
 |---|---|
 | Highlight colour/style model with sync and one-time **repair** | `crates/bookx-serve/tests/highlight_looks.rs`, `look_repair.rs`, `docs/highlight-sync-rca.md`, `ui-tests-hlsync.sh` |
 | Bookmarks import (KOReader / Kobo), Notes filter, jump-to-highlight | `src/ui/notes.rs`, `ui-tests-koannot.sh`, `ui-tests-anchor.sh`, `docs/annotation-sync-notes.md` |
-| Joplin export, copy with citation (Ctrl+Shift+C) | `ui-tests-reader-ux.sh`, `docs/ux-gaps-notes.md` |
+| Joplin export, copy with citation (Ctrl+Shift+C) | `ui-tests-reader-ux.sh`, `docs/archive/ux-gaps-notes.md` |
 
 ## 1.3 Reader typography and behaviour (wave 11, T1)
 
@@ -97,15 +132,15 @@ Channel decision (2026-11-22): **GitHub Releases only for now**; Flathub and the
 | Widows/orphans, small caps, text weight, contrast, word spacing, kerning | `crates/bookx-text`, `ui-tests-reader-ux.sh` |
 | Book CSS fonts and sizes with per-book switches | `bookx-text` CSS subset, reader settings |
 | Page-turn animation, auto-turn timer, evening schedule | reader settings, `ui-tests-reader-ux.sh` |
-| Skim preview, TOC fold, highlight handles, link hints, page-turner keys, auto-archive, whole-word / regex in-book search | `ui-tests-reader-ux.sh`, `docs/ux-gaps-notes.md` |
+| Skim preview, TOC fold, highlight handles, link hints, page-turner keys, auto-archive, whole-word / regex in-book search | `ui-tests-reader-ux.sh`, `docs/archive/ux-gaps-notes.md` |
 
 ## 1.4 Library and store (wave 11, T3)
 
 | What | Evidence |
 |---|---|
-| **Custom columns** (store schema, `#label` search, Calibre mapping, CLI) | `crates/bookx-store`, `docs/library-t3-notes.md` |
+| **Custom columns** (store schema, `#label` search, Calibre mapping, CLI) | `crates/bookx-store`, `docs/archive/library-t3-notes.md` |
 | Search language: parentheses, AND/NOT, regex, dates | `crates/bookx-core/src/query*`, unit tests |
-| Add by ISBN, empty record, multi-book archives; filename guess; search & replace across fields | `docs/library-t3-notes.md`, `ui-tests-lib8.sh` |
+| Add by ISBN, empty record, multi-book archives; filename guess; search & replace across fields | `docs/archive/library-t3-notes.md`, `ui-tests-lib8.sh` |
 | Send shelf, tag tree, related books, author/series notes, marked books, folder watcher, FTS status/rebuild, jobs for device sends and web adds, EPUB catalogue, cover from PDF, trim 2:3 | same notes, `ui-tests-lib8.sh`, `ui-tests-works.sh` |
 
 ## 1.5 Formats, comics, audiobooks (wave 11, T4/T5)
@@ -114,7 +149,7 @@ Channel decision (2026-11-22): **GitHub Releases only for now**; Flathub and the
 |---|---|
 | Comics: next/previous volume, series from folders, per-library direction, ignore ComicInfo | `crates/bookx-comic`, `docs/comic-notes.md`, `ui-tests-comics.sh` |
 | Audiobook ↔ e-book position (local, manual); pairing performance fix | `crates/bookx-audio`, `docs/audiobook-notes.md`, `ui-tests-audiobook.sh` |
-| Conversion queue and options dialog | `docs/library-t3-notes.md` |
+| Conversion queue and options dialog | `docs/archive/library-t3-notes.md` |
 | **CBR via `unrar`/`7z`** and **DJVU via `ddjvu`** subprocesses (**untested with real archives**) | `crates/bookx-comic`, `bookx-formats` |
 
 ## 1.6 Serve, devices, sources (wave 11, T6/T8)
@@ -122,14 +157,14 @@ Channel decision (2026-11-22): **GitHub Releases only for now**; Flathub and the
 | What | Evidence |
 |---|---|
 | Trusted proxy, allowed hosts, sub-path settings; QR code (`qr.rs`) | `crates/bookx-serve/src/qr.rs`, `hostguard`, `docs/networking-notes.md` |
-| Wallabag import (`wallabag.rs`), per-feed full/summary, source priority UI, name-order toggle, Wikipedia as a book | `crates/bookx-sources`, `docs/serve-sources-notes.md` |
+| Wallabag import (`wallabag.rs`), per-feed full/summary, source priority UI, name-order toggle, Wikipedia as a book | `crates/bookx-sources`, `docs/archive/serve-sources-notes.md` |
 | PWA web client, per-user accounts (**CLI only, no screen**), Check Before Send, Hardcover client (**no screen**) | `crates/bookx-serve/src/{pwa,accounts,hardcover}.rs` |
 
 ## 1.7 Editor, app, plugins (wave 11, T7/T9/T10)
 
 | What | Evidence |
 |---|---|
-| Preview colours, preview click selects code | `docs/editor-preview-notes.md`, `ui-tests-editor-preview.sh` |
+| Preview colours, preview click selects code | `docs/archive/editor-preview-notes.md`, `ui-tests-editor-preview.sh` |
 | Plugin trust sheet, signature **format** (verification not possible: no ed25519 crate), run plugin over library from the CLI | `crates/bookx-plugin`, `docs/plugin-development.md` |
 | CLI: catalog, polish, fonts, saved-search, fetch-news | `crates/bookx-cli` |
 | Settings import/export, safe mode, debug log, `--doc` and Open With forwarding | `src/{settings_io,safe_mode,debug_log}.rs` |
@@ -176,7 +211,7 @@ Devices window redesign and compact grid: `src/ui/devices.rs`, `devices_list.rs`
 
 | What | Evidence |
 |---|---|
-| Vacuous-check lint, flake fixes, dialog and i18n lints | `build-aux/lint-checks.sh`, `src/ui/i18n_lint.rs`, `docs/qa-wave5.md` |
+| Vacuous-check lint, flake fixes, dialog and i18n lints | `build-aux/lint-checks.sh`, `src/ui/i18n_lint.rs`, `docs/archive/qa-wave5.md` |
 | **Coverage gate**: cargo-llvm-cov + nextest + diff-cover, logic 92.9 %, UI 80 % via Broadway, baseline file, CI job and nightly UI coverage | `build-aux/{coverage,coverage-ui}.sh`, `coverage-gate.py`, `coverage-baseline.json`, `docs/ci-gates.md` |
 
 ## 1.13 Translations

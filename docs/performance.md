@@ -3,6 +3,18 @@
 Internal notes: what was measured on large synthetic libraries, what was slow and fixed, and what is left. The
 budget tests themselves are described in `docs/perf.md`.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
+## Contents
+
+- [How it is measured](#how-it-is-measured)
+- [What was slow, and the fix](#what-was-slow-and-the-fix)
+- [Numbers (release, after the fixes; before in brackets where it changed)](#numbers-release-after-the-fixes-before-in-brackets-where-it-changed)
+- [The window with 20,000 books](#the-window-with-20000-books)
+- [Limits and not done](#limits-and-not-done)
+- [Big books in the reader and the editor (wave 6, QA round 2)](#big-books-in-the-reader-and-the-editor-wave-6-qa-round-2)
+- [X18: large books and large libraries (2026-11-22)](#x18-large-books-and-large-libraries-2026-11-22)
+
 ## How it is measured
 
 - **Synthetic libraries**: `crates/bookx-store/tests/common/synth.rs` builds book *N* of a library of *M* books as a pure

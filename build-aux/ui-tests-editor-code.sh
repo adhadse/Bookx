@@ -1,4 +1,4 @@
-# Scenarios of the code-editing helpers (docs/calibre-editor-gap-analysis.md CE-333, CE-336, CE-339, CE-341..CE-346,
+# Scenarios of the code-editing helpers (docs/archive/calibre-editor-gap-analysis.md CE-333, CE-336, CE-339, CE-341..CE-346,
 # CE-348, CE-350, CE-352, CE-354..CE-356). Sourced by ui-tests.sh (uses its `scenario`, `check`, `has`, $ROOT).
 # Dev commands are `editor:code:<name>=<args>` (src/ui/editor/format_actions.rs, navigate.rs, markup_hints.rs,
 # insert_dialogs.rs); a comma in a text is written §. Fixture pages are written with `editor:x:put`.

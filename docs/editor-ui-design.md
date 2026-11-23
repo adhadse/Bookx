@@ -1,7 +1,22 @@
 # Bookx editor: UI design (inspired by GNOME Builder)
 
 Status: design note. The implemented subset is listed in section 8; the rest is the target the
-gap analysis (`docs/calibre-editor-gap-analysis.md`) is mapped onto.
+gap analysis (`docs/archive/calibre-editor-gap-analysis.md`) is mapped onto.
+
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
+## Contents
+
+- [1. Layout](#1-layout)
+- [2. What is borrowed from Builder, what is not](#2-what-is-borrowed-from-builder-what-is-not)
+- [3. Map of Calibre features (gap analysis ids) to places in the UI](#3-map-of-calibre-features-gap-analysis-ids-to-places-in-the-ui)
+- [4. GtkSourceView](#4-gtksourceview)
+- [5. Interaction rules](#5-interaction-rules)
+- [6. Panels and the future command palette](#6-panels-and-the-future-command-palette)
+- [7. Markup and file actions (implemented)](#7-markup-and-file-actions-implemented)
+- [8. Implemented so far](#8-implemented-so-far)
+- [9. Tools dialogs, file browser extras, Book menu (added)](#9-tools-dialogs-file-browser-extras-book-menu-added)
+- [10. Structure tools: Contents drag and drop, cover, fonts, HTML rules, jacket, accessibility form, other formats](#10-structure-tools-contents-drag-and-drop-cover-fonts-html-rules-jacket-accessibility-form-other-formats)
 
 **Sources.** GNOME Builder's public user documentation and its screen layout, as known from its
 manual and from using it (no web access was available while writing this note, so the Builder

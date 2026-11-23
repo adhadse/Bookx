@@ -1615,6 +1615,79 @@ mod tests {
         assert_eq!(books[0].highlights.len(), 1);
     }
 
+    /// Design rule (issue #39): nothing that disappears on a device removes a book from the
+    /// library, or a highlight, note or bookmark that was made in Bookx. `merge_incoming` takes a
+    /// slice of books, so it cannot remove a book at all; this checks the rest.
+    #[test]
+    fn a_device_that_deletes_everything_keeps_every_book_and_everything_made_in_bookx() {
+        let (mut books, mut l, loc) = setup();
+        let count = books.len();
+        books[0]
+            .highlights
+            .push(books_hl("mine", "Fear is the mind-killer."));
+        books[0]
+            .highlights
+            .push(books_hl("mine2", "Another quote."));
+        let before = books[0].highlights.clone();
+        let title = books[0].meta.title.clone();
+        let file = books[0].file.clone();
+        let r = merge_incoming(
+            &mut books,
+            &[
+                change("a", "Fear is the mind-killer.", "", 100, 1),
+                change("b", "Another quote.", "", 100, 2),
+            ],
+            &mut l,
+            &loc,
+            now(),
+        );
+        assert_eq!(r.removed, 0);
+        let r = merge_incoming(
+            &mut books,
+            &[deleted("a", 200, 3), deleted("b", 200, 4)],
+            &mut l,
+            &loc,
+            now(),
+        );
+        assert_eq!(
+            r.removed, 0,
+            "highlights made in Bookx are never removed by a device"
+        );
+        // a wiped device sends nothing at all
+        let r = merge_incoming(&mut books, &[], &mut l, &loc, now());
+        assert_eq!(r.removed, 0);
+        assert_eq!(books.len(), count, "no book is removed");
+        assert_eq!(books[0].meta.title, title);
+        assert_eq!(
+            books[0].file, file,
+            "the book's file is still the book's file"
+        );
+        assert_eq!(
+            books[0].highlights.len(),
+            before.len(),
+            "the highlights made in Bookx are all still there"
+        );
+    }
+
+    #[test]
+    fn a_highlight_that_came_from_the_device_and_was_deleted_there_goes_but_the_book_stays() {
+        // by design (per-highlight annotation sync, wiki "KOReader highlights and notes"): the one
+        // thing a device can remove is a highlight that it sent itself and that nobody changed here
+        let (mut books, mut l, loc) = setup();
+        merge_incoming(
+            &mut books,
+            &[change("a", "Fear is the mind-killer.", "", 100, 1)],
+            &mut l,
+            &loc,
+            now(),
+        );
+        assert_eq!(books[0].highlights.len(), 1);
+        let r = merge_incoming(&mut books, &[deleted("a", 200, 2)], &mut l, &loc, now());
+        assert_eq!(r.removed, 1);
+        assert_eq!(books.len(), 1, "the book itself stays");
+        assert!(books[0].highlights.is_empty());
+    }
+
     #[test]
     fn a_deletion_older_than_the_last_change_is_ignored() {
         let (mut books, mut l, loc) = setup();

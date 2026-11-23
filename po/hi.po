@@ -12021,3 +12021,18 @@ msgstr "क्या हुआ?"
 
 msgid "Your own words are shared exactly as you type them: leave out anything private."
 msgstr "आपके अपने शब्द वैसे ही साझा किए जाते हैं जैसे आप टाइप करते हैं: निजी जानकारी न लिखें।"
+
+msgid "Books on an e-reader? Sync never copies or deletes books: copy the files to this computer and use Add Books. To put books on a device, use Send to Device."
+msgstr "ई-रीडर पर किताबें हैं? सिंक कभी किताबें कॉपी या हटाता नहीं है: फ़ाइलें इस कंप्यूटर पर कॉपी करें और “पुस्तकें जोड़ें” का उपयोग करें। किसी डिवाइस पर किताबें रखने के लिए “डिवाइस पर भेजें” का उपयोग करें।"
+
+msgid "Rename this device"
+msgstr "इस डिवाइस का नाम बदलें"
+
+msgid "Rename {}"
+msgstr "{} का नाम बदलें"
+
+msgid "Sync never copies or deletes books. It moves only reading position, highlights, notes and bookmarks, for books that are already in your library. To get books from an e-reader into Bookx, copy the files to this computer and use Add Books. To put books on an e-reader, use Send to Device."
+msgstr "सिंक कभी किताबें कॉपी या हटाता नहीं है। यह केवल उन किताबों की पढ़ने की स्थिति, हाइलाइट, नोट और बुकमार्क भेजता है जो पहले से आपकी लाइब्रेरी में हैं। ई-रीडर से किताबें Bookx में लाने के लिए फ़ाइलें इस कंप्यूटर पर कॉपी करें और “पुस्तकें जोड़ें” का उपयोग करें। ई-रीडर पर किताबें रखने के लिए “डिवाइस पर भेजें” का उपयोग करें।"
+
+msgid "The name is only shown in Bookx. Leave it empty to show the name the device reports."
+msgstr "यह नाम केवल Bookx में दिखता है। डिवाइस द्वारा बताया गया नाम दिखाने के लिए इसे खाली छोड़ें।"

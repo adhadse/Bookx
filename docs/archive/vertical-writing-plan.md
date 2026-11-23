@@ -1,3 +1,5 @@
+> Archived 2026-11-23: Status 'built' since 2026-11-13; the user description is the wiki page Reading. Living document: [roadmap-status.md](../roadmap-status.md).
+
 # Vertical writing in the reading canvas (PP-G-21, roadmap R4 and R56)
 
 Status (2026-11-13): **built**. This file began as the plan written before the work; it now records what was

@@ -4,7 +4,7 @@ One translation per English term, per language. Translators (people and agents) 
 change here is a change of all strings that contain the term. The table is what the current files use, with the
 decision where the files disagree with themselves (marked **fix**). Terms that no current string uses yet (collection,
 catalogue, e-reader in fr/hi, …) are recommendations for when they appear. Source of truth for the English terms:
-`docs/human_interface_backlog.md` §7 (Sync, Devices, capitalisation).
+`docs/archive/human_interface_backlog.md` §7 (Sync, Devices, capitalisation).
 
 ## Rules for every language
 

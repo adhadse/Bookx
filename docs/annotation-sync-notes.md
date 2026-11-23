@@ -3,6 +3,8 @@
 Internal. Work of 2026-11-12 on PP-G-8, PP-G-9, PP-G-10 (`docs/pain-points-ebook-managers.md`). User-facing text is in
 `wiki/docs/annotations.md` and `wiki/docs/progress-sync.md`.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## What was built
 
 | Piece | Where | Tests |

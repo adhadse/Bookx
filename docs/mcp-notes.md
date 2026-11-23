@@ -3,6 +3,8 @@
 Status: done for the scope below. User documentation: `wiki/docs/ai-assistants.md`. Code: `crates/bookx-mcp`,
 `bookx-cli mcp` (`crates/bookx-cli/src/mcp.rs`), the app glue `src/mcp_host.rs` and the page `src/ui/mcp_settings.rs`.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## Protocol and SDK choice
 
 * Revision implemented: **2025-11-25**; older clients are answered with their own version when it is one of

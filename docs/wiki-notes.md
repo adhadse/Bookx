@@ -3,6 +3,20 @@
 How the public wiki (`wiki/`, https://bookx.adhadse.com) is built and deployed, what the owner must set up by hand,
 and which pages are weak. User-facing content only goes into `wiki/`; this file stays internal (see AGENTS.md).
 
+Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse
+
+## Contents
+
+- [How it works](#how-it-works)
+- [Videos](#videos)
+- [What the owner must do by hand](#what-the-owner-must-do-by-hand)
+- [Not verified](#not-verified)
+- [Screenshots (enhancement 27)](#screenshots-enhancement-27)
+- [Detail pictures and the picture manifest (wave 6)](#detail-pictures-and-the-picture-manifest-wave-6)
+- [Pages that are thin or need more screenshots](#pages-that-are-thin-or-need-more-screenshots)
+- [Scenes to add (own vocabulary, wave 6)](#scenes-to-add-own-vocabulary-wave-6)
+- [Picture layout and the comic fixture (wave 6)](#picture-layout-and-the-comic-fixture-wave-6)
+
 ## How it works
 
 - **Generator:** [Zensical](https://zensical.org/) (`zensical==0.1.1`, pinned in `build-aux/wiki.sh`). Config:

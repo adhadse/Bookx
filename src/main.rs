@@ -157,6 +157,7 @@ mod sync_activity;
 mod sync_bus;
 mod sync_live;
 mod sync_model;
+mod sync_rule;
 mod tags;
 mod toc_fold;
 mod tracker_sync;

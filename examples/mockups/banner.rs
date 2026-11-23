@@ -1,5 +1,5 @@
 //! The Continue Reading banner: three design variants for the states of the landing page and the
-//! resize ladder of the chosen one (variant A). See docs/ux-gaps-notes.md for the decision.
+//! resize ladder of the chosen one (variant A). See docs/archive/ux-gaps-notes.md for the decision.
 
 use crate::kit::Svg;
 

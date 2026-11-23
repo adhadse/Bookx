@@ -1,7 +1,9 @@
 # Accessibility, command palette, Preferences search, RTL: notes (internal)
 
 Work log and decisions for PP-G-19, PP-G-21, PP-C-1 (palette, searchable Preferences) and PP-C-23. Public text is
-`wiki/docs/accessibility.md`; plan for vertical text is `docs/vertical-writing-plan.md`.
+`wiki/docs/accessibility.md`; plan for vertical text is `docs/archive/vertical-writing-plan.md`.
+
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
 
 ## What was built
 

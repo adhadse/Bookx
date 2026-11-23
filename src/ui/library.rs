@@ -4807,7 +4807,15 @@ impl SimpleComponent for LibraryView {
         )));
         add_news.set_action_name(Some("lib.news"));
         empty_btns.insert(&add_news, -1);
-        empty.set_child(Some(&empty_btns));
+        let empty_note = gtk::Label::new(Some(&tr(crate::sync_model::WELCOME_DEVICE_NOTE)));
+        empty_note.set_wrap(true);
+        empty_note.set_justify(gtk::Justification::Center);
+        empty_note.set_max_width_chars(60);
+        empty_note.add_css_class("dim-label");
+        let empty_col = gtk::Box::new(gtk::Orientation::Vertical, 18);
+        empty_col.append(&empty_btns);
+        empty_col.append(&empty_note);
+        empty.set_child(Some(&empty_col));
         stack.add_named(&empty, Some("empty"));
 
         let nomatch = adw::StatusPage::builder()
