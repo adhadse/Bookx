@@ -14,8 +14,8 @@ these holds, checked in this order:
     identical to the tree of this commit (a squash merge of an up-to-date branch). A different tree means something
     changed between the test and the merge: nothing proved the result green.
 
-Anything else fails with a message that says what was found. A `required` check that exists on the commit but did not
-succeed fails at once: a red check is not "unknown".
+Anything else fails with a message that says what was found. A `required` check that exists on the commit and is red (failure,
+cancelled, timed out) fails at once: a red check is not "unknown". A *skipped* one counts as no check (a push to main).
 
 Exit status 0 = release, 1 = refuse. The decision (`decide`) is a pure function of what the GitHub API and git said.
 """
@@ -46,7 +46,9 @@ def decide(sha, skip, checks_on_sha, nightly_conclusions, pulls, head_checks, tr
     here = latest(checks_on_sha, "required")
     if here == "success":
         return True, f"the `required` check of CI succeeded on {sha[:12]}"
-    if here is not None:
+    # `skipped` is what a push to main reports (the pipeline there only warms the caches): nothing ran, which is not the
+    # same as red, so the pull request that was merged is looked at instead
+    if here is not None and here != "skipped":
         return False, f"the `required` check on {sha[:12]} is `{here}`: CI is not green for this commit"
     if nightly_conclusions and nightly_conclusions[0] == "success":
         return True, f"the latest Nightly run on {sha[:12]} succeeded (the full suite ran on main at this commit)"
