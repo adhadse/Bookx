@@ -12,7 +12,7 @@ use std::path::PathBuf;
 
 use bookx_core::contracts::DeviceDriver;
 use bookx_serve::activity::What;
-use bookx_serve::devices::{classify, DeviceKind, MassStorageDriver};
+use bookx_serve::devices::{DeviceKind, MassStorageDriver, classify};
 use bookx_serve::kobo::parse_version;
 use bookx_serve::mtp::MtpGvfsDriver;
 use common::zoo::{self, Bench, Family, Peer, Usb, ZOO};

@@ -5,7 +5,7 @@ mod common;
 
 use std::path::{Path, PathBuf};
 
-use bookx_store::{SqliteStore, SCHEMA_VERSION};
+use bookx_store::{SCHEMA_VERSION, SqliteStore};
 use common::book;
 
 fn dir(tag: &str) -> PathBuf {

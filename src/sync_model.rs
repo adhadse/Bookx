@@ -105,10 +105,14 @@ pub const WINDOW_SENTENCE: &str = N_(
 
 /// Second sentence of the Sync window: what the Wi-Fi sync does not do (issue #39: nobody should wait for
 /// books to arrive that Bookx never copies).
-pub const WINDOW_BOOKS_NOTE: &str = N_("Sync never copies or deletes books. It moves only reading position, highlights, notes and bookmarks, for books that are already in your library. To get books from an e-reader into Bookx, copy the files to this computer and use Add Books. To put books on an e-reader, use Send to Device.");
+pub const WINDOW_BOOKS_NOTE: &str = N_(
+    "Sync never copies or deletes books. It moves only reading position, highlights, notes and bookmarks, for books that are already in your library. To get books from an e-reader into Bookx, copy the files to this computer and use Add Books. To put books on an e-reader, use Send to Device.",
+);
 
 /// Under the buttons of the empty library: where books on an e-reader come from.
-pub const WELCOME_DEVICE_NOTE: &str = N_("Books on an e-reader? Sync never copies or deletes books: copy the files to this computer and use Add Books. To put books on a device, use Send to Device.");
+pub const WELCOME_DEVICE_NOTE: &str = N_(
+    "Books on an e-reader? Sync never copies or deletes books: copy the files to this computer and use Add Books. To put books on a device, use Send to Device.",
+);
 
 pub const STEP_SERVER: &str = N_("Turn on the Bookx sync server");
 pub const STEP_SERVER_HELP: &str = N_(

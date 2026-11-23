@@ -18,9 +18,9 @@ use std::time::Duration;
 use bookx_serve::activity::ActivityLog;
 use bookx_serve::annotation_sync::AnnotationSync;
 use bookx_serve::httpc::request;
-use bookx_serve::kosync::{md5_hex, KoSync, MemoryStore};
+use bookx_serve::kosync::{KoSync, MemoryStore, md5_hex};
 use bookx_serve::server::{LibrarySnapshot, Server, ServerConfig, ServerHandle};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 /// The brand of a reader.
