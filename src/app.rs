@@ -126,6 +126,8 @@ pub enum Msg {
     ShowAbout,
     /// Report a Problem (the dialog); `Crash` fills in the first line after a crash.
     ReportProblem(crate::ui::report_dialog::Prefill),
+    /// Report a Problem from a window of a feature: the name of its section comes first.
+    ReportProblemFrom(String),
     /// Copy the diagnostics report to the clipboard.
     CopyDiagnostics,
     /// A `bookx://` link (from the desktop, another Bookx process or the command line).
@@ -410,6 +412,14 @@ impl SimpleComponent for App {
                     tx.emit(Msg::ReportProblem(crate::ui::report_dialog::Prefill::None))
                 }),
             );
+            let tx = sender.input_sender().clone();
+            let from = gio::SimpleAction::new("report-problem-from", Some(glib::VariantTy::STRING));
+            from.connect_activate(move |_, p| {
+                if let Some(area) = p.and_then(|p| p.str()) {
+                    tx.emit(Msg::ReportProblemFrom(area.to_string()));
+                }
+            });
+            app.add_action(&from);
             let tx = sender.input_sender().clone();
             add_action(
                 "copy-diagnostics",
@@ -1831,6 +1841,12 @@ impl SimpleComponent for App {
             Msg::ReportProblem(prefill) => {
                 crate::ui::report_dialog::show(&self.shared, &self.front_window(), prefill)
             }
+            Msg::ReportProblemFrom(area) => crate::ui::report_dialog::show_from(
+                &self.shared,
+                &self.front_window(),
+                crate::ui::report_dialog::Prefill::None,
+                Some(&area),
+            ),
             Msg::OpenUri(uri) => match crate::links::parse(&uri) {
                 Some(link) => {
                     let found = crate::links::resolve(&link, &self.shared.lib.borrow());

@@ -124,6 +124,7 @@ pub(super) fn book_menu() -> gio::Menu {
     app.append(Some(&tr("Preferences")), Some("app.preferences"));
     app.append(Some(&tr("Keyboard Shortcuts")), Some("app.shortcuts"));
     app.append_item(&item(&tr("Help"), "help"));
+    app.append(Some(&tr("Report a Problem")), Some("app.report-problem-from::Editor"));
     app.append(Some(&tr("About Bookx")), Some("app.about"));
     m.append_section(None, &app);
     m

@@ -358,7 +358,8 @@ pub fn build(input: &Input, opts: Options, user_text: &str, scrub: &Scrubber) ->
     // the area the user pressed Report in comes first
     let mut sections: Vec<&Section> = input.sections.iter().collect();
     if let Some(e) = &input.entry {
-        sections.sort_by_key(|s| s.title != *e);
+        let wanted: Vec<&str> = e.split('|').collect();
+        sections.sort_by_key(|s| !wanted.contains(&s.title.as_str()));
     }
     for sec in sections {
         let t = red.section(sec);
@@ -743,6 +744,18 @@ pub fn write_report(path: &std::path::Path, text: &str) -> std::io::Result<()> {
     f.write_all(text.as_bytes())
 }
 
+/// What a report holds, in plain words (shown in the dialog above the preview; the wiki says the same).
+/// These are message ids: the dialog translates them.
+pub const CONTENTS: [&str; 7] = [
+    crate::i18n::N_("The version of Bookx, how it was installed, and the kind of computer: system, desktop, screen, memory and disk as classes."),
+    crate::i18n::N_("Your settings as switches and counts, never a value you typed."),
+    crate::i18n::N_("What the app did last in each area (sync, import, devices, backups, reading aloud): what it was, how long it took, whether it worked and which kind of error. Never a title, file name or folder."),
+    crate::i18n::N_("The library as counts and classes: books, formats, search index, the file system and free space of the folder."),
+    crate::i18n::N_("Server addresses by kind, port and path words only. The host is left out unless you switch it on."),
+    crate::i18n::N_("Warnings and errors from the log, cleaned of your name, folders, titles, servers and passwords."),
+    crate::i18n::N_("Never included: your name, e-mail, IP addresses, Wi-Fi name, passwords, file names. Book titles and authors only when you switch them on, and only for the books involved."),
+];
+
 /// The URL of the bug form; only a short title is added, the report goes through the clipboard.
 pub const ISSUE_URL: &str =
     "https://github.com/adhadse/Bookx/issues/new?template=bug_report.yml&title=Bug%3A%20";
@@ -915,6 +928,15 @@ mod tests {
             &scrub(),
         );
         assert!(r.ends_with("### What happened\n\nIt crashed when I opened alice's book\n"));
+    }
+
+    #[test]
+    fn the_plain_words_list_is_short_and_has_no_ellipsis() {
+        for l in CONTENTS {
+            assert!(!l.ends_with('…') && !l.ends_with("..."), "{l}");
+            assert!(l.len() < 260, "{l}");
+        }
+        assert!(CONTENTS.last().unwrap().starts_with("Never included"));
     }
 
     #[test]

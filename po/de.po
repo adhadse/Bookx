@@ -12198,3 +12198,42 @@ msgstr "Die Synchronisierung kopiert oder löscht nie Bücher. Sie überträgt n
 
 msgid "The name is only shown in Bookx. Leave it empty to show the name the device reports."
 msgstr "Der Name wird nur in Bookx angezeigt. Lassen Sie das Feld leer, um den vom Gerät gemeldeten Namen anzuzeigen."
+
+msgid "The version of Bookx, how it was installed, and the kind of computer: system, desktop, screen, memory and disk as classes."
+msgstr "Die Version von Bookx, wie es installiert wurde, und die Art des Computers: System, Desktop, Bildschirm, Speicher und Datenträger als Größenklassen."
+
+msgid "Your settings as switches and counts, never a value you typed."
+msgstr "Ihre Einstellungen als Schalter und Anzahlen, nie ein Wert, den Sie eingegeben haben."
+
+msgid "What the app did last in each area (sync, import, devices, backups, reading aloud): what it was, how long it took, whether it worked and which kind of error. Never a title, file name or folder."
+msgstr "Was die App zuletzt in jedem Bereich getan hat (Synchronisierung, Import, Geräte, Sicherungen, Vorlesen): was es war, wie lange es dauerte, ob es geklappt hat und welche Art von Fehler auftrat. Nie ein Titel, Dateiname oder Ordner."
+
+msgid "The library as counts and classes: books, formats, search index, the file system and free space of the folder."
+msgstr "Die Bibliothek als Anzahlen und Klassen: Bücher, Formate, Suchindex, Dateisystem und freier Speicher des Ordners."
+
+msgid "Server addresses by kind, port and path words only. The host is left out unless you switch it on."
+msgstr "Serveradressen nur nach Art, Port und Pfadwörtern. Der Host bleibt weg, außer Sie schalten ihn ein."
+
+msgid "Warnings and errors from the log, cleaned of your name, folders, titles, servers and passwords."
+msgstr "Warnungen und Fehler aus dem Protokoll, bereinigt um Ihren Namen, Ordner, Titel, Server und Passwörter."
+
+msgid "Never included: your name, e-mail, IP addresses, Wi-Fi name, passwords, file names. Book titles and authors only when you switch them on, and only for the books involved."
+msgstr "Nie enthalten: Ihr Name, E-Mail, IP-Adressen, WLAN-Name, Passwörter, Dateinamen. Buchtitel und Autoren nur, wenn Sie sie einschalten, und nur für die betroffenen Bücher."
+
+msgid "Include book titles and authors of the books involved"
+msgstr "Titel und Autoren der betroffenen Bücher einschließen"
+
+msgid "Off by default. Only the books the failing action was about, never your whole library."
+msgstr "Standardmäßig aus. Nur die Bücher, um die es bei der fehlgeschlagenen Aktion ging, nie Ihre ganze Bibliothek."
+
+msgid "Include the server address host"
+msgstr "Host der Serveradresse einschließen"
+
+msgid "Off by default. Without it an address shows only its kind, port and path, such as http://<ip:private>:30260/api/koreader."
+msgstr "Standardmäßig aus. Ohne ihn zeigt eine Adresse nur Art, Port und Pfad, etwa http://<ip:private>:30260/api/koreader."
+
+msgid "What the report contains"
+msgstr "Was der Bericht enthält"
+
+msgid "Something not working? See what a report contains before you share it."
+msgstr "Etwas funktioniert nicht? Sehen Sie, was ein Bericht enthält, bevor Sie ihn teilen."

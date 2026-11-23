@@ -12198,3 +12198,42 @@ msgstr "सिंक कभी किताबें कॉपी या हट�
 
 msgid "The name is only shown in Bookx. Leave it empty to show the name the device reports."
 msgstr "यह नाम केवल Bookx में दिखता है। डिवाइस द्वारा बताया गया नाम दिखाने के लिए इसे खाली छोड़ें।"
+
+msgid "The version of Bookx, how it was installed, and the kind of computer: system, desktop, screen, memory and disk as classes."
+msgstr "Bookx का संस्करण, उसे कैसे इंस्टॉल किया गया, और कंप्यूटर का प्रकार: सिस्टम, डेस्कटॉप, स्क्रीन, मेमोरी और डिस्क, वर्गों के रूप में।"
+
+msgid "Your settings as switches and counts, never a value you typed."
+msgstr "आपकी सेटिंग स्विच और गिनती के रूप में, आपके द्वारा लिखा गया कोई मान कभी नहीं।"
+
+msgid "What the app did last in each area (sync, import, devices, backups, reading aloud): what it was, how long it took, whether it worked and which kind of error. Never a title, file name or folder."
+msgstr "हर क्षेत्र (सिंक, आयात, डिवाइस, बैकअप, ज़ोर से पढ़ना) में ऐप ने आख़िर में क्या किया: वह क्या था, कितना समय लगा, सफल रहा या नहीं और किस तरह की त्रुटि हुई। कभी कोई शीर्षक, फ़ाइल नाम या फ़ोल्डर नहीं।"
+
+msgid "The library as counts and classes: books, formats, search index, the file system and free space of the folder."
+msgstr "लाइब्रेरी गिनती और वर्गों के रूप में: किताबें, फ़ॉर्मैट, खोज सूचकांक, फ़ोल्डर का फ़ाइल सिस्टम और खाली जगह।"
+
+msgid "Server addresses by kind, port and path words only. The host is left out unless you switch it on."
+msgstr "सर्वर पते केवल प्रकार, पोर्ट और पथ के शब्दों के रूप में। जब तक आप चालू न करें, होस्ट शामिल नहीं किया जाता।"
+
+msgid "Warnings and errors from the log, cleaned of your name, folders, titles, servers and passwords."
+msgstr "लॉग की चेतावनियाँ और त्रुटियाँ, आपके नाम, फ़ोल्डर, शीर्षक, सर्वर और पासवर्ड हटाकर।"
+
+msgid "Never included: your name, e-mail, IP addresses, Wi-Fi name, passwords, file names. Book titles and authors only when you switch them on, and only for the books involved."
+msgstr "कभी शामिल नहीं: आपका नाम, ई-मेल, IP पते, Wi-Fi का नाम, पासवर्ड, फ़ाइल नाम। किताबों के शीर्षक और लेखक केवल तब, जब आप चालू करें, और केवल संबंधित किताबों के।"
+
+msgid "Include book titles and authors of the books involved"
+msgstr "संबंधित किताबों के शीर्षक और लेखक शामिल करें"
+
+msgid "Off by default. Only the books the failing action was about, never your whole library."
+msgstr "डिफ़ॉल्ट रूप से बंद। केवल वही किताबें जिनसे विफल कार्रवाई जुड़ी थी, आपकी पूरी लाइब्रेरी कभी नहीं।"
+
+msgid "Include the server address host"
+msgstr "सर्वर पते का होस्ट शामिल करें"
+
+msgid "Off by default. Without it an address shows only its kind, port and path, such as http://<ip:private>:30260/api/koreader."
+msgstr "डिफ़ॉल्ट रूप से बंद। इसके बिना पता केवल अपना प्रकार, पोर्ट और पथ दिखाता है, जैसे http://<ip:private>:30260/api/koreader।"
+
+msgid "What the report contains"
+msgstr "रिपोर्ट में क्या है"
+
+msgid "Something not working? See what a report contains before you share it."
+msgstr "कुछ काम नहीं कर रहा? साझा करने से पहले देखें कि रिपोर्ट में क्या है।"

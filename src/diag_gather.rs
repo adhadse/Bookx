@@ -266,6 +266,42 @@ pub fn shown_address(raw: &str) -> String {
     diag_addr::shape(raw, false)
 }
 
+/// A device that is connected now (read from the drivers when the report is opened from the Devices
+/// window).
+#[derive(Debug, Clone, Default)]
+pub struct ConnectedDevice {
+    /// What the device calls itself.
+    pub reported: String,
+    /// The driver's id: `mtp:...`, `webdav:...`, or a mount.
+    pub id: String,
+    pub mounted: bool,
+    pub free: Option<(u64, u64)>,
+}
+
+/// The rows of the *Devices* section: how many, and each by model, connection and state.
+pub fn device_rows(list: &[ConnectedDevice]) -> Vec<(String, Fact)> {
+    let mut rows = vec![("Connected devices".to_string(), Fact::count(list.len()))];
+    for (i, d) in list.iter().take(6).enumerate() {
+        let n = i + 1;
+        let backend = if d.id.starts_with("mtp:") {
+            "mtp"
+        } else if d.id.starts_with("webdav:") {
+            "cloud"
+        } else {
+            "usb"
+        };
+        rows.push((format!("Device {n}"), Fact::text(&crate::trace::device_label(&d.reported))));
+        rows.push((format!("Device {n} connection"), Fact::word(backend)));
+        rows.push((format!("Device {n} mounted"), Fact::flag(d.mounted)));
+        if let Some((a, t)) = d.free {
+            let (c, nearly) = crate::diag_system::free_class(a, t);
+            rows.push((format!("Device {n} free space"), Fact::choice(c, &["under 200 MB", "200 MB-1 GB", "1-10 GB", "10-100 GB", "over 100 GB"])));
+            rows.push((format!("Device {n} nearly full"), Fact::flag(nearly)));
+        }
+    }
+    rows
+}
+
 /// The books the trace names (by id), as facts. Titles and authors are `Fact::title`: shown only when
 /// the user allowed them.
 pub fn books_involved(lib: &crate::core::library::Library, ids: &[u64]) -> Section {
@@ -496,6 +532,21 @@ mod tests {
         let ids = book_ids(&crate::trace::snapshot());
         let (a, b) = (ids.iter().position(|i| *i == 9), ids.iter().position(|i| *i == 7));
         assert!(a.is_some() && b.is_some() && a < b);
+    }
+
+    #[test]
+    fn connected_devices_are_told_by_model_connection_and_state() {
+        let rows = device_rows(&[
+            ConnectedDevice { reported: "leaf2".into(), id: "mtp:1".into(), mounted: false, free: None },
+            ConnectedDevice { reported: "Alice's Kobo".into(), id: "/run/media/alice/KOBO".into(), mounted: true, free: Some((50 << 20, 8 << 30)) },
+        ]);
+        let mut sec = Section::new("Devices");
+        sec.rows = rows;
+        let t = show(&sec);
+        for want in ["Connected devices: 2", "Device 1: Boox Leaf 2", "Device 1 connection: mtp", "Device 1 mounted: no", "Device 2: <custom name>", "Device 2 connection: usb", "Device 2 nearly full: yes"] {
+            assert!(t.contains(want), "{want} in {t}");
+        }
+        assert!(!t.contains("alice") && !t.contains("Alice"));
     }
 
     #[test]

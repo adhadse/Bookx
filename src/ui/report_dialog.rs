@@ -175,7 +175,22 @@ pub fn gather(shared: &SharedRef, entry: Option<&str>, parent: Option<&gtk::Widg
         backend,
         renderer,
         vars,
-        extra: crate::trace::collect(),
+        extra: {
+            let mut x = crate::trace::collect();
+            if entry.is_some_and(|e| e.split('|').any(|a| a == "Devices")) {
+                let list: Vec<_> = crate::devices::detect_all()
+                    .into_iter()
+                    .map(|d| crate::diag_gather::ConnectedDevice {
+                        reported: d.name,
+                        id: d.id,
+                        mounted: d.mount.exists(),
+                        free: crate::diag_system::free_space(&d.mount),
+                    })
+                    .collect();
+                x.push((crate::trace::Area::Devices, crate::diag_gather::device_rows(&list)));
+            }
+            x
+        },
         entry: entry.map(str::to_string),
         probe: None,
         helpers: crate::diag_gather::Helpers::detect(),
@@ -428,6 +443,21 @@ pub fn show_from(
     include.add(&titles);
     include.add(&host);
 
+    // what is in it, in plain words
+    let contents = gtk::Label::new(Some(
+        &report::CONTENTS
+            .iter()
+            .map(|l| format!("• {}", tr(l)))
+            .collect::<Vec<_>>()
+            .join("\n"),
+    ));
+    contents.set_wrap(true);
+    contents.set_xalign(0.0);
+    contents.add_css_class("dim-label");
+    contents.add_css_class("caption");
+    contents.set_selectable(true);
+    super::audit::label(&contents, &tr("What the report contains"));
+
     // the preview
     let preview_label = caption(&tr("Preview"));
     let preview_hint = gtk::Label::new(Some(&tr("This is exactly what will be shared.")));
@@ -480,6 +510,7 @@ pub fn show_from(
         what_card.upcast_ref(),
         what_hint.upcast_ref(),
         include.upcast_ref(),
+        contents.upcast_ref(),
         preview_label.upcast_ref(),
         preview_hint.upcast_ref(),
         preview_card.upcast_ref(),
@@ -638,6 +669,24 @@ pub fn preferences_group(
             .map(|w| w.upcast::<gtk::Widget>())
             .unwrap_or_else(|| parent.clone());
         show(&shared, &w, Prefill::None)
+    });
+    g.add(&row);
+    g
+}
+
+/// A group with one row, "Report a Problem", for a window of a feature (Sync, Devices): it opens the
+/// dialog with `area` (the titles of the sections to put first, separated by `|`). The row is
+/// activated through the application action, so the window needs no handle on the app.
+pub fn problem_group(area: &'static str) -> adw::PreferencesGroup {
+    let g = adw::PreferencesGroup::new();
+    let row = adw::ActionRow::new();
+    row.set_title(&tr("Report a Problem"));
+    row.set_subtitle(&tr("Something not working? See what a report contains before you share it."));
+    row.set_subtitle_lines(0);
+    row.set_activatable(true);
+    row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
+    row.connect_activated(move |r| {
+        let _ = r.activate_action("app.report-problem-from", Some(&area.to_variant()));
     });
     g.add(&row);
     g

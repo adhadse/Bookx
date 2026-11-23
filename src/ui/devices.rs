@@ -448,6 +448,7 @@ impl DevWin {
             dav_group.add(r);
         }
         settings_page_widget.add(&dav_group);
+        settings_page_widget.add(&super::report_dialog::problem_group("Devices|Built-in server|Conversion"));
         let settings_page =
             stack.add_titled(&settings_page_widget, Some("settings"), &tr("Settings"));
         settings_page.set_icon_name(Some(PAGE_ICONS[1]));

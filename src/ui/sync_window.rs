@@ -249,6 +249,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
     }
     adv_group.add(&advanced);
     column.append(&adv_group);
+    column.append(&super::report_dialog::problem_group("Sync (KOSync client)|Built-in server"));
 
     // ---- state ----------------------------------------------------------------------------
     // persistent state, not an event: the server is open to the local network

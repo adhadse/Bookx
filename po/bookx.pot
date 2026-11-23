@@ -4523,6 +4523,9 @@ msgstr ""
 msgid "Include book files"
 msgstr ""
 
+msgid "Include book titles and authors of the books involved"
+msgstr ""
+
 msgid "Include covers"
 msgstr ""
 
@@ -4533,6 +4536,9 @@ msgid "Include library statistics"
 msgstr ""
 
 msgid "Include recent log"
+msgstr ""
+
+msgid "Include the server address host"
 msgstr ""
 
 msgid "Include your books in backups"
@@ -5542,6 +5548,9 @@ msgstr ""
 msgid "Never connected"
 msgstr ""
 
+msgid "Never included: your name, e-mail, IP addresses, Wi-Fi name, passwords, file names. Book titles and authors only when you switch them on, and only for the books involved."
+msgstr ""
+
 msgid "Never verified"
 msgstr ""
 
@@ -6290,6 +6299,12 @@ msgid "Off"
 msgstr ""
 
 msgid "Off (swipe or keys only)"
+msgstr ""
+
+msgid "Off by default. Only the books the failing action was about, never your whole library."
+msgstr ""
+
+msgid "Off by default. Without it an address shows only its kind, port and path, such as http://<ip:private>:30260/api/koreader."
 msgstr ""
 
 msgid "Off when your system asks for reduced motion, and in e-ink mode"
@@ -8627,6 +8642,9 @@ msgstr ""
 msgid "Server address, port and firewall, HTTPS, matching, privacy and offline mode, reverse proxy, requirements"
 msgstr ""
 
+msgid "Server addresses by kind, port and path words only. The host is left out unless you switch it on."
+msgstr ""
+
 msgid "Server inside Bookx"
 msgstr ""
 
@@ -9020,6 +9038,9 @@ msgid "Snippets"
 msgstr ""
 
 msgid "Softer or stronger text colour"
+msgstr ""
+
+msgid "Something not working? See what a report contains before you share it."
 msgstr ""
 
 msgid "Sort CSS Rules"
@@ -9814,6 +9835,9 @@ msgstr ""
 msgid "The layout was not changed: {}"
 msgstr ""
 
+msgid "The library as counts and classes: books, formats, search index, the file system and free space of the folder."
+msgstr ""
+
 msgid "The live preview next to the code."
 msgstr ""
 
@@ -9994,6 +10018,9 @@ msgstr[0] ""
 msgstr[1] ""
 
 msgid "The value of {} needs quotes"
+msgstr ""
+
+msgid "The version of Bookx, how it was installed, and the kind of computer: system, desktop, screen, memory and disk as classes."
 msgstr ""
 
 msgid "The voice needs espeak-ng, which is not installed. See Preferences → Text to Speech."
@@ -10882,6 +10909,9 @@ msgstr ""
 msgid "Warmth"
 msgstr ""
 
+msgid "Warnings and errors from the log, cleaned of your name, folders, titles, servers and passwords."
+msgstr ""
+
 msgid "Warnings, errors and a few start-up notes."
 msgstr ""
 
@@ -10939,10 +10969,16 @@ msgstr ""
 msgid "What syncs"
 msgstr ""
 
+msgid "What the app did last in each area (sync, import, devices, backups, reading aloud): what it was, how long it took, whether it worked and which kind of error. Never a title, file name or folder."
+msgstr ""
+
 msgid "What the e-reader needs"
 msgstr ""
 
 msgid "What the marks mean"
+msgstr ""
+
+msgid "What the report contains"
 msgstr ""
 
 msgid "What the tool will change"
@@ -11183,6 +11219,9 @@ msgid "Your own words are shared exactly as you type them: leave out anything pr
 msgstr ""
 
 msgid "Your passwords are saved in an encrypted store"
+msgstr ""
+
+msgid "Your settings as switches and counts, never a value you typed."
 msgstr ""
 
 msgid "Your themes"

@@ -11,16 +11,18 @@ use crate::i18n::{N_, tr};
 /// An entry of a menu: label (msgid), action. An empty label is the end of a section.
 pub type Entry = (&'static str, &'static str);
 
-const STANDARD: [Entry; 5] = [
+const STANDARD: [Entry; 6] = [
     ("", ""),
     (N_("Preferences"), "app.preferences"),
     (N_("Keyboard Shortcuts"), "app.shortcuts"),
     (N_("Help"), "app.help"),
+    // the report starts with what the reader did last
+    (N_("Report a Problem"), "app.report-problem-from::Reader"),
     (N_("About Bookx"), "app.about"),
 ];
 
-/// The e-book reader: *This Book*, *File*, then the standard group. 12 entries, no submenu.
-pub const EPUB_MENU: [Entry; 14] = [
+/// The e-book reader: *This Book*, *File*, then the standard group. 13 entries, no submenu.
+pub const EPUB_MENU: [Entry; 15] = [
     (N_("Go to"), "reader.goto"),
     (N_("Speed Reading"), "reader.rsvp"),
     (N_("Book Map"), "reader.map"),
@@ -35,10 +37,11 @@ pub const EPUB_MENU: [Entry; 14] = [
     STANDARD[2],
     STANDARD[3],
     STANDARD[4],
+    STANDARD[5],
 ];
 
 /// The PDF page view.
-pub const PDF_MENU: [Entry; 8] = [
+pub const PDF_MENU: [Entry; 9] = [
     (N_("Go to Page"), "reader.goto"),
     (N_("Reflow as Text"), "reader.reflow"),
     (N_("Properties"), "reader.properties"),
@@ -47,10 +50,11 @@ pub const PDF_MENU: [Entry; 8] = [
     STANDARD[2],
     STANDARD[3],
     STANDARD[4],
+    STANDARD[5],
 ];
 
 /// The comic reader (it had no main menu).
-pub const COMIC_MENU: [Entry; 7] = [
+pub const COMIC_MENU: [Entry; 8] = [
     (N_("Go to Page"), "reader.goto"),
     (N_("Properties"), "reader.properties"),
     STANDARD[0],
@@ -58,6 +62,7 @@ pub const COMIC_MENU: [Entry; 7] = [
     STANDARD[2],
     STANDARD[3],
     STANDARD[4],
+    STANDARD[5],
 ];
 
 /// What a narrow window adds at the top of the menu (the header lost these buttons).
@@ -238,7 +243,7 @@ mod tests {
 
     #[test]
     fn the_epub_menu_has_twelve_entries_in_three_groups() {
-        assert_eq!(items(&EPUB_MENU).len(), 12);
+        assert_eq!(items(&EPUB_MENU).len(), 13);
         let seps = EPUB_MENU.iter().filter(|(l, _)| l.is_empty()).count();
         assert_eq!(seps, 2, "three sections");
     }
@@ -247,7 +252,7 @@ mod tests {
     fn menus_stay_within_three_to_twelve_entries_and_have_help() {
         for (name, m) in all() {
             let n = items(m).len();
-            assert!((3..=12).contains(&n), "{name} has {n} entries");
+            assert!((3..=13).contains(&n), "{name} has {n} entries");
             assert!(items(m).contains(&("Help", "app.help")), "{name} has Help");
             assert!(items(m).contains(&("About Bookx", "app.about")));
         }
@@ -276,6 +281,6 @@ mod tests {
         let v = narrow_entries(&EPUB_MENU, &NARROW_ENTRIES);
         assert_eq!(v[0].0, "Fullscreen");
         assert_eq!(v[3], ("", ""));
-        assert_eq!(items(&v).len(), 15);
+        assert_eq!(items(&v).len(), 16);
     }
 }

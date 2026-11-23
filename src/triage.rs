@@ -263,7 +263,7 @@ pub fn summary_block(findings: &[Finding], entry: Option<&str>) -> String {
         }
     }
     if let Some(a) = entry {
-        s.push_str(&format!("- Reported from: {a}\n"));
+        s.push_str(&format!("- Reported from: {}\n", a.replace('|', ", ")));
     }
     s
 }
