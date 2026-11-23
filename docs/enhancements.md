@@ -51,3 +51,37 @@ untrusted file written to disk and parsed). The reverse (Bookx pushing books ove
 
 See `docs/hardware-test-plan.md`, section "Device zoo".
 
+## Annotation history (restore highlights, notes, bookmarks)
+
+Branch `annotation-history`. Journal and restore live in `bookx-core::annotation_journal` (types, diff, restore, grouping; GTK and
+database free), storage in `bookx-store::annotation_history` (table `annotation_history`, schema v10), glue and ledger rules in
+`src/annotation_history.rs`, the dialog in `src/ui/annotation_history.rs`.
+
+- **Why SQLite and not a JSON file** (owner's decision): the diff of the old and new annotations runs inside `put_row`, in the same
+  transaction as the book row, so no caller can change an annotation without an entry and a crash cannot separate them; the oplog
+  JSON is not transactional with the catalogue. Backups and snapshots copy the database, so they carry the table; the JSON and
+  Calibre exports read only `books` and never see it. No foreign key to `books`: entries (with a title/author snapshot) survive a
+  deleted book.
+- **Who**: `CatalogBackend::commit_as(.., &WriteContext)` is a new method with a default that calls `commit` (a signature addition in
+  `contracts`-like territory: other backends are unaffected). `Library::save()` uses a source set with `Library::with_source`
+  (`undo_last` sets `Undo`); `save_with` takes a per-book source (sync: the device of each `BookDelta`). Sources: `you`,
+  `device:<name>`, `import`, `merge`, `undo` (restore from history is a normal write with `undo`).
+- **Group**: one `commit` is one group; a bulk sync that deletes 40 highlights is one group, shown as one expandable row.
+- **Moves are not changes**: a highlight whose only difference is spine/start/end (the re-check of positions) is not journalled.
+- **Retention**: `KEEP_DAYS = 90`, `KEEP_MIN = 500`, `MAX_ENTRIES = 20_000`, `MAX_BYTES = 16 MiB` of record text; run when the database
+  opens and at most once a day (`meta.history_pruned`); VACUUM only on *Clear History*. A record over 256 KiB is not journalled.
+  A damaged row is skipped when listing, never fatal.
+- **Restore vs sync ledger** (`annotation_history::settle_ledger`): a highlight a device deleted is unlinked (`highlight = None`,
+  `made_here = false`, state stays `Removed`): only a linked, made-here highlight is ever removed by a device, so neither the same
+  tombstone nor a newer one can delete it; `outgoing` then sends it to the device as a new annotation. A restored device *edit* keeps the
+  link, sets the agreed note and bumps `updated` so the device's older record does not win; the restored text is not pushed over the
+  device's own annotation. Restored bookmarks need nothing (a sync never deletes bookmarks; the ledger tombstone stays).
+  Tested in `annotation_sync::tests::a_restored_device_deletion_is_not_deleted_again_and_goes_to_the_device` and the UI scenario
+  `annotation_history_restore_after_device_delete`.
+- **Conflicts** never fail silently: `Outcome::{AlreadyThere, SamePassage, BookMissing}` are shown on the row and in the toast.
+- **Open questions for the owner**: (1) a *Keep history for* setting (not added: always on, 90 days / 500 changes); (2) should the
+  KOReader plugin be told to hide a restored highlight's old tombstone (today: new annotation id = the Bookx id); (3) when the audit's
+  plan moves highlights into their own tables, `record_changes` reads the old annotations from the book JSON and must read the new
+  tables instead (the journal rows already hold full records keyed by annotation id); (4) no keyboard shortcut was added.
+- **Unverified**: no real Kobo/KOReader/Kindle device was used; the scenario drives the real HTTP server with a fake KOReader client.
+

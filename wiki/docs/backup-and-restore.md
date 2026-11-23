@@ -10,7 +10,7 @@ included, where backups go and lets you restore them.
     |---|---|
     | Your book files (EPUB, PDF, comics, audiobooks and the rest) and their covers | Configuration (Preferences), plugins and saved passwords |
     | The catalogue: titles, authors, tags, series, collections and identifiers | The trash and the `.bookx/` state folder |
-    | Reading progress, bookmarks, highlights and notes | Copies on your devices and caches |
+    | Reading progress, bookmarks, highlights and notes, and the [history of deleted and changed highlights](annotations.md#history) | Copies on your devices and caches |
 
     Each place can leave out the book files, the covers, or files above a size you choose (see
     [Choosing what a place copies](#choosing-what-a-place-copies)). Whatever is left out is listed, never lost silently.

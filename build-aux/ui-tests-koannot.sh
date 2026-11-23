@@ -292,3 +292,18 @@ scenario koreader_annotations_live_ahead_dismiss "koannot:start,wait:600,read:1,
 scenario koreader_annotations_live_ahead_off "koannot:start,wait:600,read:1,until:page-ready:30000,wait:300,koannot:progress=1|0.62|Kobo Libra,wait:1500,reader:live-state,quit" '
     sed -n 1p < <(grep "^live_state: " <<<"$OUT") | grep -q "banner=none"; check "with Offer to jump switched off nothing is offered" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+# Annotation history: a highlight the e-reader deleted is gone from the library (that rule stays), the toast says so, the History
+# dialog lists it, Restore paints it again on the open page, and the next sync event does not delete it again.
+scenario annotation_history_restore_after_device_delete "koannot:start,wait:600,read:1,until:page-ready:30000,wait:300,koannot:push=1|$LT3|purple|first,until:sync-repaint>=1:20000,wait:400,koannot:pushdel=1|$LT3,until:sync-repaint>=2:20000,wait:400,reader:live-state,history:toast,history:open=1,wait:500,history:filter=deleted,history:state,history:restore-all,until:sync-repaint>=3:20000,wait:400,history:state,reader:live-state,koannot:push=1|$LT5|green|,wait:2500,reader:live-state,history:filter=deleted,history:state,history:close,history:count,quit" '
+    L=$(grep "^live_state: " <<<"$OUT")
+    sed -n 1p <<<"$L" | grep -q "highlights=0 .*painted=0 "; check "the device deletion still removes the highlight from the library" $?
+    grep -q "^history_toast: Some((\"Kobo Libra removed 1 note from UI Test Book\", 1))" <<<"$OUT"; check "the toast names the device, what was removed and the book" $?
+    S=$(grep "^history_state: " <<<"$OUT")
+    sed -n 1p <<<"$S" | grep -q "groups=1 entries=1 restorable=1 .*page=list"; check "the History dialog lists the deleted highlight as restorable" $?
+    sed -n 2p <<<"$S" | grep -q "restorable=0"; check "after Restore nothing is left to restore (the row says it is back)" $?
+    sed -n 2p <<<"$L" | grep -q "highlights=1 .*colours=purple painted=1 "; check "Restore paints the highlight on the open page again" $?
+    sed -n 3p <<<"$L" | grep -q "highlights=2 .*colours=green+purple "; check "the next sync event does not delete the restored highlight again" $?
+    sed -n 3p <<<"$S" | grep -q "entries=1 "; check "the next sync deleted nothing new (still one deletion in the history)" $?
+    grep -q "^history_first: deleted note by device:Kobo Libra " <<<"$OUT"; check "the entry says who deleted it" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING|history_error"; check "no errors or GTK warnings" $?'

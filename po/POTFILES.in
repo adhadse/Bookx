@@ -1,5 +1,6 @@
 src/a11y.rs
 src/account_model.rs
+src/annotation_history.rs
 src/annotation_import.rs
 src/annotation_sync.rs
 src/annotation_sync_ui.rs
@@ -61,6 +62,7 @@ src/sync_live.rs
 src/sync_model.rs
 src/tracker_sync.rs
 src/ui/accounts.rs
+src/ui/annotation_history.rs
 src/ui/annotations.rs
 src/ui/audiobook_player.rs
 src/ui/audiobooks.rs

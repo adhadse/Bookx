@@ -56,3 +56,11 @@ your reading history or any identifier of your computer.
     - Plugins can only contact the hosts named in their manifest, and their requests go through the same HTTP
       client, so offline mode stops them too (see [Plugins and patches](plugins-and-patches.md)).
     - Passwords for mail, WebDAV and similar are kept in the system keyring or Bookx's encrypted password store, never in the settings file or any other plain file ([details](backup-and-restore.md#passwords)).
+
+## Annotation history { #annotation-history }
+
+Bookx keeps a [history of your highlights, notes and bookmarks](annotations.md#history) so a deleted one can be restored.
+It contains **the text of your highlights and notes**, which book they were in and who changed them. It is stored
+**only on your computer**, inside the library’s catalogue (`bookx-library.db`), so [library backups](backup-and-restore.md)
+include it, and it is never sent anywhere by itself. It is not part of the exports (JSON, Markdown, Calibre). Entries are
+dropped after 90 days (keeping at least the latest 500 changes); **Clear History** in the History window erases it at once.

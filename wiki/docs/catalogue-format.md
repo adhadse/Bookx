@@ -14,7 +14,7 @@ where everything is, so another tool (or you, with a script) can read it, and ho
 | `.bookx/` | Small JSON state files: `oplog.json` (the undo log), `layout.json` (where books are filed), `inbox.json` (the watched import folder), `fixity.json` (file checksums), `not-duplicates.json` (pairs you said are different books), `cover-backups/` (covers replaced by a lookup). Safe to delete; you lose the undo history and these memories only. |
 | `.bookx-lock` | Which Bookx has the library open ([read-only mode](library.md#locking-and-read-only)). |
 
-## The catalogue (`bookx-library.db`, schema version 7)
+## The catalogue (`bookx-library.db`, schema version 10)
 
 Open it with any SQLite tool, **after closing Bookx or on a copy**. Do not write to it while Bookx runs. The schema
 version is in `PRAGMA user_version`; a newer database than the app knows is refused rather than damaged.
@@ -29,6 +29,7 @@ version is in `PRAGMA user_version`; a newer database than the app knows is refu
 | `author_aliases` | `alias`, `canonical` | Spellings and pen names of authors. |
 | `work_links` | `book`, `work`, `preferred` | Books linked as editions of one work (`work` is shared by the linked books); `preferred = 1` marks the edition that opens first. |
 | `work_apart` | `book` | Books taken out of the automatic grouping of editions. |
+| `annotation_history` | `id`, `at`, `book_id`, `title`, `authors`, `kind`, `action`, `source`, `group_id`, `annotation_id`, `record` | The [history of highlights, notes and bookmarks](annotations.md#history): one row per added, edited or deleted one, with the record as it was before (`record`, JSON), who did it (`source`: `you`, `device:<name>`, `import`, `merge`, `undo`) and the book’s title when it happened. Kept 90 days (at least the latest 500 rows). Not in the JSON and Calibre exports. |
 | `text_stamps`, `fts_meta`, `fts_text` | | The search index. Rebuilt by Bookx when missing; ignore it. |
 | `meta` | `key`, `value` | Counters (`next_id`). |
 

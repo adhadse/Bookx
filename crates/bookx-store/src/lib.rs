@@ -11,6 +11,7 @@
 //! * [`guard`] (single-writer lock, network/synced folder detection), [`health`] (rolling snapshots,
 //!   restore, library check with drift) and [`provenance`] (where each field came from).
 
+pub mod annotation_history;
 mod calibre;
 mod calibre_custom;
 mod calibre_export;

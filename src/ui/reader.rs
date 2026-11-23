@@ -6244,6 +6244,17 @@ impl SimpleComponent for Reader {
                     }
                     Cmd::DeleteHighlight(id) => sender.input(Input::DeleteHighlight(id)),
                     Cmd::Properties => self.show_properties(),
+                    Cmd::History => {
+                        let tx = sender.input_sender().clone();
+                        crate::ui::annotation_history::show(
+                            &self.shared,
+                            &self.w.page,
+                            Some(self.book_id),
+                            Some(Rc::new(move |_, id| {
+                                let _ = tx.send(Input::GoHighlight(id));
+                            })),
+                        );
+                    }
                     Cmd::EditNote(id) => {
                         let note = self
                             .shared

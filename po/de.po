@@ -12022,6 +12022,168 @@ msgstr "Was ist passiert?"
 msgid "Your own words are shared exactly as you type them: leave out anything private."
 msgstr "Ihre eigenen Worte werden genau so weitergegeben, wie Sie sie eingeben: Lassen Sie Privates weg."
 
+msgid "a device"
+msgstr "ein Gerät"
+
+msgid "you"
+msgstr "Sie"
+
+msgid "an import"
+msgstr "ein Import"
+
+msgid "a merge"
+msgstr "eine Zusammenführung"
+
+msgid "Nothing to restore: it is already in the book"
+msgstr "Nichts wiederherzustellen: Es ist bereits im Buch"
+
+msgid "“{}” is already highlighted at that place, so it was not added again"
+msgstr "„{}“ ist an dieser Stelle bereits markiert und wurde deshalb nicht noch einmal hinzugefügt"
+
+msgid "“{}” belongs to “{}”, which is not in the library any more"
+msgstr "„{}“ gehört zu „{}“, das nicht mehr in der Bibliothek ist"
+
+msgid "Deleted by {}"
+msgstr "Gelöscht von {}"
+
+msgid "Edited by {}"
+msgstr "Bearbeitet von {}"
+
+msgid "Added by {}"
+msgstr "Hinzugefügt von {}"
+
+msgid "{} removed {} from {}"
+msgstr "{} hat {} aus {} entfernt"
+
+msgid "{} changed {} in {}"
+msgstr "{} hat {} in {} geändert"
+
+msgid "{} added {} to {}"
+msgstr "{} hat {} zu {} hinzugefügt"
+
+msgid "{} deleted from {}"
+msgstr "{} aus {} gelöscht"
+
+msgid "{} edited in {}"
+msgstr "{} in {} bearbeitet"
+
+msgid "{} added to {}"
+msgstr "{} zu {} hinzugefügt"
+
+msgid "{} (and {} more in other books)"
+msgstr "{} (und {} weitere in anderen Büchern)"
+
+msgid "Restored {}"
+msgstr "{} wiederhergestellt"
+
+msgid "{} ({} were skipped)"
+msgstr "{} ({} wurden übersprungen)"
+
+msgid "Yesterday"
+msgstr "Gestern"
+
+msgid "Highlight"
+msgstr "Markierung"
+
+msgid "Back in the book"
+msgstr "Wieder im Buch"
+
+msgid "Current version"
+msgstr "Aktuelle Version"
+
+msgid "Already marked there"
+msgstr "Dort bereits markiert"
+
+msgid "Book not in library"
+msgstr "Buch nicht in der Bibliothek"
+
+msgid "Everyone"
+msgstr "Alle"
+
+msgid "You"
+msgstr "Sie"
+
+msgid "Open in Book"
+msgstr "Im Buch öffnen"
+
+msgid "Restore All"
+msgstr "Alle wiederherstellen"
+
+msgid "Restore undone"
+msgstr "Wiederherstellung rückgängig gemacht"
+
+msgid "Clear History?"
+msgstr "Verlauf löschen?"
+
+msgid "Clear History"
+msgstr "Verlauf löschen"
+
+msgid "History cleared"
+msgstr "Verlauf gelöscht"
+
+msgid "the library is busy, try again in a moment"
+msgstr "Die Bibliothek ist beschäftigt, versuchen Sie es gleich noch einmal"
+
+msgid "Select Entries"
+msgstr "Einträge auswählen"
+
+msgid "History menu"
+msgstr "Verlaufsmenü"
+
+msgid "Search History"
+msgstr "Verlauf durchsuchen"
+
+msgid "Edited"
+msgstr "Bearbeitet"
+
+msgid "Show changes"
+msgstr "Änderungen anzeigen"
+
+msgid "Changed by"
+msgstr "Geändert von"
+
+msgid "No History Yet"
+msgstr "Noch kein Verlauf"
+
+msgid "When a highlight, note or bookmark is deleted or changed, you can find it here and restore it."
+msgstr "Wenn eine Markierung, Notiz oder ein Lesezeichen gelöscht oder geändert wird, finden Sie es hier und können es wiederherstellen."
+
+msgid "No Matches"
+msgstr "Keine Treffer"
+
+msgid "Try another search or filter."
+msgstr "Versuchen Sie eine andere Suche oder einen anderen Filter."
+
+msgid "Restore Selected"
+msgstr "Ausgewählte wiederherstellen"
+
+msgid "Showing the newest {} changes"
+msgstr "Die neuesten {} Änderungen werden angezeigt"
+
+msgid "Note: {}"
+msgstr "Notiz: {}"
+
+msgid "Restore {}"
+msgstr "{} wiederherstellen"
+
+msgid "Open {} in Book"
+msgstr "{} im Buch öffnen"
+
+msgid "Select all: {}"
+msgstr "Alle auswählen: {}"
+
+msgid "Restore all: {}"
+msgstr "Alle wiederherstellen: {}"
+
+msgid "This permanently deletes the history of {} changes for all books, so deleted highlights, notes and bookmarks can no longer be restored. Your books and everything now in them are not affected. This cannot be undone."
+msgstr "Dadurch wird der Verlauf von {} Änderungen für alle Bücher dauerhaft gelöscht; gelöschte Markierungen, Notizen und Lesezeichen können dann nicht mehr wiederhergestellt werden. Ihre Bücher und alles, was jetzt darin ist, bleiben unberührt. Das lässt sich nicht rückgängig machen."
+
+msgid "Annotation History"
+msgstr "Anmerkungsverlauf"
+
+msgid "History of Deleted and Changed Notes"
+msgstr "Verlauf gelöschter und geänderter Notizen"
+
 msgid "Books on an e-reader? Sync never copies or deletes books: copy the files to this computer and use Add Books. To put books on a device, use Send to Device."
 msgstr "Bücher auf einem E-Reader? Die Synchronisierung kopiert oder löscht nie Bücher: Kopieren Sie die Dateien auf diesen Computer und verwenden Sie „Bücher hinzufügen“. Um Bücher auf ein Gerät zu legen, verwenden Sie „An Gerät senden“."
 

@@ -191,7 +191,12 @@ impl Library {
             return Ok(None);
         };
         self.replaying = true;
+        let prev = std::mem::replace(
+            &mut *self.source.lock().unwrap_or_else(|e| e.into_inner()),
+            crate::annotation_journal::Source::Undo,
+        );
         let r = self.undo_kind(&op.kind);
+        *self.source.lock().unwrap_or_else(|e| e.into_inner()) = prev;
         self.replaying = false;
         r.with_context(|| format!("cannot undo \"{}\"", op.label))?;
         if let Some(o) = self.ops.iter_mut().find(|o| o.seq == op.seq) {

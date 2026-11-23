@@ -297,3 +297,67 @@ fn a_hundred_thousand_book_library() {
     });
     let _ = std::fs::remove_dir_all(d);
 }
+
+/// 10,000 history entries: what recording costs per annotation change, listing a page and
+/// filtering by book stay instant.
+#[test]
+fn annotation_history_ten_thousand_entries() {
+    use bookx_core::annotation_journal::{Filter, Source, WriteContext};
+    use bookx_core::library::Highlight;
+    let t = Tmp::new();
+    let s = SqliteStore::open(&t.join("c.db")).unwrap();
+    let hl = |i: usize| Highlight {
+        id: format!("h{i}"),
+        spine: 0,
+        start: i as i32,
+        end: i as i32 + 20,
+        color: "yellow".into(),
+        style: "background".into(),
+        note: String::new(),
+        text: format!("a highlighted passage number {i} of the book"),
+        created: ts(1_700_000_000),
+    };
+    let mut books: Vec<_> = (1..=100u64)
+        .map(|id| book(id, &format!("B{id}"), "A"))
+        .collect();
+    for b in &mut books {
+        b.highlights = (0..100).map(&hl).collect();
+    }
+    s.put_many(&books).unwrap();
+    // delete 100 highlights of each of 100 books: 10,000 entries, one commit
+    for b in &mut books {
+        b.highlights.clear();
+    }
+    let refs: Vec<&_> = books.iter().collect();
+    let ctx = WriteContext::by(Source::Device("Kobo".into()));
+    timed("recording 10,000 deletions in one commit", 1500, || {
+        s.commit_catalog_as(1000, &refs, &[], &ctx).unwrap()
+    });
+    assert_eq!(s.history_count(), 10_000);
+    // a single change on a book that has a lot of history
+    books[0].highlights.push(hl(1));
+    let one = [&books[0]];
+    timed("recording one change", 20, || {
+        s.commit_catalog_as(1000, &one, &[], &ctx).unwrap()
+    });
+    let page = timed("listing a page of the newest 200", 40, || {
+        s.history(&Filter::default(), 200).unwrap()
+    });
+    assert_eq!(page.len(), 200);
+    let f = Filter {
+        book: Some(42),
+        ..Filter::default()
+    };
+    let mine = timed("filtering by book", 40, || s.history(&f, 200).unwrap());
+    assert_eq!(mine.len(), 100);
+    let q = Filter {
+        query: "number 77 ".into(),
+        ..Filter::default()
+    };
+    timed("searching the text of 10,000 entries", 400, || {
+        s.history(&q, 50).unwrap()
+    });
+    timed("the daily retention pass", 100, || {
+        s.history_prune(chrono::Utc::now()).unwrap()
+    });
+}

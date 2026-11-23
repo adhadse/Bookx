@@ -513,6 +513,9 @@ msgstr ""
 msgid "Added .{} to {}"
 msgstr ""
 
+msgid "Added by {}"
+msgstr ""
+
 msgid "Added the book jacket {}"
 msgstr ""
 
@@ -703,6 +706,9 @@ msgstr ""
 msgid "Already EPUB 3"
 msgstr ""
 
+msgid "Already marked there"
+msgstr ""
+
 msgid "Already nicely formatted"
 msgstr ""
 
@@ -767,6 +773,9 @@ msgid "Anki Package"
 msgstr ""
 
 msgid "Anki Text File"
+msgstr ""
+
+msgid "Annotation History"
 msgstr ""
 
 msgid "Annotations"
@@ -997,6 +1006,9 @@ msgstr ""
 msgid "Back Up This Place"
 msgstr ""
 
+msgid "Back in the book"
+msgstr ""
+
 msgid "Back to Actions"
 msgstr ""
 
@@ -1154,6 +1166,9 @@ msgid "Book map: pages of the book"
 msgstr ""
 
 msgid "Book not found in your library (hash {}): {}"
+msgstr ""
+
+msgid "Book not in library"
 msgstr ""
 
 msgid "Book properties"
@@ -1588,6 +1603,9 @@ msgstr ""
 msgid "Changed (no default)"
 msgstr ""
 
+msgid "Changed by"
+msgstr ""
+
 msgid "Changed since the last checkpoint"
 msgstr ""
 
@@ -1900,6 +1918,12 @@ msgid "Clear Filters"
 msgstr ""
 
 msgid "Clear Finished"
+msgstr ""
+
+msgid "Clear History"
+msgstr ""
+
+msgid "Clear History?"
 msgstr ""
 
 msgid "Clear Marked Text"
@@ -2724,6 +2748,9 @@ msgstr ""
 msgid "Current time"
 msgstr ""
 
+msgid "Current version"
+msgstr ""
+
 msgid "Custom"
 msgstr ""
 
@@ -2868,6 +2895,9 @@ msgid "Deleted"
 msgstr ""
 
 msgid "Deleted books wait here until you empty the trash."
+msgstr ""
+
+msgid "Deleted by {}"
 msgstr ""
 
 msgid "Deleted {}"
@@ -3218,6 +3248,12 @@ msgstr ""
 msgid "Edit {} Books"
 msgstr ""
 
+msgid "Edited"
+msgstr ""
+
+msgid "Edited by {}"
+msgstr ""
+
 msgid "Edited custom columns of {}"
 msgstr ""
 
@@ -3414,6 +3450,9 @@ msgid "Every style rule is used"
 msgstr ""
 
 msgid "Every use of “{}” in the pages and style sheets of the book is renamed. A checkpoint is taken first."
+msgstr ""
+
+msgid "Everyone"
 msgstr ""
 
 msgid "Everything"
@@ -4163,6 +4202,9 @@ msgstr ""
 msgid "Hide the sections"
 msgstr ""
 
+msgid "Highlight"
+msgstr ""
+
 msgid "Highlight (its colour)"
 msgstr ""
 
@@ -4205,10 +4247,19 @@ msgstr ""
 msgid "History"
 msgstr ""
 
+msgid "History cleared"
+msgstr ""
+
 msgid "History cleared ({} word)"
 msgid_plural "History cleared ({} words)"
 msgstr[0] ""
 msgstr[1] ""
+
+msgid "History menu"
+msgstr ""
+
+msgid "History of Deleted and Changed Notes"
+msgstr ""
 
 msgid "Home"
 msgstr ""
@@ -5674,6 +5725,12 @@ msgstr ""
 msgid "No Files Left Out"
 msgstr ""
 
+msgid "No History Yet"
+msgstr ""
+
+msgid "No Matches"
+msgstr ""
+
 msgid "No Patches Installed"
 msgstr ""
 
@@ -6034,6 +6091,9 @@ msgstr ""
 msgid "Note saved"
 msgstr ""
 
+msgid "Note: {}"
+msgstr ""
+
 msgid "Notes"
 msgstr ""
 
@@ -6158,6 +6218,9 @@ msgid "Nothing to remove: the place only has backups it keeps."
 msgstr ""
 
 msgid "Nothing to replace"
+msgstr ""
+
+msgid "Nothing to restore: it is already in the book"
 msgstr ""
 
 msgid "Nothing to revert to"
@@ -6481,6 +6544,9 @@ msgstr ""
 msgid "Open guide"
 msgstr ""
 
+msgid "Open in Book"
+msgstr ""
+
 msgid "Open in Vocabulary"
 msgstr ""
 
@@ -6518,6 +6584,9 @@ msgid "Open {}"
 msgstr ""
 
 msgid "Open {} first"
+msgstr ""
+
+msgid "Open {} in Book"
 msgstr ""
 
 msgid "OpenAI-compatible (/v1/audio/speech)"
@@ -7803,10 +7872,19 @@ msgstr ""
 msgid "Restore"
 msgstr ""
 
+msgid "Restore All"
+msgstr ""
+
 msgid "Restore Backup"
 msgstr ""
 
 msgid "Restore Checkpoint"
+msgstr ""
+
+msgid "Restore Selected"
+msgstr ""
+
+msgid "Restore all: {}"
 msgstr ""
 
 msgid "Restore cancelled; files already restored are complete"
@@ -7833,7 +7911,16 @@ msgstr ""
 msgid "Restore this backup?"
 msgstr ""
 
+msgid "Restore undone"
+msgstr ""
+
+msgid "Restore {}"
+msgstr ""
+
 msgid "Restored the backup ({})"
+msgstr ""
+
+msgid "Restored {}"
 msgstr ""
 
 msgid "Restored {}."
@@ -8181,6 +8268,9 @@ msgstr ""
 msgid "Search Another Folder"
 msgstr ""
 
+msgid "Search History"
+msgstr ""
+
 msgid "Search Inside Books"
 msgstr ""
 
@@ -8322,6 +8412,9 @@ msgstr ""
 msgid "Select All Books"
 msgstr ""
 
+msgid "Select Entries"
+msgstr ""
+
 msgid "Select Matching Tag"
 msgstr ""
 
@@ -8359,6 +8452,9 @@ msgid "Select a word or phrase while reading and choose Add to Vocabulary to wri
 msgstr ""
 
 msgid "Select all books"
+msgstr ""
+
+msgid "Select all: {}"
 msgstr ""
 
 msgid "Select at least two books to link"
@@ -8720,6 +8816,9 @@ msgstr ""
 msgid "Show as a List"
 msgstr ""
 
+msgid "Show changes"
+msgstr ""
+
 msgid "Show colours in style sheets"
 msgstr ""
 
@@ -8807,6 +8906,9 @@ msgid "Showing file names"
 msgstr ""
 
 msgid "Showing full file paths"
+msgstr ""
+
+msgid "Showing the newest {} changes"
 msgstr ""
 
 msgid "Shows what would change first. One Undo takes it all back."
@@ -10107,6 +10209,9 @@ msgstr ""
 msgid "This page of the catalogue is empty."
 msgstr ""
 
+msgid "This permanently deletes the history of {} changes for all books, so deleted highlights, notes and bookmarks can no longer be restored. Your books and everything now in them are not affected. This cannot be undone."
+msgstr ""
+
 msgid "This picture cannot be shown in the viewer"
 msgstr ""
 
@@ -10297,6 +10402,9 @@ msgid "Try a different word."
 msgstr ""
 
 msgid "Try again"
+msgstr ""
+
+msgid "Try another search or filter."
 msgstr ""
 
 msgid "Turn news sites and blogs (RSS, Atom) into books that update by themselves"
@@ -10858,6 +10966,9 @@ msgstr ""
 msgid "When a book in a new language is added or opened, its dictionary is fetched in the background."
 msgstr ""
 
+msgid "When a highlight, note or bookmark is deleted or changed, you can find it here and restore it."
+msgstr ""
+
 msgid "When a new book has no author, or its title is only the file name, use what the file name says, such as Author - Title"
 msgstr ""
 
@@ -11014,6 +11125,12 @@ msgstr ""
 msgid "Yes or no"
 msgstr ""
 
+msgid "Yesterday"
+msgstr ""
+
+msgid "You"
+msgstr ""
+
 msgid "You are at {}% here{}. “Stay Here” keeps your place; nothing is changed unless you choose to continue."
 msgstr ""
 
@@ -11095,6 +11212,12 @@ msgstr ""
 msgid "a book fingerprint and your position"
 msgstr ""
 
+msgid "a device"
+msgstr ""
+
+msgid "a merge"
+msgstr ""
+
 msgid "a plain request for the page or feed"
 msgstr ""
 
@@ -11102,6 +11225,9 @@ msgid "a plain request per link"
 msgstr ""
 
 msgid "about {} left"
+msgstr ""
+
+msgid "an import"
 msgstr ""
 
 msgid "and {} more"
@@ -11239,6 +11365,9 @@ msgstr ""
 msgid "the file you ask for"
 msgstr ""
 
+msgid "the library is busy, try again in a moment"
+msgstr ""
+
 msgid "the mail server you enter"
 msgstr ""
 
@@ -11272,6 +11401,9 @@ msgstr ""
 msgid "used {} times"
 msgstr ""
 
+msgid "you"
+msgstr ""
+
 msgid "your e-readers"
 msgstr ""
 
@@ -11302,6 +11434,9 @@ msgstr ""
 msgid "{} % · {} min left"
 msgstr ""
 
+msgid "{} (and {} more in other books)"
+msgstr ""
+
 msgid "{} (catalogue only)"
 msgstr ""
 
@@ -11314,6 +11449,9 @@ msgstr ""
 msgid "{} (search marked:true to list them)"
 msgstr ""
 
+msgid "{} ({} were skipped)"
+msgstr ""
+
 msgid "{} Books Selected"
 msgstr ""
 
@@ -11321,6 +11459,12 @@ msgid "{} account"
 msgid_plural "{} accounts"
 msgstr[0] ""
 msgstr[1] ""
+
+msgid "{} added to {}"
+msgstr ""
+
+msgid "{} added {} to {}"
+msgstr ""
 
 msgid "{} added, {} already in the library, {} failed"
 msgstr ""
@@ -11432,6 +11576,9 @@ msgid_plural "{} changed lines"
 msgstr[0] ""
 msgstr[1] ""
 
+msgid "{} changed {} in {}"
+msgstr ""
+
 msgid "{} changes in {} files"
 msgstr ""
 
@@ -11478,6 +11625,12 @@ msgid "{} day ago"
 msgid_plural "{} days ago"
 msgstr[0] ""
 msgstr[1] ""
+
+msgid "{} deleted from {}"
+msgstr ""
+
+msgid "{} edited in {}"
+msgstr ""
 
 msgid "{} edition"
 msgid_plural "{} editions"
@@ -11759,6 +11912,9 @@ msgid_plural "{} removed"
 msgstr[0] ""
 msgstr[1] ""
 
+msgid "{} removed {} from {}"
+msgstr ""
+
 msgid "{} replacement"
 msgid_plural "{} replacements"
 msgstr[0] ""
@@ -11989,10 +12145,16 @@ msgstr ""
 msgid "“{}” added to {}"
 msgstr ""
 
+msgid "“{}” belongs to “{}”, which is not in the library any more"
+msgstr ""
+
 msgid "“{}” exists already; the two classes will merge"
 msgstr ""
 
 msgid "“{}” has no text"
+msgstr ""
+
+msgid "“{}” is already highlighted at that place, so it was not added again"
 msgstr ""
 
 msgid "“{}” is already in the library"

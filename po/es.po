@@ -12095,6 +12095,168 @@ msgstr "¿Qué ha pasado?"
 msgid "Your own words are shared exactly as you type them: leave out anything private."
 msgstr "Tus propias palabras se comparten tal como las escribes: no incluyas nada privado."
 
+msgid "a device"
+msgstr "un dispositivo"
+
+msgid "you"
+msgstr "tú"
+
+msgid "an import"
+msgstr "una importación"
+
+msgid "a merge"
+msgstr "una fusión"
+
+msgid "Nothing to restore: it is already in the book"
+msgstr "Nada que restaurar: ya está en el libro"
+
+msgid "“{}” is already highlighted at that place, so it was not added again"
+msgstr "«{}» ya está resaltado en ese lugar, así que no se añadió de nuevo"
+
+msgid "“{}” belongs to “{}”, which is not in the library any more"
+msgstr "«{}» pertenece a «{}», que ya no está en la biblioteca"
+
+msgid "Deleted by {}"
+msgstr "Eliminado por {}"
+
+msgid "Edited by {}"
+msgstr "Editado por {}"
+
+msgid "Added by {}"
+msgstr "Añadido por {}"
+
+msgid "{} removed {} from {}"
+msgstr "{} eliminó {} de {}"
+
+msgid "{} changed {} in {}"
+msgstr "{} cambió {} en {}"
+
+msgid "{} added {} to {}"
+msgstr "{} añadió {} a {}"
+
+msgid "{} deleted from {}"
+msgstr "{} eliminado de {}"
+
+msgid "{} edited in {}"
+msgstr "{} editado en {}"
+
+msgid "{} added to {}"
+msgstr "{} añadido a {}"
+
+msgid "{} (and {} more in other books)"
+msgstr "{} (y {} más en otros libros)"
+
+msgid "Restored {}"
+msgstr "Restaurado: {}"
+
+msgid "{} ({} were skipped)"
+msgstr "{} ({} se omitieron)"
+
+msgid "Yesterday"
+msgstr "Ayer"
+
+msgid "Highlight"
+msgstr "Resaltado"
+
+msgid "Back in the book"
+msgstr "De vuelta en el libro"
+
+msgid "Current version"
+msgstr "Versión actual"
+
+msgid "Already marked there"
+msgstr "Ya marcado ahí"
+
+msgid "Book not in library"
+msgstr "El libro no está en la biblioteca"
+
+msgid "Everyone"
+msgstr "Todos"
+
+msgid "You"
+msgstr "Tú"
+
+msgid "Open in Book"
+msgstr "Abrir en el libro"
+
+msgid "Restore All"
+msgstr "Restaurar todo"
+
+msgid "Restore undone"
+msgstr "Restauración deshecha"
+
+msgid "Clear History?"
+msgstr "¿Borrar el historial?"
+
+msgid "Clear History"
+msgstr "Borrar historial"
+
+msgid "History cleared"
+msgstr "Historial borrado"
+
+msgid "the library is busy, try again in a moment"
+msgstr "La biblioteca está ocupada, inténtalo de nuevo en un momento"
+
+msgid "Select Entries"
+msgstr "Seleccionar entradas"
+
+msgid "History menu"
+msgstr "Menú del historial"
+
+msgid "Search History"
+msgstr "Buscar en el historial"
+
+msgid "Edited"
+msgstr "Editado"
+
+msgid "Show changes"
+msgstr "Mostrar cambios"
+
+msgid "Changed by"
+msgstr "Cambiado por"
+
+msgid "No History Yet"
+msgstr "Aún no hay historial"
+
+msgid "When a highlight, note or bookmark is deleted or changed, you can find it here and restore it."
+msgstr "Cuando se elimina o cambia un resaltado, una nota o un marcador, lo encontrarás aquí y podrás restaurarlo."
+
+msgid "No Matches"
+msgstr "Sin coincidencias"
+
+msgid "Try another search or filter."
+msgstr "Prueba con otra búsqueda u otro filtro."
+
+msgid "Restore Selected"
+msgstr "Restaurar seleccionados"
+
+msgid "Showing the newest {} changes"
+msgstr "Se muestran los {} cambios más recientes"
+
+msgid "Note: {}"
+msgstr "Nota: {}"
+
+msgid "Restore {}"
+msgstr "Restaurar {}"
+
+msgid "Open {} in Book"
+msgstr "Abrir {} en el libro"
+
+msgid "Select all: {}"
+msgstr "Seleccionar todo: {}"
+
+msgid "Restore all: {}"
+msgstr "Restaurar todo: {}"
+
+msgid "This permanently deletes the history of {} changes for all books, so deleted highlights, notes and bookmarks can no longer be restored. Your books and everything now in them are not affected. This cannot be undone."
+msgstr "Esto elimina de forma permanente el historial de {} cambios de todos los libros, de modo que los resaltados, notas y marcadores eliminados ya no se podrán restaurar. Tus libros y todo lo que contienen ahora no se ven afectados. No se puede deshacer."
+
+msgid "Annotation History"
+msgstr "Historial de anotaciones"
+
+msgid "History of Deleted and Changed Notes"
+msgstr "Historial de notas eliminadas y modificadas"
+
 msgid "Books on an e-reader? Sync never copies or deletes books: copy the files to this computer and use Add Books. To put books on a device, use Send to Device."
 msgstr "¿Libros en un lector electrónico? La sincronización nunca copia ni elimina libros: copie los archivos a este equipo y use «Añadir libros». Para poner libros en un dispositivo, use «Enviar al dispositivo»."
 
