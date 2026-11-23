@@ -110,6 +110,7 @@
         <ul>
           <li>New: History lists every change to your highlights, notes and bookmarks, with Restore and an Undo message after a sync removed some</li>
           <li>New: e-readers show their product name (for example Boox Leaf 2) and can be renamed; the sync says it never copies or deletes books</li>
+          <li>Fixed: the library keys (F9 sidebar, Ctrl+A, Ctrl+F, Ctrl+O) did nothing until you clicked, on a beta build</li>
           <li>Safer updates: your library is copied before its database is upgraded</li>
           <li>The library database is upgraded once on first start; an older Bookx cannot open it</li>
         </ul>

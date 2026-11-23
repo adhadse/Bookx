@@ -159,6 +159,9 @@ pub fn install(
     n.recheck();
     CURRENT.with(|c| *c.borrow_mut() = Some(n.clone()));
     let b = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    // the notices are outside the library page: its shortcuts must work with the focus on them
+    super::library::share_actions(&n.crash.revealer);
+    super::library::share_actions(&n.beta.revealer);
     b.append(&n.crash.revealer);
     b.append(&n.beta.revealer);
     nav.set_vexpand(true);

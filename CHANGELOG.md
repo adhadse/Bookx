@@ -26,6 +26,9 @@ versioned heading, `Cargo.toml` and the AppStream metainfo disagree.
   and the reading ruler; the internal docs were sorted into `docs/archive` and `docs/outdated`.
 
 ### Fixed
+- Library keys (F9 sidebar, Ctrl+A, Ctrl+F, Ctrl+O, ...) did nothing on the first start of a beta version until you
+  clicked into the library: the keyboard focus starts on the beta notice above the library, outside the page that owned
+  those keys. The notices now carry them too.
 - A flaky UI scenario that read the screen before the app had finished (live updates from the e-reader).
 - Debian 13, Debian 12 and Ubuntu 24.04 ship a GTK older than 4.20: they are not supported by the native packages (use the
   Flatpak); this is now stated on the install page.
