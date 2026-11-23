@@ -6,6 +6,11 @@ versioned heading, `Cargo.toml` and the AppStream metainfo disagree.
 
 ## [Unreleased]
 
+### Fixed
+- Library keys (F9 sidebar, Ctrl+A, Ctrl+F, Ctrl+O, ...) did nothing on the first start of a beta version until you
+  clicked into the library: the keyboard focus starts on the beta notice above the library, outside the page that owned
+  those keys. The notices now carry them too.
+
 ## [0.3.0-beta.2] - 2026-11-23
 
 ### Fixed

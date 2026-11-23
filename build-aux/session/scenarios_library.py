@@ -676,11 +676,15 @@ def library_filter_dark(c):
 @scenario
 def library_standard_keys(c):
     """XC-6 with the real keyboard: F9 shows and hides the sidebar, Ctrl+A selects all, Escape clears,
-    Delete moves the selection to Trash with an Undo toast, Ctrl+comma opens Preferences, Ctrl+? the shortcuts."""
-    c.start(books=("alice", "tiny"))
+    Delete moves the selection to Trash with an Undo toast, Ctrl+comma opens Preferences, Ctrl+? the shortcuts.
+    A beta build shows its notice above the library on the first start and the keyboard focus starts on its
+    buttons, outside the library page: the library keys must work from there too (regression: F9 did nothing
+    until the first click)."""
+    c.start(books=("alice", "tiny"), extra_env={"BOOKX_TEST_VERSION": "0.3.0-beta.1"})
     a = c.wait_node("table cell", rx="Alice")
     if not c.check("the books are listed", a):
         return
+    c.check("the beta notice is shown above the library", c.find("button", "Dismiss"))
     shown = lambda: [n for n in c.find(None, "Library views") if n.showing]
     c.check("the sidebar is shown", c.wait(shown, 5))
     c.sb.key("F9")
