@@ -403,6 +403,7 @@ mod tests {
                 drm: String::new(),
                 custom: Default::default(),
                 marked: false,
+                source_ids: Vec::new(),
             };
             b.meta.tags = tags.iter().map(|t| t.to_string()).collect();
             b

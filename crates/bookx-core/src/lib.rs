@@ -14,6 +14,7 @@ pub mod convert;
 pub mod custom;
 pub mod devstyle;
 pub mod doc;
+pub mod docid;
 pub mod drm;
 pub mod empty;
 pub mod files;

@@ -52,6 +52,10 @@ Bookx sync server is on, and you can switch it off there. The setup checklist is
 status and a check mark when done); the main menu → **Sync** window shows the same four steps in a compact stepper and has a
 **Sync now** button once they are done.
 
+!!! tip "Only reading positions with a server that is not Bookx"
+    This page is about Bookx's own server. To sync reading positions with **Grimmory**, Calibre-Web or KOReader's public
+    server instead, see [Grimmory, Calibre-Web and other servers](progress-sync.md#other-servers).
+
 ## Which user name and password? { #account }
 
 The user name and password are your **Bookx sync account**. There is no pre-existing KOReader account and they are

@@ -9292,6 +9292,9 @@ msgstr "पृष्ठ के नीचे के आँकड़े: चुन
 msgid "The sub-path must be a plain path such as /books (letters, digits, - and _)."
 msgstr "सब-पाथ /books जैसा सादा पाथ होना चाहिए (अक्षर, अंक, - और _)।"
 
+msgid "The sync server does not know this book (id {}). Grimmory and some other servers recognise a book by the content of its file, so the file in Bookx must be identical to the one on the server. Add the book from the server again, or check “Match books by” in Preferences → Sync → Advanced."
+msgstr "सिंक सर्वर इस पुस्तक को नहीं जानता (आईडी {})। Grimmory और कुछ अन्य सर्वर पुस्तक को उसकी फ़ाइल की सामग्री से पहचानते हैं, इसलिए Bookx में फ़ाइल सर्वर की फ़ाइल के समान होनी चाहिए। पुस्तक को सर्वर से दोबारा जोड़ें, या वरीयताएँ → सिंक → उन्नत में “पुस्तकें इसके आधार पर मिलाएँ” जाँचें।"
+
 msgid "The template name may not be empty or contain / \\ or a dot"
 msgstr "टेम्पलेट का नाम खाली नहीं हो सकता और उसमें / \\ या बिंदु नहीं हो सकता"
 

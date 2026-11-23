@@ -22,8 +22,9 @@
 //! exact for Bookx's own reader.
 
 use crate::i18n::trf;
-use bookx_serve::kosync_client::{Client, DocMethod, Remote};
+use bookx_serve::kosync_client::{Client, DocMethod, Remote, document_id};
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 /// The *Sync reading position* settings. The password is kept in the system keyring, like the
 /// share and mail passwords.
@@ -193,6 +194,55 @@ pub fn prompt_body(local: f64, when: i64) -> String {
     )
 }
 
+/// The document ids a book may be known by on the server, best first. With *partial MD5* these
+/// are the ids of the file as it was imported (what the server's copy and the e-reader have; Bookx
+/// rewrites an EPUB and turns a PDF into an EPUB), then of the other format files (the original
+/// PDF) and last of the library file as it is now. With *file name* every file's name.
+/// The read of a file that cannot be opened is skipped; the list is never empty unless no file
+/// can be read.
+pub fn candidate_ids(source_ids: &[String], files: &[PathBuf], method: DocMethod) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut add = |id: String| {
+        if !out.contains(&id) {
+            out.push(id);
+        }
+    };
+    if method == DocMethod::Binary {
+        for id in source_ids {
+            add(id.clone());
+        }
+    }
+    // the primary file is first in `files`; the others come before it so the original wins
+    let (first, rest) = files
+        .split_first()
+        .map_or((None, &[][..]), |(f, r)| (Some(f), r));
+    for f in rest.iter().chain(first) {
+        if let Ok(id) = document_id(f, method) {
+            add(id);
+        }
+    }
+    out
+}
+
+/// `ids` with the id the server already has a position under (found when the book was opened)
+/// first, so a book synced under one id keeps using it.
+pub fn prefer(ids: Vec<String>, known: Option<&str>) -> Vec<String> {
+    let Some(k) = known else {
+        return ids;
+    };
+    let mut out = vec![k.to_string()];
+    out.extend(ids.into_iter().filter(|i| i != k));
+    out
+}
+
+/// What the user is told when the server does not know a book (a push was answered 404).
+pub fn unknown_book_text(id: &str) -> String {
+    trf(
+        "The sync server does not know this book (id {}). Grimmory and some other servers recognise a book by the content of its file, so the file in Bookx must be identical to the one on the server. Add the book from the server again, or check “Match books by” in Preferences → Sync → Advanced.",
+        &[&id],
+    )
+}
+
 /// Whether a position at `pct` is worth pushing, given the last one the server is known to have.
 pub fn worth_pushing(last: f64, pct: f64) -> bool {
     (pct - last).abs() > PUSH_STEP
@@ -228,6 +278,91 @@ mod tests {
             device_id: id.into(),
             timestamp: 1_700_000_000,
         }
+    }
+
+    fn tmp_file(tag: &str, data: &[u8]) -> PathBuf {
+        let d = std::env::temp_dir().join(format!(
+            "bookx-kosync-cand-{tag}-{}-{}",
+            std::process::id(),
+            std::thread::current()
+                .name()
+                .unwrap_or("t")
+                .replace("::", "_")
+        ));
+        std::fs::create_dir_all(&d).unwrap();
+        let f = d.join(format!("{tag}.bin"));
+        std::fs::write(&f, data).unwrap();
+        f
+    }
+
+    #[test]
+    fn a_book_bookx_rewrote_is_known_by_the_id_of_the_file_it_came_from() {
+        // regression for issue 49: the library copy hashes differently from the server's file
+        let library_copy = tmp_file("copy", b"rewritten epub bytes");
+        let original = tmp_file("orig", b"original epub bytes");
+        let orig_id = bookx_serve::kosync_client::partial_md5(&original).unwrap();
+        let copy_id = bookx_serve::kosync_client::partial_md5(&library_copy).unwrap();
+        assert_ne!(orig_id, copy_id);
+        let ids = candidate_ids(
+            std::slice::from_ref(&orig_id),
+            std::slice::from_ref(&library_copy),
+            DocMethod::Binary,
+        );
+        assert_eq!(ids, vec![orig_id.clone(), copy_id.clone()]);
+        // a book imported before the id was kept: only the library file
+        assert_eq!(
+            candidate_ids(&[], std::slice::from_ref(&library_copy), DocMethod::Binary),
+            vec![copy_id.clone()]
+        );
+        // the source id is not repeated when the library file is the original
+        assert_eq!(
+            candidate_ids(
+                std::slice::from_ref(&orig_id),
+                std::slice::from_ref(&original),
+                DocMethod::Binary
+            ),
+            vec![orig_id]
+        );
+    }
+
+    #[test]
+    fn the_id_the_server_already_has_is_tried_first() {
+        let ids = vec!["src".to_string(), "copy".to_string()];
+        assert_eq!(prefer(ids.clone(), None), ids);
+        assert_eq!(prefer(ids.clone(), Some("copy")), vec!["copy", "src"]);
+        assert_eq!(prefer(ids, Some("old")), vec!["old", "src", "copy"]);
+    }
+
+    #[test]
+    fn the_original_pdf_comes_before_the_epub_made_from_it() {
+        let epub = tmp_file("made", b"epub made from a pdf");
+        let pdf = tmp_file("pdf", b"%PDF-1.4 original");
+        let pdf_id = bookx_serve::kosync_client::partial_md5(&pdf).unwrap();
+        let epub_id = bookx_serve::kosync_client::partial_md5(&epub).unwrap();
+        assert_eq!(
+            candidate_ids(&[], &[epub, pdf], DocMethod::Binary),
+            vec![pdf_id, epub_id]
+        );
+    }
+
+    #[test]
+    fn by_file_name_the_source_ids_do_not_count() {
+        let f = tmp_file("named", b"x");
+        let ids = candidate_ids(
+            &["abc".into()],
+            std::slice::from_ref(&f),
+            DocMethod::Filename,
+        );
+        assert_eq!(ids.len(), 1);
+        assert_ne!(ids[0], "abc");
+    }
+
+    #[test]
+    fn the_unknown_book_message_explains_what_to_do() {
+        let t = unknown_book_text("abc123");
+        assert!(t.contains("abc123"));
+        assert!(t.contains("content of its file"));
+        assert!(t.contains("Match books by"));
     }
 
     #[test]

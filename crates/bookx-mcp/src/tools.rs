@@ -1225,6 +1225,7 @@ mod tests {
             drm: String::new(),
             custom: Default::default(),
             marked: false,
+            source_ids: Vec::new(),
         }
     }
 

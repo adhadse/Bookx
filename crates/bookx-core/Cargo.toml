@@ -12,6 +12,7 @@ license = "GPL-3.0-or-later"
 anyhow = "1"
 bookx-text = { path = "../bookx-text" }
 chrono = { version = "0.4", features = ["serde"] }
+md5 = "0.7"
 regex = "1"
 roxmltree = "0.21"
 scraper = "0.29"

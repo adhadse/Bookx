@@ -124,6 +124,7 @@ pub fn synth_book(i: u64, n: u64) -> Book {
         drm: String::new(),
         custom: Default::default(),
         marked: false,
+        source_ids: Vec::new(),
     };
     if mix(i, 19) % 6 == 0 {
         b.formats = vec![bookx_core::formats::FormatFile {

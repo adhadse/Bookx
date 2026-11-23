@@ -71,12 +71,40 @@ Bookx plugin is installed, see [KOReader highlights and notes](koreader-sync.md)
 - **Bookx tells KOReader the start of the chapter** you are in (plus the exact percentage), so KOReader opens at the
   beginning of that chapter, not at the same line.
 - Document ids are only equal for the same file (or file name). A converted or edited copy is a different book to
-  the server.
+  the server. Bookx therefore remembers the id of the file a book was **added from** (the EPUB you downloaded, the PDF you
+  opened) and syncs under that id, also after you edit the book in Bookx. For a PDF the original PDF is used.
+  Books added with an older version only have the copy in the library: for an EPUB from a server that matches by file
+  content (see below) remove it and add it again from the server; a PDF works at once.
 - **Offline is fine.** If the server cannot be reached, the position is kept (one entry per book, the newest) and sent
   later: when Bookx starts, every minute, and as soon as the network comes back. The pause between tries grows from
   30 seconds to an hour. A server that refuses your login drops the entry instead of trying for ever. Opening a book
   still needs the network to ask where you were.
 - Without the plugin only the position is synced. Use the plugin, or [Import Highlights](annotations.md), for highlights and notes.
+
+## Grimmory, Calibre-Web and other servers { #other-servers }
+
+Bookx can use any server that speaks KOReader’s progress-sync protocol. Open **Preferences → Sync → Advanced** and type
+the server's **Server address**, then your **User name** and **Password** and press **Log in**.
+
+| Server | Server address | Account |
+|---|---|---|
+| **Grimmory** (BookLore) | `http://host:port/api/koreader`, for example `http://192.168.1.20:6060/api/koreader` | The KOReader user name and password you set in Grimmory under *Settings → Devices → KOReader Settings* (switch **Enable KOReader Sync** on; the page shows the address to copy). They are not your Grimmory web login, and your Grimmory user needs the *KOReader Sync* permission. Create the account in Grimmory; **Log in** here. |
+| **Calibre-Web** and other self-hosted servers | the sync address the server's own documentation gives | as the server says |
+| **KOReader's public server** | `https://sync.koreader.rocks` | **Register** here |
+
+Use the address **without** a trailing path after the prefix: Bookx adds `/syncs/progress/...` itself. *Logged in as …*
+only proves the account works.
+
+**These servers find a book by the content of its file** (set **Match books by** to *Partial MD5 of the file*). Grimmory
+knows a book only if the file Bookx tells it about is **byte-for-byte the same** as the one in its library. Bookx
+keeps that in mind for you: a book you added from Grimmory (an OPDS download, a file you copied) syncs under the id of that
+file, even though the copy inside your Bookx library was rewritten. If the server still answers that it does not know the
+book, Bookx shows *The sync server does not know this book* in the reader. Then:
+
+- the book on the server is another file (another edition, or one whose metadata Grimmory changed): download it from the
+  server and add it to Bookx again, or use that same file in KOReader;
+- the book was added to Bookx with an older version (an EPUB only; PDFs work): remove it and add it again from the server;
+- the book is in a Grimmory library your KOReader user may not use, or the book has no EPUB/PDF file of its own on the server.
 
 ## Using a reverse proxy
 
@@ -91,6 +119,11 @@ To serve the sync endpoint under a name and real HTTPS (`https://bookx.lan/bookx
 
 ??? question "Where do I see what is synced?"
     Open **Sync** in the library's main menu (the hamburger button in the library's header bar).
+
+??? question "Syncing against Grimmory logs in, but the position is not saved. Why?"
+    Grimmory finds a book by the content of its file. Bookx syncs under the id of the file you added the book from, so
+    add the book from Grimmory again if it was added with an older version, and keep **Match books by** on *Partial MD5
+    of the file*. See [Grimmory, Calibre-Web and other servers](#other-servers).
 
 ??? question "Which address do I type on the e-reader?"
     The address appears under the first switch of the checklist, ending in `/bookx`, with a copy button.

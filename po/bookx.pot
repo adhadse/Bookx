@@ -9949,6 +9949,9 @@ msgstr ""
 msgid "The sub-path must be a plain path such as /books (letters, digits, - and _)."
 msgstr ""
 
+msgid "The sync server does not know this book (id {}). Grimmory and some other servers recognise a book by the content of its file, so the file in Bookx must be identical to the one on the server. Add the book from the server again, or check “Match books by” in Preferences → Sync → Advanced."
+msgstr ""
+
 msgid "The template name may not be empty or contain / \\ or a dot"
 msgstr ""
 
