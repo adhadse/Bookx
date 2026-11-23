@@ -153,6 +153,11 @@ class Ctx:
         # while typing) reuse a wl_surface that still has a buffer: mutter kills the app with
         # "wl_surface already has a buffer committed" (Wayland protocol error 71). The GL renderer is fine.
         env.setdefault("GSK_RENDERER", os.environ.get("GSK_RENDERER", "gl"))
+        # A beta build shows a notice above the library on its first start, which moves every widget down
+        # by its height, takes the keyboard focus and slides away when a book opens (the reader is
+        # resized while it opens). The scenarios run as the stable release unless they ask for the
+        # notice with BOOKX_TEST_VERSION=<x>-beta.N (see library_standard_keys).
+        env["BOOKX_TEST_VERSION"] = "0.3.0"
         env.update(extra_env or {})
         cmd = [self.bin]
         if os.environ.get("GDB") == "1":  # debugging aid: a backtrace of a crash lands in app.log

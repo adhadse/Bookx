@@ -30,6 +30,50 @@ use crate::library_nav::{self as nav, View};
 
 type Ctx = Rc<RefCell<Option<(u64, relm4::Sender<Input>)>>>;
 
+type SharedKeys = Vec<(glib::WeakRef<gtk::Widget>, Option<gtk::ShortcutController>)>;
+
+thread_local! {
+    /// The `lib` and `book` action groups of the library page, for widgets that sit above it.
+    static ACTION_GROUPS: RefCell<Option<(gio::SimpleActionGroup, gio::SimpleActionGroup)>> =
+        const { RefCell::new(None) };
+    /// The widgets outside the library page that share its actions and keys (`share_actions`).
+    static SHARED_KEYS: RefCell<SharedKeys> = const { RefCell::new(Vec::new()) };
+}
+
+/// The library's own keys (F9, Ctrl+A, Ctrl+F, Ctrl+O... as the user set them) in a controller.
+fn library_keys() -> gtk::ShortcutController {
+    let sc = gtk::ShortcutController::new();
+    sc.set_scope(gtk::ShortcutScope::Local);
+    for (accel, action) in super::shortcuts_dialog::library_local_shortcuts() {
+        if let Some(t) = gtk::ShortcutTrigger::parse_string(&accel) {
+            sc.add_shortcut(gtk::Shortcut::new(
+                Some(t),
+                Some(gtk::NamedAction::new(&action)),
+            ));
+        }
+    }
+    sc
+}
+
+/// Makes the library's actions and keys work while `w` or a child of it has the focus. The keys
+/// are controllers of the library page, so a widget outside it (the notice buttons above it, the
+/// first widget of the window, which gets the focus when the window opens) would otherwise lose
+/// every library shortcut until the user clicked into the library.
+pub fn share_actions(w: &impl IsA<gtk::Widget>) {
+    ACTION_GROUPS.with(|g| {
+        if let Some((lib, book)) = g.borrow().as_ref() {
+            w.insert_action_group("lib", Some(lib));
+            w.insert_action_group("book", Some(book));
+        }
+    });
+    let sc = library_keys();
+    w.add_controller(sc.clone());
+    SHARED_KEYS.with(|k| {
+        k.borrow_mut()
+            .push((w.upcast_ref::<gtk::Widget>().downgrade(), Some(sc)))
+    });
+}
+
 thread_local! {
     /// Jobs panel entries of the news downloads in progress, by subscription key.
     static NEWS_JOBS: RefCell<std::collections::HashMap<String, u64>> = RefCell::new(Default::default());
@@ -5724,6 +5768,7 @@ impl SimpleComponent for LibraryView {
             book_actions.add_action(&a);
         }
         root.insert_action_group("book", Some(&book_actions));
+        ACTION_GROUPS.with(|g| *g.borrow_mut() = Some((lib_actions.clone(), book_actions.clone())));
 
         // keyboard shortcuts local to the library (the user can change them: Preferences)
         {
@@ -5734,18 +5779,20 @@ impl SimpleComponent for LibraryView {
                 if let Some(old) = current.borrow_mut().take() {
                     root.remove_controller(&old);
                 }
-                let sc = gtk::ShortcutController::new();
-                sc.set_scope(gtk::ShortcutScope::Local);
-                for (accel, action) in super::shortcuts_dialog::library_local_shortcuts() {
-                    if let Some(t) = gtk::ShortcutTrigger::parse_string(&accel) {
-                        sc.add_shortcut(gtk::Shortcut::new(
-                            Some(t),
-                            Some(gtk::NamedAction::new(&action)),
-                        ));
-                    }
-                }
+                let sc = library_keys();
                 root.add_controller(sc.clone());
                 *current.borrow_mut() = Some(sc);
+                SHARED_KEYS.with(|k| {
+                    for (w, ctl) in k.borrow_mut().iter_mut() {
+                        let Some(w) = w.upgrade() else { continue };
+                        if let Some(old) = ctl.take() {
+                            w.remove_controller(&old);
+                        }
+                        let sc = library_keys();
+                        w.add_controller(sc.clone());
+                        *ctl = Some(sc);
+                    }
+                });
             });
             install();
             crate::shortcuts::on_change(move || install());
