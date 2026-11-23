@@ -104,6 +104,17 @@
     <mediatype>x-scheme-handler/bookx</mediatype>
   </provides>
   <releases>
+    <release version="0.5.0-beta.1" date="2026-11-24" type="development">
+      <description>
+        <p>Online Catalogues work again.</p>
+        <ul>
+          <li>Standard Ebooks gives its catalogue to Patrons Circle members only; Online Catalogues now has a Sign In button for it (email address of the membership, empty password)</li>
+          <li>Catalogue errors are in plain words: sign-in needed, address not found, server down for maintenance, no answer in time</li>
+          <li>Project Gutenberg is reached at www.gutenberg.org</li>
+        </ul>
+      </description>
+      <url type="details">https://github.com/adhadse/Bookx/releases/tag/v0.5.0-beta.1</url>
+    </release>
     <release version="0.4.0-beta.1" date="2026-11-24" type="development">
       <description>
         <p>Problem reports that say what went wrong, and sync with servers that match books by their file.</p>

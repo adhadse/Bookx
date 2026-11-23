@@ -492,7 +492,7 @@ dependencies = [
 
 [[package]]
 name = "bookx"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -545,7 +545,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-audio"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "serde",
@@ -557,7 +557,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-backup"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "argon2",
@@ -579,7 +579,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-cli"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "bookx-backup",
@@ -609,7 +609,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-comic"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "image",
@@ -620,7 +620,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-convert"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -642,7 +642,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-core"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "bookx-text",
@@ -661,7 +661,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-editing"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "bookx-convert",
@@ -688,7 +688,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-formats"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -712,7 +712,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-lookup"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "aho-corasick",
  "anyhow",
@@ -728,7 +728,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-mcp"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -747,14 +747,14 @@ dependencies = [
 
 [[package]]
 name = "bookx-pdf"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "hayro",
 ]
 
 [[package]]
 name = "bookx-plugin"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -770,7 +770,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-secrets"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "argon2",
@@ -786,7 +786,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-serve"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "argon2",
@@ -820,7 +820,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-sources"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "bookx-core",
@@ -840,7 +840,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-store"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "bookx-core",
@@ -853,7 +853,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-text"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "cssparser",
@@ -865,7 +865,7 @@ dependencies = [
 
 [[package]]
 name = "bookx-tts"
-version = "0.4.0-beta.1"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "bookx-audio",

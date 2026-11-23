@@ -6,6 +6,10 @@ versioned heading, `Cargo.toml` and the AppStream metainfo disagree.
 
 ## [Unreleased]
 
+## [0.5.0-beta.1] - 2026-11-24
+
+Online Catalogues work again.
+
 ### Fixed
 - **Online Catalogues: Standard Ebooks never loaded.** It now gives its catalogue only to Patrons Circle members and
   answers 401; Bookx had no way to sign in to the built-in catalogues and showed a bare "HTTP error 401". The page now
@@ -196,7 +200,8 @@ editor.
 - `bookx://` links and a diagnostics report for bug reports.
 - Flatpak manifest (GNOME 50 runtime, offline crates), CI workflow.
 
-[Unreleased]: https://github.com/adhadse/Bookx/compare/v0.4.0-beta.1...HEAD
+[Unreleased]: https://github.com/adhadse/Bookx/compare/v0.5.0-beta.1...HEAD
+[0.5.0-beta.1]: https://github.com/adhadse/Bookx/releases/tag/v0.5.0-beta.1
 [0.4.0-beta.1]: https://github.com/adhadse/Bookx/releases/tag/v0.4.0-beta.1
 [0.3.0-beta.3]: https://github.com/adhadse/Bookx/releases/tag/v0.3.0-beta.3
 [0.3.0-beta.2]: https://github.com/adhadse/Bookx/releases/tag/v0.3.0-beta.2
