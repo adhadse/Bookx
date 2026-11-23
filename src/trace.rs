@@ -178,7 +178,8 @@ pub fn status_in(msg: &str) -> Option<u16> {
 pub fn classify_error(msg: &str) -> (ErrorClass, Option<u16>) {
     let l = msg.to_ascii_lowercase();
     let has = |words: &[&str]| words.iter().any(|w| l.contains(w));
-    let status = status_in(&l);
+    // a KOSync server that answered 404 for a book it does not know (`Failure::UnknownBook`)
+    let status = status_in(&l).or_else(|| l.contains("does not know this book").then_some(404));
     let class = if matches!(status, Some(401 | 403))
         || has(&[
             "did not accept the user name",

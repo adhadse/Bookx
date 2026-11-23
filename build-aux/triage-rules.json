@@ -414,7 +414,7 @@
    "any": [],
    "none": [],
    "cause": "KOSync push answered HTTP 404: the server does not know this URL or this book.",
-   "hint": "Check the address path (Server address in the Sync section; most servers use /api/koreader or /kosync) and the document matching method (binary vs file name) of the book the push was about.",
+   "hint": "Check the address path (Server address in the Sync section; most servers use /api/koreader or /kosync) and the document matching method (binary vs file name) of the book the push was about. Servers that match books by the content of the file (Grimmory, BookLore) answer 404 when their copy is not byte-identical to the local one.",
    "asks": [
     "Which server software and version is it?",
     "What exactly did you type as the server address (without the host)?",

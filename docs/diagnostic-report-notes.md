@@ -16,6 +16,8 @@ feature*, *with which book, device or server*, and *in which state*, without ask
 | Could not see | the device model behind "Onyx Scubapilot-IDP" (a Boox Leaf 2), plugin and client version, last successful sync, the sync section at all | server kind and path (`/api/koreader`), `Document matching`, last login/pull/push with status, the book (pdf, size class, hash, in the library or not, local progress), Flatpak permissions, the library folder's file system |
 | Noise | `zbus::proxy: Failed to populate properties cache` (one line per portal request), 40+ lines | the same, until the 60 KB cap pushed everything else out |
 
+(#49 was fixed on main by #51: a 404 on push now reads "the server does not know this book (document id ...)" and the recorder classifies it as status 404.)
+
 Lessons that shaped the design: (1) the *structured* facts must not live only on stderr; (2) the log tail must be
 chosen by importance, not by age; (3) known harmless lines are counted, never listed; (4) a report must say what a
 feature does *not* do, because a user's expectation can be the bug (#39); (5) the state of the sandbox, the disk and

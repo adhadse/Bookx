@@ -198,7 +198,7 @@ pub fn cases() -> Vec<Case> {
                         ("local", "0.373"),
                         ("doc", DOC),
                     ],
-                    Some("the server answered 404"),
+                    Some("the server does not know this book (document id 0123456789abcdef0123456789abcdef); servers such as Grimmory match a book by the content of its file, so the file here must be identical to the server's copy"),
                 ));
             },
         },
