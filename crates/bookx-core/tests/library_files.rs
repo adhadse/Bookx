@@ -397,6 +397,7 @@ fn a_failed_import_leaves_no_files_behind() {
         origin: None,
         drm: String::new(),
         source_file: None,
+        source_id: None,
     };
     assert!(lib.commit_import(p, true).is_err());
     assert!(lib.books.is_empty());
@@ -405,4 +406,49 @@ fn a_failed_import_leaves_no_files_behind() {
         "the book file is removed again"
     );
     let _ = std::fs::remove_dir_all(d);
+}
+
+#[test]
+fn an_imported_epub_is_known_by_the_id_of_the_file_it_came_from() {
+    // regression for issue 49: Bookx re-zips an EPUB on import, so the library copy has another
+    // partial MD5 than the file the server (Grimmory) has; the id of the original is kept
+    let d = tmp();
+    let src = epub_book(&d, "Sync Me", "A. Author");
+    // another tool zipped the original: same content, other time stamps (and so other bytes)
+    {
+        use std::io::{Read, Write};
+        let mut zin = zip::ZipArchive::new(std::fs::File::open(&src).unwrap()).unwrap();
+        let mut out = zip::ZipWriter::new(std::fs::File::create(d.join("other.epub")).unwrap());
+        let when = zip::DateTime::from_date_and_time(2021, 5, 6, 7, 8, 10).unwrap();
+        for i in 0..zin.len() {
+            let mut f = zin.by_index(i).unwrap();
+            let mut data = Vec::new();
+            f.read_to_end(&mut data).unwrap();
+            let o = zip::write::SimpleFileOptions::default()
+                .last_modified_time(when)
+                .compression_method(zip::CompressionMethod::Stored);
+            out.start_file(f.name().unwrap().to_string(), o).unwrap();
+            out.write_all(&data).unwrap();
+        }
+        out.finish().unwrap();
+    }
+    let src = d.join("other.epub");
+    let original_id = bookx_core::docid::partial_md5(&src).unwrap();
+    let mut lib = Library::in_memory(&d.join("lib")).unwrap();
+    let AddOutcome::Added(id) = lib.add_path(&src, false).unwrap() else {
+        panic!("not added")
+    };
+    let b = lib.get(id).unwrap();
+    assert_eq!(b.source_ids, vec![original_id.clone()]);
+    let copy_id = bookx_core::docid::partial_md5(&lib.book_path(b)).unwrap();
+    assert_ne!(copy_id, original_id, "the library copy is a different file");
+    // saved and read back
+    let json = serde_json::to_string(b).unwrap();
+    let back: bookx_core::library::Book = serde_json::from_str(&json).unwrap();
+    assert_eq!(back.source_ids, vec![original_id]);
+    // a catalogue written before the field existed still loads
+    let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
+    v.as_object_mut().unwrap().remove("source_ids");
+    let old: bookx_core::library::Book = serde_json::from_value(v).unwrap();
+    assert!(old.source_ids.is_empty());
 }

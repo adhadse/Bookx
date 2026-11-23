@@ -468,6 +468,7 @@ impl SqliteStore {
                     .filter(|(l, _)| usable.contains(l))
                     .collect(),
                 marked: false,
+                source_ids: Vec::new(),
             };
             put_row(&tx, &book)?;
             out.ids.push(book.id);

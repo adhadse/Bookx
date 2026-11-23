@@ -258,6 +258,7 @@ mod tests {
             origin: None,
             drm: String::new(),
             source_file: Some("/tmp/Tolkien - The Hobbit.epub".into()),
+            source_id: None,
         };
         assert!(
             apply_guess(&mut p, false, "").is_empty(),

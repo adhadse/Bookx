@@ -5493,6 +5493,7 @@ impl SimpleComponent for Reader {
             let (shared, weights, page) =
                 (shared.clone(), model.weights.clone(), model.w.page.clone());
             let tx = sender.input_sender().clone();
+            let toast = sender.output_sender().clone();
             glib::timeout_add_local_once(std::time::Duration::from_millis(600), move || {
                 super::kosync::open_book(
                     &shared,
@@ -5500,6 +5501,7 @@ impl SimpleComponent for Reader {
                     weights,
                     page.upcast(),
                     Rc::new(move |spine, frac| tx.emit(Input::GoSpine(spine, Some(frac), None))),
+                    Rc::new(move |m| toast.emit(Output::Toast(m))),
                 );
             });
         }

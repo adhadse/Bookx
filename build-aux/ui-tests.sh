@@ -638,6 +638,20 @@ PY
             $PEER register "http://127.0.0.1:$port/bookx" alice secret >/dev/null
             $PEER put "http://127.0.0.1:$port/bookx" alice secret "$DOC" 0.63 "Kobo Libra" KOBO1 >/dev/null
         fi
+        if [ "$name" = kosync_content ]; then
+            # a server that matches books by file content (Grimmory): it only knows the id of the file the book
+            # was imported from, which is not the id of the copy Bookx keeps (issue 49)
+            PEER="python3 $HERE/kosync-peer.py"
+            "$CLI" --library "$d/lib" library add "$ROOT/src/book.md" >/dev/null 2>&1
+            BOOKFILE=$(find "$d/lib" -name '*.epub' | head -1)
+            SRCDOC=$($PEER partial-md5 "$ROOT/src/book.md")
+            COPYDOC=$($PEER partial-md5 "$BOOKFILE")
+            port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')
+            script=${script//@PORT@/$port}
+            python3 "$HERE/kosync-content-server.py" "$port" "$SRCDOC" "$d/content.log" >/dev/null 2>&1 &
+            srvpid=$!
+            $PEER wait "http://127.0.0.1:$port/api/koreader" || echo "content server did not start" >&2
+        fi
         case "$name" in
         annotations_import)
             mkdir -p "$d/imp"
@@ -1736,6 +1750,15 @@ if [ "${NET:-1}" != 0 ]; then
         set -- $R none none none
         [ "$2" = "Bookx_test" ] && python3 -c "import sys; assert 0.58 < float(sys.argv[1]) < 0.75" "$1" && [ "${3#/body/DocFragment[}" != "$3" ]; check "after a page turn the new position is on the server under this device name, with a KOReader xpointer" $?
         has "^kosync_push: pct=.* ok"; check "the push is reported" $?
+        ! has "panicked|CRITICAL"; check "no errors" $?'
+
+    # a server that matches books by file content (Grimmory) knows the book by the file it was imported from
+    scenario kosync_content 'kosync:setup=http://127.0.0.1:@PORT@/api/koreader;alice;secret,wait:300,read:1,wait:3000,reader:next,wait:6500,quit' '
+        [ "$SRCDOC" != "$COPYDOC" ]; check "the library copy of the book is a different file than the one it was imported from" $?
+        has "^kosync_push: pct=.* ok"; check "the push goes out even though the server only knows the imported file" $?
+        grep -q "^PUT /api/koreader/syncs/progress 200 $SRCDOC" "$d/content.log"; check "under the id of the imported file, the one the server and KOReader have" $?
+        ! grep -q "^PUT .* $COPYDOC" "$d/content.log"; check "the id of the copy Bookx keeps is not even tried" $?
+        ! has "does not know this book"; check "no complaint that the book is unknown" $?
         ! has "panicked|CRITICAL"; check "no errors" $?'
 
     # offline queue: the push fails (nothing listens), is kept on disk, and goes out when the server is back
