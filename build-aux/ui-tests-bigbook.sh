@@ -1,4 +1,4 @@
-# Scenarios of a 10 MB EPUB with 20 000 contents entries (QA round 2, docs/qa-wave5.md "Main-thread stalls"):
+# Scenarios of a 10 MB EPUB with 20 000 contents entries (QA round 2, docs/archive/qa-wave5.md "Main-thread stalls"):
 # opening it in the reader and in the editor must not freeze the window. Sourced by ui-tests.sh (uses its
 # `scenario`, `check`, `has`, $ROOT, $HERE). `BOOKX_STALL_WATCH` (set by ui-tests.sh for big_book_*) prints
 # `stall: N ms after <command>` for every stretch in which the main loop did not run. The budgets are for the

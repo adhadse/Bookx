@@ -2,6 +2,8 @@
 
 Internal note. User-facing text is in `wiki/docs/reading.md` (section PDF).
 
+Status: finished, pending move to archive/ (still pointed to from enhancements.md or source comments) | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## Requirement
 
 Bookx is GPL-3.0-or-later and Rust only. PDF has to be shown page by page (fixed layout) with text positions (selection,

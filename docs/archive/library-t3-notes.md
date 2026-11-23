@@ -1,3 +1,5 @@
+> Archived 2026-11-23: Finished track notes; the code and tests are the reference now. Living document: [remaining.md](../remaining.md).
+
 # Library and store, track T3 (wave 11): notes
 
 Internal. What was built, how it is tested, caveats and what is not done. Public documentation is in

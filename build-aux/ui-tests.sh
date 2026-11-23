@@ -1109,7 +1109,7 @@ scenario rtl_text "library:import=$ROOT/rtl,wait:2500,read:3,wait:3500,reader:ui
     [ "$(n "$R" right_aligned)" -ge 10 ]; check "their last lines sit against the right edge" $?
     grep "^selected: Some" <<<"$OUT" | head -1 | grep -q "الفصل"; check "selecting right-to-left text works" $?'
 
-# ---- vertical writing (docs/vertical-writing-plan.md); the book is the third in the library (after the preamble's two)
+# ---- vertical writing (docs/archive/vertical-writing-plan.md); the book is the third in the library (after the preamble's two)
 scenario vertical_layout "library:import=$ROOT/vertical-epub/lib,wait:2500,read:3,wait:3500,reader:ui-vertical,reader:ui-shot:${BOOKX_SHOT:-/dev/null},reader:page-text,reader:ui-vsel:5:60,reader:next,wait:300,reader:ui-vertical,reader:ui-shot:${BOOKX_SHOT2:-/dev/null},reader:dump,quit" '
     V=$(grep "^vertical:" <<<"$OUT" | sed -n 1p); V2=$(grep "^vertical:" <<<"$OUT" | sed -n 2p)
     n() { sed -E "s/.* $2=([^ ]+).*/\1/" <<<"$1"; }

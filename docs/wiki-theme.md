@@ -3,6 +3,8 @@
 Internal design note for the public wiki's palettes (`wiki/docs/assets/extra.css`). The light palette is unchanged;
 the dark one was redesigned ("night paper").
 
+Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse
+
 ## Why
 
 The old dark scheme was Material's default `slate` with a neutral `#242424` page and the GNOME blue link colour. It looked

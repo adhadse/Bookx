@@ -3,6 +3,8 @@
 Owner decision (2026-11): Windows comes **later**, through a package manager (**winget** and/or **Scoop**). A standalone
 `.exe` installer download is **not** the primary channel. This page is the honest state of that work.
 
+Status: living, platform not supported yet | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 > **Nothing here has been built or run on Windows.** No Windows machine was available and the workspace has never
 > been compiled for a Windows target. The Rust changes compile and pass on Linux only. Treat every Windows file as
 > scaffolding until someone has run it.

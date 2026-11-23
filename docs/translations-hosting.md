@@ -2,6 +2,19 @@
 
 Internal note (decision record). User-facing text is `wiki/docs/translating.md`.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse
+
+## Contents
+
+- [Decision](#decision)
+- [What was compared](#what-was-compared)
+- [Options](#options)
+- [How it fits Bookx](#how-it-fits-bookx)
+- [Setting up the Weblate project (5 minutes, owner)](#setting-up-the-weblate-project-5-minutes-owner)
+- [Review gate for machine translations](#review-gate-for-machine-translations)
+- [CI](#ci)
+- [Open items](#open-items)
+
 ## Decision
 
 **Weblate on hosted.weblate.org (the free "libre project" hosting), project `bookx`, one gettext component `bookx`
@@ -127,7 +140,7 @@ Rules:
 - Only a pull request that names the human reviewer (or a Weblate approval at 100 % of the file) changes the state to
   `reviewed`; the owner edits `po/STATUS.md` in that change.
 - A correction from a human to a `reviewed` language does not change the state; an agent change to a `reviewed`
-  language sets it back to `machine-translated` for the strings it touched (note it in `docs/translation-review.md`).
+  language sets it back to `machine-translated` for the strings it touched (note it in `docs/archive/translation-review.md`).
 - The reading app does not show the state; it is a documentation fact, so a bad string is not hidden from users.
 
 ### Promoting a language to reviewed (the Flathub gate)

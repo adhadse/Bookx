@@ -1,5 +1,5 @@
 """Editor shortcuts and snippets with real input: a rebound editor key works and the old one does not, Tab
-expands snippets (also around selected text). Imported by scenarios.py. See docs/calibre-editor-gap-analysis.md
+expands snippets (also around selected text). Imported by scenarios.py. See docs/archive/calibre-editor-gap-analysis.md
 CE-383, CE-403."""
 import json
 import os

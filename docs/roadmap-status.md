@@ -1,6 +1,25 @@
 # Roadmap status (audit of the code, not the progress log)
 
-Audited 2026-11-13, every PARTIAL and MISSING row re-audited 2026-11-22 after waves 6-11 against `docs/bookx-feature-roadmap.md` Parts 1 and 3 (E-series rows are in `docs/calibre-editor-gap-analysis.md`). Status was taken from the code, the tests, the wiki and the UI scenarios, not from the progress log. Rows whose area another agent was working on that day say so.
+Audited 2026-11-13, every PARTIAL and MISSING row re-audited 2026-11-22 after waves 6-11 against `docs/bookx-feature-roadmap.md` Parts 1 and 3 (E-series rows are in `docs/archive/calibre-editor-gap-analysis.md`). Status was taken from the code, the tests, the wiki and the UI scenarios, not from the progress log. Rows whose area another agent was working on that day say so.
+
+Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse
+
+## Contents
+
+- [Counts](#counts)
+- [A. Reader (R1-R20, R65)](#a-reader-r1-r20-r65)
+- [A2. Reader additions (R21-R64)](#a2-reader-additions-r21-r64)
+- [B. Library (L1-L13)](#b-library-l1-l13)
+- [B2. Library additions (L14-L38)](#b2-library-additions-l14-l38)
+- [D/D2. Conversion (C1-C21)](#dd2-conversion-c1-c21)
+- [E. Devices and sharing (P1-P21)](#e-devices-and-sharing-p1-p21)
+- [F/F2. Content sources (S1-S8)](#ff2-content-sources-s1-s8)
+- [G/G2. Platform (X1-X20)](#gg2-platform-x1-x20)
+- [F-series (Foliate)](#f-series-foliate)
+- [How this pass changed the table](#how-this-pass-changed-the-table)
+- [Top 15 gaps left (by value)](#top-15-gaps-left-by-value)
+- [Sync umbrella (2026-11-20, syncui)](#sync-umbrella-2026-11-20-syncui)
+- [Wave 11 (reader/text, T1/T2) 2026-11-21](#wave-11-readertext-t1t2-2026-11-21)
 
 Statuses: **DONE** implemented, tested and reachable in the UI (or CLI where the row is CLI); **ENGINE ONLY** library code with tests, no UI; **PARTIAL**; **MISSING**; **DEFERRED** owner decision (PDF, Calibre wireless); **EXCLUDED** (LIT).
 
@@ -41,7 +60,7 @@ Closed since 2026-11-13 (a PARTIAL or MISSING row became DONE): R3, R14, R22, R2
 | R1 | Book CSS + user override layer | PARTIAL (2026-11-22 re-audit) | `bookx-text::css`, `bookx-core::html`/`doc`, `canvas.rs`, `tweaks.rs`; fonts and relative sizes from the book CSS plus per-book "book's own styling" / "book's fonts" switches (wave 11) | tables and positioned text from book CSS (tables still flatten to ` │ ` rows), hanging punctuation, `word-break`, emphasis dots, vertical tables and floats | L | M |
 | R2 | Hyphenation | DONE | `bookx-text::hyphenate`, `canvas.rs` |  |  |  |
 | R3 | Knuth-Plass, widows/orphans, drop caps, small caps | DONE (2026-11-22 re-audit) | `bookx-text::paragraph`, `canvas.rs`; `bookx-text::vertical::paginate_with` (widows/orphans 1 to 4, setting), `Style.small_caps` with Pango `font_scale` in `canvas.rs`/`doc.rs`/`html.rs` |  |  | L |
-| R4 | Vertical writing, RTL, ruby | DONE (2026-11-21 refresh) | vertical-rl/lr, text-orientation, tate-chu-yoko, kinsoku, ruby, vertical selection and highlights in `canvas.rs`, `bookx-text::vertical`; scenarios `vertical_layout`, `vertical_chapters`, `vertical_scroll_and_styles`, `vertical_read_aloud`, session `vertical_reading`; `docs/vertical-writing-plan.md` | hanging punctuation, `word-break`, emphasis dots, vertical tables and floats | L | M |
+| R4 | Vertical writing, RTL, ruby | DONE (2026-11-21 refresh) | vertical-rl/lr, text-orientation, tate-chu-yoko, kinsoku, ruby, vertical selection and highlights in `canvas.rs`, `bookx-text::vertical`; scenarios `vertical_layout`, `vertical_chapters`, `vertical_scroll_and_styles`, `vertical_read_aloud`, session `vertical_reading`; `docs/archive/vertical-writing-plan.md` | hanging punctuation, `word-break`, emphasis dots, vertical tables and floats | L | M |
 | R5 | Footnote popups | DONE (was MISSING) | `src/footnotes.rs`, `ui/reader_extra.rs`, reader `Input::Link`; scenario `footnote_popup` |  | S | H |
 | R6 | Custom fonts per book / font manager | PARTIAL | `tweaks.rs` per-book font family | embedded fonts rendering, font manager | M | L |
 | R7 | Highlight styles | DONE | `canvas.rs`, `reader.rs` |  |  |  |
@@ -188,7 +207,7 @@ Closed since 2026-11-13 (a PARTIAL or MISSING row became DONE): R3, R14, R22, R2
 | P3 | KOSync server | DONE | `bookx-serve::kosync` |  |  |  |
 | P4 | OPDS server | DONE | `bookx-serve::opds`, `ui/share.rs` |  |  |  |
 | P4c | OPDS client (browse/search/download UI) | DONE (was MISSING) | `opds_browse.rs`, `ui/opds.rs`; scenarios `opds_browse`, `opds_errors` | not tried against the real Gutenberg/Standard Ebooks (no network in tests); basic auth only | M | H |
-| P5 | Calibre wireless protocol | DEFERRED (owner decision D10, 2026-11-20: wireless sync is KOReader only; stock firmware = USB) | `docs/calibre-wireless-device-plan.md` | implementation (see plan) | L | L |
+| P5 | Calibre wireless protocol | DEFERRED (owner decision D10, 2026-11-20: wireless sync is KOReader only; stock firmware = USB) | `docs/outdated/calibre-wireless-device-plan.md` | implementation (see plan) | L | L |
 | P6 | Send by e-mail | DONE | `emailing.rs` |  |  |  |
 | P7 | MTP | PARTIAL | gvfs mounts | direct USB MTP | L | L |
 | P8 | Content server web UI | DONE | `bookx-serve::server`, `bookx-cli serve` |  |  |  |
@@ -266,7 +285,7 @@ Other agents finished, during the same days: TTS engines (R10), vertical writing
 metadata leftovers (formats of one book, author aliases, DRM detection, trackers, audiobooks), backup destinations
 with the keyring, the Preferences sidebar, the command palette, accessibility, the device UI, the KOSync client,
 annotation import/export, and the editor rows (Check Book, search/function mode, spelling, reports, special
-characters; see `docs/calibre-editor-gap-analysis.md`). Those were already DONE in the table above, so they do not
+characters; see `docs/archive/calibre-editor-gap-analysis.md`). Those were already DONE in the table above, so they do not
 move the counts.
 
 ## Top 15 gaps left (by value)
@@ -287,7 +306,7 @@ move the counts.
 14. ~~**R24/R42 real page numbers from `page-list`**~~ done 2026-11-13 (ux-gaps); hidden flows and NCX `pageList` remain.
 15. ~~**X19 debug-log export and safe mode.**~~ done in wave 11 (`safe_mode.rs`, `debug_log.rs`).
 
-Runners-up (R49, R60, R33, R65, L14 ISBN/empty record, L21 are done; what is left): P5 Calibre wireless (plan only, see `docs/calibre-wireless-device-plan.md`; judged larger
+Runners-up (R49, R60, R33, R65, L14 ISBN/empty record, L21 are done; what is left): P5 Calibre wireless (plan only, see `docs/outdated/calibre-wireless-device-plan.md`; judged larger
 than a day), C7 PDF output, C4/R17 PDF (PDF agent).
 
 ## Sync umbrella (2026-11-20, syncui)

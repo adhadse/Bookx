@@ -1,3 +1,5 @@
+> Archived 2026-11-23: Finished wave notes; the dev hooks are listed in `_developer/docs.md`. Living document: [docs.md](../../_developer/docs.md).
+
 # Editor preview sync, splitting, compare, Live CSS (wave 4, internal)
 
 Rows: CE-120/124, CE-220/223..229, CE-241..249, CE-260 (statuses in `calibre-editor-gap-analysis.md`).

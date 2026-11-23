@@ -1,3 +1,5 @@
+> Archived 2026-11-23: All gaps were addressed; the leftovers are in remaining.md. Living document: [remaining.md](../remaining.md).
+
 # Library and reader UX gaps (ux-gaps pass, 2026-11-13)
 
 Internal notes: what was built, how it is tested, what is not covered. User-facing text is in the wiki

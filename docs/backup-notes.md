@@ -4,6 +4,16 @@ Status of enhancement 7 (backup and restore UI, destinations, encryption) and of
 **Status: D9 is implemented end to end (engine, CLI, app UI, scheduling, wiki).**
 User-facing text is in `wiki/docs/backup-and-restore.md`; this file has the decisions, caveats and what is untested.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
+## Contents
+
+- [What exists](#what-exists)
+- [Decisions](#decisions)
+- [D9: the incremental repository (supersedes D8)](#d9-the-incremental-repository-supersedes-d8)
+- [Not done, or only partly](#not-done-or-only-partly)
+- [Sync](#sync)
+
 **Read D9 first** (the incremental repository: book files, covers, catalogue and a notes journal). It supersedes D8
 ("catalogue only") and the "whole-file, not incremental" decision below; the old whole-catalogue `.db` /
 `.bookxbackup` files described in the rest of this file still exist, are still listed and restorable, and coexist with

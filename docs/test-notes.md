@@ -1,5 +1,9 @@
 # Test notes (internal)
 
+How the end-to-end tests are run and what the first runs found (real GNOME session, Broadway, hooks).
+
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## Real-session tests (`build-aux/session-tests.sh`)
 
 Why: the Broadway suite (`build-aux/ui-tests.sh`) was green while the dictionary and Wikipedia buttons did not work on the
@@ -49,7 +53,7 @@ compositor: popovers are drawn inside the window, there is no `xdg_popup`, focus
 `lookup_translate` (network), `highlight_and_note` (colour, popover stays, note, saved note, remove), `theme_change` (Dark, Sepia,
 Light by pixel), `library_context_menu`, `header_menus` (library and reader menus, search, text appearance, contents),
 `news_dialog`, `editor_edit_and_replace` (opens the editor, types, Ctrl+H, Replace All), `second_book`.
-Vertical writing (`build-aux/session/scenarios_vertical.py`, see `docs/vertical-writing-plan.md`): `vertical_reading` (a generated Japanese book: AT-SPI character boxes prove columns run down and leftwards, real Left/Right page turns of a right-to-left book, a real drag across two columns with the exact selection, the highlight painted as tall bands, a search match behind turned Latin letters) and `vertical_aozora` (a real novel from Aozora Bunko; skips without the cached file). AT-SPI key events carry ASCII only, so the search term is Latin.
+Vertical writing (`build-aux/session/scenarios_vertical.py`, see `docs/archive/vertical-writing-plan.md`): `vertical_reading` (a generated Japanese book: AT-SPI character boxes prove columns run down and leftwards, real Left/Right page turns of a right-to-left book, a real drag across two columns with the exact selection, the highlight painted as tall bands, a search match behind turned Latin letters) and `vertical_aozora` (a real novel from Aozora Bunko; skips without the cached file). AT-SPI key events carry ASCII only, so the search term is Latin.
 
 ### Findings of the first runs (the owner's open bug 1, and two more)
 

@@ -3,6 +3,8 @@
 Books used by tests and hardware checks. Only public-domain texts are used; none is committed to the repository
 (they are downloaded to `~/.cache/bookx-testbooks`).
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 | File | Title | Author | Source | Licence | sha256 |
 |---|---|---|---|---|---|
 | `alice.epub` | Alice's Adventures in Wonderland | Lewis Carroll (died 1898) | Project Gutenberg #11, `https://www.gutenberg.org/files/11/11-h/11-h.htm` | Public domain (the file's own `dc:rights` says "Public domain in the USA."; Project Gutenberg licence applies to the trademark only, the text may be freely reused) | `4f81245d31380ac1d6eafb9a321e3691369bc70985736ae4bccf849a4f784036` |
