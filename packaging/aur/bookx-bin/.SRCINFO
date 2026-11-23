@@ -25,6 +25,6 @@ pkgbase = bookx-bin
 	conflicts = bookx-git
 	options = !debug
 	source = https://github.com/adhadse/Bookx/releases/download/v0.3.0-beta.3/bookx-0.3.0-beta.3-linux-x86_64.tar.gz
-	sha256sums = SKIP
+	sha256sums = 2090b9c16e83a7e56b207716cd2ad0384f48bd5ac7c6454420b67f77183ea5c1
 
 pkgname = bookx-bin
