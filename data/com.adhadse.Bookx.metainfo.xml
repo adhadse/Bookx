@@ -104,6 +104,17 @@
     <mediatype>x-scheme-handler/bookx</mediatype>
   </provides>
   <releases>
+    <release version="0.4.0-beta.1" date="2026-11-24" type="development">
+      <description>
+        <p>Problem reports that say what went wrong, and sync with servers that match books by their file.</p>
+        <ul>
+          <li>Report a Problem starts with a summary of the suspected area, lists the recent operations of every feature and groups repeated warnings; it is reachable from the Sync window, the Devices window and the reader and editor menus</li>
+          <li>The report keeps titles, file names, paths and host names out; two switches, both off, add the titles or the server host</li>
+          <li>Fixed: sync with Grimmory and similar servers (every position push was answered with 404); books imported by an earlier version may need to be added again</li>
+        </ul>
+      </description>
+      <url type="details">https://github.com/adhadse/Bookx/releases/tag/v0.4.0-beta.1</url>
+    </release>
     <release version="0.3.0-beta.3" date="2026-11-23" type="development">
       <description>
         <p>Third beta: you can go back in history and restore highlights, notes and bookmarks.</p>
