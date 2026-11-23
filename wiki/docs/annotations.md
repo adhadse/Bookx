@@ -57,7 +57,7 @@ In the History window:
   is in them now are not affected.
 
 Restoring a highlight a device deleted does **not** bring the deletion back on the next sync: the highlight is yours again, and the
-next sync sends it to the device as a new highlight. A note a device overwrote goes back to your text, and the older version on
+next sync sends it to the device, where KOReader lists it under *Notes from Bookx* for that book (it is not painted on the page again). A note a device overwrote goes back to your text, and the older version on
 the device does not win again (the device keeps its own version until you change it there).
 
 **How long it is kept:** changes from the last **90 days** and always at least the **latest 500 changes**; the history never grows
