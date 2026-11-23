@@ -355,6 +355,7 @@ impl Library {
             drm: p.drm,
             custom: Default::default(),
             marked: false,
+            source_ids: p.source_id.clone().into_iter().collect(),
         });
         self.refresh_composites_of(&[id]);
         self.log(label, OpKind::Import { ids: vec![id] });

@@ -1167,6 +1167,13 @@ fn add_one(lib: &mut Library, path: &Path, dup: bool) -> Result<AddOutcome> {
         .map_err(anyhow::Error::from)
         .and_then(|_| lib.add_path(&tmp, dup));
     let _ = std::fs::remove_dir_all(&dir);
+    // the book is known to sync servers by the file it came from, not by the temporary EPUB
+    if let (Ok(AddOutcome::Added(id)), Ok(sid)) = (&r, bookx_core::docid::partial_md5(path)) {
+        if let Some(b) = lib.get_mut(*id) {
+            b.source_ids = vec![sid];
+        }
+        lib.save()?;
+    }
     // a PDF is kept next to the reflowed EPUB: the app shows the pages from it
     if let (Ok(AddOutcome::Added(id)), true) = (
         &r,

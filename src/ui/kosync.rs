@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use bookx_serve::kosync_client::{Push, Remote, document_id};
+use bookx_serve::kosync_client::{Failure, Push, Remote};
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
 
@@ -24,6 +24,16 @@ const DEBOUNCE_MS: u64 = 4000;
 
 struct Session {
     path: PathBuf,
+    /// Every file of the book (the library file first) and the ids it was imported under: the
+    /// server may know the book by any of them ([`ks::candidate_ids`]).
+    files: Vec<PathBuf>,
+    source_ids: Vec<String>,
+    /// Shows a short message in the reader.
+    toast: Rc<dyn Fn(String)>,
+    /// The id the server had a position under when the book was opened.
+    doc: Option<String>,
+    /// The "server does not know this book" message was shown for this session.
+    warned: bool,
     /// The position the server is known to have from us (or that we got from it).
     last_pct: f64,
     /// The user answered the question, or there was nothing to ask.
@@ -77,14 +87,22 @@ pub fn open_book(
     weights: Vec<f64>,
     anchor: gtk::Widget,
     goto: Rc<dyn Fn(usize, f64)>,
+    toast: Rc<dyn Fn(String)>,
 ) {
     let Some(prefs) = ready_prefs(shared) else {
         return;
     };
-    let (path, local) = {
+    let (path, local, files, source_ids) = {
         let lib = shared.lib.borrow();
         match lib.get(book_id) {
-            Some(b) => (lib.book_path(b), b.progress),
+            Some(b) => (
+                lib.book_path(b),
+                b.progress,
+                std::iter::once(lib.book_path(b))
+                    .chain(b.formats.iter().map(|f| lib.root.join(&f.file)))
+                    .collect::<Vec<_>>(),
+                b.source_ids.clone(),
+            ),
             None => return,
         }
     };
@@ -93,6 +111,11 @@ pub fn open_book(
             book_id,
             Session {
                 path: path.clone(),
+                files: files.clone(),
+                source_ids: source_ids.clone(),
+                toast,
+                warned: false,
+                doc: None,
                 last_pct: local,
                 answered: false,
                 pending: None,
@@ -106,9 +129,14 @@ pub fn open_book(
     t.ratio("local", local);
     std::thread::spawn(move || {
         let r = (|| -> anyhow::Result<(String, Option<Remote>)> {
-            let doc = document_id(&path, p.method())?;
-            let remote = p.client()?.get_progress(&doc)?;
-            Ok((doc, remote))
+            let ids = ks::candidate_ids(&source_ids, &files, p.method());
+            let Some(first) = ids.first().cloned() else {
+                anyhow::bail!("cannot read {}", path.display());
+            };
+            Ok(match p.client()?.get_progress_any(&ids)? {
+                Some((doc, r)) => (doc, Some(r)),
+                None => (first, None),
+            })
         })()
         .map_err(|e| format!("{e:#}"));
         let _ = tx.send(r);
@@ -143,6 +171,7 @@ pub fn open_book(
             set(&|s| s.answered = true);
             return;
         };
+        set(&|s| s.doc = Some(doc.clone()));
         let local_now = shared
             .lib
             .borrow()
@@ -224,9 +253,17 @@ pub fn flush(shared: &SharedRef, book_id: u64) {
         let mut s = s.borrow_mut();
         let sess = s.get_mut(&book_id)?;
         let (pct, spine) = sess.pending.take()?;
-        Some((sess.path.clone(), pct, spine, sess.answered))
+        Some((
+            sess.path.clone(),
+            sess.files.clone(),
+            sess.source_ids.clone(),
+            sess.doc.clone(),
+            pct,
+            spine,
+            sess.answered,
+        ))
     });
-    let Some((path, pct, spine, answered)) = job else {
+    let Some((path, files, source_ids, known, pct, spine, answered)) = job else {
         return;
     };
     let (tx, rx) = std::sync::mpsc::channel();
@@ -234,24 +271,34 @@ pub fn flush(shared: &SharedRef, book_id: u64) {
     t.ratio("local", pct);
     std::thread::spawn(move || {
         let qpath = queue::queue_path();
-        let doc = document_id(&path, prefs.method()).map_err(|e| format!("{e:#}"));
+        let ids = ks::prefer(
+            ks::candidate_ids(&source_ids, &files, prefs.method()),
+            known.as_deref(),
+        );
+        let doc = ids
+            .first()
+            .cloned()
+            .ok_or_else(|| format!("cannot read {}", path.display()));
         let r = match &doc {
-            Err(e) => Err(e.clone()),
+            Err(e) => Err((e.clone(), None)),
             Ok(doc) => (|| -> anyhow::Result<Option<i64>> {
                 let client = prefs.client()?;
                 if !answered {
-                    let remote = client.get_progress(doc)?;
+                    let remote = client.get_progress_any(&ids)?.map(|(_, r)| r);
                     if !ks::push_allowed(remote.as_ref(), pct, &prefs.device_id, false) {
                         return Ok(None);
                     }
                 }
-                let ts = client.put_progress(&Push {
-                    document: doc,
-                    progress: &ks::progress_string(spine),
-                    percentage: pct,
-                    device: &prefs.display_name(),
-                    device_id: &prefs.device_id,
-                })?;
+                let (_, ts) = client.put_progress_any(
+                    &ids,
+                    &Push {
+                        document: doc,
+                        progress: &ks::progress_string(spine),
+                        percentage: pct,
+                        device: &prefs.display_name(),
+                        device_id: &prefs.device_id,
+                    },
+                )?;
                 Ok(Some(ts))
             })()
             .inspect_err(|e| {
@@ -259,7 +306,13 @@ pub fn flush(shared: &SharedRef, book_id: u64) {
                     queue::update(q, |q| q.push(entry_for(&path, doc, &prefs, pct, spine)));
                 }
             })
-            .map_err(|e| format!("{e:#}")),
+            .map_err(|e| {
+                let unknown = match e.downcast_ref::<Failure>() {
+                    Some(Failure::UnknownBook(id)) => Some(id.clone()),
+                    _ => None,
+                };
+                (format!("{e:#}"), unknown)
+            }),
         };
         if let (Ok(Some(_)), Some(q)) = (&r, &qpath) {
             queue::update(q, |q| q.forget(&path.to_string_lossy()));
@@ -282,9 +335,19 @@ pub fn flush(shared: &SharedRef, book_id: u64) {
                 "kosync_push: pct={pct:.3} held back, another device is further along and you have not answered yet"
             )
         }
-        Err(e) => {
+        Err((e, unknown)) => {
             t.fail(&e);
-            eprintln!("kosync_push: error: {e}")
+            eprintln!("kosync_push: error: {e}");
+            if let Some(id) = unknown {
+                let toast = SESSIONS.with(|s| {
+                    let mut s = s.borrow_mut();
+                    let sess = s.get_mut(&book_id)?;
+                    (!std::mem::replace(&mut sess.warned, true)).then(|| sess.toast.clone())
+                });
+                if let Some(say) = toast {
+                    say(ks::unknown_book_text(&id));
+                }
+            }
         }
     });
 }

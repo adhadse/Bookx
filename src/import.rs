@@ -160,6 +160,7 @@ mod tests {
             origin: None,
             drm: String::new(),
             source_file: None,
+            source_id: None,
         };
         assert!(take_patch_note(&p).is_none());
         note_patched(

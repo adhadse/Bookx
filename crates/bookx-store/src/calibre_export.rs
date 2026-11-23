@@ -723,6 +723,7 @@ mod tests {
             drm: String::new(),
             custom: Default::default(),
             marked: false,
+            source_ids: Vec::new(),
         };
         b.meta.title = "../Dune: Part 1".into();
         b.meta.authors = vec!["Frank/Herbert".into()];
@@ -752,6 +753,7 @@ mod tests {
             drm: String::new(),
             custom: Default::default(),
             marked: false,
+            source_ids: Vec::new(),
         };
         b.meta.title = "A & B <c>".into();
         b.meta.authors = vec!["Ada Lovelace".into()];

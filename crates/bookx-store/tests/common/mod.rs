@@ -58,6 +58,7 @@ pub fn book(id: u64, title: &str, author: &str) -> Book {
         drm: String::new(),
         custom: Default::default(),
         marked: false,
+        source_ids: Vec::new(),
     }
 }
 

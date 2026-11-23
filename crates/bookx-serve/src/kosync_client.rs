@@ -21,7 +21,6 @@
 //! "Document matching method" setting; an id only matches when both sides use the same method
 //! and, for the first, a byte-identical file.
 
-use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use std::time::Duration;
 
@@ -41,33 +40,7 @@ pub enum DocMethod {
 }
 
 /// The partial MD5 KOReader calls a book's "binary" id, from any seekable source.
-pub fn partial_md5_of<R: Read + Seek>(r: &mut R) -> std::io::Result<String> {
-    let mut ctx = md5::Context::new();
-    let mut buf = vec![0u8; 1024];
-    // i = -1 is offset 0 (KOReader's `1024 << -2` wraps to 0 in 32-bit arithmetic), then 1024 << 2i
-    let offsets = std::iter::once(0u64).chain((0..=10).map(|i| 1024u64 << (2 * i)));
-    for off in offsets {
-        r.seek(SeekFrom::Start(off))?;
-        let mut got = 0;
-        while got < buf.len() {
-            let n = r.read(&mut buf[got..])?;
-            if n == 0 {
-                break;
-            }
-            got += n;
-        }
-        if got == 0 {
-            break;
-        }
-        ctx.consume(&buf[..got]);
-    }
-    Ok(format!("{:x}", ctx.compute()))
-}
-
-/// [`partial_md5_of`] for a file.
-pub fn partial_md5(path: &Path) -> std::io::Result<String> {
-    partial_md5_of(&mut std::fs::File::open(path)?)
-}
+pub use bookx_core::docid::{partial_md5, partial_md5_of};
 
 /// The MD5 of a file name (without its folder), KOReader's *Filename* id.
 pub fn filename_digest(path: &Path) -> Option<String> {
@@ -117,6 +90,10 @@ pub enum Failure {
     BadCredentials,
     NameTaken,
     RegistrationClosed,
+    /// The server answered 404 to a push: it has no book with this document id. Servers that match
+    /// books by the content of the file (Grimmory, BookLore) answer so when their copy is not
+    /// byte-identical to ours.
+    UnknownBook(String),
     /// The server answered something else.
     Status(u16),
 }
@@ -129,6 +106,10 @@ impl std::fmt::Display for Failure {
             }
             Failure::NameTaken => write!(f, "that user name is already registered (use Log in)"),
             Failure::RegistrationClosed => write!(f, "this server does not allow new accounts"),
+            Failure::UnknownBook(id) => write!(
+                f,
+                "the server does not know this book (document id {id}); servers such as Grimmory match a book by the content of its file, so the file here must be identical to the server's copy"
+            ),
             Failure::Status(s) => write!(f, "the server answered {s}"),
         }
     }
@@ -263,6 +244,34 @@ impl Client {
         }))
     }
 
+    /// The position of the first of `ids` the server has, with that id.
+    pub fn get_progress_any(&self, ids: &[String]) -> Result<Option<(String, Remote)>> {
+        for id in ids {
+            if let Some(r) = self.get_progress(id)? {
+                return Ok(Some((id.clone(), r)));
+            }
+        }
+        Ok(None)
+    }
+
+    /// Stores a position under the first of `ids` the server accepts (a server that matches books by
+    /// their content answers 404 for an id it does not know); returns that id and the time stamp.
+    /// Every id unknown gives [`Failure::UnknownBook`] for the first.
+    pub fn put_progress_any(&self, ids: &[String], p: &Push) -> Result<(String, i64)> {
+        for id in ids {
+            let p = Push {
+                document: id,
+                ..p.clone()
+            };
+            match self.put_progress(&p) {
+                Ok(ts) => return Ok((id.clone(), ts)),
+                Err(e) if matches!(e.downcast_ref::<Failure>(), Some(Failure::UnknownBook(_))) => {}
+                Err(e) => return Err(e),
+            }
+        }
+        Err(Failure::UnknownBook(ids.first().cloned().unwrap_or_default()).into())
+    }
+
     /// Stores a position; returns the server's time stamp.
     pub fn put_progress(&self, p: &Push) -> Result<i64> {
         let body = json!({
@@ -279,6 +288,7 @@ impl Client {
                 .and_then(|v| v.get("timestamp").and_then(Value::as_i64))
                 .unwrap_or(0)),
             401 => Err(Failure::BadCredentials.into()),
+            404 => Err(Failure::UnknownBook(p.document.to_string()).into()),
             s => Err(Failure::Status(s).into()),
         }
     }
@@ -450,6 +460,94 @@ mod tests {
         c.register().unwrap();
         assert_eq!(c.get_progress("abc123").unwrap(), None);
         s.shutdown();
+    }
+
+    /// A server that matches books by file content like Grimmory: it knows one document id and
+    /// answers 404 to a push (or a pull) for any other.
+    fn content_matching_server(known: &'static str) -> (String, std::thread::JoinHandle<()>) {
+        use std::io::{Read, Write};
+        let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/api/koreader", l.local_addr().unwrap());
+        let h = std::thread::spawn(move || {
+            for _ in 0..4 {
+                let (mut c, _) = l.accept().unwrap();
+                let mut buf = vec![0u8; 8192];
+                let mut n = 0;
+                loop {
+                    let k = c.read(&mut buf[n..]).unwrap();
+                    n += k;
+                    let text = String::from_utf8_lossy(&buf[..n]).to_string();
+                    if let Some(h) = text.find("\r\n\r\n") {
+                        let len = text
+                            .lines()
+                            .find_map(|l| {
+                                l.to_ascii_lowercase()
+                                    .strip_prefix("content-length:")
+                                    .map(|v| v.trim().parse::<usize>().unwrap())
+                            })
+                            .unwrap_or(0);
+                        if n >= h + 4 + len {
+                            break;
+                        }
+                    }
+                    if k == 0 {
+                        break;
+                    }
+                }
+                let text = String::from_utf8_lossy(&buf[..n]).to_string();
+                let ok =
+                    text.starts_with("PUT") && text.contains(&format!("\"document\":\"{known}\""));
+                let (status, body) = if ok {
+                    ("200 OK", "{\"document\":\"x\",\"timestamp\":1}")
+                } else {
+                    ("404 Not Found", "{\"message\":\"Book not found for hash\"}")
+                };
+                let _ = write!(
+                    c,
+                    "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+            }
+        });
+        (url, h)
+    }
+
+    #[test]
+    fn a_server_that_matches_by_content_says_unknown_book_and_the_original_id_is_found() {
+        // regression for issue 49: Grimmory answered 404 to the id of Bookx's rewritten copy
+        if net_off() {
+            return;
+        }
+        let (url, h) = content_matching_server("original-id");
+        let c = Client::new(&url, "u", "p").unwrap();
+        let p = Push {
+            document: "copy-id",
+            progress: "5",
+            percentage: 0.4,
+            device: "Bookx",
+            device_id: "d",
+        };
+        let e = c.put_progress(&p).unwrap_err();
+        assert_eq!(
+            e.downcast_ref::<Failure>(),
+            Some(&Failure::UnknownBook("copy-id".into()))
+        );
+        let msg = e.to_string();
+        assert!(
+            msg.contains("copy-id") && msg.contains("content of its file"),
+            "{msg}"
+        );
+        // with the id of the original as another candidate the push lands
+        let ids = vec!["copy-id".to_string(), "original-id".to_string()];
+        let (doc, _) = c.put_progress_any(&ids, &p).unwrap();
+        assert_eq!(doc, "original-id");
+        // and when no candidate is known the first is named
+        let e = c.put_progress_any(&["nope".to_string()], &p).unwrap_err();
+        assert_eq!(
+            e.downcast_ref::<Failure>(),
+            Some(&Failure::UnknownBook("nope".into()))
+        );
+        h.join().unwrap();
     }
 
     #[test]

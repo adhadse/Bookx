@@ -192,6 +192,7 @@ pub fn prepare(path: &Path, data: &Path) -> Result<Prepared> {
         origin: None,
         drm: String::new(),
         source_file: Some(source),
+        source_id: None,
     })
 }
 
@@ -932,6 +933,7 @@ mod tests {
             drm: String::new(),
             custom: Default::default(),
             marked: false,
+            source_ids: Vec::new(),
         };
         assert!(is_audiobook(&b) && !is_own(&b));
         assert_eq!(

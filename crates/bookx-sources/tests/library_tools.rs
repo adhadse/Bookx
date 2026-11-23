@@ -28,6 +28,7 @@ fn book(id: u64, meta: Metadata) -> Book {
         drm: String::new(),
         custom: Default::default(),
         marked: false,
+        source_ids: Vec::new(),
     }
 }
 

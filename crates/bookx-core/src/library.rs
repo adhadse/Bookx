@@ -228,6 +228,11 @@ pub struct Book {
     /// Temporarily marked in this session (search `marked:true`); never saved.
     #[serde(skip)]
     pub marked: bool,
+    /// The partial MD5 ([`crate::docid`]) of the file this book was imported from, as it was
+    /// before Bookx rewrote it (an EPUB is re-zipped, a PDF becomes an EPUB). Servers that match
+    /// books by file content (Grimmory, KOReader's own sync) know the book by this id.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub source_ids: Vec<String>,
 }
 
 impl Book {
@@ -380,6 +385,8 @@ pub struct Prepared {
     pub drm: String,
     /// The file the book was read from, whatever its format (set by the importer).
     pub source_file: Option<PathBuf>,
+    /// [`Book::source_ids`] of the book: the partial MD5 of `source_file`/the file as it came in.
+    pub source_id: Option<String>,
 }
 
 #[allow(dead_code)]
@@ -423,7 +430,8 @@ pub fn prepare_import(path: &Path) -> Result<Prepared> {
 }
 
 /// Gathers everything needed to add a book that was already decoded to an EPUB archive.
-/// `origin` only supplies a fallback title (its file name).
+/// `origin` supplies a fallback title (its file name) and, when it is a readable file, the id the
+/// book is known by on servers that match files by content ([`Book::source_ids`]).
 pub fn prepare_from_archive(archive: Archive, origin: &Path) -> Result<Prepared> {
     let path = origin;
     let book = OpenBook::from_archive(archive)?;
@@ -451,6 +459,7 @@ pub fn prepare_from_archive(archive: Archive, origin: &Path) -> Result<Prepared>
         origin: None,
         drm: String::new(),
         source_file: None,
+        source_id: crate::docid::partial_md5(origin).ok(),
     })
 }
 
@@ -849,6 +858,7 @@ mod backend_tests {
             drm: String::new(),
             custom: Default::default(),
             marked: false,
+            source_ids: Vec::new(),
         }
     }
 

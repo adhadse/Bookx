@@ -11192,6 +11192,9 @@ msgstr "El archivo de firma de este plugin está dañado. Trata el plugin como s
 msgid "The sub-path must be a plain path such as /books (letters, digits, - and _)."
 msgstr "La subruta debe ser una ruta simple como /books (letras, dígitos, - y _)."
 
+msgid "The sync server does not know this book (id {}). Grimmory and some other servers recognise a book by the content of its file, so the file in Bookx must be identical to the one on the server. Add the book from the server again, or check “Match books by” in Preferences → Sync → Advanced."
+msgstr "El servidor de sincronización no conoce este libro (id {}). Grimmory y otros servidores reconocen un libro por el contenido de su archivo, así que el archivo en Bookx debe ser idéntico al del servidor. Vuelve a añadir el libro desde el servidor o revisa «Buscar libros por» en Preferencias → Sincronizar → Avanzado."
+
 msgid "The two new passphrases are not the same"
 msgstr "Las dos contraseñas nuevas no son iguales"
 

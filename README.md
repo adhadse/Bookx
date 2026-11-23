@@ -138,6 +138,13 @@ Other pointers:
 - Packaging: [packaging/](packaging/) (Flathub manifest), [build-aux/](build-aux/) (Flatpak, tarball, macOS and Windows bundles).
 - Follow the [GNOME HIG](https://developer.gnome.org/hig/) for UI changes; design mockups are in [`mockups/`](mockups/) (`cargo run --example mockups`).
 
+<a href="https://www.star-history.com/?repos=adhadse%2Fbookx&type=timeline&legend=bottom-right">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=adhadse/bookx&type=date&theme=dark&legend=bottom-right" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=adhadse/bookx&type=date&legend=bottom-right" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=adhadse/bookx&type=date&legend=bottom-right" />
+ </picture>
+</a>
 ## Licence
 
 GPL-3.0-or-later, see [LICENSE](LICENSE). Third-party assets and notices: [NOTICE.md](NOTICE.md).

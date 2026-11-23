@@ -647,6 +647,7 @@ dependencies = [
  "anyhow",
  "bookx-text",
  "chrono",
+ "md5",
  "pulldown-cmark",
  "regex",
  "roxmltree 0.21.2",

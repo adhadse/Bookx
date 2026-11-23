@@ -9292,6 +9292,9 @@ msgstr "Die Statistik unter der Seite: Wählen Sie, was angezeigt wird, in welch
 msgid "The sub-path must be a plain path such as /books (letters, digits, - and _)."
 msgstr "Der Unterpfad muss ein einfacher Pfad wie /books sein (Buchstaben, Ziffern, - und _)."
 
+msgid "The sync server does not know this book (id {}). Grimmory and some other servers recognise a book by the content of its file, so the file in Bookx must be identical to the one on the server. Add the book from the server again, or check “Match books by” in Preferences → Sync → Advanced."
+msgstr "Der Sync-Server kennt dieses Buch nicht (ID {}). Grimmory und einige andere Server erkennen ein Buch am Inhalt seiner Datei, daher muss die Datei in Bookx mit der auf dem Server identisch sein. Füge das Buch erneut vom Server hinzu oder prüfe „Bücher abgleichen nach“ unter Einstellungen → Sync → Erweitert."
+
 msgid "The template name may not be empty or contain / \\ or a dot"
 msgstr "Der Vorlagenname darf nicht leer sein und weder / \\ noch einen Punkt enthalten"
 
