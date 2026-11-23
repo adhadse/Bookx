@@ -6,10 +6,32 @@ versioned heading, `Cargo.toml` and the AppStream metainfo disagree.
 
 ## [Unreleased]
 
+## [0.3.0-beta.3] - 2026-11-23
+
+### Added
+- **Annotation history:** every change to a highlight, note or bookmark is remembered, whoever made it (you, an e-reader
+  sync, an import). *History* (reader Notes tab, library Notes view, a book's menu) lists them by day with **Restore**,
+  multi-select, search and filters. After a sync removes annotations a message says so with **Undo**. A restored highlight
+  is not deleted by the next sync. Kept at least 90 days and 500 changes; local, and included in library backups.
+- **Device names:** e-readers that report a model code now show their product name (about 50 Boox models, Kobo, Kindle,
+  PocketBook, reMarkable), and a device can be renamed in Devices.
+- The Sync window, Preferences and the empty library say plainly that sync never copies or deletes books.
+- Library updates: before the database is upgraded Bookx keeps a copy (`bookx-library.db.pre-v<N>-<time>`, the newest two),
+  checks the result afterwards, and does not start when the copy cannot be made.
+
+### Changed
+- The library database is upgraded to schema version 10 (the history table). It happens by itself on first start; an older
+  Bookx will not open it, use the copy to go back.
+- Rust 2024 edition; the downloads badge in the README; the wiki has screen-recorded videos for read aloud, speed reading
+  and the reading ruler; the internal docs were sorted into `docs/archive` and `docs/outdated`.
+
 ### Fixed
 - Library keys (F9 sidebar, Ctrl+A, Ctrl+F, Ctrl+O, ...) did nothing on the first start of a beta version until you
   clicked into the library: the keyboard focus starts on the beta notice above the library, outside the page that owned
   those keys. The notices now carry them too.
+- A flaky UI scenario that read the screen before the app had finished (live updates from the e-reader).
+- Debian 13, Debian 12 and Ubuntu 24.04 ship a GTK older than 4.20: they are not supported by the native packages (use the
+  Flatpak); this is now stated on the install page.
 
 ## [0.3.0-beta.2] - 2026-11-23
 
@@ -144,7 +166,8 @@ editor.
 - `bookx://` links and a diagnostics report for bug reports.
 - Flatpak manifest (GNOME 50 runtime, offline crates), CI workflow.
 
-[Unreleased]: https://github.com/adhadse/Bookx/compare/v0.3.0-beta.2...HEAD
+[Unreleased]: https://github.com/adhadse/Bookx/compare/v0.3.0-beta.3...HEAD
+[0.3.0-beta.3]: https://github.com/adhadse/Bookx/releases/tag/v0.3.0-beta.3
 [0.3.0-beta.2]: https://github.com/adhadse/Bookx/releases/tag/v0.3.0-beta.2
 [0.3.0-beta.1]: https://github.com/adhadse/Bookx/releases/tag/v0.3.0-beta.1
 [0.3.0]: https://github.com/adhadse/Bookx/releases/tag/v0.3.0

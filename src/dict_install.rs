@@ -710,7 +710,9 @@ mod tests {
         let url = format!("http://{}/d.tgz", l.local_addr().unwrap());
         let h = std::thread::spawn(move || {
             l.set_nonblocking(false).unwrap();
-            for s in l.incoming().take(6) {
+            // no limit on connections: the installer may try an origin again (a bad checksum is retried), and a server that has
+            // stopped listening answers the next try with "connection reset", which made this test fail on a loaded machine
+            for s in l.incoming() {
                 let Ok(mut s) = s else { continue };
                 let mut r = std::io::BufReader::new(s.try_clone().unwrap());
                 let mut line = String::new();
