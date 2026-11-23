@@ -173,7 +173,7 @@ function Bookx:identity()
         server = self.settings:readSetting("server"),
         user = self.settings:readSetting("user"),
         key = self.settings:readSetting("key"),
-        device = self.settings:readSetting("device_name") or require("device").model or "KOReader",
+        device = Sync.device_label(self.settings:readSetting("device_name"), require("device").model),
         device_id = self.settings:readSetting("device_id"),
         koreader = koreader_version(),
     }

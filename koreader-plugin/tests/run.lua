@@ -17,6 +17,17 @@ local function check(cond, msg)
 end
 local function eq(a, b, msg) check(a == b, msg .. " (got " .. tostring(a) .. ", wanted " .. tostring(b) .. ")") end
 
+-- the name a device sends
+do
+    eq(Sync.device_label(nil, "leaf2"), "leaf2", "the model is sent as KOReader reports it")
+    eq(Sync.device_label("", "Kobo_nova"), "Kobo_nova", "an empty custom name falls back to the model")
+    eq(Sync.device_label("  Anna's Leaf ", "leaf2"), "Anna's Leaf", "the name the user typed wins, trimmed")
+    eq(Sync.device_label(nil, nil), "KOReader", "nothing known: KOReader")
+    eq(Sync.device_label("", "  \n "), "KOReader", "blank is nothing")
+    eq(Sync.device_label(nil, "Onyx\tScubapilot-IDP\1"), "Onyx Scubapilot-IDP", "control characters become a space or go")
+    eq(#Sync.device_label(string.rep("x", 500), nil), 128, "cut to 128 characters")
+end
+
 -- json
 do
     local t = { a = 1, b = { 1, 2, 3 }, c = "x\n\"y\"\\", d = true, e = 1.5, f = "é ✓ 😀" }
