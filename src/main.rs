@@ -144,6 +144,8 @@ mod diag_addr;
 mod diag_gather;
 #[cfg(test)]
 mod diag_pii;
+#[cfg(test)]
+mod diag_replay;
 mod diag_facts;
 mod diag_fetch;
 mod diag_problems;

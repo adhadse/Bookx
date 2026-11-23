@@ -178,6 +178,7 @@ pub fn gather(shared: &SharedRef, entry: Option<&str>, parent: Option<&gtk::Widg
         extra: crate::trace::collect(),
         entry: entry.map(str::to_string),
         probe: None,
+        helpers: crate::diag_gather::Helpers::detect(),
     };
     let input = crate::diag_gather::input(&world);
     (input, scrub)

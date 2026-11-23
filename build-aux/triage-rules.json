@@ -11,7 +11,7 @@
   "audiobook": "Audiobooks",
   "devices": "Devices",
   "sync": "Sync (KOSync client)",
-  "server": "Built-in sync and share server",
+  "server": "Built-in server",
   "opds": "OPDS and web import",
   "backup": "Backups",
   "news": "News and read later",
@@ -506,7 +506,7 @@
    "severity": "annoyance",
    "state": false,
    "all": [
-    "(?P<area>\\w+)/(?P<op>\\w+) FAIL[^\\n]*class=dns"
+    "(?P<area>sync|backup|opds|metadata|news|server|tts|mcp|network|devices|import|convert|search|audiobook)/(?P<op>\\w+) FAIL[^\\n]*class=dns"
    ],
    "any": [],
    "none": [],
@@ -530,7 +530,7 @@
    "severity": "annoyance",
    "state": false,
    "all": [
-    "(?P<area>\\w+)/(?P<op>\\w+) FAIL[^\\n]*class=timeout"
+    "(?P<area>sync|backup|opds|metadata|news|server|tts|mcp|network|devices|import|convert|search|audiobook)/(?P<op>\\w+) FAIL[^\\n]*class=timeout"
    ],
    "any": [],
    "none": [],
@@ -553,7 +553,7 @@
    "severity": "annoyance",
    "state": false,
    "all": [
-    "(?P<area>\\w+)/(?P<op>\\w+) FAIL[^\\n]*class=(?:refused|unreachable)"
+    "(?P<area>sync|backup|opds|metadata|news|server|tts|mcp|network|devices|import|convert|search|audiobook)/(?P<op>\\w+) FAIL[^\\n]*class=(?:refused|unreachable)"
    ],
    "any": [],
    "none": [],
@@ -694,15 +694,15 @@
   },
   {
    "id": "server-port",
-   "area": "Built-in server",
+   "area": "@area",
    "severity": "annoyance",
    "state": false,
    "all": [
-    "(?:server|mcp)/(?P<op>\\w+) FAIL[^\\n]*class=port_in_use"
+    "(?P<area>server|mcp)/(?P<op>\\w+) FAIL[^\\n]*class=port_in_use"
    ],
    "any": [],
    "none": [],
-   "cause": "The built-in server could not start: its port is already in use by another program.",
+   "cause": "{area}: the server could not start, its port is already in use by another program.",
    "hint": "Choose another port in Sync > Advanced, or stop the other program (a second Bookx, KOReader sync server, Calibre).",
    "asks": [
     "Which port is set?",
@@ -834,12 +834,111 @@
    ]
   },
   {
+   "id": "no-rar-helper",
+   "area": "Conversion",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "(?:import|reader|convert)/\\w+ FAIL[^\\n]*fmt=cb[rz7]",
+    "RAR helper \\(CBR\\): unrar or 7-Zip: no"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "A CBR comic cannot be unpacked: neither unrar nor 7-Zip (with RAR support) is installed.",
+   "hint": "Install the original unrar or 7-Zip, or convert the file to CBZ. In a Flatpak the helper must be in the runtime.",
+   "asks": [
+    "Is it really a RAR archive (many .cbr are zip files)?",
+    "Which distribution, and is Bookx a Flatpak?",
+    "Does `unrar` run in a terminal?",
+    "Is 7-Zip 26 without RAR support installed?",
+    "Does converting to CBZ work?"
+   ],
+   "evidence": [
+    "(?:import|reader|convert)/\\w+ FAIL[^\\n]*",
+    "RAR helper \\(CBR\\)[^\\n]*"
+   ]
+  },
+  {
+   "id": "no-djvu-helper",
+   "area": "Conversion",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "(?:import|reader|convert)/\\w+ FAIL[^\\n]*fmt=djvu?",
+    "DjVuLibre \\(DJVU\\): no"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "A DJVU book cannot be read: DjVuLibre (ddjvu, djvused) is not installed.",
+   "hint": "Install djvulibre; in a Flatpak it must be part of the runtime or the extension.",
+   "asks": [
+    "Which distribution, and is Bookx a Flatpak?",
+    "Does `ddjvu` run in a terminal?",
+    "Is the file a bundled or an indirect DJVU?",
+    "Which size?",
+    "Does another viewer open it?"
+   ],
+   "evidence": [
+    "(?:import|reader|convert)/\\w+ FAIL[^\\n]*",
+    "DjVuLibre \\(DJVU\\)[^\\n]*"
+   ]
+  },
+  {
+   "id": "tts-no-player",
+   "area": "Read aloud",
+   "severity": "annoyance",
+   "state": true,
+   "all": [
+    "Audio player \\(pacat, pw-cat or aplay\\) found: no"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "Read aloud and audiobooks have no way to play sound: no audio player (pacat, pw-cat or aplay) was found.",
+   "hint": "Install the PulseAudio or PipeWire tools (pacat) or alsa-utils; in a Flatpak the pulseaudio socket is needed (see the sandbox section).",
+   "asks": [
+    "Which sound server (PipeWire or PulseAudio)?",
+    "Is Bookx a Flatpak (and does it have the pulseaudio socket)?",
+    "Does `pacat` exist in a terminal?",
+    "Is the sound output a headset or HDMI?",
+    "Does other sound work?"
+   ],
+   "evidence": [
+    "Audio player [^\\n]*",
+    "Sockets: [^\\n]*"
+   ]
+  },
+  {
+   "id": "tts-no-espeak",
+   "area": "Read aloud",
+   "severity": "annoyance",
+   "state": true,
+   "all": [
+    "Engine: (?P<engine>piper|kokoro)",
+    "espeak-ng found: no"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The {engine} voices need espeak-ng for phonemes, and it is not installed.",
+   "hint": "Install espeak-ng (the Flatpak has it built in).",
+   "asks": [
+    "Which distribution?",
+    "Is Bookx a Flatpak?",
+    "Does `espeak-ng --version` run?",
+    "Which language is the book?",
+    "Did the voice download finish?"
+   ],
+   "evidence": [
+    "Engine: [^\\n]*",
+    "espeak-ng found: [^\\n]*"
+   ]
+  },
+  {
    "id": "convert-helper",
    "area": "Conversion",
    "severity": "annoyance",
    "state": false,
    "all": [
-    "(?:convert|import|reader)/\\w+ FAIL[^\\n]*(?:unrar|ddjvu|djvu|helper|pdftotext|ebook-convert)"
+    "(?:convert|import|reader)/\\w+ FAIL[^\\n]*(?i:unrar|7z|ddjvu|djvu|rar comic|helper|pdftotext|ebook-convert)"
    ],
    "any": [],
    "none": [],
@@ -854,7 +953,8 @@
    ],
    "evidence": [
     "(?:convert|import|reader)/\\w+ FAIL[^\\n]*",
-    "(?m)^- (?:unrar|ddjvu|djvutxt)[^\\n]*"
+    "RAR helper \\(CBR\\)[^\\n]*",
+    "DjVuLibre \\(DJVU\\)[^\\n]*"
    ]
   },
   {
@@ -979,7 +1079,7 @@
    "severity": "annoyance",
    "state": false,
    "all": [
-    "(?:tts|audiobook)/\\w+ FAIL[^\\n]*(?:audio output|no sink|audio device|pulse|pipewire|alsa)"
+    "(?:tts|audiobook)/\\w+ FAIL[^\\n]*(?i:audio output|no sink|audio device|audio player|pulse|pipewire|alsa)"
    ],
    "any": [],
    "none": [],
@@ -1166,15 +1266,15 @@
   },
   {
    "id": "metadata-flaky",
-   "area": "Metadata and lookup",
+   "area": "@area",
    "severity": "annoyance",
    "state": false,
    "all": [
-    "(?:metadata|news)/\\w+ FAIL[^\\n]*class=(?:timeout|dns|unreachable|refused|status)"
+    "(?P<area>metadata|news)/\\w+ FAIL[^\\n]*class=(?:timeout|dns|unreachable|refused|status)"
    ],
    "any": [],
    "none": [],
-   "cause": "A download from a web service failed (the service or the network).",
+   "cause": "{area}: a download from a web service failed (the service or the network).",
    "hint": "Usually temporary; try again later. A fixed status such as 429 means rate limiting.",
    "asks": [
     "Does it fail every time?",
@@ -1408,11 +1508,11 @@
   },
   {
    "id": "library-fail",
-   "area": "Library",
+   "area": "@area",
    "severity": "annoyance",
    "state": false,
    "all": [
-    "(?:library|database|settings)/(?P<op>\\w+) FAIL"
+    "(?P<area>library|database|settings)/(?P<op>\\w+) FAIL"
    ],
    "any": [],
    "none": [],
@@ -1481,6 +1581,53 @@
     "Language script: [^\\n]*",
     "Interface language: [^\\n]*",
     "Renderer: [^\\n]*"
+   ]
+  },
+  {
+   "id": "annotation-unlinked",
+   "area": "Built-in server",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "server/annotation_merge[^\\n]*unplaced_or_unlinked=(?P<n>[1-9]\\d*)"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "{n} annotation(s) from a device could not be linked to a book in the library (no matching file or title).",
+   "hint": "The device sends a document id (hash of the file or of its name): the same file must be in the library, and the matching method must agree.",
+   "asks": [
+    "Is the book in the library, as the same file?",
+    "Which matching method does KOReader use?",
+    "Which format?",
+    "Was the book converted after it was sent?",
+    "How many annotations are missing?"
+   ],
+   "evidence": [
+    "server/annotation_merge[^\\n]*"
+   ]
+  },
+  {
+   "id": "index-empty",
+   "area": "Search",
+   "severity": "annoyance",
+   "state": true,
+   "all": [
+    "Search index: 0 of (?P<n>[1-9]\\d*) books"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The full-text index is empty ({n} books): searching inside books finds nothing yet.",
+   "hint": "Indexing has not run or failed; check the jobs and the disk space, and the file system of the library.",
+   "asks": [
+    "Did indexing ever start (Library > Search)?",
+    "How many books and how big?",
+    "Is the library on a network folder?",
+    "Is the disk full?",
+    "Does a rebuild of the index help?"
+   ],
+   "evidence": [
+    "Search index: [^\\n]*",
+    "Free space: [^\\n]*"
    ]
   },
   {

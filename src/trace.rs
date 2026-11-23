@@ -72,7 +72,7 @@ areas! {
     Audiobook => "audiobook", "Audiobooks";
     Devices => "devices", "Devices";
     Sync => "sync", "Sync (KOSync client)";
-    Server => "server", "Built-in sync and share server";
+    Server => "server", "Built-in server";
     Opds => "opds", "OPDS and web import";
     Backup => "backup", "Backups";
     News => "news", "News and read later";

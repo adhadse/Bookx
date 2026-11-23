@@ -126,7 +126,7 @@ pub fn fixture() -> Fixture {
     Fixture { dir, cfg, lib, id_one: ids[0], id_two: ids[1] }
 }
 
-fn entry(area: Area, name: &str, ok: bool, class: Option<ErrorClass>, http: Option<u16>, fields: &[(&str, &str)], msg: Option<&str>) -> Entry {
+pub fn entry(area: Area, name: &str, ok: bool, class: Option<ErrorClass>, http: Option<u16>, fields: &[(&str, &str)], msg: Option<&str>) -> Entry {
     Entry {
         time: 1_763_900_000,
         area,
@@ -249,6 +249,7 @@ pub fn world<'a>(fx: &'a Fixture, entry_area: Option<&str>) -> World<'a> {
         )],
         entry: entry_area.map(str::to_string),
         probe: None,
+        helpers: Default::default(),
     }
 }
 

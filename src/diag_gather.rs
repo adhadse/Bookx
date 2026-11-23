@@ -107,9 +107,38 @@ pub fn server(cfg: &Config, view: &ServerView) -> Section {
     s
 }
 
-pub fn tts(cfg: &Config) -> Section {
+/// Helper programs that features need: found or not (never where).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Helpers {
+    pub rar: bool,
+    pub djvu: bool,
+    pub espeak: bool,
+    pub audio_player: bool,
+}
+
+impl Helpers {
+    pub fn detect() -> Helpers {
+        Helpers {
+            rar: bookx_formats::rar::find_tool().is_some(),
+            djvu: bookx_formats::djvu::find_tools().is_some(),
+            espeak: bookx_tts::phonemize::espeak_program().is_some(),
+            audio_player: bookx_tts::sink::CommandSink::available(),
+        }
+    }
+}
+
+pub fn helpers(h: &Helpers) -> Section {
+    let mut s = Section::new("Conversion");
+    s.row("RAR helper (CBR): unrar or 7-Zip", Fact::flag(h.rar))
+        .row("DjVuLibre (DJVU)", Fact::flag(h.djvu));
+    s
+}
+
+pub fn tts(cfg: &Config, h: &Helpers) -> Section {
     let mut s = Section::new("Read aloud");
-    s.row("Engine", Fact::text(&cfg.tts.engine));
+    s.row("Engine", Fact::text(&cfg.tts.engine))
+        .row("espeak-ng found", Fact::flag(h.espeak))
+        .row("Audio player (pacat, pw-cat or aplay) found", Fact::flag(h.audio_player));
     s
 }
 
@@ -146,13 +175,13 @@ pub fn network(cfg: &Config) -> Section {
     s
 }
 
-pub fn settings(cfg: &Config) -> Section {
+pub fn settings(cfg: &Config, language: &str) -> Section {
     let mut s = Section::new("Display and interface");
-    s.row("Interface language", Fact::lang(&crate::i18n::current()))
+    s.row("Interface language", Fact::lang(language))
         .row(
             "Language script",
             Fact::choice(
-                crate::diag_system::script_of(&crate::i18n::current()),
+                crate::diag_system::script_of(language),
                 &["right-to-left (Arabic script)", "right-to-left (Hebrew script)", "Devanagari", "Bengali", "other Indic or South-East Asian", "CJK", "Cyrillic", "Greek", "Latin", "unknown"],
             ),
         )
@@ -298,6 +327,7 @@ pub struct World<'a> {
     pub entry: Option<String>,
     /// The library folder as read; `None` reads the real one.
     pub probe: Option<crate::diag_system::LibraryProbe>,
+    pub helpers: Helpers,
 }
 
 /// The report input of a world.
@@ -311,7 +341,7 @@ pub fn input(w: &World) -> crate::report::Input {
     if let Some(t) = &w.flatpak_info {
         secs.push(crate::diag_system::flatpak_section(t));
     }
-    secs.extend(sections(w.cfg, &w.server, &w.plugins, w.patches));
+    secs.extend(sections(w.cfg, &w.env.language, &w.server, &w.plugins, w.patches, &w.helpers));
     secs.push(last_book(w.lib));
     secs.push(books_involved(w.lib, &book_ids(&w.trace)));
     for (area, rows) in &w.extra {
@@ -359,14 +389,15 @@ pub fn scrub_rules(
 }
 
 /// Every section from the config and the running server.
-pub fn sections(cfg: &Config, view: &ServerView, plugins_list: &[bookx_plugin::PluginStatus], patches: usize) -> Vec<Section> {
+pub fn sections(cfg: &Config, language: &str, view: &ServerView, plugins_list: &[bookx_plugin::PluginStatus], patches: usize, h: &Helpers) -> Vec<Section> {
     vec![
         sync_client(cfg),
         server(cfg, view),
-        tts(cfg),
+        tts(cfg, h),
+        helpers(h),
         backups(cfg),
         network(cfg),
-        settings(cfg),
+        settings(cfg, language),
         self::plugins(plugins_list, patches),
     ]
 }
