@@ -17,7 +17,7 @@ md5 = "0.7"
 argon2 = "0.5"
 getrandom = "0.2"
 hmac = "0.12"
-sha2 = "0.10"
+sha2 = "0.11"
 percent-encoding = "2"
 roxmltree = "0.21"
 serde = { version = "1", features = ["derive"] }
