@@ -508,6 +508,13 @@ impl Ctx {
             let Some(ctx) = weak.upgrade() else { return };
             ctx.calibre_btn.set_sensitive(!read_only(&ctx.shared));
             ctx.calibre_progress.set_visible(false);
+            {
+                let mut t = crate::trace::event(crate::trace::Area::Import, "calibre");
+                match &r {
+                    Ok(_) => t.ok(),
+                    Err(e) => t.fail(e),
+                }
+            }
             match r {
                 Ok(out) => {
                     let summary = out.summary();

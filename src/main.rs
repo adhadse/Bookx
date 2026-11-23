@@ -140,6 +140,17 @@ mod readwise_sync;
 mod release_consistency;
 mod remove_undo;
 mod report;
+mod diag_addr;
+mod diag_gather;
+#[cfg(test)]
+mod diag_pii;
+mod diag_facts;
+mod diag_fetch;
+mod diag_problems;
+mod diag_stall;
+mod diag_system;
+mod trace;
+mod triage;
 mod rsvp_view;
 mod safe_mode;
 mod saved_searches;

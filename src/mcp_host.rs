@@ -201,6 +201,7 @@ pub fn stop() {
 
 /// (Re)starts the server for the library in `root` and returns its address.
 pub fn start(root: &Path, settings: &mut McpSettings) -> Result<String> {
+    crate::trace::traced(crate::trace::Area::Mcp, "start", |_o| {
     stop();
     if let Some(p) = settings.problem() {
         bail!(p);
@@ -227,6 +228,7 @@ pub fn start(root: &Path, settings: &mut McpSettings) -> Result<String> {
     let url = handle.url();
     HOST.with(|h| *h.borrow_mut() = Some(handle));
     Ok(url)
+    })
 }
 
 /// Called at start-up: runs the server when the user left it switched on.

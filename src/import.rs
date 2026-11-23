@@ -58,6 +58,8 @@ pub fn collect(dir: &Path, recursive: bool, out: &mut Vec<PathBuf>) {
 
 /// Reads any supported file into a ready-to-add book. Safe to call from worker threads.
 pub fn prepare(path: &Path) -> Result<Prepared> {
+    crate::trace::traced(crate::trace::Area::Import, "prepare", |o| {
+        o.file(path);
     // audio (a file, a folder, a zip of parts) is an audiobook, not a book to convert
     if !is_supported(path) && crate::audiobook::is_audio_source(path) {
         let data = crate::audiobook::data_dir().context("no settings folder")?;
@@ -75,6 +77,7 @@ pub fn prepare(path: &Path) -> Result<Prepared> {
         note_patched(&prepared, fields, &patches);
     }
     Ok(prepared)
+    })
 }
 
 /// Fields (`content` and metadata fields) that import patches changed in a prepared book: (title, size, fields, patches).

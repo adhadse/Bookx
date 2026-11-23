@@ -86,6 +86,7 @@ pub mod reading_ruler;
 pub mod replace_fields;
 pub mod report_dialog;
 pub mod report_notices;
+pub mod stall_watch;
 pub mod rsvp;
 pub mod saved;
 pub mod secrets_unlock;

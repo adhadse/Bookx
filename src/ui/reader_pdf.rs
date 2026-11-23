@@ -382,6 +382,7 @@ impl ReaderPdf {
 
     /// Lays the pages out for the window, the zoom and the mode, keeps the reading position.
     fn relayout(&mut self) {
+        crate::trace::timed(crate::trace::Area::Reader, "pdf_relayout", |_o| {
         let (vw, vh) = self.view_size();
         let (page, frac) = {
             let st = self.state.borrow();
@@ -405,6 +406,7 @@ impl ReaderPdf {
         self.update_zoom_label();
         self.w.area.queue_draw();
         self.request_visible();
+        })
     }
 
     fn configure_adjustments(&self, keep: Option<(usize, f32)>) {

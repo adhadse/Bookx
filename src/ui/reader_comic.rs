@@ -1041,6 +1041,7 @@ impl ReaderComic {
 
     /// New mode, direction or colours: lay the pages out again at the same page.
     fn relayout(&mut self, redecode: bool) {
+        crate::trace::timed(crate::trace::Area::Reader, "comic_relayout", |_o| {
         let page = self.page;
         if redecode {
             self.r#gen += 1;
@@ -1058,6 +1059,7 @@ impl ReaderComic {
         self.show(page, false);
         self.sync_controls();
         self.request_thumbs();
+        })
     }
 
     /// The Go to Page dialog (the field takes a page number).

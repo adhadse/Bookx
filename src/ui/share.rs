@@ -103,6 +103,14 @@ pub fn apply(
         Ok(_) => tracing::info!(target: "bookx_crumb", "sync server stopped"),
         Err(e) => tracing::warn!("sync server could not start: {e}"),
     }
+    {
+        let mut t = crate::trace::event(crate::trace::Area::Server, if on { "start" } else { "stop" });
+        t.num("port", settings.port as u64).flag("https", settings.https).flag("lan", settings.lan).flag("kosync", settings.kosync);
+        match &r {
+            Ok(_) => t.ok(),
+            Err(e) => t.fail(e),
+        }
+    }
     LAST_ERROR.with(|e| *e.borrow_mut() = r.as_ref().err().cloned().unwrap_or_default());
     crate::settings_bus::sync().notify();
     r

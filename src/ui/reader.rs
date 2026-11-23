@@ -556,6 +556,7 @@ impl Reader {
     }
 
     fn load_chapter(&mut self, idx: usize, frac: Option<f64>, anchor: Option<String>, last: bool) {
+        crate::trace::timed(crate::trace::Area::Reader, "load_chapter", |_o| {
         let idx = idx.min(self.spine.len().saturating_sub(1));
         let Some(path) = self.spine.get(idx).cloned() else {
             return;
@@ -619,6 +620,7 @@ impl Reader {
             self.canvas.set_hits(hits, Some(nth));
         }
         self.update_bookmark_button();
+        })
     }
 
     /// The marks of the book map (bookmarks, highlights, notes) and the notes with their text,
@@ -837,6 +839,11 @@ impl Reader {
             })
             .collect();
         *self.sync_sigs.borrow_mut() = crate::sync_live::sigs_of(b);
+        crate::trace::event(crate::trace::Area::Reader, "paint_highlights")
+            .num("stored", b.highlights.len() as u64)
+            .num("in_chapter", hl.len() as u64)
+            .quiet()
+            .ok();
         self.canvas.set_highlights(hl);
     }
 
@@ -5476,6 +5483,15 @@ impl SimpleComponent for Reader {
         };
 
         {
+            if let Some(b) = shared.lib.borrow().get(book_id) {
+                crate::trace::event(crate::trace::Area::Reader, "open_book")
+                    .book(book_id)
+                    .fmt(b.file.rsplit('.').next().unwrap_or(""))
+                    .size_class("size", b.size)
+                    .num("chapters", model.weights.len() as u64)
+                    .lang(&b.meta.language)
+                    .ok();
+            }
             let start = shared.lib.borrow().get(book_id).and_then(|b| b.position);
             let (idx, frac) = start.map(|p| (p.spine, Some(p.frac))).unwrap_or((0, None));
             // Defer the first layout until the canvas has a size.

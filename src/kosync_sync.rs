@@ -87,6 +87,14 @@ impl KoSyncPrefs {
     }
 }
 
+/// The flight-recorder entry of one KOSync call about a book: its format, size class, library id and
+/// the document matching method (never its name or path). The caller finishes it with `ok` or `fail`.
+pub fn trace_op(name: &'static str, book_id: u64, path: &std::path::Path, prefs: &KoSyncPrefs) -> crate::trace::Op {
+    let mut t = crate::trace::op(crate::trace::Area::Sync, name);
+    t.book(book_id).file(path).word("method", if prefs.by_filename { "filename" } else { "partial-md5" });
+    t
+}
+
 // -- position mapping ---------------------------------------------------------------------------
 
 /// The share of the book before the place `frac` of chapter `spine`, by the chapter `weights`

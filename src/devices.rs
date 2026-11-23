@@ -628,6 +628,16 @@ pub fn send_full(
     opts: &SendOptions,
     notes: Option<&Notes>,
 ) -> Result<Sent> {
+    crate::trace::traced(crate::trace::Area::Devices, "copy", |o| {
+        o.device(&device.name).file(epub).word(
+            "backend",
+            match drivers.backend(device) {
+                Backend::Usb => "usb",
+                Backend::Mtp => "mtp",
+                Backend::Cloud => "cloud",
+                Backend::Plugin => "plugin",
+            },
+        );
     let mut bytes = std::fs::read(epub).with_context(|| format!("reading {}", epub.display()))?;
     let src_name = epub
         .file_name()
@@ -684,6 +694,7 @@ pub fn send_full(
         sidecar,
         fell_back_from: failed,
         note,
+    })
     })
 }
 

@@ -74,6 +74,7 @@ fn mock_marker() -> PathBuf {
 /// The engine for a book in `language`: what the settings ask for, or what works. When nothing
 /// can read yet the error is a [`NotReady`] (download the voice, install espeak-ng, ...).
 pub fn open_engine(prefs: &TtsPrefs, language: &str) -> Result<Opened> {
+    crate::trace::traced(crate::trace::Area::Tts, "open_engine", |_o| {
     if mock_download().is_some() && !mock_marker().exists() {
         return Err(NotReady::NoVoice.into());
     }
@@ -81,6 +82,7 @@ pub fn open_engine(prefs: &TtsPrefs, language: &str) -> Result<Opened> {
         return Err(NotReady::NoEspeak.into());
     }
     bookx_tts::factory::open(prefs, &store(), language, cache_dir())
+    })
 }
 
 /// What downloading the default voice (Kokoro, small model) involves, for the first-time dialog.
@@ -115,6 +117,7 @@ pub fn download_packs(
     cancel: &Cancel,
     progress: &mut dyn FnMut(&str, u64, u64, usize),
 ) -> std::result::Result<(), Failure> {
+    crate::trace::traced_dbg(crate::trace::Area::Tts, "download_packs", |_o| {
     if let Some(m) = mock_download() {
         let steps = 20u64;
         let (ms, switch) = match m {
@@ -146,6 +149,7 @@ pub fn download_packs(
         progress(&p.file, p.done, p.total, p.origin)
     })
     .map_err(|e| setup::classify(&format!("{e:#}")))
+    })
 }
 
 /// The command that installs espeak-ng on this system, if the distribution is known.

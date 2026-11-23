@@ -157,6 +157,13 @@ impl Scrubber {
         let lib = s.library.trim_end_matches('/');
         if lib.len() > 1 {
             out = out.replace(lib, "<library>");
+            // the folder's own name (`Alice's Ebooks`) names a person as well as the path does
+            if let Some(name) = lib.rsplit('/').next() {
+                const COMMON: &[&str] = &["books", "library", "ebooks", "e-books", "documents", "downloads", "calibre", "bookx", "bookx-library"];
+                if name.chars().count() >= 5 && !COMMON.contains(&name.to_ascii_lowercase().as_str()) {
+                    out = out.replace(name, "<library>");
+                }
+            }
         }
         for (list, label) in [(&s.hosts, "<host>"), (&s.accounts, "<account>")] {
             let mut v: Vec<&String> = list.iter().filter(|h| h.chars().count() >= 3).collect();
@@ -216,7 +223,16 @@ pub fn scrub_for(cfg: &crate::config::Config, lib: &crate::core::library::Librar
             .unwrap_or_default(),
         user: std::env::var("USER").unwrap_or_default(),
         library: lib.root.display().to_string(),
-        titles: lib.books.iter().map(|b| b.meta.title.clone()).collect(),
+        titles: lib
+            .books
+            .iter()
+            .flat_map(|b| {
+                // authors and series name people and shelves as much as titles do
+                std::iter::once(b.meta.title.clone())
+                    .chain(b.meta.authors.iter().filter(|a| !a.eq_ignore_ascii_case("unknown")).cloned())
+                    .chain((!b.meta.series.is_empty()).then(|| b.meta.series.clone()))
+            })
+            .collect(),
         secrets,
         hosts,
         accounts,

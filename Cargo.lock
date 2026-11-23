@@ -525,6 +525,7 @@ dependencies = [
  "resvg",
  "rhai",
  "roxmltree 0.21.2",
+ "rustix",
  "rustls",
  "scraper",
  "serde",

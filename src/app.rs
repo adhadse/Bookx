@@ -176,7 +176,15 @@ impl SimpleComponent for App {
         }
         apply_scheme(cfg.scheme);
 
-        let (lib, guard, migrated) = match crate::library_health::open(&cfg.library_dir) {
+        let mut open_t = crate::trace::event(crate::trace::Area::Database, "open_library");
+        let opened = crate::library_health::open(&cfg.library_dir);
+        match &opened {
+            Ok((l, _, migrated)) => {
+                open_t.count_class("books", l.books.len() as u64).flag("migrated", migrated.is_some()).ok();
+            }
+            Err(e) => open_t.fail(&format!("{e:#}")),
+        }
+        let (lib, guard, migrated) = match opened {
             Ok(o) => o,
             Err(e) => {
                 tracing::error!("cannot open library {}: {e:#}", cfg.library_dir.display());
@@ -201,6 +209,7 @@ impl SimpleComponent for App {
                 let failed = crate::plugins::reload(&mut m);
                 for (id, e) in &failed {
                     tracing::warn!("plugin {id} could not be loaded: {e}");
+                    crate::trace::event(crate::trace::Area::Plugins, "load").fail(e);
                 }
                 tracing::info!(
                     target: "bookx_crumb",
@@ -217,6 +226,7 @@ impl SimpleComponent for App {
             guard: RefCell::new(guard),
         });
         shared.start_indexing();
+        crate::ui::stall_watch::install();
         crate::applog::set_scrub(crate::ui::report_dialog::scrub_rules(&shared));
         tracing::info!(
             target: "bookx_crumb",
@@ -264,7 +274,10 @@ impl SimpleComponent for App {
             });
             let s2 = shared.clone();
             relm4::main_adw_application()
-                .connect_shutdown(move |_| crate::ui::health::on_exit(&s2));
+                .connect_shutdown(move |_| {
+                    crate::ui::health::on_exit(&s2);
+                    crate::applog::persist_trace_tail();
+                });
         }
         if let Some(r) = repaired {
             tracing::info!(

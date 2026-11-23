@@ -102,6 +102,8 @@ pub fn open_book(
     });
     let (tx, rx) = std::sync::mpsc::channel();
     let p = prefs.clone();
+    let mut t = crate::kosync_sync::trace_op("pull", book_id, &path, &prefs);
+    t.ratio("local", local);
     std::thread::spawn(move || {
         let r = (|| -> anyhow::Result<(String, Option<Remote>)> {
             let doc = document_id(&path, p.method())?;
@@ -116,10 +118,17 @@ pub fn open_book(
         let (doc, remote) = match r {
             Ok(v) => v,
             Err(e) => {
+                t.fail(&e);
                 eprintln!("kosync_pull: error: {e}");
                 return;
             }
         };
+        t.hash("doc", &doc);
+        match &remote {
+            Some(r) => t.ratio("remote", r.percentage),
+            None => t.word("remote", "none"),
+        };
+        t.ok();
         eprintln!(
             "kosync_pull: doc={doc} remote={} local={:.3}",
             remote
@@ -221,6 +230,8 @@ pub fn flush(shared: &SharedRef, book_id: u64) {
         return;
     };
     let (tx, rx) = std::sync::mpsc::channel();
+    let mut t = crate::kosync_sync::trace_op("push", book_id, &path, &prefs);
+    t.ratio("local", pct);
     std::thread::spawn(move || {
         let qpath = queue::queue_path();
         let doc = document_id(&path, prefs.method()).map_err(|e| format!("{e:#}"));
@@ -257,6 +268,7 @@ pub fn flush(shared: &SharedRef, book_id: u64) {
     });
     poll(rx, move |r| match r {
         Ok(Some(ts)) => {
+            t.ok();
             eprintln!("kosync_push: pct={pct:.3} ok ts={}", ts > 0);
             SESSIONS.with(|s| {
                 if let Some(s) = s.borrow_mut().get_mut(&book_id) {
@@ -264,10 +276,16 @@ pub fn flush(shared: &SharedRef, book_id: u64) {
                 }
             });
         }
-        Ok(None) => eprintln!(
-            "kosync_push: pct={pct:.3} held back, another device is further along and you have not answered yet"
-        ),
-        Err(e) => eprintln!("kosync_push: error: {e}"),
+        Ok(None) => {
+            t.word("note", "held_back").ok();
+            eprintln!(
+                "kosync_push: pct={pct:.3} held back, another device is further along and you have not answered yet"
+            )
+        }
+        Err(e) => {
+            t.fail(&e);
+            eprintln!("kosync_push: error: {e}")
+        }
     });
 }
 
@@ -340,6 +358,11 @@ pub fn flush_queue(shared: &SharedRef, force: bool) {
     poll(rx, |r| {
         QUEUE_RUNNING.with(|q| q.set(false));
         if r.sent + r.kept + r.dropped > 0 {
+            crate::trace::event(crate::trace::Area::Sync, "queue")
+                .num("sent", r.sent as u64)
+                .num("kept", r.kept as u64)
+                .num("dropped", r.dropped as u64)
+                .ok();
             eprintln!(
                 "kosync_queue_flush: sent={} kept={} dropped={}",
                 r.sent, r.kept, r.dropped
@@ -399,6 +422,7 @@ pub fn account_action(
     } else {
         tr("Logging in")
     });
+    let mut t = crate::trace::op(crate::trace::Area::Sync, if register { "register" } else { "login" });
     let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
         let r = if register {
@@ -418,8 +442,12 @@ pub fn account_action(
                 ok();
                 tr("Logged in. Reading positions will sync.")
             }
-            Err(e) => crate::sync_model::account_hint(&e, register),
+            Err(e) => {
+                t.fail(&e);
+                crate::sync_model::account_hint(&e, register)
+            }
         };
+        t.ok();
         eprintln!("kosync_account: {msg}");
         report(msg);
     });

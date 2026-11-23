@@ -146,6 +146,7 @@ pub fn fetch_with(
     fetcher: Arc<dyn Fetcher>,
     plugins: &crate::plugins::Loaded,
 ) -> Result<Option<Fetched>> {
+    crate::trace::traced(crate::trace::Area::Metadata, "fetch", |_o| {
     let q = query_from(md);
     if q.title.is_empty() && q.isbn.is_none() {
         anyhow::bail!("Enter a title or an ISBN first.");
@@ -204,6 +205,7 @@ pub fn fetch_with(
         }
     }
     Ok(found)
+    })
 }
 
 /// The fetcher: the real network, or canned answers from the folder in `$BOOKX_SOURCES_MOCK`
@@ -223,7 +225,7 @@ fn cached() -> &'static Arc<CachingFetcher> {
     F.get_or_init(|| {
         let raw: Arc<dyn Fetcher> = match std::env::var_os("BOOKX_SOURCES_MOCK") {
             Some(dir) => Arc::new(mock_from(Path::new(&dir))),
-            None => Arc::new(UreqFetcher::new()),
+            None => crate::diag_fetch::traced(Arc::new(UreqFetcher::new()), crate::trace::Area::Metadata),
         };
         let healthy: Arc<dyn Fetcher> = Arc::new(HealthFetcher::new(raw, health_board()));
         let dir = cache_dir();

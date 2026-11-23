@@ -514,6 +514,42 @@ pub fn log(id: u64, line: &str) {
 }
 
 pub fn finish(id: u64, result: Result<(), String>) {
+    // the flight recorder: every job, with its duration (the title can name a book: not recorded)
+    if let Some((kind, started)) = HUB.with(|h| {
+        h.borrow()
+            .jobs()
+            .iter()
+            .find(|j| j.id == id)
+            .map(|j| (j.kind, j.started_ms))
+    }) {
+        use crate::trace::Area;
+        let area = match kind {
+            Kind::Import => Area::Import,
+            Kind::Export | Kind::Convert => Area::Convert,
+            Kind::Send => Area::Devices,
+            Kind::Fetch | Kind::Dictionary => Area::Metadata,
+            Kind::Backup => Area::Backup,
+            Kind::News => Area::News,
+            Kind::Voice => Area::Tts,
+        };
+        let mut t = crate::trace::op(area, "job");
+        t.word("kind", match kind {
+            Kind::Import => "import",
+            Kind::Export => "export",
+            Kind::Convert => "convert",
+            Kind::Send => "send",
+            Kind::Fetch => "fetch",
+            Kind::Backup => "backup",
+            Kind::News => "news",
+            Kind::Voice => "voice_download",
+            Kind::Dictionary => "dictionary_download",
+        });
+        t.num("took_ms", (now_ms() - started).max(0) as u64);
+        match &result {
+            Ok(()) => t.ok(),
+            Err(e) => t.fail(e),
+        }
+    }
     if let Err(e) = &result {
         let kind = HUB.with(|h| {
             h.borrow()
