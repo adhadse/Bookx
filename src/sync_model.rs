@@ -99,6 +99,13 @@ pub fn is_legacy_name(name: &str) -> bool {
 /// First screen of the Sync window: what Sync is for, in one plain sentence.
 pub const WINDOW_SENTENCE: &str = N_("Sync your Kobo or other KOReader device over Wi-Fi: reading position, highlights, notes and bookmarks. Use USB for devices without KOReader.");
 
+/// Second sentence of the Sync window: what the Wi-Fi sync does not do (issue #39: nobody should wait for
+/// books to arrive that Bookx never copies).
+pub const WINDOW_BOOKS_NOTE: &str = N_("Sync never copies or deletes books. It moves only reading position, highlights, notes and bookmarks, for books that are already in your library. To get books from an e-reader into Bookx, copy the files to this computer and use Add Books. To put books on an e-reader, use Send to Device.");
+
+/// Under the buttons of the empty library: where books on an e-reader come from.
+pub const WELCOME_DEVICE_NOTE: &str = N_("Books on an e-reader? Sync never copies or deletes books: copy the files to this computer and use Add Books. To put books on a device, use Send to Device.");
+
 pub const STEP_SERVER: &str = N_("Turn on the Bookx sync server");
 pub const STEP_SERVER_HELP: &str = N_("Starts the Bookx sync server on this computer, opens it to your local network so the e-reader can reach it, and creates a library password if you have none (shown under Advanced).");
 /// The same, shortened for the setup card of the Sync window.
@@ -948,6 +955,22 @@ mod tests {
             assert!(!t.contains("KOSync"), "{t}");
         }
         assert!(WINDOW_SENTENCE.contains("Use USB for devices without KOReader"));
+        for t in [WINDOW_BOOKS_NOTE, WELCOME_DEVICE_NOTE] {
+            assert!(!t.contains('\n') && !t.contains("KOSync"), "{t}");
+        }
+    }
+
+    #[test]
+    fn the_sync_says_plainly_that_it_does_not_copy_books() {
+        // issue #39: "Sync doesn't seem to sync the books themselves"
+        for t in [WINDOW_BOOKS_NOTE, WELCOME_DEVICE_NOTE] {
+            assert!(t.contains("never copies or deletes books"), "{t}");
+            assert!(
+                t.contains("Add Books") && t.contains("Send to Device"),
+                "{t}"
+            );
+        }
+        assert!(WINDOW_BOOKS_NOTE.contains("already in your library"));
         assert!(STOCK_NOTE.contains("not supported") && STOCK_NOTE.contains("/bookx"));
         assert!(KOREADER_PATH.contains("More tools → Bookx Sync"));
     }

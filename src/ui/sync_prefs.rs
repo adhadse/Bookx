@@ -221,8 +221,10 @@ pub fn notes_group_for(
         })
     });
     g.set_title(&sync_model::title("what"));
-    g.set_description(Some(&glib::markup_escape_text(&tr(
-        sync_model::BRAND_EXPLAINED,
+    g.set_description(Some(&glib::markup_escape_text(&format!(
+        "{}\n\n{}",
+        tr(sync_model::BRAND_EXPLAINED),
+        tr(sync_model::WINDOW_BOOKS_NOTE)
     ))));
     let (sh, sw) = (shared, switch.downgrade());
     follow(&g, move || {

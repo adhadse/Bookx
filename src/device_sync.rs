@@ -2113,6 +2113,37 @@ mod tests {
         assert_eq!(find_loose(&soft, "mind-killer is"), Some((0, 15)));
     }
 
+    /// Design rule (issue #39): a book that is missing from a device, or a device with nothing on
+    /// it, changes nothing in the library. The plan has no removals, and it lists only what is
+    /// matched.
+    #[test]
+    fn a_device_without_books_or_without_this_book_plans_nothing_for_the_library() {
+        let lib = vec![
+            lib_book(
+                1,
+                "Dune",
+                0.5,
+                vec![hl("h1", "Fear is the mind-killer.", "mine")],
+            ),
+            lib_book(2, "Emma", 0.2, vec![]),
+        ];
+        // a wiped device
+        let p = plan(&[], &lib, &NoLocator);
+        assert!(p.books.is_empty(), "{:?}", p.books.len());
+        assert_eq!(p.matched, 0);
+        // a device that still has Emma but no longer has Dune
+        let dev = vec![reading("Emma.epub", 0.2, vec![], true)];
+        let p = plan(&dev, &lib, &NoLocator);
+        assert!(
+            p.books.iter().all(|b| b.book_id != 1),
+            "Dune is not on the device: nothing is planned for it"
+        );
+        assert!(
+            p.books.iter().all(|b| b.is_empty()),
+            "an equal copy on the device changes nothing"
+        );
+    }
+
     #[test]
     fn prefs_default_to_manual_sync_and_notes_on() {
         let p = SyncPrefs::default();

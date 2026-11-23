@@ -1234,6 +1234,9 @@ msgstr ""
 msgid "Books not found in your library"
 msgstr ""
 
+msgid "Books on an e-reader? Sync never copies or deletes books: copy the files to this computer and use Add Books. To put books on a device, use Send to Device."
+msgstr ""
+
 msgid "Books on the device"
 msgstr ""
 
@@ -7632,6 +7635,12 @@ msgstr ""
 msgid "Rename the tag"
 msgstr ""
 
+msgid "Rename this device"
+msgstr ""
+
+msgid "Rename {}"
+msgstr ""
+
 msgid "Renamed and updated references"
 msgstr ""
 
@@ -9220,6 +9229,9 @@ msgstr ""
 msgid "Sync message"
 msgstr ""
 
+msgid "Sync never copies or deletes books. It moves only reading position, highlights, notes and bookmarks, for books that are already in your library. To get books from an e-reader into Bookx, copy the files to this computer and use Add Books. To put books on an e-reader, use Send to Device."
+msgstr ""
+
 msgid "Sync now"
 msgstr ""
 
@@ -9713,6 +9725,9 @@ msgid "The name can have at most {} characters."
 msgstr ""
 
 msgid "The name cannot contain quotes or colons"
+msgstr ""
+
+msgid "The name is only shown in Bookx. Leave it empty to show the name the device reports."
 msgstr ""
 
 msgid "The name is unchanged"
