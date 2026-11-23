@@ -16,12 +16,12 @@ use std::cell::Cell;
 
 use anyhow::Result;
 use bookx_core::annotation_journal::{
-    diff, Action, Entry, Filter, Kind, Record, Snap, Source, KEEP_DAYS, KEEP_MIN, MAX_BYTES,
-    MAX_ENTRIES,
+    Action, Entry, Filter, KEEP_DAYS, KEEP_MIN, Kind, MAX_BYTES, MAX_ENTRIES, Record, Snap, Source,
+    diff,
 };
 use bookx_core::library::{Book, Bookmark, Highlight};
 use chrono::{DateTime, Utc};
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{Connection, OptionalExtension, params};
 use serde::Deserialize;
 
 use crate::store::SqliteStore;

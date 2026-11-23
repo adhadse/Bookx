@@ -9,7 +9,7 @@ use bookx_core::annotation_journal::{
     self as journal, Action, ActionFilter, Filter, Outcome, Source, WriteContext,
 };
 use bookx_core::library::{Book, Bookmark, Highlight, Library};
-use bookx_store::{open_library, SqliteStore, SCHEMA_VERSION};
+use bookx_store::{SCHEMA_VERSION, SqliteStore, open_library};
 use chrono::{Duration, TimeZone, Utc};
 
 fn tmp(tag: &str) -> PathBuf {
@@ -117,12 +117,14 @@ fn per_book_sources_and_edits_and_bookmarks() {
     let es = o.store.history(&Filter::default(), 10).unwrap();
     assert_eq!(es.len(), 2);
     assert!(es.iter().all(|e| e.source == Source::Import));
-    assert!(es
-        .iter()
-        .any(|e| e.action == Action::Edited && e.record.note().is_empty()));
-    assert!(es
-        .iter()
-        .any(|e| e.action == Action::Deleted && e.kind == journal::Kind::Bookmark));
+    assert!(
+        es.iter()
+            .any(|e| e.action == Action::Edited && e.record.note().is_empty())
+    );
+    assert!(
+        es.iter()
+            .any(|e| e.action == Action::Deleted && e.kind == journal::Kind::Bookmark)
+    );
     let edited = Filter {
         action: ActionFilter::Edited,
         ..Filter::default()
@@ -158,9 +160,11 @@ fn restore_is_a_normal_write_that_is_journalled_and_can_be_undone() {
     // the restore itself is in the history, as additions by undo
     let added = o.store.history_since(mark).unwrap();
     assert_eq!(added.len(), 3);
-    assert!(added
-        .iter()
-        .all(|e| e.action == Action::Added && e.source == Source::Undo));
+    assert!(
+        added
+            .iter()
+            .all(|e| e.action == Action::Added && e.source == Source::Undo)
+    );
     // ... so it can be undone: revert the additions
     let mark2 = o.store.history_mark();
     for e in &added {

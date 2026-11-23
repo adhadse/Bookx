@@ -57,7 +57,7 @@ Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse (agents update it i
 | REL-3 | Debian 13 (trixie) support: replace `adw::ShortcutsDialog` and add a Debian 13 build job for the .deb | open |
 | DEV-1 | Issue #39: Boox device names, "sync never copies or deletes books", device zoo emulation tests | in progress, PR #42 (branch `issue-39-devices`) |
 | DEV-2 | First sync of KOReader plugin 0.3.1 on the owner's Kobo, with the 7-step live-update checklist | blocked on owner, unverified |
-| ANN-1 | History and restore of highlights, notes and bookmarks (SQLite journal) | in progress, local branch `annotation-history` (no PR yet) |
+| ANN-1 | History and restore of highlights, notes and bookmarks (SQLite journal) | in review, PR #44 (branch `annotation-history`) |
 | ANN-2 | Annotations in their own tables `highlights` and `bookmarks` (design-audit step 3) | open (beta.3 candidate; builds on ANN-1 and DATA-1) |
 | DATA-1 | Library update safety: copy first, check after (`bookx-library.db.pre-v<N>-<time>`), and the design audit | in progress, PR #41 |
 | DATA-2 | Statistics, vocabulary and the sync ledgers into the library database (design-audit step 4) | open (beta.3 candidate) |
@@ -100,7 +100,7 @@ Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse (agents update it i
 
 | ID | Item | Status | Pri | Pointer | Who |
 |---|---|---|---|---|---|
-| ANN-1 | History and restore of highlights, notes and bookmarks, with a SQLite journal (`annotation_history` table written by the store in the same transaction as the change) | in progress, local branch `annotation-history` | P1 | `design-audit.md` §4 step 2 (PR #41), `enhancements.md` | agent |
+| ANN-1 | History and restore of highlights, notes and bookmarks, with a SQLite journal (`annotation_history` table written by the store in the same transaction as the change) | in review, PR #44 | P1 | `design-audit.md` §4 step 2 (PR #41), `enhancements.md` | agent |
 | ANN-2 | Move highlights and bookmarks out of the per-book JSON into tables (schema v11, counts verified per book and in total, arrays dropped from `data`); lazy loading of the open book's annotations follows | open | P1 | `design-audit.md` §4 step 3 (PR #41) | agent |
 | ANN-3 | Editing the text of a highlight (roadmap R31) and an automatic last-position bookmark (F6) | open, unverified | P2 | `roadmap-status.md` R31, F6 | agent |
 | ANN-4 | Notes view: the date filters still hold the date as hidden entries, and the reader sidebar has its own copy of the note row | open, unverified | P3 | `archive/ux-gaps-notes.md` | agent |
