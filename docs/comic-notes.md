@@ -2,6 +2,8 @@
 
 Internal notes: how it is built, what was tried, caveats. The user-facing text is the wiki page *Reading → Comics and manga*.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## Design
 
 * A comic is imported as an EPUB with one `images/page-NNNN.ext` per page (`bookx-formats/src/comic.rs`). The converter now adds

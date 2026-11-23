@@ -4,6 +4,8 @@ Budgets live in `crates/*/tests/perf_budgets.rs` (and `perf` modules in the `boo
 not in a library). Each asserts that an operation stays under a budget in release builds. Debug builds get 30x room;
 `BOOKX_PERF_SCALE=2` scales every budget. Run them in release with `make perf`.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## Hot path coverage
 
 | Hot path | Where |
@@ -85,7 +87,7 @@ build under Broadway.
 
 `ui/map_thumbs.rs`. A thumbnail is **one page** (half of a two column view, else the whole view), laid out by an
 off-screen `BookCanvas` of the reader's size and style, so it is the page the reader shows (proved pixel-wise in the
-real session, see `docs/ux-gaps-notes.md`). GTK objects are not `Send`, so the work is time-sliced on the main loop:
+real session, see `docs/archive/ux-gaps-notes.md`). GTK objects are not `Send`, so the work is time-sliced on the main loop:
 
 * hover: 60 ms debounce, `HIGH_IDLE` priority, outdated requests dropped before they start;
 * prefetch when the map opens and when the view moves: the 40 pages nearest the pointer, chapter by chapter (at most

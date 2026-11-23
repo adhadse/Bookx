@@ -3,6 +3,8 @@
 Internal notes. User text: `wiki/docs/koreader-sync.md`. The plugin is `koreader-plugin/bookx.koplugin/` (version in
 `bookxsync.lua`, `M.VERSION`; protocol number `M.PROTOCOL`, answered by the server's `GET /bookx/info`).
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## Run the tests
 
 ```bash

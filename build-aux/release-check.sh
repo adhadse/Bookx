@@ -4,7 +4,7 @@
 #   build-aux/release-check.sh            # or: make release-check
 #   build-aux/release-check.sh v0.3.0     # also: the tag matches the version (the release workflow does this)
 #
-# Checks: every crate and the metainfo and the CHANGELOG agree on the version; the Flatpak sources match
+# Checks: every crate and the metainfo and the CHANGELOG agree on the version; the relative links of docs/ and the README; the Flatpak sources match
 # Cargo.lock; the plugin golden files are unchanged; desktop file, AppStream metainfo and MIME XML validate;
 # the deb/rpm assets and the icons exist; the workflow files parse. A tool that is not installed
 # (desktop-file-validate, appstreamcli, xmllint) is reported as skipped, never as passed.
@@ -75,6 +75,9 @@ else bad "golden plugin files changed: this is an ABI break unless intended (doc
 
 echo "==> README pictures"
 if out=$(python3 build-aux/check-readme-images.py 2>&1); then ok "$out"; else bad "README pictures: $out"; fi
+
+echo "==> internal docs links"
+if out=$(python3 build-aux/check-docs-links.py 2>&1); then ok "$out"; else bad "docs links: $out"; fi
 
 echo "==> desktop integration"
 if command -v desktop-file-validate >/dev/null; then

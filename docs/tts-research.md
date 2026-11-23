@@ -4,6 +4,19 @@ Internal note. Written 2026-11-12/13, sources at the end. The owner's ask: the s
 voice is robotic; use a human-sounding model (XTTS v2 or "Fish Speech v5"), implement the
 inference ourselves if there is no Rust crate, but ship nothing that is not allowed.
 
+Status: finished, pending move to archive/ (still pointed to from enhancements.md or source comments) | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
+## Contents
+
+- [1. Short answer](#1-short-answer)
+- [2. "XTTS v2" and "Fish Speech v5": what exists](#2-xtts-v2-and-fish-speech-v5-what-exists)
+- [3. Candidate models](#3-candidate-models)
+- [4. Rust inference and audio](#4-rust-inference-and-audio)
+- [5. Why XTTS / Fish Speech are not embedded](#5-why-xtts--fish-speech-are-not-embedded)
+- [6. Measurements on this machine](#6-measurements-on-this-machine)
+- [7. Open points / not done](#7-open-points--not-done)
+- [Sources](#sources)
+
 ## 1. Short answer
 
 | Rank | Choice | Why |

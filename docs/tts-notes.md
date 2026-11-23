@@ -2,6 +2,22 @@
 
 Internal. Research and numbers: `docs/tts-research.md`. User docs: `wiki/docs/read-aloud.md`.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
+## Contents
+
+- [What exists (2026-11-13)](#what-exists-2026-11-13)
+- [Measured (this machine, see the research note for the table)](#measured-this-machine-see-the-research-note-for-the-table)
+- [Not tried on hardware / not done](#not-tried-on-hardware--not-done)
+- [Wave 4 additions](#wave-4-additions)
+- [Wave 4: player card (enhancement 11) and first voice (enhancement 20)](#wave-4-player-card-enhancement-11-and-first-voice-enhancement-20)
+- [Wave 4, round 3: drag bug, voice detection bug, download speed, restore](#wave-4-round-3-drag-bug-voice-detection-bug-download-speed-restore)
+- [Reader focus while playing (wave 4, round 4)](#reader-focus-while-playing-wave-4-round-4)
+- [ONNX Runtime origins (wave 4, round 5)](#onnx-runtime-origins-wave-4-round-5)
+- [Card layout manager (wave 4, round 6)](#card-layout-manager-wave-4-round-6)
+- [ONNX Runtime: conda-forge was checked again and is not usable (wave 4, round 7)](#onnx-runtime-conda-forge-was-checked-again-and-is-not-usable-wave-4-round-7)
+- [Narration of EPUB 3 (media overlays), wave 5 (CE-422)](#narration-of-epub-3-media-overlays-wave-5-ce-422)
+
 ## What exists (2026-11-13)
 
 * `crates/bookx-tts` (GTK-free): sentence splitting, chunking, language of a book, the `Engine` trait and the look-ahead

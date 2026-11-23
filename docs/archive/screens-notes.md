@@ -1,3 +1,5 @@
+> Archived 2026-11-23: The screens shipped; what is left is in remaining.md. Living document: [remaining.md](../remaining.md).
+
 # Screens for engine-only features (wave 12)
 
 Internal. Written by the screens agent. User pages: `wiki/docs/{preferences,devices-and-sharing,reverse-proxy,news-and-web,reading,library}.md`.

@@ -5,6 +5,21 @@ Not for the wiki; the user-facing text is `wiki/docs/progress-sync.md`, `koreade
 Code: `src/sync_model.rs` (the information architecture and the state, unit tested), `src/ui/sync_window.rs`,
 `src/ui/sync_prefs.rs`, `src/ui/share.rs`, `src/ui/kosync.rs`, `src/annotation_sync_ui.rs`.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
+## Contents
+
+- [Research applied](#research-applied)
+- [Stepper (2026-11-20, second round)](#stepper-2026-11-20-second-round)
+- [What the owner saw (before)](#what-the-owner-saw-before)
+- [Before / after](#before--after)
+- [Rules the code follows](#rules-the-code-follows)
+- [Where each old setting went](#where-each-old-setting-went)
+- [Tests](#tests)
+- [Live updates (wave 11): what the user sees](#live-updates-wave-11-what-the-user-sees)
+- [Caveats](#caveats)
+- [Server and login did not survive a restart (RCA)](#server-and-login-did-not-survive-a-restart-rca)
+
 ## Research applied
 
 Source: Jakob Nielsen, *Progressive Disclosure*, Nielsen Norman Group, 2006

@@ -1,3 +1,5 @@
+> Archived 2026-11-23: Finished analysis: 255 rows done, 7 not planned, 3 partial (CE-357, 401, 402) which are in roadmap-status.md. Living document: [roadmap-status.md](../roadmap-status.md).
+
 # Calibre "Edit book" gap analysis for the Bookx editor
 
 Research document (no code changes). Date: 2026-11-12. Roadmap rows covered: E1-E25 (`docs/bookx-feature-roadmap.md`, Part 3; the owner's decisions in Part 2 were read first: Rust only, wasm plugins, Rhai for scripting after Wave 2, no GTK in logic crates).

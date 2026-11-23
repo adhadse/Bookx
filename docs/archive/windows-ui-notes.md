@@ -1,3 +1,5 @@
+> Archived 2026-11-23: Finished wave log; every row is addressed. Living document: [remaining.md](../remaining.md).
+
 # Secondary windows: wave 9 notes
 
 Internal notes for `docs/human_interface_backlog.md` §5.7 (WIN-L*, X*, XC-1/2/5/7). Not user documentation.

@@ -4,6 +4,8 @@ Internal (2026-11-21). User text: `wiki/docs/annotations.md` ("Colours and style
 `wiki/docs/koreader-sync.md`. Earlier rounds: `docs/bugs.md` 12 and 18. Line numbers below are of the tree *before* this
 change (`git show HEAD:<file>`) unless marked "now".
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## The report
 
 Highlights that come through Bookx sync (the `/bookx` KOSync extension between the KOReader plugin and Bookx, the USB

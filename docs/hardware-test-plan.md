@@ -4,6 +4,8 @@ What to run on real devices before a release. Nothing here can be automated in C
 PocketBook, a Boox, a touch screen and an e-ink panel. Everything the computer side can verify is verified by
 `bookx-cli device-check`, so run that first and attach its output to every report.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse
+
 ## 0. Setup for every device
 
 1. Build or install the release: `./run.sh --no-run` (installs `bookx` and `bookx-cli`).

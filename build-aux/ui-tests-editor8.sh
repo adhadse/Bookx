@@ -1,4 +1,4 @@
-# Scenarios of the editor human-interface wave 8 (docs/human_interface_backlog.md, EDT-E1 undo toasts, EDT-E2 delete
+# Scenarios of the editor human-interface wave 8 (docs/archive/human_interface_backlog.md, EDT-E1 undo toasts, EDT-E2 delete
 # rules, EDT-E3 checkpoint rows, EDT-E6 Redo/Undo buttons, EDT-E22 contents undo). Sourced by ui-tests.sh (add
 # `. "$HERE/ui-tests-editor8.sh"` next to ui-tests-sync.sh). Dev commands: `editor:toast-info` prints
 # `editor_toast: text="…" button=<label|-> checkpoints=N`, `editor:toast-action` presses the button of the last toast
@@ -44,7 +44,7 @@ scenario editor_revert_buttons 'edit:1,wait:3000,editor:addfile=stray.css,editor
     sed -n 2p <<<"$T" | grep -q "text=\"Reverted to after the change\" button=Undo"; check "and Redo shows an Undo button" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
-# ---- wave 9 (docs/human_interface_backlog.md EDT-E4, E6, E9-E16, E18, E20-E22, E24-E26, E28-E30, E33-E35, E39, E42-E44) ----
+# ---- wave 9 (docs/archive/human_interface_backlog.md EDT-E4, E6, E9-E16, E18, E20-E22, E24-E26, E28-E30, E33-E35, E39, E42-E44) ----
 # Dev commands (editor:...): header-info, tools-menu, book-menu, revert-state, layout, resize=WxH, find-open, replace-open,
 # find-info, switcher-info, file-labels, banner-info, banner-action, save-failed=<why>, fonts-state, dialog-info,
 # dialog-buttons, suff-toggle=<set>:<mode>, suff-add, suff-text, links-ui, links-cancel, narration-ui,

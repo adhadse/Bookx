@@ -4,6 +4,8 @@ Bookx **backs up**; it does not **sync a library**. A backup is a one-way snapsh
 restoring replaces everything. Two computers writing snapshots to one place would overwrite each other's work. This note
 lists what would have to exist before "my library on two computers" can be promised.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## The problem
 
 Three kinds of data change on any device, and each needs its own rule:
