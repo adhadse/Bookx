@@ -69,8 +69,9 @@ schemas, pixbuf loaders), tracked in `docs/enhancements.md` if wanted. Do not me
 
 - One tag per release, **annotated**, named `v` + the version in `Cargo.toml`: `v0.3.0-beta.2`, `v0.3.0-beta.2`,
   `v0.3.0-rc.1`, `v0.3.0`.
-- A tag with `-alpha`, `-beta` or `-rc` in it becomes a **GitHub pre-release** automatically (job `version` in
-  `release.yml`). A plain `vX.Y.Z` is a normal release and becomes "Latest".
+- Every tag, also one with `-alpha`, `-beta` or `-rc`, is published as a normal release and marked **Latest** (owner decision
+  2026-11-23): a GitHub pre-release does not appear in the repository's Releases box. The beta status is in the name, the
+  notes and the app (About), not in GitHub's flag.
 - The tag must match the version in `Cargo.toml` exactly. `build-aux/release-check.sh vX.Y.Z` enforces it, and the
   workflow runs it, so a wrong tag fails before anything is built.
 - Never move or delete a pushed tag that has a published release. Fix forward with the next number
@@ -104,15 +105,15 @@ tag v0.3.0-beta.2 pushed
    │              with a green `required` and an identical tree (build-aux/release-gate.py), else stop
    │      │
    │      ├── tarball   release-check.sh <tag> → cargo build --release → tarball.sh → .deb → .rpm
-   │      └── version   derives "0.3.0-beta.2" and prerelease=true from the tag
+   │      └── version   derives "0.3.0-beta.2" from the tag
    │             └── flatpak   _flatpak.yml → bookx-0.3.0-beta.2-x86_64.flatpak
    │
    └── publish    (after tarball + flatpak) SHA256SUMS → attestation → cosign sign + verify
-          │       → GitHub release, generated notes, flagged pre-release when the tag says so
+          │       → GitHub release, generated notes, marked Latest
           └── wiki      (after publish, tags only) wiki-deploy.yml builds the TAGGED commit and publishes it
 ```
 
-The docs go live after the release assets are out, also for pre-releases (beta users need them). A Pages failure turns
+The docs go live after the release assets are out, also for betas (beta users need them). A Pages failure turns
 `wiki` red but changes nothing about the release. `gates` is why a tag on a red commit does nothing. Emergency only: run the workflow manually with `skip_gates`.
 
 ## Procedure
@@ -157,7 +158,7 @@ Do the steps in this order. Everything before step 7 is reversible; the tag is n
    sudo apt install ./bookx_*_amd64.deb                      # or: sudo dnf install ./bookx-*.x86_64.rpm
    ```
 10. **Edit the release page:** replace the generated notes with the plain-words notes, add the beta warning and the
-    "Report a Problem" steps, keep it marked **pre-release** for any `-alpha`/`-beta`/`-rc`.
+    "Report a Problem" steps, keep it marked **Latest** (not pre-release).
 11. **Announce** only after step 9 passed.
 
 ## After the release
@@ -191,4 +192,4 @@ build-aux/flatpak.sh                              # Flatpak build with smoke tes
 | `release-check` fails on the tag | tag and `Cargo.toml` version differ, or a crate/metainfo/changelog was not bumped |
 | `flatpak` fails on crates | `build-aux/cargo-sources.json` is stale: regenerate it after any `Cargo.lock` change |
 | `publish` fails at cosign verify | the workflow file was renamed: the identity regex in `release.yml` and `wiki/docs/install.md` must match |
-| the release is not marked pre-release | the tag has no `-alpha`/`-beta`/`-rc` part: edit the release page by hand, then fix the tag name rule |
+| the release is not marked Latest | a newer release exists, or the flag was changed by hand: `gh release edit <tag> --latest --prerelease=false` |
