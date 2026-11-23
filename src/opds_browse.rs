@@ -100,10 +100,13 @@ pub fn add(
 pub fn fetcher() -> Arc<dyn Fetcher> {
     match std::env::var_os("BOOKX_OPDS_MOCK") {
         Some(dir) => Arc::new(MockFiles(PathBuf::from(dir))),
-        None => Arc::new(bookx_sources::fetch::UreqFetcher::with_limits(
-            std::time::Duration::from_secs(30),
-            200 * 1024 * 1024,
-        )),
+        None => crate::diag_fetch::traced(
+            Arc::new(bookx_sources::fetch::UreqFetcher::with_limits(
+                std::time::Duration::from_secs(30),
+                200 * 1024 * 1024,
+            )),
+            crate::trace::Area::Opds,
+        ),
     }
 }
 

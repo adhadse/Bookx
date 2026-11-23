@@ -95,6 +95,7 @@ pub mod share;
 pub mod shelves;
 pub mod shortcuts_dialog;
 pub mod source_settings;
+pub mod stall_watch;
 pub mod stats;
 pub mod stepper;
 pub mod sync_activity;

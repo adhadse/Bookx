@@ -212,6 +212,7 @@ fn update_view_toggle(button: &gtk::ToggleButton) {
 
 /// Opens the window (a second call brings the open one to the front).
 pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef, on_changed: Rc<dyn Fn()>) {
+    crate::trace::set_active(crate::trace::Area::Devices);
     if let Some(w) = CURRENT.with(|c| c.borrow().clone()) {
         if w.dialog.is_visible() {
             w.set_send_ids(library_selection());
@@ -448,6 +449,9 @@ impl DevWin {
             dav_group.add(r);
         }
         settings_page_widget.add(&dav_group);
+        settings_page_widget.add(&super::report_dialog::problem_group(
+            "Devices|Built-in server|Conversion",
+        ));
         let settings_page =
             stack.add_titled(&settings_page_widget, Some("settings"), &tr("Settings"));
         settings_page.set_icon_name(Some(PAGE_ICONS[1]));

@@ -7,9 +7,10 @@
 #
 # Dev hooks (all `report:<cmd>`):
 #   open | open-crash        open the dialog (the second fills in "Bookx closed unexpectedly.")
-#   type=TEXT                the "What happened?" text      log=on|off | library=on|off   the two switches
+#   type=TEXT                the "What happened?" text      log=on|off | library=on|off | titles=on|off | host=on|off   the switches
+#   open-from=A|B            open the dialog as the Sync and Devices windows do: the sections titled A and B come first
 #   preview                  `report_preview: <the preview, newlines as ⏎>`
-#   dump                     `report_dump: len= lines= log= library= focus_on_entry= hint=`
+#   dump                     `report_dump: len= lines= log= library= titles= host= focus_on_entry= hint=`
 #   copy                     `report_clipboard: len= same= first=` (read back from the clipboard)
 #   save=PATH                writes the report like Save Report (`report_saved: PATH`)
 #   github                   copies, then prints `report_open: <url>` instead of opening a browser
@@ -54,7 +55,7 @@ scenario report_privacy 'library:wide,wait:300,report:log-line=opening SENT-Titl
 
 scenario report_toggles 'report:open,wait:800,report:log=off,report:library=off,report:dump,report:preview,report:log=on,report:library=on,report:preview,quit' '
     P=$(grep "^report_preview:" <<<"$OUT")
-    ! sed -n 1p <<<"$P" | grep -q "### Recent log\\|### Library"; check "with both switches off the preview has no log and no library part" $?
+    ! sed -n 1p <<<"$P" | grep -q "### Recent log\\|### Library⏎"; check "with both switches off the preview has no log and no library part" $?
     sed -n 1p <<<"$P" | grep -q "### Recent jobs"; check "the rest stays" $?
     sed -n 2p <<<"$P" | grep -q "### Library⏎⏎- Books: [0-9]" && sed -n 2p <<<"$P" | grep -q "### Recent log"; check "switching them on brings both back" $?
     has "^report_dump: .*log=false library=false"; check "the switches report their state" $?'
@@ -104,4 +105,27 @@ scenario report_dialog_fit_win11 'app:win-size=900x600,app:text-scale=1.5,wait:6
     ! grep "^dialog_fit: " <<<"$OUT" | grep -q "fits=false"; check "at 900x600 and 1.5 times the text the dialog fits the window" $?
     grep "^dialog_fit: " <<<"$OUT" | grep -q "clipped_buttons=0"; check "no button cuts its label" $?
     ! has "^a11y-problem:"; check "every control has an accessible name" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario report_summary_entry_and_optins 'report:open-from=Sync (KOSync client)|Built-in server,wait:900,report:dump,report:preview,report:titles=on,report:host=on,wait:300,report:dump,report:preview,report:titles=off,report:host=off,report:log=off,report:library=off,report:preview,quit' '
+    P=$(grep "^report_preview:" <<<"$OUT" | sed -n 1p)
+    has "^report_dump: .*titles=false host=false"; check "the two opt-in switches are off when the dialog opens" $?
+    has "^report_dump: .*titles=true host=true"; check "they can be switched on" $?
+    grep -q -- "report_preview: <!-- Bookx problem report.*### Summary and suspected area⏎⏎- Suspected area: " <<<"$P"; check "the report opens with the summary and the suspected area" $?
+    grep -qF -- "- Reported from: Sync (KOSync client), Built-in server" <<<"$P"; check "the summary says which window the report was opened from" $?
+    grep -q "### Recent operations" <<<"$P"; check "recent operations come right after the summary" $?
+    grep -q "### Sync (KOSync client)⏎.*### Built-in server⏎.*### Machine" <<<"$P"; check "the sections of the window it was opened from come before the others" $?
+    grep -q "### Sync (KOSync client)⏎⏎- Enabled: off" <<<"$P"; check "the sync section says whether the client is on" $?
+    grep -q "### Machine⏎⏎- Processors: [0-9]" <<<"$P"; check "the machine section is there" $?
+    grep -q "### Library folder⏎⏎- File system: " <<<"$P"; check "the library folder section names its file system" $?
+    L=$(grep "^report_preview:" <<<"$OUT" | sed -n 3p)
+    ! grep -q "### Library folder\\|### Books involved" <<<"$L"; check "the library switch also removes the library folder and the books involved" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
+
+scenario report_privacy_titles_optin 'library:wide,wait:300,report:log-line=opening SENT-Title Book,wait:300,report:open,wait:800,report:preview,report:titles=on,wait:300,report:preview,quit' '
+    A=$(grep "^report_preview:" <<<"$OUT" | sed -n 1p)
+    B=$(grep "^report_preview:" <<<"$OUT" | sed -n 2p)
+    ! grep -qF "SENT-Title" <<<"$A"; check "no title in the default report" $?
+    ! grep -qF "SENT-Title" <<<"$B"; check "and none after switching titles on: only the books an action was about are named, and none was" $?
+    ! grep -q "<host>.*<host>.*<host>.*<host>.*<host>" <<<"$A"; check "the report is not full of placeholders" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'

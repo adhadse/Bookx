@@ -6,9 +6,26 @@
 
 ## How to report a problem
 
-1. Open **Main Menu → Report a Problem**.
-2. Read the log report it shows. It has no book titles, accounts or passwords.
-3. Choose **Open GitHub Issue**, describe what you did and what you expected, and paste the report.
+1. Open **Main Menu → Report a Problem**. From a window of a feature the same row is there too: the **Sync** window, the **Devices** window, the reader menu and the editor menu. The report then starts with that feature's section.
+2. Read the report it shows. Everything that would be shared is in the preview, and you can edit the "What happened?" text.
+3. Choose **Open GitHub Issue** (the report is put on your clipboard first; paste it into the form), **Copy Report** or **Save Report**.
+
+Bookx sends nothing itself. A report is made on your computer and goes where you put it.
+
+### What is in the report { #what-is-in-the-report }
+
+A report starts with a **Summary and suspected area**: what failed last, which part of Bookx it belongs to, and a hint, so whoever reads it sees the likely cause at once. Then, in this order:
+
+- **Recent operations**: the last things the app did in each area (sync, import, conversion, devices, backups, reading aloud, search, plugins, the built-in server) with what it was, how long it took, whether it worked and which kind of error it was (for example "the server answered 404", "no space left", "not mounted"). Never a title, a file name or a folder.
+- **Recent problems**: the warnings and errors of the log, grouped and counted. Harmless repeated desktop notices are counted and left out, so they do not push the useful lines out.
+- **The state of each feature**: your sync server address as its kind, port and path words only (`http://<ip:private>:30260/api/koreader`), whether you are logged in, how documents are matched, the devices that connected (by model, such as "Boox Leaf 2", never by the name you gave them), backup places by kind, read-aloud engine and helper programs, plugins by id and version.
+- **Your computer**: version and installation (Flatpak permissions such as network access, in words), system and desktop, display and renderer, processors, memory as a class, time zone offset, free space and file system of the library folder (for example "network file system", "synced by Syncthing"), how large the catalogue is and whether it passes its check.
+- **The books involved**: for the books an action was about, their format, size class and reading progress. Titles and authors only if you switch **Include book titles and authors of the books involved** on (off by default).
+- The **recent log**, with the important lines kept first when it is too long, and the **last crash** if Bookx closed unexpectedly.
+
+**Never included:** your name, user name, e-mail address, IP addresses, Wi-Fi name, passwords and tokens, folders and file names, the text of your books and notes, search words. The host of a server address is left out unless you switch **Include the server address host** on (off by default); the user name, password and query of an address are never shown. A document id (the hash of a book file that sync uses) is shown: it identifies the bytes of a file, not you.
+
+The text you type under **What happened?** is shared exactly as you type it, so leave out anything private. The whole report is limited to 60 KB.
 
 ## The library opens read-only
 

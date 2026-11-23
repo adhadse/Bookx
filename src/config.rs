@@ -705,7 +705,13 @@ impl Config {
             // written next to the file and renamed, so a crash never leaves half a file; private to
             // the user from the first byte
             let tmp = p.with_extension("json.tmp");
-            if write_private(&tmp, json.as_bytes()).is_ok() && std::fs::rename(&tmp, &p).is_err() {
+            let wrote = write_private(&tmp, json.as_bytes());
+            if let Err(e) = &wrote {
+                crate::trace::event(crate::trace::Area::Settings, "save").fail(&e.to_string());
+            }
+            if wrote.is_ok() && std::fs::rename(&tmp, &p).is_err() {
+                crate::trace::event(crate::trace::Area::Settings, "save")
+                    .fail_class(crate::trace::ErrorClass::Io);
                 let _ = std::fs::remove_file(&tmp);
             }
             bookx_secrets::restrict_file(&p);

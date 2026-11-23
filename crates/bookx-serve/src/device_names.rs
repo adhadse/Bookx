@@ -254,6 +254,33 @@ fn find<'a>(table: &'a [(&str, &str)], key: &str) -> Option<&'a str> {
 /// A name the user typed (the device name field of the plugin, or a rename in Bookx) is only
 /// changed when it is itself one of the codenames above, which is what the person meant.
 pub fn friendly_name(reported: &str) -> String {
+    known_name(reported).unwrap_or_else(|| unknown_name(reported))
+}
+
+/// The name from the tables, `None` when the model is not in them (the report names only what it
+/// knows, a name the user typed must not end up in it).
+pub fn known_name(reported: &str) -> Option<String> {
+    let tidy_name = tidy(reported);
+    if tidy_name.is_empty() {
+        return None;
+    }
+    let (vendor, rest) = strip_vendor(&tidy_name);
+    let key = normalise(rest);
+    if key.is_empty() {
+        return None;
+    }
+    if let Some((_, name, how)) = ONYX.iter().find(|(k, _, _)| *k == key) {
+        if *how == A || vendor {
+            return Some((*name).to_string());
+        }
+    }
+    [KOBO, KINDLE, POCKETBOOK, REMARKABLE]
+        .iter()
+        .find_map(|t| find(t, &key))
+        .map(str::to_string)
+}
+
+fn unknown_name(reported: &str) -> String {
     let tidy_name = tidy(reported);
     if tidy_name.is_empty() {
         return String::new();
@@ -287,6 +314,22 @@ pub fn friendly_name(reported: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_name_is_known_only_when_the_tables_have_the_model() {
+        assert_eq!(
+            known_name("Onyx Scubapilot-IDP").as_deref(),
+            Some("Boox Leaf 2")
+        );
+        assert_eq!(known_name("Kobo_nova").as_deref(), Some("Kobo Clara HD"));
+        // a word anybody could type, and a name nobody could mistake for a model
+        assert_eq!(known_name("Page"), None);
+        assert_eq!(known_name("Alice's Kobo"), None);
+        assert_eq!(known_name(""), None);
+        assert_eq!(known_name("  "), None);
+        // `friendly_name` is `known_name` or the tidied text
+        assert_eq!(friendly_name("Alice's   Kobo"), "Alice's Kobo");
+    }
 
     #[test]
     fn the_name_from_issue_39_is_a_boox_leaf_2() {

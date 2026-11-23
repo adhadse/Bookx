@@ -86,6 +86,7 @@ fn button(label: &str, name: &str) -> gtk::Button {
 }
 
 pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
+    crate::trace::set_active(crate::trace::Area::Sync);
     let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr(sync_model::TITLE));
     dialog.set_content_width(520);
@@ -249,6 +250,9 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
     }
     adv_group.add(&advanced);
     column.append(&adv_group);
+    column.append(&super::report_dialog::problem_group(
+        "Sync (KOSync client)|Built-in server",
+    ));
 
     // ---- state ----------------------------------------------------------------------------
     // persistent state, not an event: the server is open to the local network

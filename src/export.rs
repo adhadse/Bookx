@@ -180,15 +180,20 @@ pub fn convert_epub_file(path: &Path, t: &Target) -> Result<Vec<u8>> {
 
 /// Converts EPUB `bytes` (called `name`, for messages and format detection) to `t`.
 pub fn convert_epub_bytes(bytes: &[u8], name: &str, t: &Target) -> Result<Vec<u8>> {
-    if let Some(done) = crate::plugins::convert_hooked(bytes, name, t) {
-        return done;
-    }
-    let options = options_for(t)?;
-    let readers = default_readers();
-    let cancel = AtomicBool::new(false);
-    let out = convert(&readers, bytes, name, t.id, &options, &|_| {}, &cancel)
-        .with_context(|| format!("converting `{name}` to {}", t.label))?;
-    Ok(out.bytes)
+    crate::trace::traced(crate::trace::Area::Convert, "epub_convert", |o| {
+        o.fmt("epub")
+            .word("to", t.id)
+            .size_class("size", bytes.len() as u64);
+        if let Some(done) = crate::plugins::convert_hooked(bytes, name, t) {
+            return done;
+        }
+        let options = options_for(t)?;
+        let readers = default_readers();
+        let cancel = AtomicBool::new(false);
+        let out = convert(&readers, bytes, name, t.id, &options, &|_| {}, &cancel)
+            .with_context(|| format!("converting `{name}` to {}", t.label))?;
+        Ok(out.bytes)
+    })
 }
 
 #[cfg(test)]

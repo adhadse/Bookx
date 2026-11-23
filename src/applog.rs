@@ -363,6 +363,11 @@ pub fn scrubber() -> Arc<Scrubber> {
     })
 }
 
+/// When the process started (now, if [`init`] has not run).
+pub fn start_instant() -> &'static Instant {
+    START.get_or_init(Instant::now)
+}
+
 /// Milliseconds from the start of the process to the first window (0 until [`mark_started`]).
 pub fn startup_ms() -> Option<u64> {
     match STARTUP_MS.load(Ordering::Relaxed) {
@@ -403,8 +408,43 @@ pub fn record(line: &str) {
         return;
     }
     if let Some(f) = FILE.get() {
-        let clean = scrubber().apply(line);
+        let clean = clean_line(line, &scrubber());
         let _ = f.append(&clean);
+    }
+}
+
+/// The text of a log line as it is written: everything goes through the scrubber, except the fields of
+/// a `trace` breadcrumb (see `crate::trace`), which are numbers, classes and hashes by construction and
+/// would lose their hash to the scrubber's "long random string" rule. Only the `err=` message of such a
+/// line is scrubbed; a line that does not have exactly the expected shape is scrubbed whole.
+pub fn clean_line(line: &str, scrub: &Scrubber) -> String {
+    static HEAD: OnceLock<regex::Regex> = OnceLock::new();
+    let head = HEAD.get_or_init(|| {
+        regex::Regex::new(
+            r"^[0-9T:.\-]+Z +INFO bookx_crumb: trace [a-z_]+ [a-z0-9_.\-]+ (?:ok|fail)(?: [a-z0-9_.\-]+=[A-Za-z0-9_.:%,\-]*)*$",
+        )
+        .expect("static pattern")
+    });
+    let (h, m) = match line.split_once(" err=") {
+        Some((h, m)) => (h, Some(m)),
+        None => (line, None),
+    };
+    if head.is_match(h) {
+        match m {
+            Some(m) => format!("{h} err={}", crate::diag_facts::clean_full(scrub, m)),
+            None => h.to_string(),
+        }
+    } else {
+        crate::diag_facts::clean_full(scrub, line)
+    }
+}
+
+/// Writes the tail of the flight recorder next to the log (called when the app closes), so a report
+/// made after the next start still has what the last session did.
+pub fn persist_trace_tail() {
+    if let Some(f) = FILE.get() {
+        let s = scrubber();
+        let _ = crate::trace::persist_tail(&f.dir, &|m| crate::diag_facts::clean_full(&s, m));
     }
 }
 
@@ -417,6 +457,7 @@ pub fn install_panic_hook() {
         let s = scrubber();
         if let Some(f) = FILE.get() {
             let _ = write_crash(f, &c, &s, chrono::Utc::now());
+            let _ = crate::trace::persist_tail(&f.dir, &|m| crate::diag_facts::clean_full(&s, m));
         }
         let _ = writeln!(
             std::io::stderr(),
@@ -447,6 +488,24 @@ mod tests {
             hosts: vec!["sync.example.org".into()],
             accounts: vec!["alice_reads".into()],
         })
+    }
+
+    #[test]
+    fn trace_lines_keep_their_hash_but_their_message_is_cleaned() {
+        let s = rules();
+        let l = "2026-11-22T10:00:00.5Z  INFO bookx_crumb: trace sync push fail http=404 class=status ms=12 doc=0123456789abcdef0123456789abcdef fmt=pdf err=cannot open /home/alice/Books/The Secret Garden.epub";
+        let c = clean_line(l, &s);
+        assert!(c.contains("doc=0123456789abcdef0123456789abcdef"), "{c}");
+        assert!(!c.contains("alice") && !c.contains("Secret"), "{c}");
+        // a line that only looks like one is scrubbed whole
+        let fake = "2026-11-22T10:00:00Z  INFO bookx_crumb: trace sync push ok doc=alice_reads at The Secret Garden";
+        let c = clean_line(fake, &s);
+        assert!(!c.contains("alice") && !c.contains("Secret"), "{c}");
+        let c = clean_line(
+            "2026-11-22T10:00:00Z  WARN x: 0123456789abcdef0123456789abcdef",
+            &s,
+        );
+        assert!(!c.contains("0123456789abcdef"));
     }
 
     #[test]

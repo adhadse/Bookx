@@ -1,7 +1,8 @@
 //! Report a Problem: the dialog that builds the report of `crate::report`, shows exactly what would be
 //! shared, and hands it over by clipboard, file or the GitHub issue form. Bookx sends nothing itself.
 //!
-//! Dev hooks (`report:<command>`): `open`, `open-crash`, `type=TEXT`, `log=on|off`, `library=on|off`,
+//! Dev hooks (`report:<command>`): `open`, `open-crash`, `open-from=AREA` (as the Sync window opens it),
+//! `titles=on|off`, `host=on|off`, `type=TEXT`, `log=on|off`, `library=on|off`,
 //! `preview` (prints the preview on one line), `dump`, `copy`, `save=PATH`, `github`, `folder`, `log-line=TEXT`
 //! (writes a warning to the log), `crash-sim` (runs the panic hook's writer on a made-up crash), `notices`,
 //! `dismiss-beta`, `dismiss-crash`, `report-from-beta`, `report-from-crash`, `recheck`.
@@ -25,26 +26,112 @@ pub enum Prefill {
     Crash,
 }
 
-/// The rules that clean the report: the debug-log rules plus this machine's host name.
+/// The rules that clean the report: the debug-log rules plus the names of devices and this machine.
 pub fn scrub_rules(shared: &SharedRef) -> Scrub {
-    let mut s = crate::debug_log::scrub_for(&shared.cfg.borrow(), &shared.lib.borrow());
-    if let Ok(h) = std::fs::read_to_string("/etc/hostname") {
-        let h = h.trim().to_string();
-        if h.len() >= 3 && h != "localhost" {
-            s.hosts.push(h);
+    // names the user gave to devices (and what a device calls itself, which may be a typed name)
+    let mut names = Vec::new();
+    if let Some(a) = shared.sharing.borrow().activity() {
+        for d in a.devices() {
+            names.push(d.alias);
+            names.push(d.user);
+            if crate::trace::device_label(&d.name) == "<custom name>" {
+                names.push(d.name);
+            }
         }
     }
-    s
+    crate::diag_gather::scrub_rules(
+        &shared.cfg.borrow(),
+        &shared.lib.borrow(),
+        names,
+        &std::fs::read_to_string("/etc/hostname").unwrap_or_default(),
+    )
 }
 
-/// Everything the report is made of, read from the running app.
-pub fn gather(shared: &SharedRef) -> (Input, Scrubber) {
+/// What the built-in server knows about the devices that talked to it, as plain data.
+fn server_view(shared: &SharedRef) -> crate::diag_gather::ServerView {
+    use bookx_serve::activity::What;
+    let sh = shared.sharing.borrow();
+    let mut v = crate::diag_gather::ServerView {
+        running: sh.running(),
+        ..Default::default()
+    };
+    if let Some(a) = sh.activity() {
+        let now = chrono::Utc::now().timestamp();
+        v.devices = a
+            .devices()
+            .into_iter()
+            .map(|d| crate::diag_gather::SeenDevice {
+                reported: d.name,
+                client: d.client,
+                plugin: d.plugin,
+                protocol: d.protocol,
+                requests: d.requests,
+                last_sync_ago: d.last_sync.map(|t| now - t),
+                last_seen_ago: now - d.last_seen,
+            })
+            .collect();
+        let events = a.events(50);
+        v.events = events.len();
+        let mut tally: std::collections::BTreeMap<u16, usize> = std::collections::BTreeMap::new();
+        for e in &events {
+            if let What::Rejected { status, .. } = e.what {
+                *tally.entry(status).or_default() += 1;
+            }
+        }
+        v.rejected = tally.into_iter().collect();
+    }
+    v
+}
+
+/// The name of the toolkit's display and renderer, as words.
+fn display_words(parent: Option<&gtk::Widget>) -> (String, String) {
+    let backend = gtk::gdk::Display::default()
+        .map(|d| d.type_().name().to_ascii_lowercase())
+        .map(|n| {
+            if n.contains("wayland") {
+                "wayland"
+            } else if n.contains("x11") {
+                "x11"
+            } else if n.contains("broadway") {
+                "broadway"
+            } else if n.contains("macos") {
+                "macos"
+            } else if n.contains("win32") {
+                "windows"
+            } else {
+                "other"
+            }
+            .to_string()
+        })
+        .unwrap_or_default();
+    let renderer = parent
+        .and_then(|w| w.native())
+        .and_then(|n| n.renderer())
+        .map(|r| {
+            let t = r.type_().name().to_ascii_lowercase();
+            ["ngl", "vulkan", "gl", "cairo"]
+                .iter()
+                .find(|k| t.contains(*k))
+                .map_or("unknown", |k| *k)
+                .to_string()
+        })
+        .unwrap_or_else(|| "unknown".into());
+    (backend, renderer)
+}
+
+/// Everything the report is made of, read from the running app. `entry` is the area the user pressed
+/// Report in (its section comes first).
+pub fn gather(
+    shared: &SharedRef,
+    entry: Option<&str>,
+    parent: Option<&gtk::Widget>,
+) -> (Input, Scrubber) {
     let rules = scrub_rules(shared);
     // the log file is cleaned with the same rules from now on
     crate::applog::set_scrub(rules.clone());
     let scrub = Scrubber::new(rules);
     let log = match crate::applog::file() {
-        Some(f) => f.tail(report::LOG_LINES),
+        Some(f) => f.tail(report::LOG_LINES * 4),
         None => crate::debug_log::ring()
             .lines()
             .into_iter()
@@ -57,14 +144,74 @@ pub fn gather(shared: &SharedRef) -> (Input, Scrubber) {
         .borrow()
         .as_ref()
         .map(|ft| (ft.indexed_books(), lib.books.len()));
-    let input = Input {
+    let cfg = shared.cfg.borrow();
+    let plugins = shared.plugins.borrow();
+    let (backend, renderer) = display_words(parent);
+    let vars = [
+        "http_proxy",
+        "https_proxy",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "all_proxy",
+        "ALL_PROXY",
+        "GSK_RENDERER",
+    ]
+    .iter()
+    .filter_map(|k| std::env::var(k).ok().map(|v| (k.to_string(), v)))
+    .collect();
+    let trace = crate::trace::merged(&log);
+    let world = crate::diag_gather::World {
         env: report::Environment::detect(),
-        settings: report::summarize(&shared.cfg.borrow(), &shared.plugins.borrow()),
-        library: Some(report::library_stats(&lib, indexed)),
+        cfg: &cfg,
+        lib: &lib,
+        indexed,
+        plugins: plugins.list(),
+        patches: std::fs::read_dir(crate::plugins::patches_dir())
+            .map(|rd| rd.flatten().count())
+            .unwrap_or(0),
+        keyring: match crate::secrets::vault().mode() {
+            bookx_secrets::Mode::Keyring => "system keyring",
+            bookx_secrets::Mode::Vault => "encrypted store",
+            bookx_secrets::Mode::Locked => "encrypted store (locked)",
+            _ => "not saved (session only)",
+        }
+        .to_string(),
+        server: server_view(shared),
         jobs: report::recent_jobs(),
         log,
+        trace,
+        previous: crate::applog::file()
+            .map(|f| crate::trace::load_tail(&f.dir))
+            .unwrap_or_default(),
         crash: crate::applog::file().and_then(|f| f.last_crash_text()),
+        flatpak_info: std::fs::read_to_string("/.flatpak-info").ok(),
+        backend,
+        renderer,
+        vars,
+        extra: {
+            let mut x = crate::trace::collect();
+            if entry.is_some_and(|e| e.split('|').any(|a| a == "Devices")) {
+                let list: Vec<_> = crate::devices::detect_all()
+                    .into_iter()
+                    .map(|d| crate::diag_gather::ConnectedDevice {
+                        reported: d.name,
+                        id: d.id,
+                        mounted: d.mount.exists(),
+                        free: crate::diag_system::free_space(&d.mount),
+                    })
+                    .collect();
+                x.push((
+                    crate::trace::Area::Devices,
+                    crate::diag_gather::device_rows(&list),
+                ));
+            }
+            x
+        },
+        entry: entry.map(str::to_string),
+        probe: None,
+        helpers: crate::diag_gather::Helpers::detect(),
     };
+    let input = crate::diag_gather::input(&world);
     (input, scrub)
 }
 
@@ -76,6 +223,8 @@ struct Dlg {
     preview: gtk::TextBuffer,
     log: adw::SwitchRow,
     library: adw::SwitchRow,
+    titles: adw::SwitchRow,
+    host: adw::SwitchRow,
     hint: gtk::Label,
     toasts: adw::ToastOverlay,
     timer: RefCell<Option<glib::SourceId>>,
@@ -91,6 +240,8 @@ impl Dlg {
         Options {
             include_log: self.log.is_active(),
             include_library: self.library.is_active(),
+            include_titles: self.titles.is_active(),
+            include_host: self.host.is_active(),
         }
     }
 
@@ -234,7 +385,18 @@ fn button(label: &str) -> gtk::Button {
 
 /// Opens the dialog over `parent`.
 pub fn show(shared: &SharedRef, parent: &impl IsA<gtk::Widget>, prefill: Prefill) {
-    let (input, scrub) = gather(shared);
+    show_from(shared, parent, prefill, None)
+}
+
+/// [`show`] from a window of a feature: `entry` is the title of that feature's section (for example
+/// `Sync (KOSync client)`), which then comes first in the report.
+pub fn show_from(
+    shared: &SharedRef,
+    parent: &impl IsA<gtk::Widget>,
+    prefill: Prefill,
+    entry: Option<&str>,
+) {
+    let (input, scrub) = gather(shared, entry, Some(parent.upcast_ref()));
     let dialog = super::dialog_toast::new_dialog();
     dialog.set_title(&tr("Report a Problem"));
     dialog.set_content_width(620);
@@ -280,8 +442,38 @@ pub fn show(shared: &SharedRef, parent: &impl IsA<gtk::Widget>, prefill: Prefill
     library.set_title(&tr("Include library statistics"));
     library.set_subtitle(&tr("How many books and which formats, never titles."));
     library.set_active(true);
+    let titles = adw::SwitchRow::new();
+    titles.set_title(&tr("Include book titles and authors of the books involved"));
+    titles.set_subtitle(&tr(
+        "Off by default. Only the books the failing action was about, never your whole library.",
+    ));
+    titles.set_active(false);
+    let host = adw::SwitchRow::new();
+    host.set_title(&tr("Include the server address host"));
+    // a subtitle is Pango markup: the address example holds `<` and `>`
+    host.set_subtitle(&glib::markup_escape_text(&tr(
+        "Off by default. Without it an address shows only its kind, port and path, such as http://<ip:private>:30260/api/koreader.",
+    )));
+    host.set_active(false);
     include.add(&log);
     include.add(&library);
+    include.add(&titles);
+    include.add(&host);
+
+    // what is in it, in plain words
+    let contents = gtk::Label::new(Some(
+        &report::CONTENTS
+            .iter()
+            .map(|l| format!("• {}", tr(l)))
+            .collect::<Vec<_>>()
+            .join("\n"),
+    ));
+    contents.set_wrap(true);
+    contents.set_xalign(0.0);
+    contents.add_css_class("dim-label");
+    contents.add_css_class("caption");
+    contents.set_selectable(true);
+    super::audit::label(&contents, &tr("What the report contains"));
 
     // the preview
     let preview_label = caption(&tr("Preview"));
@@ -335,6 +527,7 @@ pub fn show(shared: &SharedRef, parent: &impl IsA<gtk::Widget>, prefill: Prefill
         what_card.upcast_ref(),
         what_hint.upcast_ref(),
         include.upcast_ref(),
+        contents.upcast_ref(),
         preview_label.upcast_ref(),
         preview_hint.upcast_ref(),
         preview_card.upcast_ref(),
@@ -383,6 +576,8 @@ pub fn show(shared: &SharedRef, parent: &impl IsA<gtk::Widget>, prefill: Prefill
         preview: preview.buffer(),
         log,
         library,
+        titles,
+        host,
         hint,
         toasts,
         timer: RefCell::new(None),
@@ -396,6 +591,10 @@ pub fn show(shared: &SharedRef, parent: &impl IsA<gtk::Widget>, prefill: Prefill
         d.log.connect_active_notify(move |_| dd.refresh());
         let dd = d.clone();
         d.library.connect_active_notify(move |_| dd.refresh());
+        let dd = d.clone();
+        d.titles.connect_active_notify(move |_| dd.refresh());
+        let dd = d.clone();
+        d.host.connect_active_notify(move |_| dd.refresh());
     }
     {
         let dd = d.clone();
@@ -492,6 +691,26 @@ pub fn preferences_group(
     g
 }
 
+/// A group with one row, "Report a Problem", for a window of a feature (Sync, Devices): it opens the
+/// dialog with `area` (the titles of the sections to put first, separated by `|`). The row is
+/// activated through the application action, so the window needs no handle on the app.
+pub fn problem_group(area: &'static str) -> adw::PreferencesGroup {
+    let g = adw::PreferencesGroup::new();
+    let row = adw::ActionRow::new();
+    row.set_title(&tr("Report a Problem"));
+    row.set_subtitle(&tr(
+        "Something not working? See what a report contains before you share it.",
+    ));
+    row.set_subtitle_lines(0);
+    row.set_activatable(true);
+    row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
+    row.connect_activated(move |r| {
+        let _ = r.activate_action("app.report-problem-from", Some(&area.to_variant()));
+    });
+    g.add(&row);
+    g
+}
+
 /// `report:<command>` of a dev script.
 pub fn dev_command(shared: &SharedRef, window: &gtk::Window, arg: &str) {
     let (cmd, val) = arg.split_once('=').unwrap_or((arg, ""));
@@ -499,6 +718,7 @@ pub fn dev_command(shared: &SharedRef, window: &gtk::Window, arg: &str) {
     match cmd {
         "open" => show(shared, window, Prefill::None),
         "open-crash" => show(shared, window, Prefill::Crash),
+        "open-from" => show_from(shared, window, Prefill::None, Some(val)),
         "log-line" => tracing::warn!("{val}"),
         "crash-sim" => {
             let info = crate::applog::CrashInfo {
@@ -507,7 +727,7 @@ pub fn dev_command(shared: &SharedRef, window: &gtk::Window, arg: &str) {
                 thread: "main".into(),
                 backtrace: std::backtrace::Backtrace::force_capture().to_string(),
             };
-            let (_, scrub) = gather(shared);
+            let (_, scrub) = gather(shared, None, None);
             let r = crate::applog::file().map(|f| {
                 crate::applog::write_crash(f, &info, &scrub, chrono::Utc::now())
                     .map(|p| p.display().to_string())
@@ -526,15 +746,19 @@ pub fn dev_command(shared: &SharedRef, window: &gtk::Window, arg: &str) {
                 }
                 "log" => d.log.set_active(val != "off"),
                 "library" => d.library.set_active(val != "off"),
+                "titles" => d.titles.set_active(val == "on"),
+                "host" => d.host.set_active(val == "on"),
                 "preview" => eprintln!("report_preview: {}", d.text().replace('\n', "⏎")),
                 "dump" => {
                     let t = d.text();
                     eprintln!(
-                        "report_dump: len={} lines={} log={} library={} focus_on_entry={} hint={}",
+                        "report_dump: len={} lines={} log={} library={} titles={} host={} focus_on_entry={} hint={}",
                         t.len(),
                         t.lines().count(),
                         d.log.is_active(),
                         d.library.is_active(),
+                        d.titles.is_active(),
+                        d.host.is_active(),
                         d.dialog
                             .focus()
                             .and_then(|w| w.downcast::<gtk::TextView>().ok())

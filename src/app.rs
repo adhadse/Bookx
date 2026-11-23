@@ -126,6 +126,8 @@ pub enum Msg {
     ShowAbout,
     /// Report a Problem (the dialog); `Crash` fills in the first line after a crash.
     ReportProblem(crate::ui::report_dialog::Prefill),
+    /// Report a Problem from a window of a feature: the name of its section comes first.
+    ReportProblemFrom(String),
     /// Copy the diagnostics report to the clipboard.
     CopyDiagnostics,
     /// A `bookx://` link (from the desktop, another Bookx process or the command line).
@@ -176,7 +178,18 @@ impl SimpleComponent for App {
         }
         apply_scheme(cfg.scheme);
 
-        let (lib, guard, migrated) = match crate::library_health::open(&cfg.library_dir) {
+        let mut open_t = crate::trace::event(crate::trace::Area::Database, "open_library");
+        let opened = crate::library_health::open(&cfg.library_dir);
+        match &opened {
+            Ok((l, _, migrated)) => {
+                open_t
+                    .count_class("books", l.books.len() as u64)
+                    .flag("migrated", migrated.is_some())
+                    .ok();
+            }
+            Err(e) => open_t.fail(&format!("{e:#}")),
+        }
+        let (lib, guard, migrated) = match opened {
             Ok(o) => o,
             Err(e) => {
                 tracing::error!("cannot open library {}: {e:#}", cfg.library_dir.display());
@@ -201,6 +214,7 @@ impl SimpleComponent for App {
                 let failed = crate::plugins::reload(&mut m);
                 for (id, e) in &failed {
                     tracing::warn!("plugin {id} could not be loaded: {e}");
+                    crate::trace::event(crate::trace::Area::Plugins, "load").fail(e);
                 }
                 tracing::info!(
                     target: "bookx_crumb",
@@ -217,6 +231,32 @@ impl SimpleComponent for App {
             guard: RefCell::new(guard),
         });
         shared.start_indexing();
+        crate::ui::stall_watch::install();
+        crate::trace::set_active(crate::trace::Area::Library);
+        crate::trace::register(
+            crate::trace::Area::Secrets,
+            "vault",
+            Box::new(|| {
+                use crate::diag_facts::Fact;
+                vec![(
+                    "Where passwords are kept".to_string(),
+                    Fact::choice(
+                        match crate::secrets::vault().mode() {
+                            bookx_secrets::Mode::Keyring => "system keyring",
+                            bookx_secrets::Mode::Vault => "encrypted store",
+                            bookx_secrets::Mode::Locked => "encrypted store (locked)",
+                            _ => "not saved",
+                        },
+                        &[
+                            "system keyring",
+                            "encrypted store",
+                            "encrypted store (locked)",
+                            "not saved",
+                        ],
+                    ),
+                )]
+            }),
+        );
         crate::applog::set_scrub(crate::ui::report_dialog::scrub_rules(&shared));
         tracing::info!(
             target: "bookx_crumb",
@@ -263,8 +303,10 @@ impl SimpleComponent for App {
                 relm4::gtk::glib::ControlFlow::Continue
             });
             let s2 = shared.clone();
-            relm4::main_adw_application()
-                .connect_shutdown(move |_| crate::ui::health::on_exit(&s2));
+            relm4::main_adw_application().connect_shutdown(move |_| {
+                crate::ui::health::on_exit(&s2);
+                crate::applog::persist_trace_tail();
+            });
         }
         if let Some(r) = repaired {
             tracing::info!(
@@ -397,6 +439,14 @@ impl SimpleComponent for App {
                     tx.emit(Msg::ReportProblem(crate::ui::report_dialog::Prefill::None))
                 }),
             );
+            let tx = sender.input_sender().clone();
+            let from = gio::SimpleAction::new("report-problem-from", Some(glib::VariantTy::STRING));
+            from.connect_activate(move |_, p| {
+                if let Some(area) = p.and_then(|p| p.str()) {
+                    tx.emit(Msg::ReportProblemFrom(area.to_string()));
+                }
+            });
+            app.add_action(&from);
             let tx = sender.input_sender().clone();
             add_action(
                 "copy-diagnostics",
@@ -1818,6 +1868,12 @@ impl SimpleComponent for App {
             Msg::ReportProblem(prefill) => {
                 crate::ui::report_dialog::show(&self.shared, &self.front_window(), prefill)
             }
+            Msg::ReportProblemFrom(area) => crate::ui::report_dialog::show_from(
+                &self.shared,
+                &self.front_window(),
+                crate::ui::report_dialog::Prefill::None,
+                Some(&area),
+            ),
             Msg::OpenUri(uri) => match crate::links::parse(&uri) {
                 Some(link) => {
                     let found = crate::links::resolve(&link, &self.shared.lib.borrow());

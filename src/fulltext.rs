@@ -83,18 +83,20 @@ pub fn split_text_terms(query: &str) -> (String, Vec<String>) {
 
 /// Plain text of a whole book, chapters separated by blank lines.
 pub fn extract_text(epub: &Path) -> Result<String> {
-    let book = OpenBook::open(epub).with_context(|| format!("opening {}", epub.display()))?;
-    let mut out = String::new();
-    for p in book.spine_paths() {
-        if let Some(doc) = book.chapter_doc(&p) {
-            let t = doc.to_text();
-            if !t.trim().is_empty() {
-                out.push_str(&t);
-                out.push_str("\n\n");
+    crate::trace::traced(crate::trace::Area::Search, "extract_text", |_o| {
+        let book = OpenBook::open(epub).with_context(|| format!("opening {}", epub.display()))?;
+        let mut out = String::new();
+        for p in book.spine_paths() {
+            if let Some(doc) = book.chapter_doc(&p) {
+                let t = doc.to_text();
+                if !t.trim().is_empty() {
+                    out.push_str(&t);
+                    out.push_str("\n\n");
+                }
             }
         }
-    }
-    Ok(out)
+        Ok(out)
+    })
 }
 
 /// What changes when a book's file changes.
@@ -172,7 +174,9 @@ impl FullText {
     }
 
     pub fn search(&self, query: &str, limit: usize) -> Result<Vec<TextHit>> {
-        self.store.search_text(query, limit)
+        crate::trace::traced(crate::trace::Area::Search, "fulltext", |_o| {
+            self.store.search_text(query, limit)
+        })
     }
 
     /// Ids of the books matching *all* phrases, best match of the first phrase first.

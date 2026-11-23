@@ -382,29 +382,31 @@ impl ReaderPdf {
 
     /// Lays the pages out for the window, the zoom and the mode, keeps the reading position.
     fn relayout(&mut self) {
-        let (vw, vh) = self.view_size();
-        let (page, frac) = {
-            let st = self.state.borrow();
-            let top = self.vadj.value() as f32;
-            // the reading line of the layout that is on screen now, not of the new window size
-            let anchor = top + st.layout.viewport.1 * 0.35;
-            match st.places.iter().find(|p| p.y + p.h >= anchor) {
-                Some(p) if st.layout.mode == ViewMode::Continuous => {
-                    (p.page, ((anchor - p.y) / p.h.max(1.0)).clamp(0.0, 1.0))
+        crate::trace::timed(crate::trace::Area::Reader, "pdf_relayout", |_o| {
+            let (vw, vh) = self.view_size();
+            let (page, frac) = {
+                let st = self.state.borrow();
+                let top = self.vadj.value() as f32;
+                // the reading line of the layout that is on screen now, not of the new window size
+                let anchor = top + st.layout.viewport.1 * 0.35;
+                match st.places.iter().find(|p| p.y + p.h >= anchor) {
+                    Some(p) if st.layout.mode == ViewMode::Continuous => {
+                        (p.page, ((anchor - p.y) / p.h.max(1.0)).clamp(0.0, 1.0))
+                    }
+                    _ => (st.current, 0.0),
                 }
-                _ => (st.current, 0.0),
+            };
+            {
+                let mut st = self.state.borrow_mut();
+                st.layout.viewport = (vw, vh);
+                st.current = page.min(st.layout.sizes.len().saturating_sub(1));
+                st.places = st.layout.places(st.current);
             }
-        };
-        {
-            let mut st = self.state.borrow_mut();
-            st.layout.viewport = (vw, vh);
-            st.current = page.min(st.layout.sizes.len().saturating_sub(1));
-            st.places = st.layout.places(st.current);
-        }
-        self.configure_adjustments(Some((page, frac)));
-        self.update_zoom_label();
-        self.w.area.queue_draw();
-        self.request_visible();
+            self.configure_adjustments(Some((page, frac)));
+            self.update_zoom_label();
+            self.w.area.queue_draw();
+            self.request_visible();
+        })
     }
 
     fn configure_adjustments(&self, keep: Option<(usize, f32)>) {

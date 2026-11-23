@@ -48,6 +48,7 @@ pangocairo = "0.22"
 pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
 uuid = { version = "1", features = ["v4"] }
 url = "2"
+rustix = { version = "1", default-features = false, features = ["std", "fs"] }
 zbus = "5"
 zip = { version = "9", default-features = false, features = ["deflate"] }
 flate2 = "1"

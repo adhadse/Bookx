@@ -50,6 +50,7 @@ src/plugins.rs
 src/privacy.rs
 src/readwise_sync.rs
 src/remove_undo.rs
+src/report.rs
 src/saved_searches.rs
 src/secrets.rs
 src/series_view.rs

@@ -1041,23 +1041,25 @@ impl ReaderComic {
 
     /// New mode, direction or colours: lay the pages out again at the same page.
     fn relayout(&mut self, redecode: bool) {
-        let page = self.page;
-        if redecode {
-            self.r#gen += 1;
-            let mut v = self.view.borrow_mut();
-            v.cache.clear();
-            v.failed.clear();
-            drop(v);
-            self.thumbs_done.clear();
-            for pic in &self.w.thumb_pics {
-                pic.set_paintable(gdk::Paintable::NONE);
+        crate::trace::timed(crate::trace::Area::Reader, "comic_relayout", |_o| {
+            let page = self.page;
+            if redecode {
+                self.r#gen += 1;
+                let mut v = self.view.borrow_mut();
+                v.cache.clear();
+                v.failed.clear();
+                drop(v);
+                self.thumbs_done.clear();
+                for pic in &self.w.thumb_pics {
+                    pic.set_paintable(gdk::Paintable::NONE);
+                }
             }
-        }
-        self.replan();
-        self.pending = None;
-        self.show(page, false);
-        self.sync_controls();
-        self.request_thumbs();
+            self.replan();
+            self.pending = None;
+            self.show(page, false);
+            self.sync_controls();
+            self.request_thumbs();
+        })
     }
 
     /// The Go to Page dialog (the field takes a page number).
