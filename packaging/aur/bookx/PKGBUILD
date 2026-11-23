@@ -18,7 +18,7 @@ conflicts=('bookx-bin' 'bookx-git')
 # makepkg's default -flto makes the bundled SQLite (a C library built by a crate) unlinkable from Rust
 options=('!lto' '!debug')
 source=("$pkgname-$_pkgver.tar.gz::https://github.com/adhadse/Bookx/archive/refs/tags/v$_pkgver.tar.gz")
-sha256sums=('SKIP') # the real sum is filled after the release exists: updpkgsums (packaging/aur/README.md)
+sha256sums=('04179e8c0a697dc47e1c40a95f9a5cbfb64855ae865ea80ac10dc880241f4853')
 
 prepare() {
     cd "Bookx-$_pkgver"

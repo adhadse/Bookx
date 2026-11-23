@@ -28,6 +28,6 @@ pkgbase = bookx
 	options = !lto
 	options = !debug
 	source = bookx-0.3.0-beta.3.tar.gz::https://github.com/adhadse/Bookx/archive/refs/tags/v0.3.0-beta.3.tar.gz
-	sha256sums = SKIP
+	sha256sums = 04179e8c0a697dc47e1c40a95f9a5cbfb64855ae865ea80ac10dc880241f4853
 
 pkgname = bookx

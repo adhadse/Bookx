@@ -17,7 +17,7 @@ provides=('bookx')
 conflicts=('bookx' 'bookx-git')
 options=('!debug')
 source=("https://github.com/adhadse/Bookx/releases/download/v$_pkgver/bookx-$_pkgver-linux-x86_64.tar.gz")
-sha256sums=('SKIP') # the real sum is filled after the release exists: updpkgsums (packaging/aur/README.md)
+sha256sums=('2090b9c16e83a7e56b207716cd2ad0384f48bd5ac7c6454420b67f77183ea5c1')
 
 package() {
     cd "bookx-$_pkgver-linux-x86_64"
