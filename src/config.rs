@@ -364,6 +364,8 @@ pub struct Config {
     /// The read-aloud and speed-reading cards of each book: open or closed, where, and the place.
     pub cards: crate::reader_cards::CardsStore,
     pub opds_catalogs: Vec<crate::opds_browse::Catalog>,
+    /// The sign-in of the always-listed catalogues (Standard Ebooks needs one): id, user, password.
+    pub opds_logins: Vec<crate::opds_browse::Catalog>,
     /// The old named reading profiles: read once to migrate them to `book_looks`, never written.
     #[serde(skip_serializing)]
     pub profiles: crate::reading_profiles::Profiles,
@@ -473,6 +475,7 @@ impl Default for Config {
             rsvp_wpm: crate::rsvp_view::DEFAULT_WPM,
             cards: Default::default(),
             opds_catalogs: Vec::new(),
+            opds_logins: Vec::new(),
             profiles: Default::default(),
             book_looks: Default::default(),
             reader_defaults: None,
@@ -669,7 +672,11 @@ impl Config {
         for d in self.health.backup.destinations.iter_mut() {
             v.push((backup_password_key(&d.id), &mut d.password));
         }
-        for c in self.opds_catalogs.iter_mut() {
+        for c in self
+            .opds_catalogs
+            .iter_mut()
+            .chain(self.opds_logins.iter_mut())
+        {
             v.push((crate::opds_browse::password_key(&c.id), &mut c.password));
         }
         for a in self.news_sites.iter_mut() {
@@ -1012,6 +1019,12 @@ mod secret_tests {
             url: "https://opds.example".into(),
             user: "u".into(),
             password: "sentinel-opds".into(),
+        });
+        c.opds_logins.push(crate::opds_browse::Catalog {
+            id: "standardebooks".into(),
+            user: "me@example.org".into(),
+            password: "sentinel-opds-login".into(),
+            ..Default::default()
         });
         c.health
             .backup

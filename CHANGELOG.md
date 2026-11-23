@@ -6,6 +6,14 @@ versioned heading, `Cargo.toml` and the AppStream metainfo disagree.
 
 ## [Unreleased]
 
+### Fixed
+- **Online Catalogues: Standard Ebooks never loaded.** It now gives its catalogue only to Patrons Circle members and
+  answers 401; Bookx had no way to sign in to the built-in catalogues and showed a bare "HTTP error 401". The page now
+  explains it and offers **Sign In** (email address of the membership as user name, empty password, kept in the keyring).
+  Errors of every catalogue are in words: sign-in needed or refused, address not found, server down for maintenance
+  (Project Gutenberg was, at the time of writing), no answer in time. Project Gutenberg's address is now
+  `www.gutenberg.org`.
+
 ## [0.4.0-beta.1] - 2026-11-24
 
 Starts the 0.4 line: a much richer problem report, and sync that works with servers that match books by file content.

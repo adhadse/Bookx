@@ -12320,3 +12320,39 @@ msgstr "Contenu du rapport"
 
 msgid "Something not working? See what a report contains before you share it."
 msgstr "Quelque chose ne fonctionne pas ? Voyez ce que contient un rapport avant de le partager."
+
+msgid "Standard Ebooks gives its catalogue to Patrons Circle members. Press Sign In, enter the email address of your membership as the user name and leave the password empty."
+msgstr "Standard Ebooks ne donne son catalogue qu'aux membres du Patrons Circle. Appuyez sur Se connecter, saisissez l'adresse e-mail de votre adhésion comme nom d'utilisateur et laissez le mot de passe vide."
+
+msgid "This catalogue asks for a user name and password. Press Sign In to enter them."
+msgstr "Ce catalogue demande un nom d'utilisateur et un mot de passe. Appuyez sur Se connecter pour les saisir."
+
+msgid "The catalogue did not accept the user name or password. Press Sign In to change them."
+msgstr "Le catalogue n'a pas accepté le nom d'utilisateur ou le mot de passe. Appuyez sur Se connecter pour les modifier."
+
+msgid "The catalogue has no page at this address (HTTP 404). Check the address."
+msgstr "Le catalogue n'a aucune page à cette adresse (HTTP 404). Vérifiez l'adresse."
+
+msgid "The catalogue did not answer in time. Check the connection and try again."
+msgstr "Le catalogue n'a pas répondu à temps. Vérifiez la connexion et réessayez."
+
+msgid "The catalogue's server is busy or down for maintenance (HTTP {}). That is on its side: try again later."
+msgstr "Le serveur du catalogue est surchargé ou en maintenance (HTTP {}). Cela vient de son côté : réessayez plus tard."
+
+msgid "The catalogue answered with an error (HTTP {})."
+msgstr "Le catalogue a répondu par une erreur (HTTP {})."
+
+msgid "Could not reach the catalogue: {}"
+msgstr "Impossible de joindre le catalogue : {}"
+
+msgid "Sign In"
+msgstr "Se connecter"
+
+msgid "Use the email address of your Patrons Circle membership as the user name. The password stays empty."
+msgstr "Utilisez l'adresse e-mail de votre adhésion au Patrons Circle comme nom d'utilisateur. Le mot de passe reste vide."
+
+msgid "The user name and password of your account on this catalogue."
+msgstr "Le nom d'utilisateur et le mot de passe de votre compte sur ce catalogue."
+
+msgid "Sign In to {}"
+msgstr "Se connecter à {}"

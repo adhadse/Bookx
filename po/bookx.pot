@@ -2535,6 +2535,9 @@ msgstr ""
 msgid "Could not play the audiobook: {}"
 msgstr ""
 
+msgid "Could not reach the catalogue: {}"
+msgstr ""
+
 msgid "Could not read that file"
 msgstr ""
 
@@ -8941,6 +8944,12 @@ msgstr ""
 msgid "Sidebar"
 msgstr ""
 
+msgid "Sign In"
+msgstr ""
+
+msgid "Sign In to {}"
+msgstr ""
+
 msgid "Single column"
 msgstr ""
 
@@ -9158,6 +9167,9 @@ msgid "Standard"
 msgstr ""
 
 msgid "Standard Ebooks"
+msgstr ""
+
+msgid "Standard Ebooks gives its catalogue to Patrons Circle members. Press Sign In, enter the email address of your membership as the user name and leave the password empty."
 msgstr ""
 
 msgid "StarDict dictionaries (folders with .ifo, .idx and .dict files) put in the dictionaries folder are used too."
@@ -9691,10 +9703,25 @@ msgstr ""
 msgid "The books selected in the library. Untick a book to leave it out; a book with a warning is left out until you tick it."
 msgstr ""
 
+msgid "The catalogue answered with an error (HTTP {})."
+msgstr ""
+
+msgid "The catalogue did not accept the user name or password. Press Sign In to change them."
+msgstr ""
+
+msgid "The catalogue did not answer in time. Check the connection and try again."
+msgstr ""
+
 msgid "The catalogue goes back to how it was then. The current one is saved first as a \"Before a restore\" backup, so you can undo this."
 msgstr ""
 
+msgid "The catalogue has no page at this address (HTTP 404). Check the address."
+msgstr ""
+
 msgid "The catalogue is replaced by the one in the backup; the current one is saved first."
+msgstr ""
+
+msgid "The catalogue's server is busy or down for maintenance (HTTP {}). That is on its side: try again later."
 msgstr ""
 
 msgid "The check did not finish"
@@ -10009,6 +10036,9 @@ msgstr ""
 msgid "The two passwords are not the same."
 msgstr ""
 
+msgid "The user name and password of your account on this catalogue."
+msgstr ""
+
 msgid "The user name must not contain a colon."
 msgstr ""
 
@@ -10177,6 +10207,9 @@ msgid "This book uses the default look again"
 msgstr ""
 
 msgid "This can take a while for a whole book."
+msgstr ""
+
+msgid "This catalogue asks for a user name and password. Press Sign In to enter them."
 msgstr ""
 
 msgid "This comic has {} pages."
@@ -10748,6 +10781,9 @@ msgid "Use the default {}"
 msgstr ""
 
 msgid "Use the dictionary {}"
+msgstr ""
+
+msgid "Use the email address of your Patrons Circle membership as the user name. The password stays empty."
 msgstr ""
 
 msgid "Use the file name and picture order only, not the title, series, direction or cover the file claims"

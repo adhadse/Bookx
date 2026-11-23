@@ -43,6 +43,7 @@ struct Ui {
     search_entry: gtk::SearchEntry,
     search_toggle: gtk::ToggleButton,
     retry: gtk::Button,
+    sign_in: gtk::Button,
     busy_kind: Cell<Busy>,
     stack: gtk::Stack,
     list: gtk::ListBox,
@@ -156,7 +157,14 @@ fn build(shared: &SharedRef, import: Import) -> Rc<Ui> {
     retry.add_css_class("pill");
     retry.set_halign(gtk::Align::Center);
     retry.set_visible(false);
-    status.set_child(Some(&retry));
+    let sign_in = gtk::Button::with_label(&tr("Sign In"));
+    sign_in.add_css_class("pill");
+    sign_in.set_halign(gtk::Align::Center);
+    sign_in.set_visible(false);
+    let status_buttons = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    status_buttons.append(&sign_in);
+    status_buttons.append(&retry);
+    status.set_child(Some(&status_buttons));
     let spinner = gtk::Spinner::new();
     spinner.start();
     spinner.set_halign(gtk::Align::Center);
@@ -199,6 +207,7 @@ fn build(shared: &SharedRef, import: Import) -> Rc<Ui> {
         search_entry: search_entry.clone(),
         search_toggle: search_toggle.clone(),
         retry: retry.clone(),
+        sign_in: sign_in.clone(),
         busy_kind: Cell::new(Busy::Idle),
         stack,
         list,
@@ -233,6 +242,10 @@ fn build(shared: &SharedRef, import: Import) -> Rc<Ui> {
         retry.connect_clicked(move |_| ui.load_top(false));
     }
     {
+        let ui = ui.clone();
+        sign_in.connect_clicked(move |_| ui.sign_in_dialog());
+    }
+    {
         // Ctrl+F opens the search of the catalogue being browsed
         let (toggle, entry) = (search_toggle.clone(), search_entry.clone());
         let sc = gtk::ShortcutController::new();
@@ -265,6 +278,7 @@ impl Ui {
 
     fn message(&self, icon: &str, title: &str, text: &str, retry: bool) {
         self.retry.set_visible(retry);
+        self.sign_in.set_visible(false);
         self.status.set_icon_name(Some(icon));
         self.status.set_title(title);
         self.status.set_description(Some(text));
@@ -272,17 +286,12 @@ impl Ui {
     }
 
     fn catalogs(&self) -> Vec<(ob::Catalog, bool)> {
-        let mut v: Vec<(ob::Catalog, bool)> =
-            ob::presets().into_iter().map(|c| (c, false)).collect();
-        v.extend(
-            self.shared
-                .cfg
-                .borrow()
-                .opds_catalogs
-                .iter()
-                .cloned()
-                .map(|c| (c, true)),
-        );
+        let cfg = self.shared.cfg.borrow();
+        let mut v: Vec<(ob::Catalog, bool)> = ob::with_logins(ob::presets(), &cfg.opds_logins)
+            .into_iter()
+            .map(|c| (c, false))
+            .collect();
+        v.extend(cfg.opds_catalogs.iter().cloned().map(|c| (c, true)));
         v
     }
 
@@ -410,7 +419,7 @@ impl Ui {
         let t2 = terms.clone();
         std::thread::spawn(move || {
             let f = ob::fetcher();
-            let _ = tx.send(ob::search_url(&*f, &c, &feed, &t2).map_err(|e| format!("{e:#}")));
+            let _ = tx.send(ob::search_url(&*f, &c, &feed, &t2).map_err(|e| ob::explain(&c, &e)));
         });
         let ui = self.clone();
         poll(rx, move |res| {
@@ -422,7 +431,7 @@ impl Ui {
                 Err(e) => {
                     ui.busy.set(false);
                     ui.stack.set_visible_child_name("list");
-                    ui.toast(&e);
+                    ui.toast(&e.message);
                 }
             }
         });
@@ -430,6 +439,7 @@ impl Ui {
 
     fn set_busy(&self, kind: Busy) {
         self.busy.set(true);
+        self.sign_in.set_visible(false);
         self.busy_kind.set(kind);
         self.stack.set_visible_child_name("busy");
     }
@@ -470,7 +480,7 @@ impl Ui {
         let (c2, url2) = (c.clone(), url.clone());
         std::thread::spawn(move || {
             let f = ob::fetcher();
-            let _ = tx.send(ob::load(&*f, &c2, &url2).map_err(|e| format!("{e:#}")));
+            let _ = tx.send(ob::load(&*f, &c2, &url2).map_err(|e| ob::explain(&c2, &e)));
         });
         let ui = self.clone();
         poll(rx, move |res| {
@@ -483,14 +493,15 @@ impl Ui {
                 Err(e) => {
                     if append {
                         ui.stack.set_visible_child_name("list");
-                        ui.toast(&e);
+                        ui.toast(&e.message);
                     } else {
                         ui.message(
                             "dialog-error-symbolic",
                             &tr("Could not Load This Page"),
-                            &e,
-                            true,
+                            &e.message,
+                            !e.sign_in,
                         );
+                        ui.sign_in.set_visible(e.sign_in);
                     }
                 }
             }
@@ -586,7 +597,7 @@ impl Ui {
         let e2 = entry.clone();
         std::thread::spawn(move || {
             let f = ob::fetcher();
-            let _ = tx.send(ob::download(&*f, &c, &e2, &dir).map_err(|e| format!("{e:#}")));
+            let _ = tx.send(ob::download(&*f, &c, &e2, &dir).map_err(|e| ob::explain(&c, &e)));
         });
         let (ui, button) = (self.clone(), button.clone());
         poll(rx, move |res| match res {
@@ -597,9 +608,72 @@ impl Ui {
             Err(e) => {
                 button.set_sensitive(true);
                 button.set_label(&tr("Add"));
-                ui.toast(&e);
+                ui.toast(&e.message);
             }
         });
+    }
+
+    /// Asks for the user name and password of the open catalogue and loads the page again.
+    fn sign_in_dialog(self: &Rc<Self>) {
+        let Some(c) = self.catalog.borrow().clone() else {
+            return;
+        };
+        let d = adw::AlertDialog::new(
+            Some(&trf("Sign In to {}", &[&c.name])),
+            Some(&if c.id == "standardebooks" {
+                tr(
+                    "Use the email address of your Patrons Circle membership as the user name. The password stays empty.",
+                )
+            } else {
+                tr("The user name and password of your account on this catalogue.")
+            }),
+        );
+        let group = adw::PreferencesGroup::new();
+        let user = adw::EntryRow::new();
+        user.set_title(&tr("User Name"));
+        user.set_text(&c.user);
+        let pass = adw::PasswordEntryRow::new();
+        pass.set_title(&tr("Password"));
+        pass.set_text(&c.password);
+        group.add(&user);
+        group.add(&pass);
+        d.set_extra_child(Some(&group));
+        d.add_response("cancel", &tr("Cancel"));
+        d.add_response("sign-in", &tr("Sign In"));
+        d.set_response_appearance("sign-in", adw::ResponseAppearance::Suggested);
+        d.set_default_response(Some("sign-in"));
+        d.set_close_response("cancel");
+        user.set_activates_default(true);
+        pass.set_activates_default(true);
+        let ui = self.clone();
+        d.connect_response(None, move |_, r| {
+            if r == "sign-in" {
+                ui.save_login(user.text().as_str(), pass.text().as_str());
+            }
+        });
+        d.present(Some(&self.anchor));
+    }
+
+    /// Keeps the sign-in of the open catalogue (in the keyring, like every password) and retries.
+    fn save_login(self: &Rc<Self>, user: &str, pass: &str) {
+        let Some(mut c) = self.catalog.borrow().clone() else {
+            return;
+        };
+        {
+            let mut cfg = self.shared.cfg.borrow_mut();
+            match cfg.opds_catalogs.iter_mut().find(|x| x.id == c.id) {
+                Some(mine) => {
+                    mine.user = user.trim().to_string();
+                    mine.password = pass.to_string();
+                }
+                None => ob::set_login(&mut cfg.opds_logins, &c.id, user, pass),
+            }
+            cfg.save();
+        }
+        c.user = user.trim().to_string();
+        c.password = pass.to_string();
+        *self.catalog.borrow_mut() = Some(c);
+        self.load_top(false);
     }
 
     fn add_catalog_dialog(self: &Rc<Self>) {
@@ -717,7 +791,7 @@ impl Ui {
             })
             .collect();
         eprintln!(
-            "opds_view: title={} | page={} | busy={} | back={} | search={} | search_open={} | retry={} | rows={}",
+            "opds_view: title={} | page={} | busy={} | back={} | search={} | search_open={} | retry={} | sign_in={} | rows={}",
             self.title.title(),
             self.stack.visible_child_name().unwrap_or_default(),
             self.busy.get(),
@@ -725,6 +799,7 @@ impl Ui {
             self.search_toggle.is_visible(),
             self.search_bar.is_search_mode(),
             self.retry.is_visible(),
+            self.sign_in.is_visible(),
             rows.join(";")
         );
         if self.catalog.borrow().is_none() {
@@ -735,7 +810,7 @@ impl Ui {
 }
 
 /// Test hook (`library:opds=…`): `open`, `dump`, `catalog=NAME`, `go=TITLE`, `back`,
-/// `search=TERMS`, `cancel` (the loading page's Cancel), `add=TITLE`, `add-catalog=NAME|URL|USER|PASSWORD`, `more`.
+/// `search=TERMS`, `sign-in=USER|PASSWORD` (the Sign In dialog), `cancel` (the loading page's Cancel), `add=TITLE`, `add-catalog=NAME|URL|USER|PASSWORD`, `more`.
 /// The *Add a Catalogue* button needs an address.
 pub fn can_add(address: &str) -> bool {
     !address.trim().is_empty()
@@ -841,6 +916,10 @@ pub fn dev(cmd: &str) {
         }
         "back" => ui.go_back(),
         "cancel" => ui.cancel_load(),
+        c if c.starts_with("sign-in=") => {
+            let (u, p) = c[8..].split_once('|').unwrap_or((&c[8..], ""));
+            ui.save_login(u, p);
+        }
         "more" => {
             if let (Some(c), Some(next)) = (
                 ui.catalog.borrow().clone(),

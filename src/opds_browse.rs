@@ -35,7 +35,7 @@ pub fn presets() -> Vec<Catalog> {
         Catalog {
             id: "gutenberg".into(),
             name: tr("Project Gutenberg"),
-            url: "https://m.gutenberg.org/ebooks.opds/".into(),
+            url: "https://www.gutenberg.org/ebooks.opds/".into(),
             ..Catalog::default()
         },
         Catalog {
@@ -49,6 +49,87 @@ pub fn presets() -> Vec<Catalog> {
 
 pub fn password_key(id: &str) -> String {
     format!("opds-{id}-password")
+}
+
+/// The always-listed catalogues with the sign-in the user saved for each (`logins` is keyed by id;
+/// only its user name and password are used).
+pub fn with_logins(presets: Vec<Catalog>, logins: &[Catalog]) -> Vec<Catalog> {
+    presets
+        .into_iter()
+        .map(|mut p| {
+            if let Some(l) = logins.iter().find(|l| l.id == p.id) {
+                p.user = l.user.clone();
+                p.password = l.password.clone();
+            }
+            p
+        })
+        .collect()
+}
+
+/// Saves (or, with an empty user name, forgets) the sign-in of the catalogue `id`.
+pub fn set_login(logins: &mut Vec<Catalog>, id: &str, user: &str, password: &str) {
+    logins.retain(|l| l.id != id);
+    if !user.trim().is_empty() {
+        logins.push(Catalog {
+            id: id.to_string(),
+            user: user.trim().to_string(),
+            password: password.to_string(),
+            ..Catalog::default()
+        });
+    }
+}
+
+/// A failed request in words a reader can act on.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Problem {
+    pub message: String,
+    /// A sign-in would help: the server asked for one, or did not accept the one given.
+    pub sign_in: bool,
+}
+
+/// Explains why loading from catalogue `c` failed. The raw `HTTP error 401` helps nobody.
+pub fn explain(c: &Catalog, err: &anyhow::Error) -> Problem {
+    use bookx_sources::fetch::FetchError;
+    let plain = |message: String| Problem {
+        message,
+        sign_in: false,
+    };
+    let Some(fe) = FetchError::of(err) else {
+        return plain(format!("{err:#}"));
+    };
+    match fe {
+        FetchError::Http(401 | 403) if c.user.is_empty() => Problem {
+            message: if c.id == "standardebooks" {
+                tr(
+                    "Standard Ebooks gives its catalogue to Patrons Circle members. Press Sign In, enter the email address of your membership as the user name and leave the password empty.",
+                )
+            } else {
+                tr("This catalogue asks for a user name and password. Press Sign In to enter them.")
+            },
+            sign_in: true,
+        },
+        FetchError::Http(401 | 403) => Problem {
+            message: tr(
+                "The catalogue did not accept the user name or password. Press Sign In to change them.",
+            ),
+            sign_in: true,
+        },
+        FetchError::Http(404 | 410) => plain(tr(
+            "The catalogue has no page at this address (HTTP 404). Check the address.",
+        )),
+        FetchError::Http(c @ (429 | 500..=599)) => plain(crate::i18n::trf(
+            "The catalogue's server is busy or down for maintenance (HTTP {}). That is on its side: try again later.",
+            &[c],
+        )),
+        FetchError::Http(c) => plain(crate::i18n::trf(
+            "The catalogue answered with an error (HTTP {}).",
+            &[c],
+        )),
+        FetchError::Timeout => plain(tr(
+            "The catalogue did not answer in time. Check the connection and try again.",
+        )),
+        FetchError::Other(m) => plain(crate::i18n::trf("Could not reach the catalogue: {}", &[m])),
+    }
 }
 
 /// Adds a catalogue (checking the address) and returns its id.
@@ -113,13 +194,17 @@ pub fn fetcher() -> Arc<dyn Fetcher> {
 struct MockFiles(PathBuf);
 
 impl Fetcher for MockFiles {
-    fn get(&self, url: &str, _headers: &[(String, String)]) -> Result<Vec<u8>> {
+    fn get(&self, url: &str, headers: &[(String, String)]) -> Result<Vec<u8>> {
         let rest = url
             .strip_prefix("https://mock.example/opds/")
             .ok_or_else(|| anyhow!("HTTP 404"))?;
         let name = rest.split(['?', '#']).next().unwrap_or("");
         if name.contains('/') || name.contains("..") {
             bail!("HTTP 404");
+        }
+        // like Standard Ebooks: a page called `private-…` answers 401 until a login is sent
+        if name.starts_with("private-") && !headers.iter().any(|(k, _)| k == "Authorization") {
+            return Err(bookx_sources::fetch::FetchError::Http(401).into());
         }
         std::fs::read(self.0.join(name)).map_err(|_| anyhow!("HTTP 404"))
     }
@@ -465,6 +550,93 @@ mod tests {
             "azw3"
         );
         assert_eq!(extension(&l("", "https://a/b")), "epub");
+    }
+
+    fn failure(c: &Catalog, reply: MockReply) -> Problem {
+        let f = MockFetcher::new().on("https://cat.example/x", reply);
+        explain(c, &load(&f, c, "https://cat.example/x").unwrap_err())
+    }
+
+    #[test]
+    fn a_401_without_a_login_asks_to_sign_in_and_names_standard_ebooks() {
+        let p = failure(&Catalog::default(), MockReply::Status(401));
+        assert!(p.sign_in);
+        assert!(!p.message.contains("HTTP error"), "{}", p.message);
+        let se = Catalog {
+            id: "standardebooks".into(),
+            ..Catalog::default()
+        };
+        let p = failure(&se, MockReply::Status(401));
+        assert!(p.sign_in);
+        assert!(p.message.contains("Patrons Circle"), "{}", p.message);
+    }
+
+    #[test]
+    fn a_refused_login_says_so_and_a_server_that_is_down_is_not_blamed_on_the_user() {
+        let p = failure(&cat(), MockReply::Status(403));
+        assert!(p.sign_in);
+        assert!(p.message.contains("did not accept"), "{}", p.message);
+        let p = failure(&cat(), MockReply::Status(503));
+        assert!(!p.sign_in);
+        assert!(p.message.contains("503") && p.message.contains("later"));
+        assert!(!failure(&cat(), MockReply::Status(404)).sign_in);
+        assert!(
+            failure(&cat(), MockReply::Timeout)
+                .message
+                .contains("in time")
+        );
+        assert!(
+            failure(&cat(), MockReply::Failure("dns".into()))
+                .message
+                .contains("dns")
+        );
+    }
+
+    #[test]
+    fn a_saved_login_reaches_the_always_listed_catalogue_and_is_sent_to_its_host_only() {
+        let mut logins = Vec::new();
+        set_login(&mut logins, "standardebooks", " me@example.org ", "");
+        let listed = with_logins(presets(), &logins);
+        let se = listed.iter().find(|c| c.id == "standardebooks").unwrap();
+        assert_eq!(se.user, "me@example.org");
+        assert_eq!(se.url, "https://standardebooks.org/feeds/opds");
+        assert!(
+            listed
+                .iter()
+                .find(|c| c.id == "gutenberg")
+                .unwrap()
+                .user
+                .is_empty()
+        );
+
+        let f = MockFetcher::new().on(&se.url, MockReply::Body(ROOT.as_bytes().to_vec()));
+        load(&f, se, &se.url).unwrap();
+        assert!(f.requests()[0].headers[0].1.starts_with("Basic "));
+
+        set_login(&mut logins, "standardebooks", "", "");
+        assert!(logins.is_empty(), "an empty user name forgets the login");
+    }
+
+    #[test]
+    fn the_real_gutenberg_front_page_parses() {
+        // the start of https://www.gutenberg.org/ebooks.opds/ (August 2025), thumbnails left out
+        let xml = include_str!("../crates/bookx-serve/tests/fixtures/gutenberg-root.opds");
+        let f = MockFetcher::new().on(
+            "https://www.gutenberg.org/ebooks.opds/",
+            MockReply::Body(xml.as_bytes().to_vec()),
+        );
+        let g = presets().into_iter().find(|c| c.id == "gutenberg").unwrap();
+        assert_eq!(g.url, "https://www.gutenberg.org/ebooks.opds/");
+        let feed = load(&f, &g, &g.url).unwrap();
+        assert_eq!(feed.entries.len(), 3);
+        assert_eq!(
+            feed.entries[0].navigation_link().unwrap().href,
+            "https://www.gutenberg.org/ebooks/search.opds/?sort_order=downloads"
+        );
+        assert!(
+            feed.search().is_some(),
+            "search is an OpenSearch description"
+        );
     }
 
     #[test]

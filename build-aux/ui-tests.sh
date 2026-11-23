@@ -349,6 +349,11 @@ $head<id>fic2</id><title>Fiction 2</title>
 <entry><id>b2</id><title>Second Tale</title><author><name>Other Writer</name></author>
 <link rel="$acq" href="second-tale.epub" type="application/epub+zip"/></entry></feed>
 XML
+    cat >"$dir/private-root.xml" <<XML
+$head<id>p</id><title>Private Root</title>
+<entry><id>p1</id><title>Members Tale</title><author><name>Mock Writer</name></author>
+<link rel="$acq" href="mock-tale.epub" type="application/epub+zip"/></entry></feed>
+XML
     cat >"$dir/search.xml" <<XML
 $head<id>s</id><title>Results</title>
 <entry><id>b3</id><title>Found Tale</title><author><name>Mock Writer</name></author>

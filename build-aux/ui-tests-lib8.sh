@@ -267,6 +267,14 @@ scenario lib10_catalogues_page 'library:wide,wait:400,library:sidebar,library:na
     sed -n 3p <<<"$S" | grep -q "view=home"; check "Home is shown again afterwards" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
+# A catalogue that answers 401 (Standard Ebooks does since 2026) explains itself and offers Sign In;
+# the login is kept and the page loads. `private-*` pages of the mock need an Authorization header.
+scenario opds_sign_in 'library:wide,wait:300,library:opds=open,wait:500,library:opds=add-catalog=Locked|https://mock.example/opds/private-root.xml,library:opds=catalog=Locked,wait:1500,library:opds=dump,library:opds=sign-in=me@example.org|,wait:1500,library:opds=dump,quit' '
+    O=$(grep "^opds_view:" <<<"$OUT")
+    sed -n 1p <<<"$O" | grep -q "page=status .*retry=false | sign_in=true"; check "a 401 shows the error page with Sign In instead of a bare HTTP error" $?
+    sed -n 2p <<<"$O" | grep -q "page=list .*sign_in=false | rows=Members Tale|book"; check "after signing in the catalogue loads" $?
+    ! has "panicked|CRITICAL|Gtk-WARNING|opds_error"; check "no errors or GTK warnings" $?'
+
 scenario lib10_sidebar_customize 'library:wide,wait:400,library:sidebar-layout,library:sidebar-config=open,wait:1500,library:sidebar-config=dump,library:sidebar-config=up=catalogues,wait:300,library:sidebar,library:sidebar-layout,library:sidebar-config=hide=notes,wait:300,library:sidebar,library:sidebar-config=hide=health,wait:300,library:sidebar-layout,library:sidebar-config=dump,library:browse=tags,wait:400,quit' '
     L=$(grep "^sidebar_layout:" <<<"$OUT")
     sed -n 1p <<<"$L" | grep -q "shown=home,recent,favourites,notes,catalogues,shelves,audiobooks,saved-searches,authors,series,tags,publishers,languages,ratings,status hidden= health=true"; check "the default sidebar: every entry, today order, Online Catalogues after Notes" $?
