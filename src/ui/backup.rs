@@ -22,7 +22,7 @@ use chrono::Utc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio, glib};
 
-use super::{window_of, SharedRef};
+use super::{SharedRef, window_of};
 use crate::backups as bk;
 use crate::library_health as lh;
 
@@ -1302,7 +1302,9 @@ impl Panel {
             super::alert(
                 &self.parent,
                 &tr("Remove old backups?"),
-                &tr("Backups beyond the number this place keeps are removed, and so are the files only they needed. Manual backups and the newest ones stay."),
+                &tr(
+                    "Backups beyond the number this place keeps are removed, and so are the files only they needed. Manual backups and the newest ones stay.",
+                ),
                 &tr("Remove"),
                 true,
                 go,
@@ -1412,8 +1414,8 @@ impl Panel {
             self.restore_group.remove(&w);
         }
         self.restore_btns.borrow_mut().clear();
-        let gen = self.generation.get() + 1;
-        self.generation.set(gen);
+        let r#gen = self.generation.get() + 1;
+        self.generation.set(r#gen);
         let Some(d) = self.selected_destination() else {
             return;
         };
@@ -1440,7 +1442,7 @@ impl Panel {
             .unwrap_or_else(|_| (Vec::new(), Err("stopped unexpectedly".into())));
             let Some(p) = weak.upgrade() else { return };
             // another place was picked (or the list rebuilt) meanwhile
-            if p.generation.get() != gen {
+            if p.generation.get() != r#gen {
                 return;
             }
             p.restore_group.remove(&loading);

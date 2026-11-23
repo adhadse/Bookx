@@ -7,13 +7,13 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use ort::environment::Environment;
 use ort::session::Session;
 use ort::value::Tensor;
 
 use crate::catalog_data::KOKORO_VOCAB;
-use crate::models::{kokoro_voice_language, KOKORO_LANGUAGES};
+use crate::models::{KOKORO_LANGUAGES, kokoro_voice_language};
 use crate::onnx::{load_model, trim_silence};
 use crate::phonemize::phonemize;
 use crate::session::Voice;

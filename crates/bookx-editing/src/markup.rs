@@ -113,7 +113,7 @@ pub fn scan(src: &str) -> Vec<Event> {
     let mut i = 0;
     let mut text_start = 0;
     macro_rules! flush {
-        ($end:expr) => {
+        ($end:expr_2021) => {
             if $end > text_start {
                 out.push(Event::Text(text_start..$end));
             }

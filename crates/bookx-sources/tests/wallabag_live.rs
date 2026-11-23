@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use bookx_sources::fetch::UreqFetcher;
-use bookx_sources::readability::{article_to_epub, fetch_images, ImageLimits};
+use bookx_sources::readability::{ImageLimits, article_to_epub, fetch_images};
 use bookx_sources::wallabag::{self, Credentials, Query};
 
 fn skip() -> bool {
@@ -183,11 +183,14 @@ fn import_from_a_wallabag_server_on_the_local_network() {
 
     // the sign-in was a POST with a form body, the list a GET with the bearer header
     let log = log.lock().unwrap();
-    assert!(log.iter().any(|r| r.0 == "POST"
-        && r.2
-            .iter()
-            .any(|(k, v)| k == "content-type" && v == "application/x-www-form-urlencoded")));
-    assert!(log
-        .iter()
-        .any(|r| r.0 == "GET" && r.1.starts_with("/api/entries.json")));
+    assert!(log.iter().any(|r| {
+        r.0 == "POST"
+            && r.2
+                .iter()
+                .any(|(k, v)| k == "content-type" && v == "application/x-www-form-urlencoded")
+    }));
+    assert!(
+        log.iter()
+            .any(|r| r.0 == "GET" && r.1.starts_with("/api/entries.json"))
+    );
 }

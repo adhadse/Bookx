@@ -2,10 +2,10 @@
 
 mod common;
 
-use bookx_mcp::schema;
 use bookx_mcp::WritePolicy;
+use bookx_mcp::schema;
 use common::*;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 fn ids(v: &Value, key: &str) -> Vec<u64> {
     v[key]
@@ -64,10 +64,12 @@ fn requests_before_initialize_are_refused_and_bad_messages_answered() {
     let mut c = Client::start(f.config());
     let r = c.request("tools/list", json!({}));
     assert_eq!(r["error"]["code"], -32600);
-    assert!(r["error"]["message"]
-        .as_str()
-        .unwrap()
-        .contains("initialize"));
+    assert!(
+        r["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("initialize")
+    );
     // ping is allowed any time
     assert!(c.request("ping", json!({})).get("result").is_some());
     // garbage and an unknown method
@@ -311,10 +313,12 @@ fn toc_and_reading_text_with_cursors_across_chapters() {
     assert_eq!(hops, 2);
     // the text block of the answer starts with where we are
     let raw = c.call("read_book_text", json!({"book_id": f.dune, "chapter": 1}));
-    assert!(raw["content"][0]["text"]
-        .as_str()
-        .unwrap()
-        .starts_with("[Dune Alpha — chapter 1"));
+    assert!(
+        raw["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .starts_with("[Dune Alpha — chapter 1")
+    );
     let e = c.err("read_book_text", json!({"book_id": f.dune, "chapter": 9}));
     assert!(e.contains("3 chapters"));
     c.close();
@@ -376,10 +380,12 @@ fn protected_books_refuse_their_text_everywhere() {
         "resources/read",
         json!({"uri": format!("bookx://book/{}/chapter/0", f.locked)}),
     );
-    assert!(r["error"]["message"]
-        .as_str()
-        .unwrap()
-        .contains("copy protected"));
+    assert!(
+        r["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("copy protected")
+    );
     // the full-text index may know the book; the tool leaves it out
     let hits = c.ok("search_all_books_text", json!({"query":"read this"}));
     assert_eq!(hits["hits"], json!([]));
@@ -400,11 +406,13 @@ fn search_inside_a_book_and_across_the_library() {
     let hits = r["hits"].as_array().unwrap();
     assert_eq!(hits.len(), 3);
     assert_eq!(hits[0]["chapter"], 0);
-    assert!(hits[0]["snippet"]
-        .as_str()
-        .unwrap()
-        .to_lowercase()
-        .contains("desert"));
+    assert!(
+        hits[0]["snippet"]
+            .as_str()
+            .unwrap()
+            .to_lowercase()
+            .contains("desert")
+    );
     let w = c.ok(
         "search_in_book",
         json!({"book_id": f.dune, "query":"Water", "case_sensitive": true, "whole_word": true}),
@@ -520,10 +528,12 @@ fn reading_stats_recent_books_similar_duplicates() {
         c2.close();
         r
     };
-    assert!(none["note"]
-        .as_str()
-        .unwrap()
-        .contains("no reading sessions"));
+    assert!(
+        none["note"]
+            .as_str()
+            .unwrap()
+            .contains("no reading sessions")
+    );
 
     let recent = c.ok("recent_books", json!({}));
     assert_eq!(ids(&recent, "books"), vec![f.dune]);
@@ -534,10 +544,12 @@ fn reading_stats_recent_books_similar_duplicates() {
     let order = ids(&sim, "books");
     assert!(order.contains(&f.dune2) && order.contains(&f.dup));
     assert!(!order.contains(&f.cook));
-    assert!(sim["books"][0]["reasons"][0]
-        .as_str()
-        .unwrap()
-        .contains("same"));
+    assert!(
+        sim["books"][0]["reasons"][0]
+            .as_str()
+            .unwrap()
+            .contains("same")
+    );
 
     let dups = c.ok("find_duplicates", json!({}));
     assert_eq!(dups["total"], 1);
@@ -585,29 +597,36 @@ fn argument_and_tool_errors_are_reported_the_right_way() {
     // unknown tool: a protocol error
     let r = c.request("tools/call", json!({"name":"no_such_tool","arguments":{}}));
     assert_eq!(r["error"]["code"], -32602);
-    assert!(r["error"]["message"]
-        .as_str()
-        .unwrap()
-        .contains("no_such_tool"));
+    assert!(
+        r["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("no_such_tool")
+    );
     let r = c.request("tools/call", json!({"arguments":{}}));
     assert_eq!(r["error"]["code"], -32602);
     // bad arguments: a tool error the model can read and fix
     assert!(c.err("get_book", json!({})).contains("book_id"));
-    assert!(c
-        .err("get_book", json!({"book_id":"x"}))
-        .contains("integer"));
-    assert!(c
-        .err("search_books", json!({"sort":"sideways"}))
-        .contains("one of"));
-    assert!(c
-        .err("search_books", json!({"limit": 1000}))
-        .contains("at most"));
-    assert!(c
-        .err("search_books", json!({"bogus": 1}))
-        .contains("unknown argument"));
-    assert!(c
-        .err("search_books", json!({"cursor":"zzz"}))
-        .contains("cursor"));
+    assert!(
+        c.err("get_book", json!({"book_id":"x"}))
+            .contains("integer")
+    );
+    assert!(
+        c.err("search_books", json!({"sort":"sideways"}))
+            .contains("one of")
+    );
+    assert!(
+        c.err("search_books", json!({"limit": 1000}))
+            .contains("at most")
+    );
+    assert!(
+        c.err("search_books", json!({"bogus": 1}))
+            .contains("unknown argument")
+    );
+    assert!(
+        c.err("search_books", json!({"cursor":"zzz"}))
+            .contains("cursor")
+    );
     // missing arguments object is fine for tools without required arguments
     let r = c.request("tools/call", json!({"name":"search_books"}));
     assert_eq!(r["result"]["isError"], false);
@@ -643,9 +662,11 @@ fn progress_notifications_follow_the_token() {
         .filter(|n| n["method"] == "notifications/progress")
         .collect();
     assert!(progress.len() >= 2, "{:?}", c.notes);
-    assert!(progress
-        .iter()
-        .all(|p| p["params"]["progressToken"] == "tok-1"));
+    assert!(
+        progress
+            .iter()
+            .all(|p| p["params"]["progressToken"] == "tok-1")
+    );
     let values: Vec<f64> = progress
         .iter()
         .map(|p| p["params"]["progress"].as_f64().unwrap())
@@ -802,10 +823,12 @@ fn resources_list_templates_and_read() {
         "resources/read",
         json!({"uri": format!("bookx://book/{}/chapter/1", f.dune)}),
     );
-    assert!(r["result"]["contents"][0]["text"]
-        .as_str()
-        .unwrap()
-        .contains("Water is life"));
+    assert!(
+        r["result"]["contents"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("Water is life")
+    );
 
     let r = c.request("resources/read", json!({"uri": "bookx://library/stats"}));
     let s: Value =
@@ -888,26 +911,32 @@ fn prompts_list_and_get() {
     let msgs = r["result"]["messages"].as_array().unwrap();
     assert_eq!(msgs.len(), 2);
     assert_eq!(msgs[1]["content"]["type"], "resource");
-    assert!(msgs[1]["content"]["resource"]["text"]
-        .as_str()
-        .unwrap()
-        .contains("Water is life"));
+    assert!(
+        msgs[1]["content"]["resource"]["text"]
+            .as_str()
+            .unwrap()
+            .contains("Water is life")
+    );
     let r = c.request(
         "prompts/get",
         json!({"name":"study-notes-from-highlights","arguments":{"book_id": f.dune.to_string()}}),
     );
-    assert!(r["result"]["messages"][0]["content"]["text"]
-        .as_str()
-        .unwrap()
-        .contains("remember this"));
+    assert!(
+        r["result"]["messages"][0]["content"]["text"]
+            .as_str()
+            .unwrap()
+            .contains("remember this")
+    );
     let r = c.request(
         "prompts/get",
         json!({"name":"find-quotes-about","arguments":{"topic":"water"}}),
     );
-    assert!(r["result"]["messages"][0]["content"]["text"]
-        .as_str()
-        .unwrap()
-        .contains("search_all_books_text"));
+    assert!(
+        r["result"]["messages"][0]["content"]["text"]
+            .as_str()
+            .unwrap()
+            .contains("search_all_books_text")
+    );
     let r = c.request(
         "prompts/get",
         json!({"name":"find-quotes-about","arguments":{}}),
@@ -987,10 +1016,12 @@ fn write_tools_are_listed_with_honest_annotations() {
         "network tool needs the network switch"
     );
     assert_eq!(get("search_books")["annotations"]["readOnlyHint"], true);
-    assert!(get("add_book_from_path")["description"]
-        .as_str()
-        .unwrap()
-        .contains("incoming"));
+    assert!(
+        get("add_book_from_path")["description"]
+            .as_str()
+            .unwrap()
+            .contains("incoming")
+    );
     c.close();
 }
 
@@ -1036,29 +1067,35 @@ fn metadata_edits_go_through_the_library_and_can_be_undone() {
     assert_eq!(on_disk.metadata().title, "Cooking Basics 2");
 
     // whitelist and validation
-    assert!(c
-        .err(
+    assert!(
+        c.err(
             "update_metadata",
             json!({"book_id": f.cook, "fields":{"file":"x"}})
         )
-        .contains("unknown argument"));
-    assert!(c
-        .err("update_metadata", json!({"book_id": f.cook, "fields":{}}))
-        .contains("at least one"));
-    assert!(c
-        .err("set_rating", json!({"book_id": f.cook, "stars": 9}))
-        .contains("at most"));
-    assert!(c
-        .err("add_tags", json!({"book_id": 4242, "tags":["a"]}))
-        .contains("no book"));
+        .contains("unknown argument")
+    );
+    assert!(
+        c.err("update_metadata", json!({"book_id": f.cook, "fields":{}}))
+            .contains("at least one")
+    );
+    assert!(
+        c.err("set_rating", json!({"book_id": f.cook, "stars": 9}))
+            .contains("at most")
+    );
+    assert!(
+        c.err("add_tags", json!({"book_id": 4242, "tags":["a"]}))
+            .contains("no book")
+    );
 
     // four edits (and the fixture's import) are in the operation log; the app's undo takes the
     // edits back one by one
     let ops = bookx_core::history::load_ops(&f.root);
     assert_eq!(ops.len(), 5, "{ops:?}");
-    assert!(ops[1..]
-        .iter()
-        .all(|o| matches!(o.kind, bookx_core::history::OpKind::Edit { .. })));
+    assert!(
+        ops[1..]
+            .iter()
+            .all(|o| matches!(o.kind, bookx_core::history::OpKind::Edit { .. }))
+    );
     let mut o = bookx_store::open_library(&f.root).unwrap();
     for _ in 0..4 {
         o.library.undo_last().unwrap().expect("something to undo");
@@ -1100,24 +1137,27 @@ fn notes_highlights_status_and_shelves() {
     let got: String = chapter[hl.start as usize..hl.end as usize].iter().collect();
     assert_eq!(got, "sandworms");
     drop(o);
-    assert!(c
-        .err(
+    assert!(
+        c.err(
             "add_highlight",
             json!({"book_id": f.dune, "text":"not in the book"})
         )
-        .contains("not found"));
-    assert!(c
-        .err(
+        .contains("not found")
+    );
+    assert!(
+        c.err(
             "add_highlight",
             json!({"book_id": f.dune, "text":"x", "color":"pink"})
         )
-        .contains("one of"));
-    assert!(c
-        .err(
+        .contains("one of")
+    );
+    assert!(
+        c.err(
             "add_highlight",
             json!({"book_id": f.locked, "text":"read this"})
         )
-        .contains("copy protected"));
+        .contains("copy protected")
+    );
 
     let n = c.ok(
         "add_note",
@@ -1147,9 +1187,10 @@ fn notes_highlights_status_and_shelves() {
         "unread"
     );
 
-    assert!(c
-        .err("add_to_shelf", json!({"book_id": f.cook, "shelf":"Nope"}))
-        .contains("create"));
+    assert!(
+        c.err("add_to_shelf", json!({"book_id": f.cook, "shelf":"Nope"}))
+            .contains("create")
+    );
     c.ok(
         "add_to_shelf",
         json!({"book_id": f.cook, "shelf":"favourites"}),
@@ -1222,27 +1263,31 @@ fn imports_only_from_allowed_folders() {
     assert_eq!(r["book"]["title"], "Fresh Arrival");
     let again = c.ok("add_book_from_path", json!({"path": p.to_str().unwrap()}));
     assert!(again["message"].as_str().unwrap().contains("already"));
-    assert!(c
-        .err(
+    assert!(
+        c.err(
             "add_book_from_path",
             json!({"path": outside.to_str().unwrap()})
         )
-        .contains("outside"));
-    assert!(c
-        .err(
+        .contains("outside")
+    );
+    assert!(
+        c.err(
             "add_book_from_path",
             json!({"path": format!("{}/../src/dune.epub", incoming.display())})
         )
-        .contains("outside"));
-    assert!(c
-        .err("add_book_from_path", json!({"path": "/etc/passwd"}))
-        .contains("outside"));
-    assert!(c
-        .err(
+        .contains("outside")
+    );
+    assert!(
+        c.err("add_book_from_path", json!({"path": "/etc/passwd"}))
+            .contains("outside")
+    );
+    assert!(
+        c.err(
             "add_book_from_path",
             json!({"path": incoming.join("none.epub").to_str().unwrap()})
         )
-        .contains("does not exist"));
+        .contains("does not exist")
+    );
     // the import is one undoable operation
     let mut o = bookx_store::open_library(&f.root).unwrap();
     assert!(o.library.undo_last().unwrap().is_some());
@@ -1281,9 +1326,11 @@ fn in_app_writes_do_not_take_the_lock() {
     cfg.write = WritePolicy::InApp;
     let mut c = Client::ready(cfg);
     c.ok("add_tags", json!({"book_id": f.cook, "tags":["inapp"]}));
-    assert!(c.ok("get_book", json!({"book_id": f.cook}))["book"]["tags"]
-        .to_string()
-        .contains("inapp"));
+    assert!(
+        c.ok("get_book", json!({"book_id": f.cook}))["book"]["tags"]
+            .to_string()
+            .contains("inapp")
+    );
     drop(held);
     c.close();
 }

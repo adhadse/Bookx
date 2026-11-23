@@ -6,15 +6,15 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 use bookx_serve::activity::{ActivityLog, MAX_EVENTS};
 use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 
-use super::share::follow;
 use super::SharedRef;
-use crate::annotation_sync::{ledger_path, Ledger};
+use super::share::follow;
+use crate::annotation_sync::{Ledger, ledger_path};
 use crate::i18n::{ntr, tr, trf};
 use crate::sync_activity as model;
 
@@ -130,7 +130,8 @@ pub fn read(shared: &SharedRef) -> Data {
             .filter_map(|(doc, id)| lib.get(*id).map(|b| (doc.clone(), b.meta.title.clone())))
             .collect()
     };
-    let (devices, events) = match log_of(shared) {
+    let log = log_of(shared);
+    let (devices, events) = match &log {
         Some(l) => (l.devices(), l.events(MAX_EVENTS)),
         None => (Vec::new(), Vec::new()),
     };
@@ -160,7 +161,13 @@ pub fn read(shared: &SharedRef) -> Data {
         devices: devices.iter().map(|d| model::device_row(d, now)).collect(),
         events: events
             .iter()
-            .map(|e| model::activity_row(e, now, &known))
+            .map(|e| {
+                let mut e = e.clone();
+                if let Some(l) = &log {
+                    e.device = l.name_for(&e.device_id, &e.device);
+                }
+                model::activity_row(&e, now, &known)
+            })
             .collect(),
         unmatched,
         address,
@@ -206,7 +213,10 @@ fn status_label(text: &str, connected: bool) -> gtk::Label {
     l
 }
 
-fn device_row(r: &model::DeviceRow) -> adw::ActionRow {
+/// The function that reads the facts again, filled in once the block exists.
+type AfterRename = Rc<RefCell<Option<Weak<dyn Fn()>>>>;
+
+fn device_row(r: &model::DeviceRow, shared: &SharedRef, after: AfterRename) -> adw::ActionRow {
     let row = adw::ActionRow::builder()
         .title(glib_escape(&r.title))
         .subtitle(glib_escape(&r.subtitle))
@@ -215,8 +225,62 @@ fn device_row(r: &model::DeviceRow) -> adw::ActionRow {
     row.set_subtitle_lines(0);
     row.add_prefix(&gtk::Image::from_icon_name("tablet-symbolic"));
     row.add_suffix(&status_label(&r.status, r.connected));
+    let rename = gtk::Button::from_icon_name("document-edit-symbolic");
+    rename.add_css_class("flat");
+    rename.set_valign(gtk::Align::Center);
+    rename.set_tooltip_text(Some(&tr("Rename this device")));
+    super::audit::label(&rename, &trf("Rename {}", &[&r.title]));
+    {
+        let (shared, id, current) = (shared.clone(), r.id.clone(), r.title.clone());
+        let row = row.downgrade();
+        rename.connect_clicked(move |_| {
+            if let Some(row) = row.upgrade() {
+                rename_dialog(&row, &shared, &id, &current, after.clone());
+            }
+        });
+    }
+    row.add_suffix(&rename);
     super::audit::label(&row, &format!("{}, {}, {}", r.title, r.subtitle, r.status));
     row
+}
+
+/// Asks for a name of the user's own for a device. Empty takes it back (the name the device
+/// reports is shown again).
+fn rename_dialog(
+    parent: &adw::ActionRow,
+    shared: &SharedRef,
+    id: &str,
+    current: &str,
+    after: AfterRename,
+) {
+    let d = adw::AlertDialog::new(
+        Some(&tr("Rename this device")),
+        Some(&tr(
+            "The name is only shown in Bookx. Leave it empty to show the name the device reports.",
+        )),
+    );
+    let entry = gtk::Entry::new();
+    entry.set_text(current);
+    entry.set_activates_default(true);
+    d.set_extra_child(Some(&entry));
+    d.add_responses(&[("cancel", &tr("Cancel")), ("rename", &tr("Rename"))]);
+    d.set_response_appearance("rename", adw::ResponseAppearance::Suggested);
+    d.set_default_response(Some("rename"));
+    d.set_close_response("cancel");
+    let (shared, id) = (shared.clone(), id.to_string());
+    d.connect_response(None, move |_, resp| {
+        if resp != "rename" {
+            return;
+        }
+        if let Some(l) = log_of(&shared) {
+            l.rename(&id, entry.text().as_str());
+        }
+        let f = after.borrow().as_ref().and_then(Weak::upgrade);
+        if let Some(f) = f {
+            f();
+        }
+    });
+    d.present(Some(parent));
 }
 
 fn glib_escape(s: &str) -> String {
@@ -356,8 +420,9 @@ pub fn build(shared: &SharedRef) -> Groups {
         });
     }
 
+    let again: AfterRename = Rc::new(RefCell::new(None));
     let refresh: Rc<dyn Fn()> = {
-        let (shared, block) = (shared.clone(), block.clone());
+        let (shared, block, again) = (shared.clone(), block.clone(), again.clone());
         Rc::new(move || {
             let d = read(&shared);
             let mut sig: Vec<String> = Vec::new();
@@ -402,7 +467,7 @@ pub fn build(shared: &SharedRef) -> Groups {
                 );
             }
             for r in &d.devices {
-                block.add(&block.devices, &device_row(r));
+                block.add(&block.devices, &device_row(r, &shared, again.clone()));
             }
             block
                 .activity
@@ -415,6 +480,7 @@ pub fn build(shared: &SharedRef) -> Groups {
             }
         })
     };
+    *again.borrow_mut() = Some(Rc::downgrade(&refresh));
     refresh();
     follow(&block.devices, {
         let r = refresh.clone();

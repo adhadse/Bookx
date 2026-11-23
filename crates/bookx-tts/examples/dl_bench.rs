@@ -10,7 +10,7 @@
 use std::time::Instant;
 
 use bookx_tts::download::install_all;
-use bookx_tts::models::{catalog, install_plan, Store};
+use bookx_tts::models::{Store, catalog, install_plan};
 use bookx_tts::synth::Cancel;
 
 fn main() -> anyhow::Result<()> {

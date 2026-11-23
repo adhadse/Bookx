@@ -5,7 +5,7 @@
 //! and honours a configurable "day starts at" offset (reading at 01:30 with a 04:00
 //! day start belongs to the previous day).
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use chrono::{DateTime, Datelike, Duration, LocalResult, NaiveDate, TimeZone, Utc, Weekday};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -726,26 +726,34 @@ mod tests {
     fn config_validation() {
         assert!(cfg().validate().is_ok());
         let bad = |c: StatsConfig| c.validate().unwrap_err().to_string();
-        assert!(bad(StatsConfig {
-            min_session_secs: -1,
-            ..cfg()
-        })
-        .contains("min_session"));
-        assert!(bad(StatsConfig {
-            merge_gap_secs: -1,
-            ..cfg()
-        })
-        .contains("merge_gap"));
-        assert!(bad(StatsConfig {
-            day_start_minutes: 721,
-            ..cfg()
-        })
-        .contains("720"));
-        assert!(StatsStore::new(StatsConfig {
-            day_start_minutes: 999,
-            ..cfg()
-        })
-        .is_err());
+        assert!(
+            bad(StatsConfig {
+                min_session_secs: -1,
+                ..cfg()
+            })
+            .contains("min_session")
+        );
+        assert!(
+            bad(StatsConfig {
+                merge_gap_secs: -1,
+                ..cfg()
+            })
+            .contains("merge_gap")
+        );
+        assert!(
+            bad(StatsConfig {
+                day_start_minutes: 721,
+                ..cfg()
+            })
+            .contains("720")
+        );
+        assert!(
+            StatsStore::new(StatsConfig {
+                day_start_minutes: 999,
+                ..cfg()
+            })
+            .is_err()
+        );
     }
 
     #[test]
@@ -1420,10 +1428,12 @@ mod tests {
         let p = dir.path().join("x/stats.json");
         st.save(&p).unwrap();
         assert_eq!(StatsStore::load(&p).unwrap(), st);
-        assert!(StatsStore::load(&dir.path().join("missing.json"))
-            .unwrap()
-            .sessions()
-            .is_empty());
+        assert!(
+            StatsStore::load(&dir.path().join("missing.json"))
+                .unwrap()
+                .sessions()
+                .is_empty()
+        );
         std::fs::write(&p, "oops").unwrap();
         assert!(StatsStore::load(&p).is_err());
         let bad = st

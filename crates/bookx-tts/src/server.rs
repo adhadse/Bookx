@@ -7,12 +7,12 @@
 use std::io::Read;
 use std::time::{Duration, Instant};
 
-use anyhow::{anyhow, bail, Context, Result};
-use serde_json::{json, Value};
+use anyhow::{Context, Result, anyhow, bail};
+use serde_json::{Value, json};
 
 use crate::prefs::ServerPrefs;
 use crate::session::Voice;
-use crate::synth::{parse_wav, pcm_from_s16le, Pcm, SynthRequest, Synthesizer};
+use crate::synth::{Pcm, SynthRequest, Synthesizer, parse_wav, pcm_from_s16le};
 
 const MAX_ANSWER: u64 = 256 * 1024 * 1024;
 
@@ -530,18 +530,24 @@ mod tests {
 
     #[test]
     fn answers_that_are_not_wav_are_explained() {
-        assert!(decode_audio(b"ID3\x04rest", 24000)
-            .unwrap_err()
-            .to_string()
-            .contains("MP3"));
-        assert!(decode_audio(b"OggS....", 24000)
-            .unwrap_err()
-            .to_string()
-            .contains("compressed"));
-        assert!(decode_audio(br#"{"detail":"bad"}"#, 24000)
-            .unwrap_err()
-            .to_string()
-            .contains("bad"));
+        assert!(
+            decode_audio(b"ID3\x04rest", 24000)
+                .unwrap_err()
+                .to_string()
+                .contains("MP3")
+        );
+        assert!(
+            decode_audio(b"OggS....", 24000)
+                .unwrap_err()
+                .to_string()
+                .contains("compressed")
+        );
+        assert!(
+            decode_audio(br#"{"detail":"bad"}"#, 24000)
+                .unwrap_err()
+                .to_string()
+                .contains("bad")
+        );
         assert!(decode_audio(b"", 24000).is_err());
         // raw 16-bit samples (the OpenAI "pcm" format)
         let p = decode_audio(&[0, 0x40, 0, 0xc0], 24000).unwrap();

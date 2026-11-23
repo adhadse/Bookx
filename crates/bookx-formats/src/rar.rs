@@ -17,10 +17,10 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
 use crate::common::{MAX_ENTRY, MAX_TOTAL};
-use crate::helper::{banner, find_in, run, TempFile, DIRS};
+use crate::helper::{DIRS, TempFile, banner, find_in, run};
 
 /// RAR 1.5-4 and 5 signatures.
 pub const RAR_MAGIC: &[u8] = b"Rar!\x1a\x07";

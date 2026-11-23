@@ -2,6 +2,8 @@
 
 Internal notes: design, decisions, test inventory, caveats. The user-facing text is `wiki/docs/audiobooks.md`.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## Status (2026-11-20, wave 6)
 
 DONE: import (folder, zip, single file), tags/chapters/cover reading, catalogue entries, library badge/filter/details,

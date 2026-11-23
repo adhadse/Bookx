@@ -6,7 +6,7 @@ mod corpus;
 use std::sync::atomic::AtomicBool;
 
 use bookx_convert::inspect::Digest;
-use bookx_convert::{convert, read_input, ConvertOptions};
+use bookx_convert::{ConvertOptions, convert, read_input};
 
 fn conv(input: &[u8], name: &str, ext: &str) -> Vec<u8> {
     convert(

@@ -3,8 +3,8 @@
 //! the catalogue; this table only says which columns exist, in which order.
 
 use anyhow::Result;
-use bookx_core::custom::{validate_columns, ColumnDef, ColumnKind};
-use rusqlite::{params, Connection};
+use bookx_core::custom::{ColumnDef, ColumnKind, validate_columns};
+use rusqlite::{Connection, params};
 
 use crate::store::SqliteStore;
 

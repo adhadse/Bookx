@@ -15,13 +15,13 @@
 
 use std::cell::RefCell;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::book::OpenBook;
 use bookx_core::contracts::FormatReader;
 use bookx_core::convert::Chapter;
 use bookx_core::opf::{Identifier, Metadata};
-use bookx_core::toc::{write_toc, TocEntry};
+use bookx_core::toc::{TocEntry, write_toc};
 use bookx_core::util::xml_escape;
 use regex::{Captures, Regex};
 
@@ -982,27 +982,35 @@ mod tests {
     #[test]
     fn palmdoc_errors() {
         // pair before any output / distance zero
-        assert!(palmdoc_decompress(&[0x80, 0x08], 99)
-            .unwrap_err()
-            .to_string()
-            .contains("back reference"));
+        assert!(
+            palmdoc_decompress(&[0x80, 0x08], 99)
+                .unwrap_err()
+                .to_string()
+                .contains("back reference")
+        );
         assert!(palmdoc_decompress(&[0x61, 0x80, 0x00], 99).is_err());
         // pair too far back
         assert!(palmdoc_decompress(&[0x61, 0x80, 0x10], 99).is_err());
         // truncated pair and truncated literal run
-        assert!(palmdoc_decompress(&[0x61, 0x80], 99)
-            .unwrap_err()
-            .to_string()
-            .contains("pair"));
-        assert!(palmdoc_decompress(&[0x05, 0x41], 99)
-            .unwrap_err()
-            .to_string()
-            .contains("literal"));
+        assert!(
+            palmdoc_decompress(&[0x61, 0x80], 99)
+                .unwrap_err()
+                .to_string()
+                .contains("pair")
+        );
+        assert!(
+            palmdoc_decompress(&[0x05, 0x41], 99)
+                .unwrap_err()
+                .to_string()
+                .contains("literal")
+        );
         // output limit
-        assert!(palmdoc_decompress(&[0x61, 0x80, 0x0B], 4)
-            .unwrap_err()
-            .to_string()
-            .contains("more than"));
+        assert!(
+            palmdoc_decompress(&[0x61, 0x80, 0x0B], 4)
+                .unwrap_err()
+                .to_string()
+                .contains("more than")
+        );
     }
 
     #[test]
@@ -1198,32 +1206,40 @@ mod tests {
         assert!(err.contains("HUFF/CDIC"), "{err}");
         let mut s = spec();
         s.encryption = 2;
-        assert!(convert_mobi(&write_mobi(&s))
-            .unwrap_err()
-            .to_string()
-            .contains("DRM"));
+        assert!(
+            convert_mobi(&write_mobi(&s))
+                .unwrap_err()
+                .to_string()
+                .contains("DRM")
+        );
         let mut s = spec();
         s.drm_offset = Some(0x1000);
-        assert!(convert_mobi(&write_mobi(&s))
-            .unwrap_err()
-            .to_string()
-            .contains("DRM"));
+        assert!(
+            convert_mobi(&write_mobi(&s))
+                .unwrap_err()
+                .to_string()
+                .contains("DRM")
+        );
         let mut s = spec();
         s.compression_override = Some(7);
-        assert!(convert_mobi(&write_mobi(&s))
-            .unwrap_err()
-            .to_string()
-            .contains("compression type 7"));
+        assert!(
+            convert_mobi(&write_mobi(&s))
+                .unwrap_err()
+                .to_string()
+                .contains("compression type 7")
+        );
     }
 
     #[test]
     fn malformed_containers_are_errors() {
         let good = write_mobi(&spec());
         assert!(convert_mobi(b"").is_err());
-        assert!(convert_mobi(&good[..70])
-            .unwrap_err()
-            .to_string()
-            .contains("too small"));
+        assert!(
+            convert_mobi(&good[..70])
+                .unwrap_err()
+                .to_string()
+                .contains("too small")
+        );
         // truncated in the middle of the records
         let cut = convert_mobi(&good[..good.len() / 2]);
         assert!(cut.is_err());
@@ -1231,18 +1247,22 @@ mod tests {
         let mut z = good.clone();
         z[76] = 0;
         z[77] = 0;
-        assert!(convert_mobi(&z)
-            .unwrap_err()
-            .to_string()
-            .contains("no records"));
+        assert!(
+            convert_mobi(&z)
+                .unwrap_err()
+                .to_string()
+                .contains("no records")
+        );
         // missing MOBI magic
         let mut m = good.clone();
         let rec0 = u32::from_be_bytes([m[78], m[79], m[80], m[81]]) as usize;
         m[rec0 + 16..rec0 + 20].copy_from_slice(b"XXXX");
-        assert!(convert_mobi(&m)
-            .unwrap_err()
-            .to_string()
-            .contains("MOBI header is missing"));
+        assert!(
+            convert_mobi(&m)
+                .unwrap_err()
+                .to_string()
+                .contains("MOBI header is missing")
+        );
         // descending record offsets
         let mut d = good.clone();
         d[78 + 8..78 + 12].copy_from_slice(&0u32.to_be_bytes());
@@ -1250,17 +1270,21 @@ mod tests {
         // offsets past the end
         let mut e = good.clone();
         e[78 + 16..78 + 20].copy_from_slice(&0xFFFF_FF00u32.to_be_bytes());
-        assert!(convert_mobi(&e)
-            .unwrap_err()
-            .to_string()
-            .contains("truncated"));
+        assert!(
+            convert_mobi(&e)
+                .unwrap_err()
+                .to_string()
+                .contains("truncated")
+        );
         // empty text
         let mut s = spec();
         s.html = "<html><body></body></html>".into();
-        assert!(convert_mobi(&write_mobi(&s))
-            .unwrap_err()
-            .to_string()
-            .contains("no readable text"));
+        assert!(
+            convert_mobi(&write_mobi(&s))
+                .unwrap_err()
+                .to_string()
+                .contains("no readable text")
+        );
     }
 
     // --- KF8 -------------------------------------------------------------------------------------

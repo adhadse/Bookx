@@ -79,7 +79,9 @@ fn unlock_dialog(
     let body = if wrong {
         tr("That master password did not work. Try again.")
     } else {
-        tr("Enter your master password to use the passwords Bookx saved (for e-mail, sync and backups). Bookx never stores this password.")
+        tr(
+            "Enter your master password to use the passwords Bookx saved (for e-mail, sync and backups). Bookx never stores this password.",
+        )
     };
     let d = adw::AlertDialog::new(Some(&tr("Unlock Saved Passwords")), Some(&body));
     let entry = gtk::PasswordEntry::new();
@@ -125,7 +127,9 @@ fn unlock_dialog(
 fn reset_dialog(shared: &SharedRef, window: &gtk::Window, notify: Rc<dyn Fn(String)>) {
     let d = adw::AlertDialog::new(
         Some(&tr("Forgot the Master Password?")),
-        Some(&tr("The saved passwords cannot be recovered without it. You can delete the password store and enter the passwords again.")),
+        Some(&tr(
+            "The saved passwords cannot be recovered without it. You can delete the password store and enter the passwords again.",
+        )),
     );
     d.add_response("cancel", &tr("Cancel"));
     d.add_response("delete", &tr("Delete Saved Passwords"));
@@ -148,7 +152,9 @@ fn reset_dialog(shared: &SharedRef, window: &gtk::Window, notify: Rc<dyn Fn(Stri
 fn create_dialog(shared: &SharedRef, window: &gtk::Window, notify: Rc<dyn Fn(String)>) {
     let d = adw::AlertDialog::new(
         Some(&tr("Create a Master Password")),
-        Some(&tr("No system keyring was found. Bookx can keep your passwords in its own encrypted store, opened with a master password that it asks for once each time it starts and never saves.")),
+        Some(&tr(
+            "No system keyring was found. Bookx can keep your passwords in its own encrypted store, opened with a master password that it asks for once each time it starts and never saves.",
+        )),
     );
     let col = gtk::Box::new(gtk::Orientation::Vertical, 8);
     let first = gtk::PasswordEntry::new();

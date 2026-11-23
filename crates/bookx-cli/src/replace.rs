@@ -3,7 +3,7 @@
 use std::io::Write;
 use std::path::Path;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use bookx_core::query::Query;
 use bookx_core::replace::{self, Rule, Target};
 

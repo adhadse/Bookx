@@ -13,7 +13,7 @@ use bookx_core::contracts::FormatWriter;
 
 use crate::charset::cp1252_byte;
 use crate::images::to_png;
-use crate::model::{flat_inlines, inline_text, Align, Block, Fmt, Inline, Link, Model};
+use crate::model::{Align, Block, Fmt, Inline, Link, Model, flat_inlines, inline_text};
 
 use super::flat::{flat_opf, zip_files};
 

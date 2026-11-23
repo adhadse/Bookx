@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use anyhow::Result;
 use bookx_core::book::OpenBook;
 use bookx_core::contracts::{Transform, TransformReport};
-use bookx_core::toc::{write_toc, TocEntry};
+use bookx_core::toc::{TocEntry, write_toc};
 use bookx_core::util::join_path;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -205,8 +205,14 @@ mod tests {
     }
 
     const DOC: &[(&str, &str)] = &[
-        ("one", "<h1>Part One</h1><p>x</p><h2>Section <i>A</i></h2><p>y</p><h3>Sub</h3><h4>Too deep</h4>"),
-        ("two", "<h1 id=\"keep\">Part Two</h1><h2>  </h2><p>z</p><h2>Another\n  Section</h2>"),
+        (
+            "one",
+            "<h1>Part One</h1><p>x</p><h2>Section <i>A</i></h2><p>y</p><h3>Sub</h3><h4>Too deep</h4>",
+        ),
+        (
+            "two",
+            "<h1 id=\"keep\">Part Two</h1><h2>  </h2><p>z</p><h2>Another\n  Section</h2>",
+        ),
     ];
 
     #[test]

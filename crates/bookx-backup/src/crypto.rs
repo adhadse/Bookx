@@ -18,11 +18,11 @@
 //! Layout: `BOOKXBAK` · version byte (1) · header length (u32 big endian) · header (JSON, UTF-8,
 //! readable without the passphrase) · encrypted chunks.
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use argon2::{Algorithm, Argon2, Params, Version};
+use chacha20poly1305::aead::Payload;
 use chacha20poly1305::aead::generic_array::GenericArray;
 use chacha20poly1305::aead::stream::{DecryptorBE32, EncryptorBE32};
-use chacha20poly1305::aead::Payload;
 use chacha20poly1305::{ChaCha20Poly1305, KeyInit};
 use serde::{Deserialize, Serialize};
 
@@ -391,16 +391,20 @@ mod tests {
 
     #[test]
     fn files_that_are_not_ours_or_too_new_are_explained() {
-        assert!(decrypt(b"SQLite format 3\0....", "pw")
-            .unwrap_err()
-            .to_string()
-            .contains("not a Bookx"));
+        assert!(
+            decrypt(b"SQLite format 3\0....", "pw")
+                .unwrap_err()
+                .to_string()
+                .contains("not a Bookx")
+        );
         let mut enc = encrypt_with(b"x", "pw", &meta(), Kdf::TEST).unwrap();
         enc[8] = 9;
-        assert!(decrypt(&enc, "pw")
-            .unwrap_err()
-            .to_string()
-            .contains("newer"));
+        assert!(
+            decrypt(&enc, "pw")
+                .unwrap_err()
+                .to_string()
+                .contains("newer")
+        );
     }
 
     #[test]
@@ -415,10 +419,12 @@ mod tests {
         f.extend((evil.len() as u32).to_be_bytes());
         f.extend(evil.as_bytes());
         f.extend(&enc[13 + text.len()..]);
-        assert!(decrypt(&f, "pw")
-            .unwrap_err()
-            .to_string()
-            .contains("unreasonable"));
+        assert!(
+            decrypt(&f, "pw")
+                .unwrap_err()
+                .to_string()
+                .contains("unreasonable")
+        );
     }
 
     #[test]

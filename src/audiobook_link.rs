@@ -9,9 +9,9 @@ use crate::i18n::trf;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use bookx_sources::audiobooks::{pair, scan, Candidate, Pairing};
+use bookx_sources::audiobooks::{Candidate, Pairing, pair, scan};
 
-use crate::core::formats::{Resource, AUDIOBOOK};
+use crate::core::formats::{AUDIOBOOK, Resource};
 use crate::core::library::{Book, Library};
 
 /// How deep the folders are searched.

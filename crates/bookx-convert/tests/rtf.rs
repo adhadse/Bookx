@@ -252,7 +252,9 @@ fn headings_have_styles_outline_levels_and_sizes() {
 #[test]
 fn alignment_and_quotes_and_rules() {
     let book = book_with(
-        &["<p style=\"text-align:center\">c</p><p style=\"text-align:right\">r</p><blockquote><p>q</p></blockquote><hr/>"],
+        &[
+            "<p style=\"text-align:center\">c</p><p style=\"text-align:right\">r</p><blockquote><p>q</p></blockquote><hr/>",
+        ],
         false,
     );
     let s = rtf(&book);
@@ -335,9 +337,11 @@ fn pictures_embed_the_original_bytes_with_sizes() {
     let s = rtf(&book);
     let pics = picts(&s);
     assert_eq!(pics.len(), 3);
-    assert!(pics[0]
-        .0
-        .starts_with("{\\pict\\pngblip\\picw40\\pich30\\picwgoal600\\pichgoal450"));
+    assert!(
+        pics[0]
+            .0
+            .starts_with("{\\pict\\pngblip\\picw40\\pich30\\picwgoal600\\pichgoal450")
+    );
     assert_eq!(pics[0].1, png(40, 30));
     assert!(pics[1].0.starts_with("{\\pict\\jpegblip\\picw64\\pich48"));
     assert_eq!(pics[1].1, jpeg(64, 48));
@@ -345,9 +349,10 @@ fn pictures_embed_the_original_bytes_with_sizes() {
     assert!(pics[2].0.contains("\\pngblip\\picw16\\pich16"));
     assert!(pics[2].1.starts_with(&[0x89, b'P', b'N', b'G']));
     // hex lines are short
-    assert!(s
-        .lines()
-        .all(|l| l.len() <= 200 || l.contains("\\fonttbl") || l.contains("\\stylesheet")));
+    assert!(
+        s.lines()
+            .all(|l| l.len() <= 200 || l.contains("\\fonttbl") || l.contains("\\stylesheet"))
+    );
 }
 
 #[test]
@@ -399,7 +404,9 @@ fn lists_get_markers_and_tabs() {
 #[test]
 fn tables_use_rows_cells_and_merges() {
     let book = book_with(
-        &["<table><tr><th>H1</th><th>H2</th><th>H3</th></tr><tr><td colspan=\"2\">wide</td><td>x</td></tr><tr><td>only</td></tr></table><p>after</p>"],
+        &[
+            "<table><tr><th>H1</th><th>H2</th><th>H3</th></tr><tr><td colspan=\"2\">wide</td><td>x</td></tr><tr><td>only</td></tr></table><p>after</p>",
+        ],
         false,
     );
     let s = rtf(&book);

@@ -465,14 +465,16 @@ mod tests {
 
     #[test]
     fn invalid_patterns_and_empty_queries_are_errors() {
-        assert!(Pattern::new(
-            "(",
-            Opts {
-                regex: true,
-                ..Default::default()
-            }
-        )
-        .is_err());
+        assert!(
+            Pattern::new(
+                "(",
+                Opts {
+                    regex: true,
+                    ..Default::default()
+                }
+            )
+            .is_err()
+        );
         assert_eq!(Pattern::new("", Opts::default()).err().unwrap(), "empty");
         assert!(Pattern::new("(", Opts::default()).is_ok());
     }
@@ -493,10 +495,12 @@ mod tests {
             dot_all: false,
             ..o
         };
-        assert!(Pattern::new("a.b", o)
-            .unwrap()
-            .find_all("a\nb", None)
-            .is_empty());
+        assert!(
+            Pattern::new("a.b", o)
+                .unwrap()
+                .find_all("a\nb", None)
+                .is_empty()
+        );
     }
 
     #[test]

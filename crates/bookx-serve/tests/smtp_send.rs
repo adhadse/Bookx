@@ -9,7 +9,7 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use base64::Engine;
-use bookx_serve::mail::{send, Address, Attachment, Message, Security, SmtpConfig};
+use bookx_serve::mail::{Address, Attachment, Message, Security, SmtpConfig, send};
 use mail_parser::MimeHeaders;
 use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
 

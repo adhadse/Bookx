@@ -4,9 +4,9 @@
 
 use std::io::{Seek, SeekFrom, Write};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
-use crate::synth::{engine_max_speed, split_speed, Cancel, Pcm, SynthRequest, Synthesizer};
+use crate::synth::{Cancel, Pcm, SynthRequest, Synthesizer, engine_max_speed, split_speed};
 use crate::text::Sentence;
 
 /// Synthesizes the sentences one after the other with `gap_ms` between them. `progress`

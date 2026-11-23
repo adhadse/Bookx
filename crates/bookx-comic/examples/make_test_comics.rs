@@ -1,7 +1,7 @@
 //! Writes the synthetic comics the UI scenarios read: `make_test_comics DIR` creates
 //! `DIR/story.cbz`, `manga.cbz`, `saga/Saga v01.cbz`, `saga/Saga v02.cbz`, `webtoon.cbz`, `spreads.cbz`, `bomb.cbz` and `corrupt.cbz`.
 
-use bookx_comic::testgen::{bomb_png, png, small_comic, zip_of, Layout};
+use bookx_comic::testgen::{Layout, bomb_png, png, small_comic, zip_of};
 
 fn main() {
     let dir = std::env::args()

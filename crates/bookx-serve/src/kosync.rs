@@ -19,9 +19,9 @@ use std::sync::Mutex;
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
-use crate::http::{split_path, Request, Response};
+use crate::http::{Request, Response, split_path};
 
 /// MD5 hex digest, the "key" KOReader sends for a password.
 pub fn md5_hex(password: &str) -> String {

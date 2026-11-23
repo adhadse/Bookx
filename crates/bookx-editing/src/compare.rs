@@ -877,10 +877,11 @@ mod tests {
     #[test]
     fn word_and_char_levels() {
         let w = diff_text("the quick fox", "the slow fox", Granularity::Word, false);
-        assert!(w
-            .ops
-            .iter()
-            .any(|o| o.kind == OpKind::Replace && o.old == "quick" && o.new == "slow"));
+        assert!(
+            w.ops
+                .iter()
+                .any(|o| o.kind == OpKind::Replace && o.old == "quick" && o.new == "slow")
+        );
         let c = diff_text("cat", "cut", Granularity::Char, false);
         assert_eq!(c.stats.added, 1);
         assert_eq!(c.stats.removed, 1);
@@ -976,14 +977,16 @@ mod tests {
                 .len(),
             1
         );
-        assert!(compare_archives(
-            &a,
-            &b,
-            CompareOptions {
-                normalize_xml: true
-            }
-        )
-        .is_empty());
+        assert!(
+            compare_archives(
+                &a,
+                &b,
+                CompareOptions {
+                    normalize_xml: true
+                }
+            )
+            .is_empty()
+        );
     }
 
     #[test]

@@ -1,3 +1,5 @@
+> Archived 2026-11-23: Features shipped; the open checks (real Wallabag/Hardcover, browser PWA) are in remaining.md. Living document: [remaining.md](../remaining.md).
+
 # Serve and sources: what is built, what is not (2026-11-21)
 
 Internal. Written by the T6/T8 agent. User pages: `wiki/docs/{reverse-proxy,devices-and-sharing,news-and-web,command-line,preferences}.md`.

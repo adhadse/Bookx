@@ -6,8 +6,8 @@
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Result};
-use bookx_serve::devices::{classify, kobo_db_path, DeviceKind};
+use anyhow::{Result, bail};
+use bookx_serve::devices::{DeviceKind, classify, kobo_db_path};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Level {

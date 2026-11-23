@@ -1,5 +1,5 @@
 """Editor tools with real input: the Reports window (a double-click on a row opens the file at that place) and
-typing a hex code followed by Alt+X. Imported by scenarios.py. See docs/editor-spell-reports.md."""
+typing a hex code followed by Alt+X. Imported by scenarios.py. See docs/archive/editor-spell-reports.md."""
 import re
 import time
 

@@ -6,7 +6,7 @@
 mod common;
 mod corpus;
 
-use bookx_convert::inspect::{score, Digest};
+use bookx_convert::inspect::{Digest, score};
 use bookx_convert::read_input;
 use bookx_core::book::OpenBook;
 

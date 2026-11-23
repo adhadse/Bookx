@@ -4,7 +4,7 @@
 use std::collections::{BTreeSet, HashSet};
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_sources::dedup::{find_duplicates, merge_metadata};
 
 use crate::core::library::{Book, Library};
@@ -251,7 +251,7 @@ pub fn undo_since(lib: &mut Library, seq: u64) -> Result<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::convert::{create_epub, Chapter};
+    use crate::core::convert::{Chapter, create_epub};
     use crate::core::library::{AddOutcome, Bookmark, Highlight, ReadPos};
     use chrono::Utc;
 

@@ -2,11 +2,11 @@
 //! `media-overlay` attribute of chapters, `media:duration` and `media:active-class`, and the removal
 //! of all of it. Text-level, so the rest of the package stays byte-identical.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use regex::Regex;
 
-use crate::markup::{remove_tag_attr, scan, set_tag_attr, tag_attr, Event};
-use crate::media_overlay::{format_clock, ACTIVE_CLASS};
+use crate::markup::{Event, remove_tag_attr, scan, set_tag_attr, tag_attr};
+use crate::media_overlay::{ACTIVE_CLASS, format_clock};
 use crate::opf_edit::{append_to_section, esc};
 
 pub const SMIL_TYPE: &str = "application/smil+xml";

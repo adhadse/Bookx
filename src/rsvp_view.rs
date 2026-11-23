@@ -2,7 +2,7 @@
 //! recognition point, pausing, stepping and changing speed. Timing comes from
 //! `bookx_lookup::rsvp::schedule`.
 
-use bookx_lookup::rsvp::{schedule, RsvpConfig, RsvpWord, MAX_WPM, MIN_WPM};
+use bookx_lookup::rsvp::{MAX_WPM, MIN_WPM, RsvpConfig, RsvpWord, schedule};
 
 pub const DEFAULT_WPM: u32 = 300;
 pub const STEP_WPM: u32 = 25;

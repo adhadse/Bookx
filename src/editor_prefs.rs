@@ -420,9 +420,11 @@ mod tests {
             "false without marker becomes true"
         );
         // the migration was written back: the marker is in the file
-        assert!(std::fs::read_to_string(&f)
-            .unwrap()
-            .contains("\"scroll_both_v2\": true"));
+        assert!(
+            std::fs::read_to_string(&f)
+                .unwrap()
+                .contains("\"scroll_both_v2\": true")
+        );
         // the user turns it off, restarts: still off
         let mut p = EditorPrefs::load_and_persist(&f);
         p.scroll_both = false;

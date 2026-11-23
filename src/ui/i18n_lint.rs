@@ -189,8 +189,7 @@ fn lint_every_translated_constant_is_marked_with_n() {
 
 #[test]
 fn lint_finds_an_unmarked_constant() {
-    let src =
-        "const A: &str = \"hello\";\nconst B: &str = N_(\"ok\");\nconst C: &str = \"unused\";\n\
+    let src = "const A: &str = \"hello\";\nconst B: &str = N_(\"ok\");\nconst C: &str = \"unused\";\n\
                fn f() { tr(A); tr(B); }";
     assert_eq!(const_not_marked(src), vec!["A".to_string()]);
 }

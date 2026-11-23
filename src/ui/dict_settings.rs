@@ -9,7 +9,7 @@ use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
 
 use super::dict_service;
-use super::preferences::{register_group, register_page, PrefCtx};
+use super::preferences::{PrefCtx, register_group, register_page};
 use crate::dict_auto::size_text;
 use crate::dict_catalog::{catalog, language_name};
 use crate::dict_install;

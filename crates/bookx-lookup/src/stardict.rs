@@ -3,7 +3,7 @@
 //! `.dict.dz` files are inflated completely (with a size cap) instead of using the
 //! dictzip random-access chunk table; a dictzip file is a valid gzip stream.
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use flate2::read::GzDecoder;
 use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom};
@@ -565,7 +565,7 @@ impl StarDict {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testutil::{write_dict, DictSpec, TmpDir};
+    use crate::testutil::{DictSpec, TmpDir, write_dict};
     use std::io::Write;
 
     fn m(s: &str) -> Vec<u8> {
@@ -659,22 +659,30 @@ mod tests {
     #[test]
     fn index_errors_never_panic() {
         assert!(parse_index(b"", 32).unwrap().is_empty());
-        assert!(parse_index(b"abc", 32)
-            .unwrap_err()
-            .to_string()
-            .contains("unterminated"));
-        assert!(parse_index(b"abc\0\0\0", 32)
-            .unwrap_err()
-            .to_string()
-            .contains("lacks offset"));
-        assert!(parse_index(b"abc\0\0\0\0\0\0\0\0", 64)
-            .unwrap_err()
-            .to_string()
-            .contains("lacks offset"));
-        assert!(parse_index(b"\xff\xfe\0\0\0\0\0\0\0\0\0", 32)
-            .unwrap_err()
-            .to_string()
-            .contains("UTF-8"));
+        assert!(
+            parse_index(b"abc", 32)
+                .unwrap_err()
+                .to_string()
+                .contains("unterminated")
+        );
+        assert!(
+            parse_index(b"abc\0\0\0", 32)
+                .unwrap_err()
+                .to_string()
+                .contains("lacks offset")
+        );
+        assert!(
+            parse_index(b"abc\0\0\0\0\0\0\0\0", 64)
+                .unwrap_err()
+                .to_string()
+                .contains("lacks offset")
+        );
+        assert!(
+            parse_index(b"\xff\xfe\0\0\0\0\0\0\0\0\0", 32)
+                .unwrap_err()
+                .to_string()
+                .contains("UTF-8")
+        );
         assert!(parse_index(b"a\0", 16).is_err());
         for n in 0..14 {
             let full = b"hello\0\0\0\0\x01\0\0\0\x02";
@@ -875,18 +883,22 @@ mod tests {
     fn missing_files_are_errors() {
         let t = TmpDir::new("miss");
         assert!(StarDict::open(t.path().join("nope.ifo")).is_err());
-        assert!(StarDict::open(t.path())
-            .err()
-            .unwrap()
-            .to_string()
-            .contains("no .ifo"));
+        assert!(
+            StarDict::open(t.path())
+                .err()
+                .unwrap()
+                .to_string()
+                .contains("no .ifo")
+        );
         let ifo = sample(t.path(), 32, false);
         fs::remove_file(t.path().join("sample.dict")).unwrap();
-        assert!(StarDict::open(&ifo)
-            .err()
-            .unwrap()
-            .to_string()
-            .contains("missing dictionary data"));
+        assert!(
+            StarDict::open(&ifo)
+                .err()
+                .unwrap()
+                .to_string()
+                .contains("missing dictionary data")
+        );
         fs::remove_file(t.path().join("sample.idx")).unwrap();
         assert!(StarDict::open(&ifo).is_err());
     }

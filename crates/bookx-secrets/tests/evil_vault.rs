@@ -2,7 +2,7 @@
 
 use std::time::{Duration, Instant};
 
-use bookx_secrets::{probe, FileStore, Kdf, OpenError};
+use bookx_secrets::{FileStore, Kdf, OpenError, probe};
 
 fn real_file() -> Vec<u8> {
     let d = std::env::temp_dir().join(format!(

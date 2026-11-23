@@ -9,7 +9,7 @@
 
 use super::search::{byte_to_char_idx, char_to_byte_idx};
 use super::*;
-use crate::editor_marks::{misspelled_per_line, Marks};
+use crate::editor_marks::{Marks, misspelled_per_line};
 use crate::editor_spell::{self, SpellState, Spot};
 use crate::i18n::{tr, trf};
 use bookx_editing::tags as btags;

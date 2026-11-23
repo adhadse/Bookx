@@ -9,8 +9,8 @@ use bookx_lookup::vocab::{OwnTerm, Scope, VocabEntry};
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gdk, glib};
 
-pub use super::vocab_list::{show_book_terms, BookView};
 use super::SharedRef;
+pub use super::vocab_list::{BookView, show_book_terms};
 use crate::i18n::{tr, trf};
 
 /// What the dialog starts with.
@@ -468,8 +468,15 @@ pub fn dev(arg: &str) -> String {
             o.term.text(),
             b.text(&b.start_iter(), &b.end_iter(), false),
             o.note.text(),
-            o.scope.selected_item().and_downcast::<gtk::StringObject>().map(|s| s.string()),
-            if o.status.is_visible() { o.status.label().to_string() } else { String::new() },
+            o.scope
+                .selected_item()
+                .and_downcast::<gtk::StringObject>()
+                .map(|s| s.string()),
+            if o.status.is_visible() {
+                o.status.label().to_string()
+            } else {
+                String::new()
+            },
             o.definition.has_focus(),
             o.save.is_sensitive()
         )

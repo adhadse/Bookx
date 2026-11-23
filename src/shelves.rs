@@ -362,9 +362,11 @@ mod tests {
         );
         assert_eq!(check_name("a   b", &ex, None).unwrap(), "a b");
         assert!(check_name("  ", &ex, None).is_err());
-        assert!(check_name("to READ", &ex, None)
-            .unwrap_err()
-            .contains("already exists"));
+        assert!(
+            check_name("to READ", &ex, None)
+                .unwrap_err()
+                .contains("already exists")
+        );
         // renaming to the same name in another case is fine
         assert_eq!(
             check_name("to read", &ex, Some("To read")).unwrap(),

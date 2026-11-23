@@ -9,7 +9,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use sha2::{Digest, Sha256};
 
 use crate::models::{ArchiveKind, Extract, FileSpec, Origin, Pack, Store};
@@ -371,7 +371,9 @@ fn finish(part: &Path, dest: &Path, url: &str, got: &str, want: &str) -> Result<
     if !want.is_empty() && got != want {
         let _ = fs::remove_file(part);
         let _ = fs::remove_file(map_path(dest));
-        bail!("the checksum of {url} does not match (got {got}, expected {want}): the file was damaged or changed; it was deleted");
+        bail!(
+            "the checksum of {url} does not match (got {got}, expected {want}): the file was damaged or changed; it was deleted"
+        );
     }
     fs::rename(part, dest).with_context(|| format!("moving the download to {}", dest.display()))?;
     let _ = fs::remove_file(map_path(dest));
@@ -447,13 +449,13 @@ fn fetch_into(
             // the part stays for the next attempt
             bail!("cancelled");
         }
-        if let Some(d) = dog.as_mut() {
-            if d.too_slow(std::time::Instant::now(), total) {
-                bail!(
-                    "too slow: {url} gives less than {} KB/s",
-                    tuning.min_speed.map_or(0, |m| m.0 / 1000)
-                );
-            }
+        if let Some(d) = dog.as_mut()
+            && d.too_slow(std::time::Instant::now(), total)
+        {
+            bail!(
+                "too slow: {url} gives less than {} KB/s",
+                tuning.min_speed.map_or(0, |m| m.0 / 1000)
+            );
         }
         let n = reader
             .read(&mut buf)
@@ -527,8 +529,8 @@ fn segmented(
     on_bytes: &mut dyn FnMut(u64),
 ) -> Result<bool> {
     use std::os::unix::fs::FileExt;
-    use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
     use std::sync::Mutex;
+    use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 
     let Some(probe) = probe(tuning, url, size)? else {
         return Ok(false);
@@ -654,17 +656,17 @@ fn segmented(
         while finished.load(Ordering::SeqCst) < segs.len() {
             std::thread::sleep(Duration::from_millis(40));
             let total: u64 = done.iter().map(|d| d.load(Ordering::SeqCst)).sum();
-            if let Some(d) = dog.as_mut() {
-                if d.too_slow(std::time::Instant::now(), total) {
-                    let mut f = failure.lock().unwrap();
-                    if f.is_none() {
-                        *f = Some(format!(
-                            "too slow: {url} gives less than {} KB/s",
-                            tuning.min_speed.map_or(0, |m| m.0 / 1000)
-                        ));
-                    }
-                    abort.store(true, Ordering::SeqCst);
+            if let Some(d) = dog.as_mut()
+                && d.too_slow(std::time::Instant::now(), total)
+            {
+                let mut f = failure.lock().unwrap();
+                if f.is_none() {
+                    *f = Some(format!(
+                        "too slow: {url} gives less than {} KB/s",
+                        tuning.min_speed.map_or(0, |m| m.0 / 1000)
+                    ));
                 }
+                abort.store(true, Ordering::SeqCst);
             }
             if total > reported {
                 on_bytes(total - reported);
@@ -871,7 +873,9 @@ pub fn extract_member_checked(
             let got = format!("{:x}", h.finalize());
             if got != sha {
                 let _ = fs::remove_file(&tmp);
-                bail!("the checksum of the unpacked library does not match (got {got}, expected {sha}): it was deleted");
+                bail!(
+                    "the checksum of the unpacked library does not match (got {got}, expected {sha}): it was deleted"
+                );
             }
         }
         fs::rename(&tmp, dest)?;
@@ -1074,7 +1078,10 @@ fn fetch_zip_member(
         }
         let got = format!("{:x}", h.finalize());
         if got != x.sha256 {
-            bail!("the checksum of the unpacked library does not match (got {got}, expected {}): it was deleted", x.sha256);
+            bail!(
+                "the checksum of the unpacked library does not match (got {got}, expected {}): it was deleted",
+                x.sha256
+            );
         }
         Ok(())
     })();
@@ -1804,7 +1811,9 @@ mod seg_tests {
                     m2.fetch_max(now, Ordering::SeqCst);
                     let len = b + 1 - a;
                     let head = if status == 206 {
-                        format!("HTTP/1.1 206 P\r\nContent-Length: {len}\r\nContent-Range: bytes {a}-{b}/{n}\r\nConnection: close\r\n\r\n")
+                        format!(
+                            "HTTP/1.1 206 P\r\nContent-Length: {len}\r\nContent-Range: bytes {a}-{b}/{n}\r\nConnection: close\r\n\r\n"
+                        )
                     } else {
                         format!(
                             "HTTP/1.1 200 O\r\nContent-Length: {len}\r\nConnection: close\r\n\r\n"
@@ -2000,9 +2009,11 @@ mod seg_tests {
         assert!(ranges.contains(&from(&plan[0])));
         assert!(ranges.contains(&from(&plan[2])));
         assert!(ranges.contains(&from(&plan[3])));
-        assert!(!ranges
-            .iter()
-            .any(|r| r.starts_with(&format!("{}-", plan[1].start + plan[1].done))));
+        assert!(
+            !ranges
+                .iter()
+                .any(|r| r.starts_with(&format!("{}-", plan[1].start + plan[1].done)))
+        );
         fs::remove_dir_all(&d).ok();
     }
 
@@ -2181,7 +2192,7 @@ mod origin_tests {
     //! Several origins for one file: a slow, dead or wrong first origin gives way to the next; one
     //! member of a big zip is read with Range requests; archives are unpacked safely and the extracted
     //! file is checked against its pinned hash.
-    use super::seg_tests::{data, dir, serve, sha, Mode};
+    use super::seg_tests::{Mode, data, dir, serve, sha};
     use super::*;
     use crate::models::{PackKind, Store};
     use std::io::Write;
@@ -2740,17 +2751,19 @@ mod origin_tests {
         )
         .unwrap();
         let mut done = 0;
-        assert!(install_file_tuned(
-            &quick(),
-            &store,
-            &pack,
-            &pack.files[0],
-            &Cancel::new(),
-            &mut done,
-            1234,
-            &mut |_| {}
-        )
-        .is_err());
+        assert!(
+            install_file_tuned(
+                &quick(),
+                &store,
+                &pack,
+                &pack.files[0],
+                &Cancel::new(),
+                &mut done,
+                1234,
+                &mut |_| {}
+            )
+            .is_err()
+        );
         fs::remove_dir_all(&root).ok();
     }
 
@@ -2765,9 +2778,10 @@ mod origin_tests {
             o[0].extract.as_ref().unwrap().kind,
             ArchiveKind::ZipMember { .. }
         ));
-        assert!(o[1]
-            .url
-            .contains("github.com/microsoft/onnxruntime/releases"));
+        assert!(
+            o[1].url
+                .contains("github.com/microsoft/onnxruntime/releases")
+        );
         assert_eq!(o[1].extract.as_ref().unwrap().kind, ArchiveKind::Tgz);
         // same library either way
         assert_eq!(

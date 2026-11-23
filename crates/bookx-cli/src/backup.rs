@@ -7,12 +7,12 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use bookx_backup::crypto::Kdf;
-use bookx_backup::repo::store::{RepoStore, REPO_DIR};
+use bookx_backup::repo::store::{REPO_DIR, RepoStore};
 use bookx_backup::repo::{
-    estimate_new, DavStore, FolderStore, LibrarySource, NoRepository, Repository, RestoreMode,
-    RestoreOptions, RunOptions, RunProgress, Scope, Secrets,
+    DavStore, FolderStore, LibrarySource, NoRepository, Repository, RestoreMode, RestoreOptions,
+    RunOptions, RunProgress, Scope, Secrets, estimate_new,
 };
 use chrono::{DateTime, NaiveDate, Utc};
 use clap::{Args, Subcommand};
@@ -164,7 +164,7 @@ pub enum BackupCmd {
 
 fn store(spec: &str, r: &RemoteArgs) -> Result<Box<dyn RepoStore>> {
     if spec.starts_with("http://") || spec.starts_with("https://") {
-        let pw = std::env::var("BOOKX_WEBDAV_PASSWORD").unwrap_or_default();
+        let pw = crate::var("BOOKX_WEBDAV_PASSWORD").unwrap_or_default();
         return Ok(Box::new(DavStore::new(
             spec,
             r.user.as_deref().unwrap_or(""),
@@ -181,12 +181,12 @@ fn store(spec: &str, r: &RemoteArgs) -> Result<Box<dyn RepoStore>> {
 }
 
 fn secrets() -> Secrets {
-    Secrets::passphrase(&std::env::var("BOOKX_BACKUP_PASSPHRASE").unwrap_or_default())
+    Secrets::passphrase(&crate::var("BOOKX_BACKUP_PASSPHRASE").unwrap_or_default())
 }
 
 fn kdf() -> Kdf {
     // tests may ask for the cheap parameters; the default is the real one
-    if std::env::var("BOOKX_BACKUP_KDF").is_ok_and(|v| v == "test") {
+    if crate::var("BOOKX_BACKUP_KDF").is_some_and(|v| v == "test") {
         Kdf::TEST
     } else {
         Kdf::DEFAULT

@@ -2,10 +2,10 @@
 //! tidy and the import folder. Each test has its own sandbox, so they run in parallel.
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
-use bookx_cli::{run, Env};
+use bookx_cli::{Env, run};
 
 struct Sandbox {
     dir: PathBuf,
@@ -103,10 +103,12 @@ fn check_reports_a_missing_file_and_fix_moves_the_entry_to_the_trash() {
     assert_eq!(code, 1);
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     assert_eq!(v["findings"][0]["severity"], "error");
-    assert!(v["findings"][0]["message"]
-        .as_str()
-        .unwrap()
-        .contains("missing"));
+    assert!(
+        v["findings"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("missing")
+    );
     let (code, out, _) = s.cli(&["library", "check", "--fix"]);
     assert_eq!(code, 1, "the problem was there when it was checked");
     assert!(out.contains("fixed:"), "{out}");

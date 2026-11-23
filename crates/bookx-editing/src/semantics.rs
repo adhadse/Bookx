@@ -326,7 +326,9 @@ pub fn write_semantics(
             base.replace_range(s2..e2, "");
         }
         if !entries.is_empty() {
-            let mut nav_xml = String::from("  <nav epub:type=\"landmarks\" id=\"landmarks\" hidden=\"hidden\">\n    <h2>Guide</h2>\n    <ol>\n");
+            let mut nav_xml = String::from(
+                "  <nav epub:type=\"landmarks\" id=\"landmarks\" hidden=\"hidden\">\n    <h2>Guide</h2>\n    <ol>\n",
+            );
             for e in entries {
                 nav_xml.push_str(&format!(
                     "      <li><a epub:type=\"{}\" href=\"{}\">{}</a></li>\n",
@@ -491,9 +493,11 @@ mod tests {
         assert_eq!(types, vec!["cover", "bodymatter"]);
         // the TOC nav is untouched
         assert!(nav.contains("<nav epub:type=\"toc\" id=\"toc\">"));
-        assert!(bookx_core::check::check_book(&b.archive)
-            .iter()
-            .all(|i| i.severity != bookx_core::check::Severity::Error));
+        assert!(
+            bookx_core::check::check_book(&b.archive)
+                .iter()
+                .all(|i| i.severity != bookx_core::check::Severity::Error)
+        );
     }
 
     #[test]
@@ -518,16 +522,18 @@ mod tests {
         assert_eq!(b.archive.get_string("OEBPS/content.opf").unwrap(), before);
         clear_semantic(&mut b, Semantic::Cover).unwrap();
         assert!(read_semantics(&b).is_empty());
-        assert!(!b
-            .archive
-            .get_string("OEBPS/content.opf")
-            .unwrap()
-            .contains("<guide"));
-        assert!(!b
-            .archive
-            .get_string("OEBPS/nav.xhtml")
-            .unwrap()
-            .contains("landmarks"));
+        assert!(
+            !b.archive
+                .get_string("OEBPS/content.opf")
+                .unwrap()
+                .contains("<guide")
+        );
+        assert!(
+            !b.archive
+                .get_string("OEBPS/nav.xhtml")
+                .unwrap()
+                .contains("landmarks")
+        );
         clear_semantic(&mut b, Semantic::Cover).unwrap();
     }
 
@@ -551,11 +557,12 @@ mod tests {
         );
         set_semantic(&mut b, Semantic::TitlePage, "OEBPS/chapter-1.xhtml", "").unwrap();
         assert_eq!(read_semantics(&b).len(), 2);
-        assert!(!b
-            .archive
-            .get_string("OEBPS/nav.xhtml")
-            .unwrap()
-            .contains("landmarks"));
+        assert!(
+            !b.archive
+                .get_string("OEBPS/nav.xhtml")
+                .unwrap()
+                .contains("landmarks")
+        );
     }
 
     #[test]

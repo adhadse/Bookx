@@ -17,16 +17,16 @@
 //! carry only keys and D-Bus messages.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 mod file;
 pub use file::{
-    check_passphrase, kdf_is_reasonable, probe, restrict_dir, restrict_file, FileStore, Kdf,
-    OpenError,
+    FileStore, Kdf, OpenError, check_passphrase, kdf_is_reasonable, probe, restrict_dir,
+    restrict_file,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 /// Where passwords live. Keys are short names such as `share-password`.
 pub trait SecretStore: Send + Sync {
@@ -260,9 +260,14 @@ fn open_system_store() -> Box<dyn SecretStore> {
 /// The store to use: `BOOKX_SECRETS=memory` (tests), `none` (pretend there is no keyring), else
 /// the Secret Service, and when it does not answer, [`Unavailable`].
 pub fn open_default() -> Box<dyn SecretStore> {
-    match std::env::var("BOOKX_SECRETS").as_deref() {
-        Ok("memory") => Box::new(MemoryStore::new()),
-        Ok("none") => Box::new(Unavailable("switched off for this session".into())),
+    open_for(std::env::var("BOOKX_SECRETS").ok().as_deref())
+}
+
+/// [`open_default`] with the value of `BOOKX_SECRETS` given (tests pass it instead of changing the process environment).
+pub fn open_for(var: Option<&str>) -> Box<dyn SecretStore> {
+    match var {
+        Some("memory") => Box::new(MemoryStore::new()),
+        Some("none") => Box::new(Unavailable("switched off for this session".into())),
         _ => open_system_store(),
     }
 }
@@ -698,21 +703,23 @@ mod tests {
     }
 
     #[test]
+    fn the_keyring_names_its_items_by_application_and_key() {
+        assert_eq!(attrs("webdav"), vec![APP_ATTR, ("key", "webdav")]);
+        assert_eq!(Oo7Store.describe(), "the system keyring");
+    }
+
+    #[test]
     fn the_environment_picks_the_store() {
-        // one test owns BOOKX_SECRETS, so it cannot race with another
-        std::env::set_var("BOOKX_SECRETS", "memory");
-        let m = open_default();
+        let m = open_for(Some("memory"));
         assert!(m.available());
         m.set("k", "v").unwrap();
         assert_eq!(m.get("k").unwrap().as_deref(), Some("v"));
-        std::env::set_var("BOOKX_SECRETS", "none");
-        let n = open_default();
+        let n = open_for(Some("none"));
         assert!(!n.available());
         assert_eq!(
             n.get("k").unwrap_err().to_string(),
             "switched off for this session"
         );
-        std::env::remove_var("BOOKX_SECRETS");
     }
 
     #[test]
@@ -750,11 +757,12 @@ mod tests {
     fn a_vault_without_a_file_cannot_make_one_and_has_nothing_to_unlock() {
         let v = Vault::new(Box::new(Unavailable("x".into())));
         assert!(!v.has_file());
-        assert!(v
-            .create_vault("a long master password")
-            .unwrap_err()
-            .to_string()
-            .contains("no password store"));
+        assert!(
+            v.create_vault("a long master password")
+                .unwrap_err()
+                .to_string()
+                .contains("no password store")
+        );
         assert_eq!(
             v.unlock_vault("a long master password"),
             Err(OpenError::Missing)

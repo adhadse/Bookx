@@ -13,7 +13,7 @@ pub use bookx_tts::setup::{self, Failure};
 pub use bookx_tts::synth::Cancel;
 pub use bookx_tts::text::{book_language, primary_language};
 pub use bookx_tts::voices_for;
-pub use bookx_tts::{split_sentences, Engine, Session, SleepTimer, State, TtsPrefs, Update, Voice};
+pub use bookx_tts::{Engine, Session, SleepTimer, State, TtsPrefs, Update, Voice, split_sentences};
 
 /// Where the downloaded models are (`$BOOKX_TTS_DIR`, else `<data dir>/tts`). The first time, packs
 /// that earlier versions (or the live tests) left in `~/.cache/bookx-tts` are moved here, so an
@@ -123,7 +123,7 @@ pub fn download_packs(
             MockDownload::Offline => {
                 return Err(setup::classify(
                     "cannot reach https://example.invalid/model: offline",
-                ))
+                ));
             }
         };
         for i in 0..=steps {

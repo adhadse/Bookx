@@ -9,6 +9,18 @@ It is part of **Bookx sync (extended KOSync)**: Bookx’s built-in server plus a
 copy to the device. Open the main menu (the ☰ button in the library's header bar) and choose **Sync** for the overview,
 or choose **Preferences** and its **Sync** page for the setup; see [Bookx sync](progress-sync.md).
 
+!!! info "Sync never copies or deletes books"
+    Bookx sync moves **reading position, highlights, notes and bookmarks**, and only for books that are **already in your
+    library**. It never copies a book file, in either direction, and it never deletes a book, its files or anything you made
+    in Bookx because something is gone on the e-reader: take a book off the device, wipe it, or delete KOReader’s notes
+    folder, and your library stays exactly as it was. (The one thing a device can remove is a highlight that **came from
+    that device** and that you have not changed in Bookx; see [What happens](#what-happens).)
+
+    - To get books **from** an e-reader **into** Bookx: copy the files to your computer (over the USB cable, or the way your
+      device offers; many Android e-readers such as a Boox appear as a phone, not as a disk) and use **Add Books**.
+    - To put books **on** an e-reader: select them and use **Send to Device** ([Devices and sharing](devices-and-sharing.md#send-to-device)).
+    - An empty library after the first sync is therefore normal: sync matches books, it does not bring them.
+
 !!! warning "Hardware tested so far"
     The KOReader plugin has been run against a simulated KOReader and replayed with the real notes files of one Kobo
     (KOReader 2026.07.2). A first sync from a real device with the current plugin (0.3.1) is not confirmed yet, and
@@ -49,7 +61,7 @@ The user name and password are your **Bookx sync account**. There is no pre-exis
    **Tools → Progress sync → Custom sync server**, the same address Bookx shows, `http://<host-ip>:<port>/bookx`, then **Register**.
 2. **Then, in Bookx Sync → Server and account** on the e-reader, enter the same server address, that same user name and
    that same password. The plugin keeps only a one-way hash of the password; afterwards you can leave the password field
-   empty to keep the saved one. **Device name** is only a label shown in Bookx.
+   empty to keep the saved one. **Device name** is only a label shown in Bookx. If you leave it empty the plugin sends the model KOReader reports, and Bookx shows the name on the box when it knows the model (for example *Boox Leaf 2*, *Kobo Clara HD*, *Kindle Paperwhite 5*); a model it does not know is shown as the device reports it.
 3. Highlight sync and reading-progress sync use the **same account over the same `/bookx` connection**.
 
 Stock Kobo and Kindle firmware has no wireless sync with Bookx; those readers sync over the USB cable only.
@@ -102,7 +114,8 @@ Open the main menu → **Sync** (or **Preferences → Sync**). Under the setup y
 
 - **Connected devices**: one row per e-reader that has talked to Bookx, with its name, the KOReader and plugin version, when it
   last synced, and a status: **Connected now** (it was in touch in the last two minutes), **Last seen 5 minutes ago** or
-  **Never connected**. A device with an older plugin, or one that only uses KOReader's Progress sync, shows as *Unknown device
+  **Never connected**. Press the pencil on a row to **rename** the device (the name is only shown in Bookx; leave it empty to go back to the
+  name the device reports). A device with an older plugin, or one that only uses KOReader's Progress sync, shows as *Unknown device
   (KOReader)* or by the name KOReader gives it.
 - **Recent activity**: the newest syncs, most recent first (the last 200 are kept; **Show All** lists them). Each row names the book, the
   device, the time and what happened: *Progress 12% → 34%*, *3 highlights added or updated, 2 with notes, 1 bookmark*,

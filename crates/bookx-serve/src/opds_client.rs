@@ -3,8 +3,8 @@
 //! No networking here: callers fetch the XML and pass it with the URL it came from, so relative
 //! links can be resolved. Works with Project Gutenberg, Standard Ebooks, Calibre and Bookx feeds.
 
-use anyhow::{bail, Context, Result};
-use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
+use anyhow::{Context, Result, bail};
+use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use roxmltree::{Document, Node};
 use url::Url;
 
@@ -666,16 +666,18 @@ mod tests {
     fn best_acquisition_follows_preferences() {
         let f = parse_feed(STANDARD_EBOOKS, "https://standardebooks.org/").unwrap();
         let e = &f.entries[0];
-        assert!(e
-            .best_acquisition(&["kepub", "epub"])
-            .unwrap()
-            .href
-            .contains("kepub.epub"));
-        assert!(e
-            .best_acquisition(&["azw3", "epub"])
-            .unwrap()
-            .href
-            .contains(".azw3"));
+        assert!(
+            e.best_acquisition(&["kepub", "epub"])
+                .unwrap()
+                .href
+                .contains("kepub.epub")
+        );
+        assert!(
+            e.best_acquisition(&["azw3", "epub"])
+                .unwrap()
+                .href
+                .contains(".azw3")
+        );
         // first matching link of the type (the "recommended" epub, not the advanced one)
         assert_eq!(
             e.best_acquisition(&["epub"]).unwrap().title,
@@ -686,11 +688,13 @@ mod tests {
         assert!(e.best_acquisition(&["pdf", "mobi"]).is_none());
         assert!(e.best_acquisition(&[]).is_none());
         let g = parse_feed(GUTENBERG_BOOKS, BASE).unwrap();
-        assert!(g.entries[0]
-            .best_acquisition(&["mobi"])
-            .unwrap()
-            .href
-            .contains("kf8"));
+        assert!(
+            g.entries[0]
+                .best_acquisition(&["mobi"])
+                .unwrap()
+                .href
+                .contains("kf8")
+        );
         assert!(g.entries[0].best_acquisition(&["kepub"]).is_none());
     }
 

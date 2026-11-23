@@ -457,9 +457,10 @@ mod tests {
         assert_eq!(c.lock().unwrap().metadata.title, "T");
         assert!(c.lock().unwrap().meta_changed);
         assert!(a.set_metadata(&serde_json::json!({"nope": 1})).is_err());
-        assert!(a
-            .set_metadata(&serde_json::json!({"rating": "high"}))
-            .is_err());
+        assert!(
+            a.set_metadata(&serde_json::json!({"rating": "high"}))
+                .is_err()
+        );
         assert!(a.set_metadata(&serde_json::json!([1])).is_err());
         assert_eq!(a.metadata()["title"], "T");
     }

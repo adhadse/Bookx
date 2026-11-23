@@ -1,10 +1,10 @@
 //! `library formats / add-format / remove-format / merge-formats / authors / rename-author`.
 
 use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
-use bookx_cli::{run, Env};
+use bookx_cli::{Env, run};
 
 struct Sandbox {
     dir: PathBuf,
@@ -120,10 +120,11 @@ fn merge_formats_previews_merges_and_undoes() {
     assert!(out.contains("merged 1 book(s) into #1"));
     assert!(!s.cli(&["library", "list"]).1.contains("Dune Two"));
     assert!(s.cli(&["library", "formats", "1"]).1.contains("azw3"));
-    assert!(s
-        .cli(&["library", "history"])
-        .1
-        .contains("Merged 1 books as formats"));
+    assert!(
+        s.cli(&["library", "history"])
+            .1
+            .contains("Merged 1 books as formats")
+    );
     assert_eq!(s.cli(&["library", "undo"]).0, 0);
     assert!(s.cli(&["library", "list"]).1.contains("Dune Two"));
 }

@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_core::contracts::{
     DeviceDriver, FormatReader, FormatWriter, MetadataQuery, MetadataSource, Registry, Transform,
 };
@@ -60,8 +60,20 @@ pub fn publish(loaded: Loaded) {
     *CURRENT.lock().unwrap_or_else(|e| e.into_inner()) = Some(Arc::new(loaded));
 }
 
-/// `$BOOKX_PLUGINS`, else `~/.local/share/bookx/plugins`.
+/// The plugin and patch folders safe mode points at (empty ones) for the rest of the process; the environment is not
+/// changed for this (writing it is unsafe in Rust 2024 and other threads may be reading it).
+static SAFE_DIRS: Mutex<Option<(PathBuf, PathBuf)>> = Mutex::new(None);
+
+/// Makes [`plugins_dir`] and [`patches_dir`] answer with these folders from now on (safe mode).
+pub fn override_dirs(plugins: PathBuf, patches: PathBuf) {
+    *SAFE_DIRS.lock().unwrap_or_else(|e| e.into_inner()) = Some((plugins, patches));
+}
+
+/// The safe-mode folder, else `$BOOKX_PLUGINS`, else `~/.local/share/bookx/plugins`.
 pub fn plugins_dir() -> PathBuf {
+    if let Some((p, _)) = SAFE_DIRS.lock().unwrap_or_else(|e| e.into_inner()).clone() {
+        return p;
+    }
     if let Some(d) = std::env::var_os("BOOKX_PLUGINS") {
         return PathBuf::from(d);
     }
@@ -217,23 +229,23 @@ fn tool_target(loaded: &Loaded, t: &dyn Transform) -> &'static Target {
 /// Output formats of the enabled writer plugins, for the *Convert To* menu.
 pub fn writer_targets() -> Vec<&'static Target> {
     let loaded = current();
-    let targets = loaded
+
+    loaded
         .writers
         .iter()
         .map(|w| writer_target(&loaded, w))
-        .collect();
-    targets
+        .collect()
 }
 
 /// One entry per enabled transform plugin: converting with it saves a transformed copy as EPUB.
 pub fn tool_targets() -> Vec<&'static Target> {
     let loaded = current();
-    let targets = loaded
+
+    loaded
         .transforms
         .iter()
         .map(|t| tool_target(&loaded, t))
-        .collect();
-    targets
+        .collect()
 }
 
 /// The plugin target with this id (`plugin:<id>` or `plugin-tool:<id>`), if that plugin is enabled.
@@ -247,12 +259,12 @@ pub fn target(id: &str) -> Option<&'static Target> {
             .map(|w| writer_target(&loaded, w));
     }
     let tid = id.strip_prefix(TOOL_PREFIX)?;
-    let found = loaded
+
+    loaded
         .transforms
         .iter()
         .find(|t| t.id() == tid)
-        .map(|t| tool_target(&loaded, t));
-    found
+        .map(|t| tool_target(&loaded, t))
 }
 
 /// Runs the transform plugin `id` on `book`: `(files changed, notes)`.
@@ -298,8 +310,11 @@ pub fn set_auto_transform(path: &Path, id: &str, on: bool) -> Result<()> {
 
 // ---- user patches (X9) -------------------------------------------------------------------
 
-/// `$BOOKX_PATCHES`, else `~/.local/share/bookx/patches`.
+/// The safe-mode folder, else `$BOOKX_PATCHES`, else `~/.local/share/bookx/patches`.
 pub fn patches_dir() -> PathBuf {
+    if let Some((_, p)) = SAFE_DIRS.lock().unwrap_or_else(|e| e.into_inner()).clone() {
+        return p;
+    }
     if let Some(d) = std::env::var_os("BOOKX_PATCHES") {
         return PathBuf::from(d);
     }
@@ -339,7 +354,7 @@ pub fn reload_patches() -> Arc<PatchSet> {
 
 /// A small book for dry runs when the library is empty.
 pub fn sample_book() -> Archive {
-    use crate::core::convert::{create_epub, Chapter};
+    use crate::core::convert::{Chapter, create_epub};
     create_epub(
         &Metadata {
             title: "Sample".into(),
@@ -498,10 +513,14 @@ pub fn convert_with(
 pub fn permission_summary(permissions: &[String]) -> String {
     let has = |p: &str| permissions.iter().any(|x| x == p);
     if has("editor.write") {
-        return tr("Permissions: may read and change the book open in the editor. Every action is one checkpoint you can restore. It cannot reach other files or the network.");
+        return tr(
+            "Permissions: may read and change the book open in the editor. Every action is one checkpoint you can restore. It cannot reach other files or the network.",
+        );
     }
     if has("editor.read") {
-        return tr("Permissions: may read the book open in the editor. It cannot change anything, reach other files or the network.");
+        return tr(
+            "Permissions: may read the book open in the editor. It cannot change anything, reach other files or the network.",
+        );
     }
     let hosts: Vec<&str> = permissions
         .iter()
@@ -747,12 +766,14 @@ mod tests {
         let list = m.list();
         assert_eq!(list.len(), 2);
         assert!(list.iter().any(|p| p.error.is_some()), "{list:?}");
-        assert!(list
-            .iter()
-            .any(|p| p.id == "ok.source" && p.error.is_none()));
-        assert!(list
-            .iter()
-            .any(|p| p.kind == Some(PluginKind::MetadataSource)));
+        assert!(
+            list.iter()
+                .any(|p| p.id == "ok.source" && p.error.is_none())
+        );
+        assert!(
+            list.iter()
+                .any(|p| p.kind == Some(PluginKind::MetadataSource))
+        );
         let _ = std::fs::remove_dir_all(d);
     }
 
@@ -1003,9 +1024,11 @@ mod tests {
             t,
         )
         .unwrap();
-        assert!(Archive::from_bytes(out)
-            .unwrap()
-            .contains("META-INF/container.xml"));
+        assert!(
+            Archive::from_bytes(out)
+                .unwrap()
+                .contains("META-INF/container.xml")
+        );
 
         // as a conversion option it also runs for ordinary targets
         let auto: BTreeSet<String> = ["test.transform".to_string()].into();
@@ -1167,10 +1190,12 @@ mod tests {
         let none = patch_set(&ts::tmp("patch-noted-none"), &[]);
         let prepared =
             crate::core::library::prepare_from_archive(sample_book(), Path::new("x.epub")).unwrap();
-        assert!(patch_prepared_noted(&none, prepared, Path::new("x.epub"))
-            .unwrap()
-            .1
-            .is_empty());
+        assert!(
+            patch_prepared_noted(&none, prepared, Path::new("x.epub"))
+                .unwrap()
+                .1
+                .is_empty()
+        );
         let _ = std::fs::remove_dir_all(d);
     }
 

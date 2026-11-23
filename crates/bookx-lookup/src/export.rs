@@ -1,9 +1,9 @@
 //! Annotation export: Markdown, plain text, HTML, JSON, Kindle `My Clippings.txt`
 //! and Obsidian notes, plus filename templates and a Readwise payload builder.
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use chrono::{DateTime, SecondsFormat, Utc};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::fmt::Write as _;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -1273,9 +1273,11 @@ Dune & Co\n- Your Note | Added on Friday, January 5, 2024 12:00:00 PM\n\njust a 
         assert_eq!(clash.len(), 1, "same book is one file");
         assert_eq!(clash[0].name, "x.json");
         assert!(export_files(&[a()], ExportFormat::Json, &opts(), "{bad}", now()).is_err());
-        assert!(export_files(&[], ExportFormat::Json, &opts(), "x", now())
-            .unwrap()
-            .is_empty());
+        assert!(
+            export_files(&[], ExportFormat::Json, &opts(), "x", now())
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[test]

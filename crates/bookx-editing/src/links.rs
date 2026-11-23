@@ -3,7 +3,7 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::book::OpenBook;
 use bookx_core::util::{
     extension, file_name, is_external, join_path, media_type_for, parent_dir, relative_href,
@@ -931,7 +931,7 @@ pub fn group_counts(book: &OpenBook) -> BTreeMap<FileGroup, usize> {
 mod tests {
     use super::*;
     use crate::testutil::{make_book, png};
-    use bookx_core::check::{check_book, Severity};
+    use bookx_core::check::{Severity, check_book};
 
     #[test]
     fn classification_and_validation() {
@@ -1115,9 +1115,11 @@ mod tests {
                 "{path}"
             );
         }
-        assert!(check_book(&b.archive)
-            .iter()
-            .all(|i| !i.message.contains("not listed in the manifest")));
+        assert!(
+            check_book(&b.archive)
+                .iter()
+                .all(|i| !i.message.contains("not listed in the manifest"))
+        );
         // second run finds nothing new to download except the failing one
         let again = download_external_resources(&mut b, &f, &DownloadOptions::default()).unwrap();
         assert_eq!(again.downloaded.len(), 0);
@@ -1126,7 +1128,9 @@ mod tests {
 
     #[test]
     fn download_limits_and_naming() {
-        let mut b = make_book(&["<p><img src=\"http://x.example/a.png\" alt=\"\"/><img src=\"http://y.example/a.png\" alt=\"\"/><img src=\"http://z.example/big.png\" alt=\"\"/><img src=\"http://z.example/empty.png\" alt=\"\"/><img src=\"http://z.example/\" alt=\"\"/></p>"]);
+        let mut b = make_book(&[
+            "<p><img src=\"http://x.example/a.png\" alt=\"\"/><img src=\"http://y.example/a.png\" alt=\"\"/><img src=\"http://z.example/big.png\" alt=\"\"/><img src=\"http://z.example/empty.png\" alt=\"\"/><img src=\"http://z.example/\" alt=\"\"/></p>",
+        ]);
         let f = MockFetcher::default()
             .with("http://x.example/a.png", &[1], Some("image/png"))
             .with("http://y.example/a.png", &[2], Some("image/png"))
@@ -1152,14 +1156,16 @@ mod tests {
             ]
         );
         assert_eq!(rep.failed.len(), 2);
-        assert!(rep
-            .failed
-            .iter()
-            .any(|(u, why)| u.ends_with("big.png") && why == "larger than 50 bytes"));
-        assert!(rep
-            .failed
-            .iter()
-            .any(|(u, why)| u.ends_with("empty.png") && why == "empty response"));
+        assert!(
+            rep.failed
+                .iter()
+                .any(|(u, why)| u.ends_with("big.png") && why == "larger than 50 bytes")
+        );
+        assert!(
+            rep.failed
+                .iter()
+                .any(|(u, why)| u.ends_with("empty.png") && why == "empty response")
+        );
         assert_eq!(
             b.package
                 .item_by_path("OEBPS/dl/files/z.bin")
@@ -1182,9 +1188,11 @@ mod tests {
         b.archive.set("OEBPS/images/p.png", png(2, 2));
         let found = find_broken_links(&b);
         assert_eq!(found.len(), 7, "{found:#?}");
-        assert!(found
-            .iter()
-            .any(|f| f.href == "chapter-2.xhtml#zzz" && f.reason == "no element with id \"zzz\""));
+        assert!(
+            found.iter().any(
+                |f| f.href == "chapter-2.xhtml#zzz" && f.reason == "no element with id \"zzz\""
+            )
+        );
         let (repairs, remaining) = repair_broken_links(&mut b);
         assert_eq!(repairs.len(), 5, "{repairs:#?}");
         let ch = b.archive.get_string("OEBPS/chapter-1.xhtml").unwrap();
@@ -1234,31 +1242,40 @@ mod tests {
         pkg.add_manifest_item(&mut b.archive, "p", "OEBPS/p.png", "image/png", "")
             .unwrap();
         b.reload_package().unwrap();
-        assert!(move_file(&mut b, "OEBPS/nope.png", "OEBPS/x.png")
-            .unwrap_err()
-            .to_string()
-            .contains("does not exist"));
-        assert!(move_file(&mut b, "OEBPS/p.png", "OEBPS/style.css")
-            .unwrap_err()
-            .to_string()
-            .contains("already exists"));
+        assert!(
+            move_file(&mut b, "OEBPS/nope.png", "OEBPS/x.png")
+                .unwrap_err()
+                .to_string()
+                .contains("does not exist")
+        );
+        assert!(
+            move_file(&mut b, "OEBPS/p.png", "OEBPS/style.css")
+                .unwrap_err()
+                .to_string()
+                .contains("already exists")
+        );
         let opf = b.package.opf_path.clone();
-        assert!(move_file(&mut b, &opf, "OEBPS/x.opf")
-            .unwrap_err()
-            .to_string()
-            .contains("cannot be moved"));
+        assert!(
+            move_file(&mut b, &opf, "OEBPS/x.opf")
+                .unwrap_err()
+                .to_string()
+                .contains("cannot be moved")
+        );
         assert_eq!(move_file(&mut b, "OEBPS/p.png", "OEBPS/p.png").unwrap(), 0);
         assert!(move_file(&mut b, "OEBPS/p.png", "OEBPS/img/../media/q.png").unwrap() >= 2);
         assert!(b.archive.contains("OEBPS/media/q.png"));
-        assert!(b
-            .archive
-            .get_string("OEBPS/chapter-1.xhtml")
-            .unwrap()
-            .contains("src=\"media/q.png\""));
+        assert!(
+            b.archive
+                .get_string("OEBPS/chapter-1.xhtml")
+                .unwrap()
+                .contains("src=\"media/q.png\"")
+        );
         assert_eq!(b.package.item_by_id("p").unwrap().href, "media/q.png");
-        assert!(check_book(&b.archive)
-            .iter()
-            .all(|i| i.severity != Severity::Error));
+        assert!(
+            check_book(&b.archive)
+                .iter()
+                .all(|i| i.severity != Severity::Error)
+        );
     }
 
     #[test]
@@ -1359,11 +1376,12 @@ mod tests {
         );
         assert!(css.contains("url(\"../Images/p.png\")"));
         assert!(css.contains("url(../Fonts/x.ttf)"));
-        assert!(b
-            .archive
-            .get_string("OEBPS/Styles/more.css")
-            .unwrap()
-            .contains("url(../Images/p.png)"));
+        assert!(
+            b.archive
+                .get_string("OEBPS/Styles/more.css")
+                .unwrap()
+                .contains("url(../Images/p.png)")
+        );
         let ncx = b.archive.get_string("OEBPS/toc.ncx").unwrap();
         assert!(ncx.contains("src=\"Text/chapter-1.xhtml\""), "{ncx}");
         let nav = b.archive.get_string("OEBPS/Text/nav.xhtml").unwrap();
@@ -1392,15 +1410,18 @@ mod tests {
             toc_before,
             b.toc().iter().map(|t| t.title.clone()).collect::<Vec<_>>()
         );
-        assert!(b
-            .toc()
-            .iter()
-            .all(|t| b.archive.contains(t.href.split('#').next().unwrap())));
+        assert!(
+            b.toc()
+                .iter()
+                .all(|t| b.archive.contains(t.href.split('#').next().unwrap()))
+        );
         // idempotent
-        assert!(arrange_files(&mut b, &ArrangeOptions::default())
-            .unwrap()
-            .moved
-            .is_empty());
+        assert!(
+            arrange_files(&mut b, &ArrangeOptions::default())
+                .unwrap()
+                .moved
+                .is_empty()
+        );
         let reopened = OpenBook::from_archive(
             bookx_core::archive::Archive::from_bytes(b.archive.to_bytes().unwrap()).unwrap(),
         )

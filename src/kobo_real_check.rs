@@ -85,7 +85,7 @@ mod tests {
     #[ignore]
     fn kobo_real_wireless_check() {
         use bookx_serve::annotation_sync::AnnotationSync;
-        use bookx_serve::kosync::{md5_hex, KoSync, MemoryStore};
+        use bookx_serve::kosync::{KoSync, MemoryStore, md5_hex};
         use bookx_serve::server::{LibrarySnapshot, Server, ServerConfig};
         use std::sync::Arc;
         let sdrs: Vec<String> = std::env::var("BOOKX_KOBO_SDRS")

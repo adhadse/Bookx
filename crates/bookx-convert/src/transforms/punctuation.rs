@@ -5,7 +5,7 @@ use bookx_core::book::OpenBook;
 use bookx_core::contracts::{Transform, TransformReport};
 
 use super::map_spine_files;
-use crate::markup::{is_block, is_verbatim, tag_info, tokenize, Tok};
+use crate::markup::{Tok, is_block, is_verbatim, tag_info, tokenize};
 
 const OPEN_CONTEXT: &str = "([{<-/=\u{2014}\u{2013}\u{201c}\u{2018}\u{ab}\u{a0}";
 

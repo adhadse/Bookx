@@ -6,7 +6,7 @@ use bookx_core::archive::Archive;
 use bookx_core::book::OpenBook;
 use bookx_sources::cover::generate_cover;
 use bookx_sources::fetch::{MockFetcher, MockReply};
-use bookx_sources::readability::{article_to_epub, extract, fetch_images, ImageLimits};
+use bookx_sources::readability::{ImageLimits, article_to_epub, extract, fetch_images};
 
 const URL: &str = "https://news.example.org/2024/story/";
 
@@ -141,9 +141,10 @@ fn page_to_epub() {
     assert_eq!(book.metadata().authors, vec!["Zoé Müller"]);
     assert_eq!(book.metadata().language, "fr");
     assert_eq!(book.metadata().published, "2024-05-06");
-    assert!(book
-        .cover_bytes()
-        .is_some_and(|c| c.starts_with(b"\x89PNG")));
+    assert!(
+        book.cover_bytes()
+            .is_some_and(|c| c.starts_with(b"\x89PNG"))
+    );
     let ch = book.chapter_source(&book.spine_paths()[0]).unwrap();
     assert!(ch.contains("images/img1.png"));
     assert!(

@@ -193,6 +193,23 @@ scenario koreader_annotations_activity 'koannot:start,wait:600,action:sync,wait:
     ! has "…|\\.\\.\\.\\s*$"; check "no ellipsis in the labels" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
+# Device names (issue #39): KOReader reports a model code, not the name on the box. A Boox Leaf 2 that reports
+# `Onyx Scubapilot-IDP` is a "Boox Leaf 2" row, a Kobo's `Kobo_nova` a "Kobo Clara HD", a model Bookx has no name for
+# is shown as it reported (never guessed) and can be renamed, which the next sync keeps. Dev commands:
+# `koannot:progress=<book>|<0..1>|<device>`, `sync:rename=<device id>|<name>`, `sync:activity`.
+scenario koreader_device_names 'koannot:start,wait:600,action:sync,wait:800,koannot:progress=1|0.4|Onyx Scubapilot-IDP,koannot:progress=1|0.5|Kobo_nova,koannot:progress=1|0.6|panther,sync:activity,sync:rename=fake-panther|Dads phone,koannot:progress=1|0.7|panther,sync:activity,quit' '
+    [ "$(grep -c "^device: Boox Leaf 2 | " <<<"$OUT")" -eq 2 ]; check "the Boox Leaf 2 is a row named Boox Leaf 2 (in both dumps)" $?
+    ! has "Scubapilot"; check "nothing shows the codename of the Leaf 2" $?
+    [ "$(grep -c "^device: Kobo Clara HD | " <<<"$OUT")" -eq 2 ]; check "Kobo_nova is a Kobo Clara HD" $?
+    [ "$(grep -c "^device: panther | " <<<"$OUT")" -eq 1 ]; check "a model Bookx has no name for is shown as the device reported it" $?
+    has "^sync_rename: id=fake-panther done=true"; check "the device can be renamed" $?
+    [ "$(grep -c "^device: Dads phone | " <<<"$OUT")" -eq 1 ]; check "the new name is shown" $?
+    has "^activity: .*Progress 60% → 70% · Dads phone · "; check "and the next sync from the device (as panther) does not undo it" $?
+    [ "$(grep -c "^devices=3 " <<<"$OUT")" -eq 2 ]; check "a rename does not make a second device" $?
+    has "^activity: .* · Dads phone · "; check "the activity rows use the new name" $?
+    has "^sync_activity_window: .* books_note=true"; check "the Sync window says plainly that the books themselves are not copied" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
 # Live updates (docs/koreader-annotation-sync.md, "Live updates"): a device talks to the real in-process server while the
 # book is open; the open reader, its sidebar, the Notes & Highlights view and the banner follow without reopening.
 # `koannot:push=<book>|<text>|<colour>|<note>` and `koannot:progress=<book>|<0..1>|<device>` are PUTs over HTTP like the

@@ -35,7 +35,7 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_core::archive::Archive;
 use regex::{Regex, RegexBuilder};
 use serde::{Deserialize, Serialize};
@@ -50,8 +50,7 @@ const EXCERPT: usize = 60;
 const PATCH_EXTENSIONS: &[&str] = &["xhtml", "html", "htm", "css", "svg", "txt", "ncx", "xml"];
 
 /// What a patch is allowed to do, as shown to the user.
-pub const PERMISSIONS: &str =
-    "Edits text and style sheets inside the book only. No access to other files, the network or programs.";
+pub const PERMISSIONS: &str = "Edits text and style sheets inside the book only. No access to other files, the network or programs.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Hook {
@@ -685,7 +684,7 @@ impl PatchManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bookx_core::convert::{create_epub, Chapter};
+    use bookx_core::convert::{Chapter, create_epub};
     use bookx_core::opf::Metadata;
 
     fn book() -> Archive {
@@ -811,8 +810,10 @@ flags = "i"
             e("hook=\"open-before\"\n[[css]]\nselector='p {'\ndeclarations='a:b'")
                 .contains("braces")
         );
-        assert!(e("hook=\"open-before\"\nrun=\"rm\"\n[[regex]]\nfind='a'")
-            .contains("not a valid patch"));
+        assert!(
+            e("hook=\"open-before\"\nrun=\"rm\"\n[[regex]]\nfind='a'")
+                .contains("not a valid patch")
+        );
         assert!(Patch::parse(&"#".repeat(70_000), "x").is_err());
         let huge = format!(
             "hook=\"open-before\"\n[[regex]]\nfind='{}'",
@@ -931,9 +932,11 @@ flags = "i"
         let none = PatchManager::new(d.join("missing"), d.join("s2.json"));
         assert!(none.list().is_empty() && none.state_error().is_none());
         std::fs::write(d.join("bad.json"), "{{{").unwrap();
-        assert!(PatchManager::new(&d, d.join("bad.json"))
-            .state_error()
-            .is_some());
+        assert!(
+            PatchManager::new(&d, d.join("bad.json"))
+                .state_error()
+                .is_some()
+        );
         let _ = std::fs::remove_dir_all(d);
     }
 }

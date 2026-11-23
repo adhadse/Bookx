@@ -6,7 +6,7 @@ use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 
 use super::SharedRef;
-use crate::reading_stats::{duration_text, summarize, Summary};
+use crate::reading_stats::{Summary, duration_text, summarize};
 
 /// Plain-text lines of the summary, used by the window and by the UI tests.
 pub fn summary_lines(s: &Summary) -> Vec<(String, String)> {

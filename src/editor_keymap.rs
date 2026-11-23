@@ -19,7 +19,7 @@ pub struct Cmd {
 }
 
 macro_rules! c {
-    ($id:expr, $t:expr, $d:expr, $k:expr, $p:expr) => {
+    ($id:expr_2021, $t:expr_2021, $d:expr_2021, $k:expr_2021, $p:expr_2021) => {
         Cmd {
             id: $id,
             title: $t,
@@ -29,7 +29,7 @@ macro_rules! c {
             palette: $p,
         }
     };
-    (capture $id:expr, $t:expr, $d:expr, $k:expr, $p:expr) => {
+    (capture $id:expr_2021, $t:expr_2021, $d:expr_2021, $k:expr_2021, $p:expr_2021) => {
         Cmd {
             id: $id,
             title: $t,

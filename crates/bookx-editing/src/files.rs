@@ -4,14 +4,14 @@
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::book::OpenBook;
 use bookx_core::opf::SpineItem;
 use bookx_core::util::{
     extension, file_name, join_path, media_type_for, parent_dir, relative_href, xml_escape,
 };
 
-use crate::markup::{is_css_path, is_markup_path, rename_paths, scan, Event};
+use crate::markup::{Event, is_css_path, is_markup_path, rename_paths, scan};
 
 /// Paths the package depends on; they can be neither renamed nor deleted.
 pub fn is_protected(book: &OpenBook, path: &str) -> bool {

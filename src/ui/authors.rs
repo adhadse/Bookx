@@ -42,7 +42,9 @@ fn rename_dialog(
     body.append(&preview);
     let d = adw::AlertDialog::new(
         Some(&tr("Rename author")),
-        Some(&tr("Every book that lists one of these spellings gets the new name. Undo takes it all back in one step.")),
+        Some(&tr(
+            "Every book that lists one of these spellings gets the new name. Undo takes it all back in one step.",
+        )),
     );
     d.set_extra_child(Some(&body));
     d.add_response("cancel", &tr("Cancel"));

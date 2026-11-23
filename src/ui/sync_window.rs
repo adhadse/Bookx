@@ -14,7 +14,7 @@ use relm4::{gtk, gtk::glib};
 
 use super::share::{self, follow};
 use super::stepper::Stepper;
-use super::{sync_prefs, SharedRef};
+use super::{SharedRef, sync_prefs};
 use crate::i18n::tr;
 use crate::sync_model::{self, Snapshot};
 
@@ -102,6 +102,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
     let inner = gtk::Box::new(gtk::Orientation::Vertical, 8);
     let headline = wrapped(&snap.readiness().headline(), Some("title-2"));
     let sentence = wrapped(&tr(sync_model::WINDOW_SENTENCE), None);
+    let books_note = wrapped(&tr(sync_model::WINDOW_BOOKS_NOTE), Some("dim-label"));
     let primary = button(&snap.primary(), &tr("Main action of Bookx sync"));
     primary.add_css_class("suggested-action");
     primary.add_css_class("pill");
@@ -117,6 +118,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
     for w in [
         headline.upcast_ref::<gtk::Widget>(),
         sentence.upcast_ref(),
+        books_note.upcast_ref(),
         actions.upcast_ref(),
         result.upcast_ref(),
     ] {
@@ -415,8 +417,15 @@ fn texts(w: &gtk::Widget, out: &mut Vec<String>) {
 }
 
 /// Dev hook `sync:…`: `dump`, `primary` (press the big button), `card=wifi|usb|opds` (press that
-/// card’s button), `advanced=open|close`, `close`.
+/// card’s button), `advanced=open|close`, `close`, `rename=<device id>|<name>` (what the rename dialog
+/// stores; an empty name takes it back).
 pub fn dev(arg: &str, shared: &SharedRef) {
+    if let Some(rest) = arg.strip_prefix("rename=") {
+        let (id, name) = rest.split_once('|').unwrap_or((rest, ""));
+        let done = super::sync_activity::log_of(shared).is_some_and(|l| l.rename(id, name));
+        eprintln!("sync_rename: id={id} done={done}");
+        return;
+    }
     if arg == "activity" {
         // devices and recent activity as the window shows them (read fresh), and the window's rows
         let sh = shared.clone();
@@ -432,11 +441,12 @@ pub fn dev(arg: &str, shared: &SharedRef) {
         if let Some(all) = rows {
             let has = |t: &str| all.iter().any(|x| x.contains(t));
             eprintln!(
-                "sync_activity_window: groups_connected={} groups_recent={} empty_state={} show_all={}",
+                "sync_activity_window: groups_connected={} groups_recent={} empty_state={} show_all={} books_note={}",
                 has(&tr("Connected devices")),
                 has(&tr("Recent activity")),
                 has("Nothing has synced yet"),
                 has(&tr("Show All")),
+                has("never copies or deletes books"),
             );
         }
         return;

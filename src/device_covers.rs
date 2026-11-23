@@ -64,7 +64,7 @@ pub fn cache_dir() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bookx_core::convert::{create_epub, Chapter};
+    use bookx_core::convert::{Chapter, create_epub};
     use bookx_core::opf::Metadata;
 
     fn tmp() -> PathBuf {

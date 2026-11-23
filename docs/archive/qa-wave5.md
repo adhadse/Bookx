@@ -1,3 +1,5 @@
+> Archived 2026-11-23: Finished wave log; its open items (grid rebuild, Notes stalls) were fixed in wave 6 (`docs/performance.md`), the rest are tracked in remaining.md. Living document: [remaining.md](../remaining.md).
+
 # QA pass, wave 5/6 (internal)
 
 Run on the tree at origin/main 2cc9fe7 plus other agents' uncommitted work, own target dir `~/.cache/target-qa`.

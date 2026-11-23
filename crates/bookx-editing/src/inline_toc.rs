@@ -1,6 +1,6 @@
 //! "Insert inline Table of Contents": a readable contents page inside the spine.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_core::book::OpenBook;
 use bookx_core::opf::SpineItem;
 use bookx_core::toc::TocEntry;
@@ -195,7 +195,7 @@ pub fn remove_inline_toc(book: &mut OpenBook) -> Result<bool> {
 mod tests {
     use super::*;
     use crate::testutil::make_book;
-    use bookx_core::check::{check_book, Severity};
+    use bookx_core::check::{Severity, check_book};
 
     #[test]
     fn page_is_nested_and_relative() {
@@ -293,14 +293,17 @@ mod tests {
         .unwrap();
         assert_eq!(b.spine_paths(), before_spine);
         assert_eq!(b.package.manifest.len(), before_manifest);
-        assert!(b
-            .archive
-            .get_string(&p)
-            .unwrap()
-            .contains("<h2>Contents</h2>"));
-        assert!(check_book(&b.archive)
-            .iter()
-            .all(|i| i.severity != Severity::Error));
+        assert!(
+            b.archive
+                .get_string(&p)
+                .unwrap()
+                .contains("<h2>Contents</h2>")
+        );
+        assert!(
+            check_book(&b.archive)
+                .iter()
+                .all(|i| i.severity != Severity::Error)
+        );
         assert!(remove_inline_toc(&mut b).unwrap());
         assert!(!b.archive.contains(&p));
         assert!(!remove_inline_toc(&mut b).unwrap());

@@ -2,10 +2,10 @@
 //! Each test has its own sandbox, so they run in parallel.
 
 use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
-use bookx_cli::{run, Env};
+use bookx_cli::{Env, run};
 use bookx_core::library::Highlight;
 use chrono::{TimeZone, Utc};
 

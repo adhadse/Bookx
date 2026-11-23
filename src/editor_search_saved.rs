@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::editor_search::{self, Scope};
-use crate::editor_search_fn::{order_files, Env, Function, Runner};
+use crate::editor_search_fn::{Env, Function, Runner, order_files};
 use crate::editor_search_modes::{Engine, Mode, RunCtx, Settings};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -597,11 +597,13 @@ mod tests {
         assert_eq!(rs.len(), 4);
         assert_eq!(rs[1].replaced, 4, "the second sees the first one's output");
         assert_eq!(t[0].1, "<p>three three</p>");
-        assert!(rs[2]
-            .error
-            .as_deref()
-            .unwrap()
-            .contains("regular expression"));
+        assert!(
+            rs[2]
+                .error
+                .as_deref()
+                .unwrap()
+                .contains("regular expression")
+        );
         assert!(rs[3].error.as_deref().unwrap().contains("Marked text"));
     }
 

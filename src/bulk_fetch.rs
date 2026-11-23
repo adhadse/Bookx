@@ -8,8 +8,8 @@
 use crate::i18n::tr;
 use crate::i18n::trf;
 use std::collections::BTreeSet;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::Result;
 use bookx_sources::cover_quality as cq;
@@ -17,7 +17,7 @@ use bookx_sources::fetch::Fetcher;
 use bookx_store::SqliteStore;
 
 use crate::core::library::Library;
-use crate::core::opf::{format_index, Metadata};
+use crate::core::opf::{Metadata, format_index};
 use crate::metadata_fetch::{self as mf, Fetched, Merge};
 
 /// The fields a lookup can propose (`cover` is handled apart from the OPF metadata).
@@ -644,11 +644,12 @@ mod tests {
         assert_eq!(r.accepted(), 2);
         r.accept_all(false);
         r.accept_field("publisher", true);
-        assert!(r
-            .rows
-            .iter()
-            .filter(|x| x.accepted)
-            .all(|x| x.field == "publisher"));
+        assert!(
+            r.rows
+                .iter()
+                .filter(|x| x.accepted)
+                .all(|x| x.field == "publisher")
+        );
         r.accept_safe();
         assert!(r.rows.iter().all(|x| x.accepted == x.safe));
         assert!(
@@ -741,9 +742,10 @@ mod tests {
             assert_eq!(m.series, "Dune Chronicles");
             assert!(m.published.is_empty(), "published was not accepted");
             let p = store.provenance(*id);
-            assert!(p
-                .iter()
-                .any(|f| f.field == "publisher" && f.source == "google"));
+            assert!(
+                p.iter()
+                    .any(|f| f.field == "publisher" && f.source == "google")
+            );
             assert!(!p.iter().any(|f| f.field == "published"));
         }
         let n = undo_applied(&mut lib, store, &a).unwrap();
@@ -780,9 +782,10 @@ mod tests {
         assert_eq!(*seen.lock().unwrap(), vec![(1, 2), (2, 2)]);
         assert!(out.iter().all(|r| r.found.is_some()), "{:?}", out[0].error);
         let rows = rows_for(&out[0]);
-        assert!(rows
-            .iter()
-            .any(|r| r.field == "publisher" && r.proposed == "Chilton"));
+        assert!(
+            rows.iter()
+                .any(|r| r.field == "publisher" && r.proposed == "Chilton")
+        );
         let stop = AtomicBool::new(true);
         assert!(run_batch(items, fetcher, &plugins, 0, &stop, &|_, _| {}).is_empty());
         let _ = std::fs::remove_dir_all(mock);

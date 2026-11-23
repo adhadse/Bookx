@@ -3,17 +3,17 @@
 
 mod common;
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use bookx_backup::crypto::Kdf;
-use bookx_backup::repo::lock::{host_name, LockInfo, LOCK_FILE};
+use bookx_backup::repo::lock::{LOCK_FILE, LockInfo, host_name};
 use bookx_backup::repo::{
     DavStore, LockLost, MemStore, RepoLocked, Report, Repository, RestoreOptions, RunOptions,
     Secrets,
 };
 use chrono::{Duration, Utc};
-use common::{dav, tmp, tree, Lib};
+use common::{Lib, dav, tmp, tree};
 
 fn no() -> AtomicBool {
     AtomicBool::new(false)
@@ -176,11 +176,12 @@ fn shelves_made_between_snapshots_come_back_from_the_journal() {
         .unwrap();
     assert!(j.collections && j.books == 0 && j.seq.is_some(), "{j:?}");
     // unchanged: nothing more
-    assert!(repo
-        .journal_append(&lib.source(), Utc::now(), &no())
-        .unwrap()
-        .seq
-        .is_none());
+    assert!(
+        repo.journal_append(&lib.source(), Utc::now(), &no())
+            .unwrap()
+            .seq
+            .is_none()
+    );
     // a change inside a shelf is a new record
     st.remove_from_collection(shelf, b).unwrap();
     assert!(

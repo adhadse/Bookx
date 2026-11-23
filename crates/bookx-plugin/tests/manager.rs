@@ -146,11 +146,13 @@ fn enabling_unknown_or_broken_plugins_fails_and_stays_disabled() {
     assert!(!m.is_enabled("org.bad"));
     assert!(!env.state().exists());
     let l = m.list();
-    assert!(status(&l, "org.bad")
-        .error
-        .as_deref()
-        .unwrap()
-        .contains("invalid WebAssembly"));
+    assert!(
+        status(&l, "org.bad")
+            .error
+            .as_deref()
+            .unwrap()
+            .contains("invalid WebAssembly")
+    );
     assert!(!status(&l, "org.bad").loaded);
     // disabling something unknown also fails
     assert!(m.set_enabled("org.nothing", false).is_err());
@@ -217,11 +219,12 @@ fn duplicate_ids_keep_the_first_folder() {
     assert!(status(&l, "dup.id").error.is_none());
     assert_eq!(status(&l, "dup.id").dir, env.plugins().join("a-first"));
     let dup = status(&l, "b-second");
-    assert!(dup
-        .error
-        .as_deref()
-        .unwrap()
-        .contains("duplicate plugin id `dup.id`"));
+    assert!(
+        dup.error
+            .as_deref()
+            .unwrap()
+            .contains("duplicate plugin id `dup.id`")
+    );
     assert!(dup.error.as_deref().unwrap().contains("a-first"));
     m.set_enabled("dup.id", true).unwrap();
     assert_eq!(
@@ -257,10 +260,11 @@ fn unreadable_state_path_is_reported() {
     // a directory where the file should be
     std::fs::create_dir_all(env.state()).unwrap();
     let m = env.manager();
-    assert!(m
-        .state_error()
-        .unwrap()
-        .contains("cannot read plugin state"));
+    assert!(
+        m.state_error()
+            .unwrap()
+            .contains("cannot read plugin state")
+    );
 }
 
 #[test]
@@ -590,8 +594,8 @@ fn hand_edited_trust_entries_are_validated() {
 
 #[test]
 fn signature_status_reaches_the_manager() {
-    use bookx_plugin::trust::{UnsupportedVerifier, SIGNATURE_FILE};
     use bookx_plugin::SignatureStatus;
+    use bookx_plugin::trust::{SIGNATURE_FILE, UnsupportedVerifier};
     let env = Env::new();
     env.add("one", "org.one", "transform", "", &echo());
     let mut m = env.manager();

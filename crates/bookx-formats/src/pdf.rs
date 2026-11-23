@@ -9,12 +9,12 @@
 //! A PDF that is scanned (no text layer), password protected or that has nothing to reflow still
 //! imports: the EPUB then holds a note saying why, and the PDF view works.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::contracts::FormatReader;
 use bookx_core::convert::Chapter;
 use bookx_core::opf::Metadata;
-use bookx_pdf::{reflow, Document, OpenError};
+use bookx_pdf::{Document, OpenError, reflow};
 
 use crate::common::*;
 
@@ -255,7 +255,9 @@ mod tests {
             .collect();
         assert_eq!(toc.len(), 2, "{toc:?}");
         let ch1 = arc.get_string("OEBPS/chapter-1.xhtml").unwrap();
-        assert!(ch1.contains("Chapter text on page 1 that runs on and ends here with a full stop."));
+        assert!(
+            ch1.contains("Chapter text on page 1 that runs on and ends here with a full stop.")
+        );
         assert!(book.package.cover_path().is_some(), "page 1 is the cover");
         let cover = book
             .archive

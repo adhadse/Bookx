@@ -106,7 +106,7 @@ pub fn date_text(d: DateTime<Utc>) -> String {
 
 /// The entries from the library's highlights (PDF ones are not part of the EPUB list).
 pub fn colour_label(name: &str) -> String {
-    use crate::i18n::{tr, N_};
+    use crate::i18n::{N_, tr};
     let known = match name {
         "yellow" => N_("Yellow"),
         "purple" => N_("Purple"),
@@ -247,11 +247,13 @@ mod tests {
             ["#Chapter 3:1", "c"],
             "and in the chapter name"
         );
-        assert!(f(Filter {
-            text: "zzz".into(),
-            ..Default::default()
-        })
-        .is_empty());
+        assert!(
+            f(Filter {
+                text: "zzz".into(),
+                ..Default::default()
+            })
+            .is_empty()
+        );
     }
 
     #[test]

@@ -396,13 +396,15 @@ mod tests {
         ] {
             assert!(make_source(n, t, &[], None).is_err(), "{n:?} {t:?}");
         }
-        assert!(make_source(
-            "N",
-            &format!("https://example.com/{}", "a".repeat(400)),
-            &[],
-            None
-        )
-        .is_err());
+        assert!(
+            make_source(
+                "N",
+                &format!("https://example.com/{}", "a".repeat(400)),
+                &[],
+                None
+            )
+            .is_err()
+        );
         assert!(make_source(&"n".repeat(MAX_NAME + 1), "https://e.com/{word}", &[], None).is_err());
     }
 

@@ -1,8 +1,10 @@
 # Device UI: notes for developers
 
 Enhancement 4 and bugs 3 to 5 (see `docs/enhancements.md`, `docs/bugs.md`), plus the wave 7 Device UX redesign
-(`docs/human_interface_backlog.md` §7 D2/D5/D7). Public description: the wiki pages *Library* and *Devices and sharing*.
+(`docs/archive/human_interface_backlog.md` §7 D2/D5/D7). Public description: the wiki pages *Library* and *Devices and sharing*.
 This file is internal: decisions, component map and dev hooks, not user copy.
+
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
 
 ## Pieces
 
@@ -39,7 +41,7 @@ This file is internal: decisions, component map and dev hooks, not user copy.
 * The Devices dialog keeps its content under 560 px high and at most 85 % of the parent window (`device_fit`), so the
   send controls stay reachable at 900x600.
 * No drag and drop of library books onto the Devices button.
-* Re-checked 2026-11-22 against the tree: the component map and the rules above still match; wave 11 added Check Before Sending in the send flow (`ui/devices.rs::send_checked`, scenario `meta_preflight_device`) and the send of a shelf is still not built (`docs/library-t3-notes.md`). Unifying `devices::full_sync_plan` with `device_sync::plan` is still open (`docs/remaining-work.md` D).
+* Re-checked 2026-11-22 against the tree: the component map and the rules above still match; wave 11 added Check Before Sending in the send flow (`ui/devices.rs::send_checked`, scenario `meta_preflight_device`) and the send of a shelf is still not built (`docs/archive/library-t3-notes.md`). Unifying `devices::full_sync_plan` with `device_sync::plan` is still open (`docs/remaining-work.md` D).
 
 ## Dev hooks
 

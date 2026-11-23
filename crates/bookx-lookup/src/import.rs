@@ -11,7 +11,7 @@
 //! KOReader sidecars (`metadata.*.lua`) and the Kobo database are read by `bookx-serve`, which
 //! already knows those formats.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use serde_json::Value;
 
@@ -664,7 +664,7 @@ pub fn dedupe(items: Vec<Imported>) -> Vec<Imported> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::export::{export, AnnotationItem, ExportFormat, ExportOptions, HighlightStyle};
+    use crate::export::{AnnotationItem, ExportFormat, ExportOptions, HighlightStyle, export};
     use chrono::TimeZone;
 
     const CLIPPINGS: &str = "\u{feff}Dune (Frank Herbert)\r\n- Your Highlight on page 12 | Location 183-184 | Added on Monday, 3 March 2014 10:42:11\r\n\r\nFear is the mind-killer.\r\n==========\r\nDune (Frank Herbert)\r\n- Your Note on page 12 | Location 184 | Added on Monday, 3 March 2014 10:43:00\r\n\r\nthe litany\r\n==========\r\nThe Road (McCarthy, Cormac)\r\n- Your Bookmark on Location 55 | Added on Tuesday, 4 March 2014 08:00:00\r\n\r\n\r\n==========\r\nThe Road (McCarthy, Cormac)\r\n- Your Highlight on Location 300-301 | Added on Tuesday, 4 March 2014 09:00:00\r\n\r\nCarrying the fire.\r\n==========\r\nDune (Frank Herbert)\r\n- Your Note on Location 900 | Added on Tuesday, 4 March 2014 09:00:00\r\n\r\nalone note\r\n==========\r\n";

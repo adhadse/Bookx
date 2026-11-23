@@ -4,7 +4,7 @@ mod common;
 
 use bookx_core::contracts::Store;
 use bookx_core::formats::FormatFile;
-use bookx_store::{SqliteStore, SCHEMA_VERSION};
+use bookx_store::{SCHEMA_VERSION, SqliteStore};
 use common::*;
 use rusqlite::Connection;
 

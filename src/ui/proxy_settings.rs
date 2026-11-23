@@ -9,8 +9,8 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 
-use super::share::reapply;
 use super::SharedRef;
+use super::share::reapply;
 use crate::i18n::tr;
 
 thread_local! {

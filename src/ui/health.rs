@@ -19,7 +19,7 @@ use chrono::Utc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio, glib};
 
-use super::{window_of, SharedRef};
+use super::{SharedRef, window_of};
 use crate::backups as bk;
 use crate::i18n::N_;
 use crate::library_health as lh;
@@ -304,7 +304,9 @@ impl Ctx {
         confirm(
             self,
             &tr("Restore this backup?"),
-            &tr("The catalogue goes back to how it was then. The current one is saved first as a \"Before a restore\" backup, so you can undo this."),
+            &tr(
+                "The catalogue goes back to how it was then. The current one is saved first as a \"Before a restore\" backup, so you can undo this.",
+            ),
             &tr("Restore"),
             true,
             move || {
@@ -1188,7 +1190,9 @@ pub fn show_tab(
     )));
     let drift_switch = switch_row(
         &tr("Compare with the book files"),
-        &tr("Also finds books whose title, authors or series differ from what the file says (slower)"),
+        &tr(
+            "Also finds books whose title, authors or series differ from what the file says (slower)",
+        ),
         false,
     );
     let check_summary = row(&tr("Check library"), &tr("Not checked yet"));
@@ -1317,7 +1321,7 @@ pub fn show_tab(
     });
 
     macro_rules! wire {
-        ($btn:expr, $method:ident) => {{
+        ($btn:expr_2021, $method:ident) => {{
             let weak = Rc::downgrade(&ctx);
             $btn.connect_clicked(move |_| {
                 if let Some(c) = weak.upgrade() {

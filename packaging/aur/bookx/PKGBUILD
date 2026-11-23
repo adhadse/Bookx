@@ -1,0 +1,49 @@
+# Maintainer: Anurag Dhadse <hello@adhadse.com>
+# Builds Bookx from the release tag. The prebuilt files are in bookx-bin. See packaging/aur/README.md.
+_pkgver=0.3.0-beta.2
+pkgname=bookx
+pkgver=${_pkgver//-/}
+pkgrel=1
+pkgdesc='GNOME-native e-book library, reader and EPUB editor written in Rust (GTK 4, libadwaita)'
+arch=('x86_64')
+url='https://bookx.adhadse.com'
+license=('GPL-3.0-or-later')
+depends=('glibc' 'gcc-libs' 'glib2' 'cairo' 'pango' 'gdk-pixbuf2' 'graphene' 'gtk4' 'libadwaita' 'gtksourceview5' 'hicolor-icon-theme')
+makedepends=('cargo' 'gettext' 'git')
+optdepends=('espeak-ng: voices for read aloud'
+            'libpulse: sound for read aloud and audiobooks (pacat)'
+            'pipewire: sound for read aloud and audiobooks (pw-cat)'
+            'calibre: more input formats through ebook-convert')
+conflicts=('bookx-bin' 'bookx-git')
+# makepkg's default -flto makes the bundled SQLite (a C library built by a crate) unlinkable from Rust
+options=('!lto' '!debug')
+source=("$pkgname-$_pkgver.tar.gz::https://github.com/adhadse/Bookx/archive/refs/tags/v$_pkgver.tar.gz")
+sha256sums=('a96af0fc8947b38da5e720f1d71b46085f736d2b63701b8d3bdc26d38e72f685')
+
+prepare() {
+    cd "Bookx-$_pkgver"
+    export RUSTUP_TOOLCHAIN=stable
+    cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+    cd "Bookx-$_pkgver"
+    export RUSTUP_TOOLCHAIN=stable
+    export CARGO_TARGET_DIR=target
+    cargo build --frozen --release -p bookx -p bookx-cli
+}
+
+check() {
+    cd "Bookx-$_pkgver"
+    export RUSTUP_TOOLCHAIN=stable
+    export CARGO_TARGET_DIR=target
+    target/release/bookx-cli --version
+}
+
+package() {
+    cd "Bookx-$_pkgver"
+    make install-flatpak DESTDIR="$pkgdir" PREFIX=/usr TARGET_DIR=target/release
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 NOTICE.md "$pkgdir/usr/share/doc/$pkgname/NOTICE.md"
+    install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+}

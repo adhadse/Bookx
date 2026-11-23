@@ -11,8 +11,7 @@ use relm4::gtk;
 use super::SharedRef;
 
 /// Shown when the vocabulary is empty.
-pub const EMPTY_HELP: &str =
-    "No words yet. Select a word while reading and choose the dictionary button: looked-up words are collected here.";
+pub const EMPTY_HELP: &str = "No words yet. Select a word while reading and choose the dictionary button: looked-up words are collected here.";
 
 pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef) {
     show_with(parent, shared, false, None);

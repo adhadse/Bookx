@@ -4,10 +4,10 @@ mod common;
 
 use std::sync::Arc;
 
-use bookx_plugin::runtime::{url_host, MAX_HTTP_CALLS, MAX_LOG_BYTES, MAX_LOG_LINES};
+use bookx_plugin::runtime::{MAX_HTTP_CALLS, MAX_LOG_BYTES, MAX_LOG_LINES, url_host};
 use bookx_plugin::{Host, Manifest, Plugin};
 use common::*;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 fn err_of<T: std::fmt::Debug>(r: anyhow::Result<T>) -> String {
     format!("{:#}", r.unwrap_err())

@@ -1,7 +1,7 @@
 //! Cover tools of the library (roadmap L13): take the cover from the first page of a PDF and trim
 //! a cover to the 2:3 shape of a book. No GTK.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 /// The width of a cover made from a PDF page, in pixels.
 pub const PDF_COVER_WIDTH: u32 = 800;

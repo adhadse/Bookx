@@ -3,6 +3,8 @@
 Date: 2026-11-12. Owner decision: `docs/enhancements.md` item 5. Supersedes the "No, not now" of
 `docs/editor-ui-design.md` section 4. Public documentation: `wiki/docs/editing.md`.
 
+Status: finished, pending move to archive/ (still pointed to from enhancements.md or source comments) | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## What changed
 
 The code view is a `sourceview5::View` with `sourceview5::Buffer`s (crate `sourceview5` 0.11, feature

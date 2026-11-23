@@ -10,7 +10,7 @@
 //! a space again ([`canonical_char`]). Callers must keep the book's own U+2010, U+2028 and
 //! U+2029 out of the text ([`sanitize`]).
 
-use crate::linebreak::{break_paragraph, Item, Line, Params};
+use crate::linebreak::{Item, Line, Params, break_paragraph};
 
 /// A soft hyphen: where words may be hyphenated.
 pub const SHY: char = '\u{ad}';
@@ -407,9 +407,11 @@ mod tests {
         for l in &lines[..3] {
             assert!(l.trim().chars().count() as f64 * 10.0 <= 120.0, "{l:?}");
         }
-        assert!(lines[3..lines.len() - 1]
-            .iter()
-            .any(|l| l.trim().chars().count() as f64 * 10.0 > 120.0));
+        assert!(
+            lines[3..lines.len() - 1]
+                .iter()
+                .any(|l| l.trim().chars().count() as f64 * 10.0 > 120.0)
+        );
         // the break after the third line is where the tail starts
         let mut parts = vec![T.to_string()];
         apply_edits(&mut parts, &p.edits);

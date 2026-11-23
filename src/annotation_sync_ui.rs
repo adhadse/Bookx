@@ -7,8 +7,8 @@ use std::cell::{Cell, RefCell};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use anyhow::{bail, Context, Result};
-use bookx_serve::annotation_sync::{AnnotationSync, Source, ORIGIN_BOOKX};
+use anyhow::{Context, Result, bail};
+use bookx_serve::annotation_sync::{AnnotationSync, ORIGIN_BOOKX, Source};
 use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 
@@ -819,8 +819,19 @@ pub fn dev_command(shared: &SharedRef, arg: &str) {
             Some(r) => {
                 announce(shared, &r);
                 eprintln!(
-                "koannot_merge: added={} linked={} notes={} removed={} kept={} conflicts={} unplaced={} bookmarks={} unmatched={} sent={} looks={} bookmarks_skipped={}",
-                r.added, r.linked, r.notes, r.removed, r.kept, r.conflicts, r.unplaced, r.bookmarks, r.unmatched, r.sent, r.looks, r.bookmarks_skipped
+                    "koannot_merge: added={} linked={} notes={} removed={} kept={} conflicts={} unplaced={} bookmarks={} unmatched={} sent={} looks={} bookmarks_skipped={}",
+                    r.added,
+                    r.linked,
+                    r.notes,
+                    r.removed,
+                    r.kept,
+                    r.conflicts,
+                    r.unplaced,
+                    r.bookmarks,
+                    r.unmatched,
+                    r.sent,
+                    r.looks,
+                    r.bookmarks_skipped
                 )
             }
             None => eprintln!("koannot_merge: not running"),
@@ -982,9 +993,11 @@ mod tests {
         for (n, _) in PLUGIN_FILES {
             assert!(dir.join(n).is_file(), "{n}");
         }
-        assert!(std::fs::read_to_string(dir.join("main.lua"))
-            .unwrap()
-            .contains("Bookx Sync"));
+        assert!(
+            std::fs::read_to_string(dir.join("main.lua"))
+                .unwrap()
+                .contains("Bookx Sync")
+        );
         // again over the old version, no temporary files left
         install_plugin(&plugins).unwrap();
         let names: Vec<String> = std::fs::read_dir(&dir)

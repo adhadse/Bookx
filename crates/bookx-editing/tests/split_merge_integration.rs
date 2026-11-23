@@ -3,7 +3,7 @@
 mod common;
 
 use bookx_editing::markup::{defined_ids, normalized_text};
-use bookx_editing::split_merge::{merge_files, split_file, SplitSpec};
+use bookx_editing::split_merge::{SplitSpec, merge_files, split_file};
 
 fn big_chapter() -> String {
     let mut s = String::new();
@@ -91,10 +91,11 @@ fn split_by_headings_ids_and_page_breaks_then_merge_back() {
         assert_eq!(book.spine_paths().len(), 3);
         let merged = book.archive.get_string("OEBPS/chapter-2.xhtml").unwrap();
         assert_eq!(normalized_text(&merged), text[1]);
-        assert!(book
-            .toc()
-            .iter()
-            .any(|e| e.href == "OEBPS/chapter-2.xhtml#part4"));
+        assert!(
+            book.toc()
+                .iter()
+                .any(|e| e.href == "OEBPS/chapter-2.xhtml#part4")
+        );
     }
 }
 

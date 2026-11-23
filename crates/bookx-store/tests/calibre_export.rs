@@ -5,7 +5,7 @@ use std::path::Path;
 
 use bookx_core::library::Book;
 use bookx_core::opf::Identifier;
-use bookx_store::{export_calibre, SqliteStore};
+use bookx_store::{SqliteStore, export_calibre};
 use common::*;
 use rusqlite::Connection;
 

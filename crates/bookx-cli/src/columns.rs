@@ -3,8 +3,8 @@
 use std::io::Write;
 use std::path::Path;
 
-use anyhow::{anyhow, bail, Result};
-use bookx_core::custom::{label_from_name, ColumnDef, ColumnKind};
+use anyhow::{Result, anyhow, bail};
+use bookx_core::custom::{ColumnDef, ColumnKind, label_from_name};
 use clap::Subcommand;
 
 #[derive(Subcommand, Debug)]

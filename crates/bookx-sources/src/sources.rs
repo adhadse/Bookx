@@ -7,14 +7,14 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bookx_core::contracts::{MetadataQuery, MetadataSource};
 use bookx_core::opf::{Identifier, Metadata};
 use regex::Regex;
 use serde_json::Value;
 
 use crate::authors::same_author;
-use crate::fetch::{url_encode, Fetcher, Request};
+use crate::fetch::{Fetcher, Request, url_encode};
 use crate::isbn;
 use crate::text::{jaro_winkler, normalize, strip_html, title_similarity};
 
@@ -994,11 +994,7 @@ pub fn author_score(wanted: &[String], found: &[String]) -> f64 {
                         1.0
                     } else {
                         let jw = jaro_winkler(&normalize(w), &normalize(f));
-                        if jw >= 0.88 {
-                            jw * 0.9
-                        } else {
-                            jw * 0.4
-                        }
+                        if jw >= 0.88 { jw * 0.9 } else { jw * 0.4 }
                     }
                 })
                 .fold(0.0, f64::max)
@@ -1190,7 +1186,7 @@ impl SourceSet {
         let mut meta = Metadata::default();
         let mut field_sources: std::collections::BTreeMap<String, String> = Default::default();
         macro_rules! first_string {
-            ($field:expr, $get:expr, $set:expr) => {
+            ($field:expr_2021, $get:expr_2021, $set:expr_2021) => {
                 if let Some((v, src)) = pick($field)
                     .iter()
                     .map(|r| ($get(&r.candidate.meta), r.candidate.source.clone()))
@@ -1505,11 +1501,12 @@ mod tests {
             vec!["0618260307", "9780618260300"],
             "invalid ISBNs dropped, capped at two"
         );
-        assert!(h
-            .meta
-            .identifiers
-            .iter()
-            .any(|i| i.scheme == "olid" && i.value == "OL45883W"));
+        assert!(
+            h.meta
+                .identifiers
+                .iter()
+                .any(|i| i.scheme == "olid" && i.value == "OL45883W")
+        );
     }
 
     #[test]
@@ -1538,9 +1535,11 @@ mod tests {
             let e = OpenLibrary::parse_search(body.as_bytes()).unwrap_err();
             assert!(format!("{e:#}").contains(msg), "{body:?}: {e:#}");
         }
-        assert!(OpenLibrary::parse_search(b"{\"docs\": []}")
-            .unwrap()
-            .is_empty());
+        assert!(
+            OpenLibrary::parse_search(b"{\"docs\": []}")
+                .unwrap()
+                .is_empty()
+        );
     }
 
     const OL_EDITION: &str = r#"{
@@ -1567,10 +1566,11 @@ mod tests {
         assert_eq!((m.series.as_str(), m.series_index), ("Roald Dahl", 4.0));
         assert_eq!(m.identifier("isbn"), Some("9780140328721"));
         assert!(m.identifiers.iter().any(|i| i.value == "0140328726"));
-        assert!(m
-            .identifiers
-            .iter()
-            .any(|i| i.scheme == "olid" && i.value == "OL7353617M"));
+        assert!(
+            m.identifiers
+                .iter()
+                .any(|i| i.scheme == "olid" && i.value == "OL7353617M")
+        );
         assert_eq!(
             c.cover_url.as_deref(),
             Some("https://covers.openlibrary.org/b/id/6498519-L.jpg"),
@@ -1688,16 +1688,20 @@ mod tests {
     fn sources_reject_empty_queries() {
         let f: Arc<dyn Fetcher> = Arc::new(MockFetcher::new());
         let empty = MetadataQuery::default();
-        assert!(OpenLibrary::new(f.clone())
-            .candidates(&empty)
-            .unwrap_err()
-            .to_string()
-            .contains("empty query"));
-        assert!(GoogleBooks::new(f.clone(), None)
-            .candidates(&empty)
-            .unwrap_err()
-            .to_string()
-            .contains("empty query"));
+        assert!(
+            OpenLibrary::new(f.clone())
+                .candidates(&empty)
+                .unwrap_err()
+                .to_string()
+                .contains("empty query")
+        );
+        assert!(
+            GoogleBooks::new(f.clone(), None)
+                .candidates(&empty)
+                .unwrap_err()
+                .to_string()
+                .contains("empty query")
+        );
         assert!(Wikidata::new(f).candidates(&empty).is_err());
     }
 
@@ -1825,14 +1829,17 @@ mod tests {
         assert_eq!(h.meta.identifier("isbn"), Some("9780547928227"));
         assert!(h.meta.identifiers.iter().any(|i| i.value == "054792822X"));
         assert!(!h.meta.identifiers.iter().any(|i| i.value.contains("OCLC")));
-        assert!(h
-            .meta
-            .identifiers
-            .iter()
-            .any(|i| i.scheme == "google" && i.value == "pD6arNyKyi8C"));
+        assert!(
+            h.meta
+                .identifiers
+                .iter()
+                .any(|i| i.scheme == "google" && i.value == "pD6arNyKyi8C")
+        );
         assert_eq!(
             h.cover_url.as_deref(),
-            Some("https://books.google.com/books/content?id=pD6arNyKyi8C&printsec=frontcover&img=1&zoom=1&source=gbs_api")
+            Some(
+                "https://books.google.com/books/content?id=pD6arNyKyi8C&printsec=frontcover&img=1&zoom=1&source=gbs_api"
+            )
         );
         let bare = &c[1];
         assert_eq!(bare.meta.published, "", "two-digit year is unusable");
@@ -1932,9 +1939,10 @@ mod tests {
         assert!(by_isbn.contains("= \"0306406152\""), "{by_isbn}");
         assert!(by_isbn.contains("P957"));
         let r = Wikidata::search_request(&q("Dune", &[]));
-        assert!(r
-            .url
-            .starts_with("https://query.wikidata.org/sparql?format=json&query=SELECT%20"));
+        assert!(
+            r.url
+                .starts_with("https://query.wikidata.org/sparql?format=json&query=SELECT%20")
+        );
         assert_eq!(
             r.header_value("accept"),
             Some("application/sparql-results+json")
@@ -1963,10 +1971,11 @@ mod tests {
             .map(|i| i.value.as_str())
             .collect();
         assert_eq!(isbns, vec!["9780618260300", "0618260307"]);
-        assert!(h
-            .identifiers
-            .iter()
-            .any(|i| i.scheme == "wikidata" && i.value == "Q74287"));
+        assert!(
+            h.identifiers
+                .iter()
+                .any(|i| i.scheme == "wikidata" && i.value == "Q74287")
+        );
         assert_eq!(c[1].meta.title, "Zażółć");
         assert_eq!(c[1].meta.published, "");
         assert!(c[0].cover_url.is_none());
@@ -1974,14 +1983,18 @@ mod tests {
 
     #[test]
     fn wikidata_errors() {
-        assert!(Wikidata::parse_sparql(b"{}")
-            .unwrap_err()
-            .to_string()
-            .contains("bindings"));
+        assert!(
+            Wikidata::parse_sparql(b"{}")
+                .unwrap_err()
+                .to_string()
+                .contains("bindings")
+        );
         assert!(Wikidata::parse_sparql(b"oops").is_err());
-        assert!(Wikidata::parse_sparql(br#"{"results":{"bindings":[]}}"#)
-            .unwrap()
-            .is_empty());
+        assert!(
+            Wikidata::parse_sparql(br#"{"results":{"bindings":[]}}"#)
+                .unwrap()
+                .is_empty()
+        );
         let w = Wikidata::new(Arc::new(
             MockFetcher::new().on_prefix("https://query.wikidata.org/", MockReply::Status(504)),
         ));

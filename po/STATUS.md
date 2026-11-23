@@ -19,7 +19,7 @@ the rest shows in English.
 | हिन्दी | `hi` | full | 3735 (100 %) | machine-translated |
 
 The snapshot count is informative; run `build-aux/i18n-status.sh` for the current numbers. Known problems found by
-the last agent review are in `docs/translation-review.md`; the glossary is `po/GLOSSARY.md`.
+the last agent review are in `docs/archive/translation-review.md`; the glossary is `po/GLOSSARY.md`.
 
 **Français (fr), 2026-11-21:** completed from `po/bookx.pot` (3725 messages, 100 % at the time; the template has 3735 messages on 2026-11-22 and `build-aux/i18n-status.sh` reports 100 %) by an AI agent; review state:
 machine-translated (agent), unreviewed (the table keeps the state word `machine-translated` that `i18n-status.sh`

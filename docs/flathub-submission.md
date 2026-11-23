@@ -7,6 +7,20 @@ Owner decision (2026-11): **Flathub is the first-class distribution channel.** T
 (not for the public wiki). Rules come from <https://docs.flathub.org/docs/for-app-authors/requirements> and
 `/submission`, read on 2026-11-21. Re-read them on the day you submit; they change.
 
+Status: living, deferred channel (GitHub Releases only for now) | Last reviewed: 2026-11-23 | Owner: @adhadse
+
+## Contents
+
+- [0. Read this first: blockers and risks](#0-read-this-first-blockers-and-risks)
+- [1. What is in the repository](#1-what-is-in-the-repository)
+- [2. Application ID and verification](#2-application-id-and-verification)
+- [3. Permissions (what to write in the PR, in your own words)](#3-permissions-what-to-write-in-the-pr-in-your-own-words)
+- [4. Step-by-step](#4-step-by-step)
+- [5. Local build status (this machine, 2026-11-22, GNOME 51)](#5-local-build-status-this-machine-2026-11-22-gnome-51)
+- [6. How updates flow after acceptance](#6-how-updates-flow-after-acceptance)
+- [7. Not done / needs the owner](#7-not-done--needs-the-owner)
+- [8. Fallback channel if Flathub says no](#8-fallback-channel-if-flathub-says-no)
+
 ## 0. Read this first: blockers and risks
 
 | # | Blocker or risk | What to do | Who |
@@ -129,7 +143,7 @@ development manifest `build-aux/com.adhadse.Bookx.json` and `packaging/flathub/c
 | Official `flatpak-cargo-generator.py` output vs ours | same 584 crates with identical URLs and sha256 (1169 entries each); the official file is committed as `packaging/flathub/cargo-sources.json`; ours stays in `build-aux/` for CI |
 | GUI inside the sandbox, headless | **not verified**: the sandbox's GTK could not initialise the Broadway backend against the host `gtk4-broadwayd` (the runtime has no broadwayd), and a Wayland window on the owner's desktop was not opened during the real-session test run. Run `flatpak run com.adhadse.Bookx` once by hand |
 | `release.yml` / `_flatpak.yml` / `ci.yml` | updated to the `gnome-51` image and `flatpak/flatpak-github-actions/flatpak-builder@v6.8` (the old `flathub-infra/flatpak-github-actions` repository is archived; the images now come from `flathub-infra/actions-images`, which lists `gnome-51`). **Never run on GitHub.** |
-| Natural voices (ONNX Runtime download), devices, secrets portal inside the sandbox | not tested (remaining-work A) |
+| Natural voices (ONNX Runtime download), devices, secrets portal inside the sandbox | not tested (`remaining.md`, DEV-5) |
 
 What remains for the owner (everything else is done): the AI disclosure and decision (blocker 1), the Flathub account and
 the hand-written manifest and PR, the domain token on `adhadse.com`, the permission decisions (section 3), the first real
@@ -161,7 +175,7 @@ aarch64. The tag `v0.3.0` must exist before `packaging/flathub/prepare.sh v0.3.0
 ## 7. Not done / needs the owner
 
 Flathub account, the domain token on `adhadse.com`, the AI disclosure and decision (blocker 1), writing and submitting the
-PR, the tag and GitHub release, native review of translations, hardware and sandbox tests (remaining-work A), and the
+PR, the tag and GitHub release, native review of translations, hardware and sandbox tests (`remaining.md`, DEV-5), and the
 run of `_flatpak.yml` on GitHub (the container image tag `gnome-50` and the linter call are from memory; with
 GNOME 51 the image tag changes to `gnome-51` once the manifest moves).
 

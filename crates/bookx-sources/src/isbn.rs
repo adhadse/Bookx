@@ -261,8 +261,7 @@ mod tests {
 
     #[test]
     fn extracts_from_free_text() {
-        let t =
-            "Printed in 2008. ISBN 978-0-306-40615-7 (hardcover), also ISBN-10: 0-8044-2957-X. \
+        let t = "Printed in 2008. ISBN 978-0-306-40615-7 (hardcover), also ISBN-10: 0-8044-2957-X. \
                  Order 1234567890123 is not one. Repeat 9780306406157.";
         assert_eq!(extract_isbns(t), vec!["9780306406157", "080442957X"]);
     }

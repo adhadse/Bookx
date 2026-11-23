@@ -2,7 +2,7 @@
 name = "bookx-convert"
 version = "0.3.0-beta.2"
 authors = ["Anurag Dhadse <hello@adhadse.com>"]
-edition = "2021"
+edition = "2024"
 rust-version = "1.85"
 description = "Conversion pipeline of Bookx: output writers (EPUB, KEPUB, FB2, HTMLZ, TXTZ, MOBI, AZW3, DOCX, RTF, PDB, PMLZ, RB, SNB, OEB, ZIP), transforms and presets"
 publish = false

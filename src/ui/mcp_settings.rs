@@ -8,14 +8,18 @@ use std::rc::Rc;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
 
-use super::preferences::{register_group, register_page, PrefCtx};
-use crate::i18n::{tr, trf, N_};
+use super::preferences::{PrefCtx, register_group, register_page};
+use crate::i18n::{N_, tr, trf};
 use crate::mcp_host::{self as host, McpSettings};
 
-const WRITE_WARNING: &str = N_("Assistants can then edit titles, authors, tags and ratings, add notes and highlights, mark books read and import books from folders you allow. Metadata edits and imports can be undone in Bookx (Edit → Undo); notes and highlights can be deleted in the reader. Switch this on only for assistants you trust.");
+const WRITE_WARNING: &str = N_(
+    "Assistants can then edit titles, authors, tags and ratings, add notes and highlights, mark books read and import books from folders you allow. Metadata edits and imports can be undone in Bookx (Edit → Undo); notes and highlights can be deleted in the reader. Switch this on only for assistants you trust.",
+);
 
 /// The short text under the switch; the full warning is in the dialog.
-const WRITE_SHORT: &str = N_("Assistants can edit titles, authors, tags, ratings and notes, and import books. Off by default.");
+const WRITE_SHORT: &str = N_(
+    "Assistants can edit titles, authors, tags, ratings and notes, and import books. Off by default.",
+);
 
 thread_local! {
     static REGISTERED: Cell<bool> = const { Cell::new(false) };
@@ -66,7 +70,9 @@ fn status_text() -> (String, String) {
         Some(u) => (tr("Listening"), u),
         None => (
             tr("Off"),
-            tr("Switch on “Let AI assistants connect” to start it. Assistants can still use the command-line tool below."),
+            tr(
+                "Switch on “Let AI assistants connect” to start it. Assistants can still use the command-line tool below.",
+            ),
         ),
     }
 }
@@ -326,7 +332,9 @@ fn confirm_new_token(parent: &gtk::Widget, row: &adw::ActionRow) {
     super::alert(
         parent,
         &tr("Make a New Token?"),
-        &tr("Assistants using the old token stop working until you copy the new settings into them."),
+        &tr(
+            "Assistants using the old token stop working until you copy the new settings into them.",
+        ),
         &tr("Make New Token"),
         true,
         move || {
@@ -509,7 +517,10 @@ pub fn dev(arg: &str) {
             s.write as u8,
             h.status.title(),
             h.token.subtitle().unwrap_or_default(),
-            h.clients.subtitle().unwrap_or_default().replace('\n', " | "),
+            h.clients
+                .subtitle()
+                .unwrap_or_default()
+                .replace('\n', " | "),
             (!token.is_empty() && h.token.subtitle().unwrap_or_default().contains(&token)) as u8,
             host::settings_path().map(|p| p.exists() as u8).unwrap_or(0),
             h.port.is_sensitive() as u8,

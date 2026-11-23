@@ -7,7 +7,7 @@
 
 use std::io::Cursor;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use image::codecs::jpeg::JpegEncoder;
 use image::codecs::png::PngEncoder;
 use image::imageops::FilterType;
@@ -585,7 +585,7 @@ pub fn dominant_color(bytes: &[u8]) -> Result<[u8; 3]> {
     }
     let Some((_, (n, sum))) = buckets
         .into_iter()
-        .max_by(|a, b| a.1 .0.cmp(&b.1 .0).then_with(|| b.0.cmp(&a.0)))
+        .max_by(|a, b| a.1.0.cmp(&b.1.0).then_with(|| b.0.cmp(&a.0)))
     else {
         bail!("image has no opaque pixels");
     };
@@ -846,10 +846,12 @@ mod tests {
 
     #[test]
     fn cover_size_validation() {
-        assert!(generate_cover("a", "b", "", 100, 400)
-            .unwrap_err()
-            .to_string()
-            .contains("out of range"));
+        assert!(
+            generate_cover("a", "b", "", 100, 400)
+                .unwrap_err()
+                .to_string()
+                .contains("out of range")
+        );
         assert!(generate_cover("a", "b", "", 400, 100).is_err());
         assert!(generate_cover("a", "b", "", 100_000, 400).is_err());
         assert!(generate_cover("a", "b", "", 120, 160).is_ok());
@@ -946,10 +948,12 @@ mod tests {
             ImageFormat::Png,
         )
         .unwrap();
-        assert!(dominant_color(&clear)
-            .unwrap_err()
-            .to_string()
-            .contains("no opaque"));
+        assert!(
+            dominant_color(&clear)
+                .unwrap_err()
+                .to_string()
+                .contains("no opaque")
+        );
     }
 
     #[test]
@@ -989,15 +993,19 @@ mod tests {
     #[test]
     fn decode_rejects_other_formats_and_garbage() {
         let gif = b"GIF89a\x01\x00\x01\x00\x00\x00\x00;".to_vec();
-        assert!(decode(&gif)
-            .unwrap_err()
-            .to_string()
-            .contains("unsupported image format"));
+        assert!(
+            decode(&gif)
+                .unwrap_err()
+                .to_string()
+                .contains("unsupported image format")
+        );
         assert!(decode(b"").is_err());
-        assert!(decode(b"definitely not an image")
-            .unwrap_err()
-            .to_string()
-            .contains("not a recognised"));
+        assert!(
+            decode(b"definitely not an image")
+                .unwrap_err()
+                .to_string()
+                .contains("not a recognised")
+        );
         let mut truncated = solid(50, 50, [1, 2, 3], ImageFormat::Png);
         truncated.truncate(30);
         assert!(decode(&truncated).is_err());

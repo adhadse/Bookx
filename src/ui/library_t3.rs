@@ -450,7 +450,7 @@ impl LibraryView {
     }
 
     fn dev_customcol(&mut self, spec: &str) -> String {
-        use crate::core::custom::{label_from_name, ColumnDef, ColumnKind};
+        use crate::core::custom::{ColumnDef, ColumnKind, label_from_name};
         let p: Vec<&str> = spec.split('|').collect();
         let mut lib = self.shared.lib.borrow_mut();
         match p.as_slice() {

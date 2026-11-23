@@ -6,7 +6,7 @@ mod common;
 use std::sync::atomic::AtomicBool;
 
 use bookx_convert::writers::{DocxOptions, OebWriter, PageSize, PdbCompression, ZipWriter};
-use bookx_convert::{convert, default_writers, ConvertOptions, PresetStore};
+use bookx_convert::{ConvertOptions, PresetStore, convert, default_writers};
 use bookx_core::archive::Archive;
 use bookx_core::contracts::{FormatWriter, Registry};
 use common::*;
@@ -175,9 +175,11 @@ fn oeb_is_rooted_at_content_opf() {
     let files = unzip(&OebWriter.write(&book).unwrap());
     let names: Vec<&str> = files.iter().map(|f| f.0.as_str()).collect();
     assert!(names.contains(&"content.opf"));
-    assert!(!names
-        .iter()
-        .any(|n| *n == "mimetype" || n.starts_with("META-INF") || n.starts_with("OEBPS")));
+    assert!(
+        !names
+            .iter()
+            .any(|n| *n == "mimetype" || n.starts_with("META-INF") || n.starts_with("OEBPS"))
+    );
     assert!(!names.iter().any(|n| n.starts_with('/') || n.contains("..")));
     // every manifest entry of the OPF exists next to it
     let opf = part_str(&files, "content.opf");

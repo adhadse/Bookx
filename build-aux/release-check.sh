@@ -4,7 +4,7 @@
 #   build-aux/release-check.sh            # or: make release-check
 #   build-aux/release-check.sh v0.3.0     # also: the tag matches the version (the release workflow does this)
 #
-# Checks: every crate and the metainfo and the CHANGELOG agree on the version; the Flatpak sources match
+# Checks: every crate and the metainfo and the CHANGELOG agree on the version; the relative links of docs/ and the README; the Flatpak sources match
 # Cargo.lock; the plugin golden files are unchanged; desktop file, AppStream metainfo and MIME XML validate;
 # the deb/rpm assets and the icons exist; the workflow files parse. A tool that is not installed
 # (desktop-file-validate, appstreamcli, xmllint) is reported as skipped, never as passed.
@@ -29,6 +29,11 @@ for f in crates/*/Cargo.toml; do
 done
 meta=$(sed -n 's/.*<release version="\([^"]*\)".*/\1/p' data/$APP_ID.metainfo.xml | head -1)
 [ "$meta" = "$version" ] && ok "metainfo newest release: $meta" || bad "metainfo newest release is '$meta'"
+for f in packaging/aur/*/PKGBUILD; do
+    [ -f "$f" ] || continue
+    v=$(sed -n 's/^_pkgver=\(.*\)/\1/p' "$f" | head -1)
+    [ "$v" = "$version" ] && ok "$f: $v" || bad "$f has _pkgver $v (Cargo.toml: $version)"
+done
 log=$(sed -n 's/^## \[\([0-9][^]]*\)\].*/\1/p' CHANGELOG.md | head -1)
 [ "$log" = "$version" ] && ok "CHANGELOG newest version: $log" || bad "CHANGELOG newest version is '$log'"
 if [ -n "$tag" ]; then
@@ -75,6 +80,9 @@ else bad "golden plugin files changed: this is an ABI break unless intended (doc
 
 echo "==> README pictures"
 if out=$(python3 build-aux/check-readme-images.py 2>&1); then ok "$out"; else bad "README pictures: $out"; fi
+
+echo "==> internal docs links"
+if out=$(python3 build-aux/check-docs-links.py 2>&1); then ok "$out"; else bad "docs links: $out"; fi
 
 echo "==> desktop integration"
 if command -v desktop-file-validate >/dev/null; then

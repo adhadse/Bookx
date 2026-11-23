@@ -6,7 +6,7 @@
 
 use super::*;
 use crate::editor_prefs::{self as ep, EditorLook, EditorPrefs};
-use crate::ui::preferences::{register_group, register_page, PrefCtx};
+use crate::ui::preferences::{PrefCtx, register_group, register_page};
 
 #[derive(Debug, Clone)]
 pub enum PrefsAct {

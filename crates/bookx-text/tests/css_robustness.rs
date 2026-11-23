@@ -1,7 +1,7 @@
 //! The CSS parser and cascade must never panic, whatever the input.
 
 use bookx_text::css::{
-    parse_declaration_text, parse_selector_list, parse_stylesheet, MediaEnv, StyleSheetSet,
+    MediaEnv, StyleSheetSet, parse_declaration_text, parse_selector_list, parse_stylesheet,
 };
 use scraper::{Html, Selector};
 

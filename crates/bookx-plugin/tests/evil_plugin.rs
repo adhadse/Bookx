@@ -38,25 +38,69 @@ fn hostile_manifests_are_refused_or_harmless() {
         ("bom", format!("\u{feff}{ok}")),
         ("deep", format!("{ok}{deep}")),
         ("many-permissions", format!("{ok}{many_perms}")),
-        ("huge-name", ok.replace("Test evil.one", &"N".repeat(1 << 20))),
+        (
+            "huge-name",
+            ok.replace("Test evil.one", &"N".repeat(1 << 20)),
+        ),
         ("path-id", ok.replace("evil.one", "../../etc/passwd")),
         ("slash-id", ok.replace("evil.one", "a/b")),
         ("nul-id", ok.replace("evil.one", "a\\u0000b")),
         ("huge-version", ok.replace("1.0.0", &"1.".repeat(100_000))),
-        ("negative-api", ok.replace("api_version = 1", "api_version = -1")),
-        ("huge-api", ok.replace("api_version = 1", "api_version = 18446744073709551616")),
+        (
+            "negative-api",
+            ok.replace("api_version = 1", "api_version = -1"),
+        ),
+        (
+            "huge-api",
+            ok.replace("api_version = 1", "api_version = 18446744073709551616"),
+        ),
         ("duplicate-keys", format!("{ok}{ok}")),
-        ("wildcard-host", format!("{ok}permissions = [\"network:*\"]")),
-        ("localhost-host", format!("{ok}permissions = [\"network:localhost\"]")),
-        ("ip-host", format!("{ok}permissions = [\"network:169.254.169.254\"]")),
-        ("userinfo-host", format!("{ok}permissions = [\"network:a.com@evil.com\"]")),
-        ("scheme-host", format!("{ok}permissions = [\"network:https://a.com\"]")),
-        ("path-host", format!("{ok}permissions = [\"network:a.com/../x\"]")),
-        ("unknown-permission", format!("{ok}permissions = [\"fs.write:/\", \"exec:sh\", \"editor.write\"]")),
-        ("wrong-types", format!("{ok}permissions = \"network:a.com\"\nlimits = 5")),
-        ("huge-limits", format!("{ok}[limits]\nfuel = 18446744073709551615\nmemory_pages = 4294967295\ntimeout_ms = 18446744073709551615")),
-        ("negative-limits", format!("{ok}[limits]\nfuel = -1\nmemory_pages = -5")),
-        ("inline-table-bomb", format!("{ok}x = {}", "{a=".repeat(2000) + "1" + &"}".repeat(2000))),
+        (
+            "wildcard-host",
+            format!("{ok}permissions = [\"network:*\"]"),
+        ),
+        (
+            "localhost-host",
+            format!("{ok}permissions = [\"network:localhost\"]"),
+        ),
+        (
+            "ip-host",
+            format!("{ok}permissions = [\"network:169.254.169.254\"]"),
+        ),
+        (
+            "userinfo-host",
+            format!("{ok}permissions = [\"network:a.com@evil.com\"]"),
+        ),
+        (
+            "scheme-host",
+            format!("{ok}permissions = [\"network:https://a.com\"]"),
+        ),
+        (
+            "path-host",
+            format!("{ok}permissions = [\"network:a.com/../x\"]"),
+        ),
+        (
+            "unknown-permission",
+            format!("{ok}permissions = [\"fs.write:/\", \"exec:sh\", \"editor.write\"]"),
+        ),
+        (
+            "wrong-types",
+            format!("{ok}permissions = \"network:a.com\"\nlimits = 5"),
+        ),
+        (
+            "huge-limits",
+            format!(
+                "{ok}[limits]\nfuel = 18446744073709551615\nmemory_pages = 4294967295\ntimeout_ms = 18446744073709551615"
+            ),
+        ),
+        (
+            "negative-limits",
+            format!("{ok}[limits]\nfuel = -1\nmemory_pages = -5"),
+        ),
+        (
+            "inline-table-bomb",
+            format!("{ok}x = {}", "{a=".repeat(2000) + "1" + &"}".repeat(2000)),
+        ),
     ];
     for (label, text) in &cases {
         let r = timed(label, || Manifest::parse(text));

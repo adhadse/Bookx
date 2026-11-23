@@ -33,7 +33,6 @@ src/gestures.rs
 src/goals.rs
 src/goto.rs
 src/jobs.rs
-src/kosync_sync.rs
 src/libraries.rs
 src/library_add.rs
 src/library_health.rs

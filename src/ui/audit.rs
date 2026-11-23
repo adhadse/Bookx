@@ -8,7 +8,7 @@
 use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 
-use crate::a11y::{control_problem, Control};
+use crate::a11y::{Control, control_problem};
 
 const KEY: &str = "bookx-a11y-label";
 

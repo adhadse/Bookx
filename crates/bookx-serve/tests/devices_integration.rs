@@ -6,10 +6,10 @@ use std::path::{Path, PathBuf};
 use bookx_core::archive::Archive;
 use bookx_core::book::OpenBook;
 use bookx_core::contracts::{DeviceDriver, Registry};
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::opf::Metadata;
-use bookx_serve::devices::{classify, kobo_db_path, DeviceKind, MassStorageDriver};
-use bookx_serve::mail::{build, Address, Attachment, Message};
+use bookx_serve::devices::{DeviceKind, MassStorageDriver, classify, kobo_db_path};
+use bookx_serve::mail::{Address, Attachment, Message, build};
 
 struct Tmp(PathBuf);
 impl Tmp {

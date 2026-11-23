@@ -129,7 +129,7 @@ impl Client {
                     return !matches!(
                         e.kind(),
                         std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
-                    )
+                    );
                 }
             }
         }
@@ -198,3 +198,4 @@ pub fn eventually(max: Duration, mut cond: impl FnMut() -> bool) -> bool {
     }
     cond()
 }
+pub mod zoo;

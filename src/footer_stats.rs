@@ -462,9 +462,11 @@ mod tests {
         // a config without a position reads as the default
         let d: FooterConfig = serde_json::from_str("{}").unwrap();
         assert_eq!(d.align(), Align::Centered);
-        assert!(!serde_json::to_string(&Preset::Standard.config())
-            .unwrap()
-            .contains("align"));
+        assert!(
+            !serde_json::to_string(&Preset::Standard.config())
+                .unwrap()
+                .contains("align")
+        );
     }
 
     #[test]

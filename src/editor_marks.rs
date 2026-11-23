@@ -5,7 +5,7 @@
 use crate::i18n::tr;
 use std::collections::{BTreeMap, HashMap};
 
-use bookx_editing::compare::{changed_lines, LineChangeKind};
+use bookx_editing::compare::{LineChangeKind, changed_lines};
 
 use crate::core::check::Severity;
 

@@ -5,7 +5,7 @@
 //! [`azw4_metadata`] exposes them. An `.azw4` file without an embedded PDF is an ordinary MOBI
 //! book and is converted as such.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::contracts::FormatReader;
 use bookx_core::opf::Metadata;

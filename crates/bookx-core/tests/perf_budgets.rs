@@ -8,8 +8,8 @@
 use std::time::{Duration, Instant};
 
 use bookx_core::book::OpenBook;
-use bookx_core::convert::{create_epub, Chapter};
-use bookx_core::library::{prepare_import, Book, Library, SortKey};
+use bookx_core::convert::{Chapter, create_epub};
+use bookx_core::library::{Book, Library, SortKey, prepare_import};
 use bookx_core::opf::Metadata;
 use chrono::Utc;
 

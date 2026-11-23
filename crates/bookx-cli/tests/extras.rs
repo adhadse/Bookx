@@ -1,10 +1,10 @@
 //! `library cite`, `fixity` and `covers`. Each test has its own sandbox, so they run in parallel.
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
-use bookx_cli::{run, Env};
+use bookx_cli::{Env, run};
 
 struct Sandbox {
     dir: PathBuf,

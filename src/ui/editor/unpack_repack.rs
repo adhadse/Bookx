@@ -20,7 +20,9 @@ impl Editor {
             alert(
                 &self.w.win,
                 &tr("Discard Unsaved Changes?"),
-                &tr("This window will show another book. Save first if you want to keep your changes."),
+                &tr(
+                    "This window will show another book. Save first if you want to keep your changes.",
+                ),
                 &tr("Discard and Continue"),
                 true,
                 move || tx.emit(Input::Ext(Cmd::Open("open-foreign-now".into()))),

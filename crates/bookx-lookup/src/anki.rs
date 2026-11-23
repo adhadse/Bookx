@@ -16,7 +16,7 @@ use std::io::Write as _;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use regex::RegexBuilder;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::export::{AnnotationItem, HighlightStyle};
 use crate::ids;
@@ -565,9 +565,10 @@ mod tests {
         );
         assert_eq!(n.len(), 1);
         assert_eq!(n[0].first, "Fear is &lt;the&gt; mind-killer.");
-        assert!(n[0]
-            .second
-            .starts_with("Litany<br><br><i>Dune &amp; Co, Frank Herbert (Part 1)"));
+        assert!(
+            n[0].second
+                .starts_with("Litany<br><br><i>Dune &amp; Co, Frank Herbert (Part 1)")
+        );
         assert_eq!(n[0].tags, vec!["bookx", "Dune_Co"]);
     }
 
@@ -684,11 +685,13 @@ mod tests {
         assert_eq!(types.len(), 2);
         assert!(types.contains(&0) && types.contains(&1));
         let decks: Value = serde_json::from_str(&decks).unwrap();
-        assert!(decks
-            .as_object()
-            .unwrap()
-            .values()
-            .any(|d| d["name"] == "Bookx::Test"));
+        assert!(
+            decks
+                .as_object()
+                .unwrap()
+                .values()
+                .any(|d| d["name"] == "Bookx::Test")
+        );
 
         let n: i64 = c
             .query_row("SELECT count(*) FROM notes", [], |r| r.get(0))

@@ -2,13 +2,13 @@
 //! pressing the keys, conflict handling (swap or take away), reset, export and import. The model
 //! is `crate::shortcuts`; this file shows it and applies it to the application accelerators.
 
-use crate::i18n::{tr, trf, N_};
+use crate::i18n::{N_, tr, trf};
 use std::cell::RefCell;
 
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gdk, gio, glib};
 
-use super::preferences::{register_group, register_page, PrefCtx};
+use super::preferences::{PrefCtx, register_group, register_page};
 use crate::shortcuts::{self, Action, Group, Settle, Shortcuts};
 
 /// Library actions whose keys are handled by the library's own shortcut controller (so that

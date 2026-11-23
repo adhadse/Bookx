@@ -59,7 +59,9 @@ impl Editor {
         edit.set_margin_top(14);
         let tx = self.sender.input_sender().clone();
         edit.connect_clicked(move |_| tx.emit(Input::EditMetadata));
-        let hint = gtk::Label::new(Some(&tr("Changes are applied to the book you are editing and written to the file when you save.")));
+        let hint = gtk::Label::new(Some(&tr(
+            "Changes are applied to the book you are editing and written to the file when you save.",
+        )));
         hint.add_css_class("dim-label");
         hint.add_css_class("caption");
         hint.set_wrap(true);

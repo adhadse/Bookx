@@ -4,8 +4,8 @@
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 
-use anyhow::{anyhow, Context, Result};
-use bookx_convert::{builtin_presets, convert, ConvertOptions};
+use anyhow::{Context, Result, anyhow};
+use bookx_convert::{ConvertOptions, builtin_presets, convert};
 use bookx_formats::default_readers;
 
 /// An output format offered in the *Convert to* menu.
@@ -194,7 +194,7 @@ pub fn convert_epub_bytes(bytes: &[u8], name: &str, t: &Target) -> Result<Vec<u8
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::convert::{create_epub, Chapter};
+    use crate::core::convert::{Chapter, create_epub};
     use crate::core::opf::Metadata;
     use std::io::Read;
 
@@ -326,10 +326,12 @@ mod tests {
         let txtz = convert_epub_file(&p, target("txtz").unwrap()).unwrap();
         assert!(zip_text(&txtz, "index.txt").contains("Second chapter too."));
         let epub = convert_epub_file(&p, target("epub").unwrap()).unwrap();
-        assert!(crate::core::book::OpenBook::from_archive(
-            crate::core::archive::Archive::from_bytes(epub).unwrap()
-        )
-        .is_ok());
+        assert!(
+            crate::core::book::OpenBook::from_archive(
+                crate::core::archive::Archive::from_bytes(epub).unwrap()
+            )
+            .is_ok()
+        );
         let _ = std::fs::remove_dir_all(p.parent().unwrap());
     }
 

@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
-use crate::dict_catalog::{language_name, Catalog};
+use crate::dict_catalog::{Catalog, language_name};
 use crate::dict_install::Presence;
 use crate::i18n::{tr, trf};
 
@@ -45,7 +45,12 @@ impl Default for Prefs {
 /// `BOOKX_DICT_AUTO=on|off` overrides the setting (the tests switch it off everywhere but where they
 /// test it, so no scenario goes to the network by itself).
 pub fn auto_enabled(p: &Prefs) -> bool {
-    match std::env::var("BOOKX_DICT_AUTO").ok().as_deref() {
+    auto_enabled_with(std::env::var("BOOKX_DICT_AUTO").ok().as_deref(), p)
+}
+
+/// [`auto_enabled`] with the value of the variable given (tests pass it instead of changing the process environment).
+pub fn auto_enabled_with(var: Option<&str>, p: &Prefs) -> bool {
+    match var {
         Some("off" | "0" | "false") => false,
         Some("on" | "1" | "true") => true,
         _ => p.auto_download,
@@ -273,7 +278,9 @@ impl Prompt {
                 message, offline, ..
             } => {
                 if *offline {
-                    tr("There is no connection to the internet. Bookx will try again later, or press Try again.")
+                    tr(
+                        "There is no connection to the internet. Bookx will try again later, or press Try again.",
+                    )
                 } else {
                     trf("The download did not work: {}", &[message])
                 }
@@ -576,14 +583,17 @@ mod tests {
 
     #[test]
     fn the_environment_overrides_the_setting() {
-        // (set and unset in one test: the tests of this file run in parallel with others that read it)
         let p = Prefs::default();
-        std::env::remove_var("BOOKX_DICT_AUTO");
-        assert!(auto_enabled(&p));
+        assert!(auto_enabled_with(None, &p));
         let off = Prefs {
             auto_download: false,
             ..Prefs::default()
         };
-        assert!(!auto_enabled(&off));
+        assert!(!auto_enabled_with(None, &off));
+        assert!(!auto_enabled_with(Some("off"), &p));
+        assert!(!auto_enabled_with(Some("0"), &p));
+        assert!(auto_enabled_with(Some("on"), &off));
+        assert!(auto_enabled_with(Some("true"), &off));
+        assert!(auto_enabled_with(Some("anything else"), &p));
     }
 }

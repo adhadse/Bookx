@@ -169,11 +169,15 @@ fn build_epub(s: EpubSpec) -> Vec<u8> {
 }
 
 fn nav_doc(entries: &str) -> String {
-    format!("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\"><head><title>Contents</title></head><body><nav epub:type=\"toc\" id=\"toc\"><h1>Contents</h1><ol>{entries}</ol></nav></body></html>")
+    format!(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\"><head><title>Contents</title></head><body><nav epub:type=\"toc\" id=\"toc\"><h1>Contents</h1><ol>{entries}</ol></nav></body></html>"
+    )
 }
 
 fn ncx_doc(points: &str) -> String {
-    format!("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<ncx xmlns=\"http://www.daisy.org/z3986/2005/ncx/\" version=\"2005-1\"><head><meta name=\"dtb:uid\" content=\"urn:uuid:12345678-1234-1234-1234-123456789abc\"/></head><docTitle><text>t</text></docTitle><navMap>{points}</navMap></ncx>")
+    format!(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<ncx xmlns=\"http://www.daisy.org/z3986/2005/ncx/\" version=\"2005-1\"><head><meta name=\"dtb:uid\" content=\"urn:uuid:12345678-1234-1234-1234-123456789abc\"/></head><docTitle><text>t</text></docTitle><navMap>{points}</navMap></ncx>"
+    )
 }
 
 const CSS: &str = "body{margin:1em} p{text-indent:1em;margin:0} .c{text-align:center} .big{font-size:1.5em;font-weight:bold} blockquote{margin:1em 2em;font-style:italic} p:first-letter{font-size:2em} h1{page-break-before:always}";
@@ -201,7 +205,9 @@ fn epub3_features() -> Sample {
         prose(4, 40),
         prose(5, 40)
     );
-    let nav = nav_doc("<li><a href=\"c1.xhtml\">The First Chapter</a></li><li><a href=\"c2.xhtml\">The Second Chapter</a><ol><li><a href=\"c2.xhtml#sec\">A Section</a></li></ol></li><li><a href=\"c3.xhtml\">The Third Chapter</a><ol><li><a href=\"c3.xhtml#deep\">Deeper</a></li></ol></li>");
+    let nav = nav_doc(
+        "<li><a href=\"c1.xhtml\">The First Chapter</a></li><li><a href=\"c2.xhtml\">The Second Chapter</a><ol><li><a href=\"c2.xhtml#sec\">A Section</a></li></ol></li><li><a href=\"c3.xhtml\">The Third Chapter</a><ol><li><a href=\"c3.xhtml#deep\">Deeper</a></li></ol></li>",
+    );
     let items = vec![
         xhtml_item("c1.xhtml", &c1),
         xhtml_item("c2.xhtml", &c2),
@@ -246,7 +252,9 @@ fn epub2_ncx() -> Sample {
         ("style.css".into(), css(), "text/css", ""),
         ("cover.jpg".into(), jpeg(240, 360), "image/jpeg", ""),
     ];
-    let ncx = ncx_doc("<navPoint id=\"n1\" playOrder=\"1\"><navLabel><text>Part One</text></navLabel><content src=\"part1.xhtml\"/><navPoint id=\"n1a\" playOrder=\"2\"><navLabel><text>Sub of Part One</text></navLabel><content src=\"part1.xhtml#s1\"/></navPoint></navPoint><navPoint id=\"n2\" playOrder=\"3\"><navLabel><text>Part Two</text></navLabel><content src=\"part2.xhtml\"/></navPoint><navPoint id=\"n3\" playOrder=\"4\"><navLabel><text>Part Three</text></navLabel><content src=\"part3.xhtml\"/><navPoint id=\"n3a\" playOrder=\"5\"><navLabel><text>Sub of Part Three</text></navLabel><content src=\"part3.xhtml#s3\"/></navPoint></navPoint>");
+    let ncx = ncx_doc(
+        "<navPoint id=\"n1\" playOrder=\"1\"><navLabel><text>Part One</text></navLabel><content src=\"part1.xhtml\"/><navPoint id=\"n1a\" playOrder=\"2\"><navLabel><text>Sub of Part One</text></navLabel><content src=\"part1.xhtml#s1\"/></navPoint></navPoint><navPoint id=\"n2\" playOrder=\"3\"><navLabel><text>Part Two</text></navLabel><content src=\"part2.xhtml\"/></navPoint><navPoint id=\"n3\" playOrder=\"4\"><navLabel><text>Part Three</text></navLabel><content src=\"part3.xhtml\"/><navPoint id=\"n3a\" playOrder=\"5\"><navLabel><text>Sub of Part Three</text></navLabel><content src=\"part3.xhtml#s3\"/></navPoint></navPoint>",
+    );
     let bytes = build_epub(EpubSpec {
         version: 2,
         title: "Old School NCX",
@@ -271,8 +279,12 @@ fn epub2_ncx() -> Sample {
 fn epub_rtl() -> Sample {
     let ar = "كان يا ما كان في قديم الزمان ملك عادل يحكم مدينة جميلة على ضفة النهر";
     let he = "היה היה פעם מלך צדיק ששלט בעיר יפה על גדת הנהר";
-    let c1 = format!("<h1 id=\"a\">الفصل الأول</h1><p dir=\"rtl\">{ar}.</p><p dir=\"rtl\">{he}.</p><p>{ar} {he}</p>");
-    let c2 = format!("<h1 id=\"b\">الفصل الثاني</h1><p dir=\"rtl\">{he}. {ar}.</p><p dir=\"rtl\">رقم 123 داخل النص.</p>");
+    let c1 = format!(
+        "<h1 id=\"a\">الفصل الأول</h1><p dir=\"rtl\">{ar}.</p><p dir=\"rtl\">{he}.</p><p>{ar} {he}</p>"
+    );
+    let c2 = format!(
+        "<h1 id=\"b\">الفصل الثاني</h1><p dir=\"rtl\">{he}. {ar}.</p><p dir=\"rtl\">رقم 123 داخل النص.</p>"
+    );
     let items = vec![
         xhtml_item("a.xhtml", &c1),
         xhtml_item("b.xhtml", &c2),
@@ -508,7 +520,9 @@ fn docx_full() -> Sample {
     let styles = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:style w:type=\"paragraph\" w:styleId=\"Heading1\"><w:name w:val=\"heading 1\"/></w:style><w:style w:type=\"paragraph\" w:styleId=\"Heading2\"><w:name w:val=\"heading 2\"/></w:style><w:style w:type=\"paragraph\" w:styleId=\"Title\"><w:name w:val=\"Title\"/></w:style><w:style w:type=\"paragraph\" w:styleId=\"ListParagraph\"><w:name w:val=\"List Paragraph\"/></w:style><w:style w:type=\"table\" w:styleId=\"TableGrid\"><w:name w:val=\"Table Grid\"/></w:style></w:styles>";
     let fns = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:footnotes xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:footnote w:type=\"separator\" w:id=\"-1\"><w:p><w:r><w:separator/></w:r></w:p></w:footnote><w:footnote w:id=\"1\"><w:p><w:r><w:t>Footnote body words here.</w:t></w:r></w:p></w:footnote></w:footnotes>";
     let p = |style: &str, text: &str| {
-        format!("<w:p><w:pPr><w:pStyle w:val=\"{style}\"/></w:pPr><w:r><w:t xml:space=\"preserve\">{text}</w:t></w:r></w:p>")
+        format!(
+            "<w:p><w:pPr><w:pStyle w:val=\"{style}\"/></w:pPr><w:r><w:t xml:space=\"preserve\">{text}</w:t></w:r></w:p>"
+        )
     };
     let doc = format!(
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><w:body>{h1}<w:p><w:r><w:t xml:space=\"preserve\">{t1} </w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>bold</w:t></w:r><w:r><w:t xml:space=\"preserve\"> and </w:t></w:r><w:r><w:rPr><w:i/></w:rPr><w:t>italic</w:t></w:r><w:r><w:t xml:space=\"preserve\"> and </w:t></w:r><w:r><w:rPr><w:u w:val=\"single\"/></w:rPr><w:t>underlined</w:t></w:r><w:r><w:footnoteReference w:id=\"1\"/></w:r><w:r><w:t xml:space=\"preserve\"> then a </w:t></w:r><w:hyperlink r:id=\"rIdL\"><w:r><w:t>web link</w:t></w:r></w:hyperlink><w:r><w:t>.</w:t></w:r></w:p>{h2}<w:p><w:r><w:t>{t2}</w:t></w:r></w:p><w:tbl><w:tblPr><w:tblStyle w:val=\"TableGrid\"/><w:tblW w:w=\"0\" w:type=\"auto\"/></w:tblPr><w:tblGrid><w:gridCol w:w=\"3000\"/><w:gridCol w:w=\"3000\"/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>Cell A1</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Cell B1</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:p><w:r><w:t>Cell A2</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Cell B2</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p><w:r><w:drawing><wp:inline><wp:extent cx=\"952500\" cy=\"952500\"/><wp:docPr id=\"1\" name=\"Picture 1\" descr=\"A docx picture\"/><a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:pic><pic:blipFill><a:blip r:embed=\"rIdI\"/></pic:blipFill></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>{l1}{l2}{h1b}<w:p><w:r><w:t>{t3}</w:t></w:r></w:p></w:body></w:document>",

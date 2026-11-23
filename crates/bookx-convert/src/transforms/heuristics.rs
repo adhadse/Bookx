@@ -9,9 +9,9 @@ use bookx_core::contracts::{Transform, TransformReport};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use super::css::{css_paths, parse_css, parse_decls, split_selectors, CssItem};
+use super::css::{CssItem, css_paths, parse_css, parse_decls, split_selectors};
 use super::map_spine_files;
-use crate::markup::{decode_entities, get_attr, tag_info, tokenize, Tok};
+use crate::markup::{Tok, decode_entities, get_attr, tag_info, tokenize};
 
 fn paragraph_re() -> Regex {
     Regex::new(r"(?s)(<p(?:\s[^>]*)?>)(.*?)</p>").expect("static regex")

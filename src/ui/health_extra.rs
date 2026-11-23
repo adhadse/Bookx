@@ -13,8 +13,8 @@ use bookx_sources::cover_quality as cq;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio, glib};
 
-use super::organize::Fetch;
 use super::SharedRef;
+use super::organize::Fetch;
 use crate::i18n::{tr, trf};
 
 type Notify = Rc<dyn Fn(String)>;

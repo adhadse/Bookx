@@ -8,9 +8,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use bookx_cli::{run, Env};
+use bookx_cli::{Env, run};
 use bookx_core::book::OpenBook;
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::opf::Metadata;
 
 struct Sandbox {
@@ -159,11 +159,13 @@ fn formats_json_is_valid() {
     assert_eq!(code, 0);
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     assert!(v["input"].as_array().unwrap().iter().any(|e| e == "epub"));
-    assert!(v["output"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|e| e["id"] == "mobi"));
+    assert!(
+        v["output"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e["id"] == "mobi")
+    );
 }
 
 #[test]
@@ -225,11 +227,13 @@ fn convert_report_prints_or_saves_what_was_lost() {
     let v: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&rep).unwrap()).unwrap();
     assert_eq!(v["output"], "txt");
-    assert!(v["lost"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|l| l.as_str().unwrap().contains("table of contents")));
+    assert!(
+        v["lost"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|l| l.as_str().unwrap().contains("table of contents"))
+    );
 }
 
 #[test]

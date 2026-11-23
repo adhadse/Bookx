@@ -84,11 +84,11 @@ const WINDOW_MS: u64 = 5_000;
 impl Throughput {
     /// Records that `done` bytes were there at `ms` (any steady clock, in milliseconds).
     pub fn push(&mut self, ms: u64, done: u64) {
-        if let Some(&(t, d)) = self.samples.back() {
-            if ms < t || done < d {
-                // a restart of the download (or a new file): begin again
-                self.samples.clear();
-            }
+        if let Some(&(t, d)) = self.samples.back()
+            && (ms < t || done < d)
+        {
+            // a restart of the download (or a new file): begin again
+            self.samples.clear();
         }
         self.samples.push_back((ms, done));
         while self.samples.len() > 2 && ms.saturating_sub(self.samples[1].0) >= WINDOW_MS {

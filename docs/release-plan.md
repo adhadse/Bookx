@@ -4,6 +4,8 @@ Internal (not for the wiki). Owner decision, 2026-11-22: *"We need to build up h
 built a credible application. Let's focus on the non-Flathub way of releasing first: from the GitHub releases themselves,
 which anybody can download. Once we build a credible reputation we'll think about package-based releases."*
 
+Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse
+
 So: **GitHub Releases is the only official channel.** Flathub, Homebrew, winget, Scoop and MSYS2 are *later*, documented
 here and in `docs/flathub-submission.md`, and are **not promised publicly** (the wiki install page says "may come later,
 no date"). The 0.3.0 runbook is `docs/release-0.3.0.md`.

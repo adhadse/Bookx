@@ -7,7 +7,7 @@
 
 use std::collections::{BTreeSet, HashMap};
 
-use bookx_serve::activity::{Device, Event, Presence, What, UNKNOWN_DEVICE};
+use bookx_serve::activity::{Device, Event, Presence, UNKNOWN_DEVICE, What};
 
 use crate::i18n::{ntr, tr, trf};
 
@@ -25,12 +25,14 @@ pub fn relative(now: i64, then: i64) -> String {
     }
 }
 
-/// The name of a device for people (an unnamed one is "Unknown device (KOReader)").
+/// The name of a device for people: an unnamed one is "Unknown device (KOReader)", a model code
+/// KOReader reports (`Onyx Scubapilot-IDP`, `Kobo_nova`) is the name on the box (`Boox Leaf 2`,
+/// `Kobo Clara HD`), anything Bookx does not know is shown as reported.
 pub fn device_name(d: &str) -> String {
     if d.trim().is_empty() || d == UNKNOWN_DEVICE {
         tr("Unknown device (KOReader)")
     } else {
-        d.to_string()
+        bookx_serve::device_names::friendly_name(d)
     }
 }
 
@@ -39,6 +41,8 @@ pub fn device_name(d: &str) -> String {
 pub struct DeviceRow {
     pub id: String,
     pub title: String,
+    /// The name the user gave the device in Bookx, empty when none.
+    pub alias: String,
     pub subtitle: String,
     /// "Connected now", "Last seen 5 minutes ago", "Never connected".
     pub status: String,
@@ -73,7 +77,12 @@ pub fn device_row(d: &Device, now: i64) -> DeviceRow {
     };
     DeviceRow {
         id: d.id.clone(),
-        title: device_name(&d.name),
+        title: if d.alias.is_empty() {
+            device_name(&d.name)
+        } else {
+            d.alias.clone()
+        },
+        alias: d.alias.clone(),
         subtitle: parts.join(" · "),
         status,
         connected,
@@ -249,7 +258,9 @@ pub fn today_line(events: &[Event], since: i64) -> String {
 
 /// The text of the empty list.
 pub fn empty_text(address: Option<&str>) -> String {
-    let mut s = tr("Nothing has synced yet. On your e-reader open a book, then More tools, Bookx Sync, Sync now.");
+    let mut s = tr(
+        "Nothing has synced yet. On your e-reader open a book, then More tools, Bookx Sync, Sync now.",
+    );
     match address {
         Some(a) => {
             s.push(' ');
@@ -379,6 +390,39 @@ mod tests {
         let r = device_row(&Device::default(), NOW);
         assert_eq!(r.status, "Never connected");
         assert_eq!(r.title, "Unknown device (KOReader)");
+    }
+
+    #[test]
+    fn issue_39_a_boox_leaf_2_is_not_shown_as_onyx_scubapilot_idp() {
+        let d = Device {
+            name: "Onyx Scubapilot-IDP".into(),
+            last_seen: NOW,
+            ..Device::default()
+        };
+        assert_eq!(device_row(&d, NOW).title, "Boox Leaf 2");
+        assert_eq!(device_name("Onyx Scubapilot-IDP"), "Boox Leaf 2");
+        let mut e = ev(What::Nothing, NOW);
+        e.device = "Onyx Scubapilot-IDP".into();
+        assert!(
+            activity_row(&e, NOW, &HashMap::new())
+                .subtitle
+                .contains("Boox Leaf 2"),
+            "the activity rows use the same name"
+        );
+    }
+
+    #[test]
+    fn a_model_bookx_does_not_know_is_shown_as_reported_and_a_rename_wins() {
+        let mut d = Device {
+            name: "Onyx Foo-9".into(),
+            last_seen: NOW,
+            ..Device::default()
+        };
+        assert_eq!(device_row(&d, NOW).title, "Onyx Foo-9");
+        d.alias = "Mum's reader".into();
+        let r = device_row(&d, NOW);
+        assert_eq!(r.title, "Mum's reader");
+        assert_eq!(r.alias, "Mum's reader");
     }
 
     #[test]

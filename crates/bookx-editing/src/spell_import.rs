@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
 /// Largest file taken out of an extension (bytes). Real dictionaries are a few MB.
 const MAX_ENTRY: u64 = 80 * 1024 * 1024;
@@ -310,16 +310,20 @@ mod tests {
         let d = dir();
         let plain = d.join("x.oxt");
         std::fs::write(&plain, b"not a zip").unwrap();
-        assert!(import_oxt(&plain, &d.join("o"))
-            .unwrap_err()
-            .to_string()
-            .contains("zip"));
+        assert!(
+            import_oxt(&plain, &d.join("o"))
+                .unwrap_err()
+                .to_string()
+                .contains("zip")
+        );
         let empty = d.join("e.oxt");
         make_oxt(&empty, &[("readme.txt", b"hi")]);
-        assert!(import_oxt(&empty, &d.join("o"))
-            .unwrap_err()
-            .to_string()
-            .contains("No Hunspell"));
+        assert!(
+            import_oxt(&empty, &d.join("o"))
+                .unwrap_err()
+                .to_string()
+                .contains("No Hunspell")
+        );
         let broken = d.join("b.oxt");
         make_oxt(
             &broken,

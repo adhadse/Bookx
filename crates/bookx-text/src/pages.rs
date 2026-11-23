@@ -58,11 +58,7 @@ impl SpineItem {
 }
 
 fn sane(w: f64) -> f64 {
-    if w.is_finite() && w > 0.0 {
-        w
-    } else {
-        0.0
-    }
+    if w.is_finite() && w > 0.0 { w } else { 0.0 }
 }
 
 /// Which numbering to use.

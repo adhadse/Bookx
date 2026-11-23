@@ -6,7 +6,7 @@ use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use bookx_editing::spell::{check_source, SpellChecker, SpellReport};
+use bookx_editing::spell::{SpellChecker, SpellReport, check_source};
 use bookx_editing::spell_session::has_no_spell_marker;
 use bookx_editing::spell_user::UserDicts;
 
@@ -382,9 +382,11 @@ mod tests {
         s.remove_from_named(bookx_editing::spell_user::PERSONAL, "quikc")
             .unwrap();
         assert!(found(&s), "Undo of Add to Dictionary");
-        assert!(!std::fs::read_to_string(&user)
-            .unwrap_or_default()
-            .contains("quikc"));
+        assert!(
+            !std::fs::read_to_string(&user)
+                .unwrap_or_default()
+                .contains("quikc")
+        );
         let _ = std::fs::remove_dir_all(d);
     }
 

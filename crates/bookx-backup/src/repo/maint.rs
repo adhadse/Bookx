@@ -1,17 +1,17 @@
 //! Looking after a repository: checking it (`verify`) and removing what nothing uses (`gc`).
 
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::manifest::Manifest;
 use super::run::parallel_for;
 use super::seal::valid_id;
-use super::{blob_path, Repository};
+use super::{Repository, blob_path};
 use crate::push::Cancelled;
 
 const PENDING: &str = "gc/pending.json";

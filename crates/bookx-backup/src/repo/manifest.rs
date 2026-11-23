@@ -2,7 +2,7 @@
 //! gets before a single path in it is used. A repository is untrusted input: a damaged or hostile
 //! one must produce an error, never a write outside the target folder.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_core::library::{Bookmark, Highlight, ReadPos};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

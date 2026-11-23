@@ -292,7 +292,7 @@ fn one_undo_takes_back_a_grouped_edit() {
 
 #[test]
 fn linked_resources_are_saved_and_undone() {
-    use bookx_core::formats::{Resource, AUDIOBOOK};
+    use bookx_core::formats::{AUDIOBOOK, Resource};
     let d = tmp();
     let mut lib = Library::in_memory(&d.join("lib")).unwrap();
     let a = add(&mut lib, &d, "Dune", "Frank Herbert");

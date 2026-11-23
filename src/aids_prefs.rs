@@ -2,7 +2,7 @@
 //! schedule, copy with a citation, the keys of a page turner and the shelf for finished books.
 //! The decisions themselves are in `bookx_text::aids`; this file holds what is stored.
 
-use bookx_text::aids::{NightSchedule, PageAnimation, AUTO_TURN_RANGE};
+use bookx_text::aids::{AUTO_TURN_RANGE, NightSchedule, PageAnimation};
 use serde::{Deserialize, Serialize};
 
 /// Name of the shelf that finished books go to when the setting is on.

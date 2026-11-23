@@ -4,9 +4,9 @@
 use std::fs::File;
 use std::path::Path;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use symphonia::core::audio::SampleBuffer;
-use symphonia::core::codecs::{Decoder as SymDecoder, DecoderOptions, CODEC_TYPE_NULL};
+use symphonia::core::codecs::{CODEC_TYPE_NULL, Decoder as SymDecoder, DecoderOptions};
 use symphonia::core::errors::Error as SymError;
 use symphonia::core::formats::{FormatOptions, FormatReader, SeekMode, SeekTo};
 use symphonia::core::io::MediaSourceStream;
@@ -168,7 +168,7 @@ impl Decoder {
             let packet = match self.reader.next_packet() {
                 Ok(p) => p,
                 Err(SymError::IoError(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                    return Ok(false)
+                    return Ok(false);
                 }
                 Err(SymError::ResetRequired) => return Ok(false),
                 Err(e) => return Err(anyhow!("read failed: {e}")),

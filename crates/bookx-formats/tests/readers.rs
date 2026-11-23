@@ -28,8 +28,12 @@ fn docx() -> Vec<u8> {
 
 fn odt() -> Vec<u8> {
     let ns = "xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\" xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\"";
-    let content = format!("<office:document-content {ns}><office:body><office:text><text:p>Hello odt.</text:p></office:text></office:body></office:document-content>");
-    let meta = format!("<office:document-meta {ns}><office:meta><dc:title>ODT Book</dc:title><dc:creator>Odin</dc:creator></office:meta></office:document-meta>");
+    let content = format!(
+        "<office:document-content {ns}><office:body><office:text><text:p>Hello odt.</text:p></office:text></office:body></office:document-content>"
+    );
+    let meta = format!(
+        "<office:document-meta {ns}><office:meta><dc:title>ODT Book</dc:title><dc:creator>Odin</dc:creator></office:meta></office:document-meta>"
+    );
     make_zip_stored(&[
         ("mimetype", b"application/vnd.oasis.opendocument.text"),
         ("content.xml", content.as_bytes()),
@@ -271,10 +275,11 @@ fn comics_convert_with_cover_pages_and_direction() {
     assert_eq!(book.metadata().authors, vec!["Cy"]);
     assert_eq!(book.spine_paths().len(), 2);
     assert!(book.cover_bytes().is_some());
-    assert!(arc
-        .get_string("OEBPS/content.opf")
-        .unwrap()
-        .contains("page-progression-direction=\"rtl\""));
+    assert!(
+        arc.get_string("OEBPS/content.opf")
+            .unwrap()
+            .contains("page-progression-direction=\"rtl\"")
+    );
 }
 
 #[test]
@@ -289,9 +294,11 @@ fn content_sniffing_works_with_missing_or_wrong_extensions() {
             // TCR has no title of its own: it comes from the file name.
             if orig.ends_with(".tcr") {
                 let arc = read_any(name_for, &bytes).unwrap();
-                assert!(chapter_texts(&validate(&arc))
-                    .join(" ")
-                    .contains("Hello tcr."));
+                assert!(
+                    chapter_texts(&validate(&arc))
+                        .join(" ")
+                        .contains("Hello tcr.")
+                );
                 continue;
             }
             let arc = read_any(name_for, &bytes)
@@ -314,9 +321,11 @@ fn content_sniffing_works_with_missing_or_wrong_extensions() {
 fn extension_takes_precedence_but_unknown_extensions_fall_back_to_content() {
     // A file called .txt is text even if the bytes could be something else.
     let arc = read_any("looks.txt", &fb2()).unwrap();
-    assert!(chapter_texts(&validate(&arc))
-        .join(" ")
-        .contains("Hello fb2."));
+    assert!(
+        chapter_texts(&validate(&arc))
+            .join(" ")
+            .contains("Hello fb2.")
+    );
     assert_eq!(validate(&arc).metadata().title, "looks");
     // Totally unknown binary content has no reader.
     let err = read_any("x.zzz", &[0u8, 1, 2, 3, 0, 0, 0, 0, 9, 9])
@@ -447,7 +456,9 @@ fn large_text_is_converted_quickly_enough() {
 
 #[test]
 fn many_chapter_fb2_is_fast_enough() {
-    let mut x = String::from("<FictionBook><description><title-info><book-title>Big</book-title></title-info></description><body>");
+    let mut x = String::from(
+        "<FictionBook><description><title-info><book-title>Big</book-title></title-info></description><body>",
+    );
     for i in 0..1500 {
         x.push_str(&format!(
             "<section><title><p>Ch {i}</p></title><p>Some text for chapter {i}.</p></section>"
@@ -569,9 +580,11 @@ fn lit_and_azw4_give_the_documented_errors_through_read_any() {
 fn pdb_extension_routes_by_database_type() {
     let palm = write_palmdoc("Palm Doc", "Hello from palmdoc.\n");
     let book = validate(&read_any("x.pdb", &palm).unwrap());
-    assert!(chapter_texts(&book)
-        .join(" ")
-        .contains("Hello from palmdoc."));
+    assert!(
+        chapter_texts(&book)
+            .join(" ")
+            .contains("Hello from palmdoc.")
+    );
     let e = read_any("x.pdb", &pdb_assemble("n", b"Plkr", b"Data", &[vec![1]])).unwrap_err();
     assert!(format!("{e:#}").contains("unsupported Palm database type"));
 }

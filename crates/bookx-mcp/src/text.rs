@@ -9,7 +9,7 @@ use bookx_core::formats::Target;
 use bookx_core::library::Book;
 use bookx_core::toc;
 
-use crate::app::{fail, lock, ToolError};
+use crate::app::{ToolError, fail, lock};
 
 #[derive(Debug, Clone)]
 pub struct Chapter {

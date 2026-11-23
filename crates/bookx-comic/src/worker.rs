@@ -3,11 +3,11 @@
 //! the reader ignores results it no longer wants).
 
 use std::collections::VecDeque;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 
-use crate::decode::{decode_page, Opts, Page};
+use crate::decode::{Opts, Page, decode_page};
 
 /// Where the bytes of the pages come from.
 pub trait Source: Send + Sync + 'static {
@@ -152,7 +152,7 @@ impl Drop for Worker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testgen::{png, Layout};
+    use crate::testgen::{Layout, png};
 
     struct Pages(Vec<Vec<u8>>);
     impl Source for Pages {

@@ -12256,3 +12256,18 @@ msgstr "Historial de anotaciones"
 
 msgid "History of Deleted and Changed Notes"
 msgstr "Historial de notas eliminadas y modificadas"
+
+msgid "Books on an e-reader? Sync never copies or deletes books: copy the files to this computer and use Add Books. To put books on a device, use Send to Device."
+msgstr "¿Libros en un lector electrónico? La sincronización nunca copia ni elimina libros: copie los archivos a este equipo y use «Añadir libros». Para poner libros en un dispositivo, use «Enviar al dispositivo»."
+
+msgid "Rename this device"
+msgstr "Cambiar el nombre de este dispositivo"
+
+msgid "Rename {}"
+msgstr "Cambiar el nombre de {}"
+
+msgid "Sync never copies or deletes books. It moves only reading position, highlights, notes and bookmarks, for books that are already in your library. To get books from an e-reader into Bookx, copy the files to this computer and use Add Books. To put books on an e-reader, use Send to Device."
+msgstr "La sincronización nunca copia ni elimina libros. Solo mueve la posición de lectura, los subrayados, las notas y los marcadores de los libros que ya están en su biblioteca. Para pasar libros de un lector electrónico a Bookx, copie los archivos a este equipo y use «Añadir libros». Para poner libros en un lector electrónico, use «Enviar al dispositivo»."
+
+msgid "The name is only shown in Bookx. Leave it empty to show the name the device reports."
+msgstr "El nombre solo se muestra en Bookx. Déjelo vacío para mostrar el nombre que informa el dispositivo."

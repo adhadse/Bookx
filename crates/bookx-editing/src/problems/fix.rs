@@ -7,7 +7,7 @@ use anyhow::Result;
 use bookx_core::book::OpenBook;
 use bookx_core::util::{extension, file_name, parent_dir};
 
-use super::{collect, CheckOptions, Problem};
+use super::{CheckOptions, Problem, collect};
 use crate::fixes::{self, FixOptions};
 use crate::markup;
 use crate::validate::entities;

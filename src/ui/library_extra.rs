@@ -183,10 +183,7 @@ impl LibraryView {
                     SortKey::ALL
                         .get(self.w.sort_dd.selected() as usize)
                         .map_or("?", |k| k.label()),
-                    self.w
-                        .order_btn
-                        .icon_name()
-                        .unwrap_or_default(),
+                    self.w.order_btn.icon_name().unwrap_or_default(),
                     first.join("|")
                 );
             }
@@ -664,8 +661,12 @@ pub(super) fn search_tips(search: &gtk::SearchEntry, save: Rc<dyn Fn(String)>) -
     head.set_xalign(0.0);
     body.append(&head);
     for line in [
-        tr("Look in one field: title:, author:, tag:, series:, publisher:, language:, rating:, status:, format: or identifier:"),
-        tr("Use = for an exact match, >= or <= to compare, - to leave a word out and OR to combine"),
+        tr(
+            "Look in one field: title:, author:, tag:, series:, publisher:, language:, rating:, status:, format: or identifier:",
+        ),
+        tr(
+            "Use = for an exact match, >= or <= to compare, - to leave a word out and OR to combine",
+        ),
         tr("text:word searches the contents of the books"),
     ] {
         let l = gtk::Label::new(Some(&line));

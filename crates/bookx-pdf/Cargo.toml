@@ -2,7 +2,7 @@
 name = "bookx-pdf"
 version = "0.3.0-beta.2"
 authors = ["Anurag Dhadse <hello@adhadse.com>"]
-edition = "2021"
+edition = "2024"
 rust-version = "1.92"
 description = "PDF for Bookx: pure-Rust page rendering (hayro), text with positions, outline, links, search and a reflow to EPUB chapters"
 publish = false

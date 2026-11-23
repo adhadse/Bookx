@@ -12183,3 +12183,18 @@ msgstr "Anmerkungsverlauf"
 
 msgid "History of Deleted and Changed Notes"
 msgstr "Verlauf gelöschter und geänderter Notizen"
+
+msgid "Books on an e-reader? Sync never copies or deletes books: copy the files to this computer and use Add Books. To put books on a device, use Send to Device."
+msgstr "Bücher auf einem E-Reader? Die Synchronisierung kopiert oder löscht nie Bücher: Kopieren Sie die Dateien auf diesen Computer und verwenden Sie „Bücher hinzufügen“. Um Bücher auf ein Gerät zu legen, verwenden Sie „An Gerät senden“."
+
+msgid "Rename this device"
+msgstr "Dieses Gerät umbenennen"
+
+msgid "Rename {}"
+msgstr "{} umbenennen"
+
+msgid "Sync never copies or deletes books. It moves only reading position, highlights, notes and bookmarks, for books that are already in your library. To get books from an e-reader into Bookx, copy the files to this computer and use Add Books. To put books on an e-reader, use Send to Device."
+msgstr "Die Synchronisierung kopiert oder löscht nie Bücher. Sie überträgt nur Lesefortschritt, Markierungen, Notizen und Lesezeichen für Bücher, die bereits in Ihrer Bibliothek sind. Um Bücher von einem E-Reader in Bookx zu bekommen, kopieren Sie die Dateien auf diesen Computer und verwenden Sie „Bücher hinzufügen“. Um Bücher auf einen E-Reader zu legen, verwenden Sie „An Gerät senden“."
+
+msgid "The name is only shown in Bookx. Leave it empty to show the name the device reports."
+msgstr "Der Name wird nur in Bookx angezeigt. Lassen Sie das Feld leer, um den vom Gerät gemeldeten Namen anzuzeigen."

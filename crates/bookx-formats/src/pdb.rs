@@ -17,7 +17,7 @@
 use std::collections::HashMap;
 use std::io::Read;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::contracts::FormatReader;
 use bookx_core::opf::{Identifier, Metadata};
@@ -25,7 +25,7 @@ use flate2::read::ZlibDecoder;
 
 use crate::common::*;
 use crate::mobi::{convert_mobi, palmdoc_decompress};
-use crate::pml::{pml_to_book, ImageStore};
+use crate::pml::{ImageStore, pml_to_book};
 use crate::textfmt::convert_plain;
 
 /// Largest decompressed size of one eReader text record.
@@ -552,9 +552,11 @@ mod tests {
     fn palmdoc_type_goes_through_the_mobi_reader() {
         let f = write_palmdoc("Palm Text", "Hello palmdoc world.\n");
         let book = validate(&PdbReader.read(&f).unwrap());
-        assert!(chapter_texts(&book)
-            .join(" ")
-            .contains("Hello palmdoc world."));
+        assert!(
+            chapter_texts(&book)
+                .join(" ")
+                .contains("Hello palmdoc world.")
+        );
         assert!(!PdbReader.sniff(&f), "TEXtREAd stays with the MOBI reader");
     }
 

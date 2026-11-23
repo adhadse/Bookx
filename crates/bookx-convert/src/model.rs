@@ -985,7 +985,9 @@ mod tests {
 
     #[test]
     fn paragraph_styles_and_whitespace() {
-        let b = book_with(&["<p>  Hello \n  <b>bold <i>both</i></b>  <u>u</u><s>s</s><sup>1</sup><sub>2</sub><code>c</code>  </p>"]);
+        let b = book_with(&[
+            "<p>  Hello \n  <b>bold <i>both</i></b>  <u>u</u><s>s</s><sup>1</sup><sub>2</sub><code>c</code>  </p>",
+        ]);
         let blocks = first_blocks(&b);
         let Block::Para { inlines, .. } = &blocks[0] else {
             panic!("{blocks:?}");
@@ -1008,7 +1010,9 @@ mod tests {
 
     #[test]
     fn headings_levels_and_alignment() {
-        let b = book_with(&["<h2 id=\"x\">Two</h2><p style=\"text-align: center\">c</p><p class=\"right\" align=\"right\">r</p>"]);
+        let b = book_with(&[
+            "<h2 id=\"x\">Two</h2><p style=\"text-align: center\">c</p><p class=\"right\" align=\"right\">r</p>",
+        ]);
         let blocks = first_blocks(&b);
         assert!(matches!(&blocks[0], Block::Heading { level: 2, .. }));
         assert!(matches!(
@@ -1033,7 +1037,9 @@ mod tests {
 
     #[test]
     fn lists_nest_and_tables_have_cells() {
-        let b = book_with(&["<ul><li>a<ul><li>a1</li></ul></li><li>b</li></ul><ol><li>x</li></ol><table><thead><tr><th colspan=\"2\">H</th></tr></thead><tr><td>1</td><td><p>2</p></td></tr></table>"]);
+        let b = book_with(&[
+            "<ul><li>a<ul><li>a1</li></ul></li><li>b</li></ul><ol><li>x</li></ol><table><thead><tr><th colspan=\"2\">H</th></tr></thead><tr><td>1</td><td><p>2</p></td></tr></table>",
+        ]);
         let blocks = first_blocks(&b);
         let Block::List { ordered, items } = &blocks[0] else {
             panic!("{blocks:?}");
@@ -1090,9 +1096,11 @@ mod tests {
             links[0].1,
             Some(Link::Internal("OEBPS/chapter-2.xhtml#t".into()))
         );
-        assert!(links
-            .iter()
-            .any(|(t, l)| *t == "ext" && *l == Some(Link::External("https://x.org".into()))));
+        assert!(
+            links
+                .iter()
+                .any(|(t, l)| *t == "ext" && *l == Some(Link::External("https://x.org".into())))
+        );
         assert!(links.iter().any(|(t, l)| t.contains("dead") && l.is_none()));
         assert!(m.linked.contains("OEBPS/chapter-2.xhtml#t"));
         assert!(m.linked.contains("OEBPS/chapter-1.xhtml#p1"));
@@ -1129,14 +1137,18 @@ mod tests {
         let Block::Para { inlines, .. } = &m.sections[0].blocks[0] else {
             panic!()
         };
-        assert!(inlines
-            .iter()
-            .any(|i| matches!(i, Inline::Anchor(k) if k.ends_with("#end"))));
+        assert!(
+            inlines
+                .iter()
+                .any(|i| matches!(i, Inline::Anchor(k) if k.ends_with("#end")))
+        );
     }
 
     #[test]
     fn definition_lists_and_unknown_markup() {
-        let b = book_with(&["<dl><dt>Term</dt><dd>Meaning</dd></dl><script>x()</script><div>loose <span>text</span></div>"]);
+        let b = book_with(&[
+            "<dl><dt>Term</dt><dd>Meaning</dd></dl><script>x()</script><div>loose <span>text</span></div>",
+        ]);
         let blocks = first_blocks(&b);
         assert_eq!(blocks_text(&blocks), "Term\nMeaning\nloose text\n");
         assert!(matches!(&blocks[1], Block::Quote(_)));
@@ -1169,13 +1181,16 @@ mod tests {
 
     #[test]
     fn flat_inlines_joins_paragraphs_with_spaces() {
-        let b = book_with(&["<p>one</p><p><b>two</b></p><ul><li>three</li></ul><table><tr><td>four</td></tr></table>"]);
+        let b = book_with(&[
+            "<p>one</p><p><b>two</b></p><ul><li>three</li></ul><table><tr><td>four</td></tr></table>",
+        ]);
         let blocks = first_blocks(&b);
         let flat = flat_inlines(&blocks);
         assert_eq!(inline_text(&flat), "one two three four");
-        assert!(flat
-            .iter()
-            .any(|i| matches!(i, Inline::Text { fmt, text, .. } if fmt.bold && text == "two")));
+        assert!(
+            flat.iter()
+                .any(|i| matches!(i, Inline::Text { fmt, text, .. } if fmt.bold && text == "two"))
+        );
         assert!(flat_inlines(&[]).is_empty());
         let pre = [Block::Pre(vec![Inline::Text {
             text: "a\nb".into(),
@@ -1210,7 +1225,9 @@ mod tests {
 
     #[test]
     fn blocks_text_covers_every_block_kind() {
-        let b = book_with(&["<h1>H</h1><blockquote><p>Q</p></blockquote><hr/><ul><li>L</li></ul><table><tr><td>C</td></tr></table><pre>P</pre>"]);
+        let b = book_with(&[
+            "<h1>H</h1><blockquote><p>Q</p></blockquote><hr/><ul><li>L</li></ul><table><tr><td>C</td></tr></table><pre>P</pre>",
+        ]);
         assert_eq!(blocks_text(&first_blocks(&b)), "H\nQ\nL\nC\nP\n");
     }
 

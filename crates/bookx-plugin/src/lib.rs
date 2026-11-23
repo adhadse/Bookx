@@ -130,7 +130,7 @@ pub use adapters::{
 pub use editor::{ActionResult, EditorApi, EditorLimits, EditorSession, MemBook, SharedSession};
 pub use manager::{PluginManager, PluginStatus};
 pub use manifest::{
-    Action, Limits, Manifest, Permission, PluginKind, API_VERSION, API_VERSION_EDITOR,
+    API_VERSION, API_VERSION_EDITOR, Action, Limits, Manifest, Permission, PluginKind,
 };
 pub use patch::{Hook, Patch, PatchManager, PatchReport, PatchSet, PatchStatus};
 pub use runtime::{CallStats, Host, HostLog, HostNetwork, NoNetwork, NullLog, Plugin};

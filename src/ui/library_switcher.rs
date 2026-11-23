@@ -277,7 +277,9 @@ pub fn create_library(ctx: &Ctx, name: &str, parent: &std::path::Path) -> Result
 fn new_library_dialog(ctx: &Ctx, anchor: &gtk::Widget) {
     let d = adw::AlertDialog::new(
         Some(&tr("New Library")),
-        Some(&tr("A library is a folder with its own books and catalogue. Choose a name; you will pick where it is kept next.")),
+        Some(&tr(
+            "A library is a folder with its own books and catalogue. Choose a name; you will pick where it is kept next.",
+        )),
     );
     let entry = gtk::Entry::new();
     entry.set_placeholder_text(Some(&tr("Library name")));

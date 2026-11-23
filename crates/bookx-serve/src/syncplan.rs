@@ -301,11 +301,7 @@ pub fn same_highlight(a: &Annot, b: &Annot) -> bool {
 }
 
 fn richer_text<'a>(a: &'a str, b: &'a str) -> &'a str {
-    if norm(a).len() >= norm(b).len() {
-        a
-    } else {
-        b
-    }
+    if norm(a).len() >= norm(b).len() { a } else { b }
 }
 
 fn plan_notes(plan: &mut BookPlan, library: &[Annot], device: &[Annot]) {
@@ -784,14 +780,18 @@ mod tests {
         let again = plan(&lib, &dev);
         assert!(again.is_empty(), "{again:#?}");
         // nothing was lost: every original note is still on its side
-        assert!(lib[0]
-            .notes
-            .iter()
-            .any(|n| n.text == "lib only highlight text"));
-        assert!(dev[0]
-            .notes
-            .iter()
-            .any(|n| n.text == "dev only highlight text"));
+        assert!(
+            lib[0]
+                .notes
+                .iter()
+                .any(|n| n.text == "lib only highlight text")
+        );
+        assert!(
+            dev[0]
+                .notes
+                .iter()
+                .any(|n| n.text == "dev only highlight text")
+        );
         assert!(lib[0].notes.len() == 3 && dev[0].notes.len() == 3);
         assert_eq!(lib[1].status, Status::Finished);
         assert_eq!(dev[1].status, Status::Finished);

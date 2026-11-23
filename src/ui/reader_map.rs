@@ -144,11 +144,7 @@ fn col_x(g: &Grid, col: usize, w: f64, rtl: bool) -> f64 {
 
 /// A pointer position in the unmirrored coordinates of the grid.
 fn unmirror(x: f64, w: f64, rtl: bool) -> f64 {
-    if rtl {
-        w - x
-    } else {
-        x
-    }
+    if rtl { w - x } else { x }
 }
 
 /// The page under a point of the area, if there is one.
@@ -333,7 +329,7 @@ fn draw_number(cr: &gtk::cairo::Context, p: &Pal, n: u8, x: f64, y: f64, r: f64)
 // ---- the grid ----
 
 /// A device pixel aligned coordinate.
-fn snapper(w: &gtk::Widget) -> impl Fn(f64) -> f64 {
+fn snapper(w: &gtk::Widget) -> impl Fn(f64) -> f64 + use<> {
     let s = w
         .native()
         .and_then(|n| n.surface())

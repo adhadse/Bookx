@@ -4,8 +4,8 @@ use anyhow::Result;
 use bookx_core::book::OpenBook;
 use bookx_core::contracts::FormatWriter;
 
-use super::epub::{repack, EpubVersion};
-use crate::markup::{body_range, tag_info, tokenize, Tok};
+use super::epub::{EpubVersion, repack};
+use crate::markup::{Tok, body_range, tag_info, tokenize};
 
 #[derive(Debug, Clone, Copy)]
 pub struct KepubWriter {
@@ -204,7 +204,9 @@ mod tests {
 
     #[test]
     fn pre_script_style_and_whitespace_are_not_wrapped() {
-        let out = koboify_html("<html><head><title>T</title></head><body><pre>code. here</pre><p>a</p> <p> </p><script>x()</script></body></html>");
+        let out = koboify_html(
+            "<html><head><title>T</title></head><body><pre>code. here</pre><p>a</p> <p> </p><script>x()</script></body></html>",
+        );
         assert!(!out.contains(">code. here</span>"));
         assert!(!out.contains("T</span>"));
         assert!(!out.contains(">x()</span>"));

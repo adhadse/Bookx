@@ -259,11 +259,12 @@ fn deleting_moves_to_the_trash_and_restore_brings_it_back() {
     let t = lib.trash();
     assert_eq!(t.len(), 1);
     assert_eq!(t[0].book.meta.title, "Dune");
-    assert!(d
-        .join("lib/.bookx-trash")
-        .join(&t[0].name)
-        .join("files")
-        .exists());
+    assert!(
+        d.join("lib/.bookx-trash")
+            .join(&t[0].name)
+            .join("files")
+            .exists()
+    );
 
     let restored = lib.restore_from_trash(&t[0].name).unwrap();
     assert_eq!(restored, id);
@@ -283,9 +284,11 @@ fn emptying_the_trash_erases_for_good() {
     assert_eq!(lib.trash().len(), 2);
     assert_eq!(lib.empty_trash().unwrap(), 2);
     assert!(lib.trash().is_empty());
-    assert!(all_files(&d.join("lib"))
-        .iter()
-        .all(|f| f.starts_with(".bookx/")));
+    assert!(
+        all_files(&d.join("lib"))
+            .iter()
+            .all(|f| f.starts_with(".bookx/"))
+    );
     let _ = std::fs::remove_dir_all(d);
 }
 
@@ -362,12 +365,14 @@ fn a_read_only_library_refuses_changes() {
     assert!(lib.is_read_only());
     assert!(lib.remove(&[id], true).is_err());
     assert!(lib.change_layout(Layout::Flat).is_err());
-    assert!(lib
-        .add_path(&md_book(&d, "Emma", "Jane Austen"), false)
-        .is_err());
-    assert!(lib
-        .update_metadata(id, lib.get(id).unwrap().meta.clone())
-        .is_err());
+    assert!(
+        lib.add_path(&md_book(&d, "Emma", "Jane Austen"), false)
+            .is_err()
+    );
+    assert!(
+        lib.update_metadata(id, lib.get(id).unwrap().meta.clone())
+            .is_err()
+    );
     assert!(lib.save().is_ok(), "saving is a no-op");
     assert!(lib.get(id).is_some());
     let _ = std::fs::remove_dir_all(d);

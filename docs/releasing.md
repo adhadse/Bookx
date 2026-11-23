@@ -3,6 +3,18 @@
 For maintainers. This is the exact procedure for a release: which version string, which tag, which GitHub Action runs
 in which order, what ends up on the release page and how to check it. Users read `wiki/docs/install.md` instead.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse
+
+## Contents
+
+- [What a release contains](#what-a-release-contains)
+- [Tags and versions](#tags-and-versions)
+- [Workflows, and what runs when](#workflows-and-what-runs-when)
+- [Procedure](#procedure)
+- [After the release](#after-the-release)
+- [Run the pieces locally](#run-the-pieces-locally)
+- [If something goes wrong](#if-something-goes-wrong)
+
 Policy first: **GitHub Releases is the only official channel.** Flathub, Homebrew, winget, Scoop and MSYS2 come later
 (`docs/release-plan.md`, `docs/flathub-submission.md`). macOS and Windows are scaffolds and are not part of a release.
 
@@ -65,8 +77,9 @@ schemas, pixbuf loaders), tracked in `docs/enhancements.md` if wanted. Do not me
   (`-beta.2`). Signatures and attestations name the tag, so a moved tag breaks verification for everybody.
 - The version appears in: every `crates/*/Cargo.toml` and the workspace `Cargo.toml`, `Cargo.lock`,
   `data/com.adhadse.Bookx.metainfo.xml` (`<release version="...">` with notes: the About dialog reads them),
-  `CHANGELOG.md`, and `build-aux/cargo-sources.json` (regenerated from `Cargo.lock`). `release-check.sh` fails if
-  they disagree.
+  `CHANGELOG.md`, `build-aux/cargo-sources.json` (regenerated from `Cargo.lock`) and `_pkgver` in
+  `packaging/aur/*/PKGBUILD` (checksums and `.SRCINFO` after the release: `packaging/aur/README.md`). `release-check.sh`
+  fails if they disagree.
 
 ## Workflows, and what runs when
 

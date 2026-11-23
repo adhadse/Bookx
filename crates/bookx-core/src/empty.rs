@@ -4,10 +4,10 @@
 
 use std::path::Path;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
-use super::convert::{create_epub, Chapter};
-use super::library::{prepare_from_archive, AddOutcome, Library};
+use super::convert::{Chapter, create_epub};
+use super::library::{AddOutcome, Library, prepare_from_archive};
 use super::opf::{Identifier, Metadata};
 use super::util::{author_sort, title_sort};
 

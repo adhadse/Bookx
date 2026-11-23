@@ -2,6 +2,17 @@
 
 Research for `docs/enhancements.md` item 2. Written 2026-11-12. Research only: no code was changed.
 
+Status: finished, pending move to archive/ (still pointed to from enhancements.md or source comments) | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
+## Contents
+
+- [Summary table](#summary-table)
+- [Audit 2026-11-20 (current status; the paragraphs below are the research-time state)](#audit-2026-11-20-current-status-the-paragraphs-below-are-the-research-time-state)
+- [The points](#the-points)
+- [Top 10 things Bookx should do next](#top-10-things-bookx-should-do-next)
+- [Differentiators Bookx could own](#differentiators-bookx-could-own)
+- [Unverified claims and gaps in this research](#unverified-claims-and-gaps-in-this-research)
+
 Method: web search of issue trackers, forums, release notes and reviews (links per point), then a check of
 the Bookx code and `docs/bookx-feature-roadmap.md` (Part 2 owner decisions first, then Part 4 progress log).
 Calibre-only complaints belong to item 1 of `enhancements.md`; Calibre appears here only where the pain is
@@ -46,7 +57,7 @@ How to read it:
 | PP-G-18 | Cloud dependence and privacy | medium | DONE | Keep the rule, add a written network ledger | S | P3 |
 | PP-G-19 | Accessibility of the reader and the app | medium | PARTIAL | AT-SPI text for the canvas (done), keyboard reading (done), TTS | L | P1 |
 | PP-G-20 | Typography and rendering quality | medium | PARTIAL | Knuth-Plass and CSS in the canvas | L | P2 |
-| PP-G-21 | CJK, RTL and vertical text | medium | PARTIAL | RTL page direction done; vertical writing planned (`docs/vertical-writing-plan.md`) | L | P2 |
+| PP-G-21 | CJK, RTL and vertical text | medium | PARTIAL | RTL page direction done; vertical writing planned (`docs/archive/vertical-writing-plan.md`) | L | P2 |
 | PP-G-22 | Dictionary and translation | medium | DONE | Fix bug 1, offline-first fallbacks | S | P2 |
 | PP-G-23 | E-ink support | medium | PARTIAL | Refresh hints, stay nice-to-have | M | P3 |
 | PP-G-24 | Comics and manga | high | PARTIAL (reader DONE 2026-11-20) | next volume in the folder, series from folders, "ignore ComicInfo" switch, real RAR (CBR) | L | P2 |
@@ -90,7 +101,7 @@ updates.** DONE means everything the proposal asks for and that code can solve i
 | PP-G-18 cloud and privacy | DONE | No telemetry; **list of every connection and an offline mode switch (Preferences → Privacy, wiki Privacy, `src/privacy.rs`)** | |
 | PP-G-19 accessibility | PARTIAL | Accessible page text, every control named, keyboard-only reading, Orca, OpenDyslexic, high contrast, TTS, **reading ruler** | Image alt text; popover names not verified |
 | PP-G-20 typography | PARTIAL | Hyphenation, Knuth-Plass (setting), highlight styles, user CSS layer, partial book CSS | Wave 11 added widows/orphans, small caps, fonts and sizes from the book CSS, weight/contrast/word spacing/kerning. Still missing: real tables and positioned text, hanging punctuation, `word-break`, emphasis dots (2026-11-22 re-audit) |
-| PP-G-21 CJK, RTL, vertical | PARTIAL | RTL pages, vertical writing and furigana in the canvas (`docs/vertical-writing-plan.md`) | Tate-chu-yoko edge cases, selection in vertical text |
+| PP-G-21 CJK, RTL, vertical | PARTIAL | RTL pages, vertical writing and furigana in the canvas (`docs/archive/vertical-writing-plan.md`) | Tate-chu-yoko edge cases, selection in vertical text |
 | PP-G-22 dictionary / translation | DONE | StarDict with word forms, automatic dictionary download per language, vocabulary with SM-2 and Anki export, Wikipedia with picture, offline-first fallbacks | Translation always goes to an online service (listed in Privacy) |
 | PP-G-23 e-ink | PARTIAL | E-ink mode (palette, no animation, wide tap zones) | No frontlight / partial-refresh control; not on hardware |
 | PP-G-24 comics | PARTIAL | Comic reader (`ui/reader_comic.rs`, `crates/bookx-comic`): single page, two-page spread (cover alone, wide pages alone), vertical webtoon strip, fit page/width/height/original, manga right to left from ComicInfo or a toggle remembered per book, smart zoom to the panel under a double-click, guided view (Space / Shift+Space), pan, pinch, Ctrl+wheel, thumbnails strip, decoding on worker threads with a memory budget, grey pages and e-ink, ComicInfo page types; defaults in Preferences (`docs/comic-notes.md`) | Wave 11 added next/previous volume, series from folder names, per-library direction and an "ignore ComicInfo" switch, and CBR through the `unrar`/`7z` helper (never tried with a real RAR5 archive). Still missing: panel detection only for plain gutters (no overlapping or slanted panels), not tried on e-ink hardware or with real published comics, no screen-reader text for the pictures |
@@ -509,7 +520,7 @@ Vertical Japanese, right-to-left layout and punctuation shaping break in web-bas
   [CWA #678: vertical RTL EPUBs shown horizontally](https://github.com/crocodilestick/Calibre-Web-Automated/issues/678).
 - Frequency: medium (two sources found; likely more in language-specific forums I did not reach).
 - Bookx: PARTIAL. RTL: `page-progression-direction="rtl"` in the spine is read (`Package::rtl`) and mirrors the arrow keys, tap zones and
-  swipes; paragraphs are already laid out right to left. Vertical writing is NOT YET in the canvas (plan: `docs/vertical-writing-plan.md`, roadmap
+  swipes; paragraphs are already laid out right to left. Vertical writing is NOT YET in the canvas (plan: `docs/archive/vertical-writing-plan.md`, roadmap
   "Known gaps": R4). The RTL flag is also parsed for comics in `bookx-formats`.
 - Proposal: use Pango vertical gravity and bidi paragraph direction in the canvas; honour `writing-mode` and
   `page-progression-direction`; ruby via Pango attributes (R56); include a CJK/Arabic sample set in the UI test

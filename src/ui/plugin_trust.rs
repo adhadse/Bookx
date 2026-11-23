@@ -65,7 +65,9 @@ pub fn sheet(manifest: &Manifest, signature: &SignatureStatus, state: TrustState
     Sheet {
         title: trf("Allow {} to run?", &[&manifest.name]),
         lines,
-        limits: tr("It runs in a sandbox: it cannot read your other files, and it can only reach the network hosts listed above."),
+        limits: tr(
+            "It runs in a sandbox: it cannot read your other files, and it can only reach the network hosts listed above.",
+        ),
         warning,
     }
 }
@@ -236,33 +238,43 @@ mod tests {
     fn warnings_follow_signature_and_trust() {
         let m = manifest("");
         let w = |sig: SignatureStatus, st| sheet(&m, &sig, st).warning;
-        assert!(w(SignatureStatus::Unsigned, TrustState::NeverAsked)
+        assert!(
+            w(SignatureStatus::Unsigned, TrustState::NeverAsked)
+                .unwrap()
+                .contains("not signed")
+        );
+        assert!(
+            w(
+                SignatureStatus::Valid { key_id: "x".into() },
+                TrustState::NeverAsked
+            )
+            .is_none()
+        );
+        assert!(
+            w(
+                SignatureStatus::Unverified { key_id: "x".into() },
+                TrustState::NeverAsked
+            )
             .unwrap()
-            .contains("not signed"));
-        assert!(w(
-            SignatureStatus::Valid { key_id: "x".into() },
-            TrustState::NeverAsked
-        )
-        .is_none());
-        assert!(w(
-            SignatureStatus::Unverified { key_id: "x".into() },
-            TrustState::NeverAsked
-        )
-        .unwrap()
-        .contains("cannot check"));
-        assert!(w(
-            SignatureStatus::Invalid { key_id: "x".into() },
-            TrustState::NeverAsked
-        )
-        .unwrap()
-        .contains("does not match"));
+            .contains("cannot check")
+        );
+        assert!(
+            w(
+                SignatureStatus::Invalid { key_id: "x".into() },
+                TrustState::NeverAsked
+            )
+            .unwrap()
+            .contains("does not match")
+        );
         // a changed plugin warns even when it is validly signed
-        assert!(w(
-            SignatureStatus::Valid { key_id: "x".into() },
-            TrustState::Changed
-        )
-        .unwrap()
-        .contains("changed"));
+        assert!(
+            w(
+                SignatureStatus::Valid { key_id: "x".into() },
+                TrustState::Changed
+            )
+            .unwrap()
+            .contains("changed")
+        );
     }
 
     #[test]

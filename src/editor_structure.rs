@@ -5,7 +5,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::archive::Archive;
 use bookx_core::book::OpenBook;
 use bookx_editing::a11y_meta::{self, A11yForm};
@@ -460,7 +460,7 @@ pub fn save_as_epub(archive: &Archive, dest: &Path) -> Result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bookx_core::convert::{create_epub, Chapter};
+    use bookx_core::convert::{Chapter, create_epub};
     use bookx_core::opf::Metadata;
     use bookx_editing::transform_html::{HtmlRule, HtmlRuleKind};
 
@@ -555,12 +555,14 @@ mod tests {
             original,
             "the backup is the old file"
         );
-        assert!(backup
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .ends_with(".fb2.bak"));
+        assert!(
+            backup
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .ends_with(".fb2.bak")
+        );
         let (again, _) = open_foreign(&p).unwrap();
         assert!(all_text(&again).contains("EDITED words"));
         let s2 = save_back(&o, &a).unwrap();
@@ -657,9 +659,11 @@ mod tests {
         let d = tmp("rules");
         let set = HtmlRuleSet {
             name: "../evil/Name".into(),
-            rules: vec![HtmlRuleKind::RenameTag
-                .build("b", &["strong".into()])
-                .unwrap()],
+            rules: vec![
+                HtmlRuleKind::RenameTag
+                    .build("b", &["strong".into()])
+                    .unwrap(),
+            ],
         };
         save_html_rule_set_in(&d, &set).unwrap();
         let names: Vec<String> = std::fs::read_dir(&d)

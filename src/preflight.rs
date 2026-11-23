@@ -364,7 +364,7 @@ pub fn conversion_for<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::convert::{create_epub, Chapter};
+    use crate::core::convert::{Chapter, create_epub};
     use crate::core::opf::Metadata;
 
     fn epub(md: Metadata) -> Vec<u8> {
@@ -426,22 +426,26 @@ mod tests {
             ids.contains(&"PRE-004") && ids.contains(&"PRE-005"),
             "{ids:?}"
         );
-        assert!(i
-            .iter()
-            .filter(|x| x.id.starts_with("PRE-00") && (x.id == "PRE-004" || x.id == "PRE-005"))
-            .all(|x| x.level == Level::Warning));
+        assert!(
+            i.iter()
+                .filter(|x| x.id.starts_with("PRE-00") && (x.id == "PRE-004" || x.id == "PRE-005"))
+                .all(|x| x.level == Level::Warning)
+        );
     }
 
     #[test]
     fn big_files_cannot_be_mailed() {
         let a = Archive::from_bytes(epub(good())).unwrap();
-        assert!(!check_archive(&a, 1000, Dest::Email)
-            .iter()
-            .any(|x| x.id == "PRE-006"));
+        assert!(
+            !check_archive(&a, 1000, Dest::Email)
+                .iter()
+                .any(|x| x.id == "PRE-006")
+        );
         let i = check_archive(&a, 30 * 1024 * 1024, Dest::Email);
-        assert!(i
-            .iter()
-            .any(|x| x.id == "PRE-006" && x.level == Level::Blocking));
+        assert!(
+            i.iter()
+                .any(|x| x.id == "PRE-006" && x.level == Level::Blocking)
+        );
         assert_eq!(i[0].level, Level::Blocking, "blocking problems come first");
     }
 

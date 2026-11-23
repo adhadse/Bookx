@@ -7,10 +7,10 @@ use std::sync::OnceLock;
 
 use regex::Regex;
 
-use crate::code_nav::{attr_spans, css_rules, resolve_link, LinkTarget};
-use crate::markup::{scan, Event};
+use crate::code_nav::{LinkTarget, attr_spans, css_rules, resolve_link};
+use crate::markup::{Event, scan};
 use crate::tags::pairs;
-use crate::transform_css::{parse_color, Rgba};
+use crate::transform_css::{Rgba, parse_color};
 
 /// Most marks of one kind a pass returns (a pathological file must not flood the buffer with tags).
 pub const MAX_MARKS: usize = 5000;

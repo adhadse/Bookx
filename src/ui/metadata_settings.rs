@@ -5,7 +5,7 @@ use crate::i18n::{tr, trf};
 use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 
-use super::preferences::{register_group, PrefCtx};
+use super::preferences::{PrefCtx, register_group};
 use crate::metadata_fetch as mf;
 
 thread_local! {

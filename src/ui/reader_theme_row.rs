@@ -9,7 +9,7 @@ use std::rc::Rc;
 use relm4::gtk::{self, prelude::*};
 
 use super::SharedRef;
-use crate::config::{parse_hex, ColorMode, ReaderPrefs};
+use crate::config::{ColorMode, ReaderPrefs, parse_hex};
 use crate::reader_themes::Theme;
 
 /// True when the prefs show exactly this custom theme.

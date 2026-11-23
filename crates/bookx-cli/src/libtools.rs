@@ -8,11 +8,11 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use bookx_core::inbox::{self, InboxState};
 use bookx_core::layout::Layout;
-use bookx_core::library::{prepare_from_archive, Prepared};
-use bookx_store::guard::{open_library_guarded, GuardedLibrary};
+use bookx_core::library::{Prepared, prepare_from_archive};
+use bookx_store::guard::{GuardedLibrary, open_library_guarded};
 use bookx_store::health::{self, CheckOptions, Fix, Severity, SnapshotKind};
 use clap::Subcommand;
 
@@ -29,7 +29,7 @@ pub struct RemoteArgs {
 
 fn destination(spec: &str, r: &RemoteArgs) -> Result<Box<dyn bookx_backup::Target>> {
     if spec.starts_with("http://") || spec.starts_with("https://") {
-        let pw = std::env::var("BOOKX_WEBDAV_PASSWORD").unwrap_or_default();
+        let pw = crate::var("BOOKX_WEBDAV_PASSWORD").unwrap_or_default();
         return Ok(Box::new(bookx_backup::WebDavTarget::new(
             spec,
             r.user.as_deref().unwrap_or(""),
@@ -46,9 +46,7 @@ fn destination(spec: &str, r: &RemoteArgs) -> Result<Box<dyn bookx_backup::Targe
 }
 
 fn passphrase() -> Option<String> {
-    std::env::var("BOOKX_BACKUP_PASSPHRASE")
-        .ok()
-        .filter(|p| !p.is_empty())
+    crate::var("BOOKX_BACKUP_PASSPHRASE").filter(|p| !p.is_empty())
 }
 
 #[derive(Subcommand, Debug)]

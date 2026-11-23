@@ -109,10 +109,11 @@ fn loading_ten_thousand_records_keeps_the_order_on_several_threads() {
     assert_eq!(all.len(), 10_000);
     assert!(all.windows(2).all(|w| w[0].id < w[1].id));
     assert_eq!(all[4_321].meta.title, "Title 4322");
-    assert!(all
-        .iter()
-        .zip(&books)
-        .all(|(a, b)| a.id == b.id && a.meta.title == b.meta.title));
+    assert!(
+        all.iter()
+            .zip(&books)
+            .all(|(a, b)| a.id == b.id && a.meta.title == b.meta.title)
+    );
 }
 
 fn library_of_10k(root: &std::path::Path) -> bookx_store::OpenedLibrary {

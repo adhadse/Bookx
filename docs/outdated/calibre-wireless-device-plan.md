@@ -1,3 +1,5 @@
+> Outdated 2026-11-23: Owner decision D10 (2026-11-20): wireless sync is KOReader only, stock firmware uses USB. Not planned; kept in case the decision is reversed. Living document: [bookx-feature-roadmap.md](../bookx-feature-roadmap.md).
+
 # Plan: Calibre "smart device" wireless protocol (roadmap P14 / E2)
 
 Status: **not implemented, deferred by owner decision D10 (2026-11-20): wireless sync is KOReader only (Bookx sync); the stock firmware uses USB.** Roadmap rows P5 and P13 are DEFERRED in `docs/roadmap-status.md`. This is the plan, written because the work is larger than the rest of the

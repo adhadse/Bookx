@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use bookx_serve::kosync_client::{document_id, Push, Remote};
+use bookx_serve::kosync_client::{Push, Remote, document_id};
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, glib};
 
@@ -183,7 +183,7 @@ pub fn open_book(
 
 /// Called whenever the reader's position is saved. Does nothing without a session (sync off).
 pub fn position(shared: &SharedRef, book_id: u64, spine: usize, pct: f64) {
-    let gen = SESSIONS.with(|s| {
+    let r#gen = SESSIONS.with(|s| {
         let mut s = s.borrow_mut();
         let sess = s.get_mut(&book_id)?;
         if !ks::worth_pushing(sess.last_pct, pct) {
@@ -194,13 +194,13 @@ pub fn position(shared: &SharedRef, book_id: u64, spine: usize, pct: f64) {
         sess.generation += 1;
         Some(sess.generation)
     });
-    let Some(gen) = gen else {
+    let Some(r#gen) = r#gen else {
         return;
     };
     let shared = shared.clone();
     glib::timeout_add_local_once(std::time::Duration::from_millis(DEBOUNCE_MS), move || {
         let current = SESSIONS.with(|s| s.borrow().get(&book_id).map(|s| s.generation));
-        if current == Some(gen) {
+        if current == Some(r#gen) {
             flush(&shared, book_id);
         }
     });
@@ -255,8 +255,7 @@ pub fn flush(shared: &SharedRef, book_id: u64) {
         }
         let _ = tx.send(r);
     });
-    poll(rx, move |r| {
-        match r {
+    poll(rx, move |r| match r {
         Ok(Some(ts)) => {
             eprintln!("kosync_push: pct={pct:.3} ok ts={}", ts > 0);
             SESSIONS.with(|s| {
@@ -269,7 +268,6 @@ pub fn flush(shared: &SharedRef, book_id: u64) {
             "kosync_push: pct={pct:.3} held back, another device is further along and you have not answered yet"
         ),
         Err(e) => eprintln!("kosync_push: error: {e}"),
-    }
     });
 }
 
@@ -429,7 +427,10 @@ pub fn account_action(
 
 /// What the reading-position switch says (Advanced).
 pub fn position_help() -> String {
-    trf("Keeps your place in step with KOReader and other apps through a sync server: your own Bookx server (the address ending in /bookx), a self-hosted one, or the public one at sync.koreader.rocks. {}", &[&crate::secrets::caption_now()])
+    trf(
+        "Keeps your place in step with KOReader and other apps through a sync server: your own Bookx server (the address ending in /bookx), a self-hosted one, or the public one at sync.koreader.rocks. {}",
+        &[&crate::secrets::caption_now()],
+    )
 }
 
 fn entry(title: &str, text: &str) -> adw::EntryRow {

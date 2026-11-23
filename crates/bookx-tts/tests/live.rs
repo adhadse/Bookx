@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use bookx_tts::factory;
 use bookx_tts::kokoro::Kokoro;
-use bookx_tts::models::{kokoro_paths, piper_installed, Store};
+use bookx_tts::models::{Store, kokoro_paths, piper_installed};
 use bookx_tts::pipeline::PipelineEngine;
 use bookx_tts::piper::Piper;
 use bookx_tts::sink::MemorySink;
@@ -99,15 +99,16 @@ fn piper_speaks_german() {
     );
     assert_eq!(de.rate, 22050);
     assert!(de.rms() > 0.01 && de.rms() < 0.5);
-    assert!(p
-        .synthesize(&SynthRequest {
+    assert!(
+        p.synthesize(&SynthRequest {
             text: "Bonjour",
             voice: "",
             language: "fr",
             speed: 1.0,
             cancel: &Cancel::new()
         })
-        .is_err());
+        .is_err()
+    );
 }
 
 /// The whole stack: the factory opens Kokoro, a session reads three sentences, the sink gets

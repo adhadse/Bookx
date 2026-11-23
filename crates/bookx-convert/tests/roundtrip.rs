@@ -11,11 +11,11 @@ use std::io::Write;
 use std::sync::atomic::AtomicBool;
 use std::time::{Duration, Instant};
 
-use bookx_convert::inspect::{score, Digest};
-use bookx_convert::{convert, read_input, ConvertOptions};
+use bookx_convert::inspect::{Digest, score};
+use bookx_convert::{ConvertOptions, convert, read_input};
 use bookx_core::archive::Archive;
 use bookx_core::book::OpenBook;
-use bookx_core::convert::{create_epub, Chapter};
+use bookx_core::convert::{Chapter, create_epub};
 
 struct Lcg(u64);
 

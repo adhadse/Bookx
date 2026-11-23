@@ -15,11 +15,11 @@ use anyhow::{Context, Result};
 use bookx_core::book::OpenBook;
 use bookx_core::contracts::FormatWriter;
 use bookx_core::util::xml_escape;
-use flate2::write::ZlibEncoder;
 use flate2::Compression;
+use flate2::write::ZlibEncoder;
 
 use crate::images::to_jpeg;
-use crate::model::{flat_inlines, inline_text, Block, Inline, Model};
+use crate::model::{Block, Inline, Model, flat_inlines, inline_text};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SnbWriter;

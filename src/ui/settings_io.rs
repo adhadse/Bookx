@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio};
 
-use super::{window_of, SharedRef};
+use super::{SharedRef, window_of};
 use crate::i18n::{tr, trf};
 use crate::settings_io::{self, Imported, Preview};
 

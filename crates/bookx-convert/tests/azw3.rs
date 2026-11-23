@@ -616,9 +616,11 @@ fn documents_reassemble_to_the_source_text() {
         let before = &d.xml[..d.chunk_start];
         assert!(before.trim_end().ends_with('>') && before.contains("<body"));
         assert!(before.rfind("<body").unwrap() > before.rfind("</head>").unwrap());
-        assert!(d.xml[d.chunk_start + d.chunk_len..]
-            .trim_start()
-            .starts_with("</body>"));
+        assert!(
+            d.xml[d.chunk_start + d.chunk_len..]
+                .trim_start()
+                .starts_with("</body>")
+        );
         assert_eq!(k.frags[i].insert, d.skel_pos + d.chunk_start);
         assert_eq!(d.insert_pos, k.frags[i].insert);
         // FRAG names the body by its aid
@@ -1411,12 +1413,16 @@ fn calibre_converts_our_file_back_with_identical_text_and_toc() {
         .map(|(_, b)| b)
         .collect();
     images.sort_by_key(|b| b.len());
-    assert!(images
-        .iter()
-        .any(|b| b.as_slice() == book.cover_bytes().unwrap()));
-    assert!(images
-        .iter()
-        .any(|b| b.as_slice() == book.archive.get("OEBPS/images/pic.png").unwrap()));
+    assert!(
+        images
+            .iter()
+            .any(|b| b.as_slice() == book.cover_bytes().unwrap())
+    );
+    assert!(
+        images
+            .iter()
+            .any(|b| b.as_slice() == book.archive.get("OEBPS/images/pic.png").unwrap())
+    );
 
     // style sheet content made it through
     let css: String = files

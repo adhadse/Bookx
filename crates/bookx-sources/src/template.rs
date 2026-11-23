@@ -18,7 +18,7 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use bookx_core::opf::{format_index, Metadata};
+use bookx_core::opf::{Metadata, format_index};
 
 use crate::authors::author_sort;
 
@@ -240,7 +240,7 @@ impl Template {
                         match stack.last_mut() {
                             None => return err(pos, "`{else}` without `{if}`"),
                             Some(f) if f.otherwise.is_some() => {
-                                return err(pos, "second `{else}` in one `{if}`")
+                                return err(pos, "second `{else}` in one `{if}`");
                             }
                             Some(f) => f.otherwise = Some(Vec::new()),
                         }
@@ -568,11 +568,7 @@ fn render_nodes(
         for f in filters {
             v = apply_filter(f, v);
         }
-        if path {
-            sanitize_value(&v)
-        } else {
-            v
-        }
+        if path { sanitize_value(&v) } else { v }
     };
     for n in nodes {
         match n {
@@ -862,9 +858,11 @@ mod tests {
         assert_eq!(e.pos, 5);
         assert!(e.message.contains("unknown field `nope`"), "{e}");
         assert_eq!(perr("{title:wrong}").pos, 7);
-        assert!(perr("{title:wrong}")
-            .message
-            .contains("unknown filter `wrong`"));
+        assert!(
+            perr("{title:wrong}")
+                .message
+                .contains("unknown filter `wrong`")
+        );
         assert_eq!(perr("{title:lower|bad}").pos, 13);
         let e = perr("x {title");
         assert_eq!((e.pos, e.message.as_str()), (2, "unclosed `{`"));
@@ -873,12 +871,16 @@ mod tests {
         assert_eq!(perr("{if series}x").pos, 0);
         assert!(perr("{endif}").message.contains("without `{if}`"));
         assert!(perr("{else}").message.contains("without `{if}`"));
-        assert!(perr("{if series}{else}{else}{endif}")
-            .message
-            .contains("second"));
-        assert!(perr("{if nothing}{endif}")
-            .message
-            .contains("unknown field `nothing`"));
+        assert!(
+            perr("{if series}{else}{else}{endif}")
+                .message
+                .contains("second")
+        );
+        assert!(
+            perr("{if nothing}{endif}")
+                .message
+                .contains("unknown field `nothing`")
+        );
         assert!(perr("{series?a:b").message.contains("unclosed"));
         assert!(perr("{ti{tle}}").message.contains("inside a tag"));
         assert!(perr("{trunc:trunc(x)}").message.contains("unknown field"));

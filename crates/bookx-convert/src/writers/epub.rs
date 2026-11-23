@@ -10,7 +10,7 @@ use bookx_core::toc::TocEntry;
 use bookx_core::util::{join_path, media_type_for, relative_href, xml_escape};
 use serde::{Deserialize, Serialize};
 
-use crate::markup::{is_wellformed_xml, plain_text, repair_to_xhtml, tag_info, tokenize, Tok};
+use crate::markup::{Tok, is_wellformed_xml, plain_text, repair_to_xhtml, tag_info, tokenize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum EpubVersion {

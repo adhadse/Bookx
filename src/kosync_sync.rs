@@ -180,11 +180,17 @@ pub fn prompt_body(local: f64, when: i64) -> String {
                 .to_string()
         })
         .unwrap_or_default();
-    trf("You are at {}% here{}. “Stay Here” keeps your place; nothing is changed unless you choose to continue.", &[&format!("{:.0}", local * 100.0), &(if date.is_empty() {
-            String::new()
-        } else {
-            format!("; the other position was saved on {date}")
-        })])
+    trf(
+        "You are at {}% here{}. “Stay Here” keeps your place; nothing is changed unless you choose to continue.",
+        &[
+            &format!("{:.0}", local * 100.0),
+            &(if date.is_empty() {
+                String::new()
+            } else {
+                format!("; the other position was saved on {date}")
+            }),
+        ],
+    )
 }
 
 /// Whether a position at `pct` is worth pushing, given the last one the server is known to have.

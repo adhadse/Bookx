@@ -310,11 +310,7 @@ pub fn prune_css(css: &str, usage: &mut Usage) -> String {
             CssItem::At(s) | CssItem::Other(s) => out.push_str(s),
         }
     }
-    if removed_any {
-        out
-    } else {
-        css.to_string()
-    }
+    if removed_any { out } else { css.to_string() }
 }
 
 /// Drops CSS rules whose selectors match no element of any document of the book.

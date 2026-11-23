@@ -1,3 +1,5 @@
+> Archived 2026-11-23: Implemented in wave 5; the guide is `plugin-development.md`. Living document: [plugin-development.md](../plugin-development.md).
+
 # Editor plugins (CE-019)
 
 Status: **implemented** (wave 5). User guide: `wiki/docs/plugins-and-patches.md`; developer guide:

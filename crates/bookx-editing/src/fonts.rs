@@ -4,8 +4,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::OnceLock;
 
 use crate::fontlayout::LayoutReport;
-use anyhow::{anyhow, bail, Context, Result};
-use bookx_convert::transforms::css::{parse_css, parse_decls, CssItem};
+use anyhow::{Context, Result, anyhow, bail};
+use bookx_convert::transforms::css::{CssItem, parse_css, parse_decls};
 use bookx_core::book::OpenBook;
 use bookx_core::util::{extension, join_path, parent_dir, relative_href, resolve_href};
 use bookx_text::css::{FontStyle, StyleSheetSet};
@@ -1218,9 +1218,10 @@ pub(crate) mod tests {
         assert_eq!(face.glyph_index('Á').unwrap().0, 5);
         assert!(face.glyph_index('Z').is_none());
         let mut sink = Sink(0);
-        assert!(face
-            .outline_glyph(ttf_parser::GlyphId(5), &mut sink)
-            .is_some());
+        assert!(
+            face.outline_glyph(ttf_parser::GlyphId(5), &mut sink)
+                .is_some()
+        );
         assert!(sink.0 >= 7, "composite has the points of both components");
         let info = font_info(&f).unwrap();
         assert_eq!(info.family.as_deref(), Some("Tiny Test"));
@@ -1274,10 +1275,11 @@ pub(crate) mod tests {
                 .as_deref(),
             Some("Tiny Test")
         );
-        assert!(face
-            .raw_face()
-            .table(ttf_parser::Tag::from_bytes(b"OS/2"))
-            .is_some());
+        assert!(
+            face.raw_face()
+                .table(ttf_parser::Tag::from_bytes(b"OS/2"))
+                .is_some()
+        );
     }
 
     #[test]
@@ -1543,15 +1545,19 @@ pub(crate) mod tests {
         );
         let mut no_css = make_book(&["<p>x</p>"]);
         no_css.archive.remove("OEBPS/style.css");
-        assert!(embed_font(&mut no_css, "F", 400, false, vec![0])
-            .unwrap_err()
-            .to_string()
-            .contains("no stylesheet"));
+        assert!(
+            embed_font(&mut no_css, "F", 400, false, vec![0])
+                .unwrap_err()
+                .to_string()
+                .contains("no stylesheet")
+        );
     }
 
     #[test]
     fn embed_referenced_uses_lookup_and_subsets() {
-        let mut b = make_book(&["<p style=\"font-family: 'Tiny Test', serif\">ABAB</p><p style=\"font-family: Other\">q</p>"]);
+        let mut b = make_book(&[
+            "<p style=\"font-family: 'Tiny Test', serif\">ABAB</p><p style=\"font-family: Other\">q</p>",
+        ]);
         let big = tiny_ttf(300);
         let calls = std::cell::RefCell::new(Vec::new());
         let lookup = |fam: &str, w: u16, i: bool| {

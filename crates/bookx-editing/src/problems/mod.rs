@@ -7,13 +7,13 @@ use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use bookx_core::archive::Archive;
 
-use crate::validate::{validate_with, Options, Severity};
+use crate::validate::{Options, Severity, validate_with};
 
 pub mod fix;
 pub mod help;
 
-pub use fix::{apply_fix, fix_label, FixOutcome, Scope};
-pub use help::{help, Help};
+pub use fix::{FixOutcome, Scope, apply_fix, fix_label};
+pub use help::{Help, help};
 
 /// Ids for the quick checks that have no validator counterpart: (id, severity, title).
 pub const CHECK_RULES: &[(&str, Severity, &str)] = &[

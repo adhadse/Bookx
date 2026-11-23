@@ -245,7 +245,7 @@ fn matching_a_tracker_export_against_a_large_library() {
 
 #[test]
 fn audiobook_pairing_in_a_large_library() {
-    use bookx_sources::audiobooks::{pair, Candidate};
+    use bookx_sources::audiobooks::{Candidate, pair};
     let books: Vec<Book> = (0..20_000).map(book).collect();
     let cands: Vec<Candidate> = (0..3000u64)
         .map(|i| Candidate {

@@ -2,7 +2,7 @@
 name = "bookx-plugin"
 version = "0.3.0-beta.2"
 authors = ["Anurag Dhadse <hello@adhadse.com>"]
-edition = "2021"
+edition = "2024"
 rust-version = "1.85"
 description = "Sandboxed WebAssembly plugin host for Bookx (pure-Rust wasmi interpreter)"
 publish = false

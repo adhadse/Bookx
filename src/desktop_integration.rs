@@ -128,9 +128,10 @@ mod tests {
             doc.descendants().any(|n| n.has_tag_name("content_rating")),
             "OARS rating"
         );
-        assert!(doc
-            .descendants()
-            .any(|n| n.has_tag_name("translation") && n.text() == Some("bookx")));
+        assert!(
+            doc.descendants()
+                .any(|n| n.has_tag_name("translation") && n.text() == Some("bookx"))
+        );
         let version = crate::config::VERSION;
         assert!(
             doc.descendants()

@@ -26,18 +26,18 @@ mod registry;
 mod store;
 mod works;
 
-pub use calibre::{import_calibre_into, CalibreImport, ImportReport, Stage};
+pub use calibre::{CalibreImport, ImportReport, Stage, import_calibre_into};
 pub use calibre_export::{
-    check_target as check_calibre_export_target, export_calibre, export_calibre_with_columns,
-    language_to_calibre, CalibreExport, CALIBRE_USER_VERSION,
+    CALIBRE_USER_VERSION, CalibreExport, check_target as check_calibre_export_target,
+    export_calibre, export_calibre_with_columns, language_to_calibre,
 };
 pub use catalog::{
-    has_library, library_db_path, open_library, CatalogWatcher, OpenedLibrary, SqliteCatalog,
-    LEGACY_JSON, LIBRARY_DB,
+    CatalogWatcher, LEGACY_JSON, LIBRARY_DB, OpenedLibrary, SqliteCatalog, has_library,
+    library_db_path, open_library,
 };
 pub use registry::{LibraryEntry, LibraryRegistry};
 pub use store::{
-    is_fast_query, Collection, JsonImportReport, Order, ReadingStatus, SqliteStore, TextHit,
-    SCHEMA_VERSION,
+    Collection, JsonImportReport, Order, ReadingStatus, SCHEMA_VERSION, SqliteStore, TextHit,
+    is_fast_query,
 };
 pub use works::WorkLink;

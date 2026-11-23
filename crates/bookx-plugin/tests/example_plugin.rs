@@ -63,9 +63,11 @@ fn the_example_is_off_until_enabled_then_writes_the_book() {
         book.archive.to_bytes().unwrap(),
         "the example copies the book"
     );
-    assert!(Archive::from_bytes(out)
-        .unwrap()
-        .contains("META-INF/container.xml"));
+    assert!(
+        Archive::from_bytes(out)
+            .unwrap()
+            .contains("META-INF/container.xml")
+    );
 }
 
 #[test]

@@ -4,7 +4,7 @@
 
 use std::time::{Duration, Instant};
 
-use bookx_comic::decode::{decode_page, dimensions, is_bomb, Opts};
+use bookx_comic::decode::{Opts, decode_page, dimensions, is_bomb};
 
 fn png_header(w: u32, h: u32) -> Vec<u8> {
     let mut v = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR".to_vec();

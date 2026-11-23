@@ -476,7 +476,12 @@ impl Editor {
                 t.table.columns.len(),
                 first.join(" | "),
                 self.current.clone().unwrap_or_default(),
-                self.w.view.buffer().iter_at_offset(self.w.view.buffer().cursor_position()).line() + 1,
+                self.w
+                    .view
+                    .buffer()
+                    .iter_at_offset(self.w.view.buffer().cursor_position())
+                    .line()
+                    + 1,
                 t.status.label()
             );
         }

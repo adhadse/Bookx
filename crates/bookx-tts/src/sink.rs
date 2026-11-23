@@ -11,7 +11,7 @@ use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 
 pub trait AudioSink: Send {
     /// Plays mono 16-bit samples after what was written before. May block.

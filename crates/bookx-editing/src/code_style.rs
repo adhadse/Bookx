@@ -5,9 +5,9 @@
 
 use std::ops::Range;
 
-use crate::code_format::{inside_markup, is_balanced, FormatError};
+use crate::code_format::{FormatError, inside_markup, is_balanced};
 use crate::markup::{remove_tag_attr, set_tag_attr, tag_attr};
-use crate::tags::{pairs, TagEdit, TagPair};
+use crate::tags::{TagEdit, TagPair, pairs};
 
 /// Which colour property a span carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -658,10 +658,12 @@ mod tests {
             s
         );
         // another one replaces
-        assert!(set_align(&t, pos2, Some(Align::Right), Via::Inline, &[])
-            .unwrap()
-            .apply(&t)
-            .contains("text-align:right"));
+        assert!(
+            set_align(&t, pos2, Some(Align::Right), Via::Inline, &[])
+                .unwrap()
+                .apply(&t)
+                .contains("text-align:right")
+        );
         // none removes
         assert_eq!(
             set_align(&t, pos2, None, Via::Inline, &[])

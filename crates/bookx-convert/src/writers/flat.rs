@@ -6,17 +6,17 @@ use std::io::{Cursor, Write};
 use anyhow::Result;
 use bookx_core::book::OpenBook;
 use bookx_core::contracts::FormatWriter;
-use bookx_core::convert::{export_book, ExportFormat};
+use bookx_core::convert::{ExportFormat, export_book};
 use bookx_core::util::{
     extension, is_external, media_type_for, parent_dir, resolve_href, xml_escape,
 };
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
 
-use crate::markup::{body_range, escape_attr, get_attr, set_attr, tag_info, tokenize, Tok};
+use crate::markup::{Tok, body_range, escape_attr, get_attr, set_attr, tag_info, tokenize};
 
 macro_rules! plain_writer {
-    ($name:ident, $id:literal, $ext:literal, $fmt:expr) => {
+    ($name:ident, $id:literal, $ext:literal, $fmt:expr_2021) => {
         #[derive(Debug, Clone, Copy, Default)]
         pub struct $name;
         impl FormatWriter for $name {
@@ -295,7 +295,11 @@ impl FormatWriter for HtmlzWriter {
             .join("\n");
         let html = format!(
             "<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"{}\">\n<head>\n<meta charset=\"utf-8\"/>\n<title>{}</title>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\"/>\n</head>\n<body>\n{body}</body>\n</html>\n",
-            xml_escape(if md.language.is_empty() { "en" } else { &md.language }),
+            xml_escape(if md.language.is_empty() {
+                "en"
+            } else {
+                &md.language
+            }),
             xml_escape(&md.title)
         );
 

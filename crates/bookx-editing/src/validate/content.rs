@@ -4,8 +4,8 @@ use std::collections::{HashMap, HashSet};
 
 use roxmltree::{Document, Node};
 
-use super::package::{node_pos, parse_prefixes, parse_xml, prepare_xml, RESERVED_PREFIXES};
-use super::{add_ref, css, Cx, Features, Item, Pos, RefKind};
+use super::package::{RESERVED_PREFIXES, node_pos, parse_prefixes, parse_xml, prepare_xml};
+use super::{Cx, Features, Item, Pos, RefKind, add_ref, css};
 
 const XHTML_NS: &str = "http://www.w3.org/1999/xhtml";
 const SVG_NS: &str = "http://www.w3.org/2000/svg";

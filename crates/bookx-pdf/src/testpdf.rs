@@ -391,7 +391,9 @@ impl TestPdf {
                 .join(" ");
             let mut dict = format!(
                 "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {} {}] /Resources << /Font << {res} >> >> /Contents {} 0 R",
-                p.width, p.height, content_id(i)
+                p.width,
+                p.height,
+                content_id(i)
             );
             if !annots.is_empty() {
                 dict.push_str(&format!(" /Annots [{}]", annots.join(" ")));

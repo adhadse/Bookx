@@ -7,8 +7,8 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use bookx_convert::queue::{clamp_parallel, default_parallel, Limiter};
 use bookx_convert::ConvertOptions;
+use bookx_convert::queue::{Limiter, clamp_parallel, default_parallel};
 use serde::{Deserialize, Serialize};
 
 /// The formats of the *Convert To* menu that have options of their own (`export::TARGETS` ids).

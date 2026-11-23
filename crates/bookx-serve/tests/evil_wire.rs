@@ -5,11 +5,11 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use bookx_serve::annotation_sync::{parse_request, AnnotationSync, MAX_BODY};
+use bookx_serve::annotation_sync::{AnnotationSync, MAX_BODY, parse_request};
 use bookx_serve::http::Request;
-use bookx_serve::kosync::{md5_hex, KoSync, MemoryStore};
+use bookx_serve::kosync::{KoSync, MemoryStore, md5_hex};
 use bookx_serve::lua;
-use bookx_serve::server::{handle, LibrarySnapshot, ServerConfig};
+use bookx_serve::server::{LibrarySnapshot, ServerConfig, handle};
 use serde_json::json;
 
 const NOW: i64 = 1_800_000_000;

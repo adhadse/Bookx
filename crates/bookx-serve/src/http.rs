@@ -454,10 +454,12 @@ mod tests {
         assert_eq!(r.header("x-a"), Some("b"));
         assert_eq!(r.body_str(), "{\"a\":1}");
         assert_eq!(Response::text(200, "hi").body, b"hi");
-        assert!(Response::html(200, "<p>".into())
-            .header("content-type")
-            .unwrap()
-            .starts_with("text/html"));
+        assert!(
+            Response::html(200, "<p>".into())
+                .header("content-type")
+                .unwrap()
+                .starts_with("text/html")
+        );
         assert!(Response::empty(204).body.is_empty());
     }
 }

@@ -6,7 +6,7 @@
 //! after the replacement. Regular expressions use the `regex` crate (no backtracking, so a hostile
 //! pattern cannot hang the program) with a size limit; `$1` in the replacement is the first group.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use regex::{Regex, RegexBuilder};
 
 use super::library::{Book, Library};
@@ -110,7 +110,9 @@ fn matcher(rule: &Rule) -> Result<Regex> {
         bail!("write the text to search for");
     }
     if rule.find.chars().count() > MAX_RULE_CHARS || rule.replace.chars().count() > MAX_RULE_CHARS {
-        bail!("the text to search for and the replacement can have {MAX_RULE_CHARS} characters at most");
+        bail!(
+            "the text to search for and the replacement can have {MAX_RULE_CHARS} characters at most"
+        );
     }
     let pattern = if rule.regex {
         rule.find.clone()

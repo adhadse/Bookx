@@ -2,12 +2,12 @@
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
-use bookx_cli::{run, Env};
-use zip::write::SimpleFileOptions;
+use bookx_cli::{Env, run};
 use zip::CompressionMethod;
+use zip::write::SimpleFileOptions;
 
 fn mount(tag: &str) -> PathBuf {
     let d = std::env::temp_dir().join(format!(

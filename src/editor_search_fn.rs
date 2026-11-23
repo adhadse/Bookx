@@ -41,7 +41,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use rhai::{Array, Dynamic, Engine, EvalAltResult, ImmutableString, Map, Scope, AST};
+use rhai::{AST, Array, Dynamic, Engine, EvalAltResult, ImmutableString, Map, Scope};
 use serde::{Deserialize, Serialize};
 
 use crate::editor_search::{MatchInfo, Pattern};
@@ -1131,7 +1131,7 @@ pub fn test_run(func: &Function, env: &Env, pat: &Pattern, text: &str, file: &st
                 output: vec![],
                 final_output: None,
                 error: Some(e),
-            }
+            };
         }
     };
     let res = run.run_text(pat, text, None, file);
@@ -1297,7 +1297,9 @@ mod tests {
             ..Default::default()
         };
         let t = test_run(
-            &f("fn replace(m, number, file, meta, data) { meta.title + \"|\" + meta.authors[0] + \"|\" + meta.authors.len + \"|\" + meta.language + \"|\" + meta.identifiers.isbn }"),
+            &f(
+                "fn replace(m, number, file, meta, data) { meta.title + \"|\" + meta.authors[0] + \"|\" + meta.authors.len + \"|\" + meta.language + \"|\" + meta.identifiers.isbn }",
+            ),
             &env,
             &rx("x"),
             "x",
@@ -1372,7 +1374,9 @@ mod tests {
 
     #[test]
     fn header_options_are_read() {
-        let func = f("// @file_order spine-reverse\n// @suppress_result_dialog\nfn replace(m, number, file, meta, data) { () }");
+        let func = f(
+            "// @file_order spine-reverse\n// @suppress_result_dialog\nfn replace(m, number, file, meta, data) { () }",
+        );
         assert_eq!(func.file_order, FileOrder::SpineReverse);
         assert!(func.suppress_result_dialog);
         assert!(!func.call_after_last_match);
@@ -1416,14 +1420,18 @@ mod tests {
     fn syntax_errors_and_wrong_signatures_are_reported() {
         let e = check("fn replace(m, number, file, meta, data) {\n let = ;\n}").unwrap_err();
         assert_eq!(e.line, Some(2));
-        assert!(check("fn other() { 1 }")
-            .unwrap_err()
-            .message
-            .contains("define fn replace"));
-        assert!(check("fn replace(m) { 1 }")
-            .unwrap_err()
-            .message
-            .contains("5 parameters"));
+        assert!(
+            check("fn other() { 1 }")
+                .unwrap_err()
+                .message
+                .contains("define fn replace")
+        );
+        assert!(
+            check("fn replace(m) { 1 }")
+                .unwrap_err()
+                .message
+                .contains("5 parameters")
+        );
         assert!(check("fn replace(m, number, file, meta, data) { m.text }").is_ok());
     }
 

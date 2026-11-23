@@ -3,12 +3,12 @@
 
 use std::rc::Rc;
 
-use bookx_text::aids::{format_hhmm, parse_hhmm, PageAnimation, AUTO_TURN_RANGE};
+use bookx_text::aids::{AUTO_TURN_RANGE, PageAnimation, format_hhmm, parse_hhmm};
 use relm4::adw::{self, prelude::*};
 use relm4::gtk;
 
-use super::preferences::{register_group, PrefCtx};
-use crate::aids_prefs::{remote_lines, remote_text, ReaderAids, ARCHIVE_SHELF};
+use super::preferences::{PrefCtx, register_group};
+use crate::aids_prefs::{ARCHIVE_SHELF, ReaderAids, remote_lines, remote_text};
 use crate::i18n::{tr, trf};
 
 pub fn register() {

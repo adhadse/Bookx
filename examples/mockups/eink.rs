@@ -1,7 +1,7 @@
 //! Sheet 4: the e-ink look of the reader (Preferences → E-ink mode) and touch controls.
 
 use crate::kit::*;
-use crate::reader::{reader_window, selection_popover, Layout, R};
+use crate::reader::{Layout, R, reader_window, selection_popover};
 
 /// A header strip with three buttons of `size` pixels, to compare the normal and the large touch targets.
 fn touch_strip(s: &mut Svg, x: f64, y: f64, w: f64, size: f64, t: &Theme, caption: &str) {
@@ -188,7 +188,12 @@ pub fn run(s: &mut Svg) {
     }
 
     // ---------------------------------------------------------------- 4.d touch
-    label(s, 90.0, 1500.0, "4.d Large touch controls — Preferences → Large touch controls (Automatic · Always on · Off)");
+    label(
+        s,
+        90.0,
+        1500.0,
+        "4.d Large touch controls — Preferences → Large touch controls (Automatic · Always on · Off)",
+    );
     touch_strip(
         s,
         90.0,

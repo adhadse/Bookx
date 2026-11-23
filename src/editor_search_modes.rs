@@ -377,9 +377,10 @@ mod tests {
                 .as_deref(),
             Some(r#"<img src="a.png" alt="Pic"/>"#)
         );
-        assert!(e
-            .replace_all(src, "bad", None, &mut RunCtx::default())
-            .is_err());
+        assert!(
+            e.replace_all(src, "bad", None, &mut RunCtx::default())
+                .is_err()
+        );
         assert!(Engine::new(&s("img[", Mode::Tag)).is_err());
     }
 
@@ -387,9 +388,10 @@ mod tests {
     fn function_mode_needs_a_runner_and_replaces_through_it() {
         let e = Engine::new(&s("x", Mode::Function)).unwrap();
         assert!(e.is_function());
-        assert!(e
-            .replace_all("x", "", None, &mut RunCtx::default())
-            .is_err());
+        assert!(
+            e.replace_all("x", "", None, &mut RunCtx::default())
+                .is_err()
+        );
         assert_eq!(e.replacement_for("x", 0, 1, ""), None);
         let f = Function::new(
             "t",

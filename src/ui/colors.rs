@@ -1,13 +1,13 @@
 //! The colour controls shared by the reader's menu and the editor's preview: Theme / Original /
 //! Custom, and the two pickers of the custom colours.
 
-use crate::i18n::{tr, N_};
+use crate::i18n::{N_, tr};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use relm4::gtk::{self, gdk, prelude::*};
 
-use crate::config::{parse_hex, to_hex, ColorMode, ReaderPrefs};
+use crate::config::{ColorMode, ReaderPrefs, parse_hex, to_hex};
 
 pub struct ColorControls {
     pub root: gtk::Box,

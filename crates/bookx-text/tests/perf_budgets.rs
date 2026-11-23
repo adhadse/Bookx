@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use bookx_text::css::StyleSheetSet;
 use bookx_text::hyphenate::Hyphenator;
-use bookx_text::linebreak::{break_greedy, break_paragraph, items_from_text, Params};
+use bookx_text::linebreak::{Params, break_greedy, break_paragraph, items_from_text};
 
 fn budget(release_ms: u64) -> Duration {
     let scale: f64 = std::env::var("BOOKX_PERF_SCALE")
@@ -108,7 +108,7 @@ fn computing_styles_for_1000_elements_is_fast() {
 
 #[test]
 fn planning_optimal_breaks_for_a_chapter_is_fast() {
-    use bookx_text::paragraph::{plan, Request};
+    use bookx_text::paragraph::{Request, plan};
     let text = words(120);
     let x = |b: usize| text[..b].chars().count() as f64 * 7.0;
     let t = Instant::now();
@@ -146,7 +146,7 @@ fn paginating_a_long_chapter_and_turning_pages_is_fast() {
 
 #[test]
 fn widow_and_orphan_control_is_cheap_even_for_one_huge_paragraph() {
-    use bookx_text::vertical::{paginate_with, FlowLine};
+    use bookx_text::vertical::{FlowLine, paginate_with};
     // one paragraph of 100 000 lines, and 5 000 paragraphs of 20
     for per in [100_000usize, 20] {
         let lines: Vec<FlowLine> = (0..100_000)
@@ -171,7 +171,7 @@ fn widow_and_orphan_control_is_cheap_even_for_one_huge_paragraph() {
 #[test]
 fn vertical_pagination_kinsoku_and_tate_chu_yoko_scale_to_a_long_book() {
     use bookx_text::vertical::{
-        combine_ranges, paginate, squeezed, violations, FlowLine, Frame, TextCombine, WritingMode,
+        FlowLine, Frame, TextCombine, WritingMode, combine_ranges, paginate, squeezed, violations,
     };
     // 100 000 lines in 5 000 paragraphs
     let lines: Vec<FlowLine> = (0..100_000)

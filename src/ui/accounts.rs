@@ -284,7 +284,9 @@ fn choose_guests(m: &Rc<Manage>) {
         &m.dialog,
         &m.shared,
         &tr("Guest collections"),
-        &tr("Guests can read books with any of the chosen tags. Choose at least one, or guests stay off."),
+        &tr(
+            "Guests can read books with any of the chosen tags. Choose at least one, or guests stay off.",
+        ),
         &current,
         Rc::new(move |chosen| {
             model::set_guests(&mut m2.shared.cfg.borrow_mut().share, &chosen);

@@ -357,10 +357,12 @@ mod tests {
         assert!(partial.smarten_punctuation);
         assert!(partial.mobi_inline_toc);
         assert!(ConvertOptions::from_json("{\"jobs\": \"many\"}").is_err());
-        assert!(ConvertOptions::from_json("nope")
-            .unwrap_err()
-            .to_string()
-            .contains("invalid conversion options"));
+        assert!(
+            ConvertOptions::from_json("nope")
+                .unwrap_err()
+                .to_string()
+                .contains("invalid conversion options")
+        );
     }
 
     #[test]

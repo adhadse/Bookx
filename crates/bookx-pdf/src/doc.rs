@@ -254,10 +254,10 @@ impl Document {
             if out.len() >= MAX_OUTLINE || level > MAX_DEPTH {
                 return;
             }
-            if let Some(id) = d.obj_id() {
-                if !seen.insert((id.obj_number, id.gen_number)) {
-                    return;
-                }
+            if let Some(id) = d.obj_id()
+                && !seen.insert((id.obj_number, id.gen_number))
+            {
+                return;
             }
             let title = text_of(&d, "Title").unwrap_or_default();
             let dest = self.entry_dest(&d);
@@ -335,10 +335,10 @@ impl Document {
 
     fn named_dest(&self, name: &[u8], depth: usize) -> Option<Dest> {
         let cat = self.catalog()?;
-        if let Some(d) = cat.get::<Dict>("Dests") {
-            if let Some(o) = d.get::<Object>(name) {
-                return self.resolve_dest(o, depth + 1);
-            }
+        if let Some(d) = cat.get::<Dict>("Dests")
+            && let Some(o) = d.get::<Object>(name)
+        {
+            return self.resolve_dest(o, depth + 1);
         }
         let tree = cat.get::<Dict>("Names")?.get::<Dict>("Dests")?;
         let o = name_tree_lookup(&tree, name, 0)?;
@@ -410,18 +410,23 @@ impl Document {
             ];
             let target = if let Some(d) = self.entry_dest(&a) {
                 LinkTarget::Page(d)
-            } else if let Some(act) = a.get::<Dict>("A") {
-                match (
-                    act.get::<Name>("S").map(|n| n.as_str().to_string()),
-                    act.get::<hayro::hayro_interpret::hayro_syntax::object::String>("URI"),
-                ) {
-                    (Some(s), Some(u)) if s == "URI" => {
-                        LinkTarget::Uri(String::from_utf8_lossy(u.as_bytes()).trim().to_string())
-                    }
-                    _ => continue,
-                }
             } else {
-                continue;
+                match a.get::<Dict>("A") {
+                    Some(act) => {
+                        match (
+                            act.get::<Name>("S").map(|n| n.as_str().to_string()),
+                            act.get::<hayro::hayro_interpret::hayro_syntax::object::String>("URI"),
+                        ) {
+                            (Some(s), Some(u)) if s == "URI" => LinkTarget::Uri(
+                                String::from_utf8_lossy(u.as_bytes()).trim().to_string(),
+                            ),
+                            _ => continue,
+                        }
+                    }
+                    _ => {
+                        continue;
+                    }
+                }
             };
             out.push(Link { rect, target });
         }

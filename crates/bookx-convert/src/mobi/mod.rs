@@ -4,7 +4,7 @@
 //! `0` header | `1..=n` compressed text | images (cover first, then its thumbnail last) |
 //! INDX header, INDX data, CNCX | FLIS | FCIS | EOF (`E9 8E 0D 0A`).
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bookx_core::book::OpenBook;
 use bookx_core::contracts::FormatWriter;
 

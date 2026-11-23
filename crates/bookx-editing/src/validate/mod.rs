@@ -37,8 +37,8 @@ mod package;
 mod zipcheck;
 
 pub use extra::{
-    declared_encoding, is_utf8_label, jpeg_components, link_bad_char, scan_entities, EntityHit,
-    Options, EXTRA_RULES,
+    EXTRA_RULES, EntityHit, Options, declared_encoding, is_utf8_label, jpeg_components,
+    link_bad_char, scan_entities,
 };
 
 use std::collections::{BTreeMap, HashMap, HashSet};

@@ -1,6 +1,6 @@
 //! `bookx-cli backup …`: plan, run, list, restore, verify, gc against a folder, an encrypted
 //! folder and a WebDAV stand-in. Temp folders only; the passphrase and the cheap key settings go
-//! through environment variables, so these tests take a lock and run one after the other.
+//! through variables the CLI reads with `bookx_cli::override_var` (per test thread, nothing global).
 
 #[path = "../../bookx-backup/tests/common/mod.rs"]
 mod common;
@@ -9,8 +9,8 @@ use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
-use bookx_cli::{run, Env};
-use common::{dav, tmp, tree, Lib};
+use bookx_cli::{Env, run};
+use common::{Lib, dav, tmp, tree};
 
 static ENV: Mutex<()> = Mutex::new(());
 
@@ -36,9 +36,9 @@ fn cli(lib: &Path, args: &[&str]) -> (i32, String, String) {
 
 fn env_guard() -> std::sync::MutexGuard<'static, ()> {
     let g = ENV.lock().unwrap_or_else(|e| e.into_inner());
-    std::env::set_var("BOOKX_BACKUP_KDF", "test");
-    std::env::remove_var("BOOKX_BACKUP_PASSPHRASE");
-    std::env::remove_var("BOOKX_WEBDAV_PASSWORD");
+    bookx_cli::override_var("BOOKX_BACKUP_KDF", Some("test"));
+    bookx_cli::override_var("BOOKX_BACKUP_PASSPHRASE", None);
+    bookx_cli::override_var("BOOKX_WEBDAV_PASSWORD", None);
     g
 }
 
@@ -212,7 +212,7 @@ fn an_encrypted_place_needs_the_passphrase_and_never_holds_titles_in_clear() {
                 .all(|f| !f.to_string_lossy().contains("blobs"))
     );
 
-    std::env::set_var("BOOKX_BACKUP_PASSPHRASE", "correct horse battery");
+    bookx_cli::override_var("BOOKX_BACKUP_PASSPHRASE", Some("correct horse battery"));
     let (code, out, err) = cli(&lib.root, &["backup", "run", "--to", p, "--encrypt"]);
     assert_eq!(code, 0, "{out} {err}");
     assert!(out.contains("encrypted"));
@@ -229,16 +229,16 @@ fn an_encrypted_place_needs_the_passphrase_and_never_holds_titles_in_clear() {
         assert!(!b.starts_with(b"PK"), "{} is a plain zip", f.display());
     }
     // wrong and missing passphrase
-    std::env::set_var("BOOKX_BACKUP_PASSPHRASE", "wrong");
+    bookx_cli::override_var("BOOKX_BACKUP_PASSPHRASE", Some("wrong"));
     let (code, _, err) = cli(&lib.root, &["backup", "list", "--from", p]);
     assert_eq!(code, 2);
     assert!(err.contains("passphrase"), "{err}");
-    std::env::remove_var("BOOKX_BACKUP_PASSPHRASE");
+    bookx_cli::override_var("BOOKX_BACKUP_PASSPHRASE", None);
     let (code, _, err) = cli(&lib.root, &["backup", "list", "--from", p]);
     assert_eq!(code, 2);
     assert!(err.contains("encrypted"), "{err}");
     // the right one restores
-    std::env::set_var("BOOKX_BACKUP_PASSPHRASE", "correct horse battery");
+    bookx_cli::override_var("BOOKX_BACKUP_PASSPHRASE", Some("correct horse battery"));
     let to = tmp("cli-enc-restore").join("lib");
     let (code, out, err) = cli(
         &lib.root,
@@ -253,15 +253,15 @@ fn an_encrypted_place_needs_the_passphrase_and_never_holds_titles_in_clear() {
     );
     assert_eq!(code, 0, "{out} {err}");
     assert_eq!(tree(&lib.root), tree(&to));
-    std::env::remove_var("BOOKX_BACKUP_PASSPHRASE");
+    bookx_cli::override_var("BOOKX_BACKUP_PASSPHRASE", None);
 }
 
 #[test]
 fn a_webdav_place_works_end_to_end() {
     let _g = env_guard();
     let d = dav();
-    std::env::set_var("BOOKX_WEBDAV_PASSWORD", "secret");
-    std::env::set_var("BOOKX_BACKUP_PASSPHRASE", "pw for dav");
+    bookx_cli::override_var("BOOKX_WEBDAV_PASSWORD", Some("secret"));
+    bookx_cli::override_var("BOOKX_BACKUP_PASSPHRASE", Some("pw for dav"));
     let mut lib = Lib::new("clidav");
     lib.add("Alpha", 300);
     let url = d.url();
@@ -280,12 +280,13 @@ fn a_webdav_place_works_end_to_end() {
         ],
     );
     assert_eq!(code, 0, "{out} {err}");
-    assert!(d
-        .files
-        .lock()
-        .unwrap()
-        .keys()
-        .any(|k| k.contains("/dav/cli/Bookx Backup/blobs/")));
+    assert!(
+        d.files
+            .lock()
+            .unwrap()
+            .keys()
+            .any(|k| k.contains("/dav/cli/Bookx Backup/blobs/"))
+    );
     let (_, out, _) = cli(
         &lib.root,
         &[
@@ -318,8 +319,8 @@ fn a_webdav_place_works_end_to_end() {
         ],
     );
     assert_eq!(code, 0, "{out}");
-    std::env::remove_var("BOOKX_WEBDAV_PASSWORD");
-    std::env::remove_var("BOOKX_BACKUP_PASSPHRASE");
+    bookx_cli::override_var("BOOKX_WEBDAV_PASSWORD", None);
+    bookx_cli::override_var("BOOKX_BACKUP_PASSPHRASE", None);
 }
 
 #[test]

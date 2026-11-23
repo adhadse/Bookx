@@ -4,12 +4,12 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bookx_core::contracts::Store;
 use bookx_core::library::Book;
 use bookx_core::query::Query;
 use chrono::Utc;
-use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 use serde::Deserialize;
 
 /// Schema version written to `PRAGMA user_version` by the newest migration.
@@ -451,6 +451,98 @@ fn tmp_sibling(path: &Path) -> PathBuf {
     path.with_file_name(name)
 }
 
+// -- safety around a schema update ------------------------------------------
+
+/// Copies of the database kept from before an update (the newest ones; older are deleted).
+const KEEP_PRE_UPDATE_COPIES: usize = 2;
+
+fn count_books(conn: &Connection) -> i64 {
+    conn.query_row("SELECT count(*) FROM books", [], |r| r.get(0))
+        .unwrap_or(0)
+}
+
+/// An existing database that an update is about to change gets a consistent copy next to it first
+/// (`bookx-library.db.pre-v<old>-<time>`, SQLite's online backup, so it is complete even in WAL mode). When the copy
+/// cannot be made (disk full) the update does not start and nothing is changed. A new database, one that is
+/// current, and one that is newer than this version (refused later) get no copy.
+fn pre_migration_backup(path: &Path, conn: &Connection) -> Result<Option<PathBuf>> {
+    let cur: i32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+    if !(1..SCHEMA_VERSION).contains(&cur) {
+        return Ok(None);
+    }
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "library.db".into());
+    let stamp = chrono::Utc::now().format("%Y%m%dT%H%M%S");
+    let copy = path.with_file_name(format!("{name}.pre-v{cur}-{stamp}"));
+    copy_database(conn, &copy)?;
+    prune_pre_update_copies(path, &name);
+    Ok(Some(copy))
+}
+
+/// SQLite's online backup of `conn` into the new file `copy`; on failure the half-written file is removed.
+fn copy_database(conn: &Connection, copy: &Path) -> Result<()> {
+    let result = (|| -> Result<()> {
+        let mut dst = Connection::open(copy)?;
+        let backup = rusqlite::backup::Backup::new(conn, &mut dst)?;
+        backup.run_to_completion(256, Duration::from_millis(0), None)?;
+        Ok(())
+    })();
+    if let Err(e) = result {
+        let _ = std::fs::remove_file(copy);
+        return Err(e).with_context(|| {
+            "a copy of the library could not be made before the update (is the disk full?); \
+             nothing was changed"
+        });
+    }
+    Ok(())
+}
+
+fn prune_pre_update_copies(path: &Path, name: &str) {
+    let Some(dir) = path
+        .parent()
+        .filter(|d| !d.as_os_str().is_empty())
+        .or(Some(Path::new(".")))
+    else {
+        return;
+    };
+    let prefix = format!("{name}.pre-v");
+    let mut copies: Vec<PathBuf> = std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| {
+            p.file_name()
+                .is_some_and(|n| n.to_string_lossy().starts_with(&prefix))
+        })
+        .collect();
+    // the time is part of the name, so the newest sort last
+    copies.sort();
+    while copies.len() > KEEP_PRE_UPDATE_COPIES {
+        let _ = std::fs::remove_file(copies.remove(0));
+    }
+}
+
+/// After an update: the database must pass SQLite's integrity check and still hold every book. If not, the
+/// error says where the copy from before the update is, so nothing is lost.
+fn verify_migration(store: &SqliteStore, books_before: i64, copy: &Path) -> Result<()> {
+    let conn = store.lock();
+    let integrity: String = conn
+        .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+        .unwrap_or_else(|e| e.to_string());
+    let books_after = count_books(&conn);
+    if integrity != "ok" || books_after != books_before {
+        bail!(
+            "the library update did not pass its check (integrity: {integrity}; books {books_before} before, \
+             {books_after} after). Your library from before the update is kept in {}",
+            copy.display()
+        );
+    }
+    Ok(())
+}
+
 // -- the store ------------------------------------------------------------
 
 impl SqliteStore {
@@ -463,7 +555,23 @@ impl SqliteStore {
         }
         let conn = Connection::open(path)
             .with_context(|| format!("cannot open database {}", path.display()))?;
-        Self::init(conn).with_context(|| format!("cannot use database {}", path.display()))
+        let backup = pre_migration_backup(path, &conn)
+            .with_context(|| format!("cannot update the library {}", path.display()))?;
+        let books_before = backup.as_ref().map(|_| count_books(&conn));
+        let store = Self::init(conn).with_context(|| {
+            format!(
+                "cannot use database {}{}",
+                path.display(),
+                backup.as_ref().map_or(String::new(), |b| format!(
+                    " (the copy from before the update is {})",
+                    b.display()
+                ))
+            )
+        })?;
+        if let (Some(b), Some(before)) = (&backup, books_before) {
+            verify_migration(&store, before, b)?;
+        }
+        Ok(store)
     }
 
     pub fn open_in_memory() -> Result<SqliteStore> {
@@ -1187,6 +1295,15 @@ impl Store for SqliteStore {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_copy_that_cannot_be_written_is_an_error_that_says_nothing_changed() {
+        let c = super::Connection::open_in_memory().unwrap();
+        let bad = std::path::Path::new("/nonexistent-folder-for-the-test/lib.db.pre-v1-x");
+        let e = super::copy_database(&c, bad).unwrap_err();
+        assert!(format!("{e:#}").contains("nothing was changed"), "{e:#}");
+        assert!(!bad.exists());
+    }
+
     use super::*;
 
     #[test]
@@ -1212,11 +1329,12 @@ mod tests {
         let a = tmp_sibling(Path::new("/x/y/z.db"));
         let b = tmp_sibling(Path::new("/x/y/z.db"));
         assert_eq!(a.parent(), Some(Path::new("/x/y")));
-        assert!(a
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .starts_with("z.db.tmp-"));
+        assert!(
+            a.file_name()
+                .unwrap()
+                .to_string_lossy()
+                .starts_with("z.db.tmp-")
+        );
         assert_ne!(a, b);
     }
 

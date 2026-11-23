@@ -41,7 +41,11 @@ pub const UNKNOWN_DEVICE: &str = "Unknown device (KOReader)";
 pub struct Device {
     /// Stable id the device sent, else its name.
     pub id: String,
+    /// What the device calls itself (KOReader's `Device.model` or the name typed in the plugin),
+    /// as it arrived. Shown through [`Device::display_name`].
     pub name: String,
+    /// The name the user gave this device in Bookx. Empty: none. A later request never changes it.
+    pub alias: String,
     pub user: String,
     /// `KOReader 2026.07.2`, empty when the client did not say.
     pub client: String,
@@ -360,6 +364,29 @@ impl ActivityLog {
         lock(&self.state).generation
     }
 
+    /// Gives a device a name of the user's own (`""` takes it back). `false` when no device has
+    /// that id. The name is cleaned like every name that arrives and survives later requests.
+    pub fn rename(&self, id: &str, name: &str) -> bool {
+        let mut st = lock(&self.state);
+        let Some(d) = st.devices.iter_mut().find(|d| d.id == id) else {
+            return false;
+        };
+        d.alias = clean(name);
+        self.commit(&mut st);
+        true
+    }
+
+    /// The name to show for the device of an event: the user's name for it, else the friendly
+    /// name of what the event says.
+    pub fn name_for(&self, device_id: &str, reported: &str) -> String {
+        let alias = lock(&self.state)
+            .devices
+            .iter()
+            .find(|d| d.id == device_id && !d.alias.is_empty())
+            .map(|d| d.alias.clone());
+        alias.unwrap_or_else(|| crate::device_names::friendly_name(reported))
+    }
+
     /// Forgets devices and events (the *Clear* button).
     pub fn clear(&self) {
         let mut st = lock(&self.state);
@@ -379,6 +406,15 @@ pub enum Presence {
 }
 
 impl Device {
+    /// The name for people: the one the user gave, else the marketing name of the model it
+    /// reported (`Onyx Scubapilot-IDP` is `Boox Leaf 2`), else what it reported, tidied.
+    pub fn display_name(&self) -> String {
+        if !self.alias.is_empty() {
+            return self.alias.clone();
+        }
+        crate::device_names::friendly_name(&self.name)
+    }
+
     pub fn presence(&self, now: i64) -> Presence {
         let ago = (now - self.last_seen).max(0);
         if ago <= CONNECTED_SECS {
@@ -392,8 +428,8 @@ impl Device {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::{AtomicI64, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicI64, Ordering};
 
     fn clocked() -> (ActivityLog, Arc<AtomicI64>) {
         let t = Arc::new(AtomicI64::new(1_700_000_000));
@@ -558,6 +594,49 @@ mod tests {
             format!("dev {}", MAX_DEVICES + 2),
             "last seen first"
         );
+    }
+
+    #[test]
+    fn a_boox_is_shown_by_its_marketing_name_and_keeps_what_it_reported() {
+        let (log, _) = clocked();
+        log.touch(&who("Onyx Scubapilot-IDP", "boox1"), "u", true);
+        let d = &log.devices()[0];
+        assert_eq!(d.name, "Onyx Scubapilot-IDP", "what arrived is kept");
+        assert_eq!(d.display_name(), "Boox Leaf 2");
+        assert_eq!(log.name_for("boox1", "Onyx Scubapilot-IDP"), "Boox Leaf 2");
+    }
+
+    #[test]
+    fn a_name_the_user_gave_wins_and_survives_the_next_request() {
+        let (log, _) = clocked();
+        log.touch(&who("Onyx Scubapilot-IDP", "boox1"), "u", true);
+        assert!(!log.rename("nobody", "x"));
+        assert!(log.rename("boox1", "  Anna\u{7}'s Leaf  "));
+        assert_eq!(log.devices()[0].display_name(), "Anna's Leaf");
+        assert_eq!(log.name_for("boox1", "Onyx Scubapilot-IDP"), "Anna's Leaf");
+        log.touch(&who("Onyx Scubapilot-IDP", "boox1"), "u", true);
+        assert_eq!(log.devices()[0].display_name(), "Anna's Leaf");
+        assert!(log.rename("boox1", ""));
+        assert_eq!(
+            log.devices()[0].display_name(),
+            "Boox Leaf 2",
+            "empty takes it back"
+        );
+    }
+
+    #[test]
+    fn a_name_the_user_gave_is_remembered_across_a_restart() {
+        let dir = std::env::temp_dir().join(format!("bookx-activity-alias-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let path = dir.join("sync-activity.json");
+        {
+            let log = ActivityLog::open(&path).unwrap();
+            log.touch(&who("leaf2", "b"), "u", true);
+            assert!(log.rename("b", "Bedroom"));
+        }
+        let again = ActivityLog::open(&path).unwrap();
+        assert_eq!(again.devices()[0].display_name(), "Bedroom");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
