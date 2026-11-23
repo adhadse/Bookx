@@ -12240,3 +12240,39 @@ msgstr "Was der Bericht enthält"
 
 msgid "Something not working? See what a report contains before you share it."
 msgstr "Etwas funktioniert nicht? Sehen Sie, was ein Bericht enthält, bevor Sie ihn teilen."
+
+msgid "Standard Ebooks gives its catalogue to Patrons Circle members. Press Sign In, enter the email address of your membership as the user name and leave the password empty."
+msgstr "Standard Ebooks gibt seinen Katalog nur an Mitglieder des Patrons Circle ab. Wählen Sie Anmelden, geben Sie die E-Mail-Adresse Ihrer Mitgliedschaft als Benutzernamen ein und lassen Sie das Passwort leer."
+
+msgid "This catalogue asks for a user name and password. Press Sign In to enter them."
+msgstr "Dieser Katalog verlangt einen Benutzernamen und ein Passwort. Wählen Sie Anmelden, um sie einzugeben."
+
+msgid "The catalogue did not accept the user name or password. Press Sign In to change them."
+msgstr "Der Katalog hat den Benutzernamen oder das Passwort nicht akzeptiert. Wählen Sie Anmelden, um sie zu ändern."
+
+msgid "The catalogue has no page at this address (HTTP 404). Check the address."
+msgstr "Der Katalog hat unter dieser Adresse keine Seite (HTTP 404). Prüfen Sie die Adresse."
+
+msgid "The catalogue did not answer in time. Check the connection and try again."
+msgstr "Der Katalog hat nicht rechtzeitig geantwortet. Prüfen Sie die Verbindung und versuchen Sie es erneut."
+
+msgid "The catalogue's server is busy or down for maintenance (HTTP {}). That is on its side: try again later."
+msgstr "Der Server des Katalogs ist überlastet oder wird gewartet (HTTP {}). Das liegt an der Gegenseite: Versuchen Sie es später erneut."
+
+msgid "The catalogue answered with an error (HTTP {})."
+msgstr "Der Katalog hat mit einem Fehler geantwortet (HTTP {})."
+
+msgid "Could not reach the catalogue: {}"
+msgstr "Der Katalog ist nicht erreichbar: {}"
+
+msgid "Sign In"
+msgstr "Anmelden"
+
+msgid "Use the email address of your Patrons Circle membership as the user name. The password stays empty."
+msgstr "Verwenden Sie die E-Mail-Adresse Ihrer Patrons-Circle-Mitgliedschaft als Benutzernamen. Das Passwort bleibt leer."
+
+msgid "The user name and password of your account on this catalogue."
+msgstr "Benutzername und Passwort Ihres Kontos bei diesem Katalog."
+
+msgid "Sign In to {}"
+msgstr "Bei {} anmelden"

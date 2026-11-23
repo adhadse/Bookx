@@ -12240,3 +12240,39 @@ msgstr "रिपोर्ट में क्या है"
 
 msgid "Something not working? See what a report contains before you share it."
 msgstr "कुछ काम नहीं कर रहा? साझा करने से पहले देखें कि रिपोर्ट में क्या है।"
+
+msgid "Standard Ebooks gives its catalogue to Patrons Circle members. Press Sign In, enter the email address of your membership as the user name and leave the password empty."
+msgstr "Standard Ebooks अपनी सूची केवल Patrons Circle के सदस्यों को देता है। साइन इन दबाएँ, उपयोगकर्ता नाम के रूप में अपनी सदस्यता का ईमेल पता लिखें और पासवर्ड खाली छोड़ें।"
+
+msgid "This catalogue asks for a user name and password. Press Sign In to enter them."
+msgstr "यह सूची उपयोगकर्ता नाम और पासवर्ड माँगती है। उन्हें दर्ज करने के लिए साइन इन दबाएँ।"
+
+msgid "The catalogue did not accept the user name or password. Press Sign In to change them."
+msgstr "सूची ने उपयोगकर्ता नाम या पासवर्ड स्वीकार नहीं किया। उन्हें बदलने के लिए साइन इन दबाएँ।"
+
+msgid "The catalogue has no page at this address (HTTP 404). Check the address."
+msgstr "इस पते पर सूची का कोई पृष्ठ नहीं है (HTTP 404)। पता जाँचें।"
+
+msgid "The catalogue did not answer in time. Check the connection and try again."
+msgstr "सूची ने समय पर उत्तर नहीं दिया। कनेक्शन जाँचें और फिर प्रयास करें।"
+
+msgid "The catalogue's server is busy or down for maintenance (HTTP {}). That is on its side: try again later."
+msgstr "सूची का सर्वर व्यस्त है या रखरखाव में है (HTTP {})। यह उनकी ओर की बात है: बाद में फिर प्रयास करें।"
+
+msgid "The catalogue answered with an error (HTTP {})."
+msgstr "सूची ने त्रुटि के साथ उत्तर दिया (HTTP {})।"
+
+msgid "Could not reach the catalogue: {}"
+msgstr "सूची तक नहीं पहुँचा जा सका: {}"
+
+msgid "Sign In"
+msgstr "साइन इन"
+
+msgid "Use the email address of your Patrons Circle membership as the user name. The password stays empty."
+msgstr "उपयोगकर्ता नाम के रूप में अपनी Patrons Circle सदस्यता का ईमेल पता उपयोग करें। पासवर्ड खाली रहता है।"
+
+msgid "The user name and password of your account on this catalogue."
+msgstr "इस सूची पर आपके खाते का उपयोगकर्ता नाम और पासवर्ड।"
+
+msgid "Sign In to {}"
+msgstr "{} में साइन इन करें"

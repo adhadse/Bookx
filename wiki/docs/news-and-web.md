@@ -35,7 +35,7 @@ system keyring like every other password. The server may be on your home network
 <figure markdown="1">
 ![The Online Catalogues page](assets/library-catalogues-light.png#only-light)
 ![The Online Catalogues page](assets/library-catalogues-dark.png#only-dark)
-<figcaption markdown="1">Online Catalogues: Project Gutenberg and Standard Ebooks are built in; add your own OPDS address with **+**.</figcaption>
+<figcaption markdown="1">Online Catalogues: Project Gutenberg and Standard Ebooks (members only) are built in; add your own OPDS address with **+**.</figcaption>
 </figure>
 
 
@@ -48,7 +48,17 @@ Open a catalogue, follow the folders (*Back* returns), search with the **search 
 <kbd>Ctrl</kbd>+<kbd>F</kbd>), and press *Add* on a book. While a page loads you can press *Cancel*; a page that cannot
 be loaded offers *Try Again*. A password for an `http://` address is sent unencrypted: the dialog warns you. Bookx
 downloads the best format on offer (EPUB, then KEPUB, AZW3, MOBI, FB2, CBZ, PDF) and imports it like any other file.
-Long lists end with *Load more*. Limits: no sign-in pages other than basic authentication, no paid or borrowed books
+Long lists end with *Load more*. A catalogue that wants a sign-in, or that is down, says so in words instead of an
+error number.
+
+!!! note "Standard Ebooks needs a Patrons Circle membership"
+    Standard Ebooks gives its OPDS catalogue only to [Patrons Circle](https://standardebooks.org/donate#patrons-circle)
+    members. Without a membership the page says so. Open Standard Ebooks, press **Sign In**, type the email address of
+    your membership as the user name and leave the password empty. The email address is sent to standardebooks.org only.
+    Project Gutenberg needs no account; when its server is down for maintenance, Bookx says that and *Try Again* works
+    once it is back.
+
+Limits: no sign-in pages other than basic authentication, no paid or borrowed books
 (the DRM-protected ones are refused by the importer), and the built-in catalogues need network access.
 
 ## News subscriptions

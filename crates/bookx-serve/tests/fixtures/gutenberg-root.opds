@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opds="http://opds-spec.org/2010/catalog" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:relevance="http://a9.com/-/opensearch/extensions/relevance/1.0/">
+<id>http://www.gutenberg.org/ebooks.opds/</id>
+<updated>2025-08-05T03:01:36Z</updated>
+<title>Project Gutenberg</title>
+<subtitle>Free eBooks since 1971.</subtitle>
+<author>
+<name>Project Gutenberg</name>
+<uri>https://www.gutenberg.org</uri>
+<email>webmaster@gutenberg.org</email>
+</author>
+<icon>https://www.gutenberg.org/gutenberg/favicon.ico</icon>
+<link rel="search" type="application/opensearchdescription+xml" title="Project Gutenberg Catalog Search" href="https://www.gutenberg.org/catalog/osd-books.xml"/>
+<link rel="self" title="This Page" type="application/atom+xml;profile=opds-catalog" href="/ebooks.opds/"/>
+<link rel="alternate" type="text/html" title="HTML Page" href="/ebooks/"/>
+<link rel="start" title="Start Page" type="application/atom+xml;profile=opds-catalog" href="/ebooks.opds/"/>
+<opensearch:itemsPerPage>25</opensearch:itemsPerPage>
+<opensearch:startIndex>1</opensearch:startIndex>
+<entry>
+<updated>2025-08-05T03:01:36Z</updated>
+<id>https://www.gutenberg.org/ebooks/search.opds/?sort_order=downloads</id>
+<title>Popular</title>
+<content type="text">Our most popular books.</content>
+<link type="application/atom+xml;profile=opds-catalog" rel="subsection" href="/ebooks/search.opds/?sort_order=downloads"/>
+</entry><entry>
+<updated>2025-08-05T03:01:36Z</updated>
+<id>https://www.gutenberg.org/ebooks/search.opds/?sort_order=release_date</id>
+<title>Latest</title>
+<content type="text">Our latest releases.</content>
+<link type="application/atom+xml;profile=opds-catalog" rel="subsection" href="/ebooks/search.opds/?sort_order=release_date"/>
+</entry><entry>
+<updated>2025-08-05T03:01:36Z</updated>
+<id>https://www.gutenberg.org/ebooks/search.opds/?sort_order=random</id>
+<title>Random</title>
+<content type="text">Random books.</content>
+<link type="application/atom+xml;profile=opds-catalog" rel="subsection" href="/ebooks/search.opds/?sort_order=random"/>
+</entry></feed>

@@ -12313,3 +12313,39 @@ msgstr "Qué contiene el informe"
 
 msgid "Something not working? See what a report contains before you share it."
 msgstr "¿Algo no funciona? Vea qué contiene un informe antes de compartirlo."
+
+msgid "Standard Ebooks gives its catalogue to Patrons Circle members. Press Sign In, enter the email address of your membership as the user name and leave the password empty."
+msgstr "Standard Ebooks ofrece su catálogo solo a los miembros del Patrons Circle. Pulse Iniciar sesión, escriba el correo electrónico de su membresía como nombre de usuario y deje la contraseña vacía."
+
+msgid "This catalogue asks for a user name and password. Press Sign In to enter them."
+msgstr "Este catálogo pide un nombre de usuario y una contraseña. Pulse Iniciar sesión para escribirlos."
+
+msgid "The catalogue did not accept the user name or password. Press Sign In to change them."
+msgstr "El catálogo no aceptó el nombre de usuario o la contraseña. Pulse Iniciar sesión para cambiarlos."
+
+msgid "The catalogue has no page at this address (HTTP 404). Check the address."
+msgstr "El catálogo no tiene ninguna página en esta dirección (HTTP 404). Compruebe la dirección."
+
+msgid "The catalogue did not answer in time. Check the connection and try again."
+msgstr "El catálogo no respondió a tiempo. Compruebe la conexión e inténtelo de nuevo."
+
+msgid "The catalogue's server is busy or down for maintenance (HTTP {}). That is on its side: try again later."
+msgstr "El servidor del catálogo está ocupado o en mantenimiento (HTTP {}). Es cosa de su lado: inténtelo más tarde."
+
+msgid "The catalogue answered with an error (HTTP {})."
+msgstr "El catálogo respondió con un error (HTTP {})."
+
+msgid "Could not reach the catalogue: {}"
+msgstr "No se pudo contactar con el catálogo: {}"
+
+msgid "Sign In"
+msgstr "Iniciar sesión"
+
+msgid "Use the email address of your Patrons Circle membership as the user name. The password stays empty."
+msgstr "Use el correo electrónico de su membresía del Patrons Circle como nombre de usuario. La contraseña queda vacía."
+
+msgid "The user name and password of your account on this catalogue."
+msgstr "El nombre de usuario y la contraseña de su cuenta en este catálogo."
+
+msgid "Sign In to {}"
+msgstr "Iniciar sesión en {}"
