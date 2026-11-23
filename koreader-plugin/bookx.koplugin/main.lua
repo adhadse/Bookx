@@ -1,7 +1,7 @@
 -- Bookx Sync: KOReader glue (menu, settings, network). Own code, MIT licence.
 -- The sync rules are in bookxsync.lua and are tested outside KOReader; this file only connects them
 -- to KOReader's widgets. Its KOReader calls were checked by reading the frontend of KOReader v2026.07.2
--- (see docs/kobo-koreader-sync-runbook.md).
+-- (see docs/archive/kobo-koreader-sync-runbook.md).
 --
 -- NOTE on names: KOReader builds a plugin with `Bookx:new{ dialog, view, ui, document }`, and the constructor
 -- table becomes the instance, so `self.document`, `self.ui`, `self.view` and `self.dialog` are DATA. A method
@@ -173,7 +173,7 @@ function Bookx:identity()
         server = self.settings:readSetting("server"),
         user = self.settings:readSetting("user"),
         key = self.settings:readSetting("key"),
-        device = self.settings:readSetting("device_name") or require("device").model or "KOReader",
+        device = Sync.device_label(self.settings:readSetting("device_name"), require("device").model),
         device_id = self.settings:readSetting("device_id"),
         koreader = koreader_version(),
     }

@@ -2,6 +2,8 @@
 
 Public pages: `wiki/docs/install.md`, `translating.md`, `troubleshooting.md`. This file is for caveats and status.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## Flatpak (X7, X16)
 
 * `build-aux/com.adhadse.Bookx.json`: GNOME **50** Platform/SDK (49, 50 and 51 Platforms were installed; 50 has Platform and SDK

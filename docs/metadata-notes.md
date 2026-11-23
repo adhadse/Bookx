@@ -4,6 +4,8 @@ Internal notes for the metadata track (2026-11-12). Public docs: `wiki/docs/libr
 Needs attention), `wiki/docs/converting.md` (check before sending, conversion report). Pain points: PP-G-1/2/3/4/6/31,
 PP-C-4/5/6.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## What was built
 
 | Piece | Code | Tests |

@@ -4,6 +4,20 @@ Internal design and status notes (2026-11-20). User text: `wiki/docs/koreader-sy
 `docs/bookx-feature-roadmap.md` Part 2: **wireless sync is supported only for KOReader** (any device that runs it).
 Stock Kobo/Kindle/other firmware: USB only.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
+## Contents
+
+- [Why a plugin](#why-a-plugin)
+- [Protocol (`crates/bookx-serve/src/annotation_sync.rs`)](#protocol-cratesbookx-servesrcannotation_syncrs)
+- [Bookx side (`src/annotation_sync.rs`, `src/annotation_sync_ui.rs`)](#bookx-side-srcannotation_syncrs-srcannotation_sync_uirs)
+- [The plugin (`koreader-plugin/bookx.koplugin/`)](#the-plugin-koreader-pluginbookxkoplugin)
+- [Tests](#tests)
+- [Sync activity and why nothing arrived (2026-11-21, plugin 0.3.1)](#sync-activity-and-why-nothing-arrived-2026-11-21-plugin-031)
+- [Colour and style (2026-11-21)](#colour-and-style-2026-11-21)
+- [Live updates (2026-11-21, wave 11)](#live-updates-2026-11-21-wave-11)
+- [Not verified / caveats](#not-verified--caveats)
+
 ## Why a plugin
 
 KOReader's *Progress sync* (KOSync) moves one position per book. It has no standard protocol for highlights, notes or
@@ -219,7 +233,7 @@ untested with a real Kobo. Strings added (no po edits): see the change descripti
 * (history) **Never run inside KOReader, on a Kobo, Kindle or any device.** Since 2026-11-20 the KOReader API use was checked by reading the frontend
   of the owner's KOReader v2026.07.2, and `main.lua` runs under host luajit with the real `luasettings`, `dump`, `gettext`, `logger`,
   `ffi/sha2` and `menusorter` of that version (`koreader-plugin/tests/main_load.lua`; the widgets and `socket.http` are mocks).
-  See `docs/kobo-koreader-sync-runbook.md` and bug 15. Real HTTP from KOReader's `socket.http`, the touch UI and the Wi-Fi path are not verified.
+  See `docs/archive/kobo-koreader-sync-runbook.md` and bug 15. Real HTTP from KOReader's `socket.http`, the touch UI and the Wi-Fi path are not verified.
 * **The device does not paint Bookx's highlights.** The plugin receives them and lists them (*Notes from Bookx for this book*);
   creating KOReader highlights from text would need a text search in KOReader's engine that was not attempted.
 * KOReader deletions on one device are not applied to other KOReader devices by the plugin (Bookx is the hub and applies them to

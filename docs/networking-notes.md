@@ -2,6 +2,8 @@
 
 Internal. The user page is `wiki/docs/reverse-proxy.md`. Keep both in step when a listener changes.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## Listeners today (verified in code, 2026-11-20)
 
 | Listener | Code | Default bind | Auth | Paths |

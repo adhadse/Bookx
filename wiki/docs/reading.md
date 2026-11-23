@@ -358,9 +358,9 @@ as `fn1`, and the text is short. Links to chapters and headings are followed as 
 </figure>
 
 <figure markdown="1" class="clip">
-<video class="only-light" controls muted loop playsinline preload="none" width="960" height="576" poster="../assets/reading-ruler-demo-poster-light.webp" aria-describedby="reading-ruler-demo-text"><source src="assets/reading-ruler-demo-light.webm" type="video/webm">Your browser cannot play this video: <a href="assets/reading-ruler-demo-light.webm">download it</a>.</video>
-<video class="only-dark" controls muted loop playsinline preload="none" width="960" height="576" poster="../assets/reading-ruler-demo-poster-dark.webp" aria-describedby="reading-ruler-demo-text"><source src="assets/reading-ruler-demo-dark.webm" type="video/webm">Your browser cannot play this video: <a href="assets/reading-ruler-demo-dark.webm">download it</a>.</video>
-<figcaption id="reading-ruler-demo-text" markdown="1">Short video (10 seconds, no sound). The page is dimmed except for a bright band that moves down the lines with Alt+Down and back up with Alt+Up.</figcaption>
+<video class="only-light" data-clip muted loop playsinline controls preload="none" width="960" height="576" poster="../assets/reading-ruler-demo-poster-light.webp" aria-describedby="reading-ruler-demo-text"><source src="assets/reading-ruler-demo-light.mp4" type="video/mp4"><source src="assets/reading-ruler-demo-light.webm" type="video/webm">Your browser cannot play this video: <a href="assets/reading-ruler-demo-light.mp4">download it</a>.</video>
+<video class="only-dark" data-clip muted loop playsinline controls preload="none" width="960" height="576" poster="../assets/reading-ruler-demo-poster-dark.webp" aria-describedby="reading-ruler-demo-text"><source src="assets/reading-ruler-demo-dark.mp4" type="video/mp4"><source src="assets/reading-ruler-demo-dark.webm" type="video/webm">Your browser cannot play this video: <a href="assets/reading-ruler-demo-dark.mp4">download it</a>.</video>
+<figcaption id="reading-ruler-demo-text" markdown="1">The page is dimmed except for a bright band that moves down the lines with Alt+Down and back up with Alt+Up, then follows the pointer down and up the page. A short video without sound: it plays by itself unless your system asks for less motion, and its controls pause it.</figcaption>
 </figure>
 
 
@@ -384,9 +384,9 @@ the status line). With an e-ink display the bars stay.
 </figure>
 
 <figure markdown="1" class="clip">
-<video class="only-light" controls muted loop playsinline preload="none" width="960" height="576" poster="../assets/speed-read-demo-poster-light.webp" aria-describedby="speed-read-demo-text"><source src="assets/speed-read-demo-light.webm" type="video/webm">Your browser cannot play this video: <a href="assets/speed-read-demo-light.webm">download it</a>.</video>
-<video class="only-dark" controls muted loop playsinline preload="none" width="960" height="576" poster="../assets/speed-read-demo-poster-dark.webp" aria-describedby="speed-read-demo-text"><source src="assets/speed-read-demo-dark.webm" type="video/webm">Your browser cannot play this video: <a href="assets/speed-read-demo-dark.webm">download it</a>.</video>
-<figcaption id="speed-read-demo-text" markdown="1">Short video (8 seconds, no sound). One word after the other lights up on the page, with a red letter to rest your eye on, while a small card shows the word and the speed.</figcaption>
+<video class="only-light" data-clip muted loop playsinline controls preload="none" width="960" height="576" poster="../assets/speed-read-demo-poster-light.webp" aria-describedby="speed-read-demo-text"><source src="assets/speed-read-demo-light.mp4" type="video/mp4"><source src="assets/speed-read-demo-light.webm" type="video/webm">Your browser cannot play this video: <a href="assets/speed-read-demo-light.mp4">download it</a>.</video>
+<video class="only-dark" data-clip muted loop playsinline controls preload="none" width="960" height="576" poster="../assets/speed-read-demo-poster-dark.webp" aria-describedby="speed-read-demo-text"><source src="assets/speed-read-demo-dark.mp4" type="video/mp4"><source src="assets/speed-read-demo-dark.webm" type="video/webm">Your browser cannot play this video: <a href="assets/speed-read-demo-dark.mp4">download it</a>.</video>
+<figcaption id="speed-read-demo-text" markdown="1">One word after the other lights up on the page, with a red letter to rest your eye on, while a small card shows the word and the speed. A short video without sound: it plays by itself unless your system asks for less motion, and its controls pause it.</figcaption>
 </figure>
 
 

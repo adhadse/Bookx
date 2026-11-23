@@ -10,6 +10,7 @@ repo_url = "https://github.com/adhadse/Bookx"
 repo_name = "adhadse/Bookx"
 edit_uri = "edit/main/wiki/docs/"
 extra_css = ["assets/extra.css"]
+extra_javascript = ["assets/videos.js"]
 
 nav = [
   { "Home" = "index.md" },

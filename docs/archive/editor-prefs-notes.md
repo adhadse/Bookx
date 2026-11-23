@@ -1,3 +1,5 @@
+> Archived 2026-11-23: Finished wave notes. Living document: [remaining.md](../remaining.md).
+
 # Editor preferences, shortcuts, snippets, search leftovers (wave 5, agent `ed-prefs`)
 
 Rows: CE-086, 107, 110, 357, 383, 385, 386, 387, 400-406, 424, 425 (status in `calibre-editor-gap-analysis.md`).

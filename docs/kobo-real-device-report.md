@@ -4,6 +4,8 @@ Date: 2026-11-12. The first time Bookx's Kobo code met a real Kobo. The owner's 
 `/run/media/<user>/KOBOeReader` (vfat, `uid=1000`, `flush`, `errors=remount-ro`). Serial number deliberately not
 recorded here.
 
+Status: finished, pending move to archive/ (still pointed to from enhancements.md or source comments) | Last reviewed: 2026-11-23 | Owner: area agent, reviewed by @adhadse
+
 ## Device
 
 | | |

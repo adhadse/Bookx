@@ -36,6 +36,13 @@ the Settings page of the Devices window ([below](#settings-page)) instead.
 
 ## Syncing progress, highlights and notes
 
+!!! info "Sync never copies or deletes books"
+    Syncing (over the cable here, over Wi-Fi with KOReader) moves reading progress, highlights, notes and bookmarks for books
+    that are already in your library. It **never copies a book** and **never deletes a book** from your library or from the
+    device. To get books from a device into the library, copy the files to your computer and use **Add Books**; to put books
+    on a device, use [Send to device](#send-to-device). The only deletion Bookx ever does on a device is the **Remove from
+    Device** button of the Devices window, and only for the books you selected there and confirmed.
+
 Syncing is **always progressive and keeps all information**:
 
 - Reading progress only ever moves forward. A book finished on one side is finished on both. If the device is behind
@@ -179,7 +186,10 @@ Limits you should know:
 - Whether the Kobo then imports and displays a sent KEPUB (cover, reading-time line) has not been checked on the
   device yet.
 
-### Phones (MTP)
+### Phones and Android e-readers (MTP)
+
+Android e-readers such as **Boox** are not disks: they appear as a phone (MTP). Bookx can send books to them and list what
+is there, but it does not copy books from them into the library; copy the files to your computer and use **Add Books**.
 
 An Android phone mounted through your desktop (GNOME Files, gvfs) appears as a device, under
 `/run/user/<uid>/gvfs/mtp:…`. Limits: free space is often unknown, a locked phone shows nothing, and there is no

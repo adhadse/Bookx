@@ -8,6 +8,22 @@ notes (6), announce (7), after (8), later: Flathub (10). Copy-paste top to botto
 and listed in section 0; the steps below are the ones that need you (a tag, accounts, a decision, a GitHub setting).
 Nothing here has ever run on GitHub: the first tag is also the first run of `release.yml`, so read section 6 first.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse
+
+## Contents
+
+- [0. State when this was written (2026-11-22)](#0-state-when-this-was-written-2026-11-22)
+- [1. Pre-flight gates (on the release machine, clean checkout of `main`)](#1-pre-flight-gates-on-the-release-machine-clean-checkout-of-main)
+- [2. Version, changelog, metainfo (already done; re-check if you change anything)](#2-version-changelog-metainfo-already-done-re-check-if-you-change-anything)
+- [3. Pin the screenshots, commit, tag](#3-pin-the-screenshots-commit-tag)
+- [4. What `release.yml` does for the tag `v0.3.0`](#4-what-releaseyml-does-for-the-tag-v030)
+- [5. Verify the artifacts (what users do; wiki `install.md`, "Verify your download")](#5-verify-the-artifacts-what-users-do-wiki-installmd-verify-your-download)
+- [6. Release notes (GitHub release body)](#6-release-notes-github-release-body)
+- [7. Announce (after section 5 passes)](#7-announce-after-section-5-passes)
+- [8. After the release](#8-after-the-release)
+- [9. Notes the agent could not settle (decide before the tag)](#9-notes-the-agent-could-not-settle-decide-before-the-tag)
+- [10. Later: Flathub (deferred, 2026-11-22)](#10-later-flathub-deferred-2026-11-22)
+
 ## 0. State when this was written (2026-11-22)
 
 - Version `0.3.0` in the workspace (`Cargo.toml` and the 18 crates, `Cargo.lock`), `CHANGELOG.md` has `[0.3.0] - 2026-11-22`
@@ -177,7 +193,7 @@ Full list of changes: [CHANGELOG.md](https://github.com/adhadse/Bookx/blob/v0.3.
 - [ ] Pin third-party GitHub Actions by commit SHA (Dependabot will keep them current); `release.yml` uses tags for
       `softprops/action-gh-release`, `sigstore/cosign-installer`, `actions/attest-build-provenance` and `flatpak/flatpak-github-actions`
 - [ ] Watch issues for the first week; keep `[Unreleased]` in `CHANGELOG.md` filling; next version: bump, tag, repeat from section 1
-- [ ] Hardware checks that are still open (`docs/hardware-test-plan.md`, `docs/remaining-work.md` A): Kobo sync, Kindle, MTP, natural voices inside the Flatpak
+- [ ] Hardware checks that are still open (`docs/hardware-test-plan.md`, `docs/remaining.md` owner-only list): Kobo sync, Kindle, MTP, natural voices inside the Flatpak
 
 ## 9. Notes the agent could not settle (decide before the tag)
 

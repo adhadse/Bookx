@@ -69,5 +69,7 @@ python3 build-aux/check-social-cards.py "$SITE"
 if [ "${WIKI_BROWSER:-1}" != 0 ]; then
     echo "==> Checking the colour-scheme toggle in a browser (WIKI_BROWSER=0 skips; needs firefox)"
     python3 build-aux/wiki-theme-check.py "$SITE" ${WIKI_SHOTS:+--shots "$WIKI_SHOTS"} || exit 1
+    echo "==> Checking that the demo videos stay paused with prefers-reduced-motion: reduce"
+    python3 build-aux/wiki-theme-check.py "$SITE" --reduced-motion || exit 1
 fi
 echo "==> Wiki OK: $SITE"

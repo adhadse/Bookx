@@ -3,6 +3,8 @@
 Monthly record (docs/security.md, section 6): open advisories, their age, dependency advisories acted on, fuzz hours,
 the last threat-model review. Newest first. The owner of advisories is @adhadse.
 
+Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse
+
 ## 2026-11
 
 * **Advisories:** none open, none published. Private vulnerability reporting enabled on 2026-11-21; `security` label created.

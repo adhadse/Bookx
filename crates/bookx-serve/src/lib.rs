@@ -10,6 +10,7 @@ pub mod activity;
 pub mod annotation_sync;
 pub mod cert;
 pub mod devfs;
+pub mod device_names;
 pub mod devices;
 pub mod hostguard;
 pub mod http;

@@ -1,4 +1,4 @@
-# Scenarios of the editor preferences, shortcuts, snippets and the new search mode (docs/calibre-editor-gap-analysis.md
+# Scenarios of the editor preferences, shortcuts, snippets and the new search mode (docs/archive/calibre-editor-gap-analysis.md
 # CE-357, CE-383..387, CE-400..403, CE-406, CE-424). Sourced by ui-tests.sh (uses its `scenario`, `check`, `has`).
 # Dev commands: `editor:prefs-*`, `editor:keys-*`, `editor:snippet-run=`, `editor:snippets-*` (src/ui/editor/prefs_page.rs, snippets.rs).
 

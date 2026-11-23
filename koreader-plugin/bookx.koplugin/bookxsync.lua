@@ -47,15 +47,27 @@ function M.clean_field(s, max)
     return truncate_chars(strip_c1(s, " "), max or 128)
 end
 
+local function trim(s)
+    return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+--- The name this device sends: the one the user typed in the plugin, else KOReader's `Device.model`
+--- (a codename on Android, `Kobo_nova` on a Kobo, `KindlePaperWhite5` on a Kindle...), else "KOReader".
+--- Never rewritten here: Bookx turns known model codes into the name on the box (and shows an
+--- unknown one as reported, so the user can rename it there).
+function M.device_label(custom, model)
+    local c = trim(M.clean_field(custom, 128))
+    if c ~= "" then return c end
+    local m = trim(M.clean_field(model, 128))
+    if m ~= "" then return m end
+    return "KOReader"
+end
+
 -- names go to the server without control characters; KOReader keeps several authors in one string
 -- separated by new lines ("Noah Gift\nAlfredo Deza"), which the server refuses
 function M.clean_name(s)
     s = json.clean_utf8(tostring(s or "")):gsub("[\r\n]+", "; ")
     return M.clean_field(s, 512)
-end
-
-local function trim(s)
-    return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
 --- "2024-05-17 20:15:03" (device local time) -> seconds since the epoch, or nil.

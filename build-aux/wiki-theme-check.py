@@ -22,7 +22,18 @@ import tempfile
 import threading
 import time
 
-PAGES = ["", "library/", "reading/", "read-aloud/", "editing/"]
+PAGES = ["", "library/", "reading/", "read-aloud/", "editing/", "accessibility/"]
+
+# the demo videos (assets/videos.js): the visible twin plays by itself, the hidden one never does
+VIDEOS = """
+const vs = [...document.querySelectorAll('video[data-clip]')];
+const vis = (v) => { const r = v.getBoundingClientRect(); return getComputedStyle(v).display !== 'none' && r.width > 0; };
+const inview = (v) => { const r = v.getBoundingClientRect(); return r.top < innerHeight * 0.65 && r.bottom > innerHeight * 0.35; };
+return vs.map(v => ({cls: v.className, visible: vis(v), inview: inview(v), paused: v.paused, t: v.currentTime, ready: v.readyState,
+                     rm: matchMedia('(prefers-reduced-motion: reduce)').matches, src: v.currentSrc.split('/').pop(), error: v.error ? v.error.code : 0}));
+"""
+SCROLL_VIDEO = "const vs = [...document.querySelectorAll('video[data-clip]')].filter(v => getComputedStyle(v).display !== 'none'); " \
+               "if (vs[arguments[0]]) vs[arguments[0]].scrollIntoView({block: 'center'}); return vs.length;"
 
 VISIBLE = """
 const vis = (img) => { const r = img.getBoundingClientRect(); return getComputedStyle(img).display !== 'none' && r.width > 0; };
@@ -94,10 +105,45 @@ class Marionette:
             f.write(base64.b64decode(r["value"]))
 
 
+def check_videos(m, name, scheme, reduced, errors):
+    """Every visible clip of the page in turn: scroll it into view, wait, see whether it plays (see video_problems)."""
+    n = m.cmd("WebDriver:ExecuteScript", {"script": SCROLL_VIDEO, "args": [0]})["value"]
+    for i in range(n):
+        m.cmd("WebDriver:ExecuteScript", {"script": SCROLL_VIDEO, "args": [i]})
+        time.sleep(2.5)
+        first = m.script(VIDEOS)
+        time.sleep(1.2)
+        second = m.script(VIDEOS)
+        errors.extend(video_problems(name, scheme, first, second, reduced))
+        for v, w in zip(first, second):
+            if v["visible"] and v["inview"]:
+                print(f"{name}: {scheme} palette: video {w['src']} paused={w['paused']} currentTime {v['t']:.2f} -> {w['t']:.2f}")
+    m.script("window.scrollTo(0, 0);")
+
+
+def video_problems(name, scheme, first, second, reduced=False):
+    """The visible twin must play (not paused, currentTime advancing); the hidden one must not; with reduced motion neither."""
+    out = []
+    for a, b in zip(first, second):
+        who = f"{name}: {scheme} video {a['src'] or a['cls']}"
+        if reduced:
+            if not b["paused"] or b["t"] > 0.05:
+                out.append(f"{who} plays although the system asks for reduced motion {b}")
+        elif b["visible"] and b["inview"]:
+            if b["error"]:
+                out.append(f"{who} cannot be played (error {b['error']})")
+            elif b["paused"] or b["t"] <= a["t"]:
+                out.append(f"{who} is not playing by itself {a['t']:.2f} -> {b['t']:.2f}, paused={b['paused']}")
+        elif not b["paused"]:
+            out.append(f"{who} is hidden or scrolled out of view but plays")
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("site")
     ap.add_argument("--shots")
+    ap.add_argument("--reduced-motion", action="store_true", help="run with prefers-reduced-motion: reduce (no video may play)")
     a = ap.parse_args()
     firefox = shutil.which("firefox")
     if not firefox:
@@ -117,7 +163,8 @@ def main():
     prof = tempfile.mkdtemp(prefix="wiki-theme-")
     with open(os.path.join(prof, "user.js"), "w") as f:
         f.write(f'user_pref("marionette.port", {mport});\nuser_pref("browser.shell.checkDefaultBrowser", false);\n'
-                'user_pref("layout.css.prefers-color-scheme.content-override", 1);\n')  # start light
+                'user_pref("layout.css.prefers-color-scheme.content-override", 1);\n'  # start light
+                + ('user_pref("ui.prefersReducedMotion", 1);\n' if a.reduced_motion else ''))
     proc = subprocess.Popen([firefox, "--headless", "--marionette", "--no-remote", "--profile", prof],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     errors = []
@@ -143,6 +190,8 @@ def main():
             st = m.script(VISIBLE)
             if st["lightAll"] == 0:
                 continue
+            check_videos(m, name, "light", a.reduced_motion, errors)
+            m.script("window.scrollTo(0, 0);")
             ok = st["scheme"] == "default" and st["light"] == st["lightAll"] and st["dark"] == 0
             print(f"{name}: light palette: {st['light']}/{st['lightAll']} light pictures visible, {st['dark']} dark")
             if not ok:
@@ -154,6 +203,8 @@ def main():
                 continue
             time.sleep(0.6)
             m.load_lazy_images()
+            check_videos(m, name, "dark", a.reduced_motion, errors)
+            m.script("window.scrollTo(0, 0);")
             st = m.script(VISIBLE)
             ok = st["scheme"] == "slate" and st["dark"] == st["darkAll"] and st["light"] == 0
             print(f"{name}: after the toggle ({st['scheme']}): {st['dark']}/{st['darkAll']} dark visible, {st['light']} light")

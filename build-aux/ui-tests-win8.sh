@@ -1,4 +1,4 @@
-# Scenarios of wave 8 (secondary windows and dialogs; docs/human_interface_backlog.md WIN-L2/L3/L4/L5/L12, X9, XC-1).
+# Scenarios of wave 8 (secondary windows and dialogs; docs/archive/human_interface_backlog.md WIN-L2/L3/L4/L5/L12, X9, XC-1).
 # Sourced by ui-tests.sh (add `. "$HERE/ui-tests-win8.sh"` next to the ui-tests-sync.sh line). Dev commands:
 # `dialog:ctrlw` (runs the Ctrl+W action of the visible dialog), `stats:state`, `library:saved=undo-delete=Name|query|index`,
 # `library:opds=add-dialog|add-fill=NAME|ADDRESS|USER|PASSWORD|add-state`, `library:citations=state`,
@@ -37,7 +37,7 @@ scenario win8_vocab_placeholders 'vocab:own=Zed|the last letter,vocab:show-words
     has "^vocab_list: rows=0 .* placeholder=\"No Results\""; check "a search with no match says No Results, not the empty-vocabulary text" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
-# ---- wave 9 (windows): docs/human_interface_backlog.md WIN-L3/L5/L6/L7/L9/L10, WIN-R4/R72, X6, XC-2 ----
+# ---- wave 9 (windows): docs/archive/human_interface_backlog.md WIN-L3/L5/L6/L7/L9/L10, WIN-R4/R72, X6, XC-2 ----
 # Dev commands added: `library:trackers=window=FILE|state|press-import` (`trackers_window: ...`),
 # `library:audiobooks=state` (`audiobooks_window: page= rows= link= sensitive=`), `library:opds=cancel`
 # (and `search_open=`/`retry=` in `opds_view:`), `vocab:dialog=remove`, `import_review:` printed by

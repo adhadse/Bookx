@@ -1,3 +1,5 @@
+> Archived 2026-11-23: All 213 rows are addressed; only access keys (5.6.1) remain and are in remaining.md. Keep it for the decisions of section 7. Living document: [remaining.md](../remaining.md).
+
 # GNOME HIG backlog for the whole app (Guidelines and Patterns), internal
 
 Written 2026-11-20, consolidated from six code and screenshot audits (Sync/Preferences, library and navigation, reader,

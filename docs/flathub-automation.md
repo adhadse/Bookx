@@ -7,6 +7,8 @@ Internal (not for the wiki). After Flathub accepted Bookx, every release needs a
 `flathub/com.adhadse.Bookx`. `.github/workflows/flathub-update.yml` opens it. It is a custom workflow in the sense of the
 Flathub docs (<https://docs.flathub.org/docs/for-app-authors/updates>), allowed as long as it is not auto-merged.
 
+Status: living, deferred channel (GitHub Releases only for now) | Last reviewed: 2026-11-23 | Owner: @adhadse
+
 Rules this setup keeps (Flathub policy, read 2026-11-22):
 
 - **Deterministic, no AI.** `build-aux/flathub-update.py` edits two lines of text and runs the official
