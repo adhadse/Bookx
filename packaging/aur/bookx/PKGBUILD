@@ -1,8 +1,8 @@
 # Maintainer: Anurag Dhadse <hello@adhadse.com>
 # Builds Bookx from the release tag. The prebuilt files are in bookx-bin. See packaging/aur/README.md.
-_pkgver=0.4.0-beta.1
+_pkgver=0.5.0-beta.1
 pkgname=bookx
-pkgver=0.4.0beta.1
+pkgver=0.5.0beta.1
 pkgrel=1
 pkgdesc='GNOME-native e-book library, reader and EPUB editor written in Rust (GTK 4, libadwaita)'
 arch=('x86_64')

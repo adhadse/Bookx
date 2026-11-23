@@ -1,6 +1,6 @@
 pkgbase = bookx
 	pkgdesc = GNOME-native e-book library, reader and EPUB editor written in Rust (GTK 4, libadwaita)
-	pkgver = 0.4.0beta.1
+	pkgver = 0.5.0beta.1
 	pkgrel = 1
 	url = https://bookx.adhadse.com
 	arch = x86_64
@@ -27,7 +27,7 @@ pkgbase = bookx
 	conflicts = bookx-git
 	options = !lto
 	options = !debug
-	source = bookx-0.4.0-beta.1.tar.gz::https://github.com/adhadse/Bookx/archive/refs/tags/v0.4.0-beta.1.tar.gz
+	source = bookx-0.5.0-beta.1.tar.gz::https://github.com/adhadse/Bookx/archive/refs/tags/v0.5.0-beta.1.tar.gz
 	sha256sums = SKIP
 
 pkgname = bookx
