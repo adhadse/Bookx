@@ -75,7 +75,9 @@ impl Notices {
         for (n, kind) in [(&self.beta, "beta"), (&self.crash, "crash")] {
             if n.wanted.get() && root && !n.revealer.reveals_child() {
                 // the banner changes the page height (a relayout) and takes keyboard focus
-                crate::trace::event(crate::trace::Area::Ui, "notice_shown").word("kind", kind).ok();
+                crate::trace::event(crate::trace::Area::Ui, "notice_shown")
+                    .word("kind", kind)
+                    .ok();
             }
         }
         self.beta

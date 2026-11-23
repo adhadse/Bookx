@@ -422,7 +422,10 @@ pub fn account_action(
     } else {
         tr("Logging in")
     });
-    let mut t = crate::trace::op(crate::trace::Area::Sync, if register { "register" } else { "login" });
+    let mut t = crate::trace::op(
+        crate::trace::Area::Sync,
+        if register { "register" } else { "login" },
+    );
     let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
         let r = if register {

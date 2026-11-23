@@ -182,7 +182,10 @@ impl SimpleComponent for App {
         let opened = crate::library_health::open(&cfg.library_dir);
         match &opened {
             Ok((l, _, migrated)) => {
-                open_t.count_class("books", l.books.len() as u64).flag("migrated", migrated.is_some()).ok();
+                open_t
+                    .count_class("books", l.books.len() as u64)
+                    .flag("migrated", migrated.is_some())
+                    .ok();
             }
             Err(e) => open_t.fail(&format!("{e:#}")),
         }
@@ -229,6 +232,31 @@ impl SimpleComponent for App {
         });
         shared.start_indexing();
         crate::ui::stall_watch::install();
+        crate::trace::set_active(crate::trace::Area::Library);
+        crate::trace::register(
+            crate::trace::Area::Secrets,
+            "vault",
+            Box::new(|| {
+                use crate::diag_facts::Fact;
+                vec![(
+                    "Where passwords are kept".to_string(),
+                    Fact::choice(
+                        match crate::secrets::vault().mode() {
+                            bookx_secrets::Mode::Keyring => "system keyring",
+                            bookx_secrets::Mode::Vault => "encrypted store",
+                            bookx_secrets::Mode::Locked => "encrypted store (locked)",
+                            _ => "not saved",
+                        },
+                        &[
+                            "system keyring",
+                            "encrypted store",
+                            "encrypted store (locked)",
+                            "not saved",
+                        ],
+                    ),
+                )]
+            }),
+        );
         crate::applog::set_scrub(crate::ui::report_dialog::scrub_rules(&shared));
         tracing::info!(
             target: "bookx_crumb",
@@ -275,11 +303,10 @@ impl SimpleComponent for App {
                 relm4::gtk::glib::ControlFlow::Continue
             });
             let s2 = shared.clone();
-            relm4::main_adw_application()
-                .connect_shutdown(move |_| {
-                    crate::ui::health::on_exit(&s2);
-                    crate::applog::persist_trace_tail();
-                });
+            relm4::main_adw_application().connect_shutdown(move |_| {
+                crate::ui::health::on_exit(&s2);
+                crate::applog::persist_trace_tail();
+            });
         }
         if let Some(r) = repaired {
             tracing::info!(

@@ -105,8 +105,13 @@ fn unlock_dialog(
             let unlocked = crate::secrets::vault().unlock_vault(&pass);
             match &unlocked {
                 Ok(()) => crate::trace::event(crate::trace::Area::Secrets, "unlock").ok(),
-                Err(OpenError::WrongOrDamaged) => crate::trace::event(crate::trace::Area::Secrets, "unlock").fail_class(crate::trace::ErrorClass::Unauthorized),
-                Err(e) => crate::trace::event(crate::trace::Area::Secrets, "unlock").fail(&e.to_string()),
+                Err(OpenError::WrongOrDamaged) => {
+                    crate::trace::event(crate::trace::Area::Secrets, "unlock")
+                        .fail_class(crate::trace::ErrorClass::Unauthorized)
+                }
+                Err(e) => {
+                    crate::trace::event(crate::trace::Area::Secrets, "unlock").fail(&e.to_string())
+                }
             }
             match unlocked {
                 Ok(()) => {

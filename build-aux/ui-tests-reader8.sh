@@ -28,7 +28,7 @@ scenario reader_new_keys 'keys:dump=reader.bookmark,keys:dump=reader.goto,quit' 
 
 scenario reader_menu_structure 'read:1,wait:2500,reader:menu-dump,reader:ruler-state,reader:ruler=toggle,wait:300,reader:ruler-state,reader:menu-popup,wait:600,a11y-audit:,reader:menu-popdown,quit' '
     M=$(grep "^reader_menu:" <<<"$OUT" | head -1)
-    grep -q "entries=12 sections=3 submenus=0" <<<"$M"; check "the Main Menu has 12 entries in three sections and no submenu ($M)" $?
+    grep -q "entries=13 sections=3 submenus=0" <<<"$M"; check "the Main Menu has 13 entries in three sections and no submenu ($M)" $?
     grep -q "Help \\[app.help\\]" <<<"$M" && grep -q "Preferences \\[app.preferences\\]" <<<"$M" && grep -q "Keyboard Shortcuts \\[app.shortcuts\\]" <<<"$M" && grep -q "About Bookx \\[app.about\\]" <<<"$M"; check "it has Preferences, Keyboard Shortcuts, Help and About" $?
     ! grep -q "Layout" <<<"$M"; check "the Layout sub-page is gone" $?
     grep -q "Reading Ruler \\[reader.ruler\\]" <<<"$M" && grep -q "Go to \\[reader.goto\\]" <<<"$M" && grep -q "Footer Statistics \\[reader.footer\\]" <<<"$M"; check "Go to, Footer Statistics and the Reading Ruler are in it" $?
@@ -146,22 +146,22 @@ scenario reader_narrow_600x600 'read:1,wait:3000,app:win-size=900x600,wait:1200,
     [ -n "$W" ] && [ "$MIN" -le "$W" ]; check "the header fits the ${W} px window (it needs ${MIN} px: no control is clipped)" $?
     sed -n 2p <<<"$H" | sed -E "s/.* width=([0-9]+) title=([0-9]+) .*/\2/" | awk "{exit !(\$1 >= 100)}"; rc=$?; check "and the title keeps at least 100 px ($(sed -n 2p <<<"$H" | sed -E "s/.* title=([0-9]+) .*/\1/") px)" $rc
     M=$(grep "^reader_menu:" <<<"$OUT")
-    sed -n 1p <<<"$M" | grep -q "entries=12 "; check "the wide menu has 12 entries" $?
-    sed -n 2p <<<"$M" | grep -q "entries=15 .*narrow=true | Fullscreen \\[reader.fullscreen\\] | Read Aloud \\[reader.read-aloud\\] | Text Appearance \\[reader.text-appearance\\]"; check "the narrow menu starts with Fullscreen, Read Aloud and Text Appearance" $?
+    sed -n 1p <<<"$M" | grep -q "entries=13 "; check "the wide menu has 13 entries" $?
+    sed -n 2p <<<"$M" | grep -q "entries=16 .*narrow=true | Fullscreen \\[reader.fullscreen\\] | Read Aloud \\[reader.read-aloud\\] | Text Appearance \\[reader.text-appearance\\]"; check "the narrow menu starts with Fullscreen, Read Aloud and Text Appearance" $?
     has "^a11y: controls=[0-9]+ problems=0"; check "every control has an accessible name at the narrow width" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
 # PDF and comic readers: the same Main Menu builder, the same narrow form at 600 px (Fullscreen moves into the menu).
 scenario pdf_menu_narrow "library:import=$PDFS/story,wait:3500,read:3,wait:2500,reader:menu-dump,app:win-size=600x600,wait:1500,reader:header-dump,reader:menu-dump,quit" '
     M=$(grep "^reader_menu:" <<<"$OUT")
-    sed -n 1p <<<"$M" | grep -q "entries=7 .*Go to Page \\[reader.goto\\] | Reflow as Text \\[reader.reflow\\] | Properties \\[reader.properties\\].*Help \\[app.help\\]"; rc=$?; check "the PDF reader has a Main Menu with Go to Page, Reflow, Properties and the app group ($(sed -n 1p <<<"$M" | cut -c1-60))" $rc
+    sed -n 1p <<<"$M" | grep -q "entries=8 .*Go to Page \\[reader.goto\\] | Reflow as Text \\[reader.reflow\\] | Properties \\[reader.properties\\].*Help \\[app.help\\]"; rc=$?; check "the PDF reader has a Main Menu with Go to Page, Reflow, Properties and the app group ($(sed -n 1p <<<"$M" | cut -c1-60))" $rc
     sed -n 2p <<<"$M" | grep -q "narrow=true | Fullscreen \\[reader.fullscreen\\]"; check "at 600 px Fullscreen is the first entry" $?
     grep "^reader_header:" <<<"$OUT" | grep -q "fullscreen=false"; check "and the header lost its button" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
 scenario comic_menu_and_look "library:import=$COMICS/story,wait:3500,read:3,until:comic:15000,reader:menu-dump,reader:view-dump,reader:comic-fit=width,reader:comic-rtl=on,wait:900,reader:comic-state,reader:view-dump,reader:comic-reset,wait:600,reader:view-dump,reader:comic-failed-text,app:win-size=600x600,wait:1500,reader:header-dump,quit" '
     M=$(grep "^reader_menu:" <<<"$OUT")
-    sed -n 1p <<<"$M" | grep -q "entries=6 .*Go to Page \\[reader.goto\\] | Properties \\[reader.properties\\] | Preferences \\[app.preferences\\] | Keyboard Shortcuts \\[app.shortcuts\\] | Help \\[app.help\\] | About Bookx \\[app.about\\]"; check "the comic reader has a Main Menu (Go to Page, Properties, then the app group, Help included)" $?
+    sed -n 1p <<<"$M" | grep -q "entries=7 .*Go to Page \\[reader.goto\\] | Properties \\[reader.properties\\] | Preferences \\[app.preferences\\] | Keyboard Shortcuts \\[app.shortcuts\\] | Help \\[app.help\\] | Report a Problem \\[app.report-problem-from\\] | About Bookx \\[app.about\\]"; check "the comic reader has a Main Menu (Go to Page, Properties, then the app group, Help included)" $?
     V=$(grep "^comic_view:" <<<"$OUT")
     sed -n 1p <<<"$V" | grep -q "reset_visible=false"; check "Use the Defaults for This Book is hidden while the book follows the defaults" $?
     sed -n 2p <<<"$V" | grep -q "reset_visible=true"; check "and shows once the book differs" $?

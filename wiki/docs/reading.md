@@ -43,10 +43,10 @@ them back. Your position is remembered per book.
 </figure>
 
 
-The **Main Menu** (the hamburger button at the far right of the header bar, or ++f10++) has twelve entries in three groups and no submenus. *This
+The **Main Menu** (the hamburger button at the far right of the header bar, or ++f10++) has thirteen entries in three groups and no submenus. *This
 book*: *Go to*, *Speed Reading*, *Book Map*, *Terms in This Book*, *Footer Statistics* and *Reading Ruler*, which has a
 check mark while the ruler is on. *File*: *Open Book* and *Reload*. Then *Preferences*, *Keyboard Shortcuts*, *Help*
-(the online manual, ++f1++) and *About Bookx*. The keys are written next to the entries. (*Properties* of the book is a
+(the online manual, ++f1++), *Report a Problem* (the report starts with what the reader did last) and *About Bookx*. The keys are written next to the entries. (*Properties* of the book is a
 button in the sidebar.) Everything about how the text looks, the themes and the size included, is in the **Text
 Appearance** button a little to its left in the header bar (see [Text appearance](#text-appearance)).
 

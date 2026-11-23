@@ -59,8 +59,8 @@ scenario editor_header_menus 'edit:1,wait:3000,editor:header-info,editor:tools-m
     sed -n 1p <<<"$T" | grep -q "labels=Check Book|Fix Problems Automatically|Fix & Clean|Styles|Media and Fonts|Structure|Accessibility|Links|Check Spelling|Reports|Checkpoints"; check "Tools lists Check Book, Fix Problems, the submenus, Spelling, Reports and Checkpoints" $?
     sed -n 1p <<<"$T" | grep -q " dup=-$"; check "no two Tools entries share a label" $?
     ! sed -n 1p <<<"$T" | grep -q "(plugin)"; check "plugin entries carry no (plugin) suffix" $?
-    sed -n 1p <<<"$B" | sed -E "s/.* top=([0-9]+) .*/\1/" | { read n; [ "$n" -le 12 ]; }; check "the main menu has at most 12 entries" $?
-    sed -n 1p <<<"$B" | grep -q "Preferences|Keyboard Shortcuts|Help|About Bookx dup="; check "the main menu ends with Preferences, Keyboard Shortcuts, Help and About Bookx" $?
+    sed -n 1p <<<"$B" | sed -E "s/.* top=([0-9]+) .*/\1/" | { read n; [ "$n" -le 13 ]; }; check "the main menu has at most 13 entries" $?
+    sed -n 1p <<<"$B" | grep -q "Preferences|Keyboard Shortcuts|Help|Report a Problem|About Bookx dup="; check "the main menu ends with Preferences, Keyboard Shortcuts, Help, Report a Problem and About Bookx" $?
     ! sed -n 1p <<<"$B" | grep -q "Close Other Tabs"; check "the tab commands stay in the tab menu" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 

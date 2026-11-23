@@ -54,11 +54,43 @@ pub const PROXY_HOST: &str = "sent-proxy.sentinel.example";
 /// Everything that must never appear in a report in the default mode.
 pub fn forbidden() -> Vec<&'static str> {
     vec![
-        USER, REALNAME, HOSTNAME, IPV4_PUBLIC, IPV4_LAN, IPV6, MAC, EMAIL, "sentinel-mail", SERVER_HOST,
-        "sentinel.example", ACCOUNT, PASSWORD, TOKEN, SHARE_PW, READWISE, LIBRARY_DIR, TITLE_ONE, TITLE_TWO,
-        "Title One", "Title Two", AUTHOR_ONE, AUTHOR_TWO, "Author One", FILE_NAME, DEVICE_SERIAL, DEVICE_NAME,
-        KOBO_ACCOUNT, SEARCH_QUERY, BACKUP_PLACE, BACKUP_PATH, BACKUP_USER, PLUGIN_EMAIL, SSID, CLIPBOARD,
-        PROXY_HOST, "SENT-",
+        USER,
+        REALNAME,
+        HOSTNAME,
+        IPV4_PUBLIC,
+        IPV4_LAN,
+        IPV6,
+        MAC,
+        EMAIL,
+        "sentinel-mail",
+        SERVER_HOST,
+        "sentinel.example",
+        ACCOUNT,
+        PASSWORD,
+        TOKEN,
+        SHARE_PW,
+        READWISE,
+        LIBRARY_DIR,
+        TITLE_ONE,
+        TITLE_TWO,
+        "Title One",
+        "Title Two",
+        AUTHOR_ONE,
+        AUTHOR_TWO,
+        "Author One",
+        FILE_NAME,
+        DEVICE_SERIAL,
+        DEVICE_NAME,
+        KOBO_ACCOUNT,
+        SEARCH_QUERY,
+        BACKUP_PLACE,
+        BACKUP_PATH,
+        BACKUP_USER,
+        PLUGIN_EMAIL,
+        SSID,
+        CLIPBOARD,
+        PROXY_HOST,
+        "SENT-",
     ]
 }
 
@@ -73,7 +105,6 @@ pub struct Fixture {
     pub cfg: Config,
     pub lib: crate::core::library::Library,
     pub id_one: u64,
-    pub id_two: u64,
 }
 
 impl Drop for Fixture {
@@ -86,15 +117,24 @@ pub fn fixture() -> Fixture {
     let dir = tmp("world");
     let mut lib = crate::core::library::Library::in_memory(&dir.join(LIBRARY_DIR)).unwrap();
     let mut ids = Vec::new();
-    for (t, a, f) in [(TITLE_ONE, AUTHOR_ONE, FILE_NAME), (TITLE_TWO, AUTHOR_TWO, "SENT_Other_File")] {
+    for (t, a, f) in [
+        (TITLE_ONE, AUTHOR_ONE, FILE_NAME),
+        (TITLE_TWO, AUTHOR_TWO, "SENT_Other_File"),
+    ] {
         let p = dir.join(format!("{f}.md"));
-        std::fs::write(&p, format!("---\ntitle: \"{t}\"\nauthor: \"{a}\"\n---\n# A\n\nHello.\n")).unwrap();
+        std::fs::write(
+            &p,
+            format!("---\ntitle: \"{t}\"\nauthor: \"{a}\"\n---\n# A\n\nHello.\n"),
+        )
+        .unwrap();
         lib.add_path(&p, true).unwrap();
         ids.push(lib.books.last().unwrap().id);
     }
     let mut cfg = Config::default();
     cfg.kosync.enabled = true;
-    cfg.kosync.server = format!("http://{ACCOUNT}:{PASSWORD}@{SERVER_HOST}:30260/api/koreader/SENTsegment?token={TOKEN}");
+    cfg.kosync.server = format!(
+        "http://{ACCOUNT}:{PASSWORD}@{SERVER_HOST}:30260/api/koreader/SENTsegment?token={TOKEN}"
+    );
     cfg.kosync.user = ACCOUNT.into();
     cfg.kosync.password = PASSWORD.into();
     cfg.kosync.device_name = DEVICE_NAME.into();
@@ -107,26 +147,45 @@ pub fn fixture() -> Fixture {
         user: ACCOUNT.into(),
         password: PASSWORD.into(),
     });
-    cfg.health.backup.destinations.push(bookx_backup::Destination {
-        id: "b1".into(),
-        name: BACKUP_PLACE.into(),
-        kind: bookx_backup::DestKind::Webdav,
-        location: format!("https://{SERVER_HOST}/dav/{BACKUP_USER}/backups"),
-        user: BACKUP_USER.into(),
-        password: PASSWORD.into(),
-        ..Default::default()
-    });
-    cfg.health.backup.destinations.push(bookx_backup::Destination {
-        id: "b2".into(),
-        name: BACKUP_PLACE.into(),
-        kind: bookx_backup::DestKind::Folder,
-        location: format!("/mnt/{BACKUP_PATH}/backups"),
-        ..Default::default()
-    });
-    Fixture { dir, cfg, lib, id_one: ids[0], id_two: ids[1] }
+    cfg.health
+        .backup
+        .destinations
+        .push(bookx_backup::Destination {
+            id: "b1".into(),
+            name: BACKUP_PLACE.into(),
+            kind: bookx_backup::DestKind::Webdav,
+            location: format!("https://{SERVER_HOST}/dav/{BACKUP_USER}/backups"),
+            user: BACKUP_USER.into(),
+            password: PASSWORD.into(),
+            ..Default::default()
+        });
+    cfg.health
+        .backup
+        .destinations
+        .push(bookx_backup::Destination {
+            id: "b2".into(),
+            name: BACKUP_PLACE.into(),
+            kind: bookx_backup::DestKind::Folder,
+            location: format!("/mnt/{BACKUP_PATH}/backups"),
+            ..Default::default()
+        });
+    Fixture {
+        dir,
+        cfg,
+        lib,
+        id_one: ids[0],
+    }
 }
 
-pub fn entry(area: Area, name: &str, ok: bool, class: Option<ErrorClass>, http: Option<u16>, fields: &[(&str, &str)], msg: Option<&str>) -> Entry {
+pub fn entry(
+    area: Area,
+    name: &str,
+    ok: bool,
+    class: Option<ErrorClass>,
+    http: Option<u16>,
+    fields: &[(&str, &str)],
+    msg: Option<&str>,
+) -> Entry {
     Entry {
         time: 1_763_900_000,
         area,
@@ -135,7 +194,10 @@ pub fn entry(area: Area, name: &str, ok: bool, class: Option<ErrorClass>, http: 
         class,
         http,
         ms: Some(42),
-        fields: fields.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
+        fields: fields
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect(),
         msg: msg.map(str::to_string),
         repeats: 1,
     }
@@ -147,17 +209,37 @@ pub fn dirty_log() -> Vec<String> {
     let home = format!("/home/{USER}");
     vec![
         format!("2026-11-23T10:00:00Z  INFO bookx_crumb: start Bookx 0.3.0-beta.3 (beta), Flatpak"),
-        format!("2026-11-23T10:00:01Z ERROR bookx: cannot open library {home}/{LIBRARY_DIR}: permission denied"),
-        format!("2026-11-23T10:00:02Z  WARN bookx::import: import failed: {home}/{LIBRARY_DIR}/{FILE_NAME}.epub: not a zip archive"),
-        format!("2026-11-23T10:00:03Z  WARN bookx::kosync: talking to http://{ACCOUNT}:{PASSWORD}@{SERVER_HOST}:30260/api/koreader?token={TOKEN}: connection refused"),
+        format!(
+            "2026-11-23T10:00:01Z ERROR bookx: cannot open library {home}/{LIBRARY_DIR}: permission denied"
+        ),
+        format!(
+            "2026-11-23T10:00:02Z  WARN bookx::import: import failed: {home}/{LIBRARY_DIR}/{FILE_NAME}.epub: not a zip archive"
+        ),
+        format!(
+            "2026-11-23T10:00:03Z  WARN bookx::kosync: talking to http://{ACCOUNT}:{PASSWORD}@{SERVER_HOST}:30260/api/koreader?token={TOKEN}: connection refused"
+        ),
         format!("2026-11-23T10:00:04Z  WARN bookx: no such file: '{TITLE_ONE}.pdf'"),
-        format!("2026-11-23T10:00:05Z  WARN bookx::mail: login for {EMAIL} failed from {IPV4_PUBLIC} and {IPV4_LAN} ({IPV6}) mac {MAC}"),
-        format!("2026-11-23T10:00:06Z ERROR panic: called `Result::unwrap()` on an `Err` value: Os {{ code: 2 }} at {home}/{LIBRARY_DIR}/{TITLE_TWO}.epub:12:5"),
-        format!("2026-11-23T10:00:07Z  WARN bookx::search: search for \"{SEARCH_QUERY}\" in {TITLE_ONE} by {AUTHOR_ONE} gave no result"),
-        format!("2026-11-23T10:00:08Z  WARN bookx::device: copy to /run/media/{USER}/KOBOeReader/{FILE_NAME}.kepub.epub failed (serial {DEVICE_SERIAL}, account {KOBO_ACCOUNT})"),
-        format!("2026-11-23T10:00:09Z  WARN bookx::backup: place {BACKUP_PLACE} at /mnt/{BACKUP_PATH}/backups failed: no space left on device"),
-        format!("2026-11-23T10:00:10Z  WARN bookx::plugin: plugin {PLUGIN_EMAIL} could not be loaded"),
-        format!("2026-11-23T10:00:11Z  WARN bookx: host {HOSTNAME} proxy http://{PROXY_HOST}:3128 clipboard \"{CLIPBOARD}\" {REALNAME}"),
+        format!(
+            "2026-11-23T10:00:05Z  WARN bookx::mail: login for {EMAIL} failed from {IPV4_PUBLIC} and {IPV4_LAN} ({IPV6}) mac {MAC}"
+        ),
+        format!(
+            "2026-11-23T10:00:06Z ERROR panic: called `Result::unwrap()` on an `Err` value: Os {{ code: 2 }} at {home}/{LIBRARY_DIR}/{TITLE_TWO}.epub:12:5"
+        ),
+        format!(
+            "2026-11-23T10:00:07Z  WARN bookx::search: search for \"{SEARCH_QUERY}\" in {TITLE_ONE} by {AUTHOR_ONE} gave no result"
+        ),
+        format!(
+            "2026-11-23T10:00:08Z  WARN bookx::device: copy to /run/media/{USER}/KOBOeReader/{FILE_NAME}.kepub.epub failed (serial {DEVICE_SERIAL}, account {KOBO_ACCOUNT})"
+        ),
+        format!(
+            "2026-11-23T10:00:09Z  WARN bookx::backup: place {BACKUP_PLACE} at /mnt/{BACKUP_PATH}/backups failed: no space left on device"
+        ),
+        format!(
+            "2026-11-23T10:00:10Z  WARN bookx::plugin: plugin {PLUGIN_EMAIL} could not be loaded"
+        ),
+        format!(
+            "2026-11-23T10:00:11Z  WARN bookx: host {HOSTNAME} proxy http://{PROXY_HOST}:3128 clipboard \"{CLIPBOARD}\" {REALNAME}"
+        ),
     ]
 }
 
@@ -172,16 +254,67 @@ pub fn world<'a>(fx: &'a Fixture, entry_area: Option<&str>) -> World<'a> {
             false,
             Some(ErrorClass::Status),
             Some(404),
-            &[("fmt", "pdf"), ("size", "lt10mb"), ("doc", "0123456789abcdef0123456789abcdef"), ("method", "partial-md5"), ("book", &fx.id_one.to_string()), ("local", "0.373"), ("remote", "none")],
-            Some(&format!("the server answered 404 talking to http://{SERVER_HOST}:30260/api/koreader/users/{ACCOUNT}")),
+            &[
+                ("fmt", "pdf"),
+                ("size", "lt10mb"),
+                ("doc", "0123456789abcdef0123456789abcdef"),
+                ("method", "partial-md5"),
+                ("book", &fx.id_one.to_string()),
+                ("local", "0.373"),
+                ("remote", "none"),
+            ],
+            Some(&format!(
+                "the server answered 404 talking to http://{SERVER_HOST}:30260/api/koreader/users/{ACCOUNT}"
+            )),
         ),
-        entry(Area::Import, "add", false, Some(ErrorClass::Corrupt), None, &[("fmt", "epub")], Some(&format!("{home}/{LIBRARY_DIR}/{FILE_NAME}.epub is not a zip archive"))),
-        entry(Area::Devices, "copy", false, Some(ErrorClass::NotMounted), None, &[("device", "Boox_Leaf_2")], Some(&format!("{DEVICE_NAME} is not connected any more ({KOBO_ACCOUNT})"))),
-        entry(Area::Backup, "run", false, Some(ErrorClass::DiskFull), None, &[], Some(&format!("no space left on device writing /mnt/{BACKUP_PATH}/backups/{BACKUP_PLACE}.bookxbackup"))),
-        entry(Area::Search, "query", false, Some(ErrorClass::Other), None, &[], Some(&format!("bad query \"{SEARCH_QUERY}\""))),
+        entry(
+            Area::Import,
+            "add",
+            false,
+            Some(ErrorClass::Corrupt),
+            None,
+            &[("fmt", "epub")],
+            Some(&format!(
+                "{home}/{LIBRARY_DIR}/{FILE_NAME}.epub is not a zip archive"
+            )),
+        ),
+        entry(
+            Area::Devices,
+            "copy",
+            false,
+            Some(ErrorClass::NotMounted),
+            None,
+            &[("device", "Boox_Leaf_2")],
+            Some(&format!(
+                "{DEVICE_NAME} is not connected any more ({KOBO_ACCOUNT})"
+            )),
+        ),
+        entry(
+            Area::Backup,
+            "run",
+            false,
+            Some(ErrorClass::DiskFull),
+            None,
+            &[],
+            Some(&format!(
+                "no space left on device writing /mnt/{BACKUP_PATH}/backups/{BACKUP_PLACE}.bookxbackup"
+            )),
+        ),
+        entry(
+            Area::Search,
+            "query",
+            false,
+            Some(ErrorClass::Other),
+            None,
+            &[],
+            Some(&format!("bad query \"{SEARCH_QUERY}\"")),
+        ),
     ];
     let mut vars = std::collections::BTreeMap::new();
-    vars.insert("https_proxy".to_string(), format!("http://{ACCOUNT}:{PASSWORD}@{PROXY_HOST}:3128"));
+    vars.insert(
+        "https_proxy".to_string(),
+        format!("http://{ACCOUNT}:{PASSWORD}@{PROXY_HOST}:3128"),
+    );
     vars.insert("USER".to_string(), USER.to_string());
     vars.insert("HOSTNAME".to_string(), HOSTNAME.to_string());
     vars.insert("WIFI".to_string(), SSID.to_string());
@@ -217,7 +350,9 @@ pub fn world<'a>(fx: &'a Fixture, entry_area: Option<&str>) -> World<'a> {
             actions: vec![],
             enabled: true,
             loaded: false,
-            error: Some(format!("cannot read {home}/.local/share/plugins/x.wasm for {ACCOUNT}")),
+            error: Some(format!(
+                "cannot read {home}/.local/share/plugins/x.wasm for {ACCOUNT}"
+            )),
         }],
         patches: 1,
         keyring: "system keyring".into(),
@@ -226,11 +361,26 @@ pub fn world<'a>(fx: &'a Fixture, entry_area: Option<&str>) -> World<'a> {
             rejected: vec![(401, 2)],
             events: 3,
             devices: vec![
-                SeenDevice { reported: DEVICE_NAME.into(), client: "KOReader 2026.07.2".into(), plugin: "0.3.1".into(), protocol: 2, requests: 5, last_sync_ago: Some(60), last_seen_ago: 10 },
-                SeenDevice { reported: format!("{REALNAME}'s Kobo"), client: "KOReader".into(), ..Default::default() },
+                SeenDevice {
+                    reported: DEVICE_NAME.into(),
+                    client: "KOReader 2026.07.2".into(),
+                    plugin: "0.3.1".into(),
+                    protocol: 2,
+                    requests: 5,
+                    last_sync_ago: Some(60),
+                    last_seen_ago: 10,
+                },
+                SeenDevice {
+                    reported: format!("{REALNAME}'s Kobo"),
+                    client: "KOReader".into(),
+                    ..Default::default()
+                },
             ],
         },
-        jobs: vec![report::JobLine { kind: "Backup".into(), status: format!("failed: cannot write /mnt/{BACKUP_PATH}/x for {ACCOUNT}") }],
+        jobs: vec![report::JobLine {
+            kind: "Backup".into(),
+            status: format!("failed: cannot write /mnt/{BACKUP_PATH}/x for {ACCOUNT}"),
+        }],
         log: dirty_log(),
         trace: trace.clone(),
         previous: trace.into_iter().take(2).collect(),
@@ -245,7 +395,10 @@ pub fn world<'a>(fx: &'a Fixture, entry_area: Option<&str>) -> World<'a> {
         vars,
         extra: vec![(
             Area::Tts,
-            vec![("Voice".to_string(), crate::diag_facts::Fact::text(&format!("{REALNAME} voice in {home}/models")))],
+            vec![(
+                "Voice".to_string(),
+                crate::diag_facts::Fact::text(&format!("{REALNAME} voice in {home}/models")),
+            )],
         )],
         entry: entry_area.map(str::to_string),
         probe: None,
@@ -257,7 +410,17 @@ pub fn scrubber(fx: &Fixture) -> crate::debug_log::Scrubber {
     let mut rules = crate::diag_gather::scrub_rules(
         &fx.cfg,
         &fx.lib,
-        vec![DEVICE_NAME.into(), format!("{REALNAME}'s Kobo"), KOBO_ACCOUNT.into(), REALNAME.into(), SEARCH_QUERY.into(), BACKUP_PLACE.into(), BACKUP_PATH.into(), CLIPBOARD.into(), PROXY_HOST.into()],
+        vec![
+            DEVICE_NAME.into(),
+            format!("{REALNAME}'s Kobo"),
+            KOBO_ACCOUNT.into(),
+            REALNAME.into(),
+            SEARCH_QUERY.into(),
+            BACKUP_PLACE.into(),
+            BACKUP_PATH.into(),
+            CLIPBOARD.into(),
+            PROXY_HOST.into(),
+        ],
         HOSTNAME,
     );
     rules.home = format!("/home/{USER}");
@@ -307,20 +470,43 @@ mod tests {
     fn no_sentinel_is_in_the_report_with_each_switch_off_or_on_without_the_opt_ins() {
         let fx = fixture();
         for (log, lib) in [(false, false), (true, false), (false, true), (true, true)] {
-            let r = render(&fx, Options { include_log: log, include_library: lib, ..Options::default() }, Some("Sync (KOSync client)"));
-            assert_eq!(leaks(&r, &[]), Vec::<String>::new(), "log={log} lib={lib}\n{r}");
+            let r = render(
+                &fx,
+                Options {
+                    include_log: log,
+                    include_library: lib,
+                    ..Options::default()
+                },
+                Some("Sync (KOSync client)"),
+            );
+            assert_eq!(
+                leaks(&r, &[]),
+                Vec::<String>::new(),
+                "log={log} lib={lib}\n{r}"
+            );
         }
     }
 
     #[test]
     fn titles_appear_only_when_allowed_and_only_for_the_books_involved() {
         let fx = fixture();
-        let on = render(&fx, Options { include_titles: true, ..Options::default() }, None);
+        let on = render(
+            &fx,
+            Options {
+                include_titles: true,
+                ..Options::default()
+            },
+            None,
+        );
         assert!(on.contains(TITLE_ONE) && on.contains(AUTHOR_ONE), "{on}");
         // the second book was not involved in anything
         assert!(!on.contains(TITLE_TWO) && !on.contains(AUTHOR_TWO), "{on}");
         // and everything else stays hidden
-        assert_eq!(leaks(&on, &[TITLE_ONE, "Title One", AUTHOR_ONE, "Author One"]), Vec::<String>::new(), "{on}");
+        assert_eq!(
+            leaks(&on, &[TITLE_ONE, "Title One", AUTHOR_ONE, "Author One"]),
+            Vec::<String>::new(),
+            "{on}"
+        );
         // only in the section of the books involved
         let hits: Vec<&str> = on.lines().filter(|l| l.contains(TITLE_ONE)).collect();
         assert_eq!(hits.len(), 1, "{hits:?}");
@@ -330,13 +516,27 @@ mod tests {
     #[test]
     fn the_host_appears_only_when_allowed_and_only_on_address_lines() {
         let fx = fixture();
-        let on = render(&fx, Options { include_host: true, ..Options::default() }, None);
+        let on = render(
+            &fx,
+            Options {
+                include_host: true,
+                ..Options::default()
+            },
+            None,
+        );
         let lines: Vec<&str> = on.lines().filter(|l| l.contains(SERVER_HOST)).collect();
         assert!(!lines.is_empty(), "the host is shown when allowed:\n{on}");
         for l in &lines {
-            assert!(l.contains("address: ") || l.starts_with("- Server address"), "{l}");
+            assert!(
+                l.contains("address: ") || l.starts_with("- Server address"),
+                "{l}"
+            );
         }
-        assert_eq!(leaks(&on, &[SERVER_HOST, "sentinel.example"]), Vec::<String>::new(), "{on}");
+        assert_eq!(
+            leaks(&on, &[SERVER_HOST, "sentinel.example"]),
+            Vec::<String>::new(),
+            "{on}"
+        );
         // credentials, query and tokens are never shown, whatever the switch
         assert!(!on.contains(ACCOUNT) && !on.contains(PASSWORD) && !on.contains(TOKEN));
     }
@@ -344,24 +544,83 @@ mod tests {
     #[test]
     fn both_opt_ins_together_still_hide_everything_else() {
         let fx = fixture();
-        let r = render(&fx, Options { include_titles: true, include_host: true, ..Options::default() }, Some("Sync (KOSync client)"));
-        assert_eq!(leaks(&r, &[TITLE_ONE, "Title One", AUTHOR_ONE, "Author One", SERVER_HOST, "sentinel.example"]), Vec::<String>::new(), "{r}");
+        let r = render(
+            &fx,
+            Options {
+                include_titles: true,
+                include_host: true,
+                ..Options::default()
+            },
+            Some("Sync (KOSync client)"),
+        );
+        assert_eq!(
+            leaks(
+                &r,
+                &[
+                    TITLE_ONE,
+                    "Title One",
+                    AUTHOR_ONE,
+                    "Author One",
+                    SERVER_HOST,
+                    "sentinel.example"
+                ]
+            ),
+            Vec::<String>::new(),
+            "{r}"
+        );
     }
 
     #[test]
     fn realistic_library_error_messages_lose_their_paths_addresses_and_titles() {
         let fx = fixture();
         let s = scrubber(&fx);
-        let red = crate::diag_facts::Redactor { scrub: &s, show_host: false, show_titles: false };
+        let red = crate::diag_facts::Redactor {
+            scrub: &s,
+            show_host: false,
+            show_titles: false,
+        };
         for (msg, forbidden) in [
-            (format!("cannot open /home/{USER}/Books/Foo/Foo.epub"), vec![USER, "Foo"]),
-            ("talking to http://10.0.0.7:30260/api/koreader".to_string(), vec!["10.0.0.7"]),
-            (format!("no such file: '{TITLE_ONE}.pdf'"), vec!["Title One", ".pdf'"]),
-            (format!("SQLite error: unable to open database file {}/bookx-library.db", fx.lib.root.display()), vec![LIBRARY_DIR]),
-            (format!("No such file or directory (os error 2) at /run/media/{USER}/KOBOeReader/documents/{FILE_NAME}.epub"), vec![USER, FILE_NAME, "KOBOeReader"]),
-            (format!("HTTP status client error (404 Not Found) for url (https://{SERVER_HOST}/dav/{BACKUP_USER}/x?token={TOKEN})"), vec![SERVER_HOST, BACKUP_USER, TOKEN]),
-            (format!("failed to read ~/Documents/{TITLE_TWO}/{FILE_NAME}.cbz"), vec!["Title Two", FILE_NAME, "Documents"]),
-            (format!("invalid zip: central directory of \"{TITLE_ONE} (2nd edition).epub\" is damaged"), vec!["Title One", "2nd edition"]),
+            (
+                format!("cannot open /home/{USER}/Books/Foo/Foo.epub"),
+                vec![USER, "Foo"],
+            ),
+            (
+                "talking to http://10.0.0.7:30260/api/koreader".to_string(),
+                vec!["10.0.0.7"],
+            ),
+            (
+                format!("no such file: '{TITLE_ONE}.pdf'"),
+                vec!["Title One", ".pdf'"],
+            ),
+            (
+                format!(
+                    "SQLite error: unable to open database file {}/bookx-library.db",
+                    fx.lib.root.display()
+                ),
+                vec![LIBRARY_DIR],
+            ),
+            (
+                format!(
+                    "No such file or directory (os error 2) at /run/media/{USER}/KOBOeReader/documents/{FILE_NAME}.epub"
+                ),
+                vec![USER, FILE_NAME, "KOBOeReader"],
+            ),
+            (
+                format!(
+                    "HTTP status client error (404 Not Found) for url (https://{SERVER_HOST}/dav/{BACKUP_USER}/x?token={TOKEN})"
+                ),
+                vec![SERVER_HOST, BACKUP_USER, TOKEN],
+            ),
+            (
+                format!("failed to read ~/Documents/{TITLE_TWO}/{FILE_NAME}.cbz"),
+                vec!["Title Two", FILE_NAME, "Documents"],
+            ),
+            (
+                format!(
+                    "invalid zip: central directory of \"{TITLE_ONE} (2nd edition).epub\" is damaged"
+                ),
+                vec!["Title One", "2nd edition"],
+            ),
         ] {
             let c = red.text(&msg);
             for f in &forbidden {
@@ -374,7 +633,10 @@ mod tests {
     struct Lcg(u64);
     impl Lcg {
         fn next(&mut self) -> u64 {
-            self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            self.0 = self
+                .0
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             self.0 >> 33
         }
         fn word(&mut self) -> String {
@@ -388,21 +650,54 @@ mod tests {
     #[test]
     fn random_text_with_the_shapes_of_personal_data_is_cleaned_without_knowing_the_values() {
         let s = crate::debug_log::Scrubber::new(Default::default());
-        let red = crate::diag_facts::Redactor { scrub: &s, show_host: false, show_titles: false };
+        let red = crate::diag_facts::Redactor {
+            scrub: &s,
+            show_host: false,
+            show_titles: false,
+        };
         let mut g = Lcg(0x5eed);
         for _ in 0..3000 {
             let (a, b, c) = (g.word(), g.word(), g.word());
             let ext = *g.pick(&["epub", "pdf", "mobi", "cbz", "fb2", "kepub.epub"]);
             let port = 1000 + g.next() % 60000;
             let (text, secret) = match g.next() % 8 {
-                0 => (format!("cannot open /home/{a}/{b}/{c}.{ext}"), vec![a.clone(), b.clone(), c.clone()]),
-                1 => (format!("talking to http://{a}.{b}:{port}/{c}"), vec![a.clone(), b.clone(), c.clone()]),
-                2 => (format!("https://{a}:{b}@{c}.example.org/x"), vec![a.clone(), b.clone(), c.clone()]),
-                3 => (format!("mail {a}.{b}@{c}.org failed"), vec![a.clone(), b.clone(), c.clone()]),
-                4 => (format!("no such file: '{a} {b}.{ext}'"), vec![a.clone(), b.clone()]),
-                5 => (format!("copy to /run/media/{a}/{b}/{c}.{ext} failed"), vec![a.clone(), b.clone(), c.clone()]),
-                6 => (format!("open ~/{a}/{b} {c}.{ext} now"), vec![a.clone(), b.clone(), c.clone()]),
-                _ => (format!("get http://10.{}.{}.{}:{port}/{a}/{b}", g.next() % 256, g.next() % 256, g.next() % 256), vec![a.clone(), b.clone()]),
+                0 => (
+                    format!("cannot open /home/{a}/{b}/{c}.{ext}"),
+                    vec![a.clone(), b.clone(), c.clone()],
+                ),
+                1 => (
+                    format!("talking to http://{a}.{b}:{port}/{c}"),
+                    vec![a.clone(), b.clone(), c.clone()],
+                ),
+                2 => (
+                    format!("https://{a}:{b}@{c}.example.org/x"),
+                    vec![a.clone(), b.clone(), c.clone()],
+                ),
+                3 => (
+                    format!("mail {a}.{b}@{c}.org failed"),
+                    vec![a.clone(), b.clone(), c.clone()],
+                ),
+                4 => (
+                    format!("no such file: '{a} {b}.{ext}'"),
+                    vec![a.clone(), b.clone()],
+                ),
+                5 => (
+                    format!("copy to /run/media/{a}/{b}/{c}.{ext} failed"),
+                    vec![a.clone(), b.clone(), c.clone()],
+                ),
+                6 => (
+                    format!("open ~/{a}/{b} {c}.{ext} now"),
+                    vec![a.clone(), b.clone(), c.clone()],
+                ),
+                _ => (
+                    format!(
+                        "get http://10.{}.{}.{}:{port}/{a}/{b}",
+                        g.next() % 256,
+                        g.next() % 256,
+                        g.next() % 256
+                    ),
+                    vec![a.clone(), b.clone()],
+                ),
             };
             let out = red.text(&text);
             for w in secret {
@@ -418,7 +713,17 @@ mod tests {
         for _ in 0..25 {
             let (a, b) = (g.word(), g.word());
             let mut w = world(&fx, None);
-            w.trace.push(entry(Area::Import, "add", false, Some(ErrorClass::Io), None, &[], Some(&format!("cannot read /home/{a}/{b}.epub from http://{b}.example.org:8080/{a}"))));
+            w.trace.push(entry(
+                Area::Import,
+                "add",
+                false,
+                Some(ErrorClass::Io),
+                None,
+                &[],
+                Some(&format!(
+                    "cannot read /home/{a}/{b}.epub from http://{b}.example.org:8080/{a}"
+                )),
+            ));
             let input = crate::diag_gather::input(&w);
             let r = report::build(&input, Options::default(), "", &scrubber(&fx));
             assert!(!r.contains(&a) && !r.contains(&b), "{a} {b}\n{r}");
@@ -430,7 +735,12 @@ mod tests {
         let fx = fixture();
         let w = world(&fx, None);
         let input = crate::diag_gather::input(&w);
-        let r = report::build(&input, Options::default(), "I use SENT-typed-by-me", &scrubber(&fx));
+        let r = report::build(
+            &input,
+            Options::default(),
+            "I use SENT-typed-by-me",
+            &scrubber(&fx),
+        );
         assert!(r.ends_with("### What happened\n\nI use SENT-typed-by-me\n"));
         let head = r.split("### What happened").next().unwrap();
         assert!(!head.contains("SENT-typed-by-me"));
@@ -442,7 +752,10 @@ mod tests {
         // section only through `Redactor::section`: nothing in `build` touches the rows directly.
         let src = include_str!("report.rs");
         let code = src.split("#[cfg(test)]").next().unwrap();
-        assert!(!code.contains(".rows"), "report.rs reads section rows directly");
+        assert!(
+            !code.contains(".rows"),
+            "report.rs reads section rows directly"
+        );
         assert!(code.contains("red.section(sec)"));
         // the modules that make facts do not build report text themselves
         for (name, text) in [

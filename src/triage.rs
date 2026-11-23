@@ -221,11 +221,6 @@ pub fn headline(findings: &[Finding]) -> Option<&Finding> {
         .or_else(|| findings.first())
 }
 
-/// The five questions for a report that cannot tell.
-pub fn generic_asks() -> &'static [String] {
-    &compiled().generic_asks
-}
-
 /// `### Summary and suspected area` for the top of the report. `entry` is the area the user pressed
 /// Report in (if known); the text of the findings is cleaned by the caller before it is shown.
 pub fn summary_block(findings: &[Finding], entry: Option<&str>) -> String {
@@ -285,8 +280,16 @@ mod tests {
         let mut ids = std::collections::BTreeSet::new();
         for r in &c.rules {
             assert!(ids.insert(r.def.id.clone()), "duplicate {}", r.def.id);
-            assert!(!r.all.is_empty() || !r.any.is_empty(), "{} matches everything", r.def.id);
-            assert!(!r.def.cause.is_empty() && !r.def.hint.is_empty(), "{}", r.def.id);
+            assert!(
+                !r.all.is_empty() || !r.any.is_empty(),
+                "{} matches everything",
+                r.def.id
+            );
+            assert!(
+                !r.def.cause.is_empty() && !r.def.hint.is_empty(),
+                "{}",
+                r.def.id
+            );
             assert!(r.def.asks.len() >= 3, "{} needs questions", r.def.id);
             assert!(!r.evidence.is_empty(), "{} quotes nothing", r.def.id);
             assert!(["crash", "data", "annoyance"].contains(&r.def.severity.as_str()));
@@ -298,7 +301,12 @@ mod tests {
     fn the_area_labels_of_the_table_are_the_areas_of_the_recorder() {
         let c = compiled();
         for a in crate::trace::Area::ALL {
-            assert_eq!(c.area_labels.get(a.word()).map(String::as_str), Some(a.label()), "{}", a.word());
+            assert_eq!(
+                c.area_labels.get(a.word()).map(String::as_str),
+                Some(a.label()),
+                "{}",
+                a.word()
+            );
         }
         assert_eq!(c.area_labels.len(), crate::trace::Area::ALL.len());
     }
@@ -318,7 +326,11 @@ mod tests {
         let h = headline(&f).unwrap();
         assert_eq!(h.id, "sync-404-push");
         assert_eq!(h.area, "Sync (KOSync client)");
-        assert!(h.evidence.iter().any(|e| e.contains("sync/push FAIL http=404")));
+        assert!(
+            h.evidence
+                .iter()
+                .any(|e| e.contains("sync/push FAIL http=404"))
+        );
         assert!(h.evidence.iter().any(|e| e.contains("/api/koreader")));
         assert_eq!(h.asks.len(), 5);
     }
@@ -329,12 +341,16 @@ mod tests {
         let f = analyse(r);
         assert!(f.iter().any(|f| f.id == "library-network-fs"));
         assert_eq!(headline(&f).unwrap().id, "network-timeout");
-        assert_eq!(area_of("- File system kind: NETWORK file system\n"), "Library folder");
+        assert_eq!(
+            area_of("- File system kind: NETWORK file system\n"),
+            "Library folder"
+        );
     }
 
     #[test]
     fn named_groups_fill_the_cause_and_unfilled_ones_vanish() {
-        let f = analyse("- 12:00:00Z devices/copy FAIL class=not_mounted 5 ms device=Boox_Leaf_2\n");
+        let f =
+            analyse("- 12:00:00Z devices/copy FAIL class=not_mounted 5 ms device=Boox_Leaf_2\n");
         let h = headline(&f).unwrap();
         assert_eq!(h.id, "device-not-mounted");
         assert!(!h.cause.contains('{'), "{}", h.cause);
@@ -360,7 +376,13 @@ mod tests {
     fn the_summary_block_has_area_severity_cause_hint_evidence() {
         let f = analyse("- 12:00:00Z server/start FAIL class=port_in_use 3 ms port=30260\n");
         let s = summary_block(&f, None);
-        for want in ["Suspected area: Built-in server", "Severity: annoyance", "What went wrong:", "Hint:", "Evidence: `"] {
+        for want in [
+            "Suspected area: Built-in server",
+            "Severity: annoyance",
+            "What went wrong:",
+            "Hint:",
+            "Evidence: `",
+        ] {
             assert!(s.contains(want), "{want} in {s}");
         }
     }

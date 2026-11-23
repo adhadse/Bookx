@@ -54,6 +54,17 @@ mod device_covers;
 mod device_sync;
 mod devices;
 mod devtools;
+mod diag_addr;
+mod diag_facts;
+mod diag_fetch;
+mod diag_gather;
+#[cfg(test)]
+mod diag_pii;
+mod diag_problems;
+#[cfg(test)]
+mod diag_replay;
+mod diag_stall;
+mod diag_system;
 mod diagnostics;
 mod dict_auto;
 mod dict_catalog;
@@ -140,19 +151,6 @@ mod readwise_sync;
 mod release_consistency;
 mod remove_undo;
 mod report;
-mod diag_addr;
-mod diag_gather;
-#[cfg(test)]
-mod diag_pii;
-#[cfg(test)]
-mod diag_replay;
-mod diag_facts;
-mod diag_fetch;
-mod diag_problems;
-mod diag_stall;
-mod diag_system;
-mod trace;
-mod triage;
 mod rsvp_view;
 mod safe_mode;
 mod saved_searches;
@@ -174,7 +172,9 @@ mod sync_model;
 mod sync_rule;
 mod tags;
 mod toc_fold;
+mod trace;
 mod tracker_sync;
+mod triage;
 mod tts;
 mod tts_export;
 mod tts_player;

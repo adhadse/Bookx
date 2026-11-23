@@ -710,7 +710,8 @@ impl Config {
                 crate::trace::event(crate::trace::Area::Settings, "save").fail(&e.to_string());
             }
             if wrote.is_ok() && std::fs::rename(&tmp, &p).is_err() {
-                crate::trace::event(crate::trace::Area::Settings, "save").fail_class(crate::trace::ErrorClass::Io);
+                crate::trace::event(crate::trace::Area::Settings, "save")
+                    .fail_class(crate::trace::ErrorClass::Io);
                 let _ = std::fs::remove_file(&tmp);
             }
             bookx_secrets::restrict_file(&p);

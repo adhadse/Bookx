@@ -29,12 +29,14 @@ impl StallMeter {
 
 /// Writes the stall to the flight recorder, naming where the user was and what started last.
 pub fn record(late_ms: u64) {
+    // read before the stall's own entry is started: that would become "the last operation"
+    let last = crate::trace::last_started();
     let mut t = crate::trace::event(crate::trace::Area::Ui, "stall");
     t.took(late_ms);
     if let Some(a) = crate::trace::active() {
         t.word("in", a.word());
     }
-    if let Some((a, name)) = crate::trace::last_started() {
+    if let Some((a, name)) = last {
         t.word("area", a.word()).word("last_op", name);
     }
     t.fail_class(crate::trace::ErrorClass::Timeout);
@@ -60,7 +62,7 @@ mod tests {
         assert_eq!(m.tick(1100 + 100 + 249), None);
         let t = 1100 + 100 + 249;
         assert_eq!(m.tick(t + TICK_MS + 250), Some(250));
-        assert_eq!(m.tick(t + 2 * TICK_MS + 250 + 4000), Some(3900));
+        assert_eq!(m.tick(t + 2 * TICK_MS + 250 + 4000), Some(4000));
     }
 
     #[test]

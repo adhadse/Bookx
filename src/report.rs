@@ -350,24 +350,46 @@ pub fn build(input: &Input, opts: Options, user_text: &str, scrub: &Scrubber) ->
         .collect();
     let crash = input.crash.as_deref().map(clean);
 
-    let mut top = String::new();
-    top.push_str(&operations_text(&input.trace, &red));
     let log_all: &[String] = if opts.include_log { &input.log } else { &[] };
-    top.push_str(&problems_text(log_all, &red));
-    top.push_str(&previous_text(&input.previous, &red));
-    // the area the user pressed Report in comes first
-    let mut sections: Vec<&Section> = input.sections.iter().collect();
-    if let Some(e) = &input.entry {
-        let wanted: Vec<&str> = e.split('|').collect();
+    let head = format!(
+        "{}{}{}",
+        operations_text(&input.trace, &red),
+        problems_text(log_all, &red),
+        previous_text(&input.previous, &red)
+    );
+    // the sections the library switch covers: what is read from the library folder and its books
+    let visible: Vec<&Section> = input
+        .sections
+        .iter()
+        .filter(|s| {
+            opts.include_library
+                || !matches!(
+                    s.title.as_str(),
+                    "Library folder" | "Books involved" | "Reader"
+                )
+        })
+        .collect();
+    // the feature sections, the wanted ones first
+    let compose = |wanted: &[&str]| -> String {
+        let mut sections = visible.clone();
         sections.sort_by_key(|s| !wanted.contains(&s.title.as_str()));
-    }
-    for sec in sections {
-        let t = red.section(sec);
-        if !t.is_empty() {
-            top.push_str(&t);
-            top.push('\n');
+        let mut top = head.clone();
+        for sec in sections {
+            let t = red.section(sec);
+            if !t.is_empty() {
+                top.push_str(&t);
+                top.push('\n');
+            }
         }
-    }
+        top
+    };
+    // the area the user pressed Report in comes first; without one, the suspected area (found below)
+    let entry_areas: Vec<&str> = input
+        .entry
+        .as_deref()
+        .map(|e| e.split('|').collect())
+        .unwrap_or_default();
+    let mut top = compose(&entry_areas);
     let env_text = clean(&facts(input, &jobs, opts));
 
     let fixed = top.len() + env_text.len() + crash.as_ref().map_or(0, |c| c.len() + 40) + 200;
@@ -378,7 +400,10 @@ pub fn build(input: &Input, opts: Options, user_text: &str, scrub: &Scrubber) ->
         log_budget,
     );
     let log: Vec<String> = if opts.include_log {
-        plan.lines.iter().map(|l| clean_log_line(l, scrub)).collect()
+        plan.lines
+            .iter()
+            .map(|l| clean_log_line(l, scrub))
+            .collect()
     } else {
         Vec::new()
     };
@@ -393,12 +418,20 @@ pub fn build(input: &Input, opts: Options, user_text: &str, scrub: &Scrubber) ->
 
     // the summary reads the cleaned text, so it can never show more than the report does
     let findings = triage::analyse(&body);
+    let body = match (entry_areas.is_empty(), triage::headline(&findings)) {
+        (true, Some(h)) if visible.iter().any(|s| s.title == h.area) => {
+            top = compose(&[h.area.as_str()]);
+            assemble(&top, &env_text, &log, crash.as_deref(), opts, &plan)
+        }
+        _ => body,
+    };
     let mut summary = triage::summary_block(&findings, input.entry.as_deref());
     if summary.len() > SUMMARY_RESERVE {
         summary = cut(&summary, SUMMARY_RESERVE - 4);
-        summary.push_str("\n");
+        summary.push('\n');
     }
-    let mut out = String::from("<!-- Bookx problem report, made on this computer. Nothing was sent. -->\n\n");
+    let mut out =
+        String::from("<!-- Bookx problem report, made on this computer. Nothing was sent. -->\n\n");
     out.push_str(&summary);
     out.push('\n');
     out.push_str(body.strip_prefix(HEADER).unwrap_or(&body));
@@ -447,7 +480,14 @@ fn previous_text(entries: &[trace::Entry], red: &Redactor) -> String {
         return String::new();
     }
     let mut s = String::from("### Last session (before this start)\n\n");
-    for e in entries.iter().rev().take(20).collect::<Vec<_>>().into_iter().rev() {
+    for e in entries
+        .iter()
+        .rev()
+        .take(20)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+    {
         s.push_str(&format!("- {} {}\n", time_of(e.time), red_line(e, red)));
     }
     s.push('\n');
@@ -475,14 +515,20 @@ fn problems_text(log: &[String], red: &Redactor) -> String {
             String::new()
         };
         let last = p.last.get(11..19).unwrap_or("");
-        let target = if p.target.is_empty() { String::new() } else { format!("{}: ", p.target) };
+        let target = if p.target.is_empty() {
+            String::new()
+        } else {
+            format!("{}: ", p.target)
+        };
         s.push_str(&format!(
             "- {lvl}{n} (last {last}Z) {target}{}\n",
             red.text(&p.message)
         ));
     }
-    for (name, n) in &a.noise {
-        s.push_str(&format!("- left out as harmless: {name} ({n} lines)\n"));
+    for (name, why, n) in &a.noise {
+        s.push_str(&format!(
+            "- left out as harmless: {name} ({n} lines): {why}\n"
+        ));
     }
     s.push('\n');
     s
@@ -635,6 +681,7 @@ fn assemble(
 }
 
 /// The settings summary of the running app.
+#[cfg(test)]
 pub fn summarize(
     cfg: &crate::config::Config,
     mgr: &bookx_plugin::PluginManager,
@@ -747,13 +794,25 @@ pub fn write_report(path: &std::path::Path, text: &str) -> std::io::Result<()> {
 /// What a report holds, in plain words (shown in the dialog above the preview; the wiki says the same).
 /// These are message ids: the dialog translates them.
 pub const CONTENTS: [&str; 7] = [
-    crate::i18n::N_("The version of Bookx, how it was installed, and the kind of computer: system, desktop, screen, memory and disk as classes."),
+    crate::i18n::N_(
+        "The version of Bookx, how it was installed, and the kind of computer: system, desktop, screen, memory and disk as classes.",
+    ),
     crate::i18n::N_("Your settings as switches and counts, never a value you typed."),
-    crate::i18n::N_("What the app did last in each area (sync, import, devices, backups, reading aloud): what it was, how long it took, whether it worked and which kind of error. Never a title, file name or folder."),
-    crate::i18n::N_("The library as counts and classes: books, formats, search index, the file system and free space of the folder."),
-    crate::i18n::N_("Server addresses by kind, port and path words only. The host is left out unless you switch it on."),
-    crate::i18n::N_("Warnings and errors from the log, cleaned of your name, folders, titles, servers and passwords."),
-    crate::i18n::N_("Never included: your name, e-mail, IP addresses, Wi-Fi name, passwords, file names. Book titles and authors only when you switch them on, and only for the books involved."),
+    crate::i18n::N_(
+        "What the app did last in each area (sync, import, devices, backups, reading aloud): what it was, how long it took, whether it worked and which kind of error. Never a title, file name or folder.",
+    ),
+    crate::i18n::N_(
+        "The library as counts and classes: books, formats, search index, the file system and free space of the folder.",
+    ),
+    crate::i18n::N_(
+        "Server addresses by kind, port and path words only. The host is left out unless you switch it on.",
+    ),
+    crate::i18n::N_(
+        "Warnings and errors from the log, cleaned of your name, folders, titles, servers and passwords.",
+    ),
+    crate::i18n::N_(
+        "Never included: your name, e-mail, IP addresses, Wi-Fi name, passwords, file names. Book titles and authors only when you switch them on, and only for the books involved.",
+    ),
 ];
 
 /// The URL of the bug form; only a short title is added, the report goes through the clipboard.

@@ -1,7 +1,8 @@
 //! Report a Problem: the dialog that builds the report of `crate::report`, shows exactly what would be
 //! shared, and hands it over by clipboard, file or the GitHub issue form. Bookx sends nothing itself.
 //!
-//! Dev hooks (`report:<command>`): `open`, `open-crash`, `type=TEXT`, `log=on|off`, `library=on|off`,
+//! Dev hooks (`report:<command>`): `open`, `open-crash`, `open-from=AREA` (as the Sync window opens it),
+//! `titles=on|off`, `host=on|off`, `type=TEXT`, `log=on|off`, `library=on|off`,
 //! `preview` (prints the preview on one line), `dump`, `copy`, `save=PATH`, `github`, `folder`, `log-line=TEXT`
 //! (writes a warning to the log), `crash-sim` (runs the panic hook's writer on a made-up crash), `notices`,
 //! `dismiss-beta`, `dismiss-crash`, `report-from-beta`, `report-from-crash`, `recheck`.
@@ -120,7 +121,11 @@ fn display_words(parent: Option<&gtk::Widget>) -> (String, String) {
 
 /// Everything the report is made of, read from the running app. `entry` is the area the user pressed
 /// Report in (its section comes first).
-pub fn gather(shared: &SharedRef, entry: Option<&str>, parent: Option<&gtk::Widget>) -> (Input, Scrubber) {
+pub fn gather(
+    shared: &SharedRef,
+    entry: Option<&str>,
+    parent: Option<&gtk::Widget>,
+) -> (Input, Scrubber) {
     let rules = scrub_rules(shared);
     // the log file is cleaned with the same rules from now on
     crate::applog::set_scrub(rules.clone());
@@ -142,10 +147,18 @@ pub fn gather(shared: &SharedRef, entry: Option<&str>, parent: Option<&gtk::Widg
     let cfg = shared.cfg.borrow();
     let plugins = shared.plugins.borrow();
     let (backend, renderer) = display_words(parent);
-    let vars = ["http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY", "all_proxy", "ALL_PROXY", "GSK_RENDERER"]
-        .iter()
-        .filter_map(|k| std::env::var(k).ok().map(|v| (k.to_string(), v)))
-        .collect();
+    let vars = [
+        "http_proxy",
+        "https_proxy",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "all_proxy",
+        "ALL_PROXY",
+        "GSK_RENDERER",
+    ]
+    .iter()
+    .filter_map(|k| std::env::var(k).ok().map(|v| (k.to_string(), v)))
+    .collect();
     let trace = crate::trace::merged(&log);
     let world = crate::diag_gather::World {
         env: report::Environment::detect(),
@@ -187,7 +200,10 @@ pub fn gather(shared: &SharedRef, entry: Option<&str>, parent: Option<&gtk::Widg
                         free: crate::diag_system::free_space(&d.mount),
                     })
                     .collect();
-                x.push((crate::trace::Area::Devices, crate::diag_gather::device_rows(&list)));
+                x.push((
+                    crate::trace::Area::Devices,
+                    crate::diag_gather::device_rows(&list),
+                ));
             }
             x
         },
@@ -434,9 +450,10 @@ pub fn show_from(
     titles.set_active(false);
     let host = adw::SwitchRow::new();
     host.set_title(&tr("Include the server address host"));
-    host.set_subtitle(&tr(
+    // a subtitle is Pango markup: the address example holds `<` and `>`
+    host.set_subtitle(&glib::markup_escape_text(&tr(
         "Off by default. Without it an address shows only its kind, port and path, such as http://<ip:private>:30260/api/koreader.",
-    ));
+    )));
     host.set_active(false);
     include.add(&log);
     include.add(&library);
@@ -681,7 +698,9 @@ pub fn problem_group(area: &'static str) -> adw::PreferencesGroup {
     let g = adw::PreferencesGroup::new();
     let row = adw::ActionRow::new();
     row.set_title(&tr("Report a Problem"));
-    row.set_subtitle(&tr("Something not working? See what a report contains before you share it."));
+    row.set_subtitle(&tr(
+        "Something not working? See what a report contains before you share it.",
+    ));
     row.set_subtitle_lines(0);
     row.set_activatable(true);
     row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
@@ -699,6 +718,7 @@ pub fn dev_command(shared: &SharedRef, window: &gtk::Window, arg: &str) {
     match cmd {
         "open" => show(shared, window, Prefill::None),
         "open-crash" => show(shared, window, Prefill::Crash),
+        "open-from" => show_from(shared, window, Prefill::None, Some(val)),
         "log-line" => tracing::warn!("{val}"),
         "crash-sim" => {
             let info = crate::applog::CrashInfo {

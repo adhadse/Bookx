@@ -17,18 +17,79 @@ use regex::Regex;
 
 /// Path words that are part of a sync, catalogue or file API and name nobody.
 const KNOWN_SEGMENTS: &[&str] = &[
-    "api", "koreader", "kosync", "syncs", "sync", "progress", "users", "user", "auth", "create", "opds",
-    "catalog", "catalogue", "books", "book", "library", "libraries", "webdav", "dav", "remote.php",
-    "rest", "v1", "v2", "v3", "kobo", "kepub", "koboapi", "app", "plugin", "plugins", "annotations",
-    "bookx", "bookx-sync", "healthcheck", "health", "login", "logout", "files", "file", "download",
-    "upload", "static", "index.php", "index.html", "public", "reader", "web", "ui", "calibre",
-    "calibre-web", "grimmory", "booklore", "komga", "kavita", "audiobookshelf", "ebooks", "kosync-server",
-    "devices", "device", "stats", "statistics", "cwa", "cwa-opds", "opds-catalog", "me", "self",
+    "api",
+    "koreader",
+    "kosync",
+    "syncs",
+    "sync",
+    "progress",
+    "users",
+    "user",
+    "auth",
+    "create",
+    "opds",
+    "catalog",
+    "catalogue",
+    "books",
+    "book",
+    "library",
+    "libraries",
+    "webdav",
+    "dav",
+    "remote.php",
+    "rest",
+    "v1",
+    "v2",
+    "v3",
+    "kobo",
+    "kepub",
+    "koboapi",
+    "app",
+    "plugin",
+    "plugins",
+    "annotations",
+    "bookx",
+    "bookx-sync",
+    "healthcheck",
+    "health",
+    "login",
+    "logout",
+    "files",
+    "file",
+    "download",
+    "upload",
+    "static",
+    "index.php",
+    "index.html",
+    "public",
+    "reader",
+    "web",
+    "ui",
+    "calibre",
+    "calibre-web",
+    "grimmory",
+    "booklore",
+    "komga",
+    "kavita",
+    "audiobookshelf",
+    "ebooks",
+    "kosync-server",
+    "devices",
+    "device",
+    "stats",
+    "statistics",
+    "cwa",
+    "cwa-opds",
+    "opds-catalog",
+    "me",
+    "self",
 ];
 
 /// The class of a host, never the host itself.
 pub fn host_class(host: &str) -> String {
-    let h = host.trim_matches(|c| c == '[' || c == ']').to_ascii_lowercase();
+    let h = host
+        .trim_matches(|c| c == '[' || c == ']')
+        .to_ascii_lowercase();
     if h.is_empty() {
         return "<host?>".into();
     }
@@ -41,9 +102,17 @@ pub fn host_class(host: &str) -> String {
     if h == "localhost" {
         return "localhost".into();
     }
-    let local_suffix = [".local", ".lan", ".home", ".internal", ".home.arpa", ".localdomain", ".intranet"]
-        .iter()
-        .any(|s| h.ends_with(s));
+    let local_suffix = [
+        ".local",
+        ".lan",
+        ".home",
+        ".internal",
+        ".home.arpa",
+        ".localdomain",
+        ".intranet",
+    ]
+    .iter()
+    .any(|s| h.ends_with(s));
     if local_suffix {
         "<hostname:local>".into()
     } else if h.contains('.') {
@@ -103,7 +172,11 @@ pub fn shape(raw: &str, show_host: bool) -> String {
         return "(none)".into();
     }
     let (scheme, rest) = match raw.split_once("://") {
-        Some((s, r)) if !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || "+.-".contains(c)) => {
+        Some((s, r))
+            if !s.is_empty()
+                && s.chars()
+                    .all(|c| c.is_ascii_alphanumeric() || "+.-".contains(c)) =>
+        {
             (s.to_ascii_lowercase(), r)
         }
         _ => ("(no scheme)".to_string(), raw),
@@ -182,8 +255,29 @@ const BOOK_EXT: &str = "epub|kepub|pdf|mobi|azw3?|azw|fb2|fbz|cbz|cbr|cbt|cb7|dj
 
 /// Paths that start here are about the program or the system, not about the user.
 const SYSTEM_ROOTS: &[&str] = &[
-    "usr", "app", "proc", "sys", "etc", "lib", "lib64", "bin", "sbin", "org", "com", "net", "dev", "rustc",
-    "opt", "var/lib/flatpak", "run/user", "run/host", "run/flatpak", "cargo", "rust", "build", "builddir",
+    "usr",
+    "app",
+    "proc",
+    "sys",
+    "etc",
+    "lib",
+    "lib64",
+    "bin",
+    "sbin",
+    "org",
+    "com",
+    "net",
+    "dev",
+    "rustc",
+    "opt",
+    "var/lib/flatpak",
+    "run/user",
+    "run/host",
+    "run/flatpak",
+    "cargo",
+    "rust",
+    "build",
+    "builddir",
 ];
 
 /// Cleans the addresses, paths and file names inside free text (see [`clean_urls`], [`clean_paths`]).
@@ -209,8 +303,9 @@ pub fn clean_urls(text: &str) -> String {
 
 /// Words that end a file name inside a sentence (`cannot open /a/b.epub for alice`).
 const PATH_STOPS: &[&str] = &[
-    " for ", " at ", " on ", " from ", " with ", " as ", " and ", " is ", " was ", " not ", " failed", " could",
-    " cannot", " because", " while", " when", " to ", " in ", " by ", ", ", "; ", " (",
+    " for ", " at ", " on ", " from ", " with ", " as ", " and ", " is ", " was ", " not ",
+    " failed", " could", " cannot", " because", " while", " when", " to ", " in ", " by ", ", ",
+    "; ", " (",
 ];
 
 /// Paths and file names in the text: a path that is not the program's or the system's becomes
@@ -268,7 +363,11 @@ pub fn clean_paths(text: &str) -> String {
             let m = &c[0];
             let digit = m.bytes().any(|b| b.is_ascii_digit());
             let upper = m.bytes().any(|b| b.is_ascii_uppercase());
-            if digit && upper { "<id>".to_string() } else { m.to_string() }
+            if digit && upper {
+                "<id>".to_string()
+            } else {
+                m.to_string()
+            }
         })
         .into_owned()
 }
@@ -306,7 +405,9 @@ fn is_system_path(p: &str) -> bool {
 fn path_shape(p: &str) -> String {
     let last = p.rsplit('/').next().unwrap_or("");
     match last.rsplit_once('.') {
-        Some((_, e)) if (1..=5).contains(&e.len()) && e.bytes().all(|b| b.is_ascii_alphanumeric()) => {
+        Some((_, e))
+            if (1..=5).contains(&e.len()) && e.bytes().all(|b| b.is_ascii_alphanumeric()) =>
+        {
             format!("<path>/<file>.{}", e.to_ascii_lowercase())
         }
         _ => "<path>".into(),
@@ -346,8 +447,14 @@ mod tests {
 
     #[test]
     fn credentials_query_and_fragment_never_survive() {
-        let s = shape("https://alice:hunter2@books.example.org:8443/api/koreader?token=abc#frag", false);
-        assert_eq!(s, "https://<credentials>@<domain>:8443/api/koreader?<query>");
+        let s = shape(
+            "https://alice:hunter2@books.example.org:8443/api/koreader?token=abc#frag",
+            false,
+        );
+        assert_eq!(
+            s,
+            "https://<credentials>@<domain>:8443/api/koreader?<query>"
+        );
         let s = shape("https://alice:hunter2@books.example.org/x", true);
         assert!(!s.contains("alice") && !s.contains("hunter2"), "{s}");
         assert!(s.contains("books.example.org"));
@@ -356,18 +463,33 @@ mod tests {
     #[test]
     fn path_segments_that_could_name_someone_are_replaced() {
         assert_eq!(
-            shape("http://h.example.org/users/alice/9f8a7b6c5d4e3f2a1b0c/syncs/progress", false),
+            shape(
+                "http://h.example.org/users/alice/9f8a7b6c5d4e3f2a1b0c/syncs/progress",
+                false
+            ),
             "http://<domain>/users/<segment>/<segment>/syncs/progress"
         );
-        assert_eq!(shape("http://h.example.org/Alice-Books", false), "http://<domain>/<segment>");
-        assert_eq!(shape("http://h.example.org/API/KOReader/", false), "http://<domain>/api/koreader/");
+        assert_eq!(
+            shape("http://h.example.org/Alice-Books", false),
+            "http://<domain>/<segment>"
+        );
+        assert_eq!(
+            shape("http://h.example.org/API/KOReader/", false),
+            "http://<domain>/api/koreader/"
+        );
     }
 
     #[test]
     fn broken_addresses_are_still_cleaned() {
         assert_eq!(shape("", false), "(none)");
-        assert_eq!(shape("192.168.1.5:30260/api", false), "(no scheme) <ip:private>:30260/api");
-        assert_eq!(shape("http://h.example.org:notaport/x", false), "http://<domain>:<port?>/<segment>");
+        assert_eq!(
+            shape("192.168.1.5:30260/api", false),
+            "(no scheme) <ip:private>:30260/api"
+        );
+        assert_eq!(
+            shape("http://h.example.org:notaport/x", false),
+            "http://<domain>:<port?>/<segment>"
+        );
         assert!(!shape("http://bad host with spaces/x", true).contains("bad host"));
     }
 
@@ -381,11 +503,20 @@ mod tests {
             ("failed: \u{201c}Der geheime Garten.epub\u{201d}", "geheime"),
             ("copy Secret_Title_Final.mobi failed", "Secret"),
             ("see ~/Documents/Private Stuff/My Diary.docx now", "Diary"),
-            ("get https://alice:pw@nas.example.org/dav/Alice/ failed.", "alice"),
-            ("open /run/media/alice/KOBOeReader/Secret.kepub.epub", "KOBOeReader"),
+            (
+                "get https://alice:pw@nas.example.org/dav/Alice/ failed.",
+                "alice",
+            ),
+            (
+                "open /run/media/alice/KOBOeReader/Secret.kepub.epub",
+                "KOBOeReader",
+            ),
         ] {
             let c = clean_text(inp);
-            assert!(!c.to_lowercase().contains(&forbidden.to_lowercase()), "{inp} -> {c}");
+            assert!(
+                !c.to_lowercase().contains(&forbidden.to_lowercase()),
+                "{inp} -> {c}"
+            );
         }
         let c = clean_text("talking to http://10.0.0.7:30260/api/koreader");
         assert_eq!(c, "talking to http://<ip:private>:30260/api/koreader");
@@ -402,7 +533,17 @@ mod tests {
 
     #[test]
     fn cleaning_is_idempotent_and_never_panics_on_odd_text() {
-        for t in ["", "://", "http://", "///", "a//b", "'.pdf'", "~/", "\u{0}\u{1f600}/x/y.epub", "http://[::1"] {
+        for t in [
+            "",
+            "://",
+            "http://",
+            "///",
+            "a//b",
+            "'.pdf'",
+            "~/",
+            "\u{0}\u{1f600}/x/y.epub",
+            "http://[::1",
+        ] {
             let once = clean_text(t);
             assert_eq!(clean_text(&once), once, "{t:?}");
             let _ = shape(t, false);

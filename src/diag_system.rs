@@ -41,9 +41,30 @@ fn list(v: &str) -> Vec<String> {
 
 /// Filesystem permissions that name no user path.
 const FS_WORDS: &[&str] = &[
-    "home", "host", "host-os", "host-etc", "host-root", "xdg-desktop", "xdg-documents", "xdg-download",
-    "xdg-music", "xdg-pictures", "xdg-public-share", "xdg-templates", "xdg-videos", "xdg-run", "xdg-config",
-    "xdg-cache", "xdg-data", "/media", "/run/media", "/mnt", "/tmp", "/var/tmp", "/usr", "/etc",
+    "home",
+    "host",
+    "host-os",
+    "host-etc",
+    "host-root",
+    "xdg-desktop",
+    "xdg-documents",
+    "xdg-download",
+    "xdg-music",
+    "xdg-pictures",
+    "xdg-public-share",
+    "xdg-templates",
+    "xdg-videos",
+    "xdg-run",
+    "xdg-config",
+    "xdg-cache",
+    "xdg-data",
+    "/media",
+    "/run/media",
+    "/mnt",
+    "/tmp",
+    "/var/tmp",
+    "/usr",
+    "/etc",
 ];
 
 /// One `filesystems` entry without the user's folder names: `~/Books:rw` becomes `<path>:rw`.
@@ -112,8 +133,19 @@ pub fn flatpak_section(text: &str) -> Section {
     s.row(
         "Runtime",
         Fact::choice(
-            parts.get(if parts.first() == Some(&"runtime") { 1 } else { 0 }).copied().unwrap_or(""),
-            &["org.gnome.Platform", "org.freedesktop.Platform", "org.kde.Platform"],
+            parts
+                .get(if parts.first() == Some(&"runtime") {
+                    1
+                } else {
+                    0
+                })
+                .copied()
+                .unwrap_or(""),
+            &[
+                "org.gnome.Platform",
+                "org.freedesktop.Platform",
+                "org.kde.Platform",
+            ],
         ),
     )
     .row("Runtime branch", Fact::version(runtime))
@@ -127,8 +159,17 @@ pub fn flatpak_section(text: &str) -> Section {
         Fact::choices(
             &i.sockets,
             &[
-                "wayland", "fallback-x11", "x11", "pulseaudio", "session-bus", "system-bus", "ssh-auth",
-                "pcsc", "cups", "gpg-agent", "inherit-wayland-socket",
+                "wayland",
+                "fallback-x11",
+                "x11",
+                "pulseaudio",
+                "session-bus",
+                "system-bus",
+                "ssh-auth",
+                "pcsc",
+                "cups",
+                "gpg-agent",
+                "inherit-wayland-socket",
             ],
         ),
     )
@@ -138,7 +179,16 @@ pub fn flatpak_section(text: &str) -> Section {
     )
     .row(
         "Features",
-        Fact::choices(&i.features, &["devel", "multiarch", "bluetooth", "canbus", "per-app-dev-shm"]),
+        Fact::choices(
+            &i.features,
+            &[
+                "devel",
+                "multiarch",
+                "bluetooth",
+                "canbus",
+                "per-app-dev-shm",
+            ],
+        ),
     );
     let fs: Vec<String> = i.filesystems.clone();
     s.row("File access", Fact::choices_by(&fs, &is_sanitized_fs));
@@ -255,17 +305,40 @@ pub enum FsClass {
 /// What kind of file system a type is; the second value is the type itself when it is a known word.
 pub fn fs_class(fstype: &str) -> FsClass {
     let t = fstype.to_ascii_lowercase();
-    if t.starts_with("nfs") || ["cifs", "smb3", "smbfs", "afs", "ceph", "glusterfs", "9p", "ncpfs", "davfs", "lustre"].contains(&t.as_str()) {
+    if t.starts_with("nfs")
+        || [
+            "cifs",
+            "smb3",
+            "smbfs",
+            "afs",
+            "ceph",
+            "glusterfs",
+            "9p",
+            "ncpfs",
+            "davfs",
+            "lustre",
+        ]
+        .contains(&t.as_str())
+    {
         FsClass::Network
     } else if t == "fuse.portal" {
         FsClass::Portal
     } else if t.starts_with("fuse") {
         FsClass::Fuse
-    } else if ["vfat", "exfat", "ntfs", "ntfs3", "msdos", "hfsplus", "udf", "iso9660"].contains(&t.as_str()) {
+    } else if [
+        "vfat", "exfat", "ntfs", "ntfs3", "msdos", "hfsplus", "udf", "iso9660",
+    ]
+    .contains(&t.as_str())
+    {
         FsClass::Removable
     } else if t == "overlay" {
         FsClass::Overlay
-    } else if ["ext2", "ext3", "ext4", "btrfs", "xfs", "f2fs", "zfs", "tmpfs", "bcachefs", "jfs", "reiserfs"].contains(&t.as_str()) {
+    } else if [
+        "ext2", "ext3", "ext4", "btrfs", "xfs", "f2fs", "zfs", "tmpfs", "bcachefs", "jfs",
+        "reiserfs",
+    ]
+    .contains(&t.as_str())
+    {
         FsClass::Local
     } else {
         FsClass::Unknown
@@ -273,10 +346,43 @@ pub fn fs_class(fstype: &str) -> FsClass {
 }
 
 pub const FS_TYPES: &[&str] = &[
-    "ext2", "ext3", "ext4", "btrfs", "xfs", "f2fs", "zfs", "tmpfs", "bcachefs", "jfs", "vfat", "exfat", "ntfs",
-    "ntfs3", "overlay", "nfs", "nfs4", "cifs", "smb3", "smbfs", "9p", "ceph", "glusterfs", "davfs", "fuse.portal",
-    "fuse.sshfs", "fuse.rclone", "fuse.gvfsd-fuse", "fuseblk", "fuse.mergerfs", "fuse.encfs", "fuse.cryfs",
-    "fuse.gocryptfs", "fuse", "hfsplus", "udf", "iso9660",
+    "ext2",
+    "ext3",
+    "ext4",
+    "btrfs",
+    "xfs",
+    "f2fs",
+    "zfs",
+    "tmpfs",
+    "bcachefs",
+    "jfs",
+    "vfat",
+    "exfat",
+    "ntfs",
+    "ntfs3",
+    "overlay",
+    "nfs",
+    "nfs4",
+    "cifs",
+    "smb3",
+    "smbfs",
+    "9p",
+    "ceph",
+    "glusterfs",
+    "davfs",
+    "fuse.portal",
+    "fuse.sshfs",
+    "fuse.rclone",
+    "fuse.gvfsd-fuse",
+    "fuseblk",
+    "fuse.mergerfs",
+    "fuse.encfs",
+    "fuse.cryfs",
+    "fuse.gocryptfs",
+    "fuse",
+    "hfsplus",
+    "udf",
+    "iso9660",
 ];
 
 pub fn fs_class_word(c: FsClass) -> &'static str {
@@ -299,9 +405,16 @@ fn read(p: &str) -> String {
 
 /// Environment variables that only say *whether* a proxy is configured.
 pub fn proxy_set(var: &dyn Fn(&str) -> String) -> bool {
-    ["http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY", "all_proxy", "ALL_PROXY"]
-        .iter()
-        .any(|k| !var(k).is_empty())
+    [
+        "http_proxy",
+        "https_proxy",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "all_proxy",
+        "ALL_PROXY",
+    ]
+    .iter()
+    .any(|k| !var(k).is_empty())
 }
 
 /// Text direction and script of the language the app is shown in.
@@ -311,7 +424,9 @@ pub fn script_of(lang: &str) -> &'static str {
         "he" | "yi" => "right-to-left (Hebrew script)",
         "hi" | "mr" | "ne" | "sa" => "Devanagari",
         "bn" | "as" => "Bengali",
-        "ta" | "te" | "kn" | "ml" | "gu" | "pa" | "si" | "th" | "lo" | "km" | "my" => "other Indic or South-East Asian",
+        "ta" | "te" | "kn" | "ml" | "gu" | "pa" | "si" | "th" | "lo" | "km" | "my" => {
+            "other Indic or South-East Asian"
+        }
         "zh" | "ja" | "ko" => "CJK",
         "ru" | "uk" | "bg" | "sr" | "be" | "mk" | "kk" => "Cyrillic",
         "el" => "Greek",
@@ -327,14 +442,31 @@ pub fn machine_section(display: &str, renderer: &str, var: &dyn Fn(&str) -> Stri
         "Processors",
         Fact::num(std::thread::available_parallelism().map_or(0, |n| n.get() as u64)),
     )
-    .row("Memory", Fact::choice(ram_class(&read("/proc/meminfo")), &["unknown", "up to 2 GB", "2-4 GB", "4-8 GB", "8-16 GB", "16-32 GB", "32 GB or more"]))
+    .row(
+        "Memory",
+        Fact::choice(
+            ram_class(&read("/proc/meminfo")),
+            &[
+                "unknown",
+                "up to 2 GB",
+                "2-4 GB",
+                "4-8 GB",
+                "8-16 GB",
+                "16-32 GB",
+                "32 GB or more",
+            ],
+        ),
+    )
     .row(
         "Time zone offset",
         Fact::utc_offset(chrono::Local::now().offset().local_minus_utc() / 60),
     )
     .row(
         "Display backend",
-        Fact::choice(display, &["wayland", "x11", "broadway", "macos", "windows", "other"]),
+        Fact::choice(
+            display,
+            &["wayland", "x11", "broadway", "macos", "windows", "other"],
+        ),
     )
     .row(
         "Renderer",
@@ -355,11 +487,36 @@ pub fn machine_section(display: &str, renderer: &str, var: &dyn Fn(&str) -> Stri
 /// Memory and CPU of this process, sampled now.
 pub fn process_section(started: Option<std::time::Instant>) -> Section {
     let mut s = Section::new("This run");
-    s.row("Memory of Bookx", Fact::choice(rss_class(rss_kb(&read("/proc/self/status"))), &["unknown", "under 200 MB", "200-500 MB", "500 MB-1 GB", "1-2 GB", "over 2 GB"]));
+    s.row(
+        "Memory of Bookx",
+        Fact::choice(
+            rss_class(rss_kb(&read("/proc/self/status"))),
+            &[
+                "unknown",
+                "under 200 MB",
+                "200-500 MB",
+                "500 MB-1 GB",
+                "1-2 GB",
+                "over 2 GB",
+            ],
+        ),
+    );
     if let Some(t) = started {
         let up = t.elapsed().as_secs_f64();
         s.row("Running for (minutes)", Fact::count_class(up as u64 / 60));
-        s.row("CPU used since start", Fact::choice(cpu_class(&read("/proc/self/stat"), 100, up), &["unknown", "idle (under 5%)", "light (5-25%)", "busy (25-75%)", "very busy (over 75%)"]));
+        s.row(
+            "CPU used since start",
+            Fact::choice(
+                cpu_class(&read("/proc/self/stat"), 100, up),
+                &[
+                    "unknown",
+                    "idle (under 5%)",
+                    "light (5-25%)",
+                    "busy (25-75%)",
+                    "very busy (over 75%)",
+                ],
+            ),
+        );
     }
     s
 }
@@ -397,14 +554,18 @@ pub fn probe(root: &Path) -> LibraryProbe {
                     .count()
             })
             .unwrap_or(0),
-        problems: (m.len() < 200 << 20).then(|| bookx_store::SqliteStore::check_file(&db_path).len()),
+        problems: (m.len() < 200 << 20)
+            .then(|| bookx_store::SqliteStore::check_file(&db_path).len()),
     });
     LibraryProbe {
         mountinfo: read("/proc/self/mountinfo"),
         free: free_space(&canon),
         sync_client: bookx_store::guard::sync_client(&canon, &|p| p.exists()).map(str::to_string),
         db,
-        read_only: root.metadata().map(|m| m.permissions().readonly()).unwrap_or(false),
+        read_only: root
+            .metadata()
+            .map(|m| m.permissions().readonly())
+            .unwrap_or(false),
         canon,
     }
 }
@@ -419,7 +580,15 @@ pub fn library_fs_section(p: &LibraryProbe) -> Section {
                 "File system kind",
                 Fact::choice(
                     fs_class_word(c),
-                    &["local disk", "NETWORK file system", "FUSE file system", "removable-media file system", "document portal", "overlay", "unknown"],
+                    &[
+                        "local disk",
+                        "NETWORK file system",
+                        "FUSE file system",
+                        "removable-media file system",
+                        "document portal",
+                        "overlay",
+                        "unknown",
+                    ],
                 ),
             );
         }
@@ -431,13 +600,36 @@ pub fn library_fs_section(p: &LibraryProbe) -> Section {
         "Synced by",
         Fact::choice(
             p.sync_client.as_deref().unwrap_or("none"),
-            &["none", "Dropbox", "Syncthing", "Resilio Sync", "ownCloud/Nextcloud", "Nextcloud", "OneDrive", "Google Drive", "ownCloud", "iCloud Drive"],
+            &[
+                "none",
+                "Dropbox",
+                "Syncthing",
+                "Resilio Sync",
+                "ownCloud/Nextcloud",
+                "Nextcloud",
+                "OneDrive",
+                "Google Drive",
+                "ownCloud",
+                "iCloud Drive",
+            ],
         ),
     );
     match p.free {
         Some((avail, total)) => {
             let (c, nearly) = free_class(avail, total);
-            s.row("Free space", Fact::choice(c, &["under 200 MB", "200 MB-1 GB", "1-10 GB", "10-100 GB", "over 100 GB"]));
+            s.row(
+                "Free space",
+                Fact::choice(
+                    c,
+                    &[
+                        "under 200 MB",
+                        "200 MB-1 GB",
+                        "1-10 GB",
+                        "10-100 GB",
+                        "over 100 GB",
+                    ],
+                ),
+            );
             s.row("Disk nearly full", Fact::flag(nearly));
         }
         None => {
@@ -478,7 +670,13 @@ mod tests {
         assert_eq!(i.flatpak_version, "1.16.1");
         assert_eq!(
             i.filesystems,
-            ["xdg-download", "<path>:rw", "!host", "<path>", "xdg-documents/<path>:ro"]
+            [
+                "xdg-download",
+                "<path>:rw",
+                "!host",
+                "<path>",
+                "xdg-documents/<path>:ro"
+            ]
         );
         assert!(i.has_overrides);
         let t = crate::diag_facts::Redactor {
@@ -526,21 +724,32 @@ mod tests {
         assert_eq!(ram_class(&m(17_000_000)), "16-32 GB");
         assert_eq!(ram_class(&m(130_000_000)), "32 GB or more");
         assert_eq!(ram_class(""), "unknown");
-        assert_eq!(rss_class(rss_kb("Name: x\nVmRSS:   523000 kB\n")), "500 MB-1 GB");
+        assert_eq!(
+            rss_class(rss_kb("Name: x\nVmRSS:   523000 kB\n")),
+            "500 MB-1 GB"
+        );
         assert_eq!(rss_class(None), "unknown");
     }
 
     #[test]
     fn cpu_use_is_told_as_a_class() {
         // pid (comm) state ppid ... utime(14) stime(15)
-        let stat = |u: u64, s: u64| format!("42 (bookx) S 1 1 1 0 -1 4194560 100 0 0 0 {u} {s} 0 0 20 0 5 0 100 1000000 2000");
+        let stat = |u: u64, s: u64| {
+            format!(
+                "42 (bookx) S 1 1 1 0 -1 4194560 100 0 0 0 {u} {s} 0 0 20 0 5 0 100 1000000 2000"
+            )
+        };
         assert_eq!(cpu_class(&stat(10, 5), 100, 100.0), "idle (under 5%)");
         assert_eq!(cpu_class(&stat(1000, 500), 100, 100.0), "light (5-25%)");
-        assert_eq!(cpu_class(&stat(7000, 3000), 100, 100.0), "very busy (over 75%)");
+        assert_eq!(
+            cpu_class(&stat(7000, 3000), 100, 100.0),
+            "very busy (over 75%)"
+        );
         assert_eq!(cpu_class("garbage", 100, 100.0), "unknown");
         assert_eq!(cpu_class(&stat(1, 1), 100, 0.0), "unknown");
         // a command name with a space and a parenthesis cannot confuse the field count
-        let odd = "42 (a) b (c) S 1 1 1 0 -1 4194560 100 0 0 0 5000 0 0 0 20 0 5 0 100 1000000 2000";
+        let odd =
+            "42 (a) b (c) S 1 1 1 0 -1 4194560 100 0 0 0 5000 0 0 0 20 0 5 0 100 1000000 2000";
         assert_ne!(cpu_class(odd, 100, 100.0), "unknown");
     }
 
@@ -584,10 +793,15 @@ mod tests {
     #[test]
     fn a_library_on_nfs_with_a_full_disk_is_told_so() {
         let p = LibraryProbe {
-            mountinfo: "36 25 0:32 / /mnt/nas rw,relatime shared:1 - nfs4 server:/export rw\n".into(),
+            mountinfo: "36 25 0:32 / /mnt/nas rw,relatime shared:1 - nfs4 server:/export rw\n"
+                .into(),
             canon: "/mnt/nas/Books".into(),
             free: Some((50 << 20, 500 << 30)),
-            db: Some(DbProbe { size: 3 << 20, copies: 2, problems: Some(0) }),
+            db: Some(DbProbe {
+                size: 3 << 20,
+                copies: 2,
+                problems: Some(0),
+            }),
             ..Default::default()
         };
         let t = crate::diag_facts::Redactor {
@@ -596,7 +810,14 @@ mod tests {
             show_titles: false,
         }
         .section(&library_fs_section(&p));
-        for want in ["File system: nfs4", "File system kind: NETWORK file system", "Free space: under 200 MB", "Disk nearly full: yes", "Pre-update copies of the catalogue: 2", "quick check): ok"] {
+        for want in [
+            "File system: nfs4",
+            "File system kind: NETWORK file system",
+            "Free space: under 200 MB",
+            "Disk nearly full: yes",
+            "Pre-update copies of the catalogue: 2",
+            "quick check): ok",
+        ] {
             assert!(t.contains(want), "{want} in {t}");
         }
         assert!(!t.contains("server:/export") && !t.contains("/mnt/nas"));
@@ -612,7 +833,11 @@ mod tests {
 
     #[test]
     fn a_proxy_is_only_told_as_set_or_not() {
-        assert!(proxy_set(&|k| if k == "https_proxy" { "http://u:p@proxy:3128".into() } else { String::new() }));
+        assert!(proxy_set(&|k| if k == "https_proxy" {
+            "http://u:p@proxy:3128".into()
+        } else {
+            String::new()
+        }));
         assert!(!proxy_set(&|_| String::new()));
     }
 }

@@ -533,17 +533,20 @@ pub fn finish(id: u64, result: Result<(), String>) {
             Kind::Voice => Area::Tts,
         };
         let mut t = crate::trace::op(area, "job");
-        t.word("kind", match kind {
-            Kind::Import => "import",
-            Kind::Export => "export",
-            Kind::Convert => "convert",
-            Kind::Send => "send",
-            Kind::Fetch => "fetch",
-            Kind::Backup => "backup",
-            Kind::News => "news",
-            Kind::Voice => "voice_download",
-            Kind::Dictionary => "dictionary_download",
-        });
+        t.word(
+            "kind",
+            match kind {
+                Kind::Import => "import",
+                Kind::Export => "export",
+                Kind::Convert => "convert",
+                Kind::Send => "send",
+                Kind::Fetch => "fetch",
+                Kind::Backup => "backup",
+                Kind::News => "news",
+                Kind::Voice => "voice_download",
+                Kind::Dictionary => "dictionary_download",
+            },
+        );
         t.num("took_ms", (now_ms() - started).max(0) as u64);
         match &result {
             Ok(()) => t.ok(),

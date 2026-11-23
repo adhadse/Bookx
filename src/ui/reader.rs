@@ -557,69 +557,69 @@ impl Reader {
 
     fn load_chapter(&mut self, idx: usize, frac: Option<f64>, anchor: Option<String>, last: bool) {
         crate::trace::timed(crate::trace::Area::Reader, "load_chapter", |_o| {
-        let idx = idx.min(self.spine.len().saturating_sub(1));
-        let Some(path) = self.spine.get(idx).cloned() else {
-            return;
-        };
-        if !self.tts.advancing {
-            // going to another chapter: what was running waits at its place, the cards stay
-            if self.tts.session.state() != crate::tts::State::Stopped {
-                self.tts_park();
-            } else if self.tts.notice.is_some() {
-                self.tts_stop();
+            let idx = idx.min(self.spine.len().saturating_sub(1));
+            let Some(path) = self.spine.get(idx).cloned() else {
+                return;
+            };
+            if !self.tts.advancing {
+                // going to another chapter: what was running waits at its place, the cards stay
+                if self.tts.session.state() != crate::tts::State::Stopped {
+                    self.tts_park();
+                } else if self.tts.notice.is_some() {
+                    self.tts_stop();
+                }
+                self.rsvp.park_current(&self.canvas);
             }
-            self.rsvp.park_current(&self.canvas);
-        }
-        self.spine_idx = idx;
-        let (styled, user_css, hyphen_lang) = {
-            let cfg = self.shared.cfg.borrow();
-            let r = &cfg.reader;
-            let tweaks = cfg.tweaks.effective(self.book_id);
-            (
-                tweaks.styled(r.publisher_styles) || r.colors == ColorMode::Original,
-                tweaks.css(),
-                tweaks.hyphenation_language(&self.book.metadata().language),
-            )
-        };
-        let doc = self
-            .book
-            .chapter_doc_layered(&path, styled, &user_css)
-            .unwrap_or_default();
-        self.chapter_words = doc.word_count();
-        self.canvas.set_language(&hyphen_lang);
-        self.canvas.set_doc(doc, frac, anchor, last);
-        self.refresh_highlights();
-        self.refresh_vocab_marks();
-        self.w.mid_label.set_label(&self.chapter_title(idx));
-        self.w.title.set_subtitle(&self.chapter_title(idx));
-        // the contents entry of this chapter (the one with the anchor of the chapter itself, else the last in it)
-        let row_idx = self
-            .toc
-            .iter()
-            .enumerate()
-            .filter(|(_, t)| t.href.split('#').next() == Some(path.as_str()))
-            .find(|(_, t)| !t.href.contains('#'))
-            .or_else(|| {
-                self.toc
-                    .iter()
-                    .enumerate()
-                    .rfind(|(_, t)| t.href.split('#').next() == Some(path.as_str()))
-            })
-            .map(|(n, _)| n);
-        self.w.side.select_toc(row_idx);
-        // hits of the last search stay marked in every chapter you visit
-        let hits = if self.last_search.chars().count() >= 2 {
-            self.canvas.find_all(&self.last_search)
-        } else {
-            Vec::new()
-        };
-        self.canvas.set_hits(hits, None);
-        if let Some((q, nth)) = self.pending_hit.take() {
-            let hits = self.canvas.find_all(&q);
-            let nth = nth.min(hits.len().saturating_sub(1));
-            self.canvas.set_hits(hits, Some(nth));
-        }
-        self.update_bookmark_button();
+            self.spine_idx = idx;
+            let (styled, user_css, hyphen_lang) = {
+                let cfg = self.shared.cfg.borrow();
+                let r = &cfg.reader;
+                let tweaks = cfg.tweaks.effective(self.book_id);
+                (
+                    tweaks.styled(r.publisher_styles) || r.colors == ColorMode::Original,
+                    tweaks.css(),
+                    tweaks.hyphenation_language(&self.book.metadata().language),
+                )
+            };
+            let doc = self
+                .book
+                .chapter_doc_layered(&path, styled, &user_css)
+                .unwrap_or_default();
+            self.chapter_words = doc.word_count();
+            self.canvas.set_language(&hyphen_lang);
+            self.canvas.set_doc(doc, frac, anchor, last);
+            self.refresh_highlights();
+            self.refresh_vocab_marks();
+            self.w.mid_label.set_label(&self.chapter_title(idx));
+            self.w.title.set_subtitle(&self.chapter_title(idx));
+            // the contents entry of this chapter (the one with the anchor of the chapter itself, else the last in it)
+            let row_idx = self
+                .toc
+                .iter()
+                .enumerate()
+                .filter(|(_, t)| t.href.split('#').next() == Some(path.as_str()))
+                .find(|(_, t)| !t.href.contains('#'))
+                .or_else(|| {
+                    self.toc
+                        .iter()
+                        .enumerate()
+                        .rfind(|(_, t)| t.href.split('#').next() == Some(path.as_str()))
+                })
+                .map(|(n, _)| n);
+            self.w.side.select_toc(row_idx);
+            // hits of the last search stay marked in every chapter you visit
+            let hits = if self.last_search.chars().count() >= 2 {
+                self.canvas.find_all(&self.last_search)
+            } else {
+                Vec::new()
+            };
+            self.canvas.set_hits(hits, None);
+            if let Some((q, nth)) = self.pending_hit.take() {
+                let hits = self.canvas.find_all(&q);
+                let nth = nth.min(hits.len().saturating_sub(1));
+                self.canvas.set_hits(hits, Some(nth));
+            }
+            self.update_bookmark_button();
         })
     }
 
@@ -5483,6 +5483,7 @@ impl SimpleComponent for Reader {
         };
 
         {
+            crate::trace::set_active(crate::trace::Area::Reader);
             if let Some(b) = shared.lib.borrow().get(book_id) {
                 crate::trace::event(crate::trace::Area::Reader, "open_book")
                     .book(book_id)

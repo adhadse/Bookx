@@ -153,7 +153,14 @@ impl ErrorClass {
 /// The HTTP status inside "the server answered 404" or "status code 404", when there is one.
 pub fn status_in(msg: &str) -> Option<u16> {
     let l = msg.to_ascii_lowercase();
-    for key in ["answered ", "status code ", "http status ", "http error ", "status: ", "http "] {
+    for key in [
+        "answered ",
+        "status code ",
+        "http status ",
+        "http error ",
+        "status: ",
+        "http ",
+    ] {
         if let Some(i) = l.find(key) {
             let digits: String = l[i + key.len()..]
                 .chars()
@@ -172,13 +179,34 @@ pub fn classify_error(msg: &str) -> (ErrorClass, Option<u16>) {
     let l = msg.to_ascii_lowercase();
     let has = |words: &[&str]| words.iter().any(|w| l.contains(w));
     let status = status_in(&l);
-    let class = if matches!(status, Some(401 | 403)) || has(&["did not accept the user name", "unauthorized", "bad credentials", "wrong password"]) {
+    let class = if matches!(status, Some(401 | 403))
+        || has(&[
+            "did not accept the user name",
+            "unauthorized",
+            "bad credentials",
+            "wrong password",
+        ]) {
         ErrorClass::Unauthorized
     } else if status.is_some() {
         ErrorClass::Status
-    } else if has(&["certificate", "tls ", "tls:", "ssl", "handshake", "peer sent no"]) {
+    } else if has(&[
+        "certificate",
+        "tls ",
+        "tls:",
+        "ssl",
+        "handshake",
+        "peer sent no",
+    ]) {
         ErrorClass::Tls
-    } else if has(&["dns", "failed to lookup", "name or service not known", "no such host", "resolve", "nodename nor servname", "temporary failure in name"]) {
+    } else if has(&[
+        "dns",
+        "failed to lookup",
+        "name or service not known",
+        "no such host",
+        "resolve",
+        "nodename nor servname",
+        "temporary failure in name",
+    ]) {
         ErrorClass::Dns
     } else if has(&["timed out", "timeout", "took too long"]) {
         ErrorClass::Timeout
@@ -186,29 +214,108 @@ pub fn classify_error(msg: &str) -> (ErrorClass, Option<u16>) {
         ErrorClass::Refused
     } else if has(&["unreachable", "no route", "network is down", "offline mode"]) {
         ErrorClass::Unreachable
-    } else if has(&["address already in use", "addr in use", "port is in use", "already in use"]) {
+    } else if has(&[
+        "address already in use",
+        "addr in use",
+        "port is in use",
+        "already in use",
+    ]) {
         ErrorClass::PortInUse
-    } else if has(&["no space left", "disk full", "quota exceeded", "disk quota", "is the disk full"]) {
+    } else if has(&[
+        "no space left",
+        "disk full",
+        "quota exceeded",
+        "disk quota",
+        "is the disk full",
+    ]) {
         ErrorClass::DiskFull
-    } else if has(&["database is locked", "database table is locked", "already open in", "locked by"]) {
+    } else if has(&[
+        "database is locked",
+        "database table is locked",
+        "already open in",
+        "locked by",
+    ]) {
         ErrorClass::Locked
-    } else if has(&["hash mismatch", "checksum mismatch", "sha256 mismatch", "digest mismatch", "does not match (got", "does not match the expected"]) {
+    } else if has(&[
+        "hash mismatch",
+        "checksum mismatch",
+        "sha256 mismatch",
+        "digest mismatch",
+        "does not match (got",
+        "does not match the expected",
+    ]) {
         ErrorClass::HashMismatch
-    } else if has(&["must start with http", "enter the address", "invalid url", "relative url"]) {
+    } else if has(&[
+        "must start with http",
+        "enter the address",
+        "invalid url",
+        "relative url",
+    ]) {
         ErrorClass::BadAddress
-    } else if has(&["the server's answer", "expected value", "invalid json", "unexpected end", "key must be"]) {
+    } else if has(&[
+        "the server's answer",
+        "expected value",
+        "invalid json",
+        "unexpected end",
+        "key must be",
+    ]) {
         ErrorClass::BadAnswer
     } else if has(&["not mounted", "is not connected", "not connected any more"]) {
         ErrorClass::NotMounted
-    } else if has(&["permission denied", "operation not permitted", "read-only file system", "access denied", "sandbox", "portal denied"]) {
+    } else if has(&[
+        "permission denied",
+        "operation not permitted",
+        "read-only file system",
+        "access denied",
+        "sandbox",
+        "portal denied",
+    ]) {
         ErrorClass::Denied
-    } else if has(&["corrupt", "malformed", "file is not a database", "not a zip", "invalid zip", "bad zip", "damaged", "not a valid", "checksum failed"]) {
+    } else if has(&[
+        "corrupt",
+        "malformed",
+        "file is not a database",
+        "not a zip",
+        "invalid zip",
+        "bad zip",
+        "damaged",
+        "not a valid",
+        "checksum failed",
+    ]) {
         ErrorClass::Corrupt
-    } else if has(&["unsupported", "not supported", "drm", "protected", "cannot convert", "no text layer", "opens no format"]) {
+    } else if has(&[
+        "unsupported",
+        "not supported",
+        "drm",
+        "protected",
+        "cannot convert",
+        "no text layer",
+        "opens no format",
+    ]) {
         ErrorClass::Unsupported
-    } else if has(&["no such file", "not found", "not available", "need ", "install it", "no piper voice", "missing", "is not enabled", "is not installed", "cannot find", "could not find", "no audio output", "no sink", "no such device"]) {
+    } else if has(&[
+        "no such file",
+        "not found",
+        "not available",
+        "need ",
+        "install it",
+        "no piper voice",
+        "missing",
+        "is not enabled",
+        "is not installed",
+        "cannot find",
+        "could not find",
+        "no audio output",
+        "no sink",
+        "no such device",
+    ]) {
         ErrorClass::Missing
-    } else if has(&["i/o error", "broken pipe", "input/output", "unable to open database"]) {
+    } else if has(&[
+        "i/o error",
+        "broken pipe",
+        "input/output",
+        "unable to open database",
+    ]) {
         ErrorClass::Io
     } else {
         ErrorClass::Other
@@ -322,6 +429,7 @@ impl Entry {
     }
 
     /// `12:03:11Z sync/push FAIL http=404 class=status 120 ms fmt=pdf ...` for the report.
+    #[cfg(test)]
     pub fn summary_line(&self) -> String {
         self.summary_with(&|m| m.to_string())
     }
@@ -516,11 +624,6 @@ pub fn timed<T>(area: Area, name: &'static str, f: impl FnOnce(&mut Op) -> T) ->
     r
 }
 
-/// Records the outcome of something that already ran (no duration).
-pub fn done<T, E: std::fmt::Display>(area: Area, name: &'static str, r: &Result<T, E>) {
-    op(area, name).result(r);
-}
-
 /// Records a moment (a server started, a device connected). Always written to the log.
 pub fn event(area: Area, name: &'static str) -> Op {
     let mut o = op(area, name);
@@ -603,10 +706,6 @@ impl Op {
         }
         self
     }
-    pub fn http(&mut self, status: u16) -> &mut Op {
-        self.entry.http = Some(status);
-        self
-    }
     /// The duration, when it was measured elsewhere (a stall of the main loop).
     pub fn took(&mut self, ms: u64) -> &mut Op {
         self.took = Some(ms);
@@ -615,11 +714,6 @@ impl Op {
     /// Not written to the log, even for an event (it happens often).
     pub fn quiet(&mut self) -> &mut Op {
         self.persist = false;
-        self
-    }
-    /// Written to the log even when it worked and was quick.
-    pub fn keep(&mut self) -> &mut Op {
-        self.persist = true;
         self
     }
     pub fn ok(&mut self) {
@@ -659,7 +753,10 @@ impl Op {
         let mut e = self.entry.clone();
         e.ok = ok;
         e.class = class;
-        e.ms = Some(self.took.unwrap_or_else(|| self.start.elapsed().as_millis() as u64));
+        e.ms = Some(
+            self.took
+                .unwrap_or_else(|| self.start.elapsed().as_millis() as u64),
+        );
         e.msg = msg.map(clean_message).filter(|m| !m.is_empty());
         e.time = chrono::Utc::now().timestamp();
         let slow = e.ms.is_some_and(|m| m >= SLOW_MS);
@@ -738,7 +835,13 @@ pub fn last_started() -> Option<(Area, &'static str)> {
 fn push(store: &mut Store, mut e: Entry) {
     // the same thing again right after itself is one entry with a count
     if let Some(last) = store.q.iter_mut().rev().find(|x| x.area == e.area) {
-        if last.name == e.name && last.ok == e.ok && last.class == e.class && last.http == e.http && last.fields == e.fields && last.msg == e.msg {
+        if last.name == e.name
+            && last.ok == e.ok
+            && last.class == e.class
+            && last.http == e.http
+            && last.fields == e.fields
+            && last.msg == e.msg
+        {
             last.repeats = last.repeats.saturating_add(1);
             last.time = e.time;
             last.ms = e.ms;
@@ -902,11 +1005,6 @@ pub fn collect() -> Vec<(Area, Vec<(String, Fact)>)> {
 }
 
 #[cfg(test)]
-pub fn clear_for_test() {
-    STORE.lock().unwrap_or_else(|p| p.into_inner()).q.clear();
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -937,7 +1035,10 @@ mod tests {
             e.to_line(),
             "trace sync push fail http=404 class=status ms=120 fmt=pdf size=lt10mb doc=0123456789abcdef0123456789abcdef local=0.373 err=the server answered 404"
         );
-        assert!(e.summary_line().contains("sync/push FAIL http=404 class=status 120 ms fmt=pdf"));
+        assert!(
+            e.summary_line()
+                .contains("sync/push FAIL http=404 class=status 120 ms fmt=pdf")
+        );
     }
 
     #[test]
@@ -957,24 +1058,80 @@ mod tests {
     fn errors_are_classified() {
         for (msg, class, status) in [
             ("the server answered 404", ErrorClass::Status, Some(404)),
-            ("the server answered 401", ErrorClass::Unauthorized, Some(401)),
-            ("HTTP status code 403 from the server", ErrorClass::Unauthorized, Some(403)),
-            ("the server did not accept the user name and password", ErrorClass::Unauthorized, None),
-            ("dns error: failed to lookup address information", ErrorClass::Dns, None),
-            ("connection refused (os error 111)", ErrorClass::Refused, None),
+            (
+                "the server answered 401",
+                ErrorClass::Unauthorized,
+                Some(401),
+            ),
+            (
+                "HTTP status code 403 from the server",
+                ErrorClass::Unauthorized,
+                Some(403),
+            ),
+            (
+                "the server did not accept the user name and password",
+                ErrorClass::Unauthorized,
+                None,
+            ),
+            (
+                "dns error: failed to lookup address information",
+                ErrorClass::Dns,
+                None,
+            ),
+            (
+                "connection refused (os error 111)",
+                ErrorClass::Refused,
+                None,
+            ),
             ("operation timed out", ErrorClass::Timeout, None),
-            ("invalid peer certificate: UnknownIssuer", ErrorClass::Tls, None),
-            ("Network is unreachable (os error 101)", ErrorClass::Unreachable, None),
-            ("the address must start with http:// or https://", ErrorClass::BadAddress, None),
-            ("the server's answer: expected value at line 1", ErrorClass::BadAnswer, None),
-            ("Could not start sharing on port 30260: Address already in use", ErrorClass::PortInUse, None),
-            ("No space left on device (os error 28)", ErrorClass::DiskFull, None),
+            (
+                "invalid peer certificate: UnknownIssuer",
+                ErrorClass::Tls,
+                None,
+            ),
+            (
+                "Network is unreachable (os error 101)",
+                ErrorClass::Unreachable,
+                None,
+            ),
+            (
+                "the address must start with http:// or https://",
+                ErrorClass::BadAddress,
+                None,
+            ),
+            (
+                "the server's answer: expected value at line 1",
+                ErrorClass::BadAnswer,
+                None,
+            ),
+            (
+                "Could not start sharing on port 30260: Address already in use",
+                ErrorClass::PortInUse,
+                None,
+            ),
+            (
+                "No space left on device (os error 28)",
+                ErrorClass::DiskFull,
+                None,
+            ),
             ("database is locked", ErrorClass::Locked, None),
-            ("sha256 mismatch for the voice model", ErrorClass::HashMismatch, None),
-            ("the device is not mounted any more", ErrorClass::NotMounted, None),
+            (
+                "sha256 mismatch for the voice model",
+                ErrorClass::HashMismatch,
+                None,
+            ),
+            (
+                "the device is not mounted any more",
+                ErrorClass::NotMounted,
+                None,
+            ),
             ("Permission denied (os error 13)", ErrorClass::Denied, None),
             ("the file is not a zip archive", ErrorClass::Corrupt, None),
-            ("this book is protected by DRM", ErrorClass::Unsupported, None),
+            (
+                "this book is protected by DRM",
+                ErrorClass::Unsupported,
+                None,
+            ),
             ("no Piper voice is downloaded", ErrorClass::Missing, None),
             ("something odd", ErrorClass::Other, None),
         ] {
@@ -997,10 +1154,17 @@ mod tests {
 
     #[test]
     fn field_values_cannot_carry_text() {
-        assert_eq!(safe_value("Alice's Book/Title @ home"), "Alices_BookTitle__home");
+        assert_eq!(
+            safe_value("Alice's Book/Title @ home"),
+            "Alices_BookTitle__home"
+        );
         assert_eq!(safe_value(&"a".repeat(100)).len(), 40);
         let mut o = op(Area::Import, "t_fields");
-        o.fmt("EPUB!/..").hash("doc", "not a hash").hash("sha", "0123456789ABCDEF").ratio("p", f64::NAN).ratio("q", 3.0);
+        o.fmt("EPUB!/..")
+            .hash("doc", "not a hash")
+            .hash("sha", "0123456789ABCDEF")
+            .ratio("p", f64::NAN)
+            .ratio("q", 3.0);
         assert_eq!(o.entry.field("fmt"), Some("epub"));
         assert!(o.entry.field("doc").is_none());
         assert_eq!(o.entry.field("sha"), Some("0123456789abcdef"));
@@ -1044,7 +1208,13 @@ mod tests {
         push(&mut s, entry(Area::Sync, "pull", true));
         push(&mut s, entry(Area::Reader, "load_chapter", true));
         assert_eq!(s.q.iter().filter(|e| e.area == Area::Reader).count(), 2);
-        assert_eq!(s.q.iter().find(|e| e.name == "load_chapter").unwrap().repeats, 51);
+        assert_eq!(
+            s.q.iter()
+                .find(|e| e.name == "load_chapter")
+                .unwrap()
+                .repeats,
+            51
+        );
     }
 
     #[test]
@@ -1056,7 +1226,10 @@ mod tests {
             push(&mut s, e);
         }
         push(&mut s, entry(Area::Sync, "pull", true));
-        assert_eq!(s.q.iter().filter(|e| e.area == Area::Server).count(), PER_AREA);
+        assert_eq!(
+            s.q.iter().filter(|e| e.area == Area::Server).count(),
+            PER_AREA
+        );
         assert_eq!(s.q.front().unwrap().field("n"), Some("10"));
         for a in Area::ALL.iter().cycle().take(TOTAL * 2) {
             push(&mut s, entry(*a, "x", true));
@@ -1067,7 +1240,9 @@ mod tests {
     #[test]
     fn an_operation_records_its_duration_outcome_and_fields() {
         let mut o = op(Area::Convert, "zz_convert_probe");
-        o.fmt("epub").word("to", "kepub").size_class("size", 3 << 20);
+        o.fmt("epub")
+            .word("to", "kepub")
+            .size_class("size", 3 << 20);
         o.fail("could not convert the book (the file is not a zip archive)");
         drop(o);
         let e = snapshot()
@@ -1077,7 +1252,10 @@ mod tests {
             .unwrap();
         assert!(!e.ok);
         assert_eq!(e.class, Some(ErrorClass::Corrupt));
-        assert_eq!((e.field("fmt"), e.field("to"), e.field("size")), (Some("epub"), Some("kepub"), Some("lt10mb")));
+        assert_eq!(
+            (e.field("fmt"), e.field("to"), e.field("size")),
+            (Some("epub"), Some("kepub"), Some("lt10mb"))
+        );
         assert!(e.ms.is_some() && e.time > 0);
     }
 
@@ -1086,7 +1264,11 @@ mod tests {
         {
             let _o = op(Area::Reader, "zz_dropped_probe");
         }
-        let e = snapshot().into_iter().rev().find(|e| e.name == "zz_dropped_probe").unwrap();
+        let e = snapshot()
+            .into_iter()
+            .rev()
+            .find(|e| e.name == "zz_dropped_probe")
+            .unwrap();
         assert!(!e.ok);
         assert_eq!(e.class, Some(ErrorClass::Aborted));
     }
@@ -1097,7 +1279,10 @@ mod tests {
         let fixed = entry(Area::Sync, "push", true);
         let other = entry(Area::Server, "start", false);
         assert!(last_failure(&[fail.clone(), fixed]).is_none());
-        assert_eq!(last_failure(&[fail.clone(), other.clone()]).unwrap().area, Area::Server);
+        assert_eq!(
+            last_failure(&[fail.clone(), other.clone()]).unwrap().area,
+            Area::Server
+        );
         assert_eq!(last_failure(&[other, fail]).unwrap().area, Area::Sync);
     }
 
@@ -1105,7 +1290,10 @@ mod tests {
     fn the_log_and_the_run_are_merged_without_doubles() {
         let mut old = entry(Area::Backup, "run", false);
         old.time = 1_000;
-        let log = vec![format!("2023-11-14T22:13:20Z  INFO bookx_crumb: {}", old.to_line())];
+        let log = vec![format!(
+            "2023-11-14T22:13:20Z  INFO bookx_crumb: {}",
+            old.to_line()
+        )];
         let got = from_log(&log);
         assert_eq!(got.len(), 1);
         assert_eq!(got[0].time, 1_700_000_000);
@@ -1127,7 +1315,10 @@ mod tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let m = std::fs::metadata(dir.join(TAIL_FILE)).unwrap().permissions().mode();
+            let m = std::fs::metadata(dir.join(TAIL_FILE))
+                .unwrap()
+                .permissions()
+                .mode();
             assert_eq!(m & 0o777, 0o600);
         }
         let _ = std::fs::remove_dir_all(dir);
@@ -1135,9 +1326,21 @@ mod tests {
 
     #[test]
     fn providers_report_by_area_and_a_second_registration_replaces_the_first() {
-        register(Area::Tts, "t", Box::new(|| vec![("engine".into(), Fact::word("kokoro"))]));
-        register(Area::Tts, "t", Box::new(|| vec![("engine".into(), Fact::word("piper"))]));
-        register(Area::Backup, "b", Box::new(|| vec![("places".into(), Fact::count(2))]));
+        register(
+            Area::Tts,
+            "t",
+            Box::new(|| vec![("engine".into(), Fact::word("kokoro"))]),
+        );
+        register(
+            Area::Tts,
+            "t",
+            Box::new(|| vec![("engine".into(), Fact::word("piper"))]),
+        );
+        register(
+            Area::Backup,
+            "b",
+            Box::new(|| vec![("places".into(), Fact::count(2))]),
+        );
         let c = collect();
         let tts = c.iter().find(|(a, _)| *a == Area::Tts).unwrap();
         assert_eq!(tts.1.len(), 1);

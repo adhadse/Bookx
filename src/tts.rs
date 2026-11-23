@@ -75,13 +75,13 @@ fn mock_marker() -> PathBuf {
 /// can read yet the error is a [`NotReady`] (download the voice, install espeak-ng, ...).
 pub fn open_engine(prefs: &TtsPrefs, language: &str) -> Result<Opened> {
     crate::trace::traced(crate::trace::Area::Tts, "open_engine", |_o| {
-    if mock_download().is_some() && !mock_marker().exists() {
-        return Err(NotReady::NoVoice.into());
-    }
-    if std::env::var("BOOKX_TTS_MOCK_ESPEAK").as_deref() == Ok("missing") {
-        return Err(NotReady::NoEspeak.into());
-    }
-    bookx_tts::factory::open(prefs, &store(), language, cache_dir())
+        if mock_download().is_some() && !mock_marker().exists() {
+            return Err(NotReady::NoVoice.into());
+        }
+        if std::env::var("BOOKX_TTS_MOCK_ESPEAK").as_deref() == Ok("missing") {
+            return Err(NotReady::NoEspeak.into());
+        }
+        bookx_tts::factory::open(prefs, &store(), language, cache_dir())
     })
 }
 
@@ -118,37 +118,37 @@ pub fn download_packs(
     progress: &mut dyn FnMut(&str, u64, u64, usize),
 ) -> std::result::Result<(), Failure> {
     crate::trace::traced_dbg(crate::trace::Area::Tts, "download_packs", |_o| {
-    if let Some(m) = mock_download() {
-        let steps = 20u64;
-        let (ms, switch) = match m {
-            MockDownload::Takes(ms) => (ms, false),
-            MockDownload::SwitchOrigin(ms) => (ms, true),
-            MockDownload::Offline => {
-                return Err(setup::classify(
-                    "cannot reach https://example.invalid/model: offline",
-                ));
+        if let Some(m) = mock_download() {
+            let steps = 20u64;
+            let (ms, switch) = match m {
+                MockDownload::Takes(ms) => (ms, false),
+                MockDownload::SwitchOrigin(ms) => (ms, true),
+                MockDownload::Offline => {
+                    return Err(setup::classify(
+                        "cannot reach https://example.invalid/model: offline",
+                    ));
+                }
+            };
+            for i in 0..=steps {
+                if cancel.is_cancelled() {
+                    return Err(Failure::Cancelled);
+                }
+                progress(
+                    "mock-voice.onnx",
+                    i * 1_000_000,
+                    steps * 1_000_000,
+                    usize::from(switch && i > steps / 3),
+                );
+                std::thread::sleep(std::time::Duration::from_millis(ms / steps));
             }
-        };
-        for i in 0..=steps {
-            if cancel.is_cancelled() {
-                return Err(Failure::Cancelled);
-            }
-            progress(
-                "mock-voice.onnx",
-                i * 1_000_000,
-                steps * 1_000_000,
-                usize::from(switch && i > steps / 3),
-            );
-            std::thread::sleep(std::time::Duration::from_millis(ms / steps));
+            let _ = std::fs::create_dir_all(store().root);
+            let _ = std::fs::write(mock_marker(), b"ok");
+            return Ok(());
         }
-        let _ = std::fs::create_dir_all(store().root);
-        let _ = std::fs::write(mock_marker(), b"ok");
-        return Ok(());
-    }
-    bookx_tts::download::install_all(&store(), packs, cancel, &mut |p| {
-        progress(&p.file, p.done, p.total, p.origin)
-    })
-    .map_err(|e| setup::classify(&format!("{e:#}")))
+        bookx_tts::download::install_all(&store(), packs, cancel, &mut |p| {
+            progress(&p.file, p.done, p.total, p.origin)
+        })
+        .map_err(|e| setup::classify(&format!("{e:#}")))
     })
 }
 

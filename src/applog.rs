@@ -501,7 +501,10 @@ mod tests {
         let fake = "2026-11-22T10:00:00Z  INFO bookx_crumb: trace sync push ok doc=alice_reads at The Secret Garden";
         let c = clean_line(fake, &s);
         assert!(!c.contains("alice") && !c.contains("Secret"), "{c}");
-        let c = clean_line("2026-11-22T10:00:00Z  WARN x: 0123456789abcdef0123456789abcdef", &s);
+        let c = clean_line(
+            "2026-11-22T10:00:00Z  WARN x: 0123456789abcdef0123456789abcdef",
+            &s,
+        );
         assert!(!c.contains("0123456789abcdef"));
     }
 

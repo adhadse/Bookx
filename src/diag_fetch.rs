@@ -22,7 +22,13 @@ pub fn host_kind(url: &str) -> &'static str {
             .unwrap_or("")
             .rsplit_once(':')
             .map_or_else(
-                || url.split_once("://").map_or(url, |(_, r)| r).split(['/', '?', '#']).next().unwrap_or(""),
+                || {
+                    url.split_once("://")
+                        .map_or(url, |(_, r)| r)
+                        .split(['/', '?', '#'])
+                        .next()
+                        .unwrap_or("")
+                },
                 |(h, _)| h,
             ),
     );
@@ -38,7 +44,14 @@ pub fn host_kind(url: &str) -> &'static str {
 fn start(area: Area, method: &'static str, url: &str) -> Op {
     let mut t = crate::trace::op(area, "request");
     t.word("method", method)
-        .word("scheme", if url.starts_with("https://") { "https" } else { "http" })
+        .word(
+            "scheme",
+            if url.starts_with("https://") {
+                "https"
+            } else {
+                "http"
+            },
+        )
         .word("host", host_kind(url));
     t
 }
@@ -61,7 +74,13 @@ impl Fetcher for Traced {
         r
     }
 
-    fn post(&self, url: &str, headers: &[(String, String)], content_type: &str, body: &[u8]) -> Result<Vec<u8>> {
+    fn post(
+        &self,
+        url: &str,
+        headers: &[(String, String)],
+        content_type: &str,
+        body: &[u8],
+    ) -> Result<Vec<u8>> {
         let mut t = start(self.area, "post", url);
         let r = self.inner.post(url, headers, content_type, body);
         match &r {
@@ -101,7 +120,9 @@ mod tests {
 
     #[test]
     fn a_traced_request_records_the_status_and_not_the_address() {
-        let inner: Arc<dyn Fetcher> = Arc::new(MockFetcher::new().on("https://books.example.org/opds", MockReply::Status(401)));
+        let inner: Arc<dyn Fetcher> = Arc::new(
+            MockFetcher::new().on("https://books.example.org/opds", MockReply::Status(401)),
+        );
         let f = traced(inner, Area::Opds);
         let r = f.get("https://books.example.org/opds", &[]);
         assert!(r.is_err());
@@ -113,7 +134,11 @@ mod tests {
         assert!(!e.ok);
         assert_eq!(e.field("host"), Some("domain"));
         assert_eq!(e.field("scheme"), Some("https"));
-        assert!(!e.to_line().contains("books.example.org"), "{}", e.to_line());
+        assert!(
+            !e.to_line().contains("books.example.org"),
+            "{}",
+            e.to_line()
+        );
         assert!(e.class.is_some());
     }
 }

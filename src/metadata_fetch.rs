@@ -147,64 +147,64 @@ pub fn fetch_with(
     plugins: &crate::plugins::Loaded,
 ) -> Result<Option<Fetched>> {
     crate::trace::traced(crate::trace::Area::Metadata, "fetch", |_o| {
-    let q = query_from(md);
-    if q.title.is_empty() && q.isbn.is_none() {
-        anyhow::bail!("Enter a title or an ISBN first.");
-    }
-    let set = SourceSet::standard(fetcher).with_priority(crate::source_priority::current());
-    let built_in = set.search(&q);
-    let hits = crate::plugins::lookup_all(plugins, &q);
-    let mut found = match built_in {
-        Ok(res) => {
-            let warnings: Vec<String> = res
-                .errors
-                .iter()
-                .map(|e| format!("{}: {}", e.source, e.message))
-                .collect();
-            res.best.map(|best| {
-                // a missing or broken cover must not lose the metadata
-                let cover = set.fetch_cover(&best).ok().flatten();
-                Fetched {
-                    meta: best.meta,
-                    cover,
-                    confidence: best.confidence,
-                    sources: best.sources,
-                    field_sources: best.field_sources,
-                    warnings,
-                }
-            })
+        let q = query_from(md);
+        if q.title.is_empty() && q.isbn.is_none() {
+            anyhow::bail!("Enter a title or an ISBN first.");
         }
-        // every built-in source failed: only an error when no plugin has an answer either
-        Err(e) if hits.is_empty() => return Err(e),
-        Err(e) => {
-            let _ = e;
-            None
-        }
-    };
-    for (id, hit) in hits {
-        match &mut found {
-            Some(f) => {
-                let merged = apply(&f.meta, &hit, Merge::FillEmpty);
-                for field in changed_fields(&f.meta, &merged) {
-                    f.field_sources
-                        .insert(field.to_string(), format!("plugin {id}"));
-                }
-                f.meta = merged;
-                f.sources.push(format!("plugin {id}"));
+        let set = SourceSet::standard(fetcher).with_priority(crate::source_priority::current());
+        let built_in = set.search(&q);
+        let hits = crate::plugins::lookup_all(plugins, &q);
+        let mut found = match built_in {
+            Ok(res) => {
+                let warnings: Vec<String> = res
+                    .errors
+                    .iter()
+                    .map(|e| format!("{}: {}", e.source, e.message))
+                    .collect();
+                res.best.map(|best| {
+                    // a missing or broken cover must not lose the metadata
+                    let cover = set.fetch_cover(&best).ok().flatten();
+                    Fetched {
+                        meta: best.meta,
+                        cover,
+                        confidence: best.confidence,
+                        sources: best.sources,
+                        field_sources: best.field_sources,
+                        warnings,
+                    }
+                })
             }
-            None => {
-                found = Some(Fetched {
-                    meta: apply(md, &hit, Merge::FillEmpty),
-                    cover: None,
-                    confidence: 0.5,
-                    sources: vec![format!("plugin {id}")],
-                    field_sources: Default::default(),
-                    warnings: Vec::new(),
-                });
+            // every built-in source failed: only an error when no plugin has an answer either
+            Err(e) if hits.is_empty() => return Err(e),
+            Err(e) => {
+                let _ = e;
+                None
+            }
+        };
+        for (id, hit) in hits {
+            match &mut found {
+                Some(f) => {
+                    let merged = apply(&f.meta, &hit, Merge::FillEmpty);
+                    for field in changed_fields(&f.meta, &merged) {
+                        f.field_sources
+                            .insert(field.to_string(), format!("plugin {id}"));
+                    }
+                    f.meta = merged;
+                    f.sources.push(format!("plugin {id}"));
+                }
+                None => {
+                    found = Some(Fetched {
+                        meta: apply(md, &hit, Merge::FillEmpty),
+                        cover: None,
+                        confidence: 0.5,
+                        sources: vec![format!("plugin {id}")],
+                        field_sources: Default::default(),
+                        warnings: Vec::new(),
+                    });
+                }
             }
         }
-    }
-    Ok(found)
+        Ok(found)
     })
 }
 
@@ -225,7 +225,10 @@ fn cached() -> &'static Arc<CachingFetcher> {
     F.get_or_init(|| {
         let raw: Arc<dyn Fetcher> = match std::env::var_os("BOOKX_SOURCES_MOCK") {
             Some(dir) => Arc::new(mock_from(Path::new(&dir))),
-            None => crate::diag_fetch::traced(Arc::new(UreqFetcher::new()), crate::trace::Area::Metadata),
+            None => crate::diag_fetch::traced(
+                Arc::new(UreqFetcher::new()),
+                crate::trace::Area::Metadata,
+            ),
         };
         let healthy: Arc<dyn Fetcher> = Arc::new(HealthFetcher::new(raw, health_board()));
         let dir = cache_dir();

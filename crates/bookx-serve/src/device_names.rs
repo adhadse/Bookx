@@ -316,6 +316,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_name_is_known_only_when_the_tables_have_the_model() {
+        assert_eq!(
+            known_name("Onyx Scubapilot-IDP").as_deref(),
+            Some("Boox Leaf 2")
+        );
+        assert_eq!(known_name("Kobo_nova").as_deref(), Some("Kobo Clara HD"));
+        // a word anybody could type, and a name nobody could mistake for a model
+        assert_eq!(known_name("Page"), None);
+        assert_eq!(known_name("Alice's Kobo"), None);
+        assert_eq!(known_name(""), None);
+        assert_eq!(known_name("  "), None);
+        // `friendly_name` is `known_name` or the tidied text
+        assert_eq!(friendly_name("Alice's   Kobo"), "Alice's Kobo");
+    }
+
+    #[test]
     fn the_name_from_issue_39_is_a_boox_leaf_2() {
         assert_eq!(friendly_name("Onyx Scubapilot-IDP"), "Boox Leaf 2");
         assert_eq!(friendly_name("Scubapilot-IDP"), "Boox Leaf 2");

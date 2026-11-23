@@ -166,14 +166,14 @@ pub struct Analysis {
     /// Newest kind last; at most [`MAX_PROBLEMS`].
     pub problems: Vec<Problem>,
     /// `(name, lines)` of the noise left out.
-    pub noise: Vec<(&'static str, usize)>,
+    pub noise: Vec<(&'static str, &'static str, usize)>,
 }
 
 /// Groups the WARN and ERROR lines of the log.
 pub fn analyse(log: &[String]) -> Analysis {
     let mut order: Vec<(Level, String)> = Vec::new();
     let mut map: HashMap<(Level, String), Problem> = HashMap::new();
-    let mut noise: Vec<(&'static str, usize)> = Vec::new();
+    let mut noise: Vec<(&'static str, &'static str, usize)> = Vec::new();
     for l in log {
         let Some(p) = parse(l) else { continue };
         let level = match p.level {
@@ -182,9 +182,9 @@ pub fn analyse(log: &[String]) -> Analysis {
             _ => continue,
         };
         if let Some(n) = noise_of(l) {
-            match noise.iter_mut().find(|(name, _)| *name == n.name) {
-                Some((_, c)) => *c += 1,
-                None => noise.push((n.name, 1)),
+            match noise.iter_mut().find(|(name, _, _)| *name == n.name) {
+                Some((_, _, c)) => *c += 1,
+                None => noise.push((n.name, n.why, 1)),
             }
             continue;
         }
@@ -332,7 +332,10 @@ mod tests {
         let p = parse("2026-11-22T23:00:39.8Z  WARN update_with_view{input=ShowSyncPrefs component=\"bookx::app::App\" id=\"0x7f\"}:{}{task_name=\"x y\"}: zbus::proxy: boom").unwrap();
         assert_eq!((p.target, p.message.as_str()), ("zbus::proxy", "boom"));
         let p = parse("2026-11-22T22:54:49Z  INFO bookx_crumb: start Bookx").unwrap();
-        assert_eq!((p.level, p.target, p.message.as_str()), ("INFO", "bookx_crumb", "start Bookx"));
+        assert_eq!(
+            (p.level, p.target, p.message.as_str()),
+            ("INFO", "bookx_crumb", "start Bookx")
+        );
         assert!(parse("not a log line").is_none());
         assert!(parse("").is_none());
     }
@@ -340,11 +343,14 @@ mod tests {
     #[test]
     fn the_portal_spam_of_issue_39_and_49_is_counted_not_listed() {
         let mut log = spam(300);
-        log.push("2026-11-23T12:00:00Z  ERROR bookx::kosync: push failed: the server answered 404".into());
+        log.push(
+            "2026-11-23T12:00:00Z  ERROR bookx::kosync: push failed: the server answered 404"
+                .into(),
+        );
         let a = analyse(&log);
         assert_eq!(a.problems.len(), 1, "{:?}", a.problems);
         assert_eq!(a.problems[0].level, Level::Error);
-        assert_eq!(a.noise.iter().map(|(_, n)| *n).sum::<usize>(), 300);
+        assert_eq!(a.noise.iter().map(|(_, _, n)| *n).sum::<usize>(), 300);
     }
 
     #[test]
@@ -371,7 +377,9 @@ mod tests {
 
     #[test]
     fn the_list_is_bounded_and_keeps_errors() {
-        let mut log: Vec<String> = (0..80).map(|i| format!("t{i}  WARN w: kind-{}", "x".repeat(i + 1))).collect();
+        let mut log: Vec<String> = (0..80)
+            .map(|i| format!("t{i}  WARN w: kind-{}", "x".repeat(i + 1)))
+            .collect();
         log.insert(0, "t  ERROR e: the one that matters".into());
         let a = analyse(&log);
         assert!(a.problems.len() <= MAX_PROBLEMS);
@@ -421,7 +429,10 @@ mod tests {
         for n in NOISE {
             assert!(!n.why.is_empty() && !n.name.is_empty() && !n.all.is_empty());
         }
-        assert_eq!(noise_of(SPAM).unwrap().name, "desktop portal property cache");
+        assert_eq!(
+            noise_of(SPAM).unwrap().name,
+            "desktop portal property cache"
+        );
         assert!(noise_of("t  WARN bookx: the library is on a network folder").is_none());
     }
 }

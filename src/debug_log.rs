@@ -159,8 +159,20 @@ impl Scrubber {
             out = out.replace(lib, "<library>");
             // the folder's own name (`Alice's Ebooks`) names a person as well as the path does
             if let Some(name) = lib.rsplit('/').next() {
-                const COMMON: &[&str] = &["books", "library", "ebooks", "e-books", "documents", "downloads", "calibre", "bookx", "bookx-library"];
-                if name.chars().count() >= 5 && !COMMON.contains(&name.to_ascii_lowercase().as_str()) {
+                const COMMON: &[&str] = &[
+                    "books",
+                    "library",
+                    "ebooks",
+                    "e-books",
+                    "documents",
+                    "downloads",
+                    "calibre",
+                    "bookx",
+                    "bookx-library",
+                ];
+                if name.chars().count() >= 5
+                    && !COMMON.contains(&name.to_ascii_lowercase().as_str())
+                {
                     out = out.replace(name, "<library>");
                 }
             }
@@ -229,7 +241,13 @@ pub fn scrub_for(cfg: &crate::config::Config, lib: &crate::core::library::Librar
             .flat_map(|b| {
                 // authors and series name people and shelves as much as titles do
                 std::iter::once(b.meta.title.clone())
-                    .chain(b.meta.authors.iter().filter(|a| !a.eq_ignore_ascii_case("unknown")).cloned())
+                    .chain(
+                        b.meta
+                            .authors
+                            .iter()
+                            .filter(|a| !a.eq_ignore_ascii_case("unknown"))
+                            .cloned(),
+                    )
                     .chain((!b.meta.series.is_empty()).then(|| b.meta.series.clone()))
             })
             .collect(),

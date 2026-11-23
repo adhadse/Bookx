@@ -638,63 +638,65 @@ pub fn send_full(
                 Backend::Plugin => "plugin",
             },
         );
-    let mut bytes = std::fs::read(epub).with_context(|| format!("reading {}", epub.display()))?;
-    let src_name = epub
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("book.epub")
-        .to_string();
-    let notes = notes.filter(|n| !n.is_empty());
-    if let Some(n) = notes {
-        bytes = send_notes::embed_appendix(&bytes, n)?;
-    }
-    let kind = drivers.kind(device);
-    let chain = drivers.chain(device, &opts.format);
-    let (target, converted, failed) = convert_with_fallback(&chain, &|t| match conversion_of(
-        t,
-        crate::plugins::convert_is_hooked(t),
-    ) {
-        Conversion::AsIs => Ok(bytes.clone()),
-        Conversion::Converted => export::convert_epub_bytes(&bytes, &src_name, t),
-    })?;
-    let save = devfs::render_template(&opts.template, fields)?;
-    let name = format!("{}.{}", save.stem, target.extension);
-    let path = drivers.send_in(device, &save.dirs, &name, &converted)?;
-    let mut note = None;
-    if kind == Some(DeviceKind::Kobo) && !opts.kobo_shelf.trim().is_empty() {
-        note = shelve(device, &path, &opts.kobo_shelf).err().map(|e| {
-            trf(
-                "Sent, but the shelf “{}” was not updated: {}",
-                &[&opts.kobo_shelf, &format!("{:#}", e)],
-            )
-        });
-    }
-    let mut sidecar = None;
-    if let Some(n) = notes {
-        if matches!(drivers.backend(device), Backend::Usb | Backend::Mtp) && takes_sidecar(kind) {
-            let chapters = crate::core::book::OpenBook::from_archive(
-                crate::core::archive::Archive::from_bytes(bytes.clone())?,
-            )
-            .map(|b| send_notes::chapter_titles(&b))
-            .unwrap_or_default();
-            let file = reading::sidecar_file(&path);
-            if let Some(dir) = file.parent() {
-                if std::fs::create_dir_all(dir).is_ok() && !file.exists() {
-                    let lua = send_notes::koreader_sidecar(&fields.title, &chapters, n);
-                    if std::fs::write(&file, lua).is_ok() {
-                        sidecar = Some(file);
+        let mut bytes =
+            std::fs::read(epub).with_context(|| format!("reading {}", epub.display()))?;
+        let src_name = epub
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("book.epub")
+            .to_string();
+        let notes = notes.filter(|n| !n.is_empty());
+        if let Some(n) = notes {
+            bytes = send_notes::embed_appendix(&bytes, n)?;
+        }
+        let kind = drivers.kind(device);
+        let chain = drivers.chain(device, &opts.format);
+        let (target, converted, failed) = convert_with_fallback(&chain, &|t| match conversion_of(
+            t,
+            crate::plugins::convert_is_hooked(t),
+        ) {
+            Conversion::AsIs => Ok(bytes.clone()),
+            Conversion::Converted => export::convert_epub_bytes(&bytes, &src_name, t),
+        })?;
+        let save = devfs::render_template(&opts.template, fields)?;
+        let name = format!("{}.{}", save.stem, target.extension);
+        let path = drivers.send_in(device, &save.dirs, &name, &converted)?;
+        let mut note = None;
+        if kind == Some(DeviceKind::Kobo) && !opts.kobo_shelf.trim().is_empty() {
+            note = shelve(device, &path, &opts.kobo_shelf).err().map(|e| {
+                trf(
+                    "Sent, but the shelf “{}” was not updated: {}",
+                    &[&opts.kobo_shelf, &format!("{:#}", e)],
+                )
+            });
+        }
+        let mut sidecar = None;
+        if let Some(n) = notes {
+            if matches!(drivers.backend(device), Backend::Usb | Backend::Mtp) && takes_sidecar(kind)
+            {
+                let chapters = crate::core::book::OpenBook::from_archive(
+                    crate::core::archive::Archive::from_bytes(bytes.clone())?,
+                )
+                .map(|b| send_notes::chapter_titles(&b))
+                .unwrap_or_default();
+                let file = reading::sidecar_file(&path);
+                if let Some(dir) = file.parent() {
+                    if std::fs::create_dir_all(dir).is_ok() && !file.exists() {
+                        let lua = send_notes::koreader_sidecar(&fields.title, &chapters, n);
+                        if std::fs::write(&file, lua).is_ok() {
+                            sidecar = Some(file);
+                        }
                     }
                 }
             }
         }
-    }
-    Ok(Sent {
-        path,
-        format: target.label,
-        sidecar,
-        fell_back_from: failed,
-        note,
-    })
+        Ok(Sent {
+            path,
+            format: target.label,
+            sidecar,
+            fell_back_from: failed,
+            note,
+        })
     })
 }
 

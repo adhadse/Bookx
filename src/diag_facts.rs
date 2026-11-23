@@ -60,6 +60,7 @@ impl Fact {
     pub fn count_class(n: u64) -> Fact {
         Fact::word(crate::trace::count_class(n))
     }
+    #[allow(dead_code)] // part of the vocabulary; features use it as they gain durations
     pub fn ms(ms: u64) -> Fact {
         Fact(Kind::Safe(format!("{ms} ms")))
     }
@@ -67,6 +68,7 @@ impl Fact {
         Fact(Kind::Safe(format!("{:.3}", v.clamp(0.0, 1.0))))
     }
     /// A hash of bytes; anything else is not shown.
+    #[allow(dead_code)] // part of the vocabulary (used by the tests of this module)
     pub fn hash(h: &str) -> Fact {
         Fact(Kind::Safe(
             crate::trace::hex_id(h).unwrap_or_else(|| "(not a hash)".into()),
@@ -77,10 +79,13 @@ impl Fact {
         let ok = !v.is_empty()
             && v.len() <= 40
             && v.starts_with(|c: char| c.is_ascii_digit())
-            && v
-                .chars()
+            && v.chars()
                 .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '+' | '~' | '_'));
-        Fact(Kind::Safe(if ok { v.to_string() } else { "(unknown)".into() }))
+        Fact(Kind::Safe(if ok {
+            v.to_string()
+        } else {
+            "(unknown)".into()
+        }))
     }
     /// A value from outside, shown only when (case-insensitively) one of `allowed`.
     pub fn choice(value: &str, allowed: &[&str]) -> Fact {
@@ -101,7 +106,11 @@ impl Fact {
                 _ => "other".into(),
             })
             .collect();
-        Fact(Kind::Safe(if v.is_empty() { "none".into() } else { v.join(", ") }))
+        Fact(Kind::Safe(if v.is_empty() {
+            "none".into()
+        } else {
+            v.join(", ")
+        }))
     }
     /// Several values, each accepted by `ok` (a check of the exact shape the caller produces).
     pub fn choices_by<S: AsRef<str>>(values: &[S], ok: &dyn Fn(&str) -> bool) -> Fact {
@@ -109,7 +118,11 @@ impl Fact {
             .iter()
             .map(|s| if ok(s.as_ref()) { s.as_ref() } else { "other" })
             .collect();
-        Fact(Kind::Safe(if v.is_empty() { "none".into() } else { v.join(", ") }))
+        Fact(Kind::Safe(if v.is_empty() {
+            "none".into()
+        } else {
+            v.join(", ")
+        }))
     }
     /// A time zone offset from UTC, in minutes: `UTC+02:00`.
     pub fn utc_offset(minutes: i32) -> Fact {
@@ -126,14 +139,24 @@ impl Fact {
             (2..=3).contains(&first.len())
                 && first.chars().all(|ch| ch.is_ascii_alphabetic())
                 && parts.clone().count() <= 2
-                && parts.all(|p| (2..=4).contains(&p.len()) && p.chars().all(|ch| ch.is_ascii_alphanumeric()))
+                && parts.all(|p| {
+                    (2..=4).contains(&p.len()) && p.chars().all(|ch| ch.is_ascii_alphanumeric())
+                })
         };
-        Fact(Kind::Safe(if ok { c.to_string() } else { "unknown".into() }))
+        Fact(Kind::Safe(if ok {
+            c.to_string()
+        } else {
+            "unknown".into()
+        }))
     }
     /// HTTP statuses with how often each was seen: `401×3, 404×1`.
     pub fn statuses(v: &[(u16, usize)]) -> Fact {
         Fact(Kind::Safe(
-            v.iter().take(8).map(|(s, n)| format!("{s}×{n}")).collect::<Vec<_>>().join(", "),
+            v.iter()
+                .take(8)
+                .map(|(s, n)| format!("{s}×{n}"))
+                .collect::<Vec<_>>()
+                .join(", "),
         ))
     }
     /// Free text: cleaned when shown.
@@ -274,13 +297,22 @@ mod tests {
         assert_eq!(r.fact(&Fact::flag(true)), "yes");
         assert_eq!(r.fact(&Fact::size(3 << 20)), "lt10mb");
         assert_eq!(r.fact(&Fact::ms(12)), "12 ms");
-        assert_eq!(r.fact(&Fact::hash("0123456789abcdef0123456789abcdef")), "0123456789abcdef0123456789abcdef");
+        assert_eq!(
+            r.fact(&Fact::hash("0123456789abcdef0123456789abcdef")),
+            "0123456789abcdef0123456789abcdef"
+        );
         assert_eq!(r.fact(&Fact::hash("The Secret Garden")), "(not a hash)");
         assert_eq!(r.fact(&Fact::version("4.24.1")), "4.24.1");
         assert_eq!(r.fact(&Fact::version("alice")), "(unknown)");
         assert_eq!(r.fact(&Fact::choice("EXT4", &["ext4", "btrfs"])), "ext4");
         assert_eq!(r.fact(&Fact::choice("alice-nas", &["ext4"])), "other");
-        assert_eq!(r.fact(&Fact::choices(&["wayland", "x11", "alice"], &["wayland", "x11"])), "wayland, x11, other");
+        assert_eq!(
+            r.fact(&Fact::choices(
+                &["wayland", "x11", "alice"],
+                &["wayland", "x11"]
+            )),
+            "wayland, x11, other"
+        );
         assert_eq!(r.fact(&Fact::title("The Secret Garden")), "(not included)");
         assert_eq!(
             r.fact(&Fact::address("http://192.168.1.5:30260/api/koreader")),
@@ -305,9 +337,14 @@ mod tests {
     fn titles_and_hosts_appear_only_when_allowed() {
         let s = scrub();
         let on = r(&s, true, true);
-        assert_eq!(on.fact(&Fact::title("The Secret Garden")), "The Secret Garden");
         assert_eq!(
-            on.fact(&Fact::address("https://bob:pw@books.example.org:8443/x?t=1")),
+            on.fact(&Fact::title("The Secret Garden")),
+            "The Secret Garden"
+        );
+        assert_eq!(
+            on.fact(&Fact::address(
+                "https://bob:pw@books.example.org:8443/x?t=1"
+            )),
             "https://<credentials>@books.example.org:8443/<segment>?<query>"
         );
         assert!(on.fact(&Fact::title(&"x`y".repeat(200))).len() <= TITLE_BYTES + 4);
@@ -320,8 +357,12 @@ mod tests {
         let r = r(&s, false, false);
         let mut sec = Section::new("Read aloud");
         assert_eq!(r.section(&sec), "");
-        sec.row("Engine", Fact::word("piper")).row("Voices", Fact::count(2));
-        assert_eq!(r.section(&sec), "### Read aloud\n\n- Engine: piper\n- Voices: 2\n");
+        sec.row("Engine", Fact::word("piper"))
+            .row("Voices", Fact::count(2));
+        assert_eq!(
+            r.section(&sec),
+            "### Read aloud\n\n- Engine: piper\n- Voices: 2\n"
+        );
     }
 
     #[test]
