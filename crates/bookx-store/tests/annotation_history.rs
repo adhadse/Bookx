@@ -352,3 +352,31 @@ fn a_damaged_record_is_skipped_not_fatal() {
     assert_eq!(es[0].record.id(), "c");
     let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn entries_can_be_fetched_by_id_and_by_group() {
+    let (root, mut o, id) = setup("byid");
+    delete(
+        &mut o.library,
+        id,
+        &["a", "b"],
+        Source::Device("Kobo".into()),
+    );
+    delete(&mut o.library, id, &["c"], Source::You);
+    let all = o.store.history(&Filter::default(), 10).unwrap();
+    assert_eq!(all.len(), 3);
+    let ids: Vec<u64> = all.iter().rev().map(|e| e.id).collect();
+    let got = o.store.history_entries(&ids).unwrap();
+    assert_eq!(got.iter().map(|e| e.id).collect::<Vec<_>>(), ids);
+    assert!(o.store.history_entries(&[999_999]).unwrap().is_empty());
+    let g = o.store.history_group(all[2].group).unwrap();
+    assert_eq!(g.len(), 1, "the delete by you is a group of its own");
+    let by_device = o.store.history_group(all[0].group).unwrap();
+    assert_eq!(by_device.len(), 2);
+    assert!(o.store.history_mark() >= *ids.last().unwrap());
+    // pruning twice in a row does nothing the second time and never fails
+    assert_eq!(o.store.history_prune(Utc::now()).unwrap(), 0);
+    assert_eq!(o.store.history_clear().unwrap(), 3);
+    assert_eq!(o.store.history_count(), 0);
+    let _ = std::fs::remove_dir_all(root);
+}
