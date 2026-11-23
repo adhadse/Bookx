@@ -1,0 +1,27 @@
+# Maintainer: Anurag Dhadse <hello@adhadse.com>
+# The prebuilt files of the GitHub release (signed; see https://bookx.adhadse.com/install/). Building from source: bookx.
+_pkgver=0.3.0-beta.2
+pkgname=bookx-bin
+pkgver=${_pkgver//-/}
+pkgrel=1
+pkgdesc='GNOME-native e-book library, reader and EPUB editor written in Rust (GTK 4, libadwaita), prebuilt'
+arch=('x86_64')
+url='https://bookx.adhadse.com'
+license=('GPL-3.0-or-later')
+depends=('glibc' 'gcc-libs' 'glib2' 'cairo' 'pango' 'gdk-pixbuf2' 'graphene' 'gtk4' 'libadwaita' 'gtksourceview5' 'hicolor-icon-theme')
+optdepends=('espeak-ng: voices for read aloud'
+            'libpulse: sound for read aloud and audiobooks (pacat)'
+            'pipewire: sound for read aloud and audiobooks (pw-cat)'
+            'calibre: more input formats through ebook-convert')
+provides=('bookx')
+conflicts=('bookx' 'bookx-git')
+options=('!debug')
+source=("https://github.com/adhadse/Bookx/releases/download/v$_pkgver/bookx-$_pkgver-linux-x86_64.tar.gz")
+sha256sums=('a43a8de07ff564e6a6c805a917f155d7b2256ec7637f59d70017730cb4787262')
+
+package() {
+    cd "bookx-$_pkgver-linux-x86_64"
+    cp -a usr "$pkgdir/"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/bookx/LICENSE"
+    install -Dm644 NOTICE.md "$pkgdir/usr/share/doc/bookx/NOTICE.md"
+}
