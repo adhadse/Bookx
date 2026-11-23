@@ -1,6 +1,7 @@
 # Bookx
 
 [![Please do not theme this app](https://stopthemingmy.app/badge.svg)](https://stopthemingmy.app)
+[![Downloads](https://img.shields.io/github/downloads/adhadse/Bookx/total?label=downloads&color=2ea44f)](https://github.com/adhadse/Bookx/releases)
 
 **A GNOME-native e-book library, reader and EPUB editor, written in Rust with GTK 4, libadwaita and [Relm4](https://relm4.org).**
 
