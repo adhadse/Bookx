@@ -57,6 +57,24 @@ your reading history or any identifier of your computer.
       client, so offline mode stops them too (see [Plugins and patches](plugins-and-patches.md)).
     - Passwords for mail, WebDAV and similar are kept in the system keyring or Bookx's encrypted password store, never in the settings file or any other plain file ([details](backup-and-restore.md#passwords)).
 
+## Problem reports { #problem-reports }
+
+**Main Menu → Report a Problem** makes a report **on your computer** and shows all of it before you share it; Bookx
+never sends it. It describes what failed and in which feature, so it has to say something about your setup. What it says,
+and what it never says:
+
+| In the report | Shown as |
+|---|---|
+| Server addresses (sync, OPDS, WebDAV backups) | kind of host, scheme, port and known path words: `http://<ip:private>:30260/api/koreader`. Not the host (unless you switch it on), never a user name, password or query. |
+| Devices | the product name or model code (`Boox Leaf 2`, `Kobo_nova`); a name you gave a device appears as `<custom name>`. |
+| Books | format, size class and progress of the books an action was about. Title and author only if you switch it on. |
+| Sizes and counts | classes (memory "8-16 GB", free space "1-10 GB", a file "under 10 MB"); library counts. |
+| A document id | shown. It is the hash of a book file (or of its name), used by KOReader sync: it identifies bytes, not a person. |
+| Errors | the kind (timeout, not found, no space) and a message with addresses, folders and file names removed. |
+| Never | your name, user name, e-mail, IP addresses, MAC addresses, Wi-Fi name, passwords, tokens, folders, file names, the text of books and notes, search words. |
+
+Text you type under "What happened?" is shared as typed.
+
 ## Annotation history { #annotation-history }
 
 Bookx keeps a [history of your highlights, notes and bookmarks](annotations.md#history) so a deleted one can be restored.

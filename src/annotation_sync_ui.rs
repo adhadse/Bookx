@@ -194,6 +194,14 @@ pub fn sync_once(shared: &SharedRef, force: bool) -> Option<Report> {
     let mark = store.history_mark();
     let before = crate::sync_bus::Snapshot::take(&lib.books);
     let report = run(&mut lib, &ann, &mut ledger);
+    crate::trace::event(crate::trace::Area::Server, "annotation_merge")
+        .num("added", report.added as u64)
+        .num("removed", report.removed as u64)
+        .num("notes", report.notes as u64)
+        .num("bookmarks", report.bookmarks as u64)
+        .num("sent", report.sent as u64)
+        .num("unplaced_or_unlinked", report.linked as u64)
+        .ok();
     publish_report(&before, &lib.books, &report);
     ledger.seen = ann.seq();
     SEEN.with(|s| s.set(ledger.seen));

@@ -1,0 +1,1658 @@
+{
+ "version": 1,
+ "area_labels": {
+  "library": "Library",
+  "import": "Import and add books",
+  "convert": "Conversion",
+  "reader": "Reader",
+  "editor": "Editor",
+  "search": "Search",
+  "tts": "Read aloud",
+  "audiobook": "Audiobooks",
+  "devices": "Devices",
+  "sync": "Sync (KOSync client)",
+  "server": "Built-in server",
+  "opds": "OPDS and web import",
+  "backup": "Backups",
+  "news": "News and read later",
+  "metadata": "Metadata and lookup",
+  "mcp": "AI assistants (MCP)",
+  "plugins": "Plugins and patches",
+  "settings": "Settings",
+  "secrets": "Passwords and keyring",
+  "database": "Library database",
+  "network": "Network",
+  "ui": "Display and interface"
+ },
+ "generic_asks": [
+  "What exactly did you do, step by step, just before it went wrong?",
+  "What did you expect, and what happened instead?",
+  "Does it happen every time, or only with one book, device or server?",
+  "Did it work before? Which Bookx version was it?",
+  "Which book format and roughly how big is the file?"
+ ],
+ "rules": [
+  {
+   "id": "crash",
+   "area": "Crash",
+   "severity": "crash",
+   "state": false,
+   "all": [
+    "### Last crash",
+    "(?m)^message: (?P<msg>[^\\n]{0,140})"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "Bookx closed unexpectedly: {msg}",
+   "hint": "Read the backtrace in \"Last crash\": the first Bookx frame (bookx::) names the module. The operations just before it are in \"Recent operations\".",
+   "asks": [
+    "What were you doing in the seconds before it closed?",
+    "Does it close again every time you do that?",
+    "Which book (format) was open, if any?",
+    "Did it start after an update?",
+    "Can you attach the file from the log folder named crash-*.txt?"
+   ],
+   "evidence": [
+    "(?m)^message: [^\\n]*",
+    "(?m)^at: [^\\n]*"
+   ]
+  },
+  {
+   "id": "db-newer-schema",
+   "area": "Library database",
+   "severity": "data",
+   "state": false,
+   "all": [],
+   "any": [
+    "newer than supported version",
+    "schema \\d+ is newer"
+   ],
+   "none": [],
+   "cause": "The library was made by a newer Bookx than this one (catalogue schema is newer than supported).",
+   "hint": "Update Bookx to the version that made the library, or restore a copy from before the update (\"bookx-library.db.pre-v*\" beside the library). Do not open it with an older version.",
+   "asks": [
+    "Which Bookx version did you use before?",
+    "Do you use two installs (for example Flatpak and a package) on the same library folder?",
+    "Is there a bookx-library.db.pre-v* file in the library folder?",
+    "Did you restore a backup or copy the library from another computer?",
+    "Which version does Help > About show?"
+   ],
+   "evidence": [
+    "(?m)^[^\\n]*newer than supported[^\\n]*",
+    "Catalogue schema: \\d+"
+   ]
+  },
+  {
+   "id": "db-locked",
+   "area": "Library database",
+   "severity": "data",
+   "state": false,
+   "all": [],
+   "any": [
+    "database/\\w+ FAIL[^\\n]*class=locked",
+    "(?i)database is locked",
+    "already open in"
+   ],
+   "none": [],
+   "cause": "The library database is locked: another Bookx (or a sync client or backup program) is using it.",
+   "hint": "Two writers on one library. Check for a second Bookx process (Flatpak and native), a synced folder, or a network folder.",
+   "asks": [
+    "Is Bookx open twice, or open on another computer on the same folder?",
+    "Is the library folder synced by Dropbox, Syncthing, Nextcloud or similar?",
+    "Is the folder on a network share?",
+    "Did the first Bookx close normally or crash?",
+    "Does it still happen after a restart of the computer?"
+   ],
+   "evidence": [
+    "database/\\w+ FAIL[^\\n]*",
+    "(?m)^[^\\n]*already open in[^\\n]*",
+    "Synced by: [^\\n]*"
+   ]
+  },
+  {
+   "id": "db-corrupt",
+   "area": "Library database",
+   "severity": "data",
+   "state": false,
+   "all": [],
+   "any": [
+    "Catalogue integrity \\(quick check\\): \\d+ problem",
+    "database/\\w+ FAIL[^\\n]*class=corrupt",
+    "(?i)database disk image is malformed"
+   ],
+   "none": [],
+   "cause": "The catalogue database failed its integrity check.",
+   "hint": "Restore from a pre-update copy (bookx-library.db.pre-v*) or a backup. Look at the file system and free space: a full disk, a network folder or a sync client usually caused it.",
+   "asks": [
+    "Did the computer lose power or crash while Bookx was open?",
+    "Is the library on a USB stick, network share or synced folder?",
+    "Is there a backup or a bookx-library.db.pre-v* copy?",
+    "Was the disk full at some point?",
+    "Which file system is the library folder on?"
+   ],
+   "evidence": [
+    "Catalogue integrity[^\\n]*",
+    "File system: [^\\n]*",
+    "Free space: [^\\n]*"
+   ]
+  },
+  {
+   "id": "disk-full",
+   "area": "Storage",
+   "severity": "data",
+   "state": false,
+   "all": [],
+   "any": [
+    "class=disk_full",
+    "(?i)no space left on device"
+   ],
+   "none": [],
+   "cause": "The disk is full or nearly full: writes fail.",
+   "hint": "Free space on the disk of the library folder (or the target of the backup or the device). Failing operations are listed in \"Recent operations\".",
+   "asks": [
+    "How much free space does the disk of the library folder have?",
+    "Which operation failed (import, backup, conversion, download)?",
+    "Is the target a USB stick or SD card?",
+    "Did a backup or conversion run for a long time before it failed?",
+    "Is the library inside a Flatpak with a small quota?"
+   ],
+   "evidence": [
+    "(?m)^[^\\n]*class=disk_full[^\\n]*",
+    "Free space: [^\\n]*",
+    "Disk nearly full: [^\\n]*"
+   ]
+  },
+  {
+   "id": "disk-nearly-full",
+   "area": "Storage",
+   "severity": "data",
+   "state": true,
+   "all": [
+    "Disk nearly full: yes"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The disk of the library folder is nearly full.",
+   "hint": "Free space; imports, backups and conversions fail first, then the database.",
+   "asks": [
+    "How much free space is left?",
+    "Which operation failed?",
+    "Is the library folder on a small partition?",
+    "Do backups go to the same disk?",
+    "Is Bookx a Flatpak with a quota?"
+   ],
+   "evidence": [
+    "Free space: [^\\n]*",
+    "Disk nearly full: [^\\n]*"
+   ]
+  },
+  {
+   "id": "library-network-fs",
+   "area": "Library folder",
+   "severity": "data",
+   "state": true,
+   "all": [
+    "File system kind: NETWORK file system"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The library folder is on a network file system: SQLite can corrupt its database or lock up there.",
+   "hint": "Move the library to a local disk and use Share Library or backups for the network.",
+   "asks": [
+    "Which network file system is it (NFS, SMB, sshfs)?",
+    "Is it used by more than one computer?",
+    "Does it hang or only fail to save?",
+    "Can you try a local folder to confirm?",
+    "Does the connection sleep or drop?"
+   ],
+   "evidence": [
+    "File system: [^\\n]*",
+    "File system kind: [^\\n]*"
+   ]
+  },
+  {
+   "id": "library-fuse",
+   "area": "Library folder",
+   "severity": "annoyance",
+   "state": true,
+   "all": [
+    "File system kind: (?:FUSE file system|document portal)"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The library folder is on a FUSE or document-portal mount: locking and rename behave differently there.",
+   "hint": "Keep the library on a normal local file system. Portal paths (/run/user/*/doc) are not stable.",
+   "asks": [
+    "Which program provides the mount (rclone, sshfs, gvfs, cloud client)?",
+    "Does it work in a local folder?",
+    "Is Bookx a Flatpak with the folder given by a file chooser?",
+    "Does the problem start after a restart?",
+    "Is the mount read-only?"
+   ],
+   "evidence": [
+    "File system: [^\\n]*"
+   ]
+  },
+  {
+   "id": "library-synced",
+   "area": "Library folder",
+   "severity": "annoyance",
+   "state": true,
+   "all": [
+    "Synced by: [A-Z]"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The library folder is managed by a sync client: it can copy or lock the database while Bookx writes.",
+   "hint": "Exclude bookx-library.db* from the sync or keep the library outside it and use Bookx backups.",
+   "asks": [
+    "Is the sync client running while Bookx is open?",
+    "Do conflicting copies of bookx-library.db appear?",
+    "Does the problem stop with the sync client paused?",
+    "Is the library shared between two computers?",
+    "Which exact folder is synced?"
+   ],
+   "evidence": [
+    "Synced by: [^\\n]*"
+   ]
+  },
+  {
+   "id": "read-only-library",
+   "area": "Library folder",
+   "severity": "annoyance",
+   "state": true,
+   "all": [
+    "Read-only folder: yes"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The library folder is read-only.",
+   "hint": "Check permissions of the library folder, or a Flatpak without access to it.",
+   "asks": [
+    "Who owns the library folder?",
+    "Is it on a read-only mount or a disk image?",
+    "Is Bookx a Flatpak with access to that folder?",
+    "Did it work before?",
+    "Does touching a file in the folder work in a terminal?"
+   ],
+   "evidence": [
+    "Read-only folder: yes"
+   ]
+  },
+  {
+   "id": "safe-mode",
+   "area": "Settings",
+   "severity": "annoyance",
+   "state": true,
+   "all": [
+    "Safe mode: on"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "Bookx is in safe mode (plugins, patches and the sync server are off).",
+   "hint": "Safe mode was started on purpose or after repeated crashes at start-up: look at \"Last crash\" and \"Recent problems\" of the previous run.",
+   "asks": [
+    "Why was safe mode switched on?",
+    "Does the problem also happen when safe mode is off?",
+    "Did Bookx crash repeatedly at start-up?",
+    "Which plugins or patches were enabled before?",
+    "What happens on a normal start?"
+   ],
+   "evidence": [
+    "Safe mode: on"
+   ]
+  },
+  {
+   "id": "keyring",
+   "area": "Passwords and keyring",
+   "severity": "annoyance",
+   "state": true,
+   "all": [],
+   "any": [
+    "Passwords kept in: not saved",
+    "Passwords kept in: encrypted store \\(locked\\)",
+    "secrets/\\w+ FAIL"
+   ],
+   "none": [],
+   "cause": "Passwords cannot be saved or read: the system keyring is missing or locked.",
+   "hint": "Sync, mail and backup logins need the Secret Service (GNOME Keyring, KWallet) or the Bookx master password.",
+   "asks": [
+    "Which desktop are you using, and is a keyring (gnome-keyring, KWallet) running?",
+    "Is the keyring locked after login?",
+    "Is Bookx a Flatpak with the secret portal?",
+    "Do saved logins disappear after a restart?",
+    "Did you set a Bookx master password?"
+   ],
+   "evidence": [
+    "Passwords kept in: [^\\n]*",
+    "secrets/\\w+ FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "flatpak-no-network",
+   "area": "Packaging",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "### Flatpak sandbox",
+    "(?m)^- Network: no",
+    "(?:sync|opds|metadata|backup|news|server|mcp|network)/\\w+ FAIL"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The Flatpak has no network permission, and a network operation failed.",
+   "hint": "Run: flatpak override --user --share=network com.adhadse.Bookx (or enable it in Flatseal).",
+   "asks": [
+    "Did you remove the network permission (Flatseal or flatpak override)?",
+    "Which operation failed?",
+    "Does the same server work in a browser?",
+    "Which Flatpak version?",
+    "Is the flatpak installed system-wide or per user?"
+   ],
+   "evidence": [
+    "(?m)^- Network: no",
+    "(?:sync|opds|metadata|backup|news|server|mcp|network)/\\w+ FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "flatpak-denied",
+   "area": "Packaging",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "class=denied",
+    "### Flatpak sandbox"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "An operation was denied: the Flatpak sandbox has no access to a folder or device.",
+   "hint": "Check \"File access\" and \"Devices\" in the Flatpak section; give access with Flatseal or flatpak override --filesystem.",
+   "asks": [
+    "Which folder or device was involved?",
+    "Did you pick the folder with the file chooser, or type it?",
+    "Does it work with a folder under your home?",
+    "Which operation failed?",
+    "Did you override permissions with Flatseal?"
+   ],
+   "evidence": [
+    "(?m)^[^\\n]*class=denied[^\\n]*",
+    "File access: [^\\n]*"
+   ]
+  },
+  {
+   "id": "sync-401",
+   "area": "Sync (KOSync client)",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "sync/(?P<op>login|pull|push|queue|register) FAIL[^\\n]*class=unauthorized"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "KOSync {op}: the server rejected the login (HTTP 401/403).",
+   "hint": "Check user name and password; some servers (Grimmory, Calibre-Web) have a separate KOReader sync login.",
+   "asks": [
+    "Is the KOSync user name and password the one of the server, not your web login?",
+    "Does the log in button say \"Logged in\"?",
+    "Which server software is it?",
+    "Is the account new?",
+    "Did the password change?"
+   ],
+   "evidence": [
+    "sync/\\w+ FAIL[^\\n]*class=unauthorized[^\\n]*",
+    "Server address: [^\\n]*"
+   ]
+  },
+  {
+   "id": "sync-404-push",
+   "area": "Sync (KOSync client)",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "sync/push FAIL[^\\n]*http=404"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "KOSync push answered HTTP 404: the server does not know this URL or this book.",
+   "hint": "Check the address path (Server address in the Sync section; most servers use /api/koreader or /kosync) and the document matching method (binary vs file name) of the book the push was about. Servers that match books by the content of the file (Grimmory, BookLore) answer 404 when their copy is not byte-identical to the local one.",
+   "asks": [
+    "Which server software and version is it?",
+    "What exactly did you type as the server address (without the host)?",
+    "Does Log in say \"Logged in\"?",
+    "Did the book come from the server (OPDS) or from elsewhere?",
+    "Does a pull for the same book also fail?"
+   ],
+   "evidence": [
+    "sync/push FAIL[^\\n]*",
+    "Server address: [^\\n]*",
+    "Document matching: [^\\n]*"
+   ]
+  },
+  {
+   "id": "sync-404-pull",
+   "area": "Sync (KOSync client)",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "sync/(?:pull|login) FAIL[^\\n]*http=404"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "KOSync answered HTTP 404 ({op}): the address is probably not the sync API path.",
+   "hint": "Check the server address path; the base is where /users/auth answers.",
+   "asks": [
+    "Which server software?",
+    "What path did you type after the host and port?",
+    "Does the web login of the same server work in a browser?",
+    "Is there a reverse proxy in between?",
+    "Does Log in work?"
+   ],
+   "evidence": [
+    "sync/\\w+ FAIL[^\\n]*",
+    "Server address: [^\\n]*"
+   ]
+  },
+  {
+   "id": "sync-status",
+   "area": "Sync (KOSync client)",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "sync/\\w+ FAIL[^\\n]*http=(?P<status>[1-5]\\d\\d)"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "KOSync call answered HTTP {status}.",
+   "hint": "5xx is a server problem; 4xx is the address, login or request. Compare with the server log.",
+   "asks": [
+    "Which server software and version?",
+    "What does the server log say at that time?",
+    "Does it fail for every book or one?",
+    "Is there a proxy in front?",
+    "Does Log in work?"
+   ],
+   "evidence": [
+    "sync/\\w+ FAIL[^\\n]*",
+    "Server address: [^\\n]*"
+   ]
+  },
+  {
+   "id": "tls",
+   "area": "@area",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "(?P<area>sync|backup|opds|metadata|news|server|tts|mcp|network)/\\w+ FAIL[^\\n]*class=tls"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "{area}: a secure connection failed (certificate or TLS): the server certificate is not trusted.",
+   "hint": "Self-signed or expired certificate, wrong host name, or a TLS inspection proxy. Check the scheme (https vs http) and the certificate.",
+   "asks": [
+    "Is the server certificate self-signed?",
+    "Does the host name match the certificate?",
+    "Is the clock of the computer right?",
+    "Is a company proxy inspecting TLS?",
+    "Does the same address work in a browser?"
+   ],
+   "evidence": [
+    "\\w+/\\w+ FAIL[^\\n]*class=tls[^\\n]*",
+    "Server address: [^\\n]*"
+   ]
+  },
+  {
+   "id": "network-dns",
+   "area": "@area",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "(?P<area>sync|backup|opds|metadata|news|server|tts|mcp|network|devices|import|convert|search|audiobook)/(?P<op>\\w+) FAIL[^\\n]*class=dns"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "{area}/{op}: the server name could not be resolved (DNS).",
+   "hint": "A wrong host name, no DNS in the sandbox, or no network. Compare with the Network lines.",
+   "asks": [
+    "Does the host name work in a browser on the same computer?",
+    "Is a VPN or custom DNS in use?",
+    "Is it a .local name (mDNS)?",
+    "Is Bookx a Flatpak without network permission?",
+    "Does the IP address work instead?"
+   ],
+   "evidence": [
+    "\\w+/\\w+ FAIL[^\\n]*class=dns[^\\n]*",
+    "Server address: [^\\n]*"
+   ]
+  },
+  {
+   "id": "network-timeout",
+   "area": "@area",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "(?P<area>sync|backup|opds|metadata|news|server|tts|mcp|network|devices|import|convert|search|audiobook)/(?P<op>\\w+) FAIL[^\\n]*class=timeout"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "{area}/{op} timed out: the other side did not answer in time.",
+   "hint": "A slow or sleeping server, a firewall dropping packets, or a very slow link.",
+   "asks": [
+    "Does the server answer in a browser at the same time?",
+    "Is the server on the local network or the internet?",
+    "Is there a VPN?",
+    "Does it time out every time or only sometimes?",
+    "How big is the thing being sent?"
+   ],
+   "evidence": [
+    "\\w+/\\w+ FAIL[^\\n]*class=timeout[^\\n]*"
+   ]
+  },
+  {
+   "id": "network-refused",
+   "area": "@area",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "(?P<area>sync|backup|opds|metadata|news|server|tts|mcp|network|devices|import|convert|search|audiobook)/(?P<op>\\w+) FAIL[^\\n]*class=(?:refused|unreachable)"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "{area}/{op}: nothing is listening at the address, or the network is unreachable.",
+   "hint": "Wrong port, server not running, a firewall, or offline mode.",
+   "asks": [
+    "Is the server running and on that port?",
+    "Is Bookx in offline mode?",
+    "Can another device reach the same address?",
+    "Is a firewall on the server?",
+    "Did the IP address of the server change?"
+   ],
+   "evidence": [
+    "\\w+/\\w+ FAIL[^\\n]*class=(?:refused|unreachable)[^\\n]*",
+    "Offline mode: [^\\n]*",
+    "Server address: [^\\n]*"
+   ]
+  },
+  {
+   "id": "sync-bad-address",
+   "area": "Sync (KOSync client)",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "sync/\\w+ FAIL[^\\n]*class=bad_address"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The sync server address is not valid.",
+   "hint": "It must start with http:// or https://.",
+   "asks": [
+    "What does the address look like (hide the host)?",
+    "Did you paste it with spaces?",
+    "Is there a scheme?",
+    "Does it have a port?",
+    "Which server software?"
+   ],
+   "evidence": [
+    "Server address: [^\\n]*"
+   ]
+  },
+  {
+   "id": "sync-bad-answer",
+   "area": "Sync (KOSync client)",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "sync/\\w+ FAIL[^\\n]*class=bad_answer"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The server answered something that is not the KOSync format (often a web page or a proxy error).",
+   "hint": "The address probably points at a web page or a login wall, not at the KOSync API.",
+   "asks": [
+    "Which server software?",
+    "Is there a login page or proxy in front?",
+    "What path is in the address?",
+    "Does it work from KOReader?",
+    "Is it HTTP or HTTPS?"
+   ],
+   "evidence": [
+    "sync/\\w+ FAIL[^\\n]*",
+    "Server address: [^\\n]*"
+   ]
+  },
+  {
+   "id": "sync-held-back",
+   "area": "Sync (KOSync client)",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "sync/push ok[^\\n]*held_back"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The push was held back because another device is further along and the question was not answered.",
+   "hint": "By design: answer the \"Continue from ...\" question or reopen the book.",
+   "asks": [
+    "Did the \"Continue from...\" question show?",
+    "Which device is further along?",
+    "Does the position update after you answer?",
+    "How far apart are the positions?",
+    "Which method matches documents?"
+   ],
+   "evidence": [
+    "sync/push ok[^\\n]*"
+   ]
+  },
+  {
+   "id": "sync-no-remote",
+   "area": "Sync (KOSync client)",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "sync/pull ok[^\\n]*remote=none",
+    "Server address: "
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The server has no position for this book (document id differs from the other device).",
+   "hint": "Different matching method (binary vs file name) or a different file than on the other device.",
+   "asks": [
+    "Is it the same file on both devices (same size)?",
+    "Which matching method does KOReader use?",
+    "Did the other device push at all?",
+    "Which server?",
+    "Was the book synced before?"
+   ],
+   "evidence": [
+    "sync/pull ok[^\\n]*",
+    "Document matching: [^\\n]*"
+   ]
+  },
+  {
+   "id": "device-no-sync",
+   "area": "Built-in server",
+   "severity": "annoyance",
+   "state": true,
+   "all": [
+    "Device \\d+ last successful sync: never"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "A device connected to the built-in server but has never completed a sync.",
+   "hint": "The sync server moves reading positions and highlights, not book files: to put books on a device use Send to device or the OPDS catalogue. Compare Device lines with the plugin version.",
+   "asks": [
+    "What did you expect to be transferred (books, positions, highlights)?",
+    "Which KOReader and plugin version?",
+    "Does the device show a sync message?",
+    "Is the same account set on the device?",
+    "Is the device on the same network?"
+   ],
+   "evidence": [
+    "Device \\d+: [^\\n]*",
+    "Device \\d+ plugin: [^\\n]*",
+    "Running: [^\\n]*"
+   ]
+  },
+  {
+   "id": "server-port",
+   "area": "@area",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "(?P<area>server|mcp)/(?P<op>\\w+) FAIL[^\\n]*class=port_in_use"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "{area}: the server could not start, its port is already in use by another program.",
+   "hint": "Choose another port in Sync > Advanced, or stop the other program (a second Bookx, KOReader sync server, Calibre).",
+   "asks": [
+    "Which port is set?",
+    "Is another Bookx or server running on this computer?",
+    "Does it work after a restart?",
+    "Did you change the port?",
+    "Which program uses the port (ss -ltnp)?"
+   ],
+   "evidence": [
+    "(?:server|mcp)/\\w+ FAIL[^\\n]*",
+    "Port: [^\\n]*"
+   ]
+  },
+  {
+   "id": "server-start",
+   "area": "Built-in server",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "server/start FAIL"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The built-in sync server could not start.",
+   "hint": "See the class and message in the line: certificate files, permissions or the address.",
+   "asks": [
+    "Is HTTPS on, with your own certificate?",
+    "Which port?",
+    "Is the folder readable?",
+    "Does it start after reset to defaults?",
+    "Is Bookx in a Flatpak without network?"
+   ],
+   "evidence": [
+    "server/start FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "device-not-mounted",
+   "area": "Devices",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "devices/\\w+ FAIL[^\\n]*class=not_mounted"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The device is connected but not mounted (MTP or USB storage is not available to Bookx).",
+   "hint": "MTP devices need gvfs/the MTP backend and the device in File Transfer mode; in a Flatpak the device permission and gvfs must be available.",
+   "asks": [
+    "Is the device unlocked and set to File Transfer?",
+    "Does the file manager show it?",
+    "Is it a Flatpak install?",
+    "Which model and Android version?",
+    "Does a cable change help?"
+   ],
+   "evidence": [
+    "devices/\\w+ FAIL[^\\n]*",
+    "(?m)^- [^\\n]*Not mounted[^\\n]*"
+   ]
+  },
+  {
+   "id": "kobo-db",
+   "area": "Devices",
+   "severity": "annoyance",
+   "state": false,
+   "all": [],
+   "any": [
+    "no library database yet",
+    "KoboReader\\.sqlite"
+   ],
+   "none": [],
+   "cause": "The Kobo has no library database yet (not set up or never opened) or a newer schema.",
+   "hint": "Connect the Kobo, let it finish importing, eject and retry. A new firmware may change the database schema.",
+   "asks": [
+    "Is it a new or reset Kobo?",
+    "Which firmware?",
+    "Does the Kobo show the books itself?",
+    "Did you eject properly last time?",
+    "Which Kobo model?"
+   ],
+   "evidence": [
+    "devices/\\w+ FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "device-fail",
+   "area": "Devices",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "devices/(?P<op>\\w+) FAIL"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "Device operation \"{op}\" failed.",
+   "hint": "See class, device and format in the line.",
+   "asks": [
+    "Which device model?",
+    "Which book format?",
+    "Is the device full?",
+    "Does a copy by hand work?",
+    "Which cable or port?"
+   ],
+   "evidence": [
+    "devices/\\w+ FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "convert-drm",
+   "area": "Conversion",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "convert/\\w+ FAIL[^\\n]*class=unsupported"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The conversion was refused: the book is protected (DRM) or its format is not supported.",
+   "hint": "Bookx does not remove DRM. For an unsupported format check the helper programs in the Conversion section.",
+   "asks": [
+    "Where did the book come from?",
+    "Does it open in the reader?",
+    "Which format and size?",
+    "Is it a scan without text?",
+    "Which output format?"
+   ],
+   "evidence": [
+    "convert/\\w+ FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "no-rar-helper",
+   "area": "Conversion",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "(?:import|reader|convert)/\\w+ FAIL[^\\n]*fmt=cb[rz7]",
+    "RAR helper \\(CBR\\): unrar or 7-Zip: no"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "A CBR comic cannot be unpacked: neither unrar nor 7-Zip (with RAR support) is installed.",
+   "hint": "Install the original unrar or 7-Zip, or convert the file to CBZ. In a Flatpak the helper must be in the runtime.",
+   "asks": [
+    "Is it really a RAR archive (many .cbr are zip files)?",
+    "Which distribution, and is Bookx a Flatpak?",
+    "Does `unrar` run in a terminal?",
+    "Is 7-Zip 26 without RAR support installed?",
+    "Does converting to CBZ work?"
+   ],
+   "evidence": [
+    "(?:import|reader|convert)/\\w+ FAIL[^\\n]*",
+    "RAR helper \\(CBR\\)[^\\n]*"
+   ]
+  },
+  {
+   "id": "no-djvu-helper",
+   "area": "Conversion",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "(?:import|reader|convert)/\\w+ FAIL[^\\n]*fmt=djvu?",
+    "DjVuLibre \\(DJVU\\): no"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "A DJVU book cannot be read: DjVuLibre (ddjvu, djvused) is not installed.",
+   "hint": "Install djvulibre; in a Flatpak it must be part of the runtime or the extension.",
+   "asks": [
+    "Which distribution, and is Bookx a Flatpak?",
+    "Does `ddjvu` run in a terminal?",
+    "Is the file a bundled or an indirect DJVU?",
+    "Which size?",
+    "Does another viewer open it?"
+   ],
+   "evidence": [
+    "(?:import|reader|convert)/\\w+ FAIL[^\\n]*",
+    "DjVuLibre \\(DJVU\\)[^\\n]*"
+   ]
+  },
+  {
+   "id": "tts-no-player",
+   "area": "Read aloud",
+   "severity": "annoyance",
+   "state": true,
+   "all": [
+    "Audio player \\(pacat, pw-cat or aplay\\) found: no"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "Read aloud and audiobooks have no way to play sound: no audio player (pacat, pw-cat or aplay) was found.",
+   "hint": "Install the PulseAudio or PipeWire tools (pacat) or alsa-utils; in a Flatpak the pulseaudio socket is needed (see the sandbox section).",
+   "asks": [
+    "Which sound server (PipeWire or PulseAudio)?",
+    "Is Bookx a Flatpak (and does it have the pulseaudio socket)?",
+    "Does `pacat` exist in a terminal?",
+    "Is the sound output a headset or HDMI?",
+    "Does other sound work?"
+   ],
+   "evidence": [
+    "Audio player [^\\n]*",
+    "Sockets: [^\\n]*"
+   ]
+  },
+  {
+   "id": "tts-no-espeak",
+   "area": "Read aloud",
+   "severity": "annoyance",
+   "state": true,
+   "all": [
+    "Engine: (?P<engine>piper|kokoro)",
+    "espeak-ng found: no"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The {engine} voices need espeak-ng for phonemes, and it is not installed.",
+   "hint": "Install espeak-ng (the Flatpak has it built in).",
+   "asks": [
+    "Which distribution?",
+    "Is Bookx a Flatpak?",
+    "Does `espeak-ng --version` run?",
+    "Which language is the book?",
+    "Did the voice download finish?"
+   ],
+   "evidence": [
+    "Engine: [^\\n]*",
+    "espeak-ng found: [^\\n]*"
+   ]
+  },
+  {
+   "id": "convert-helper",
+   "area": "Conversion",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "(?:convert|import|reader)/\\w+ FAIL[^\\n]*(?i:unrar|7z|ddjvu|djvu|rar comic|helper|pdftotext|ebook-convert)"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "A helper program for this format is missing.",
+   "hint": "Install unrar (CBR), djvulibre (DJVU) or the other helper listed in Conversion > Helper programs.",
+   "asks": [
+    "Which format is the book?",
+    "Is Bookx a Flatpak (helpers are in the runtime)?",
+    "Does the helper exist in a terminal?",
+    "Which distribution?",
+    "Did it work before an update?"
+   ],
+   "evidence": [
+    "(?:convert|import|reader)/\\w+ FAIL[^\\n]*",
+    "RAR helper \\(CBR\\)[^\\n]*",
+    "DjVuLibre \\(DJVU\\)[^\\n]*"
+   ]
+  },
+  {
+   "id": "convert-fail",
+   "area": "Conversion",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "convert/(?P<op>\\w+) FAIL"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "Conversion \"{op}\" failed.",
+   "hint": "See format, size class and error class in the line; the input is usually damaged or has unusual structure.",
+   "asks": [
+    "Which input format and about how big?",
+    "Does it open in the reader?",
+    "Can you share the file?",
+    "Which output format?",
+    "Does another conversion of the same book work?"
+   ],
+   "evidence": [
+    "convert/\\w+ FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "import-calibre",
+   "area": "Import and add books",
+   "severity": "data",
+   "state": false,
+   "all": [
+    "import/calibre FAIL"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The Calibre library could not be imported (unreadable or locked metadata.db).",
+   "hint": "Close Calibre, copy the library first, check the file is a real metadata.db.",
+   "asks": [
+    "Is Calibre open?",
+    "Is the library on a network or synced folder?",
+    "Which Calibre version?",
+    "Is metadata.db readable in sqlite3?",
+    "How many books?"
+   ],
+   "evidence": [
+    "import/calibre FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "import-fail",
+   "area": "Import and add books",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "import/(?P<op>\\w+) FAIL"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "Import \"{op}\" failed.",
+   "hint": "See format, size class and class in the line.",
+   "asks": [
+    "Which format?",
+    "Does it open elsewhere?",
+    "Is the file on the network or a USB stick?",
+    "Is it a folder import?",
+    "How many files?"
+   ],
+   "evidence": [
+    "import/\\w+ FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "pdf-no-text",
+   "area": "Reader",
+   "severity": "annoyance",
+   "state": false,
+   "all": [],
+   "any": [
+    "(?i)no text layer",
+    "pdf=no-text"
+   ],
+   "none": [],
+   "cause": "The PDF has no text layer (a scan): search, read aloud and highlights need OCR.",
+   "hint": "Bookx cannot read text out of images; OCR the PDF first.",
+   "asks": [
+    "Is it a scan?",
+    "Can you select text in another viewer?",
+    "How many pages?",
+    "Which tool made it?",
+    "What did you want to do with it?"
+   ],
+   "evidence": [
+    "(?m)^[^\\n]*no text layer[^\\n]*"
+   ]
+  },
+  {
+   "id": "tts-hash",
+   "area": "Read aloud",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "tts/\\w+ FAIL[^\\n]*class=hash_mismatch"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "A voice or model download failed its hash check (corrupt download or a changed file).",
+   "hint": "Delete the partial model in the data folder and download again; a proxy that rewrites files also causes this.",
+   "asks": [
+    "Which engine and voice?",
+    "Is a proxy or antivirus in use?",
+    "Does a second download give the same result?",
+    "Is the disk full?",
+    "Which network?"
+   ],
+   "evidence": [
+    "tts/\\w+ FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "tts-sink",
+   "area": "Read aloud",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "(?:tts|audiobook)/\\w+ FAIL[^\\n]*(?i:audio output|no sink|audio device|audio player|pulse|pipewire|alsa)"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "No audio output is available (PulseAudio/PipeWire socket missing or no sound device).",
+   "hint": "Flatpak needs the pulseaudio socket; check the \"Sockets\" line in the sandbox section.",
+   "asks": [
+    "Does other sound work?",
+    "Which sound server (PipeWire, PulseAudio)?",
+    "Is Bookx a Flatpak?",
+    "Is the output device a Bluetooth headset?",
+    "Does it work after restarting the sound server?"
+   ],
+   "evidence": [
+    "(?:tts|audiobook)/\\w+ FAIL[^\\n]*",
+    "Sockets: [^\\n]*"
+   ]
+  },
+  {
+   "id": "tts-missing",
+   "area": "Read aloud",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "tts/(?P<op>\\w+) FAIL[^\\n]*class=missing"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "Read aloud cannot start: the engine or the voice is missing.",
+   "hint": "Download a voice in Preferences > Read aloud, or install espeak-ng for Piper/Kokoro, or start the voice server.",
+   "asks": [
+    "Which engine is selected?",
+    "Is a voice downloaded for the book language?",
+    "Is espeak-ng installed (not Flatpak)?",
+    "Is the voice server URL right?",
+    "Which language is the book?"
+   ],
+   "evidence": [
+    "tts/\\w+ FAIL[^\\n]*",
+    "Engine: [^\\n]*"
+   ]
+  },
+  {
+   "id": "tts-fail",
+   "area": "Read aloud",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "tts/(?P<op>\\w+) FAIL"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "Read aloud \"{op}\" failed.",
+   "hint": "See engine, voice and class in the line.",
+   "asks": [
+    "Which engine and voice?",
+    "Which language?",
+    "Does it fail for every book?",
+    "Is it the first sentence or later?",
+    "How long is the text?"
+   ],
+   "evidence": [
+    "tts/\\w+ FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "backup-fail",
+   "area": "Backups",
+   "severity": "data",
+   "state": false,
+   "all": [
+    "backup/(?P<op>\\w+) FAIL"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "Backup \"{op}\" failed.",
+   "hint": "See the class: 401 login, tls certificate, timeout, disk full, or the place is not mounted.",
+   "asks": [
+    "Which kind of place (folder, WebDAV, drive)?",
+    "Is it encrypted?",
+    "Is the target mounted and writable?",
+    "How much free space is there?",
+    "When did the last backup work?"
+   ],
+   "evidence": [
+    "backup/\\w+ FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "plugin-crash",
+   "area": "Plugins and patches",
+   "severity": "annoyance",
+   "state": false,
+   "all": [],
+   "any": [
+    "plugins/\\w+ FAIL",
+    "plugin (?P<plugin>\\S+) could not be loaded"
+   ],
+   "none": [],
+   "cause": "A plugin failed to load or run: {plugin}.",
+   "hint": "Disable the plugin (or start in safe mode) to confirm; report to the plugin author with its version.",
+   "asks": [
+    "Which plugin and version?",
+    "Does it fail with safe mode?",
+    "Did it work before an update of Bookx?",
+    "Where did you get it?",
+    "Does it need network access?"
+   ],
+   "evidence": [
+    "plugins/\\w+ FAIL[^\\n]*",
+    "(?m)^[^\\n]*could not be loaded[^\\n]*",
+    "Plugins: [^\\n]*"
+   ]
+  },
+  {
+   "id": "mcp-fail",
+   "area": "AI assistants (MCP)",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "mcp/(?P<op>\\w+) FAIL"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The MCP server \"{op}\" failed.",
+   "hint": "See class: port in use, or authentication (token).",
+   "asks": [
+    "Which transport (stdio or HTTP)?",
+    "Which port?",
+    "Which assistant?",
+    "Is write access on?",
+    "Is a token set?"
+   ],
+   "evidence": [
+    "mcp/\\w+ FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "backup-401",
+   "area": "Backups",
+   "severity": "data",
+   "state": false,
+   "all": [
+    "backup/\\w+ FAIL[^\\n]*class=unauthorized"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "A backup place rejected the login (HTTP 401/403).",
+   "hint": "Check the user name, the password (or app password) of the WebDAV place and the folder below the address.",
+   "asks": [
+    "Which kind of place (WebDAV, which software)?",
+    "Does the same login work in a browser?",
+    "Is the password stored (keyring)?",
+    "Is two-factor on, needing an app password?",
+    "When did it last work?"
+   ],
+   "evidence": [
+    "backup/\\w+ FAIL[^\\n]*",
+    "Place \\d+ address: [^\\n]*"
+   ]
+  },
+  {
+   "id": "opds-401",
+   "area": "OPDS and web import",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "opds/\\w+ FAIL[^\\n]*class=unauthorized"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The OPDS catalogue rejected the login (HTTP 401/403).",
+   "hint": "Check the user name and password of the catalogue; some need an app password.",
+   "asks": [
+    "Which server?",
+    "Does it work in a browser?",
+    "Is the password saved (keyring)?",
+    "Is there two-factor?",
+    "What is the path of the catalogue?"
+   ],
+   "evidence": [
+    "opds/\\w+ FAIL[^\\n]*",
+    "Catalogue address: [^\\n]*"
+   ]
+  },
+  {
+   "id": "metadata-flaky",
+   "area": "@area",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "(?P<area>metadata|news)/\\w+ FAIL[^\\n]*class=(?:timeout|dns|unreachable|refused|status)"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "{area}: a download from a web service failed (the service or the network).",
+   "hint": "Usually temporary; try again later. A fixed status such as 429 means rate limiting.",
+   "asks": [
+    "Does it fail every time?",
+    "Which service (dictionary, metadata, news)?",
+    "Is offline mode on?",
+    "Is a proxy used?",
+    "What time of day?"
+   ],
+   "evidence": [
+    "(?:metadata|news)/\\w+ FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "stall",
+   "area": "Display and interface",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "ui/stall[^\\n]*? (?P<ms>\\d+) ms"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The interface froze for {ms} ms.",
+   "hint": "The line names the area and the last operation that started: that call ran on the main thread.",
+   "asks": [
+    "What were you doing?",
+    "How big is the library or the book?",
+    "Does it freeze every time?",
+    "Which storage (SSD, network)?",
+    "How much memory does the computer have?"
+   ],
+   "evidence": [
+    "ui/stall[^\\n]*",
+    "Library size: [^\\n]*",
+    "Memory: [^\\n]*"
+   ]
+  },
+  {
+   "id": "slow-start",
+   "area": "Display and interface",
+   "severity": "annoyance",
+   "state": true,
+   "all": [
+    "Start-up: (?P<ms>\\d{5,}) ms"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "Start-up took {ms} ms.",
+   "hint": "Large library, slow disk or network folder: see the library and folder sections.",
+   "asks": [
+    "How many books?",
+    "Is the library on a network or spinning disk?",
+    "Does it start fast the second time?",
+    "Which file system?",
+    "Did it get slower after an update?"
+   ],
+   "evidence": [
+    "Start-up: [^\\n]*",
+    "Books: [^\\n]*",
+    "File system: [^\\n]*"
+   ]
+  },
+  {
+   "id": "highlight-not-painted",
+   "area": "Reader",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "Highlights stored: (?P<n>[1-9]\\d*)",
+    "Highlights painted: 0"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "{n} highlight(s) are stored for this book but none is painted: a layout change did not repaint them.",
+   "hint": "Look at \"ui/\" and \"reader/\" operations before it (a relayout after a notice, a font change or a resize).",
+   "asks": [
+    "What happened just before (resize, notice, font change)?",
+    "Does it come back after closing and opening the book?",
+    "Which format?",
+    "Does it happen for one book?",
+    "Which text size?"
+   ],
+   "evidence": [
+    "Highlights stored: [^\\n]*",
+    "Highlights painted: [^\\n]*"
+   ]
+  },
+  {
+   "id": "notice-shown",
+   "area": "Display and interface",
+   "severity": "annoyance",
+   "state": true,
+   "all": [
+    "ui/notice_shown[^\\n]*kind=(?P<kind>\\w+)"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "A {kind} notice banner was shown: it changes the page height (a relayout) and takes keyboard focus.",
+   "hint": "If a shortcut stopped working or a highlight vanished right after the banner appeared, suspect the banner; look at the order of ui/ and reader/ operations.",
+   "asks": [
+    "Which key or action stopped working?",
+    "Did it start when a banner appeared?",
+    "Does it work after dismissing the banner?",
+    "Which window had the focus?",
+    "Which desktop and session (Wayland or X11)?"
+   ],
+   "evidence": [
+    "ui/notice_shown[^\\n]*",
+    "reader/\\w+[^\\n]*"
+   ]
+  },
+  {
+   "id": "highlight-chapter-mismatch",
+   "area": "Reader",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "reader/paint_highlights[^\\n]* stored=(?P<n>[1-9]\\d*)[^\\n]* in_chapter=0"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "{n} highlight(s) are stored for this book but none belongs to the chapter shown (a position or anchor mismatch, or the page was laid out again without them).",
+   "hint": "Compare with reader/load_chapter just before it and with ui/notice_shown: a relayout that does not repaint highlights looks like this.",
+   "asks": [
+    "Does it come back after closing and opening the book?",
+    "What happened just before (resize, banner, font change)?",
+    "Which format?",
+    "Did the highlights come from another device (sync)?",
+    "Which text size and font?"
+   ],
+   "evidence": [
+    "reader/paint_highlights[^\\n]*",
+    "reader/load_chapter[^\\n]*"
+   ]
+  },
+  {
+   "id": "rtl-layout",
+   "area": "Reader",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "Language script: (?P<script>right-to-left[^\\n]*|Devanagari|CJK|other Indic[^\\n]*)",
+    "(?:reader|ui)/(?:layout|render|relayout) FAIL"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "A layout or rendering step failed in a {script} language.",
+   "hint": "Check fonts and text direction; the failing operation and the book language are in the line.",
+   "asks": [
+    "Which language is the book and the interface?",
+    "Which font is selected?",
+    "Does it happen with another book?",
+    "Which format?",
+    "Is the text direction switched?"
+   ],
+   "evidence": [
+    "(?:reader|ui)/\\w+ FAIL[^\\n]*",
+    "Language script: [^\\n]*"
+   ]
+  },
+  {
+   "id": "reader-fail",
+   "area": "Reader",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "reader/(?P<op>\\w+) FAIL"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "Reader step \"{op}\" failed.",
+   "hint": "See format, size class and class in the line.",
+   "asks": [
+    "Which format and size?",
+    "Does the book open in another program?",
+    "Does it fail for every book?",
+    "Which page or chapter?",
+    "Which reading mode (paged, scroll, comics)?"
+   ],
+   "evidence": [
+    "reader/\\w+ FAIL[^\\n]*",
+    "Last book: [^\\n]*"
+   ]
+  },
+  {
+   "id": "editor-fail",
+   "area": "Editor",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "editor/(?P<op>\\w+) FAIL"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "Editor step \"{op}\" failed.",
+   "hint": "See the format and class in the line.",
+   "asks": [
+    "Which book?",
+    "What did you change?",
+    "Did saving fail?",
+    "Is the file read-only?",
+    "Does validation say anything?"
+   ],
+   "evidence": [
+    "editor/\\w+ FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "search-fail",
+   "area": "Search",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "search/(?P<op>\\w+) FAIL"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "Search \"{op}\" failed.",
+   "hint": "See the index state in the Library section (indexed n of m).",
+   "asks": [
+    "Is the index complete?",
+    "What was searched for (kind, not the words)?",
+    "How many books?",
+    "Did indexing finish?",
+    "Does a rebuild help?"
+   ],
+   "evidence": [
+    "search/\\w+ FAIL[^\\n]*",
+    "Search index: [^\\n]*"
+   ]
+  },
+  {
+   "id": "library-fail",
+   "area": "@area",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "(?P<area>library|database|settings)/(?P<op>\\w+) FAIL"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "Library step \"{op}\" failed.",
+   "hint": "See class: permissions, locked, corrupt or missing.",
+   "asks": [
+    "Where is the library folder (kind of disk)?",
+    "Did the app start normally?",
+    "Did you move the folder?",
+    "Is the folder readable?",
+    "What did you do right before?"
+   ],
+   "evidence": [
+    "(?:library|database|settings)/\\w+ FAIL[^\\n]*"
+   ]
+  },
+  {
+   "id": "package-binary",
+   "area": "Packaging",
+   "severity": "crash",
+   "state": false,
+   "all": [],
+   "any": [
+    "version `GLIBC_[\\d.]+' not found",
+    "undefined symbol",
+    "error while loading shared libraries",
+    "libcrypto\\.so",
+    "symbol lookup error"
+   ],
+   "none": [],
+   "cause": "The program does not start: the package was built for another distribution release (a library version is missing).",
+   "hint": "Use the package built for your distribution, or the Flatpak. Include the output of: cat /etc/os-release and the package file name.",
+   "asks": [
+    "Which distribution and release?",
+    "Which package file did you install and where from?",
+    "What does \"ldd $(which bookx)\" show as not found?",
+    "Does the Flatpak work?",
+    "Which Bookx version?"
+   ],
+   "evidence": [
+    "[^\\n]*GLIBC_[\\d.]+[^\\n]*",
+    "[^\\n]*error while loading shared libraries[^\\n]*",
+    "[^\\n]*undefined symbol[^\\n]*"
+   ]
+  },
+  {
+   "id": "script-complex",
+   "area": "Reader",
+   "severity": "annoyance",
+   "state": true,
+   "all": [
+    "Language script: (?P<script>right-to-left[^\\n]*|Devanagari|Bengali|CJK|other Indic[^\\n]*)"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The interface language uses a complex script ({script}): shaping, font fallback and text direction problems are possible.",
+   "hint": "Ask for the book language, the reader font and a screenshot; check the renderer and fonts in Display and interface.",
+   "asks": [
+    "Which language is the book, and which is the interface?",
+    "Which font is selected?",
+    "Does it happen in every book or one?",
+    "Is the text direction wrong or are glyphs missing?",
+    "Can you attach a screenshot?"
+   ],
+   "evidence": [
+    "Language script: [^\\n]*",
+    "Interface language: [^\\n]*",
+    "Renderer: [^\\n]*"
+   ]
+  },
+  {
+   "id": "annotation-unlinked",
+   "area": "Built-in server",
+   "severity": "annoyance",
+   "state": false,
+   "all": [
+    "server/annotation_merge[^\\n]*unplaced_or_unlinked=(?P<n>[1-9]\\d*)"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "{n} annotation(s) from a device could not be linked to a book in the library (no matching file or title).",
+   "hint": "The device sends a document id (hash of the file or of its name): the same file must be in the library, and the matching method must agree.",
+   "asks": [
+    "Is the book in the library, as the same file?",
+    "Which matching method does KOReader use?",
+    "Which format?",
+    "Was the book converted after it was sent?",
+    "How many annotations are missing?"
+   ],
+   "evidence": [
+    "server/annotation_merge[^\\n]*"
+   ]
+  },
+  {
+   "id": "index-empty",
+   "area": "Search",
+   "severity": "annoyance",
+   "state": true,
+   "all": [
+    "Search index: 0 of (?P<n>[1-9]\\d*) books"
+   ],
+   "any": [],
+   "none": [],
+   "cause": "The full-text index is empty ({n} books): searching inside books finds nothing yet.",
+   "hint": "Indexing has not run or failed; check the jobs and the disk space, and the file system of the library.",
+   "asks": [
+    "Did indexing ever start (Library > Search)?",
+    "How many books and how big?",
+    "Is the library on a network folder?",
+    "Is the disk full?",
+    "Does a rebuild of the index help?"
+   ],
+   "evidence": [
+    "Search index: [^\\n]*",
+    "Free space: [^\\n]*"
+   ]
+  },
+  {
+   "id": "generic-error",
+   "area": "Unknown",
+   "severity": "annoyance",
+   "state": true,
+   "all": [],
+   "any": [
+    "(?m)^- (?:ERROR|WARN)\\b",
+    "(?m)^- [^\\n]* ERROR "
+   ],
+   "none": [],
+   "cause": "A problem was logged; see Recent problems.",
+   "hint": "No specific rule matched; read \"Recent problems\" and \"Recent operations\".",
+   "asks": [
+    "What were you doing?",
+    "Does it happen every time?",
+    "Which book or device?",
+    "Did it work before an update?",
+    "What did you expect?"
+   ],
+   "evidence": [
+    "(?m)^- (?:ERROR|WARN)[^\\n]*"
+   ]
+  }
+ ]
+}

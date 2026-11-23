@@ -201,32 +201,34 @@ pub fn stop() {
 
 /// (Re)starts the server for the library in `root` and returns its address.
 pub fn start(root: &Path, settings: &mut McpSettings) -> Result<String> {
-    stop();
-    if let Some(p) = settings.problem() {
-        bail!(p);
-    }
-    let token = token(settings);
-    let mut cfg = Config::new(root);
-    cfg.write = if settings.write {
-        // this process is the app and holds the library lock
-        WritePolicy::InApp
-    } else {
-        WritePolicy::Off
-    };
-    cfg.stats_path = crate::config::stats_path();
-    cfg.app_name = "bookx".into();
-    let server = bookx_mcp::new_server(cfg);
-    let mut http = HttpConfig::new(&token);
-    http.port = settings.port;
-    let handle = bookx_mcp::http::start(server, http).map_err(|e| {
-        anyhow::anyhow!(
-            "Could not start the assistant server on port {}: {e:#}",
-            settings.port
-        )
-    })?;
-    let url = handle.url();
-    HOST.with(|h| *h.borrow_mut() = Some(handle));
-    Ok(url)
+    crate::trace::traced(crate::trace::Area::Mcp, "start", |_o| {
+        stop();
+        if let Some(p) = settings.problem() {
+            bail!(p);
+        }
+        let token = token(settings);
+        let mut cfg = Config::new(root);
+        cfg.write = if settings.write {
+            // this process is the app and holds the library lock
+            WritePolicy::InApp
+        } else {
+            WritePolicy::Off
+        };
+        cfg.stats_path = crate::config::stats_path();
+        cfg.app_name = "bookx".into();
+        let server = bookx_mcp::new_server(cfg);
+        let mut http = HttpConfig::new(&token);
+        http.port = settings.port;
+        let handle = bookx_mcp::http::start(server, http).map_err(|e| {
+            anyhow::anyhow!(
+                "Could not start the assistant server on port {}: {e:#}",
+                settings.port
+            )
+        })?;
+        let url = handle.url();
+        HOST.with(|h| *h.borrow_mut() = Some(handle));
+        Ok(url)
+    })
 }
 
 /// Called at start-up: runs the server when the user left it switched on.

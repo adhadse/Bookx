@@ -28,7 +28,7 @@ body:
     attributes:
       label: Diagnostics
       description: |
-        Use **Main Menu → Report a Problem → Open GitHub Issue**, then paste the report here. (Older route: **About Bookx → Troubleshooting**.) It has no book titles, accounts or passwords; read it once before posting.
+        Use **Main Menu → Report a Problem → Open GitHub Issue**, then paste the report here (the Sync and Devices windows, the reader and the editor menus have the same entry and put their own area first). It starts with a summary of what failed and has no book titles (unless you switch them on), accounts, passwords, folders or IP addresses; the dialog shows all of it, read it once before posting.
       render: text
     validations:
       required: true

@@ -51,7 +51,10 @@ pub fn fetcher() -> std::sync::Arc<dyn Fetcher> {
                     .on_prefix("https://mock.example/", MockReply::Status(404)),
             )
         }
-        None => std::sync::Arc::new(UreqFetcher::new()),
+        None => crate::diag_fetch::traced(
+            std::sync::Arc::new(UreqFetcher::new()),
+            crate::trace::Area::Opds,
+        ),
     }
 }
 

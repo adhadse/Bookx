@@ -124,6 +124,10 @@ pub(super) fn book_menu() -> gio::Menu {
     app.append(Some(&tr("Preferences")), Some("app.preferences"));
     app.append(Some(&tr("Keyboard Shortcuts")), Some("app.shortcuts"));
     app.append_item(&item(&tr("Help"), "help"));
+    app.append(
+        Some(&tr("Report a Problem")),
+        Some("app.report-problem-from::Editor"),
+    );
     app.append(Some(&tr("About Bookx")), Some("app.about"));
     m.append_section(None, &app);
     m
@@ -859,12 +863,18 @@ mod menu_tests {
     use super::*;
 
     #[test]
-    fn the_main_menu_stays_within_twelve_entries_and_ends_with_the_standard_group() {
+    fn the_main_menu_stays_within_thirteen_entries_and_ends_with_the_standard_group() {
         let top = top_level_labels(book_menu().upcast_ref());
-        assert!(top.len() <= 12, "{top:?}");
+        assert!(top.len() <= 13, "{top:?}");
         assert_eq!(
-            top[top.len() - 4..],
-            ["Preferences", "Keyboard Shortcuts", "Help", "About Bookx"]
+            top[top.len() - 5..],
+            [
+                "Preferences",
+                "Keyboard Shortcuts",
+                "Help",
+                "Report a Problem",
+                "About Bookx"
+            ]
         );
         let mut sorted = top.clone();
         sorted.sort();

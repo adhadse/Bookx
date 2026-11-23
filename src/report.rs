@@ -10,6 +10,10 @@
 use std::collections::BTreeMap;
 
 use crate::debug_log::Scrubber;
+use crate::diag_facts::{Redactor, Section};
+use crate::diag_problems;
+use crate::trace;
+use crate::triage;
 
 /// The report is cut to this many bytes.
 pub const MAX_BYTES: usize = 60 * 1024;
@@ -250,12 +254,25 @@ pub struct Input {
     pub jobs: Vec<JobLine>,
     pub log: Vec<String>,
     pub crash: Option<String>,
+    /// The state of the features (the machine, the package, the library folder, every registered
+    /// snapshot provider, the books involved), already as facts: the only way into the report.
+    pub sections: Vec<Section>,
+    /// What happened in this run, and before it (from the log), oldest first.
+    pub trace: Vec<trace::Entry>,
+    /// The tail the last session left when it was closed or crashed.
+    pub previous: Vec<trace::Entry>,
+    /// The area the user pressed Report in ("Sync window").
+    pub entry: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Options {
     pub include_log: bool,
     pub include_library: bool,
+    /// Name the books involved by title and author (default off).
+    pub include_titles: bool,
+    /// Show the host of server addresses (default off).
+    pub include_host: bool,
 }
 
 impl Default for Options {
@@ -263,6 +280,8 @@ impl Default for Options {
         Options {
             include_log: true,
             include_library: true,
+            include_titles: false,
+            include_host: false,
         }
     }
 }
@@ -285,7 +304,13 @@ fn cut(s: &str, max: usize) -> String {
 /// The fixed first lines of an issue's "What happened" part.
 pub const WHAT_HAPPENED: &str = "### What happened";
 
-/// The report: the facts (cleaned), then `### What happened` and the user's text (unchanged).
+/// Room kept for the summary block.
+const SUMMARY_RESERVE: usize = 2200;
+/// Operations listed in "Recent operations".
+const OPERATIONS: usize = 40;
+
+/// The report: the summary, what happened, the facts (cleaned), then `### What happened` and the user's
+/// text (unchanged).
 pub fn build(input: &Input, opts: Options, user_text: &str, scrub: &Scrubber) -> String {
     let user = {
         let t = user_text.trim();
@@ -304,15 +329,15 @@ pub fn build(input: &Input, opts: Options, user_text: &str, scrub: &Scrubber) ->
     } else {
         format!("\n{WHAT_HAPPENED}\n\n{user}\n")
     };
-    let budget = MAX_BYTES.saturating_sub(tail.len());
+    let budget = MAX_BYTES.saturating_sub(tail.len() + SUMMARY_RESERVE);
 
-    // clean the free text once; the structure around it is fixed
+    // free text is cleaned once; the structure around it is fixed, and every fact of a feature goes
+    // through the redactor
     let clean = |s: &str| scrub.apply(s);
-    let log: Vec<String> = if opts.include_log {
-        let skip = input.log.len().saturating_sub(LOG_LINES);
-        input.log[skip..].iter().map(|l| clean(l)).collect()
-    } else {
-        Vec::new()
+    let red = Redactor {
+        scrub,
+        show_host: opts.include_host,
+        show_titles: opts.include_titles,
     };
     let jobs: Vec<JobLine> = input
         .jobs
@@ -324,33 +349,189 @@ pub fn build(input: &Input, opts: Options, user_text: &str, scrub: &Scrubber) ->
         })
         .collect();
     let crash = input.crash.as_deref().map(clean);
+
+    let log_all: &[String] = if opts.include_log { &input.log } else { &[] };
+    let head = format!(
+        "{}{}{}",
+        operations_text(&input.trace, &red),
+        problems_text(log_all, &red),
+        previous_text(&input.previous, &red)
+    );
+    // the sections the library switch covers: what is read from the library folder and its books
+    let visible: Vec<&Section> = input
+        .sections
+        .iter()
+        .filter(|s| {
+            opts.include_library
+                || !matches!(
+                    s.title.as_str(),
+                    "Library folder" | "Books involved" | "Reader"
+                )
+        })
+        .collect();
+    // the feature sections, the wanted ones first
+    let compose = |wanted: &[&str]| -> String {
+        let mut sections = visible.clone();
+        sections.sort_by_key(|s| !wanted.contains(&s.title.as_str()));
+        let mut top = head.clone();
+        for sec in sections {
+            let t = red.section(sec);
+            if !t.is_empty() {
+                top.push_str(&t);
+                top.push('\n');
+            }
+        }
+        top
+    };
+    // the area the user pressed Report in comes first; without one, the suspected area (found below)
+    let entry_areas: Vec<&str> = input
+        .entry
+        .as_deref()
+        .map(|e| e.split('|').collect())
+        .unwrap_or_default();
+    let mut top = compose(&entry_areas);
     let env_text = clean(&facts(input, &jobs, opts));
 
-    let mut keep = log.len();
-    let mut dropped = false;
-    loop {
-        let body = assemble(
-            &env_text,
-            &log[log.len() - keep..],
-            crash.as_deref(),
-            opts,
-            dropped,
-        );
-        if body.len() <= budget || keep == 0 {
-            let mut out = if body.len() <= budget {
-                body
-            } else {
-                // even without the log: cut the crash text, then the whole
-                let mut b = cut(&body, budget.saturating_sub(60));
-                b.push_str("\n\n_(report cut to fit 60 KB)_\n");
-                b
-            };
-            out.push_str(&tail);
-            return out;
+    let fixed = top.len() + env_text.len() + crash.as_ref().map_or(0, |c| c.len() + 40) + 200;
+    let log_budget = budget.saturating_sub(fixed);
+    let plan = diag_problems::fit_log(
+        &input.log[input.log.len().saturating_sub(LOG_LINES * 4)..],
+        LOG_LINES,
+        log_budget,
+    );
+    let log: Vec<String> = if opts.include_log {
+        plan.lines
+            .iter()
+            .map(|l| clean_log_line(l, scrub))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let body = assemble(&top, &env_text, &log, crash.as_deref(), opts, &plan);
+    let body = if body.len() > budget {
+        let mut b = cut(&body, budget.saturating_sub(60));
+        b.push_str("\n\n_(report cut to fit 60 KB)_\n");
+        b
+    } else {
+        body
+    };
+
+    // the summary reads the cleaned text, so it can never show more than the report does
+    let findings = triage::analyse(&body);
+    let body = match (entry_areas.is_empty(), triage::headline(&findings)) {
+        (true, Some(h)) if visible.iter().any(|s| s.title == h.area) => {
+            top = compose(&[h.area.as_str()]);
+            assemble(&top, &env_text, &log, crash.as_deref(), opts, &plan)
         }
-        keep = keep.saturating_sub(keep.div_ceil(4).max(1));
-        dropped = true;
+        _ => body,
+    };
+    let mut summary = triage::summary_block(&findings, input.entry.as_deref());
+    if summary.len() > SUMMARY_RESERVE {
+        summary = cut(&summary, SUMMARY_RESERVE - 4);
+        summary.push('\n');
     }
+    let mut out =
+        String::from("<!-- Bookx problem report, made on this computer. Nothing was sent. -->\n\n");
+    out.push_str(&summary);
+    out.push('\n');
+    out.push_str(body.strip_prefix(HEADER).unwrap_or(&body));
+    out.push_str(&tail);
+    out
+}
+
+const HEADER: &str = "<!-- Bookx problem report, made on this computer. Nothing was sent. -->\n\n";
+
+/// A log line as shown: the scrubber for everything except the fields of a `trace` breadcrumb, which
+/// keep their hash (see [`crate::applog::clean_line`]).
+fn clean_log_line(l: &str, scrub: &Scrubber) -> String {
+    crate::applog::clean_line(l, scrub)
+}
+
+fn time_of(ts: i64) -> String {
+    chrono::DateTime::from_timestamp(ts, 0)
+        .map(|d| d.format("%Y-%m-%d %H:%M:%SZ").to_string())
+        .unwrap_or_default()
+}
+
+/// `### Recent operations`: failures first (the ones nothing healed), then the newest of every area.
+fn operations_text(entries: &[trace::Entry], red: &Redactor) -> String {
+    if entries.is_empty() {
+        return "### Recent operations\n\n- none recorded yet in this run\n\n".to_string();
+    }
+    let line = |e: &trace::Entry| red_line(e, red);
+    let mut s = String::from("### Recent operations\n\n");
+    if let Some(f) = trace::last_failure(entries) {
+        s.push_str(&format!("- Last failure: {}\n", line(f)));
+    }
+    let skip = entries.len().saturating_sub(OPERATIONS);
+    for e in &entries[skip..] {
+        s.push_str(&format!("- {}\n", line(e)));
+    }
+    s.push('\n');
+    s
+}
+
+fn red_line(e: &trace::Entry, red: &Redactor) -> String {
+    e.summary_with(&|m| red.text(m))
+}
+
+fn previous_text(entries: &[trace::Entry], red: &Redactor) -> String {
+    if entries.is_empty() {
+        return String::new();
+    }
+    let mut s = String::from("### Last session (before this start)\n\n");
+    for e in entries
+        .iter()
+        .rev()
+        .take(20)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+    {
+        s.push_str(&format!("- {} {}\n", time_of(e.time), red_line(e, red)));
+    }
+    s.push('\n');
+    s
+}
+
+/// `### Recent problems`: one row per kind of warning or error, with a count, harmless noise left out.
+fn problems_text(log: &[String], red: &Redactor) -> String {
+    let a = diag_problems::analyse(log);
+    if a.problems.is_empty() && a.noise.is_empty() {
+        return String::new();
+    }
+    let mut s = String::from("### Recent problems\n\n");
+    if a.problems.is_empty() {
+        s.push_str("- none (only harmless notices)\n");
+    }
+    for p in &a.problems {
+        let lvl = match p.level {
+            diag_problems::Level::Error => "ERROR",
+            diag_problems::Level::Warn => "WARN",
+        };
+        let n = if p.count > 1 {
+            format!(" ×{}", p.count)
+        } else {
+            String::new()
+        };
+        let last = p.last.get(11..19).unwrap_or("");
+        let target = if p.target.is_empty() {
+            String::new()
+        } else {
+            format!("{}: ", p.target)
+        };
+        s.push_str(&format!(
+            "- {lvl}{n} (last {last}Z) {target}{}\n",
+            red.text(&p.message)
+        ));
+    }
+    for (name, why, n) in &a.noise {
+        s.push_str(&format!(
+            "- left out as harmless: {name} ({n} lines): {why}\n"
+        ));
+    }
+    s.push('\n');
+    s
 }
 
 fn facts(i: &Input, jobs: &[JobLine], opts: Options) -> String {
@@ -453,19 +634,33 @@ fn facts(i: &Input, jobs: &[JobLine], opts: Options) -> String {
 }
 
 fn assemble(
+    top: &str,
     facts: &str,
     log: &[String],
     crash: Option<&str>,
     opts: Options,
-    dropped: bool,
+    plan: &diag_problems::LogPlan,
 ) -> String {
-    let mut s =
-        String::from("<!-- Bookx problem report, made on this computer. Nothing was sent. -->\n\n");
+    let mut s = String::from(HEADER);
+    s.push_str(top);
     s.push_str(facts);
     if opts.include_log {
         s.push_str("\n### Recent log\n\n");
-        if dropped {
-            s.push_str("_(older lines left out to fit 60 KB)_\n\n");
+        let mut notes = Vec::new();
+        if plan.noise > 0 {
+            notes.push(format!("{} harmless lines left out", plan.noise));
+        }
+        if plan.folded > 0 {
+            notes.push(format!("{} repeats folded into [×N]", plan.folded));
+        }
+        if plan.dropped > 0 {
+            notes.push(format!(
+                "{} less important lines left out to fit 60 KB (errors and breadcrumbs are kept first)",
+                plan.dropped
+            ));
+        }
+        if !notes.is_empty() {
+            s.push_str(&format!("_({})_\n\n", notes.join("; ")));
         }
         s.push_str("```text\n");
         if log.is_empty() {
@@ -486,9 +681,36 @@ fn assemble(
 }
 
 /// The settings summary of the running app.
+#[cfg(test)]
 pub fn summarize(
     cfg: &crate::config::Config,
     mgr: &bookx_plugin::PluginManager,
+) -> SettingsSummary {
+    summarize_with(
+        cfg,
+        mgr.list()
+            .into_iter()
+            .filter(|p| !p.id.is_empty())
+            .map(|p| p.id)
+            .collect(),
+        std::fs::read_dir(crate::plugins::patches_dir())
+            .map(|rd| rd.flatten().count())
+            .unwrap_or(0),
+        match crate::secrets::vault().mode() {
+            bookx_secrets::Mode::Keyring => "system keyring",
+            bookx_secrets::Mode::Vault => "encrypted store",
+            bookx_secrets::Mode::Locked => "encrypted store (locked)",
+            _ => "not saved (session only)",
+        },
+    )
+}
+
+/// [`summarize`] from the parts it reads from the running app.
+pub fn summarize_with(
+    cfg: &crate::config::Config,
+    plugin_ids: Vec<String>,
+    patches: usize,
+    keyring: &str,
 ) -> SettingsSummary {
     SettingsSummary {
         offline: cfg.offline,
@@ -496,15 +718,8 @@ pub fn summarize(
         safe_mode: crate::safe_mode::active(),
         eink: cfg.eink,
         reviewed_locales_only: crate::i18n::REVIEWED_ONLY,
-        plugin_ids: mgr
-            .list()
-            .into_iter()
-            .filter(|p| !p.id.is_empty())
-            .map(|p| p.id)
-            .collect(),
-        patches: std::fs::read_dir(crate::plugins::patches_dir())
-            .map(|rd| rd.flatten().count())
-            .unwrap_or(0),
+        plugin_ids,
+        patches,
         backup_kinds: cfg
             .health
             .backup
@@ -512,12 +727,7 @@ pub fn summarize(
             .iter()
             .map(|d| format!("{:?}", d.kind).to_ascii_lowercase())
             .collect(),
-        keyring: match crate::secrets::vault().mode() {
-            bookx_secrets::Mode::Keyring => "system keyring",
-            bookx_secrets::Mode::Vault => "encrypted store",
-            _ => "not saved (session only)",
-        }
-        .to_string(),
+        keyring: keyring.to_string(),
         tts_engine: cfg.tts.engine.clone(),
     }
 }
@@ -580,6 +790,30 @@ pub fn write_report(path: &std::path::Path, text: &str) -> std::io::Result<()> {
     }
     f.write_all(text.as_bytes())
 }
+
+/// What a report holds, in plain words (shown in the dialog above the preview; the wiki says the same).
+/// These are message ids: the dialog translates them.
+pub const CONTENTS: [&str; 7] = [
+    crate::i18n::N_(
+        "The version of Bookx, how it was installed, and the kind of computer: system, desktop, screen, memory and disk as classes.",
+    ),
+    crate::i18n::N_("Your settings as switches and counts, never a value you typed."),
+    crate::i18n::N_(
+        "What the app did last in each area (sync, import, devices, backups, reading aloud): what it was, how long it took, whether it worked and which kind of error. Never a title, file name or folder.",
+    ),
+    crate::i18n::N_(
+        "The library as counts and classes: books, formats, search index, the file system and free space of the folder.",
+    ),
+    crate::i18n::N_(
+        "Server addresses by kind, port and path words only. The host is left out unless you switch it on.",
+    ),
+    crate::i18n::N_(
+        "Warnings and errors from the log, cleaned of your name, folders, titles, servers and passwords.",
+    ),
+    crate::i18n::N_(
+        "Never included: your name, e-mail, IP addresses, Wi-Fi name, passwords, file names. Book titles and authors only when you switch them on, and only for the books involved.",
+    ),
+];
 
 /// The URL of the bug form; only a short title is added, the report goes through the clipboard.
 pub const ISSUE_URL: &str =
@@ -648,6 +882,7 @@ mod tests {
                 "2026-11-22T10:00:05Z  WARN bookx: plugin acme.trim could not be loaded".into(),
             ],
             crash: None,
+            ..Default::default()
         }
     }
 
@@ -664,6 +899,24 @@ mod tests {
     }
 
     const GOLDEN: &str = "<!-- Bookx problem report, made on this computer. Nothing was sent. -->
+
+### Summary and suspected area
+
+- Suspected area: Plugins and patches
+- Severity: annoyance
+- What went wrong: A plugin failed to load or run: acme.trim.
+- Hint: Disable the plugin (or start in safe mode) to confirm; report to the plugin author with its version.
+- Evidence: `- WARN (last 10:00:05Z) bookx: plugin acme.trim could not be loaded`
+- Evidence: `Plugins: 1 (acme.trim)`
+- Also noticed: Unknown (A problem was logged; see Recent problems)
+
+### Recent operations
+
+- none recorded yet in this run
+
+### Recent problems
+
+- WARN (last 10:00:05Z) bookx: plugin acme.trim could not be loaded
 
 ### Bookx
 
@@ -737,12 +990,22 @@ mod tests {
     }
 
     #[test]
+    fn the_plain_words_list_is_short_and_has_no_ellipsis() {
+        for l in CONTENTS {
+            assert!(!l.ends_with('…') && !l.ends_with("..."), "{l}");
+            assert!(l.len() < 260, "{l}");
+        }
+        assert!(CONTENTS.last().unwrap().starts_with("Never included"));
+    }
+
+    #[test]
     fn the_toggles_leave_out_the_log_and_the_library() {
         let r = build(
             &input(),
             Options {
                 include_log: false,
                 include_library: false,
+                ..Options::default()
             },
             "",
             &scrub(),
@@ -789,16 +1052,27 @@ mod tests {
     #[test]
     fn a_long_log_is_cut_to_the_cap_with_a_notice() {
         let mut i = input();
+        let name = |n: usize| -> String {
+            let mut n = n;
+            let mut s = String::new();
+            loop {
+                s.push((b'a' + (n % 26) as u8) as char);
+                n /= 26;
+                if n == 0 {
+                    return s;
+                }
+            }
+        };
         i.log = (0..LOG_LINES * 3)
-            .map(|n| format!("2026 WARN line {n} {}", "word ".repeat(80)))
+            .map(|n| format!("2026 WARN bookx: line {} {}", name(n), "word ".repeat(80)))
             .collect();
         i.crash = Some("crash line\n".repeat(3_000));
         let r = build(&i, Options::default(), "my words", &scrub());
         assert!(r.len() <= MAX_BYTES, "{}", r.len());
-        assert!(r.contains("older lines left out to fit 60 KB"));
+        assert!(r.contains("left out to fit 60 KB"));
         assert!(r.ends_with("### What happened\n\nmy words\n"));
         // the newest lines are the ones kept
-        assert!(r.contains(&format!("line {} ", LOG_LINES * 3 - 1)));
+        assert!(r.contains(&format!("line {} ", name(LOG_LINES * 3 - 1))));
     }
 
     #[test]
