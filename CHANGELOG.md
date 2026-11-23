@@ -6,6 +6,28 @@ versioned heading, `Cargo.toml` and the AppStream metainfo disagree.
 
 ## [Unreleased]
 
+## [0.4.0-beta.1] - 2026-11-24
+
+Starts the 0.4 line: a much richer problem report, and sync that works with servers that match books by file content.
+
+### Added
+- **Report a Problem tells us what went wrong.** It starts with a *Summary and suspected area* (what failed last, in which
+  feature, how serious, what to try), then the recent operations of every feature (import, conversion, devices, sync,
+  backups, read aloud, search, the reader and more) with their outcome, recent problems grouped with counts instead of
+  60 KB of repeated warnings, and facts about the system: Flatpak sandbox, the library folder's file system and free
+  space (as classes), the sync client and the helper programs. It is reachable from the Sync window, the Devices window and
+  the reader and editor menus, which put that area first.
+- **Privacy:** no titles, authors, file names, paths, host names or user-chosen device names. Server addresses read like
+  `http://<ip:private>:30260/api/koreader`. Two switches, both off, add the titles of the books involved and the server host.
+  The report is still only made on your computer and you read it before anything is sent.
+- `build-aux/triage-report.py` reads a pasted report and names the area and the next questions (for maintainers).
+
+### Fixed
+- **Sync with Grimmory and other servers that match books by their file** (issue #49): Bookx used its own re-packed copy of
+  an EPUB, and for a PDF the EPUB it converts it to, so the server never knew the book (HTTP 404 on every push). Bookx now
+  also remembers the id of the file as it was imported and uses it first. A 404 now says that the server does not know this
+  book and what to try. EPUBs imported by an earlier version have to be added again from the server.
+
 ## [0.3.0-beta.3] - 2026-11-23
 
 ### Added
@@ -166,7 +188,8 @@ editor.
 - `bookx://` links and a diagnostics report for bug reports.
 - Flatpak manifest (GNOME 50 runtime, offline crates), CI workflow.
 
-[Unreleased]: https://github.com/adhadse/Bookx/compare/v0.3.0-beta.3...HEAD
+[Unreleased]: https://github.com/adhadse/Bookx/compare/v0.4.0-beta.1...HEAD
+[0.4.0-beta.1]: https://github.com/adhadse/Bookx/releases/tag/v0.4.0-beta.1
 [0.3.0-beta.3]: https://github.com/adhadse/Bookx/releases/tag/v0.3.0-beta.3
 [0.3.0-beta.2]: https://github.com/adhadse/Bookx/releases/tag/v0.3.0-beta.2
 [0.3.0-beta.1]: https://github.com/adhadse/Bookx/releases/tag/v0.3.0-beta.1
