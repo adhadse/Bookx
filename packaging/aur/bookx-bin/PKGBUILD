@@ -1,8 +1,8 @@
 # Maintainer: Anurag Dhadse <hello@adhadse.com>
 # The prebuilt files of the GitHub release (signed; see https://bookx.adhadse.com/install/). Building from source: bookx.
-_pkgver=0.3.0-beta.2
+_pkgver=0.3.0-beta.3
 pkgname=bookx-bin
-pkgver=${_pkgver//-/}
+pkgver=0.3.0beta.3
 pkgrel=1
 pkgdesc='GNOME-native e-book library, reader and EPUB editor written in Rust (GTK 4, libadwaita), prebuilt'
 arch=('x86_64')
@@ -17,7 +17,7 @@ provides=('bookx')
 conflicts=('bookx' 'bookx-git')
 options=('!debug')
 source=("https://github.com/adhadse/Bookx/releases/download/v$_pkgver/bookx-$_pkgver-linux-x86_64.tar.gz")
-sha256sums=('a43a8de07ff564e6a6c805a917f155d7b2256ec7637f59d70017730cb4787262')
+sha256sums=('SKIP') # the real sum is filled after the release exists: updpkgsums (packaging/aur/README.md)
 
 package() {
     cd "bookx-$_pkgver-linux-x86_64"

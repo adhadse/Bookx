@@ -1,8 +1,8 @@
 # Maintainer: Anurag Dhadse <hello@adhadse.com>
 # Builds Bookx from the release tag. The prebuilt files are in bookx-bin. See packaging/aur/README.md.
-_pkgver=0.3.0-beta.2
+_pkgver=0.3.0-beta.3
 pkgname=bookx
-pkgver=${_pkgver//-/}
+pkgver=0.3.0beta.3
 pkgrel=1
 pkgdesc='GNOME-native e-book library, reader and EPUB editor written in Rust (GTK 4, libadwaita)'
 arch=('x86_64')
@@ -18,7 +18,7 @@ conflicts=('bookx-bin' 'bookx-git')
 # makepkg's default -flto makes the bundled SQLite (a C library built by a crate) unlinkable from Rust
 options=('!lto' '!debug')
 source=("$pkgname-$_pkgver.tar.gz::https://github.com/adhadse/Bookx/archive/refs/tags/v$_pkgver.tar.gz")
-sha256sums=('a96af0fc8947b38da5e720f1d71b46085f736d2b63701b8d3bdc26d38e72f685')
+sha256sums=('SKIP') # the real sum is filled after the release exists: updpkgsums (packaging/aur/README.md)
 
 prepare() {
     cd "Bookx-$_pkgver"

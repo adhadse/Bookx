@@ -104,6 +104,18 @@
     <mediatype>x-scheme-handler/bookx</mediatype>
   </provides>
   <releases>
+    <release version="0.3.0-beta.3" date="2026-11-23" type="development">
+      <description>
+        <p>Third beta: you can go back in history and restore highlights, notes and bookmarks.</p>
+        <ul>
+          <li>New: History lists every change to your highlights, notes and bookmarks, with Restore and an Undo message after a sync removed some</li>
+          <li>New: e-readers show their product name (for example Boox Leaf 2) and can be renamed; the sync says it never copies or deletes books</li>
+          <li>Safer updates: your library is copied before its database is upgraded</li>
+          <li>The library database is upgraded once on first start; an older Bookx cannot open it</li>
+        </ul>
+      </description>
+      <url type="details">https://github.com/adhadse/Bookx/releases/tag/v0.3.0-beta.3</url>
+    </release>
     <release version="0.3.0-beta.2" date="2026-11-23" type="development">
       <description>
         <p>Second beta: the Linux packages now run on current Fedora, Ubuntu, Debian and Arch (the first beta only ran on Fedora 45).</p>

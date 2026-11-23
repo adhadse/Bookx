@@ -52,14 +52,14 @@ Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse (agents update it i
 
 | ID | Item | Status |
 |---|---|---|
-| REL-1 | Rust 2024 edition | in progress, PR #37 |
-| REL-2 | AUR packages `bookx` and `bookx-bin` | in progress, PR #36; publishing blocked on owner (AUR account and SSH key) |
-| REL-3 | Debian 13 (trixie) support: replace `adw::ShortcutsDialog` and add a Debian 13 build job for the .deb | open |
-| DEV-1 | Issue #39: Boox device names, "sync never copies or deletes books", device zoo emulation tests | in progress, PR #42 (branch `issue-39-devices`) |
+| REL-1 | Rust 2024 edition | done, merged (PR #37) |
+| REL-2 | AUR packages `bookx` and `bookx-bin` | merged (PR #36); publishing blocked on owner (AUR account and SSH key) |
+| REL-3 | Debian 13 (trixie) support | dropped (owner, 2026-11-23: GTK 4.18 is too old; use the Flatpak) |
+| DEV-1 | Issue #39: Boox device names, "sync never copies or deletes books", device zoo emulation tests | merged (PR #42); ships in beta.3 |
 | DEV-2 | First sync of KOReader plugin 0.3.1 on the owner's Kobo, with the 7-step live-update checklist | blocked on owner, unverified |
-| ANN-1 | History and restore of highlights, notes and bookmarks (SQLite journal) | in review, PR #44 (branch `annotation-history`) |
+| ANN-1 | History and restore of highlights, notes and bookmarks (SQLite journal) | merged (PR #44); ships in beta.3 |
 | ANN-2 | Annotations in their own tables `highlights` and `bookmarks` (design-audit step 3) | open (beta.3 candidate; builds on ANN-1 and DATA-1) |
-| DATA-1 | Library update safety: copy first, check after (`bookx-library.db.pre-v<N>-<time>`), and the design audit | in progress, PR #41 |
+| DATA-1 | Library update safety: copy first, check after (`bookx-library.db.pre-v<N>-<time>`), and the design audit | merged (PR #41) |
 | DATA-2 | Statistics, vocabulary and the sync ledgers into the library database (design-audit step 4) | open (beta.3 candidate) |
 | DATA-3 | Rotate passwords that sat in old plaintext config copies; try the master-password dialogs by hand | blocked on owner |
 | CI-1 | Flaky UI scenario `win11_scale_library` (`build-aux/ui-tests-win8.sh`) | open |
@@ -68,9 +68,9 @@ Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse (agents update it i
 
 | ID | Item | Status | Pri | Pointer | Who |
 |---|---|---|---|---|---|
-| REL-1 | Rust 2024 edition (workspace is still `edition = "2021"` on `main`, verified) | in progress, PR #37 | P1 | PR #37 | agent |
-| REL-2 | AUR packages `bookx` and `bookx-bin` (PKGBUILDs, tested) | in progress, PR #36; publish blocked on owner | P1 | PR #36, `releasing.md` | owner (account, SSH key), agent |
-| REL-3 | Debian 13 (trixie): `src/app.rs` uses `adw::ShortcutsDialog` (libadwaita 1.8) which Debian 13 lacks; replace it with a widget available in 1.5 or newer, then add a Debian 13 build job for the .deb (`build-aux/distro-matrix.sh` today covers Debian testing only) | open | P1 | `build-aux/distro-matrix.sh`, `releasing.md` | agent |
+| REL-1 | Rust 2024 edition (every crate is `edition = "2024"` on `main`) | done, merged (PR #37) | P1 | PR #37 | agent |
+| REL-2 | AUR packages `bookx` and `bookx-bin` (PKGBUILDs, tested) | merged (PR #36); publish blocked on owner | P1 | PR #36, `releasing.md` | owner (account, SSH key), agent |
+| REL-3 | Debian 13 (trixie): `src/app.rs` uses `adw::ShortcutsDialog` (libadwaita 1.8) which Debian 13 lacks; replace it with a widget available in 1.5 or newer, then add a Debian 13 build job for the .deb (`build-aux/distro-matrix.sh` today covers Debian testing only) | dropped (owner decision 2026-11-23: GTK is too old, Debian 13 uses the Flatpak) |  - | `build-aux/distro-matrix.sh`, `releasing.md` | agent |
 | REL-4 | Start the Flatpak bundle by hand once (the pipeline installs and starts .deb, .rpm and tarball in `distro-matrix.sh`, not the GUI of the Flatpak) | blocked on owner, unverified | P2 | `release-0.3.0.md` §5 | owner |
 | REL-5 | SBOM in `release.yml` (no `cyclonedx` or `sbom` step exists, verified by grep) and a note on what is and is not reproducible | open | P2 | `release-plan.md` §2, `security.md` G13 | agent |
 | REL-6 | Pin the remaining third-party actions by SHA (a few are left, among them `actions/upload-artifact@v4` and `msys2/setup-msys2@v2`; Dependabot PR #14 is open) | open | P2 | `security.md` G13 | agent |
@@ -85,7 +85,7 @@ Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse (agents update it i
 
 | ID | Item | Status | Pri | Pointer | Who |
 |---|---|---|---|---|---|
-| DEV-1 | Issue #39 (Boox Leaf 2 not syncing books): Boox device names, an honest explanation that sync never copies or deletes books, e-reader device zoo emulation tests | in progress, PR #42 | P1 | issue #39, `hardware-test-plan.md`, `enhancements.md` | agent |
+| DEV-1 | Issue #39 (Boox Leaf 2 not syncing books): Boox device names, an honest explanation that sync never copies or deletes books, e-reader device zoo emulation tests | merged (PR #42); ships in beta.3 | P1 | issue #39, `hardware-test-plan.md`, `enhancements.md` | agent |
 | DEV-2 | First sync of plugin 0.3.1 on the owner's Kobo (installed, first sync not confirmed) and the 7-step live-update checklist (server and device name, Sync now, Notes list, live highlight/colour/delete/bookmark, "device is ahead" and edit-conflict banners, Wi-Fi off and on). Checklist text: Part 2 A.1 of `remaining-work.md` | blocked on owner, unverified | P1 | `koreader-plugin-testing.md`, `remaining-work.md` | owner |
 | DEV-3 | Kobo native highlight colour numbers (`Color` 0..3) and KOReader 2024 or newer reading the notes file Bookx writes (bugs 12 and 22) | blocked on owner, unverified | P2 | `bugs.md` 12, 22, `koreader-annotation-sync.md` | owner |
 | DEV-4 | Hardware verification: Kindle, PocketBook, Boox, other Kobo models, touch and e-ink panels | blocked on owner | P2 | `hardware-test-plan.md` | owner |
@@ -100,7 +100,7 @@ Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse (agents update it i
 
 | ID | Item | Status | Pri | Pointer | Who |
 |---|---|---|---|---|---|
-| ANN-1 | History and restore of highlights, notes and bookmarks, with a SQLite journal (`annotation_history` table written by the store in the same transaction as the change) | in review, PR #44 | P1 | `design-audit.md` §4 step 2 (PR #41), `enhancements.md` | agent |
+| ANN-1 | History and restore of highlights, notes and bookmarks, with a SQLite journal (`annotation_history` table written by the store in the same transaction as the change) | merged (PR #44); ships in beta.3 | P1 | `design-audit.md` §4 step 2 (PR #41), `enhancements.md` | agent |
 | ANN-2 | Move highlights and bookmarks out of the per-book JSON into tables (schema v11, counts verified per book and in total, arrays dropped from `data`); lazy loading of the open book's annotations follows | open | P1 | `design-audit.md` §4 step 3 (PR #41) | agent |
 | ANN-3 | Editing the text of a highlight (roadmap R31) and an automatic last-position bookmark (F6) | open, unverified | P2 | `roadmap-status.md` R31, F6 | agent |
 | ANN-4 | Notes view: the date filters still hold the date as hidden entries, and the reader sidebar has its own copy of the note row | open, unverified | P3 | `archive/ux-gaps-notes.md` | agent |
@@ -125,7 +125,7 @@ Status: living | Last reviewed: 2026-11-23 | Owner: @adhadse (agents update it i
 
 | ID | Item | Status | Pri | Pointer | Who |
 |---|---|---|---|---|---|
-| DATA-1 | Library update safety: a copy of the database before a schema update, integrity and book-count check afterwards, refuse to start when the copy cannot be made, newest two copies kept | in progress, PR #41 | P1 | `design-audit.md` §3.1 | agent |
+| DATA-1 | Library update safety: a copy of the database before a schema update, integrity and book-count check afterwards, refuse to start when the copy cannot be made, newest two copies kept | merged (PR #41) | P1 | `design-audit.md` §3.1 | agent |
 | DATA-2 | Statistics (every reading session), vocabulary, the KOReader ledger and raw annotations, KOSync state, sync activity and shelves from about 16 whole-file JSON files into the library database (schema v12 or newer, old files kept as `.migrated`); they are not in library backups today | open | P1 | `design-audit.md` §3.2 and §4 step 4 | agent |
 | DATA-3 | Rotate passwords that were in old plaintext config copies; try the master-password dialogs by hand; GNOME Keyring and the Flatpak secrets portal | blocked on owner | P1 | `security.md`, `backup-notes.md` | owner |
 | DATA-4 | Settings file gets a `version` and per-version steps instead of "reset once" flags | open | P2 | `design-audit.md` §4 step 5 | agent |
@@ -189,6 +189,8 @@ Everything above that only the owner can do, in one place.
 
 | Date | Decision | Where |
 |---|---|---|
+| 2026-11-23 | Debian 13 (trixie), Debian 12 and Ubuntu 24.04 are not supported by the native packages (GTK older than 4.20); they use the Flatpak. Minimum stays GTK 4.20 / libadwaita 1.8 | `install.md` (wiki), REL-3 |
+| 2026-11-23 | Deleting a highlight on a device deletes it in the library (per-highlight sync); a book is never copied or deleted by sync; History restores what was removed | `sync-rules.md`, wiki `annotations.md` |
 | 2026-11-22 | GitHub Releases is the only channel for now; Flathub and the other stores come after the project has history | `release-plan.md` |
 | 2026-11-21 | Translations on Weblate (hosted.weblate.org); no translator credits for AI text | `translations-hosting.md` |
 | 2026-11-21 | Release signing: cosign keyless and build provenance; private vulnerability reporting, advisory owner @adhadse | `security.md` §11, §13 |
