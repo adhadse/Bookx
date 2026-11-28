@@ -29,7 +29,9 @@ thread_local! {
 /// The state Sync shows now: settings, the running server, a connected USB e-reader and whether a
 /// KOReader device has sent anything.
 pub fn current(shared: &SharedRef) -> Snapshot {
-    let usb = crate::devices::detect_physical()
+    // the last scan (the library window rescans every few seconds): no I/O on the main thread
+    let usb = crate::devices::latest()
+        .mains()
         .into_iter()
         .next()
         .map(|d| d.name);
@@ -644,7 +646,7 @@ pub fn dev(cmd: &str) {
         if let Some(b) = button {
             b.emit_clicked();
         }
-        let copied = crate::devices::detect_physical()
+        let copied = crate::devices::detect_physical_blocking()
             .into_iter()
             .find_map(|d| crate::annotation_sync_ui::plugins_folder(&d.mount))
             .map(|p| {

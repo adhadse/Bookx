@@ -418,6 +418,8 @@ pub struct Found {
     pub is_card: bool,
     /// USB device path that groups the volumes of one device.
     pub group: Option<String>,
+    /// The key a user's choice for this drive is remembered by ([`drive_key`]).
+    pub key: String,
 }
 
 /// The outcome of looking at the mounted drives.
@@ -510,6 +512,7 @@ pub fn analyse(volumes: &[Volume], user: &[UserDrive]) -> Analysis {
                     user_chosen: false,
                     is_card,
                     group: Some(path.to_string()),
+                    key: drive_key(&volumes[i]),
                 },
             ));
         }
@@ -539,6 +542,7 @@ pub fn analyse(volumes: &[Volume], user: &[UserDrive]) -> Analysis {
                     user_chosen: true,
                     is_card: false,
                     group: None,
+                    key: key.clone(),
                 },
             ));
             continue;

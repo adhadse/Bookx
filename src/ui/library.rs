@@ -1049,7 +1049,7 @@ pub struct LibraryView {
     devices: Vec<bookx_core::contracts::DeviceInfo>,
     banner_device: Option<bookx_core::contracts::DeviceInfo>,
     declined: HashSet<String>,
-    device_scan: Rc<Cell<bool>>,
+    device_scan: super::device_scan::Scanner,
 }
 
 /// The answers of the "device connected" banner: a one-shot sync or built-in dismiss.
@@ -2033,7 +2033,12 @@ impl LibraryView {
     /// The header button, the banner and the persistent automatic-sync setting follow the
     /// connected devices. Answering the banner never changes that setting.
     fn devices_changed(&mut self, list: Vec<bookx_core::contracts::DeviceInfo>) {
-        let fresh = crate::device_sync::newly_connected(&self.devices, &list);
+        // memory cards belong to their device: they are send destinations, never a "new device"
+        let mains =
+            |l: &[bookx_core::contracts::DeviceInfo]| -> Vec<bookx_core::contracts::DeviceInfo> {
+                l.iter().filter(|d| d.parent.is_none()).cloned().collect()
+            };
+        let fresh = crate::device_sync::newly_connected(&mains(&self.devices), &mains(&list));
         let gone: Vec<String> = self
             .devices
             .iter()
@@ -2045,7 +2050,7 @@ impl LibraryView {
         }
         self.devices = list;
         self.w.send_action.set_enabled(!self.devices.is_empty());
-        let label = crate::device_sync::button_label(&self.devices);
+        let label = crate::device_sync::button_label(&mains(&self.devices));
         if let Some(label) = &label {
             if let Some(c) = self
                 .w
@@ -5962,38 +5967,21 @@ impl SimpleComponent for LibraryView {
             devices: Vec::new(),
             banner_device: None,
             declined: HashSet::new(),
-            device_scan: Rc::new(Cell::new(false)),
+            device_scan: super::device_scan::Scanner::new(),
         };
         model.sync_sort_controls();
         sender.input(Input::Refresh);
         sender.input(Input::SetNav(model.view));
         {
-            // look for devices now and every few seconds, off the main thread
+            // look for devices now and every few seconds, off the main thread (the answer of a
+            // scan that was overtaken is dropped; a scan still running is not started twice)
             let tx = sender.input_sender().clone();
-            let busy = model.device_scan.clone();
+            let scanner = model.device_scan.clone();
+            let shared = model.shared.clone();
             let scan: Rc<dyn Fn()> = Rc::new(move || {
-                if busy.replace(true) {
-                    return;
-                }
-                let (rtx, rrx) = std::sync::mpsc::channel();
-                std::thread::spawn(move || {
-                    let _ = rtx.send(crate::devices::detect_physical());
-                });
-                let (tx, busy) = (tx.clone(), busy.clone());
-                glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
-                    match rrx.try_recv() {
-                        Ok(v) => {
-                            busy.set(false);
-                            tx.emit(Input::Devices(v));
-                            glib::ControlFlow::Break
-                        }
-                        Err(std::sync::mpsc::TryRecvError::Empty) => glib::ControlFlow::Continue,
-                        Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                            busy.set(false);
-                            glib::ControlFlow::Break
-                        }
-                    }
-                });
+                let tx = tx.clone();
+                let settings = shared.cfg.borrow().device.clone();
+                scanner.spawn_if_idle(settings, false, move |d| tx.emit(Input::Devices(d.devices)));
             });
             scan();
             glib::timeout_add_seconds_local(3, move || {
@@ -7328,7 +7316,9 @@ impl SimpleComponent for LibraryView {
                         self.update_bottom_bar();
                     }
                     "devices-scan" => {
-                        let list = crate::devices::detect_physical();
+                        // test hook: waits for the scan like any other caller would not, so the
+                        // answer is the fresh one
+                        let list = crate::devices::detect_physical_blocking();
                         self.devices_changed(list);
                     }
                     "device-banner=sync" => self.device_banner_answer(DeviceChoice::Sync),
@@ -7614,7 +7604,7 @@ impl SimpleComponent for LibraryView {
                         eprintln!("targets: {}", labels.join(" | "));
                     }
                     "devices" => {
-                        let n = crate::devices::detect_all().len();
+                        let n = crate::devices::detect_all_blocking().len();
                         eprintln!("devices: {n}");
                     }
                     // `convertto=<target>:<path>` converts the selected (or first) book without dialogs

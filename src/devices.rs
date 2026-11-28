@@ -15,7 +15,9 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result, anyhow, bail};
 use bookx_core::contracts::{DeviceDriver, DeviceInfo};
 use bookx_serve::devfs::{self, BookFields, DeviceBook, Space, Storage};
-use bookx_serve::devices::{DeviceKind, MassStorageDriver, choose_format};
+use bookx_serve::devices::{
+    DeviceKind, MassStorageDriver, NotIdentified, OtherDrive, UserDrive, choose_format,
+};
 use bookx_serve::mtp::MtpGvfsDriver;
 use bookx_serve::reading;
 #[cfg(test)]
@@ -37,6 +39,9 @@ pub struct DeviceSettings {
     /// Kobo shelf sent books are put on; empty leaves the Kobo database alone.
     pub kobo_shelf: String,
     pub webdav: WebDavSettings,
+    /// Drives the user said are e-readers ("Use as an e-reader"), remembered by a hashed stable
+    /// key, never by a serial number. Recognition by hardware is never written here.
+    pub drives: Vec<UserDrive>,
 }
 
 /// A WebDAV folder (Nextcloud, ownCloud…) used like a device. The password is kept in the
@@ -121,7 +126,7 @@ impl Drivers {
             .and_then(|r| r.ok())
             .map(WebDavDriver::new);
         Drivers {
-            mass,
+            mass: mass.with_user_drives(settings.drives.clone()),
             mtp,
             dav,
             plugins: crate::plugins::current(),
@@ -158,27 +163,54 @@ impl Drivers {
         self
     }
 
-    /// Everything connected right now. The cloud folder is always listed when it is set up.
-    pub fn detect(&self) -> Vec<DeviceInfo> {
-        let mut v = self.mass.detect();
+    /// Everything connected right now, and the drives that are not e-readers. Reads
+    /// `/proc/mounts`, sysfs and the gvfs folder: call it from a worker thread
+    /// ([`Scanner`]), never from the main loop. The cloud folder is listed when it is set up.
+    pub fn scan(&self, with_cloud: bool) -> Detected {
+        let a = self.mass.scan();
+        let mut devices: Vec<DeviceInfo> = a
+            .found
+            .iter()
+            .map(|f| {
+                let mut info = f.info.clone();
+                if f.is_card {
+                    if let Some(r) = &f.recognised {
+                        let dir = info
+                            .mount
+                            .file_name()
+                            .map(|n| n.to_string_lossy().into_owned())
+                            .unwrap_or_default();
+                        info.name = trf("{}, memory card ({})", &[&r.model, &dir]);
+                    }
+                }
+                info
+            })
+            .collect();
+        let chosen = a
+            .found
+            .iter()
+            .filter(|f| f.user_chosen)
+            .map(|f| (f.info.clone(), f.key.clone()))
+            .collect();
         if let Some(m) = &self.mtp {
-            v.extend(m.detect());
+            devices.extend(m.detect());
         }
-        v.extend(self.plugins.devices.iter().flat_map(|d| d.detect()));
-        if let Some(d) = &self.dav {
-            v.push(d.device());
+        devices.extend(self.plugins.devices.iter().flat_map(|d| d.detect()));
+        if with_cloud {
+            if let Some(d) = &self.dav {
+                devices.push(d.device());
+            }
         }
-        v
+        Detected {
+            devices: dedupe(devices),
+            others: a.others,
+            chosen,
+        }
     }
 
-    /// Only the devices that need a cable (what the book menu offers).
-    pub fn detect_physical(&self) -> Vec<DeviceInfo> {
-        let mut v = self.mass.detect();
-        if let Some(m) = &self.mtp {
-            v.extend(m.detect());
-        }
-        v.extend(self.plugins.devices.iter().flat_map(|d| d.detect()));
-        v
+    /// Everything connected right now (worker thread only, see [`Drivers::scan`]).
+    pub fn detect(&self) -> Vec<DeviceInfo> {
+        self.scan(true).devices
     }
 
     pub fn backend(&self, device: &DeviceInfo) -> Backend {
@@ -760,14 +792,142 @@ pub fn candidate_mounts() -> Vec<PathBuf> {
     out
 }
 
-/// Every connected device: USB, MTP, the cloud folder, and the devices plugins find.
-pub fn detect_all() -> Vec<DeviceInfo> {
-    dedupe(drivers(&settings()).detect())
+/// What one look at the machine found: the devices (an e-reader and its memory cards, MTP, the
+/// cloud folder, plugin devices), the removable drives that are *not* e-readers, and the drives the
+/// user chose to treat as e-readers (with the key their choice is stored under).
+#[derive(Debug, Clone, Default)]
+pub struct Detected {
+    pub devices: Vec<DeviceInfo>,
+    pub others: Vec<OtherDrive>,
+    pub chosen: Vec<(DeviceInfo, String)>,
 }
 
-/// Devices that need a cable (what the book menu offers): no cloud folder.
-pub fn detect_physical() -> Vec<DeviceInfo> {
-    dedupe(drivers(&settings()).detect_physical())
+impl Detected {
+    /// Devices that are not additional storage of another device (what a banner or the header
+    /// button talks about).
+    pub fn mains(&self) -> Vec<DeviceInfo> {
+        self.devices
+            .iter()
+            .filter(|d| d.parent.is_none())
+            .cloned()
+            .collect()
+    }
+}
+
+/// The scan every caller shares, on the calling (worker) thread. `$BOOKX_DEVICE_SCAN_DELAY_MS`
+/// slows it down (tests prove the window never waits for it); the duration is traced.
+pub fn scan_blocking(settings: &DeviceSettings, with_cloud: bool) -> Detected {
+    let mut op = crate::trace::op(crate::trace::Area::Devices, "scan");
+    if let Some(ms) = std::env::var("BOOKX_DEVICE_SCAN_DELAY_MS")
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+    {
+        std::thread::sleep(std::time::Duration::from_millis(ms.min(30_000)));
+    }
+    let d = drivers(settings).scan(with_cloud);
+    op.num("devices", d.devices.len() as u64);
+    op.num("other_drives", d.others.len() as u64);
+    op.ok();
+    d
+}
+
+pub(crate) static LATEST: std::sync::Mutex<Option<Detected>> = std::sync::Mutex::new(None);
+
+pub(crate) fn remember(d: &Detected) {
+    *LATEST.lock().unwrap_or_else(|e| e.into_inner()) = Some(d.clone());
+}
+
+/// The result of the most recent scan (empty before the first one): no I/O, safe on the main
+/// thread, for code that only wants to show what is connected.
+pub fn latest() -> Detected {
+    LATEST
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
+        .unwrap_or_default()
+}
+
+/// Every connected device: USB, MTP, the cloud folder, and the devices plugins find. Blocking:
+/// worker threads and dev hooks only.
+pub fn detect_all_blocking() -> Vec<DeviceInfo> {
+    let d = scan_blocking(&settings(), true);
+    remember(&d);
+    d.devices
+}
+
+/// Devices that need a cable (what the book menu offers): no cloud folder. Blocking: worker
+/// threads and dev hooks only.
+pub fn detect_physical_blocking() -> Vec<DeviceInfo> {
+    let d = scan_blocking(&settings(), false);
+    remember(&d);
+    d.devices
+}
+
+/// Puts every memory card right after the device it belongs to (the list the person sees); the
+/// rest keeps its order.
+pub fn order_with_cards(devices: Vec<DeviceInfo>) -> Vec<DeviceInfo> {
+    let mut out: Vec<DeviceInfo> = Vec::with_capacity(devices.len());
+    let (cards, mains): (Vec<DeviceInfo>, Vec<DeviceInfo>) =
+        devices.into_iter().partition(|d| d.parent.is_some());
+    let mut cards: Vec<Option<DeviceInfo>> = cards.into_iter().map(Some).collect();
+    for m in mains {
+        let id = m.id.clone();
+        out.push(m);
+        for c in cards.iter_mut() {
+            if c.as_ref()
+                .is_some_and(|c| c.parent.as_deref() == Some(id.as_str()))
+            {
+                out.extend(c.take());
+            }
+        }
+    }
+    // a card whose device is not in the list (should not happen) is still offered
+    out.extend(cards.into_iter().flatten());
+    out
+}
+
+/// The folder a drive's books go into by default, as the "Use as an e-reader" form shows it.
+pub fn default_folder(kind: DeviceKind) -> &'static str {
+    match kind {
+        DeviceKind::Kobo => "Bookx",
+        DeviceKind::Kindle => "documents",
+        DeviceKind::PocketBook | DeviceKind::Generic => "Books",
+    }
+}
+
+/// The folder to store for a choice: empty when the person kept the kind's own folder.
+pub fn folder_choice(kind: DeviceKind, typed: &str) -> String {
+    let t = typed.trim().trim_matches('/');
+    if t.is_empty() || t == default_folder(kind) {
+        String::new()
+    } else {
+        t.to_string()
+    }
+}
+
+/// Why a drive is not an e-reader, in words for the "Other drives" list.
+pub fn not_identified_text(why: NotIdentified) -> String {
+    match why {
+        NotIdentified::Unknown => tr("Not a known e-reader"),
+        NotIdentified::Unreadable => tr("Could not be identified here"),
+    }
+}
+
+/// Remembers (or forgets) that the user treats a drive as an e-reader. Returns the new list.
+pub fn set_user_drive(
+    mut drives: Vec<UserDrive>,
+    key: &str,
+    choice: Option<(DeviceKind, String)>,
+) -> Vec<UserDrive> {
+    drives.retain(|d| d.key != key);
+    if let Some((kind, folder)) = choice {
+        drives.push(UserDrive {
+            key: key.to_string(),
+            kind: kind.slug().to_string(),
+            folder: folder.trim().trim_matches('/').to_string(),
+        });
+    }
+    drives
 }
 
 fn dedupe(mut v: Vec<DeviceInfo>) -> Vec<DeviceInfo> {
@@ -883,6 +1043,19 @@ mod tests {
         fs::create_dir_all(root.join("Kindle/documents")).unwrap();
         fs::create_dir_all(root.join("Kindle/system")).unwrap();
         fs::create_dir_all(root.join("Boox/Books")).unwrap();
+        for (d, json) in [
+            ("KOBOeReader", r#"{"vendor_id":"2237","product_id":"4237"}"#),
+            (
+                "Kindle",
+                r#"{"vendor_id":"1949","product_id":"0324","scsi_vendor":"Kindle"}"#,
+            ),
+            (
+                "Boox",
+                r#"{"vendor_id":"2207","product_id":"0001","manufacturer":"Onyx"}"#,
+            ),
+        ] {
+            fs::write(root.join(d).join(".bookx-test-identity"), json).unwrap();
+        }
     }
 
     fn find(drv: &Drivers, part: &str) -> DeviceInfo {
@@ -1529,6 +1702,7 @@ mod tests {
             id: format!("kobo:{}", sandbox.display()),
             name: "Kobo sandbox".into(),
             mount: sandbox.clone(),
+            parent: None,
         };
         let drv = Drivers::mass_only(MassStorageDriver::with_roots(vec![]));
         // the shelf option stays off: the database on the device is never written
@@ -1616,6 +1790,11 @@ mod tests {
             });
         // a Kobo as the owner's: the book was read in KOReader, the firmware never imported it
         fs::create_dir_all(root.join("KOBOeReader/.kobo")).unwrap();
+        fs::write(
+            root.join("KOBOeReader/.bookx-test-identity"),
+            r#"{"vendor_id":"2237","product_id":"4237"}"#,
+        )
+        .unwrap();
         fs::create_dir_all(root.join("KOBOeReader/Sent Book.sdr")).unwrap();
         fs::write(root.join("KOBOeReader/Sent Book.epub"), b"x").unwrap();
         fs::write(
@@ -1724,7 +1903,8 @@ mod tests {
             .collect();
         assert_eq!(cloud.len(), 1);
         assert!(
-            !on.detect_physical()
+            !on.scan(false)
+                .devices
                 .iter()
                 .any(|d| d.id.starts_with("webdav:"))
         );
@@ -1754,5 +1934,121 @@ mod tests {
         assert!(drv.books(&dev).unwrap().is_empty());
         let _ = fs::remove_dir_all(root);
         let _ = fs::remove_dir_all(src);
+    }
+
+    // -- identity first: cards, other drives, the user's choice (issues #57 and #58) ----------
+
+    fn id_file(dir: &Path, json: &str) {
+        fs::create_dir_all(dir).unwrap();
+        fs::write(dir.join(".bookx-test-identity"), json).unwrap();
+    }
+
+    const NOOK: &str = r#"{"vendor_id":"2080","product_id":"0003","group":"nook","lun":0}"#;
+    const NOOK_SD: &str = r#"{"vendor_id":"2080","product_id":"0003","group":"nook","lun":1}"#;
+    const STICK: &str = r#"{"vendor_id":"0781","product_id":"5581","group":"s","uuid":"AAAA-1111","label":"CALIBRE","size":16000000000}"#;
+
+    #[test]
+    fn a_stick_with_a_books_folder_and_a_calibre_library_is_no_device() {
+        let root = tmp("stick");
+        id_file(&root.join("CALIBRE"), STICK);
+        fs::create_dir_all(root.join("CALIBRE/Books")).unwrap();
+        fs::write(root.join("CALIBRE/metadata.db"), b"x").unwrap();
+        id_file(
+            &root.join("KOBOeReader"),
+            r#"{"vendor_id":"0781","product_id":"5581","group":"t"}"#,
+        );
+        fs::create_dir_all(root.join("KOBOeReader/.kobo")).unwrap();
+        let drv = Drivers::mass_only(MassStorageDriver::with_roots(vec![root.clone()]));
+        let d = drv.scan(true);
+        assert!(d.devices.is_empty() && d.mains().is_empty());
+        assert_eq!(d.others.len(), 2);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn a_card_is_listed_after_its_device_and_named_for_people() {
+        let root = tmp("card");
+        id_file(&root.join("SDHC"), NOOK_SD);
+        id_file(&root.join("NOOK"), NOOK);
+        let drv = Drivers::mass_only(MassStorageDriver::with_roots(vec![root.clone()]));
+        let d = drv.scan(false);
+        assert_eq!(d.mains().len(), 1);
+        let ordered = order_with_cards(d.devices);
+        assert_eq!(ordered[0].name, "Nook (NOOK)");
+        assert_eq!(ordered[1].name, "Nook, memory card (SDHC)");
+        assert_eq!(ordered[1].parent.as_deref(), Some(ordered[0].id.as_str()));
+        // the card is a destination for a send
+        let sent = send_book(&drv, &ordered[1], &epub(&root), "Card Book").unwrap();
+        assert!(sent.path.starts_with(root.join("SDHC")));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn order_with_cards_keeps_other_order_and_never_loses_a_card() {
+        let mk = |id: &str, parent: Option<&str>| DeviceInfo {
+            id: id.into(),
+            name: id.into(),
+            mount: PathBuf::from(id),
+            parent: parent.map(String::from),
+        };
+        let v = order_with_cards(vec![
+            mk("a", None),
+            mk("c1", Some("b")),
+            mk("b", None),
+            mk("orphan", Some("zzz")),
+            mk("c2", Some("a")),
+        ]);
+        let ids: Vec<&str> = v.iter().map(|d| d.id.as_str()).collect();
+        assert_eq!(ids, ["a", "c2", "b", "c1", "orphan"]);
+    }
+
+    #[test]
+    fn use_as_an_e_reader_is_remembered_and_undone() {
+        let root = tmp("use");
+        id_file(&root.join("CALIBRE"), STICK);
+        fs::create_dir_all(root.join("CALIBRE/Books")).unwrap();
+        let plain = Drivers::mass_only(MassStorageDriver::with_roots(vec![root.clone()]));
+        let key = plain.scan(false).others[0].key.clone();
+        let drives = set_user_drive(Vec::new(), &key, Some((DeviceKind::Kindle, "docs".into())));
+        assert_eq!(drives.len(), 1);
+        let mut settings = DeviceSettings::default();
+        settings.drives = drives.clone();
+        let json = serde_json::to_string(&settings).unwrap();
+        assert!(
+            !json.contains("AAAA") && !json.contains("CALIBRE"),
+            "{json}"
+        );
+        let back: DeviceSettings = serde_json::from_str(&json).unwrap();
+        let drv = Drivers::from_mass(MassStorageDriver::with_roots(vec![root.clone()]), &back);
+        let d = drv.scan(false);
+        assert!(d.others.is_empty());
+        assert_eq!(d.devices.len(), 1);
+        assert_eq!(d.chosen.len(), 1);
+        assert_eq!(d.chosen[0].1, key);
+        assert_eq!(drv.kind(&d.devices[0]), Some(DeviceKind::Kindle));
+        // choosing again replaces, stopping removes
+        let again = set_user_drive(
+            drives.clone(),
+            &key,
+            Some((DeviceKind::Kobo, String::new())),
+        );
+        assert_eq!(again.len(), 1);
+        assert_eq!(again[0].kind, "kobo");
+        assert!(set_user_drive(drives, &key, None).is_empty());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn the_folder_of_a_choice_is_stored_only_when_it_differs() {
+        assert_eq!(folder_choice(DeviceKind::Kobo, "Bookx"), "");
+        assert_eq!(folder_choice(DeviceKind::Kindle, " /docs/ "), "docs");
+        assert_eq!(folder_choice(DeviceKind::Generic, ""), "");
+        assert_eq!(default_folder(DeviceKind::Generic), "Books");
+    }
+
+    #[test]
+    fn old_settings_without_drives_still_load() {
+        let s: DeviceSettings = serde_json::from_str(r#"{"format":"epub"}"#).unwrap();
+        assert!(s.drives.is_empty());
     }
 }

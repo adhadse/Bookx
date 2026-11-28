@@ -191,7 +191,8 @@ pub fn gather(
         extra: {
             let mut x = crate::trace::collect();
             if entry.is_some_and(|e| e.split('|').any(|a| a == "Devices")) {
-                let list: Vec<_> = crate::devices::detect_all()
+                let list: Vec<_> = crate::devices::latest()
+                    .devices
                     .into_iter()
                     .map(|d| crate::diag_gather::ConnectedDevice {
                         reported: d.name,

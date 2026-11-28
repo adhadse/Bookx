@@ -467,25 +467,32 @@ pub fn install_rows(parent: &gtk::Widget, shared: &SharedRef) -> Vec<gtk::Widget
     install_row.add_suffix(&folder);
     {
         let (status, shared) = (status.clone(), shared.clone());
+        let scanner = crate::ui::device_scan::Scanner::new();
         copy.connect_clicked(move |_| {
-            let found = crate::devices::detect_physical()
-                .into_iter()
-                .find_map(|d| plugins_folder(&d.mount).map(|p| (d.name, p)));
-            match found {
-                None => status.set_label(&tr(
-                    "No e-reader with KOReader found. Connect it with the USB cable, or save the plugin to a folder.",
-                )),
-                Some((name, plugins)) => match install_plugin(&plugins) {
-                    Ok(dir) => {
-                        mark_plugin_copied(&shared);
-                        status.set_label(&trf(
-                            "Copied to {} ({}). Restart KOReader, then open Bookx Sync in its top menu.",
-                            &[&name, &dir.display().to_string()],
-                        ))
-                    }
-                    Err(e) => status.set_label(&trf("Could not copy the plugin: {}", &[&format!("{e:#}")])),
-                },
-            }
+            let (status, shared) = (status.clone(), shared.clone());
+            status.set_label(&tr("Looking for the e-reader"));
+            let settings = shared.cfg.borrow().device.clone();
+            scanner.spawn(settings, false, move |d| {
+                let found = d
+                    .devices
+                    .into_iter()
+                    .find_map(|d| plugins_folder(&d.mount).map(|p| (d.name, p)));
+                match found {
+                    None => status.set_label(&tr(
+                        "No e-reader with KOReader found. Connect it with the USB cable, or save the plugin to a folder.",
+                    )),
+                    Some((name, plugins)) => match install_plugin(&plugins) {
+                        Ok(dir) => {
+                            mark_plugin_copied(&shared);
+                            status.set_label(&trf(
+                                "Copied to {} ({}). Restart KOReader, then open Bookx Sync in its top menu.",
+                                &[&name, &dir.display().to_string()],
+                            ))
+                        }
+                        Err(e) => status.set_label(&trf("Could not copy the plugin: {}", &[&format!("{e:#}")])),
+                    },
+                }
+            });
         });
     }
     {
