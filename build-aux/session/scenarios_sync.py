@@ -20,6 +20,9 @@ def _seed(c):
     m = os.path.join(c.dir, "mounts", "KOBOeReader")
     os.makedirs(os.path.join(m, ".kobo"), exist_ok=True)
     os.makedirs(os.path.join(m, ".adds", "koreader", "plugins"), exist_ok=True)
+    # what the hardware says: a drive is an e-reader because of its USB ids, never its folders
+    with open(os.path.join(m, ".bookx-test-identity"), "w") as f:
+        f.write('{"vendor_id":"2237","product_id":"4237","group":"kobo"}')
 
 
 def _labels(c):

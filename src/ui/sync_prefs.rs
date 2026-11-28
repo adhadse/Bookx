@@ -646,15 +646,19 @@ pub fn dev(cmd: &str) {
         if let Some(b) = button {
             b.emit_clicked();
         }
-        let copied = crate::devices::detect_physical_blocking()
-            .into_iter()
-            .find_map(|d| crate::annotation_sync_ui::plugins_folder(&d.mount))
-            .map(|p| {
-                p.join(crate::annotation_sync_ui::PLUGIN_DIR)
-                    .join("main.lua")
-                    .is_file()
-            });
-        eprintln!("prefs_plugin: copied={}", copied == Some(true));
+        // the copy looks for the reader on a worker thread: say what landed once it had time to
+        glib::timeout_add_local_once(std::time::Duration::from_millis(800), move || {
+            let copied = crate::devices::latest()
+                .devices
+                .into_iter()
+                .find_map(|d| crate::annotation_sync_ui::plugins_folder(&d.mount))
+                .map(|p| {
+                    p.join(crate::annotation_sync_ui::PLUGIN_DIR)
+                        .join("main.lua")
+                        .is_file()
+                });
+            eprintln!("prefs_plugin: copied={}", copied == Some(true));
+        });
         return;
     }
     if cmd == "adv" {

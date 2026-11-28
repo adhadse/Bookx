@@ -732,10 +732,10 @@ def _wiki_lib_device(c):
     lib_start(c)
     time.sleep(1.5)
     banner = (c.find(None, "E-reader connected") + c.find("button", "Sync")
-              + c.find("button", rx="^E-reader"))
+              + c.find("button", rx="^(E-reader|Boox|Kobo)"))
     if banner:
         wshot(c, "library-device-banner", crop=banner, pad=40, minsize=(900, 120))
-    dev = c.wait_node("button", rx="^E-reader", timeout=6)
+    dev = c.wait_node("button", rx="^(E-reader|Boox|Kobo)", timeout=6)
     ui(c)
     if dev:
         c.click_node(dev)
