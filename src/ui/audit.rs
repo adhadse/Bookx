@@ -301,6 +301,13 @@ pub fn box_within(b: (f32, f32, f32, f32), size: (i32, i32)) -> bool {
         && b.1 + b.3 <= size.1 as f32 + 0.5
 }
 
+/// Whether a control has the size layout gives it when it is done: at least its minimum. Larger text
+/// pushes a control out of the window at its full size; a box squashed below its minimum belongs to a
+/// layout pass in progress (a page that has just been shown, under load) and says nothing about fit.
+fn laid_out(allocated: (f32, f32), minimum: (f32, f32)) -> bool {
+    allocated.0 + 0.5 >= minimum.0 && allocated.1 + 0.5 >= minimum.1
+}
+
 /// The labels of the mapped buttons that cut their text (Pango had to ellipsize it).
 fn clipped_buttons(w: &gtk::Widget, out: &mut Vec<String>) {
     if let Some(b) = w.downcast_ref::<gtk::Button>() {
@@ -328,7 +335,12 @@ fn offscreen_controls(root: &gtk::Widget, w: &gtk::Widget, out: &mut Vec<String>
     if w.is::<gtk::Button>() || w.is::<gtk::MenuButton>() || w.is::<gtk::ToggleButton>() {
         if let Some(r) = w.compute_bounds(root) {
             let size = (root.width(), root.height());
-            if !box_within((r.x(), r.y(), r.width(), r.height()), size) && r.width() > 0.0 {
+            let (min_w, _, _, _) = w.measure(gtk::Orientation::Horizontal, -1);
+            let (min_h, _, _, _) = w.measure(gtk::Orientation::Vertical, -1);
+            if !box_within((r.x(), r.y(), r.width(), r.height()), size)
+                && r.width() > 0.0
+                && laid_out((r.width(), r.height()), (min_w as f32, min_h as f32))
+            {
                 out.push(format!(
                     "{}@{:.0},{:.0},{:.0}x{:.0}",
                     w.widget_name(),
@@ -449,5 +461,24 @@ mod fit_tests {
         assert!(box_within((500.0, 500.0, 100.0, 40.0), (640, 560)));
         assert!(!box_within((500.0, 540.0, 100.0, 40.0), (640, 560)));
         assert!(!box_within((-30.0, 10.0, 100.0, 40.0), (640, 560)));
+    }
+}
+
+#[cfg(test)]
+mod laid_out_tests {
+    use super::laid_out;
+
+    #[test]
+    fn a_box_squashed_below_its_minimum_is_a_layout_in_progress() {
+        // the nightly of 2026-11-27: Notes filter buttons 34x10 at x=-17 while the page was being laid out
+        assert!(!laid_out((34.0, 10.0), (60.0, 34.0)));
+        assert!(!laid_out((20.0, 40.0), (60.0, 34.0)));
+    }
+
+    #[test]
+    fn a_control_at_its_full_size_is_judged_by_where_it_is() {
+        assert!(laid_out((60.0, 34.0), (60.0, 34.0)));
+        assert!(laid_out((120.0, 34.0), (60.0, 34.0)));
+        assert!(laid_out((59.6, 33.7), (60.0, 34.0)), "rounding");
     }
 }

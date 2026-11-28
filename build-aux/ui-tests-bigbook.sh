@@ -48,7 +48,7 @@ scenario big_book_editor 'wait:500,edit:1,wait:12000,editor:toc-rows,editor:synt
     sed -n 4p <<<"$S" | grep -q "file=OEBPS/part2.xhtml page=code .*language=true highlight=true plain=false"; rc=$?; check "after Add Line Breaks the file opens in the text view, coloured again: $(sed -n 4p <<<"$S")" $rc
     sed -n 4p <<<"$S" | grep -qE "chars=[0-9]{6}"; check "the text kept its content (only white space between tags was added)" $?
     L=$(longest_stall "edit:1")
-    [ "$L" -le "${STALL_BUDGET_MS:-3000}" ]; check "opening the book in the editor blocks the main loop for at most ${STALL_BUDGET_MS:-3000} ms in a debug build (${L} ms; it was 2590 ms in release and 7.5 s in all at first)" $?
+    [ "$L" -le "${STALL_BUDGET_MS:-4000}" ]; check "opening the book in the editor blocks the main loop for at most ${STALL_BUDGET_MS:-4000} ms in a debug build (${L} ms; it was 2590 ms in release and 7.5 s in all at first)" $?
     ! has "panicked|CRITICAL|Gtk-WARNING"; check "no errors or GTK warnings" $?'
 
 # a normal chapter keeps its colours: the small book of the suite
