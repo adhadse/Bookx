@@ -1799,7 +1799,7 @@ fn poll<T: 'static>(rx: std::sync::mpsc::Receiver<T>, done: impl FnOnce(T) + 'st
 /// `template=<text>`, `shelf=<name>`, `reload`, `dav=<url>`, `view=grid|list`, `notes=on|off`,
 /// `autosync=on|off`, `syncask` (summary dialog), `syncconfirm`, `send` (the library's
 /// selection), `use=<drive>:<kind>[:<folder>]`, `stop=<device>`, `usedialog=<drive>`,
-/// `usedialog-answer=<kind>:<folder>`, `usedialog-cancel`, `close`.
+/// `usedialog-answer=<kind>:<folder>`, `usedialog-cancel`, `reload-settings`, `close`.
 pub fn dev_command(
     parent: &adw::ApplicationWindow,
     shared: &SharedRef,
@@ -1843,6 +1843,18 @@ pub fn dev_command(
             );
         }
         "reload" => w.reload_devices(),
+        // the settings as they are on disk, as after a restart of the program
+        "reload-settings" => {
+            let saved = crate::config::Config::load().device;
+            // what is on disk: the person's choices, by hashed key
+            eprintln!(
+                "devwin_settings_file: {}",
+                serde_json::to_string(&saved.drives).unwrap_or_default()
+            );
+            w.shared.cfg.borrow_mut().device.drives = saved.drives;
+            dev::set_settings(w.shared.cfg.borrow().device.clone());
+            w.reload_devices();
+        }
         "usedialog-cancel" => {
             if let Some((d, ..)) = w.pending_use.borrow().as_ref() {
                 d.close();
@@ -1935,6 +1947,7 @@ pub fn dev_command(
                     kind_row.set_selected(idx as u32);
                     folder_row.set_text(folder);
                     d.emit_by_name::<()>("response", &[&"use"]);
+                    d.force_close();
                 } else {
                     eprintln!("devwin_usedialog: not open");
                 }

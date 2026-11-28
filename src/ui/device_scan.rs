@@ -37,17 +37,22 @@ impl Scanner {
         with_cloud: bool,
         deliver: impl FnOnce(Detected) + 'static,
     ) {
+        self.spawn_with(move || scan_blocking(&settings, with_cloud), deliver);
+    }
+
+    /// [`Scanner::spawn`] with the scan itself given (tests).
+    pub fn spawn_with(
+        &self,
+        scan: impl FnOnce() -> Detected + Send + 'static,
+        deliver: impl FnOnce(Detected) + 'static,
+    ) {
         self.invalidate();
         let n = self.epoch.get();
         let (epoch, busy) = (self.epoch.clone(), self.busy.clone());
         busy.set(true);
         glib::spawn_future_local(async move {
-            let r = gio::spawn_blocking(move || {
-                bookx_serve::devices::bounded(SCAN_LIMIT, move || {
-                    scan_blocking(&settings, with_cloud)
-                })
-            })
-            .await;
+            let r =
+                gio::spawn_blocking(move || bookx_serve::devices::bounded(SCAN_LIMIT, scan)).await;
             busy.set(false);
             let Ok(Some(d)) = r else {
                 crate::trace::event(crate::trace::Area::Devices, "scan_abandoned").ok();
@@ -74,5 +79,94 @@ impl Scanner {
         if !self.busy.get() {
             self.spawn(settings, with_cloud, deliver);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    fn named(n: &str) -> Detected {
+        Detected {
+            devices: vec![bookx_core::contracts::DeviceInfo {
+                id: n.into(),
+                name: n.into(),
+                mount: n.into(),
+                parent: None,
+            }],
+            ..Default::default()
+        }
+    }
+
+    /// Runs the main loop of a private context until `done` says so (or a second passes).
+    fn run(ctx: &glib::MainContext, done: impl Fn() -> bool) {
+        let start = std::time::Instant::now();
+        while !done() && start.elapsed() < Duration::from_secs(5) {
+            ctx.iteration(false);
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    }
+
+    #[test]
+    fn a_late_answer_of_an_overtaken_scan_is_dropped() {
+        let ctx = glib::MainContext::new();
+        ctx.with_thread_default(|| {
+            let s = Scanner::new();
+            let got: Rc<std::cell::RefCell<Vec<String>>> = Rc::default();
+            let g = got.clone();
+            s.spawn_with(
+                || {
+                    std::thread::sleep(Duration::from_millis(300));
+                    named("old")
+                },
+                move |d| g.borrow_mut().push(d.devices[0].id.clone()),
+            );
+            let g = got.clone();
+            s.spawn_with(
+                || named("new"),
+                move |d| g.borrow_mut().push(d.devices[0].id.clone()),
+            );
+            run(&ctx, || !got.borrow().is_empty() && !s.busy.get());
+            std::thread::sleep(Duration::from_millis(400));
+            ctx.iteration(false);
+            assert_eq!(
+                *got.borrow(),
+                vec!["new".to_string()],
+                "the older answer never arrives"
+            );
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn invalidate_drops_the_answer_of_a_closed_window() {
+        let ctx = glib::MainContext::new();
+        ctx.with_thread_default(|| {
+            let s = Scanner::new();
+            let got = Rc::new(Cell::new(false));
+            let g = got.clone();
+            s.spawn_with(|| named("x"), move |_| g.set(true));
+            s.invalidate();
+            run(&ctx, || !s.busy.get());
+            assert!(!got.get());
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn a_finished_scan_frees_the_scanner() {
+        let ctx = glib::MainContext::new();
+        ctx.with_thread_default(|| {
+            let s = Scanner::new();
+            assert!(!s.busy.get());
+            let got = Rc::new(Cell::new(false));
+            let g = got.clone();
+            s.spawn_with(|| named("fast"), move |_| g.set(true));
+            assert!(s.busy.get());
+            run(&ctx, || got.get());
+            assert!(got.get() && !s.busy.get());
+        })
+        .unwrap();
     }
 }
