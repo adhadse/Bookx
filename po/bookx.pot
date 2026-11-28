@@ -1354,6 +1354,9 @@ msgstr ""
 msgid "Bookx sync with KOReader (Wi-Fi)"
 msgstr ""
 
+msgid "Bookx will offer this drive like any other e-reader. You can undo this under Other drives."
+msgstr ""
+
 msgid "Bookx will open the library in {}, or start a new one if the folder is empty. Your current library stays where it is."
 msgstr ""
 
@@ -2428,6 +2431,9 @@ msgid "Could not apply: {}"
 msgstr ""
 
 msgid "Could not back up to {}: {}"
+msgstr ""
+
+msgid "Could not be identified here"
 msgstr ""
 
 msgid "Could not be located in the book"
@@ -3866,6 +3872,9 @@ msgstr ""
 msgid "Folder"
 msgstr ""
 
+msgid "Folder for books on the drive"
+msgstr ""
+
 msgid "Folder inside the book's content folder"
 msgstr ""
 
@@ -4724,6 +4733,9 @@ msgstr ""
 msgid "Kind"
 msgstr ""
 
+msgid "Kind of e-reader"
+msgstr ""
+
 msgid "Knuth-Plass breaks in justified text; off uses the basic breaking"
 msgstr ""
 
@@ -5097,6 +5109,12 @@ msgid "Looking at your library"
 msgstr ""
 
 msgid "Looking for Audiobooks"
+msgstr ""
+
+msgid "Looking for devices"
+msgstr ""
+
+msgid "Looking for the e-reader"
 msgstr ""
 
 msgid "Looking the book up"
@@ -6028,6 +6046,9 @@ msgstr ""
 msgid "Not a Duplicate"
 msgstr ""
 
+msgid "Not a known e-reader"
+msgstr ""
+
 msgid "Not a shortcuts file: {}"
 msgstr ""
 
@@ -6665,6 +6686,12 @@ msgid "Other books keep the footer you chose in Preferences."
 msgstr ""
 
 msgid "Other devices on your network can reach this server"
+msgstr ""
+
+msgid "Other drives"
+msgstr ""
+
+msgid "Other e-reader"
 msgstr ""
 
 msgid "Otherwise only the unread ones are added"
@@ -7463,6 +7490,9 @@ msgid "Reload the book"
 msgstr ""
 
 msgid "Reload the preview automatically while typing"
+msgstr ""
+
+msgid "Removable drives that Bookx does not recognise as e-readers (USB sticks, card readers, disks). If one of them is an e-reader, tell Bookx and it is offered like any other device."
 msgstr ""
 
 msgid "Remove"
@@ -9241,6 +9271,9 @@ msgstr ""
 msgid "Stop the server to change the port"
 msgstr ""
 
+msgid "Stop using as an e-reader"
+msgstr ""
+
 msgid "Stopped"
 msgstr ""
 
@@ -10735,6 +10768,9 @@ msgstr ""
 msgid "Use as Virtual Library: narrows every view until switched off"
 msgstr ""
 
+msgid "Use as an e-reader"
+msgstr ""
+
 msgid "Use at least 10 characters."
 msgstr ""
 
@@ -10819,7 +10855,13 @@ msgstr ""
 msgid "Use {text}, {title}, {author}, {chapter}, {page}, {date} and {isbn}. Empty uses the default."
 msgstr ""
 
+msgid "Use {} as an e-reader?"
+msgstr ""
+
 msgid "Use {} as virtual library"
+msgstr ""
+
+msgid "Used as an e-reader because you chose it"
 msgstr ""
 
 msgid "Used by Send to Device. If a conversion fails, the next format the device opens is tried."
@@ -12173,6 +12215,9 @@ msgid "{}, PDF pages"
 msgstr ""
 
 msgid "{}, comic pages"
+msgstr ""
+
+msgid "{}, memory card ({})"
 msgstr ""
 
 msgid "{}, page text"

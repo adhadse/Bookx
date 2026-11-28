@@ -739,10 +739,9 @@ mod tests {
             vid: &str,
             pid: &str,
             strings: (&str, &str),
-            lun: u32,
-            disk: &str,
-            part: &str,
+            place: (u32, &str, &str),
         ) {
+            let (lun, disk, part) = place;
             let usb = format!("sys/devices/pci0/{usbpath}");
             self.write(&format!("{usb}/idVendor"), vid);
             self.write(&format!("{usb}/idProduct"), pid);
@@ -786,9 +785,7 @@ mod tests {
             "2080\n",
             "0003\n",
             ("Barnes & Noble", "NOOK"),
-            1,
-            "sdf",
-            "sdf1",
+            (1, "sdf", "sdf1"),
         );
         f.link("by-uuid", "AAAA-0001", "sdf1");
         f.link("by-label", "SD\\x20CARD", "sdf1");
@@ -835,27 +832,21 @@ mod tests {
             "2080",
             "0003",
             ("B&N", "NOOK"),
-            0,
-            "sdd",
-            "sdd1",
+            (0, "sdd", "sdd1"),
         );
         f.volume(
             "usb1/1-4",
             "2080",
             "0003",
             ("B&N", "NOOK"),
-            1,
-            "sde",
-            "sde1",
+            (1, "sde", "sde1"),
         );
         f.volume(
             "usb1/1-5",
             "2080",
             "0003",
             ("B&N", "NOOK"),
-            0,
-            "sdf",
-            "sdf1",
+            (0, "sdf", "sdf1"),
         );
         let s = f.source();
         let m = Path::new("/mnt");

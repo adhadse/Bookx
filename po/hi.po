@@ -12276,3 +12276,48 @@ msgstr "इस सूची पर आपके खाते का उपयो
 
 msgid "Sign In to {}"
 msgstr "{} में साइन इन करें"
+
+msgid "Bookx will offer this drive like any other e-reader. You can undo this under Other drives."
+msgstr "Bookx इस ड्राइव को किसी भी अन्य ई-रीडर की तरह दिखाएगा। आप इसे «अन्य ड्राइव» में पूर्ववत कर सकते हैं।"
+
+msgid "Could not be identified here"
+msgstr "यहाँ पहचाना नहीं जा सका"
+
+msgid "Folder for books on the drive"
+msgstr "ड्राइव पर किताबों का फ़ोल्डर"
+
+msgid "Kind of e-reader"
+msgstr "ई-रीडर का प्रकार"
+
+msgid "Looking for devices"
+msgstr "उपकरण खोजे जा रहे हैं"
+
+msgid "Looking for the e-reader"
+msgstr "ई-रीडर खोजा जा रहा है"
+
+msgid "Not a known e-reader"
+msgstr "ज्ञात ई-रीडर नहीं"
+
+msgid "Other drives"
+msgstr "अन्य ड्राइव"
+
+msgid "Other e-reader"
+msgstr "अन्य ई-रीडर"
+
+msgid "Removable drives that Bookx does not recognise as e-readers (USB sticks, card readers, disks). If one of them is an e-reader, tell Bookx and it is offered like any other device."
+msgstr "हटाने योग्य ड्राइव जिन्हें Bookx ई-रीडर के रूप में नहीं पहचानता (USB स्टिक, कार्ड रीडर, डिस्क)। यदि उनमें से कोई ई-रीडर है, तो Bookx को बताएँ और वह किसी भी अन्य उपकरण की तरह दिखाया जाएगा।"
+
+msgid "Stop using as an e-reader"
+msgstr "ई-रीडर के रूप में उपयोग बंद करें"
+
+msgid "Use as an e-reader"
+msgstr "ई-रीडर के रूप में उपयोग करें"
+
+msgid "Use {} as an e-reader?"
+msgstr "{} को ई-रीडर के रूप में उपयोग करें?"
+
+msgid "Used as an e-reader because you chose it"
+msgstr "ई-रीडर के रूप में उपयोग हो रहा है क्योंकि आपने यही चुना"
+
+msgid "{}, memory card ({})"
+msgstr "{}, मेमोरी कार्ड ({})"

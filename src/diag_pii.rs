@@ -427,7 +427,10 @@ fn drive_rows() -> Vec<(String, crate::diag_facts::Fact)> {
     for (name, json) in [
         ("A-Kindle", id("1949", "0324", "k", 0)),
         ("B-Card", id("1949", "0324", "k", 1)),
-        ("C-Stick", id("0781", "5581", "s", 0).replace("Kindle", "SanDisk")),
+        (
+            "C-Stick",
+            id("0781", "5581", "s", 0).replace("Kindle", "SanDisk"),
+        ),
     ] {
         let m = root.join(name);
         std::fs::create_dir_all(&m).unwrap();

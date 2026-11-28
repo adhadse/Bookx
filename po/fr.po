@@ -12356,3 +12356,48 @@ msgstr "Le nom d'utilisateur et le mot de passe de votre compte sur ce catalogue
 
 msgid "Sign In to {}"
 msgstr "Se connecter à {}"
+
+msgid "Bookx will offer this drive like any other e-reader. You can undo this under Other drives."
+msgstr "Bookx proposera ce lecteur comme n’importe quelle liseuse. Vous pouvez annuler ce choix sous « Autres lecteurs »."
+
+msgid "Could not be identified here"
+msgstr "N’a pas pu être identifié ici"
+
+msgid "Folder for books on the drive"
+msgstr "Dossier des livres sur le lecteur"
+
+msgid "Kind of e-reader"
+msgstr "Type de liseuse"
+
+msgid "Looking for devices"
+msgstr "Recherche d’appareils"
+
+msgid "Looking for the e-reader"
+msgstr "Recherche de la liseuse"
+
+msgid "Not a known e-reader"
+msgstr "Pas une liseuse connue"
+
+msgid "Other drives"
+msgstr "Autres lecteurs"
+
+msgid "Other e-reader"
+msgstr "Autre liseuse"
+
+msgid "Removable drives that Bookx does not recognise as e-readers (USB sticks, card readers, disks). If one of them is an e-reader, tell Bookx and it is offered like any other device."
+msgstr "Lecteurs amovibles que Bookx ne reconnaît pas comme des liseuses (clés USB, lecteurs de cartes, disques). Si l’un d’eux est une liseuse, indiquez-le à Bookx et il sera proposé comme n’importe quel appareil."
+
+msgid "Stop using as an e-reader"
+msgstr "Ne plus utiliser comme liseuse"
+
+msgid "Use as an e-reader"
+msgstr "Utiliser comme liseuse"
+
+msgid "Use {} as an e-reader?"
+msgstr "Utiliser {} comme liseuse ?"
+
+msgid "Used as an e-reader because you chose it"
+msgstr "Utilisé comme liseuse parce que vous l’avez choisi"
+
+msgid "{}, memory card ({})"
+msgstr "{}, carte mémoire ({})"

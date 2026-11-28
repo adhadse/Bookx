@@ -2011,8 +2011,10 @@ mod tests {
         let key = plain.scan(false).others[0].key.clone();
         let drives = set_user_drive(Vec::new(), &key, Some((DeviceKind::Kindle, "docs".into())));
         assert_eq!(drives.len(), 1);
-        let mut settings = DeviceSettings::default();
-        settings.drives = drives.clone();
+        let settings = DeviceSettings {
+            drives: drives.clone(),
+            ..Default::default()
+        };
         let json = serde_json::to_string(&settings).unwrap();
         assert!(
             !json.contains("AAAA") && !json.contains("CALIBRE"),
