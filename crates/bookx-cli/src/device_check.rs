@@ -7,7 +7,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Result, bail};
-use bookx_serve::devices::{DeviceKind, classify, kobo_db_path};
+use bookx_serve::devices::{DeviceKind, MassStorageDriver, kobo_db_path, layout_hint};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Level {
@@ -77,10 +77,118 @@ impl Ctx {
     }
 }
 
-/// Checks the device mounted at `mount`. `kind` overrides the layout-based detection. `only` limits the
+fn hex(v: u16) -> String {
+    format!("{v:04x}")
+}
+
+/// Prints the hardware facts (vendor and product id, strings, how it was recognised, additional
+/// storage) and returns the kind the hardware (or the user's choice) identifies. Never prints a
+/// serial number, a filesystem UUID or a volume label.
+fn identity_facts(cx: &mut Ctx, driver: &MassStorageDriver, mount: &Path) -> Option<DeviceKind> {
+    let ins = driver.inspect(mount);
+    let id = &ins.volume.identity;
+    if !id.readable {
+        cx.add(
+            Level::Warn,
+            mount,
+            "the hardware behind this mount cannot be read here (no sysfs, a sandbox or another system), so it cannot be identified",
+        );
+    }
+    if let Some(u) = &id.usb {
+        let strings: Vec<String> = [&u.manufacturer, &u.product]
+            .into_iter()
+            .flatten()
+            .cloned()
+            .collect();
+        cx.add(
+            Level::Ok,
+            mount,
+            format!(
+                "USB vendor id {}, product id {}{}",
+                hex(u.vendor_id),
+                hex(u.product_id),
+                if strings.is_empty() {
+                    String::new()
+                } else {
+                    format!(" ({})", strings.join(", "))
+                }
+            ),
+        );
+    } else if id.readable {
+        cx.add(Level::Ok, mount, "not behind a USB device");
+    }
+    let scsi: Vec<&str> = [&id.scsi_vendor, &id.scsi_model]
+        .into_iter()
+        .flatten()
+        .map(String::as_str)
+        .collect();
+    if !scsi.is_empty() {
+        cx.add(Level::Ok, mount, format!("disk model: {}", scsi.join(" ")));
+    }
+    if let Some(hint) = layout_hint(mount) {
+        cx.add(
+            Level::Ok,
+            mount,
+            format!(
+                "folder layout looks like {} (a hint only: it never decides what a drive is)",
+                hint.label()
+            ),
+        );
+    }
+    let kind = match &ins.found {
+        Some(f) => {
+            if let Some(r) = &f.recognised {
+                cx.add(
+                    Level::Ok,
+                    mount,
+                    format!("identified by its hardware as {} ({})", r.model, r.how),
+                );
+            } else {
+                cx.add(
+                    Level::Ok,
+                    mount,
+                    "used as an e-reader because you chose that in Bookx (not recognised by its hardware)",
+                );
+            }
+            if f.is_card {
+                cx.add(
+                    Level::Ok,
+                    mount,
+                    "this is additional storage (a memory card or second disk) of the device it belongs to",
+                );
+            }
+            driver.kind_of(&f.info)
+        }
+        None => None,
+    };
+    for g in ins
+        .group
+        .iter()
+        .filter(|g| g.info.mount != ins.volume.mount)
+    {
+        cx.add(
+            Level::Ok,
+            &g.info.mount,
+            format!(
+                "same USB device: {} ({})",
+                g.info.name,
+                if g.is_card {
+                    "additional storage"
+                } else {
+                    "main storage"
+                }
+            ),
+        );
+    }
+    kind
+}
+
+/// Checks the device mounted at `mount`. `kind` overrides the identification: a drive that is
+/// not an identified e-reader is only checked when the caller names a kind. `only` limits the
 /// book check to one file (a path relative to the mount, or a bare file name searched in the books folder).
 /// `all` checks every book on the device instead of the folder Bookx sends to.
-pub fn check_device_with(
+pub fn check_device_using(
+    driver: &MassStorageDriver,
     mount: &Path,
     kind: Option<DeviceKind>,
     only: Option<&str>,
@@ -93,12 +201,12 @@ pub fn check_device_with(
         root: mount.to_path_buf(),
         findings: vec![],
     };
-    let detected = classify(mount);
+    let detected = identity_facts(&mut cx, driver, mount);
     let Some(kind) = kind.or(detected) else {
         cx.add(
             Level::Fail,
             mount,
-            "no e-reader layout recognised (expected .kobo, documents+system, system/config or a Books folder)",
+            "this drive is not an identified e-reader, so it is not offered as one. Folder names do not count: anyone can create them. Pass --kind to check it anyway, or choose \"Use as an e-reader\" under Other drives in Bookx",
         );
         return Ok(Report {
             kind: None,
@@ -106,13 +214,22 @@ pub fn check_device_with(
             findings: cx.findings,
         });
     };
-    if detected != Some(kind) {
+    if detected.is_some_and(|d| d != kind) {
         cx.add(
             Level::Warn,
             mount,
             format!(
-                "layout looks like {}, checking as {}",
+                "identified as {}, checking as {}",
                 detected.map_or("nothing known", |k| k.label()),
+                kind.label()
+            ),
+        );
+    } else if detected.is_none() {
+        cx.add(
+            Level::Warn,
+            mount,
+            format!(
+                "not identified, checking as {} because you asked",
                 kind.label()
             ),
         );

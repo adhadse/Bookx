@@ -52,6 +52,7 @@ fn device(s: &Setup) -> DeviceInfo {
         id: "test.plugin:r1".into(),
         name: "Plugin Reader".into(),
         mount: s.mount.clone(),
+        parent: None,
     }
 }
 

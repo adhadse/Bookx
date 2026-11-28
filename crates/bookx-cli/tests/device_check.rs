@@ -20,7 +20,11 @@ fn mount(tag: &str) -> PathBuf {
 }
 
 fn check(args: &[&str]) -> (i32, String) {
-    let mut v = vec!["bookx-cli".to_string(), "device-check".to_string()];
+    let mut v = vec![
+        "bookx-cli".to_string(),
+        "device-check".to_string(),
+        "--fixture-identity".to_string(),
+    ];
     v.extend(args.iter().map(|s| s.to_string()));
     let env = Env {
         default_library: std::env::temp_dir().join("bookx-devcheck-unused-lib"),
@@ -83,6 +87,10 @@ fn kobo(tag: &str) -> PathBuf {
     let m = mount(tag);
     write(&m.join(".kobo/KoboReader.sqlite"), b"sqlite");
     write(&m.join(".kobo/version"), b"1,2,3");
+    identify(
+        &m,
+        r#"{"vendor_id":"2237","product_id":"4237","manufacturer":"Rakuten Kobo Inc."}"#,
+    );
     m
 }
 
@@ -90,7 +98,18 @@ fn kindle(tag: &str) -> PathBuf {
     let m = mount(tag);
     std::fs::create_dir_all(m.join("system")).unwrap();
     std::fs::create_dir_all(m.join("documents")).unwrap();
+    identify(
+        &m,
+        r#"{"vendor_id":"1949","product_id":"0324","scsi_vendor":"Kindle","scsi_model":"Internal Storage"}"#,
+    );
     m
+}
+
+const KOBO: &str = r#"{"vendor_id":"2237","product_id":"4237"}"#;
+const GEN: &str = r#"{"vendor_id":"2207","product_id":"0001","manufacturer":"Onyx"}"#;
+
+fn identify(m: &Path, json: &str) {
+    write(&m.join(".bookx-test-identity"), json.as_bytes());
 }
 
 #[test]
@@ -121,6 +140,7 @@ fn kobo_plain_epub_is_a_warning_and_a_fake_kepub_fails() {
 #[test]
 fn kobo_without_its_database_warns() {
     let m = mount("kobo-nodb");
+    identify(&m, KOBO);
     std::fs::create_dir_all(m.join(".kobo")).unwrap();
     let (code, out) = check(&[m.to_str().unwrap()]);
     assert_eq!(code, 0, "{out}");
@@ -161,6 +181,7 @@ fn truncated_and_empty_files_fail() {
 #[test]
 fn broken_epub_containers_are_reported() {
     let m = mount("epub-broken");
+    identify(&m, GEN);
     std::fs::create_dir_all(m.join("Books")).unwrap();
     write(&m.join("Books/compressed.epub"), &epub_bytes(false, true));
     let good = epub_bytes(false, false);
@@ -179,6 +200,7 @@ fn broken_epub_containers_are_reported() {
 #[test]
 fn file_names_fat_cannot_store_fail() {
     let m = mount("names");
+    identify(&m, GEN);
     std::fs::create_dir_all(m.join("Books")).unwrap();
     write(
         &m.join("Books/What? A Book.epub"),
@@ -207,7 +229,7 @@ fn unknown_layouts_missing_mounts_and_bad_kinds() {
     let m = mount("empty");
     let (code, out) = check(&[m.to_str().unwrap()]);
     assert_eq!(code, 1, "{out}");
-    assert!(out.contains("no e-reader layout recognised"), "{out}");
+    assert!(out.contains("not an identified e-reader"), "{out}");
     let (code, out) = check(&["/definitely/not/mounted"]);
     assert_eq!(code, 2, "{out}");
     let (code, out) = check(&[m.to_str().unwrap(), "--kind", "nook"]);
@@ -276,6 +298,7 @@ fn kepub_markup_is_checked_for_duplicate_ids_and_broken_xml() {
 #[test]
 fn a_kobo_with_the_real_schema_reports_model_firmware_and_database_facts() {
     let m = mount("kobo-real");
+    identify(&m, KOBO);
     write(
         &m.join(".kobo/version"),
         b"N0000000000000,4.9.77,4.46.23852,4.9.77,4.9.77,00000000-0000-0000-0000-000000000390\n",
@@ -337,6 +360,61 @@ fn a_kobo_with_the_real_schema_reports_model_firmware_and_database_facts() {
     let (_, out) = check(&[m.to_str().unwrap()]);
     assert!(
         out.contains("0 book(s) checked") || out.contains("books folder does not exist"),
+        "{out}"
+    );
+}
+
+#[test]
+fn a_look_alike_stick_is_not_an_identified_e_reader() {
+    // issue #58: .kobo and Books folders on a flash drive do not make a Kobo
+    let m = mount("spoof");
+    write(&m.join(".kobo/KoboReader.sqlite"), b"sqlite");
+    std::fs::create_dir_all(m.join("Books")).unwrap();
+    identify(
+        &m,
+        r#"{"vendor_id":"0781","product_id":"5581","manufacturer":"SanDisk","serial":"SERIAL-SENTINEL-1","uuid":"UUID-SENTINEL-1","label":"LABEL-SENTINEL-1"}"#,
+    );
+    let (code, out) = check(&[m.to_str().unwrap()]);
+    assert_eq!(code, 1, "{out}");
+    assert!(out.contains("USB vendor id 0781, product id 5581"), "{out}");
+    assert!(out.contains("not an identified e-reader"), "{out}");
+    assert!(out.contains("a hint only"), "{out}");
+    assert!(
+        !out.contains("SENTINEL"),
+        "no serial, uuid or label is printed: {out}"
+    );
+}
+
+#[test]
+fn the_report_names_how_a_device_was_recognised_and_its_other_storage() {
+    let t = mount("nook");
+    let int = t.join("NOOK");
+    let sd = t.join("SDHC");
+    for (m, lun) in [(&int, 0), (&sd, 1)] {
+        std::fs::create_dir_all(m.join("Books")).unwrap();
+        identify(
+            m,
+            &format!(
+                r#"{{"vendor_id":"2080","product_id":"0003","scsi_vendor":"B&N","scsi_model":"Ebook Disk","group":"nook","lun":{lun}}}"#
+            ),
+        );
+    }
+    let (code, out) = check(&[sd.to_str().unwrap()]);
+    assert_eq!(code, 0, "{out}");
+    assert!(
+        out.contains("identified by its hardware as Nook (USB 2080:0003)"),
+        "{out}"
+    );
+    assert!(out.contains("USB vendor id 2080, product id 0003"), "{out}");
+}
+
+#[test]
+fn a_forced_kind_checks_an_unidentified_drive_and_says_so() {
+    let m = mount("forced");
+    std::fs::create_dir_all(m.join("Books")).unwrap();
+    let (_, out) = check(&[m.to_str().unwrap(), "--kind", "generic"]);
+    assert!(
+        out.contains("not identified, checking as E-reader because you asked"),
         "{out}"
     );
 }

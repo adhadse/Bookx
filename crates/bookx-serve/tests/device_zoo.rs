@@ -12,7 +12,7 @@ use std::path::PathBuf;
 
 use bookx_core::contracts::DeviceDriver;
 use bookx_serve::activity::What;
-use bookx_serve::devices::{DeviceKind, MassStorageDriver, classify};
+use bookx_serve::devices::{DeviceKind, MassStorageDriver, layout_hint};
 use bookx_serve::kobo::parse_version;
 use bookx_serve::mtp::MtpGvfsDriver;
 use common::zoo::{self, Bench, Family, Peer, Usb, ZOO};
@@ -216,7 +216,7 @@ fn usb_disks_are_detected_and_get_books_in_the_folder_their_firmware_reads() {
         };
         let t = Tmp::new();
         let mount = zoo::build_usb(&t.0, reader.slug, reader.usb);
-        assert_eq!(classify(&mount), Some(kind), "{}", reader.slug);
+        assert_eq!(layout_hint(&mount), Some(kind), "{}", reader.slug);
         let drv = MassStorageDriver::with_roots(vec![t.0.clone()]);
         let found = drv.detect();
         assert_eq!(found.len(), 1, "{}: {found:?}", reader.slug);
@@ -346,4 +346,177 @@ fn no_two_readers_of_one_account_share_a_row() {
     assert!(
         names.contains(&"Boox Leaf 2".to_string()) && names.contains(&"Kobo Libra 2".to_string())
     );
+}
+
+// ---- what a drive IS: the identity zoo (issues #57 and #58). Nothing here ran on real hardware.
+
+fn drive(root: &std::path::Path, name: &str, json: &str, folders: &[&str]) -> PathBuf {
+    let m = root.join(name);
+    for f in folders {
+        std::fs::create_dir_all(m.join(f)).unwrap();
+    }
+    std::fs::create_dir_all(&m).unwrap();
+    zoo::write_identity(&m, json);
+    m
+}
+
+const KOBO: &str =
+    r#"{"vendor_id":"2237","product_id":"4237","manufacturer":"Rakuten Kobo Inc.","group":"k"}"#;
+const KINDLE: &str = r#"{"vendor_id":"1949","product_id":"0324","scsi_vendor":"Kindle","scsi_model":"Internal Storage","group":"kin"}"#;
+const NOOK_INT: &str = r#"{"vendor_id":"2080","product_id":"0003","scsi_vendor":"B&N","scsi_model":"Ebook Disk","group":"nook","lun":0,"label":"NOOK","size":220000000}"#;
+const NOOK_SD: &str = r#"{"vendor_id":"2080","product_id":"0003","scsi_vendor":"B&N","scsi_model":"Ebook Disk","group":"nook","lun":1,"label":"SDHC","size":8000000000}"#;
+const BOOX: &str = r#"{"vendor_id":"2207","product_id":"0001","manufacturer":"Onyx","product":"Note","group":"boox"}"#;
+const POCKET: &str = r#"{"vendor_id":"fffe","product_id":"0001","manufacturer":"Obreey","scsi_vendor":"USB-FS","scsi_model":"PocketBook","group":"pb"}"#;
+const STICK: &str = r#"{"vendor_id":"0781","product_id":"5581","manufacturer":"SanDisk","scsi_vendor":"SanDisk","scsi_model":"Ultra","group":"stick","uuid":"1111-2222","label":"STICK","size":16000000000}"#;
+const READER: &str = r#"{"vendor_id":"058f","product_id":"6366","manufacturer":"Generic","scsi_vendor":"Generic","scsi_model":"STORAGE DEVICE","group":"reader","lun":0,"label":"SDHC","size":8000000000}"#;
+
+#[test]
+fn each_family_is_recognised_by_its_hardware_and_gets_books_where_it_reads_them() {
+    for (json, folders, kind, folder) in [
+        (KOBO, &[".kobo"][..], DeviceKind::Kobo, "Bookx"),
+        (
+            KINDLE,
+            &["documents", "system"][..],
+            DeviceKind::Kindle,
+            "documents",
+        ),
+        (BOOX, &["Books"][..], DeviceKind::Generic, "Books"),
+        (
+            POCKET,
+            &["system/config"][..],
+            DeviceKind::PocketBook,
+            "Books",
+        ),
+        (NOOK_INT, &["My Files"][..], DeviceKind::Generic, "Books"),
+    ] {
+        let t = Tmp::new();
+        let m = drive(&t.0, "D", json, folders);
+        let drv = MassStorageDriver::with_roots(vec![t.0.clone()]);
+        let a = drv.scan();
+        assert_eq!(a.found.len(), 1, "{json}");
+        assert!(a.others.is_empty(), "{json}");
+        let f = &a.found[0];
+        assert!(
+            f.info.id.starts_with(&format!("{}:", kind.slug())),
+            "{}",
+            f.info.id
+        );
+        assert!(!f.user_chosen && f.recognised.is_some());
+        let sent = drv.send(&f.info, "x.epub", b"PK").unwrap();
+        assert!(sent.starts_with(m.join(folder)), "{sent:?}");
+    }
+}
+
+#[test]
+fn a_nook_with_a_card_lists_the_card_under_the_nook_and_sends_to_it() {
+    let t = Tmp::new();
+    drive(&t.0, "NOOK", NOOK_INT, &["My Files"]);
+    let sd = drive(&t.0, "SDHC", NOOK_SD, &[]);
+    let drv = MassStorageDriver::with_roots(vec![t.0.clone()]);
+    let a = drv.scan();
+    assert!(a.others.is_empty(), "the card is never an 'other drive'");
+    assert_eq!(a.found.len(), 2);
+    let main = a.found.iter().find(|f| !f.is_card).unwrap();
+    let card = a.found.iter().find(|f| f.is_card).unwrap();
+    assert_eq!(card.info.parent.as_deref(), Some(main.info.id.as_str()));
+    assert_eq!(card.info.name, "Nook, memory card (SDHC)");
+    assert_eq!(drv.kind_of(&card.info), drv.kind_of(&main.info));
+    let sent = drv.send(&card.info, "x.epub", b"PK").unwrap();
+    assert!(sent.starts_with(sd));
+}
+
+#[test]
+fn flash_drives_and_look_alikes_are_never_devices() {
+    let t = Tmp::new();
+    // a stick with a Books folder
+    drive(&t.0, "BOOKSTICK", STICK, &["Books"]);
+    // a Calibre library on a stick
+    let c = drive(
+        &t.0,
+        "CALIBRE",
+        &STICK
+            .replace("stick", "cal")
+            .replace("1111-2222", "3333-4444"),
+        &["Books"],
+    );
+    std::fs::write(c.join("metadata.db"), b"SQLite").unwrap();
+    // a stick labelled like a Kobo with a .kobo folder (the spoof of issue #58)
+    drive(
+        &t.0,
+        "KOBOeReader",
+        &STICK
+            .replace("stick", "spoof")
+            .replace("1111-2222", "5555-6666")
+            .replace("STICK", "KOBOeReader"),
+        &[".kobo", "Books"],
+    );
+    // an SD card in a USB card reader: another USB device than any reader
+    drive(&t.0, "SDHC", READER, &["Books"]);
+    // a device whose sysfs cannot be read: not identified, and still not guessed from its folders
+    drive(
+        &t.0,
+        "MYSTERY",
+        r#"{"unreadable":true}"#,
+        &[".kobo", "documents", "system"],
+    );
+    let drv = MassStorageDriver::with_roots(vec![t.0.clone()]);
+    assert!(drv.detect().is_empty(), "{:?}", drv.detect());
+    let a = drv.scan();
+    assert_eq!(a.others.len(), 5);
+    use bookx_serve::devices::NotIdentified;
+    assert_eq!(
+        a.others
+            .iter()
+            .filter(|o| o.why == NotIdentified::Unreadable)
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn a_hub_with_two_readers_gives_two_devices_without_cross_grouping() {
+    let t = Tmp::new();
+    drive(
+        &t.0,
+        "A",
+        &KOBO.replace(r#""group":"k""#, r#""group":"hub/1""#),
+        &[".kobo"],
+    );
+    drive(
+        &t.0,
+        "B",
+        &KOBO.replace(r#""group":"k""#, r#""group":"hub/2""#),
+        &[".kobo"],
+    );
+    drive(&t.0, "C", NOOK_INT, &[]);
+    let a = MassStorageDriver::with_roots(vec![t.0.clone()]).scan();
+    assert_eq!(a.found.len(), 3);
+    assert!(
+        a.found
+            .iter()
+            .all(|f| !f.is_card && f.info.parent.is_none())
+    );
+}
+
+#[test]
+fn a_drive_the_user_chose_becomes_a_device_and_stop_undoes_it() {
+    use bookx_serve::devices::{UserDrive, drive_key};
+    let t = Tmp::new();
+    let m = drive(&t.0, "CALIBRE", STICK, &["Books"]);
+    let drv = MassStorageDriver::with_roots(vec![t.0.clone()]);
+    assert!(drv.detect().is_empty());
+    let key = drive_key(&drv.volumes()[0]);
+    assert!(!key.contains("1111") && !key.contains("STICK"));
+    let chosen = drv.clone().with_user_drives(vec![UserDrive {
+        key,
+        kind: "generic".into(),
+        folder: String::new(),
+    }]);
+    let a = chosen.scan();
+    assert_eq!(a.found.len(), 1);
+    assert!(a.found[0].user_chosen && a.others.is_empty());
+    let sent = chosen.send(&a.found[0].info, "b.epub", b"PK").unwrap();
+    assert!(sent.starts_with(m.join("Books")));
+    // "Stop using as an e-reader" removes the entry: the drive is only an other drive again
+    assert!(chosen.clone().with_user_drives(vec![]).detect().is_empty());
 }

@@ -8,7 +8,7 @@ use bookx_core::book::OpenBook;
 use bookx_core::contracts::{DeviceDriver, Registry};
 use bookx_core::convert::{Chapter, create_epub};
 use bookx_core::opf::Metadata;
-use bookx_serve::devices::{DeviceKind, MassStorageDriver, classify, kobo_db_path};
+use bookx_serve::devices::{DeviceKind, MassStorageDriver, kobo_db_path, layout_hint};
 use bookx_serve::mail::{Address, Attachment, Message, build};
 
 struct Tmp(PathBuf);
@@ -52,6 +52,15 @@ fn make_device(root: &Path, name: &str, kind: DeviceKind) -> PathBuf {
         DeviceKind::PocketBook => std::fs::create_dir_all(m.join("system/config")).unwrap(),
         DeviceKind::Generic => std::fs::create_dir_all(m.join("Books")).unwrap(),
     }
+    let id = match kind {
+        DeviceKind::Kobo => r#"{"vendor_id":"2237","product_id":"4237"}"#,
+        DeviceKind::Kindle => r#"{"vendor_id":"1949","product_id":"0004"}"#,
+        DeviceKind::PocketBook => {
+            r#"{"vendor_id":"fffe","product_id":"0001","manufacturer":"Obreey"}"#
+        }
+        DeviceKind::Generic => r#"{"vendor_id":"2207","product_id":"0001","manufacturer":"Onyx"}"#,
+    };
+    std::fs::write(m.join(".bookx-test-identity"), id).unwrap();
     m
 }
 
@@ -124,7 +133,7 @@ fn kobo_database_is_detected_but_never_touched() {
     let dev = d.detect().remove(0);
     d.send(&dev, "x.epub", &epub_bytes("x")).unwrap();
     assert_eq!(std::fs::read(&db).unwrap(), before);
-    assert_eq!(classify(&k), Some(DeviceKind::Kobo));
+    assert_eq!(layout_hint(&k), Some(DeviceKind::Kobo));
 }
 
 #[test]
