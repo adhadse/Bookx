@@ -18,7 +18,7 @@ use anyhow::{Context, Result, bail};
 use bookx_core::contracts::{DeviceDriver, DeviceInfo};
 
 use crate::devfs;
-use crate::devices::{DeviceKind, classify, sanitize_file_name, unique_name};
+use crate::devices::{DeviceKind, layout_hint, sanitize_file_name, unique_name};
 
 /// Folders books go to, first existing one wins; `Books` is created when none exists.
 const BOOK_FOLDERS: &[&str] = &["Books", "books", "eBooks", "Documents", "Download"];
@@ -67,7 +67,7 @@ impl MtpGvfsDriver {
 
     /// Kind of reader behind a storage (looked at the folder layout, `Generic` otherwise).
     pub fn kind_of(&self, device: &DeviceInfo) -> DeviceKind {
-        classify(&device.mount).unwrap_or(DeviceKind::Generic)
+        layout_hint(&device.mount).unwrap_or(DeviceKind::Generic)
     }
 
     /// Folder on the storage books are sent to.
@@ -199,6 +199,7 @@ impl DeviceDriver for MtpGvfsDriver {
                     id: format!("mtp:{}", mount.display()),
                     name: format!("{host_name} – {storage} (MTP)"),
                     mount,
+                    parent: None,
                 });
             }
         }

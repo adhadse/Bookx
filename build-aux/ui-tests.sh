@@ -215,6 +215,35 @@ make_hunspell() {
     { echo "$(wc -w <<<"$words")"; tr ' ' '\n' <<<"$words"; } >"$dir/en_US.dic"
 }
 
+# identify_mounts MOUNTS: what the kernel would say about the hardware behind the fake drives. A drive is
+# an e-reader because of this (USB vendor and product id, strings), never because of its folders: the
+# driver reads .bookx-test-identity only for BOOKX_DEVICE_ROOTS. SDCARD is the Boox's second disk.
+identify_mounts() {
+    local m=$1 name json
+    for name in KOBOeReader Kindle Boox SDCARD; do
+        [ -d "$m/$name" ] || continue
+        [ -e "$m/$name/.bookx-test-identity" ] && continue # a scenario said what it is
+        case $name in
+            KOBOeReader) json='{"vendor_id":"2237","product_id":"4237","manufacturer":"Rakuten Kobo Inc.","group":"kobo"}' ;;
+            Kindle) json='{"vendor_id":"1949","product_id":"0324","scsi_vendor":"Kindle","scsi_model":"Internal Storage","group":"kindle"}' ;;
+            Boox) json='{"vendor_id":"2207","product_id":"0001","manufacturer":"Onyx","group":"boox","lun":0}' ;;
+            SDCARD) json='{"vendor_id":"2207","product_id":"0001","manufacturer":"Onyx","group":"boox","lun":1,"label":"SDCARD"}' ;;
+        esac
+        printf '%s' "$json" >"$m/$name/.bookx-test-identity"
+    done
+}
+
+# a USB stick: drive MOUNT LABEL UUID GROUP, with the hardware ids of a SanDisk flash drive
+stick() {
+    mkdir -p "$1"
+    printf '{"vendor_id":"0781","product_id":"5581","manufacturer":"SanDisk","scsi_vendor":"SanDisk","scsi_model":"Ultra","group":"%s","uuid":"%s","label":"%s","size":16000000000}' "$4" "$3" "$2" >"$1/.bookx-test-identity"
+}
+
+# the longest stall after the given dev command (0 when none was reported)
+longest_stall() { # $1 = command prefix
+    grep -E "^stall: [0-9]+ ms after $1" <<<"$OUT" | sed -E 's/^stall: ([0-9]+) ms.*/\1/' | sort -n | tail -1 | grep . || echo 0
+}
+
 # fake_devices MOUNTS: a Kobo with a library database (one book read to 60%), a Boox with two
 # books (one finished in KOReader) and an SD card
 fake_devices() {
@@ -685,7 +714,7 @@ PY
         esac
         case "$name" in
             device_none) rm -rf "$d/mounts" && mkdir -p "$d/mounts" ;;
-            device_window|device_options|device_window_hig|device_fit) fake_devices "$d/mounts" ;;
+            device_window|device_options|device_window_hig|device_fit|device_scan_stall) fake_devices "$d/mounts" ;;
             device_ui|device_ui_job|device_lists|device_sync_ui|device_auto_sync) fake_devices_ui "$d/mounts" ;;
             device_grid)
                 fake_devices_ui "$d/mounts"
@@ -693,6 +722,28 @@ PY
                 printf 'PK-fake' >"$d/mounts/Boox/Books/A Very Long Title That Goes On And On Until It Needs Three Lines Of Caption.epub"
                 ;;
         esac
+        case "$name" in
+            device_others) # nothing here is an e-reader: a Calibre library stick, a stick with a Books folder, a Kobo look-alike
+                rm -rf "$d/mounts" && mkdir -p "$d/mounts"
+                stick "$d/mounts/CALIBRE" CALIBRE AAAA-1111 s1
+                mkdir -p "$d/mounts/CALIBRE/Books" && printf 'SQLite' >"$d/mounts/CALIBRE/metadata.db"
+                stick "$d/mounts/BOOKSTICK" BOOKSTICK BBBB-2222 s2
+                mkdir -p "$d/mounts/BOOKSTICK/Books"
+                stick "$d/mounts/KOBOeReader" KOBOeReader CCCC-3333 s3
+                mkdir -p "$d/mounts/KOBOeReader/.kobo" "$d/mounts/KOBOeReader/Books"
+                ;;
+            device_card) # a Nook: internal memory and the SD card are two disks of one USB device
+                rm -rf "$d/mounts" && mkdir -p "$d/mounts/NOOK/My Files" "$d/mounts/SDHC"
+                printf '{"vendor_id":"2080","product_id":"0003","scsi_vendor":"B&N","scsi_model":"Ebook Disk","group":"nook","lun":0,"label":"NOOK","size":220000000}' >"$d/mounts/NOOK/.bookx-test-identity"
+                printf '{"vendor_id":"2080","product_id":"0003","scsi_vendor":"B&N","scsi_model":"Ebook Disk","group":"nook","lun":1,"label":"SDHC","size":8000000000}' >"$d/mounts/SDHC/.bookx-test-identity"
+                ;;
+            device_use) # a Calibre stick the person says is an e-reader
+                rm -rf "$d/mounts" && mkdir -p "$d/mounts"
+                stick "$d/mounts/CALIBRE" CALIBRE AAAA-1111 s1
+                mkdir -p "$d/mounts/CALIBRE/Books" && printf 'SQLite' >"$d/mounts/CALIBRE/metadata.db"
+                ;;
+        esac
+        identify_mounts "$d/mounts"
         case "$name" in
         plugin_writer | plugin_transform | plugin_device) "$PLUGS" "$d/plugins" "$d/mounts" ;;
         editor_plugin*)
@@ -978,7 +1029,8 @@ PY
             [[ "$name" == *safe_mode* ]] && export BOOKX_SAFE_MODE=1
             [[ "$name" == report_beta* ]] && export BOOKX_TEST_VERSION=0.3.0-beta.1
             [[ "$name" == report_stable* ]] && export BOOKX_TEST_VERSION=0.3.0
-            [[ "$name" == grid_stalls_* || "$name" == big_book_* || "$name" == scale_library_* ]] && export BOOKX_STALL_WATCH=${STALL_WATCH_MS:-100}
+            [[ "$name" == device_scan_stall ]] && export BOOKX_DEVICE_SCAN_DELAY_MS=1500
+            [[ "$name" == device_scan_stall || "$name" == grid_stalls_* || "$name" == big_book_* || "$name" == scale_library_* ]] && export BOOKX_STALL_WATCH=${STALL_WATCH_MS:-100}
             # automatic dictionary downloads are off in every scenario but the ones that test them
             if [ -n "${dictauto-off}" ]; then export BOOKX_DICT_AUTO=${dictauto-off}; fi
             [ -n "${dictcat:-}" ] && export BOOKX_DICT_CATALOG=$dictcat
@@ -1944,7 +1996,7 @@ scenario health_tabs 'library:health=open-tab=duplicates,wait:800,library:health
 
 scenario device_window 'devwin:show,wait:1500,devwin:dump,devwin:device=SDCARD,wait:1200,devwin:dump,devwin:device=KOBO,wait:1200,devwin:dump,devwin:sync,wait:1500,devwin:dump,devwin:device=Boox,wait:1200,devwin:sync,wait:1500,devwin:select=0,devwin:remove,wait:1800,devwin:dump,quit' '
     has "^devwin: devices=4 "; check "the Boox, the Kobo, the Kindle and the SD card are listed" $?
-    has "^devwin: .*selected=E-reader \\(SDCARD\\) books=1 .*summary=E-reader · SD card · [0-9.]+ [kMGT]?B free of"; check "an SD card is told from main memory and shows its free space" $?
+    has "^devwin: .*selected=Boox, memory card \\(SDCARD\\) books=1 .*summary=E-reader · SD card · [0-9.]+ [kMGT]?B free of"; check "an SD card is told from main memory and shows its free space" $?
     has "^devwin: .*selected=Kobo \\(KOBOeReader\\) books=1 .*shelf_row=true .*summary=Kobo · Main memory"; check "the Kobo shows its books and the shelf setting" $?
     has "^devwin_sync: read=1 updated=1"; check "the Kobo database gives one reading state and updates the library" $?
     has "^devwin_sync_item: UI Test Book 0% -> 60% \\(Kobo database\\)"; check "the book read to 60% on the Kobo moves forward in the library" $?
@@ -1955,6 +2007,52 @@ scenario device_window 'devwin:show,wait:1500,devwin:dump,devwin:device=SDCARD,w
     has "^devwin_removed: ok=1 failed=0"; check "a selected book is removed from the device" $?
     [ ! -e "$d/mounts/Boox/Books/Alpha.epub" ] && [ -e "$d/mounts/Boox/Books/Second Book.epub" ]; check "only the selected file is deleted" $?
     [ -e "$d/mounts/SDCARD/Books/On Card.epub" ]; check "the SD card is untouched" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
+# Issues #57 and #58: what a drive IS decides whether it is an e-reader, never its folders.
+scenario device_others 'library:devices-scan,wait:600,library:dump,devwin:show,wait:1500,devwin:page=settings,wait:300,devwin:dump,quit' '
+    has "^device_button: visible=false"; check "a Calibre stick, a stick with a Books folder and a Kobo look-alike give no Device button" $?
+    has "^device_banner: widget=AdwBanner .*revealed=false"; check "and no banner asks anything on the library view" $?
+    ! has "^device_banner: .*revealed=true"; check "at no moment" $?
+    has "^devwin: devices=0 selected=none"; check "none of them is listed as a device" $?
+    has "^devwin_others: group_visible=true others=3 chosen=0 scanning=false names=.*BOOKSTICK.*"; check "all three are listed under Other drives" $?
+    has "^devwin_others: .*CALIBRE"; check "including the Calibre library stick" $?
+    has "^devwin_others: .*KOBOeReader"; check "and the stick named KOBOeReader with a .kobo folder" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
+scenario device_card 'library:devices-scan,wait:600,library:dump,devwin:show,wait:1500,devwin:dump,library:send=SDHC,wait:800,quit' '
+    has "^devwin_device: Nook \\(NOOK\\) \\| card=false \\| user_chosen=false"; check "the Nook is a device" $?
+    has "^devwin_device: Nook, memory card \\(SDHC\\) \\| card=true \\| user_chosen=false"; check "its SD card is listed under it as additional storage" $?
+    has "^devwin: devices=2 "; check "the Devices window offers both as destinations" $?
+    has "^devwin_others: group_visible=false others=0"; check "the card is not an Other drive" $?
+    [ -n "$(find "$d/mounts/SDHC" -name "*.epub" 2>/dev/null)" ]; check "Send to Device can target the card (the book is on it)" $?
+    [ -z "$(find "$d/mounts/NOOK" -name "*.epub" 2>/dev/null)" ]; check "and nothing went to the internal memory" $?
+    has "^device_button: visible=true"; check "the header shows the device" $?
+    ! has "^device_button: .*2"; check "the card does not count as a second device" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
+scenario device_use 'devwin:show,wait:1500,devwin:page=settings,devwin:dump,devwin:usedialog=CALIBRE,wait:300,devwin:usedialog-answer=kindle:docs,wait:1500,devwin:dump,library:send=CALIBRE,wait:800,devwin:reload-settings,wait:1500,devwin:dump,devwin:stop=CALIBRE,wait:1500,devwin:dump,quit' '
+    D=$(grep -E "^devwin(_others)?: " <<<"$OUT")
+    sed -n 1,2p <<<"$D" | grep -q "devices=0 selected=none"; check "first the Calibre stick is no device" $?
+    has "^devwin_usedialog: Use CALIBRE as an e-reader\\?"; check "Use as an e-reader asks which kind of reader it is" $?
+    has "^devwin: devices=1 selected=Kindle \\(CALIBRE\\)"; check "after the answer it is a Kindle" $?
+    has "^devwin_device: Kindle \\(CALIBRE\\) \\| card=false \\| user_chosen=true"; check "recorded as the person'"'"'s choice, not as a recognition" $?
+    [ -n "$(find "$d/mounts/CALIBRE/docs" -name "*.azw3" -o -name "*.epub" 2>/dev/null)" ]; check "a book sent to it goes into the folder that was typed" $?
+    has "^devwin_settings_file: \\[{\"key\":\"drv1-[0-9a-f]{16}\",\"kind\":\"kindle\",\"folder\":\"docs\"}\\]$"; check "the choice is in the settings file, by a hashed key, with its kind and folder" $?
+    ! has "^devwin_settings_file: .*(AAAA|CALIBRE)"; check "neither the UUID nor the label is in the settings file" $?
+    [ "$(grep -c "devices=1 selected=Kindle (CALIBRE)" <<<"$D")" -ge 2 ]; check "it is still an e-reader after reading the settings back from disk (as after a restart)" $?
+    grep "^devwin: " <<<"$D" | tail -1 | grep -q "devices=0 selected=none"; check "Stop using as an e-reader undoes it" $?
+    grep "^devwin_others: " <<<"$D" | tail -1 | grep -q "others=1 chosen=0"; check "and the stick is only an Other drive again" $?
+    ! has "panicked|CRITICAL"; check "no errors" $?'
+
+# issue #57: the 280 to 2218 ms stalls of the Devices window came from detecting on the main thread
+scenario device_scan_stall 'wait:300,devwin:show,wait:600,devwin:dump,wait:2800,devwin:dump,quit' '
+    L=$(longest_stall "devwin:show")
+    [ "$L" -le "${DEVICE_STALL_BUDGET_MS:-600}" ]; check "opening the Devices window while a scan takes 1500 ms blocks the main loop for at most ${DEVICE_STALL_BUDGET_MS:-600} ms (${L} ms)" $?
+    grep "^devwin: " <<<"$OUT" | head -1 | grep -q "devices=0 "; check "the window is up and empty while the scan is still running" $?
+    grep "^devwin_others: " <<<"$OUT" | head -1 | grep -q "scanning=true"; check "and says it is still looking" $?
+    grep "^devwin: " <<<"$OUT" | tail -1 | grep -q "devices=4 "; check "the answer arrives later and fills the list" $?
+    grep "^devwin_others: " <<<"$OUT" | tail -1 | grep -q "scanning=false"; check "scanning is over" $?
     ! has "panicked|CRITICAL"; check "no errors" $?'
 
 scenario device_window_hig 'devwin:show,wait:1500,devwin:page=books,wait:300,devwin:layout,devwin:page=settings,wait:300,devwin:layout,quit' '

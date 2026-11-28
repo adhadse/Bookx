@@ -335,7 +335,26 @@ pub fn build_usb(root: &Path, name: &str, usb: Usb) -> PathBuf {
         Usb::Disk => std::fs::create_dir_all(m.join("Books")).unwrap(),
         Usb::Mtp { .. } | Usb::None => panic!("{usb:?} is not a USB disk"),
     }
+    let identity = match usb {
+        Usb::Kobo { .. } => {
+            r#"{"vendor_id":"2237","product_id":"4237","manufacturer":"Rakuten Kobo Inc."}"#
+        }
+        Usb::Kindle => {
+            r#"{"vendor_id":"1949","product_id":"0324","scsi_vendor":"Kindle","scsi_model":"Internal Storage"}"#
+        }
+        Usb::PocketBook => {
+            r#"{"vendor_id":"fffe","product_id":"0001","manufacturer":"Obreey","scsi_vendor":"USB-FS","scsi_model":"PocketBook"}"#
+        }
+        _ => r#"{"vendor_id":"2207","product_id":"0001","manufacturer":"Onyx"}"#,
+    };
+    write_identity(&m, identity);
     m
+}
+
+/// What the kernel would say about the hardware behind a mount (see
+/// `bookx_serve::identity::TestIdentity`); the folder tree alone never makes a device.
+pub fn write_identity(mount: &Path, json: &str) {
+    std::fs::write(mount.join(".bookx-test-identity"), json).unwrap();
 }
 
 /// Builds the gvfs tree of an MTP device under `gvfs`: `mtp:host=<host>/Internal shared storage`

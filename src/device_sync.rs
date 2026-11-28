@@ -2011,6 +2011,7 @@ mod tests {
             id: id.into(),
             name: name.into(),
             mount: PathBuf::from("/m").join(id),
+            parent: None,
         };
         assert_eq!(button_label(&[]), None);
         let kobo = d("k", "Kobo Libra");

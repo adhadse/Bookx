@@ -96,6 +96,51 @@ Devices window, and also in Preferences → Sync under *USB device sync*.
 This is **one-way, library → device**. The merge in both directions is the sync that runs when a device connects
 (above); sending never reads anything back.
 
+## How Bookx recognises a device { #recognition }
+
+Bookx decides what a drive **is** from the hardware behind it, never from its folders or its name. When a drive is
+mounted it asks the system who made it: the USB vendor and product numbers, the manufacturer and model texts the
+device reports, and which USB device the drive belongs to. A drive is offered as an e-reader only when those facts
+match a known e-reader (Kobo, Kindle, Nook, PocketBook, Tolino, Boox, Sony Reader). Anyone can create a folder called
+`Books` or `.kobo` on a USB stick, or name a stick *KOBOeReader*, so those never count: a flash drive with a Calibre
+library on it is simply **not mentioned** outside the *Other drives* list ([below](#other-drives)). It never raises a
+banner, a notification or a dialog in the library.
+
+**Memory cards belong to their reader.** If a reader has a memory card (a Nook or a PocketBook with an SD card, for
+example), the computer sees two disks that come from one USB device. Bookx puts the card under its reader as
+*additional storage*, named like **Nook, memory card (SDHC)**. It is listed right after the reader in the Devices window,
+you can pick it as the destination of **Send to Device**, and it never counts as a second reader (no second banner). An
+SD card in a card reader plugged into the computer is a different USB device and is not an e-reader.
+
+!!! note "What the recognition table covers"
+    The table of known readers was built from public lists of USB identifiers and has **not been tried on the real
+    readers**. If your reader is not recognised, or Bookx treats the wrong disk of a reader as its main memory (the first
+    disk is taken as main memory, the others as cards), tell Bookx yourself as described next. Recognition is not a
+    security feature: a device can claim any identity.
+
+### Other drives { #other-drives }
+
+Open the Devices window, **Settings** page: the **Other drives** group lists the removable drives that are mounted
+but not recognised as e-readers (USB sticks, external disks, SD cards in a card reader, an e-reader Bookx does not
+know), each with a reason such as *Not a known e-reader*, and a **Use as an e-reader** button.
+
+1. Press **Use as an e-reader** next to the drive.
+2. Choose the kind (**Kobo**, **Kindle**, **PocketBook** or **Other e-reader**) and the folder on the drive that books
+   go into. The folder is filled in for the kind; keep it or type another one (for example `Documents/Books`).
+3. The drive is now offered like any e-reader: in the Devices window, in **Send to Device**, and with a banner when it
+   connects. It is listed under *Other drives* as *Used as an e-reader because you chose it*, with a **Stop using as an
+   e-reader** button that undoes the choice.
+
+Bookx remembers the choice for that drive (by its filesystem identifier, or its name and size when it has none; the
+settings file holds a scrambled key, not the name or any serial number) so it applies again the next time the drive is
+plugged in.
+
+!!! note "On Flatpak, macOS and Windows"
+    On Linux, the Flatpak shows the hardware facts of drives mounted under `/run/media`. If the system hides them (a
+    strict sandbox), the drive is listed under *Other drives* with the reason *Could not be identified here*; use
+    **Use as an e-reader**. Bookx for macOS and Windows cannot read these facts yet, so every removable drive there is
+    listed under *Other drives* until you choose it.
+
 ## The Devices window
 
 Open it with the **Devices** button in the header bar, or main menu → **Devices**. The window has two pages, **Books**
@@ -115,7 +160,8 @@ USB, or add a WebDAV folder below**. The Settings page is still available, so yo
 device appears.
 
 When a device is connected, it is shown as a row titled **Device**, with its name and free space (main memory is told
-apart from an SD card).
+apart from an SD card). A memory card is listed right after its reader. Bookx looks for devices in the background, so
+the window opens at once even when a drive is slow; the row says *Looking for devices* until the answer arrives.
 
 **Books on the device** shows the books with their covers. Covers are taken from the book files (EPUB and KEPUB;
 other formats show a coloured placeholder) and cached, so the next visit is fast. The group has a **Sync Reading
@@ -328,6 +374,17 @@ reverse proxy in front of it: [Put Bookx behind a reverse proxy](reverse-proxy.m
     will have on the device, for example *EPUB → KEPUB (converted)* for a Kobo or *EPUB → AZW3 (converted)* for a
     Kindle, plus its size and any warning. Untick what you do not want and press **Send 1 Book** or **Send N Books**.
     Your library copy is never changed.
+
+??? question "My USB stick with a Calibre library is not shown as a device. Is that a bug?"
+    No, that is intended. Bookx only offers a drive as an e-reader when the hardware identifies it as one, so a stick
+    (even one with a `Books` folder or named like a Kobo) is never offered and never raises a banner. It appears only
+    under **Other drives** on the Devices window's Settings page ([How Bookx recognises a device](#recognition)).
+
+??? question "My reader's SD card is not listed. How do I send books to it?"
+    Make sure the card is mounted (GNOME Files shows it). If it comes from the same USB device as the reader, it is
+    listed right after the reader, for example *Nook, memory card (SDHC)*, and you can pick it in **Send to Device**.
+    If it is not there, it may be listed under **Other drives**: press **Use as an e-reader**, choose the kind of
+    your reader and the folder it reads on the card.
 
 ??? question "The Devices button is not there. What is wrong?"
     The **Devices** button in the header bar only appears while a device is connected. Make sure the reader is

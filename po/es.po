@@ -12349,3 +12349,48 @@ msgstr "El nombre de usuario y la contraseña de su cuenta en este catálogo."
 
 msgid "Sign In to {}"
 msgstr "Iniciar sesión en {}"
+
+msgid "Bookx will offer this drive like any other e-reader. You can undo this under Other drives."
+msgstr "Bookx ofrecerá esta unidad como cualquier otro lector electrónico. Puede deshacerlo en «Otras unidades»."
+
+msgid "Could not be identified here"
+msgstr "No se pudo identificar aquí"
+
+msgid "Folder for books on the drive"
+msgstr "Carpeta para los libros en la unidad"
+
+msgid "Kind of e-reader"
+msgstr "Tipo de lector electrónico"
+
+msgid "Looking for devices"
+msgstr "Buscando dispositivos"
+
+msgid "Looking for the e-reader"
+msgstr "Buscando el lector electrónico"
+
+msgid "Not a known e-reader"
+msgstr "No es un lector electrónico conocido"
+
+msgid "Other drives"
+msgstr "Otras unidades"
+
+msgid "Other e-reader"
+msgstr "Otro lector electrónico"
+
+msgid "Removable drives that Bookx does not recognise as e-readers (USB sticks, card readers, disks). If one of them is an e-reader, tell Bookx and it is offered like any other device."
+msgstr "Unidades extraíbles que Bookx no reconoce como lectores electrónicos (memorias USB, lectores de tarjetas, discos). Si una de ellas es un lector electrónico, indíqueselo a Bookx y se ofrecerá como cualquier otro dispositivo."
+
+msgid "Stop using as an e-reader"
+msgstr "Dejar de usar como lector electrónico"
+
+msgid "Use as an e-reader"
+msgstr "Usar como lector electrónico"
+
+msgid "Use {} as an e-reader?"
+msgstr "¿Usar {} como lector electrónico?"
+
+msgid "Used as an e-reader because you chose it"
+msgstr "Se usa como lector electrónico porque usted lo eligió"
+
+msgid "{}, memory card ({})"
+msgstr "{}, tarjeta de memoria ({})"

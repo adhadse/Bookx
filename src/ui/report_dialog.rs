@@ -191,7 +191,10 @@ pub fn gather(
         extra: {
             let mut x = crate::trace::collect();
             if entry.is_some_and(|e| e.split('|').any(|a| a == "Devices")) {
-                let list: Vec<_> = crate::devices::detect_all()
+                let seen = crate::devices::latest();
+                let others = crate::diag_gather::other_drive_rows(&seen.others);
+                let list: Vec<_> = seen
+                    .devices
                     .into_iter()
                     .map(|d| crate::diag_gather::ConnectedDevice {
                         reported: d.name,
@@ -200,10 +203,9 @@ pub fn gather(
                         free: crate::diag_system::free_space(&d.mount),
                     })
                     .collect();
-                x.push((
-                    crate::trace::Area::Devices,
-                    crate::diag_gather::device_rows(&list),
-                ));
+                let mut rows = crate::diag_gather::device_rows(&list);
+                rows.extend(others);
+                x.push((crate::trace::Area::Devices, rows));
             }
             x
         },

@@ -19,6 +19,7 @@ pub mod comic_settings;
 pub mod convert_options;
 pub mod covers;
 pub mod custom_columns;
+pub mod device_scan;
 pub mod devices;
 pub mod devices_list;
 pub mod dialog_toast;

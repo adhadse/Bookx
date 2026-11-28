@@ -43,7 +43,6 @@ pub fn one_time_pass(lib: &mut Library) -> Option<RepairReport> {
 /// What the pass that corrects colours and styles reads: Bookx's own sync records and ledgers
 /// (settings folder) and every mounted USB e-reader (Kobo database, KOReader sidecars). Reads only.
 fn look_sources(root: &Path) -> Vec<bookx_serve::look_repair::Truth> {
-    use bookx_core::contracts::DeviceDriver;
     use bookx_serve::look_repair as repair;
     let config = crate::config::stats_path().and_then(|p| p.parent().map(Path::to_path_buf));
     let mut rows = Vec::new();
@@ -53,7 +52,9 @@ fn look_sources(root: &Path) -> Vec<bookx_serve::look_repair::Truth> {
         ));
     }
     rows.extend(repair::truths_from_ledgers(config.as_deref(), root));
-    for d in crate::devices::driver().detect() {
+    // the last scan's devices (no I/O here: this runs while the library opens, on the main thread,
+    // so nothing is detected yet and the device truths are left to `bookx-cli highlights repair`)
+    for d in crate::devices::latest().devices {
         rows.extend(repair::truths_from_folder(&d.mount));
     }
     rows

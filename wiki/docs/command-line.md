@@ -27,7 +27,7 @@ Bookx has it open.
 | `convert INPUT OUTPUT` | convert a book; the format comes from the output extension |
 | `meta show FILE` / `meta set FILE` | show or change metadata of a book file |
 | `check FILE` | check a book for structural problems (`--json`); exit code 1 when errors are found |
-| `device-check MOUNT` | validate the folder layout of a mounted e-reader and its books (`--kind`, `--book`, `--all`, `--json`); read-only, for a Kobo it also shows model, firmware and database facts |
+| `device-check MOUNT` | show how a mounted drive was identified (USB ids, device strings, additional storage; never a serial number, UUID or label), validate the folder layout of an e-reader and its books (`--kind`, `--book`, `--all`, `--json`); a drive that is not an identified e-reader needs `--kind`; read-only, for a Kobo it also shows model, firmware and database facts |
 | `library …` | manage the library, see below |
 | `search QUERY` | search the library with the [query language](library.md#search) (`--sort`, `--desc`, `--json`) |
 | `serve` | serve the library over OPDS and the web, with optional Bookx sync accounts |

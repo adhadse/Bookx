@@ -11,6 +11,11 @@ use std::path::{Component, Path, PathBuf};
 use anyhow::{Context, Result, bail};
 use bookx_core::contracts::{DeviceDriver, DeviceInfo};
 
+use crate::identity::{
+    Identity, IdentitySource, NoIdentity, Recognised, SysfsIdentity, TestIdentity, recognise,
+    stable_key,
+};
+
 /// The kinds of reader this driver understands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DeviceKind {
@@ -88,8 +93,11 @@ pub fn choose_format<'a>(kind: DeviceKind, available: &[&'a str]) -> Option<&'a 
     })
 }
 
-/// Recognises a device from its directory layout.
-pub fn classify(root: &Path) -> Option<DeviceKind> {
+/// What the directory layout of a drive looks like. This is **only a hint** about a drive that is
+/// already known to be an e-reader (the MTP storage of a device, `bookx-cli device-check`'s
+/// "layout agrees" line); anyone can create these folders on a flash drive, so it is never used to
+/// decide whether something is a device (issues #57 and #58). See [`crate::identity`].
+pub fn layout_hint(root: &Path) -> Option<DeviceKind> {
     if root.join(".kobo").is_dir() {
         Some(DeviceKind::Kobo)
     } else if root.join("documents").is_dir() && root.join("system").is_dir() {
@@ -358,13 +366,247 @@ fn collect_books(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) {
     }
 }
 
+/// A mounted volume and what is known about the hardware behind it.
+#[derive(Debug, Clone)]
+pub struct Volume {
+    pub mount: PathBuf,
+    pub identity: Identity,
+}
+
+/// A drive the user said is an e-reader, remembered by its stable key
+/// ([`crate::identity::stable_key`]), never by a serial number.
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct UserDrive {
+    pub key: String,
+    /// A [`DeviceKind`] slug.
+    pub kind: String,
+    /// Folder on the drive books go into; empty means the kind's usual folder.
+    pub folder: String,
+}
+
+/// Why a drive is not offered as an e-reader.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NotIdentified {
+    /// The hardware facts were read and are not a known e-reader.
+    Unknown,
+    /// The hardware facts could not be read here (no sysfs, a sandbox, another platform).
+    Unreadable,
+}
+
+/// A removable drive that is not an e-reader we recognise: listed only under "Other drives".
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OtherDrive {
+    pub mount: PathBuf,
+    /// Shown to the person at the keyboard (volume label, else the mount folder's name).
+    pub name: String,
+    pub key: String,
+    pub size_bytes: Option<u64>,
+    /// USB vendor and product id (public, not personal), when known.
+    pub usb_ids: Option<(u16, u16)>,
+    pub why: NotIdentified,
+}
+
+/// A drive offered as an e-reader, or as extra storage of one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Found {
+    pub info: DeviceInfo,
+    /// Set for devices recognised by their hardware.
+    pub recognised: Option<Recognised>,
+    pub user_chosen: bool,
+    /// An SD card or second disk of another device (see `info.parent`).
+    pub is_card: bool,
+    /// USB device path that groups the volumes of one device.
+    pub group: Option<String>,
+    /// The key a user's choice for this drive is remembered by ([`drive_key`]).
+    pub key: String,
+}
+
+/// The outcome of looking at the mounted drives.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Analysis {
+    pub found: Vec<Found>,
+    pub others: Vec<OtherDrive>,
+}
+
+fn dir_name(mount: &Path) -> String {
+    mount
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| mount.display().to_string())
+}
+
+/// The key a drive is remembered by: [`stable_key`], else a hash of the mount folder's name.
+pub fn drive_key(v: &Volume) -> String {
+    stable_key(&v.identity).unwrap_or_else(|| {
+        stable_key(&Identity {
+            label: Some(dir_name(&v.mount)),
+            size_bytes: v.identity.size_bytes.or(Some(0)),
+            ..Default::default()
+        })
+        .unwrap_or_default()
+    })
+}
+
+const USER_PREFIX: &str = "user-";
+
+/// Splits `device.id` into (is user chosen, kind).
+fn id_kind(id: &str) -> Option<(bool, DeviceKind)> {
+    let (slug, _) = id.split_once(':')?;
+    let (user, slug) = match slug.strip_prefix(USER_PREFIX) {
+        Some(s) => (true, s),
+        None => (false, slug),
+    };
+    DeviceKind::from_slug(slug).map(|k| (user, k))
+}
+
+/// Decides which volumes are e-readers: by hardware identity (or the user's say-so), never by
+/// folder names. Volumes of one recognised USB device are grouped: the first (lowest LUN, then
+/// partition) is the device, the others are additional storage under it. Pure.
+pub fn analyse(volumes: &[Volume], user: &[UserDrive]) -> Analysis {
+    use std::collections::HashMap;
+    let mut recognised: HashMap<&str, Recognised> = HashMap::new();
+    for v in volumes {
+        if let Some(u) = &v.identity.usb {
+            if !recognised.contains_key(u.path.as_str()) {
+                if let Some(r) = recognise(&v.identity) {
+                    recognised.insert(&u.path, r);
+                }
+            }
+        }
+    }
+    let mut groups: HashMap<&str, Vec<usize>> = HashMap::new();
+    for (i, v) in volumes.iter().enumerate() {
+        if let Some(u) = &v.identity.usb {
+            if recognised.contains_key(u.path.as_str()) {
+                groups.entry(&u.path).or_default().push(i);
+            }
+        }
+    }
+    let mut found: Vec<(usize, Found)> = Vec::new();
+    for (path, mut idx) in groups {
+        let r = &recognised[path];
+        idx.sort_by_key(|&i| {
+            let id = &volumes[i].identity;
+            (id.lun.unwrap_or(0), id.partition, volumes[i].mount.clone())
+        });
+        let main_id = format!("{}:{}", r.kind.slug(), volumes[idx[0]].mount.display());
+        for (n, &i) in idx.iter().enumerate() {
+            let mount = volumes[i].mount.clone();
+            let dir = dir_name(&mount);
+            let is_card = n > 0;
+            found.push((
+                i,
+                Found {
+                    info: DeviceInfo {
+                        id: format!("{}:{}", r.kind.slug(), mount.display()),
+                        name: if is_card {
+                            format!("{}, memory card ({dir})", r.model)
+                        } else {
+                            format!("{} ({dir})", r.model)
+                        },
+                        mount,
+                        parent: is_card.then(|| main_id.clone()),
+                    },
+                    recognised: Some(r.clone()),
+                    user_chosen: false,
+                    is_card,
+                    group: Some(path.to_string()),
+                    key: drive_key(&volumes[i]),
+                },
+            ));
+        }
+    }
+    let grouped: std::collections::HashSet<usize> = found.iter().map(|(i, _)| *i).collect();
+    let mut others = Vec::new();
+    for (i, v) in volumes.iter().enumerate() {
+        if grouped.contains(&i) {
+            continue;
+        }
+        let key = drive_key(v);
+        let chosen = user
+            .iter()
+            .find(|u| u.key == key)
+            .and_then(|u| DeviceKind::from_slug(&u.kind));
+        if let Some(kind) = chosen {
+            found.push((
+                i,
+                Found {
+                    info: DeviceInfo {
+                        id: format!("{USER_PREFIX}{}:{}", kind.slug(), v.mount.display()),
+                        name: format!("{} ({})", kind.label(), dir_name(&v.mount)),
+                        mount: v.mount.clone(),
+                        parent: None,
+                    },
+                    recognised: None,
+                    user_chosen: true,
+                    is_card: false,
+                    group: None,
+                    key: key.clone(),
+                },
+            ));
+            continue;
+        }
+        others.push(OtherDrive {
+            mount: v.mount.clone(),
+            name: v
+                .identity
+                .label
+                .clone()
+                .filter(|l| !l.trim().is_empty())
+                .unwrap_or_else(|| dir_name(&v.mount)),
+            key,
+            size_bytes: v.identity.size_bytes,
+            usb_ids: v.identity.usb.as_ref().map(|u| (u.vendor_id, u.product_id)),
+            why: if v.identity.readable {
+                NotIdentified::Unknown
+            } else {
+                NotIdentified::Unreadable
+            },
+        });
+    }
+    found.sort_by_key(|(i, _)| *i);
+    Analysis {
+        found: found.into_iter().map(|(_, f)| f).collect(),
+        others,
+    }
+}
+
+/// Runs `f` on its own thread and gives up after `timeout`: a dead mount can block a `stat`
+/// forever, and nothing that reads a drive may freeze the caller. The stuck thread is left behind.
+pub fn bounded<T: Send + 'static>(
+    timeout: std::time::Duration,
+    f: impl FnOnce() -> T + Send + 'static,
+) -> Option<T> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = tx.send(f());
+    });
+    rx.recv_timeout(timeout).ok()
+}
+
+/// What `bookx-cli device-check` and the app's report want to know about one mount.
+#[derive(Debug, Clone)]
+pub struct Inspection {
+    pub volume: Volume,
+    pub found: Option<Found>,
+    pub other: Option<OtherDrive>,
+    /// Everything recognised as part of the same USB device (the device and its cards).
+    pub group: Vec<Found>,
+}
+
 /// The USB mass-storage driver.
 #[derive(Debug, Clone)]
 pub struct MassStorageDriver {
+    /// Fixture mode: directories below these are mounts. Real mode: where the desktop mounts
+    /// removable media, used when sysfs cannot be read.
     roots: Vec<PathBuf>,
-    /// Mount points scanned directly (macOS volumes, Windows drives), not their sub-directories.
+    /// Mount points taken as they are (macOS volumes, Windows drives).
     mounts: Vec<PathBuf>,
     proc_mounts: Option<PathBuf>,
+    identity: std::sync::Arc<dyn IdentitySource>,
+    fixture: bool,
+    user_drives: Vec<UserDrive>,
 }
 
 impl Default for MassStorageDriver {
@@ -374,23 +616,36 @@ impl Default for MassStorageDriver {
 }
 
 impl MassStorageDriver {
-    /// Default roots for the current user and `/proc/mounts`.
+    /// The real machine: `/proc/mounts` and sysfs on Linux; on other systems the volumes are listed
+    /// but nothing can be identified, so they are only offered under "Other drives".
     pub fn new() -> MassStorageDriver {
         let user = std::env::var("USER").ok();
         let (roots, mounts) = platform_scan(user.as_deref());
+        let linux = cfg!(target_os = "linux");
         MassStorageDriver {
             roots,
             mounts,
-            proc_mounts: Some(PathBuf::from("/proc/mounts")),
+            proc_mounts: linux.then(|| PathBuf::from("/proc/mounts")),
+            identity: if linux {
+                std::sync::Arc::new(SysfsIdentity::default())
+            } else {
+                std::sync::Arc::new(NoIdentity)
+            },
+            fixture: false,
+            user_drives: Vec::new(),
         }
     }
 
-    /// Custom roots and no `/proc/mounts` (tests, portable setups).
+    /// Test fixtures: every directory below the roots is a mounted drive, and its identity comes
+    /// from `<mount>/.bookx-test-identity` (see [`TestIdentity`]). Only this constructor honours that file.
     pub fn with_roots(roots: Vec<PathBuf>) -> MassStorageDriver {
         MassStorageDriver {
             roots,
             mounts: Vec::new(),
             proc_mounts: None,
+            identity: std::sync::Arc::new(TestIdentity),
+            fixture: true,
+            user_drives: Vec::new(),
         }
     }
 
@@ -400,45 +655,156 @@ impl MassStorageDriver {
         self
     }
 
+    /// Where identity facts come from (tests build fake sysfs trees).
+    pub fn with_identity(
+        mut self,
+        source: std::sync::Arc<dyn IdentitySource>,
+    ) -> MassStorageDriver {
+        self.identity = source;
+        self
+    }
+
+    /// Drives the user chose to treat as e-readers.
+    pub fn with_user_drives(mut self, drives: Vec<UserDrive>) -> MassStorageDriver {
+        self.user_drives = drives;
+        self
+    }
+
     pub fn roots(&self) -> &[PathBuf] {
         &self.roots
     }
 
-    fn candidates(&self) -> Vec<PathBuf> {
-        let mut out: Vec<PathBuf> = Vec::new();
-        for root in &self.roots {
-            let Ok(rd) = std::fs::read_dir(root) else {
-                continue;
-            };
-            let mut dirs: Vec<PathBuf> = rd
-                .flatten()
-                .map(|e| e.path())
-                .filter(|p| p.is_dir())
-                .collect();
-            dirs.sort();
-            out.extend(dirs);
-        }
-        out.extend(self.mounts.iter().filter(|m| m.is_dir()).cloned());
-        if let Some(pm) = &self.proc_mounts {
-            if let Ok(text) = std::fs::read_to_string(pm) {
-                out.extend(removable_mounts(&parse_proc_mounts(&text)));
+    fn proc_entries(&self) -> Vec<MountEntry> {
+        self.proc_mounts
+            .as_ref()
+            .and_then(|pm| std::fs::read_to_string(pm).ok())
+            .map(|t| parse_proc_mounts(&t))
+            .unwrap_or_default()
+    }
+
+    fn keep(&self, id: &Identity, mount: &Path) -> bool {
+        id.usb.is_some()
+            || id.removable == Some(true)
+            || (!id.readable && self.roots.iter().any(|r| mount.starts_with(r)))
+    }
+
+    /// The mounted removable drives. Reads `/proc/mounts` and sysfs only; it never looks inside a
+    /// drive, so a dead mount cannot block it.
+    pub fn volumes(&self) -> Vec<Volume> {
+        let mut out: Vec<Volume> = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        let mut push = |out: &mut Vec<Volume>, mount: PathBuf, identity: Identity| {
+            if seen.insert(mount.clone()) {
+                out.push(Volume { mount, identity });
+            }
+        };
+        if self.fixture {
+            for root in &self.roots {
+                let Ok(rd) = std::fs::read_dir(root) else {
+                    continue;
+                };
+                let mut dirs: Vec<PathBuf> = rd
+                    .flatten()
+                    .map(|e| e.path())
+                    .filter(|p| p.is_dir())
+                    .collect();
+                dirs.sort();
+                for d in dirs {
+                    let identity = self.identity.identify(&d, "");
+                    push(&mut out, d, identity);
+                }
             }
         }
-        let mut seen = std::collections::HashSet::new();
-        out.retain(|p| {
-            let key = std::fs::canonicalize(p).unwrap_or_else(|_| p.clone());
-            seen.insert(key)
-        });
+        for e in self.proc_entries() {
+            if !is_removable_fstype(&e.fstype)
+                || e.mount_point.starts_with("/boot")
+                || e.mount_point.starts_with("/efi")
+            {
+                continue;
+            }
+            let identity = self.identity.identify(&e.mount_point, &e.source);
+            if self.keep(&identity, &e.mount_point) {
+                push(&mut out, e.mount_point, identity);
+            }
+        }
+        for m in &self.mounts {
+            let identity = self.identity.identify(m, "");
+            push(&mut out, m.clone(), identity);
+        }
         out
     }
 
-    /// The kind of a device returned by [`DeviceDriver::detect`] (from its id, else by looking).
+    /// Decides which mounted drives are e-readers and which are other drives.
+    pub fn scan(&self) -> Analysis {
+        analyse(&self.volumes(), &self.user_drives)
+    }
+
+    fn volume_for(&self, mount: &Path) -> Volume {
+        let source = self
+            .proc_entries()
+            .into_iter()
+            .find(|e| e.mount_point == mount)
+            .map(|e| e.source)
+            .unwrap_or_default();
+        Volume {
+            mount: mount.to_path_buf(),
+            identity: self.identity.identify(mount, &source),
+        }
+    }
+
+    /// Everything known about one mount, for `bookx-cli device-check`.
+    pub fn inspect(&self, mount: &Path) -> Inspection {
+        let canon = std::fs::canonicalize(mount).unwrap_or_else(|_| mount.to_path_buf());
+        let mut vols = self.volumes();
+        let pos = vols
+            .iter()
+            .position(|v| v.mount == canon || v.mount == mount);
+        let volume = match pos {
+            Some(p) => vols[p].clone(),
+            None => {
+                let v = self.volume_for(&canon);
+                vols.push(v.clone());
+                v
+            }
+        };
+        let a = analyse(&vols, &self.user_drives);
+        let found = a
+            .found
+            .iter()
+            .find(|f| f.info.mount == volume.mount)
+            .cloned();
+        let other = a.others.iter().find(|o| o.mount == volume.mount).cloned();
+        let group = match volume.identity.usb.as_ref() {
+            Some(u) => a
+                .found
+                .iter()
+                .filter(|f| f.group.as_deref() == Some(u.path.as_str()))
+                .cloned()
+                .collect(),
+            None => Vec::new(),
+        };
+        Inspection {
+            volume,
+            found,
+            other,
+            group,
+        }
+    }
+
+    /// The remembered choice for a user-chosen drive.
+    fn user_drive_for(&self, mount: &Path) -> Option<&UserDrive> {
+        let key = drive_key(&self.volume_for(mount));
+        self.user_drives.iter().find(|u| u.key == key)
+    }
+
+    /// The kind of a device returned by [`DeviceDriver::detect`] (from its id).
     pub fn kind_of(&self, device: &DeviceInfo) -> Option<DeviceKind> {
-        device
-            .id
-            .split_once(':')
-            .and_then(|(slug, _)| DeviceKind::from_slug(slug))
-            .or_else(|| classify(&device.mount))
+        id_kind(&device.id).map(|(_, k)| k)
+    }
+
+    /// Whether the user said this drive is an e-reader (as opposed to Bookx recognising it).
+    pub fn is_user_chosen(device: &DeviceInfo) -> bool {
+        id_kind(&device.id).is_some_and(|(user, _)| user)
     }
 
     /// Formats this particular device opens, best first.
@@ -451,6 +817,19 @@ impl MassStorageDriver {
     /// Folder on the device books are sent to.
     pub fn target_dir(&self, device: &DeviceInfo) -> Result<PathBuf> {
         let kind = self.kind_of(device).context("not a recognised e-reader")?;
+        if Self::is_user_chosen(device) {
+            if let Some(u) = self.user_drive_for(&device.mount) {
+                let f = u.folder.trim().trim_matches('/');
+                if !f.is_empty() {
+                    let mut dir = device.mount.clone();
+                    for part in f.split('/') {
+                        check_requested_name(part)?;
+                        dir.push(sanitize_file_name(part));
+                    }
+                    return Ok(dir);
+                }
+            }
+        }
         Ok(device.mount.join(kind.target_subdir(&device.mount)))
     }
     /// Like [`DeviceDriver::send`], but into folders below the target folder (a save-path
@@ -481,21 +860,7 @@ impl DeviceDriver for MassStorageDriver {
     }
 
     fn detect(&self) -> Vec<DeviceInfo> {
-        self.candidates()
-            .into_iter()
-            .filter_map(|mount| {
-                let kind = classify(&mount)?;
-                let dir = mount
-                    .file_name()
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| mount.display().to_string());
-                Some(DeviceInfo {
-                    id: format!("{}:{}", kind.slug(), mount.display()),
-                    name: format!("{} ({dir})", kind.label()),
-                    mount,
-                })
-            })
-            .collect()
+        self.scan().found.into_iter().map(|f| f.info).collect()
     }
 
     /// Driver-wide default; use [`MassStorageDriver::formats_for`] for a specific device.
@@ -579,9 +944,19 @@ mod tests {
         }
     }
 
+    fn id_file(m: &Path, json: &str) {
+        std::fs::write(m.join(crate::identity::TEST_IDENTITY_FILE), json).unwrap();
+    }
+
+    const KOBO_ID: &str = r#"{"vendor_id":"2237","product_id":"4237"}"#;
+    const KINDLE_ID: &str = r#"{"vendor_id":"1949","product_id":"0004"}"#;
+    const BOOX_ID: &str = r#"{"vendor_id":"2207","product_id":"0001","manufacturer":"Onyx"}"#;
+    const POCKET_ID: &str = r#"{"vendor_id":"fffe","product_id":"0001","manufacturer":"Obreey"}"#;
+
     fn kobo(t: &Tmp, name: &str) -> PathBuf {
         let m = t.dir(&format!("media/{name}"));
         std::fs::create_dir_all(m.join(".kobo")).unwrap();
+        id_file(&m, KOBO_ID);
         m
     }
 
@@ -637,27 +1012,27 @@ mod tests {
         let t = Tmp::new();
         let kobo = t.dir("a");
         std::fs::create_dir_all(kobo.join(".kobo")).unwrap();
-        assert_eq!(classify(&kobo), Some(DeviceKind::Kobo));
+        assert_eq!(layout_hint(&kobo), Some(DeviceKind::Kobo));
 
         let kindle = t.dir("b");
         std::fs::create_dir_all(kindle.join("documents")).unwrap();
-        assert_eq!(classify(&kindle), None); // documents alone is not enough
+        assert_eq!(layout_hint(&kindle), None); // documents alone is not enough
         std::fs::create_dir_all(kindle.join("system")).unwrap();
-        assert_eq!(classify(&kindle), Some(DeviceKind::Kindle));
+        assert_eq!(layout_hint(&kindle), Some(DeviceKind::Kindle));
 
         let pb = t.dir("c");
         std::fs::create_dir_all(pb.join("system/config")).unwrap();
-        assert_eq!(classify(&pb), Some(DeviceKind::PocketBook));
+        assert_eq!(layout_hint(&pb), Some(DeviceKind::PocketBook));
 
         let generic = t.dir("d");
         std::fs::create_dir_all(generic.join("books")).unwrap();
-        assert_eq!(classify(&generic), Some(DeviceKind::Generic));
+        assert_eq!(layout_hint(&generic), Some(DeviceKind::Generic));
         let generic2 = t.dir("e");
         std::fs::create_dir_all(generic2.join("Books")).unwrap();
-        assert_eq!(classify(&generic2), Some(DeviceKind::Generic));
+        assert_eq!(layout_hint(&generic2), Some(DeviceKind::Generic));
 
-        assert_eq!(classify(&t.dir("empty")), None);
-        assert_eq!(classify(&t.0.join("missing")), None);
+        assert_eq!(layout_hint(&t.dir("empty")), None);
+        assert_eq!(layout_hint(&t.0.join("missing")), None);
     }
 
     #[test]
@@ -666,7 +1041,7 @@ mod tests {
         let m = t.dir("m");
         std::fs::create_dir_all(m.join(".kobo")).unwrap();
         std::fs::create_dir_all(m.join("Books")).unwrap();
-        assert_eq!(classify(&m), Some(DeviceKind::Kobo));
+        assert_eq!(layout_hint(&m), Some(DeviceKind::Kobo));
     }
 
     #[test]
@@ -879,7 +1254,9 @@ garbage
         let kindle = t.dir("media/Kindle");
         std::fs::create_dir_all(kindle.join("documents")).unwrap();
         std::fs::create_dir_all(kindle.join("system")).unwrap();
-        t.dir("media/USBSTICK");
+        id_file(&kindle, KINDLE_ID);
+        let stick = t.dir("media/USBSTICK");
+        std::fs::create_dir_all(stick.join("Books")).unwrap();
         std::fs::write(t.0.join("media/loosefile"), b"x").unwrap();
         let d = driver(&t);
         let found = d.detect();
@@ -889,6 +1266,10 @@ garbage
         assert_eq!(kobo.name, "Kobo (KOBOeReader)");
         assert!(found.iter().any(|f| f.id.starts_with("kindle:")));
         assert_eq!(d.id(), "usb-mass-storage");
+        // the stick with a Books folder is not a device; it is an "other drive"
+        let others = d.scan().others;
+        assert_eq!(others.len(), 1);
+        assert_eq!(others[0].name, "USBSTICK");
     }
 
     #[test]
@@ -896,6 +1277,7 @@ garbage
         let t = Tmp::new();
         let kobo_mount = t.dir("Volumes/KOBOeReader");
         std::fs::create_dir_all(kobo_mount.join(".kobo")).unwrap();
+        id_file(&kobo_mount, KOBO_ID);
         let other = t.dir("Volumes/Backup");
         let mut d = MassStorageDriver::with_roots(vec![]);
         d.mounts = vec![kobo_mount.clone(), other, t.0.join("Volumes/Missing")];
@@ -918,6 +1300,7 @@ garbage
         let m = kobo(&t, "KOBO");
         let pocket = t.dir("elsewhere/PB");
         std::fs::create_dir_all(pocket.join("system/config")).unwrap();
+        id_file(&pocket, POCKET_ID);
         let ext4 = t.dir("elsewhere/internal");
         std::fs::create_dir_all(ext4.join("Books")).unwrap();
         let mounts = t.0.join("mounts");
@@ -971,6 +1354,7 @@ garbage
         let k = t.dir("media/Kindle");
         std::fs::create_dir_all(k.join("documents")).unwrap();
         std::fs::create_dir_all(k.join("system")).unwrap();
+        id_file(&k, KINDLE_ID);
         let d = driver(&t);
         let dev = d.detect().remove(0);
         let p = d.send(&dev, "b.azw3", b"x").unwrap();
@@ -983,6 +1367,7 @@ garbage
         let t = Tmp::new();
         let g = t.dir("media/BOOX");
         std::fs::create_dir_all(g.join("books")).unwrap();
+        id_file(&g, BOOX_ID);
         let d = driver(&t);
         let dev = d.detect().remove(0);
         let p = d.send(&dev, "x.epub", b"1").unwrap();
@@ -1053,6 +1438,7 @@ garbage
             id: "kobo:/gone".into(),
             name: "gone".into(),
             mount: t.0.join("gone"),
+            parent: None,
         };
         let err = d.send(&dev, "a.epub", b"x").unwrap_err();
         assert!(format!("{err}").contains("not mounted"));
@@ -1067,6 +1453,7 @@ garbage
             id: "weird".into(),
             name: "x".into(),
             mount: m,
+            parent: None,
         };
         let err = d.send(&dev, "a.epub", b"x").unwrap_err();
         assert!(format!("{err}").contains("not a recognised"));
@@ -1112,21 +1499,273 @@ garbage
     }
 
     #[test]
-    fn kind_of_falls_back_to_layout() {
+    fn kind_of_comes_from_the_id_only_never_from_the_layout() {
         let t = Tmp::new();
-        let m = kobo(&t, "K");
+        let m = t.dir("media/K");
+        std::fs::create_dir_all(m.join(".kobo")).unwrap();
         let d = driver(&t);
         let dev = DeviceInfo {
             id: "no-colon".into(),
             name: "n".into(),
-            mount: m,
+            mount: m.clone(),
+            parent: None,
         };
-        assert_eq!(d.kind_of(&dev), Some(DeviceKind::Kobo));
+        assert_eq!(d.kind_of(&dev), None);
         let dev2 = DeviceInfo {
             id: "bogus:/x".into(),
             name: "n".into(),
             mount: t.0.clone(),
+            parent: None,
         };
         assert_eq!(d.kind_of(&dev2), None);
+        let user = DeviceInfo {
+            id: "user-kindle:/x".into(),
+            name: "n".into(),
+            mount: m,
+            parent: None,
+        };
+        assert_eq!(d.kind_of(&user), Some(DeviceKind::Kindle));
+        assert!(MassStorageDriver::is_user_chosen(&user));
+    }
+
+    fn vol(
+        mount: &str,
+        group: Option<(u16, u16, &str)>,
+        lun: u32,
+        label: &str,
+        size: u64,
+    ) -> Volume {
+        Volume {
+            mount: PathBuf::from(mount),
+            identity: Identity {
+                usb: group.map(|(v, p, path)| crate::identity::UsbFacts {
+                    vendor_id: v,
+                    product_id: p,
+                    manufacturer: Some("x".into()),
+                    product: None,
+                    private_id: None,
+                    path: path.into(),
+                }),
+                lun: Some(lun),
+                partition: 1,
+                removable: Some(true),
+                label: Some(label.into()),
+                uuid: Some(format!("U-{label}")),
+                size_bytes: Some(size),
+                readable: true,
+                ..Default::default()
+            },
+        }
+    }
+
+    #[test]
+    fn a_nook_card_is_additional_storage_under_the_nook() {
+        // issue #57: internal memory and SD card are two LUNs of one USB device
+        let vols = vec![
+            vol(
+                "/run/media/u/SDHC",
+                Some((0x2080, 3, "usb/1-4")),
+                1,
+                "SDHC",
+                8_000_000_000,
+            ),
+            vol(
+                "/run/media/u/NOOK",
+                Some((0x2080, 3, "usb/1-4")),
+                0,
+                "NOOK",
+                220_000_000,
+            ),
+        ];
+        let a = analyse(&vols, &[]);
+        assert!(a.others.is_empty());
+        assert_eq!(a.found.len(), 2);
+        let main = a.found.iter().find(|f| !f.is_card).unwrap();
+        let card = a.found.iter().find(|f| f.is_card).unwrap();
+        assert_eq!(main.info.name, "Nook (NOOK)");
+        assert_eq!(main.info.parent, None);
+        assert_eq!(card.info.name, "Nook, memory card (SDHC)");
+        assert_eq!(card.info.parent.as_deref(), Some(main.info.id.as_str()));
+        assert_eq!(card.info.mount, PathBuf::from("/run/media/u/SDHC"));
+    }
+
+    #[test]
+    fn a_card_in_a_separate_card_reader_is_not_a_device() {
+        let vols = vec![
+            vol(
+                "/run/media/u/NOOK",
+                Some((0x2080, 3, "usb/1-4")),
+                0,
+                "NOOK",
+                220_000_000,
+            ),
+            vol(
+                "/run/media/u/SDHC",
+                Some((0x058f, 0x6366, "usb/1-5")),
+                0,
+                "SDHC",
+                8_000_000_000,
+            ),
+        ];
+        let a = analyse(&vols, &[]);
+        assert_eq!(a.found.len(), 1);
+        assert_eq!(a.others.len(), 1);
+        assert_eq!(a.others[0].usb_ids, Some((0x058f, 0x6366)));
+    }
+
+    #[test]
+    fn two_readers_on_a_hub_stay_two_devices() {
+        let vols = vec![
+            vol("/m/A", Some((0x2237, 0x4163, "usb/1-1.1")), 0, "A", 1 << 30),
+            vol("/m/B", Some((0x2237, 0x4163, "usb/1-1.2")), 0, "B", 1 << 30),
+        ];
+        let a = analyse(&vols, &[]);
+        assert_eq!(a.found.len(), 2);
+        assert!(
+            a.found
+                .iter()
+                .all(|f| !f.is_card && f.info.parent.is_none())
+        );
+    }
+
+    #[test]
+    fn a_kobo_look_alike_stick_is_not_a_device() {
+        // issue #58: label and folders are not identity
+        let t = Tmp::new();
+        let m = t.dir("media/KOBOeReader");
+        std::fs::create_dir_all(m.join(".kobo")).unwrap();
+        std::fs::create_dir_all(m.join("Books")).unwrap();
+        id_file(
+            &m,
+            r#"{"vendor_id":"0781","product_id":"5581","manufacturer":"SanDisk","label":"KOBOeReader"}"#,
+        );
+        let calibre = t.dir("media/CALIBRE");
+        std::fs::create_dir_all(calibre.join("Books")).unwrap();
+        std::fs::write(calibre.join("metadata.db"), b"x").unwrap();
+        let d = driver(&t);
+        assert!(d.detect().is_empty());
+        let a = d.scan();
+        assert_eq!(a.others.len(), 2);
+        assert!(a.others.iter().all(|o| o.why == NotIdentified::Unknown));
+    }
+
+    #[test]
+    fn unreadable_identity_degrades_to_not_identified_never_to_folders() {
+        let mut v = vol("/run/media/u/KOBO", None, 0, "KOBO", 1 << 30);
+        v.identity.readable = false;
+        let a = analyse(&[v], &[]);
+        assert!(a.found.is_empty());
+        assert_eq!(a.others[0].why, NotIdentified::Unreadable);
+    }
+
+    #[test]
+    fn a_user_chosen_drive_is_a_device_and_marked_as_such() {
+        let v = vol(
+            "/run/media/u/STICK",
+            Some((0x0781, 0x5581, "usb/2-1")),
+            0,
+            "STICK",
+            8 << 30,
+        );
+        let key = drive_key(&v);
+        let other = analyse(std::slice::from_ref(&v), &[]);
+        assert_eq!(other.others[0].key, key);
+        let user = [UserDrive {
+            key: key.clone(),
+            kind: "kindle".into(),
+            folder: "Docs/Books".into(),
+        }];
+        let a = analyse(std::slice::from_ref(&v), &user);
+        assert!(a.others.is_empty());
+        let f = &a.found[0];
+        assert!(f.user_chosen && f.recognised.is_none());
+        assert_eq!(f.info.id, "user-kindle:/run/media/u/STICK");
+        // a different drive with the same label is not it
+        let mut w = v.clone();
+        w.identity.uuid = Some("OTHER".into());
+        assert!(analyse(&[w], &user).found.is_empty());
+    }
+
+    #[test]
+    fn the_user_folder_is_used_and_cannot_escape_the_drive() {
+        let t = Tmp::new();
+        let m = t.dir("media/STICK");
+        id_file(&m, r#"{"uuid":"U1"}"#);
+        let key = drive_key(&Volume {
+            mount: m.clone(),
+            identity: crate::identity::IdentitySource::identify(&TestIdentity, &m, ""),
+        });
+        let mk = |folder: &str| {
+            let d = driver(&t).with_user_drives(vec![UserDrive {
+                key: key.clone(),
+                kind: "generic".into(),
+                folder: folder.into(),
+            }]);
+            let dev = d.detect().remove(0);
+            (d, dev)
+        };
+        let (d, dev) = mk("My Books");
+        assert_eq!(d.target_dir(&dev).unwrap(), m.join("My Books"));
+        let p = d.send(&dev, "a.epub", b"x").unwrap();
+        assert!(p.ends_with("My Books/a.epub"));
+        let (d, dev) = mk("../escape");
+        assert!(d.target_dir(&dev).is_err());
+        let (d, dev) = mk("");
+        assert_eq!(d.target_dir(&dev).unwrap(), m.join("Books"));
+    }
+
+    #[test]
+    fn the_test_identity_file_is_ignored_on_the_real_path() {
+        // a stick that carries the file must not become a Kobo through /proc/mounts
+        let t = Tmp::new();
+        let m = t.dir("media/EVIL");
+        id_file(&m, KOBO_ID);
+        let mounts = t.0.join("mounts");
+        std::fs::write(&mounts, format!("/dev/sdq1 {} vfat rw 0 0\n", m.display())).unwrap();
+        let sys = t.dir("sys");
+        let d = MassStorageDriver::new()
+            .with_proc_mounts(Some(mounts))
+            .with_identity(std::sync::Arc::new(SysfsIdentity::with_roots(
+                sys,
+                t.dir("dev"),
+            )));
+        assert!(d.detect().is_empty());
+        assert!(d.scan().others.is_empty() || d.scan().others[0].why == NotIdentified::Unreadable);
+    }
+
+    #[test]
+    fn real_mode_only_lists_removable_mounts_and_never_reads_inside_them() {
+        let t = Tmp::new();
+        let internal = t.dir("mnt/win");
+        let mounts = t.0.join("mounts");
+        std::fs::write(
+            &mounts,
+            format!("/dev/sda3 {} ntfs3 rw 0 0\n", internal.display()),
+        )
+        .unwrap();
+        // sysfs readable, not removable, no USB: not offered anywhere
+        let sys = t.dir("sys");
+        let blk = t.dir("sys/devices/pci0/ata1/block/sda/sda3");
+        std::fs::write(blk.join("partition"), "3").unwrap();
+        std::fs::write(blk.parent().unwrap().join("removable"), "0").unwrap();
+        std::fs::create_dir_all(sys.join("class/block")).unwrap();
+        std::os::unix::fs::symlink(&blk, sys.join("class/block/sda3")).unwrap();
+        let d = MassStorageDriver::new()
+            .with_proc_mounts(Some(mounts))
+            .with_identity(std::sync::Arc::new(SysfsIdentity::with_roots(
+                sys,
+                t.dir("dev"),
+            )));
+        assert!(d.volumes().is_empty());
+    }
+
+    #[test]
+    fn bounded_gives_up_on_a_stuck_call() {
+        let r = bounded(std::time::Duration::from_millis(50), || {
+            std::thread::sleep(std::time::Duration::from_millis(600));
+            1
+        });
+        assert_eq!(r, None);
+        assert_eq!(bounded(std::time::Duration::from_secs(2), || 7), Some(7));
     }
 }

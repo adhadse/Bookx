@@ -564,6 +564,7 @@ impl WebDavDriver {
                 self.dav.base.host_str().unwrap_or("WebDAV")
             ),
             mount: PathBuf::from(self.dav.base_url()),
+            parent: None,
         }
     }
 

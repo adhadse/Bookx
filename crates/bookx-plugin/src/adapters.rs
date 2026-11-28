@@ -489,6 +489,7 @@ impl DeviceDriver for PluginDevice {
                     id: format!("{}:{id}", self.id),
                     name: name.chars().take(80).collect(),
                     mount,
+                    parent: None,
                 })
             })
             .collect()

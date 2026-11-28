@@ -137,9 +137,13 @@ enum Cmd {
     DeviceCheck {
         /// Mount point of the device
         mount: PathBuf,
-        /// kobo | kindle | pocketbook | generic (default: detected from the layout)
+        /// kobo | kindle | pocketbook | generic (default: what the hardware identifies; a drive
+        /// that is not an identified e-reader needs this to be checked anyway)
         #[arg(long)]
         kind: Option<String>,
+        /// Test fixtures: read the hardware facts from `<mount>/.bookx-test-identity`
+        #[arg(long, hide = true)]
+        fixture_identity: bool,
         /// Check only this book (path relative to the mount, or a file name in the books folder)
         #[arg(long)]
         book: Option<String>,
@@ -492,6 +496,7 @@ fn dispatch(
         Cmd::DeviceCheck {
             mount,
             kind,
+            fixture_identity,
             book,
             all,
             json,
@@ -504,7 +509,13 @@ fn dispatch(
                 ),
                 None => None,
             };
-            let report = device_check::check_device_with(&mount, kind, book.as_deref(), all)?;
+            let driver = if fixture_identity {
+                bookx_serve::devices::MassStorageDriver::with_roots(Vec::new())
+            } else {
+                bookx_serve::devices::MassStorageDriver::new()
+            };
+            let report =
+                device_check::check_device_using(&driver, &mount, kind, book.as_deref(), all)?;
             device_check::write_report(&report, json, out)?;
             Ok(if report.passed() { 0 } else { 1 })
         }

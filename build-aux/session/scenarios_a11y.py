@@ -509,6 +509,9 @@ def fake_device(c):
     import shutil
     books = os.path.join(c.dir, "mounts", "Boox", "Books")
     os.makedirs(books, exist_ok=True)
+    # what the hardware says: a drive is an e-reader because of its USB ids, never its folders
+    with open(os.path.join(c.dir, "mounts", "Boox", ".bookx-test-identity"), "w") as f:
+        f.write('{"vendor_id":"2207","product_id":"0001","manufacturer":"Onyx","group":"boox"}')
     shutil.copy(c.books["tiny"], os.path.join(books, "Tiny Book.epub"))
     shutil.copy(c.books["alice"], os.path.join(books, "Alice in Wonderland.epub"))
 
@@ -567,7 +570,7 @@ def device_banner_a11y(c):
     m = c.wait(banner_dump, 10)  # the dev script dumps after its 4 s wait
     c.check("the dump reports an AdwBanner with a Sync button and dismiss", m, m and m.group(0))
 
-    btn = c.wait_node("button", rx="^E-reader", timeout=6)
+    btn = c.wait_node("button", rx="^(E-reader|Boox|Kobo)", timeout=6)
     if btn:
         x, y = btn.center()
         c.sb.move_to(x, y)
@@ -686,7 +689,7 @@ def _wiki_shots(c):
     c.start(books=("alice", "tiny"), settings=settings(), extra_env={"BOOKX_TTS_MOCK": "300"})
     time.sleep(2.0)
     wshot(c, "library-device")  # the banner with one-shot Sync and the built-in dismiss
-    dev = c.wait_node("button", rx="^E-reader", timeout=6)
+    dev = c.wait_node("button", rx="^(E-reader|Boox|Kobo)", timeout=6)
     if dev:
         c.click_node(dev)
         time.sleep(2.5)

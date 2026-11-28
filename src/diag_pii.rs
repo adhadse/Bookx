@@ -40,6 +40,9 @@ pub const AUTHOR_ONE: &str = "SENT Author One";
 pub const AUTHOR_TWO: &str = "SENT Author Two";
 pub const FILE_NAME: &str = "SENT_File_Name";
 pub const DEVICE_SERIAL: &str = "SENTSERIAL77";
+pub const USB_SERIAL: &str = "SENT-USB-SERIAL-77";
+pub const DRIVE_UUID: &str = "SENT-UUID-7777";
+pub const DRIVE_LABEL: &str = "SENT-DRIVE-LABEL";
 pub const DEVICE_NAME: &str = "SENT-DEVNAME-77";
 pub const KOBO_ACCOUNT: &str = "SENT-KOBO-ACCT";
 pub const SEARCH_QUERY: &str = "SENT query words";
@@ -80,6 +83,9 @@ pub fn forbidden() -> Vec<&'static str> {
         "Author One",
         FILE_NAME,
         DEVICE_SERIAL,
+        USB_SERIAL,
+        DRIVE_UUID,
+        DRIVE_LABEL,
         DEVICE_NAME,
         KOBO_ACCOUNT,
         SEARCH_QUERY,
@@ -393,17 +399,58 @@ pub fn world<'a>(fx: &'a Fixture, entry_area: Option<&str>) -> World<'a> {
         backend: "wayland".into(),
         renderer: "ngl".into(),
         vars,
-        extra: vec![(
-            Area::Tts,
-            vec![(
-                "Voice".to_string(),
-                crate::diag_facts::Fact::text(&format!("{REALNAME} voice in {home}/models")),
-            )],
-        )],
+        extra: vec![
+            (
+                Area::Tts,
+                vec![(
+                    "Voice".to_string(),
+                    crate::diag_facts::Fact::text(&format!("{REALNAME} voice in {home}/models")),
+                )],
+            ),
+            (Area::Devices, drive_rows()),
+        ],
         entry: entry_area.map(str::to_string),
         probe: None,
         helpers: Default::default(),
     }
+}
+
+/// The Devices rows of a real scan over fake drives whose serial, UUID and label are sentinels: a
+/// Kindle with a memory card, and a stick nobody recognises, each carrying all three.
+fn drive_rows() -> Vec<(String, crate::diag_facts::Fact)> {
+    let root = tmp("drives");
+    let id = |vendor: &str, product: &str, group: &str, lun: u32| {
+        format!(
+            r#"{{"vendor_id":"{vendor}","product_id":"{product}","manufacturer":"Acme","scsi_vendor":"Kindle","group":"{group}","lun":{lun},"serial":"{USB_SERIAL}","uuid":"{DRIVE_UUID}-{lun}","label":"{DRIVE_LABEL}","size":8000000000}}"#
+        )
+    };
+    for (name, json) in [
+        ("A-Kindle", id("1949", "0324", "k", 0)),
+        ("B-Card", id("1949", "0324", "k", 1)),
+        (
+            "C-Stick",
+            id("0781", "5581", "s", 0).replace("Kindle", "SanDisk"),
+        ),
+    ] {
+        let m = root.join(name);
+        std::fs::create_dir_all(&m).unwrap();
+        std::fs::write(m.join(".bookx-test-identity"), json).unwrap();
+    }
+    let scan = bookx_serve::devices::MassStorageDriver::with_roots(vec![root.clone()]).scan();
+    let list: Vec<crate::diag_gather::ConnectedDevice> = scan
+        .found
+        .iter()
+        .map(|f| crate::diag_gather::ConnectedDevice {
+            reported: f.info.name.clone(),
+            id: f.info.id.clone(),
+            mounted: true,
+            free: None,
+        })
+        .collect();
+    let mut rows = crate::diag_gather::device_rows(&list);
+    rows.extend(crate::diag_gather::other_drive_rows(&scan.others));
+    let _ = std::fs::remove_dir_all(root);
+    rows
 }
 
 pub fn scrubber(fx: &Fixture) -> crate::debug_log::Scrubber {
@@ -461,6 +508,8 @@ mod tests {
             "Server address: http://<credentials>@<domain>:30260/api/koreader/<segment>?<query>",
             "Book 1 title: (not included)",
             "Device 1: <custom name>",
+            "Other drives: 1",
+            "Other drive 1: USB 0781:5581",
         ] {
             assert!(r.contains(want), "{want} missing in\n{r}");
         }

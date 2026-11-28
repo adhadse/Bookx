@@ -152,3 +152,22 @@ reports, its `Usb` layout and the source of the reported string; add the model t
 `crates/bookx-serve/src/device_names.rs` (with its source) when Bookx should know it. Test it on the real device
 and set `seen_on_hardware` only then (the zoo test currently asserts none are).
 
+
+
+## Identity (issues #57 and #58): what is verified and what is not
+
+Drives are recognised by hardware identity (`crates/bookx-serve/src/identity.rs`), not by folders. **Nothing here was run
+on real hardware**; the table was checked against two public sources per entry (calibre's `devices/*/driver.py`
+vendor and product ids, the USB id database `usb.ids`/systemd hwdb, and published `dmesg`/`lsusb` reports; the header
+of the file lists them). To verify on a real reader, run `bookx-cli device-check <mount>`: it prints the vendor id,
+product id, strings, how the drive was recognised and its other storage (never a serial, UUID or label), and attach the
+output to the report.
+
+| Check | Expected | Status |
+|---|---|---|
+| Kobo (`2237`), Kindle (`1949` + SCSI vendor `Kindle`), Nook (`2080`), PocketBook (`fffe:0001`, Obreey), Tolino (`1f85:6052/6053`, `4173:8000`), Sony PRS-505 (`054c:031e`), Boox (USB manufacturer `Onyx`) | recognised, named, books go to the usual folder | table only, not on devices |
+| A Nook (or PocketBook) with an SD card | two disks of one USB device: card listed under the reader, selectable in Send to Device | assumed from published `dmesg` (two LUNs `B&N Ebook Disk`) and the PocketBook manual; **which disk is the internal memory is assumed to be the lowest LUN**; the Nook SD card's folder layout is unknown (books go to `Books`) |
+| Boox over USB mass storage | recognised by the manufacturer string `Onyx` | one forum report only; most Boox devices use MTP, which is separate |
+| reMarkable | not in the table (no mass-storage mode) | not covered |
+| Flatpak | `/sys/class/block` and `/sys/devices` are read-only in the sandbox, so the facts should be readable for drives under `/run/media`; `/dev/disk/by-uuid` is not, so the key falls back to label + size | **not tested in a sandbox**. If sysfs is hidden the drive degrades to *Other drives* ("Could not be identified here"), never to folder guessing. GVfs/UDisks2 (`--talk-name=org.gtk.vfs.*`) could name a drive but does not expose USB ids, so no second path was built |
+| macOS, Windows | no sysfs: every removable drive is under *Other drives* until chosen | by design; the shipped platform is Linux x86_64 |

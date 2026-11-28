@@ -14,7 +14,7 @@ use std::rc::Rc;
 
 use bookx_core::contracts::DeviceInfo;
 use bookx_serve::devfs::{self, DeviceBook, human_size};
-use bookx_serve::devices::DeviceKind;
+use bookx_serve::devices::{DeviceKind, OtherDrive};
 use bookx_serve::reading::DeviceState;
 use relm4::adw::{self, prelude::*};
 use relm4::gtk::{self, gio, glib};
@@ -37,6 +37,9 @@ const OPTIONS_FIELDS_DESCRIPTION: &str = N_(
 );
 const WEBDAV_DESCRIPTION: &str = N_(
     "Nextcloud, ownCloud and other WebDAV folders work like a device: send books there, list and remove them.",
+);
+const OTHER_DRIVES_DESCRIPTION: &str = N_(
+    "Removable drives that Bookx does not recognise as e-readers (USB sticks, card readers, disks). If one of them is an e-reader, tell Bookx and it is offered like any other device.",
 );
 const REMOVE_DESCRIPTION: &str =
     N_("The files are deleted from the device. Copies in your library stay.");
@@ -104,6 +107,13 @@ struct DevWin {
     dav_pass: adw::PasswordEntryRow,
     dav_status: gtk::Label,
     devices: RefCell<Vec<DeviceInfo>>,
+    scanner: super::device_scan::Scanner,
+    scanning: Cell<bool>,
+    others_group: adw::PreferencesGroup,
+    other_rows: RefCell<Vec<gtk::Widget>>,
+    others: RefCell<Vec<OtherDrive>>,
+    chosen: RefCell<Vec<(DeviceInfo, String)>>,
+    pending_use: RefCell<Option<(adw::AlertDialog, adw::ComboRow, adw::EntryRow, String)>>,
     books: RefCell<Vec<DeviceBook>>,
     states: RefCell<HashMap<PathBuf, DeviceState>>,
     shelves: RefCell<HashMap<PathBuf, Vec<String>>>,
@@ -117,6 +127,15 @@ thread_local! {
 }
 
 /// Preferred dialog height, never taller than 85% of the parent (LIB-D8 / X6).
+/// "7.5 GB · Not a known e-reader" for the Other drives list.
+fn other_subtitle(o: &OtherDrive) -> String {
+    let why = dev::not_identified_text(o.why);
+    match o.size_bytes {
+        Some(b) if b > 0 => format!("{} · {why}", human_size(b)),
+        _ => why,
+    }
+}
+
 fn dialog_content_height(parent_height: i32, preferred: i32) -> i32 {
     if parent_height > 0 {
         preferred
@@ -227,6 +246,7 @@ pub fn show(parent: &adw::ApplicationWindow, shared: &SharedRef, on_changed: Rc<
         w.dialog.connect_closed(move |_| {
             if let Some(w) = weak.upgrade() {
                 w.generation.set(w.generation.get() + 1);
+                w.scanner.invalidate();
             }
             CURRENT.with(|c| *c.borrow_mut() = None);
         });
@@ -449,6 +469,11 @@ impl DevWin {
             dav_group.add(r);
         }
         settings_page_widget.add(&dav_group);
+        let others_group = adw::PreferencesGroup::new();
+        others_group.set_title(&tr("Other drives"));
+        others_group.set_description(Some(&tr(OTHER_DRIVES_DESCRIPTION)));
+        others_group.set_visible(false);
+        settings_page_widget.add(&others_group);
         settings_page_widget.add(&super::report_dialog::problem_group(
             "Devices|Built-in server|Conversion",
         ));
@@ -517,6 +542,13 @@ impl DevWin {
             dav_pass,
             dav_status,
             devices: RefCell::default(),
+            scanner: super::device_scan::Scanner::new(),
+            scanning: Cell::new(false),
+            others_group,
+            other_rows: RefCell::default(),
+            others: RefCell::default(),
+            chosen: RefCell::default(),
+            pending_use: RefCell::default(),
             books: RefCell::default(),
             states: RefCell::default(),
             shelves: RefCell::default(),
@@ -694,10 +726,24 @@ impl DevWin {
 
     // -- devices and books -----------------------------------------------------------------
 
+    /// Looks for devices on a worker thread; the window stays usable meanwhile and a late answer
+    /// (an older look, or the window closed) is dropped.
     fn reload_devices(self: &Rc<Self>) {
         let settings = self.shared.cfg.borrow().device.clone();
-        let drivers = dev::drivers(&settings);
-        let devices = drivers.detect();
+        self.scanning.set(true);
+        if self.devices.borrow().is_empty() {
+            let (_, storage) = ds::device_row_text("", &tr("Looking for devices"));
+            self.device_row.set_property("subtitle", storage);
+        }
+        let me = self.clone();
+        self.scanner.spawn(settings, true, move |found| {
+            me.scanning.set(false);
+            me.apply_scan(found);
+        });
+    }
+
+    fn apply_scan(self: &Rc<Self>, found: dev::Detected) {
+        let devices = dev::order_with_cards(found.devices);
         let previous = self.selected_device().map(|d| d.id);
         let names: Vec<String> = devices.iter().map(|d| d.name.clone()).collect();
         let refs: Vec<&str> = names.iter().map(String::as_str).collect();
@@ -705,6 +751,7 @@ impl DevWin {
             .and_then(|id| devices.iter().position(|d| d.id == id))
             .unwrap_or(0);
         *self.devices.borrow_mut() = devices;
+        self.fill_others(found.others, found.chosen);
         // changing the model selects row 0, which reloads the books; the notify handler is
         // harmless here because `reload_books` below runs again for the final selection
         self.device_row
@@ -712,6 +759,134 @@ impl DevWin {
         self.device_row.set_selected(keep as u32);
         self.device_row.set_sensitive(!refs.is_empty());
         self.reload_books();
+    }
+
+    /// The "Other drives" list: drives that are not e-readers, each with "Use as an e-reader", and
+    /// the drives the person chose, each with "Stop using as an e-reader".
+    fn fill_others(self: &Rc<Self>, others: Vec<OtherDrive>, chosen: Vec<(DeviceInfo, String)>) {
+        for r in self.other_rows.borrow_mut().drain(..) {
+            self.others_group.remove(&r);
+        }
+        let mut rows: Vec<gtk::Widget> = Vec::new();
+        for o in &others {
+            let row = adw::ActionRow::builder()
+                .title(glib::markup_escape_text(&o.name))
+                .subtitle(glib::markup_escape_text(&other_subtitle(o)))
+                .build();
+            let b = gtk::Button::with_label(&tr("Use as an e-reader"));
+            b.set_valign(gtk::Align::Center);
+            let (me, key, name) = (self.clone(), o.key.clone(), o.name.clone());
+            b.connect_clicked(move |_| me.ask_use_as_reader(&key, &name));
+            row.add_suffix(&b);
+            self.others_group.add(&row);
+            rows.push(row.upcast());
+        }
+        for (d, key) in &chosen {
+            let row = adw::ActionRow::builder()
+                .title(glib::markup_escape_text(&d.name))
+                .subtitle(tr("Used as an e-reader because you chose it"))
+                .build();
+            let b = gtk::Button::with_label(&tr("Stop using as an e-reader"));
+            b.set_valign(gtk::Align::Center);
+            let (me, key) = (self.clone(), key.clone());
+            b.connect_clicked(move |_| me.stop_using(&key));
+            row.add_suffix(&b);
+            self.others_group.add(&row);
+            rows.push(row.upcast());
+        }
+        self.others_group
+            .set_visible(!others.is_empty() || !chosen.is_empty());
+        *self.other_rows.borrow_mut() = rows;
+        *self.others.borrow_mut() = others;
+        *self.chosen.borrow_mut() = chosen;
+    }
+
+    /// Asks which kind of reader a drive is and where its books go.
+    fn ask_use_as_reader(self: &Rc<Self>, key: &str, name: &str) {
+        let dialog = adw::AlertDialog::builder()
+            .heading(trf("Use {} as an e-reader?", &[&name]))
+            .body(tr(
+                "Bookx will offer this drive like any other e-reader. You can undo this under Other drives.",
+            ))
+            .build();
+        let kinds = [
+            DeviceKind::Kobo,
+            DeviceKind::Kindle,
+            DeviceKind::PocketBook,
+            DeviceKind::Generic,
+        ];
+        let labels: Vec<String> = kinds
+            .iter()
+            .map(|k| match k {
+                DeviceKind::Generic => tr("Other e-reader"),
+                k => k.label().to_string(),
+            })
+            .collect();
+        let refs: Vec<&str> = labels.iter().map(String::as_str).collect();
+        let kind_row = adw::ComboRow::builder()
+            .title(tr("Kind of e-reader"))
+            .build();
+        kind_row.set_model(Some(&gtk::StringList::new(&refs)));
+        kind_row.set_selected(3);
+        let folder = adw::EntryRow::builder()
+            .title(tr("Folder for books on the drive"))
+            .build();
+        folder.set_text(dev::default_folder(DeviceKind::Generic));
+        {
+            let folder = folder.clone();
+            kind_row.connect_selected_notify(move |r| {
+                let kind = kinds[(r.selected() as usize).min(3)];
+                folder.set_text(dev::default_folder(kind));
+            });
+        }
+        let list = gtk::ListBox::new();
+        list.add_css_class("boxed-list");
+        list.set_selection_mode(gtk::SelectionMode::None);
+        list.append(&kind_row);
+        list.append(&folder);
+        dialog.set_extra_child(Some(&list));
+        dialog.add_response("cancel", &tr("Cancel"));
+        dialog.add_response("use", &tr("Use as an e-reader"));
+        dialog.set_response_appearance("use", adw::ResponseAppearance::Suggested);
+        dialog.set_default_response(Some("use"));
+        dialog.set_close_response("cancel");
+        {
+            let (me, key) = (self.clone(), key.to_string());
+            let (kind_row, folder) = (kind_row.clone(), folder.clone());
+            dialog.connect_response(None, move |_, id| {
+                *me.pending_use.borrow_mut() = None;
+                if id == "use" {
+                    let kind = kinds[(kind_row.selected() as usize).min(3)];
+                    me.use_as_reader(&key, kind, &folder.text());
+                }
+            });
+        }
+        *self.pending_use.borrow_mut() = Some((dialog.clone(), kind_row, folder, key.to_string()));
+        dialog.present(Some(&self.dialog));
+    }
+
+    /// Remembers that the drive is an e-reader of `kind` (the choice is the person's, never an
+    /// automatic recognition) and looks again.
+    fn use_as_reader(self: &Rc<Self>, key: &str, kind: DeviceKind, folder: &str) {
+        self.store_drives(|d| {
+            dev::set_user_drive(d, key, Some((kind, dev::folder_choice(kind, folder))))
+        });
+        self.reload_devices();
+    }
+
+    fn stop_using(self: &Rc<Self>, key: &str) {
+        self.store_drives(|d| dev::set_user_drive(d, key, None));
+        self.reload_devices();
+    }
+
+    fn store_drives(
+        &self,
+        f: impl FnOnce(Vec<bookx_serve::devices::UserDrive>) -> Vec<bookx_serve::devices::UserDrive>,
+    ) {
+        let mut c = self.shared.cfg.borrow_mut();
+        c.device.drives = f(std::mem::take(&mut c.device.drives));
+        c.save();
+        dev::set_settings(c.device.clone());
     }
 
     fn selected_device(&self) -> Option<DeviceInfo> {
@@ -1164,6 +1339,26 @@ impl DevWin {
             self.last_summary.borrow(),
             self.status.label(),
         );
+        for d in self.devices.borrow().iter() {
+            eprintln!(
+                "devwin_device: {} | card={} | user_chosen={}",
+                d.name,
+                d.parent.is_some(),
+                bookx_serve::devices::MassStorageDriver::is_user_chosen(d)
+            );
+        }
+        eprintln!(
+            "devwin_others: group_visible={} others={} chosen={} scanning={} names={:?}",
+            self.others_group.is_visible(),
+            self.others.borrow().len(),
+            self.chosen.borrow().len(),
+            self.scanning.get(),
+            self.others
+                .borrow()
+                .iter()
+                .map(|o| o.name.clone())
+                .collect::<Vec<_>>()
+        );
         eprintln!(
             "devwin_ui: view={} covers={} include_notes={} auto_sync={} send_button={} send_enabled={}",
             self.on_dev.visible_view(),
@@ -1603,7 +1798,8 @@ fn poll<T: 'static>(rx: std::sync::mpsc::Receiver<T>, done: impl FnOnce(T) + 'st
 /// `page=books|settings`, `device=<n>`, `select=<i,j>`, `remove`, `sync`, `format=<id>`,
 /// `template=<text>`, `shelf=<name>`, `reload`, `dav=<url>`, `view=grid|list`, `notes=on|off`,
 /// `autosync=on|off`, `syncask` (summary dialog), `syncconfirm`, `send` (the library's
-/// selection), `close`.
+/// selection), `use=<drive>:<kind>[:<folder>]`, `stop=<device>`, `usedialog=<drive>`,
+/// `usedialog-answer=<kind>:<folder>`, `usedialog-cancel`, `reload-settings`, `close`.
 pub fn dev_command(
     parent: &adw::ApplicationWindow,
     shared: &SharedRef,
@@ -1647,6 +1843,23 @@ pub fn dev_command(
             );
         }
         "reload" => w.reload_devices(),
+        // the settings as they are on disk, as after a restart of the program
+        "reload-settings" => {
+            let saved = crate::config::Config::load().device;
+            // what is on disk: the person's choices, by hashed key
+            eprintln!(
+                "devwin_settings_file: {}",
+                serde_json::to_string(&saved.drives).unwrap_or_default()
+            );
+            w.shared.cfg.borrow_mut().device.drives = saved.drives;
+            dev::set_settings(w.shared.cfg.borrow().device.clone());
+            w.reload_devices();
+        }
+        "usedialog-cancel" => {
+            if let Some((d, ..)) = w.pending_use.borrow().as_ref() {
+                d.close();
+            }
+        }
         "remove" => w.remove_selected(false),
         "sync" => w.sync_state(false),
         "syncask" => w.sync_state(true),
@@ -1674,6 +1887,70 @@ pub fn dev_command(
                         .position(|d| d.name.contains(n) || d.mount.to_string_lossy().contains(n))
                 });
                 w.device_row.set_selected(idx.unwrap_or(0) as u32);
+            } else if let Some(arg) = other.strip_prefix("use=") {
+                // `use=<part of the drive's name>:<kind>[:<folder>]` is "Use as an e-reader"
+                let mut it = arg.splitn(3, ':');
+                let (part, kind, folder) = (
+                    it.next().unwrap_or(""),
+                    it.next().unwrap_or("generic"),
+                    it.next().unwrap_or(""),
+                );
+                let key = w
+                    .others
+                    .borrow()
+                    .iter()
+                    .find(|o| o.name.contains(part))
+                    .map(|o| o.key.clone());
+                match (key, DeviceKind::from_slug(kind)) {
+                    (Some(k), Some(kind)) => w.use_as_reader(&k, kind, folder),
+                    _ => eprintln!("devwin_use: no such drive {part}"),
+                }
+            } else if let Some(part) = other.strip_prefix("stop=") {
+                let key = w
+                    .chosen
+                    .borrow()
+                    .iter()
+                    .find(|(d, _)| {
+                        d.name.contains(part) || d.mount.to_string_lossy().contains(part)
+                    })
+                    .map(|(_, k)| k.clone());
+                match key {
+                    Some(k) => w.stop_using(&k),
+                    None => eprintln!("devwin_stop: no such drive {part}"),
+                }
+            } else if let Some(part) = other.strip_prefix("usedialog=") {
+                // opens the real dialog for a drive of Other drives
+                let found = w
+                    .others
+                    .borrow()
+                    .iter()
+                    .find(|o| o.name.contains(part))
+                    .map(|o| (o.key.clone(), o.name.clone()));
+                match found {
+                    Some((k, n)) => {
+                        w.ask_use_as_reader(&k, &n);
+                        if let Some((d, ..)) = w.pending_use.borrow().as_ref() {
+                            eprintln!("devwin_usedialog: {}", d.heading().unwrap_or_default());
+                        }
+                    }
+                    None => eprintln!("devwin_usedialog: no such drive {part}"),
+                }
+            } else if let Some(arg) = other.strip_prefix("usedialog-answer=") {
+                // `usedialog-answer=<kind>:<folder>` fills the open dialog and presses the button
+                let (kind, folder) = arg.split_once(':').unwrap_or((arg, ""));
+                let pending = w.pending_use.borrow().clone();
+                if let Some((d, kind_row, folder_row, _)) = pending {
+                    let idx = ["kobo", "kindle", "pocketbook", "generic"]
+                        .iter()
+                        .position(|k| *k == kind)
+                        .unwrap_or(3);
+                    kind_row.set_selected(idx as u32);
+                    folder_row.set_text(folder);
+                    d.emit_by_name::<()>("response", &[&"use"]);
+                    d.force_close();
+                } else {
+                    eprintln!("devwin_usedialog: not open");
+                }
             } else if let Some(list) = other.strip_prefix("select=") {
                 let idx: Vec<usize> = list.split(',').filter_map(|s| s.parse().ok()).collect();
                 for i in 0..w.on_dev.len() {

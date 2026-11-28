@@ -108,6 +108,10 @@ pub struct DeviceInfo {
     pub id: String,
     pub name: String,
     pub mount: PathBuf,
+    /// Set when this is additional storage (an SD card, a second disk) of another device: the
+    /// `id` of that device. Such a storage is a destination for sends and is listed under its
+    /// device, never an e-reader of its own.
+    pub parent: Option<String>,
 }
 
 /// Talks to e-readers.

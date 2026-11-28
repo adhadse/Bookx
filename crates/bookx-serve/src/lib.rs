@@ -15,6 +15,7 @@ pub mod devices;
 pub mod hostguard;
 pub mod http;
 pub mod httpc;
+pub mod identity;
 pub mod keyhash;
 pub mod kobo;
 pub mod kosync;
