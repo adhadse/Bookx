@@ -6,6 +6,20 @@ versioned heading, `Cargo.toml` and the AppStream metainfo disagree.
 
 ## [Unreleased]
 
+### Fixed
+
+- A USB stick with a `Books` folder or a Calibre library no longer shows up as an e-reader (#58). Bookx recognises
+  e-readers by their hardware (USB ids and the names the device reports), not by folder names. Sticks and other drives
+  are only listed under *Other drives* in the Devices window, never in the library, where *Use as an e-reader* lets you
+  choose one yourself (and *Stop using as an e-reader* undoes it).
+- A reader's SD card is now offered as extra storage under its reader, for example *Nook, memory card (SDHC)*, and can
+  be chosen in Send to Device (#57).
+- The Devices window and the device button no longer freeze the window while Bookx looks for devices (#57).
+
+### Changed
+
+- `bookx-cli device-check` shows the hardware facts and says clearly when a drive is not an identified e-reader.
+
 ## [0.5.0-beta.1] - 2026-11-24
 
 Online Catalogues work again.

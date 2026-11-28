@@ -85,6 +85,7 @@ These look-ups go to the web. Check your network connection.
 ## My device does not show up
 
 - Make sure it is mounted (GNOME Files shows it). For phones, unlock the phone and choose file transfer.
+- A USB stick, a card reader or an e-reader Bookx does not recognise is never offered as a device by itself. Open the Devices window, **Settings** page, **Other drives**: it lists such drives, and **Use as an e-reader** makes Bookx treat one as a reader. See [How Bookx recognises a device](devices-and-sharing.md#recognition).
 - Run `bookx-cli device-check <mount>` and look at what it reports.
 - Device support has been tried on real hardware with one Kobo (a Kobo Libra Colour) only; everything else is tested with simulated devices. Please report what you see, including the output of
   `bookx-cli device-check --json <mount>`.

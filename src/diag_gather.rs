@@ -416,6 +416,30 @@ pub fn device_rows(list: &[ConnectedDevice]) -> Vec<(String, Fact)> {
     rows
 }
 
+/// The rows of drives that are not e-readers: how many, and for each only what is not personal: the
+/// USB vendor and product number (public identifiers) and whether the facts could be read. Never the
+/// volume label, the filesystem UUID, a serial number or the mount path.
+pub fn other_drive_rows(list: &[bookx_serve::devices::OtherDrive]) -> Vec<(String, Fact)> {
+    use bookx_serve::devices::NotIdentified;
+    let mut rows = vec![("Other drives".to_string(), Fact::count(list.len()))];
+    for (i, o) in list.iter().take(6).enumerate() {
+        let n = i + 1;
+        let ids = match o.usb_ids {
+            Some((v, p)) => format!("USB {v:04x}:{p:04x}"),
+            None => "no USB device".to_string(),
+        };
+        rows.push((format!("Other drive {n}"), Fact::text(&ids)));
+        rows.push((
+            format!("Other drive {n} identified"),
+            Fact::word(match o.why {
+                NotIdentified::Unknown => "no (not a known e-reader)",
+                NotIdentified::Unreadable => "no (hardware facts unreadable)",
+            }),
+        ));
+    }
+    rows
+}
+
 /// The books the trace names (by id), as facts. Titles and authors are `Fact::title`: shown only when
 /// the user allowed them.
 pub fn books_involved(lib: &crate::core::library::Library, ids: &[u64]) -> Section {
